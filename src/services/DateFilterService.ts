@@ -77,17 +77,29 @@ class DateFilterService {
     }
 
     const dateRange = this.getDateRange(filterType, customRange);
+    console.log(`🗓️ Filtering ${videos.length} videos for period: ${this.getPeriodDescription(filterType, customRange)}`);
+    console.log(`📅 Date range: ${dateRange.startDate.toLocaleDateString()} - ${dateRange.endDate.toLocaleDateString()}`);
     
-    return videos.filter(video => {
-      // Use dateSubmitted if available, otherwise fall back to timestamp or current date
-      const videoDate = video.dateSubmitted 
-        ? new Date(video.dateSubmitted)
-        : video.timestamp 
+    const filteredVideos = videos.filter(video => {
+      // Use the original video posting date (timestamp) for filtering
+      // This is when the video was actually posted on Instagram/TikTok, not when it was added to our dashboard
+      const videoDate = video.timestamp 
         ? new Date(video.timestamp)
+        : video.dateSubmitted 
+        ? new Date(video.dateSubmitted)
         : new Date(); // Fallback to current date for older entries
 
-      return videoDate >= dateRange.startDate && videoDate <= dateRange.endDate;
+      const isInRange = videoDate >= dateRange.startDate && videoDate <= dateRange.endDate;
+      
+      if (videos.length <= 10) { // Only log for small datasets to avoid spam
+        console.log(`📹 Video "${video.title.substring(0, 30)}..." posted on ${videoDate.toLocaleDateString()} - ${isInRange ? '✅ Included' : '❌ Excluded'}`);
+      }
+
+      return isInRange;
     });
+
+    console.log(`✅ Filtered to ${filteredVideos.length} videos based on original posting dates`);
+    return filteredVideos;
   }
 
   /**

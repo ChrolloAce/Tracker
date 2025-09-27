@@ -205,7 +205,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
           <div className="flex items-center space-x-4">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">Video Submissions</h2>
-              <p className="text-sm text-gray-600">Showing {submissions.length} videos for {periodDescription}</p>
+              <p className="text-sm text-gray-600">Showing {submissions.length} videos posted during {periodDescription}</p>
             </div>
             <div className="flex items-center space-x-2">
               <button className="px-3 py-1 text-sm font-medium text-primary-600 bg-primary-50 rounded-md hover:bg-primary-100 transition-colors">

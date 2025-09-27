@@ -170,7 +170,7 @@ export const AnalyticsCards: React.FC<AnalyticsCardsProps> = ({ submissions, per
       {/* Period Header */}
       <div className="mb-4">
         <h2 className="text-lg font-semibold text-gray-900">Analytics Overview</h2>
-        <p className="text-sm text-gray-600">Performance metrics for {periodDescription}</p>
+        <p className="text-sm text-gray-600">Performance metrics for videos posted during {periodDescription}</p>
       </div>
       
       {/* Analytics Cards */}
