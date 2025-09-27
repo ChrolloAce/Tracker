@@ -253,14 +253,6 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
     return num.toString();
   };
 
-  const formatDate = (date: Date): string => {
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    }).format(date);
-  };
-
   const allSelected = submissions.length > 0 && selectedIds.size === submissions.length;
   const someSelected = selectedIds.size > 0 && selectedIds.size < submissions.length;
 
