@@ -24,7 +24,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (action === 'run') {
       // Start actor run
-      const runResponse = await fetch(`https://api.apify.com/v2/acts/${actorId}/runs?token=${APIFY_TOKEN}`, {
+      const runResponse = await fetch(`https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${APIFY_TOKEN}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -41,17 +41,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      const runData = await runResponse.json();
-      console.log('🎯 Actor run started:', runData.data.id);
+      const items = await runResponse.json();
+      console.log('🎯 Synchronous run completed, got items directly:', items.length);
 
-      // Wait for completion
-      const completedRun = await waitForRunCompletion(runData.data.id, APIFY_TOKEN);
-      
-      // Get dataset items
-      const { items } = await getDatasetItems(completedRun.defaultDatasetId, APIFY_TOKEN);
-
+      // run-sync-get-dataset-items returns items directly
       return res.status(200).json({
-        run: completedRun,
+        run: { id: 'sync-run', status: 'SUCCEEDED', defaultDatasetId: 'sync' },
         items: items
       });
 
