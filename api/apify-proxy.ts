@@ -20,6 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const APIFY_TOKEN = process.env.APIFY_TOKEN || 'apify_api_7wvIrJjtEH6dTZktJZAtcIGAylH7cX2jRweu';
 
     console.log('🔄 Apify proxy request:', { actorId, action, inputKeys: Object.keys(input || {}) });
+    console.log('🔑 Using token:', APIFY_TOKEN ? 'Token found' : 'No token found');
 
     if (action === 'run') {
       // Start actor run
