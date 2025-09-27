@@ -5,7 +5,7 @@ import ApifyBrowserClient from './ApifyBrowserClient';
 class InstagramApiService {
   private apifyClient: ApifyBrowserClient;
   private readonly APIFY_TOKEN = import.meta.env.VITE_APIFY_TOKEN || 'apify_api_7wvIrJjtEH6dTZktJZAtcIGAylH7cX2jRweu';
-  private readonly INSTAGRAM_SCRAPER_ACTOR = 'apify/instagram-scraper'; // Popular Instagram scraper actor
+  private readonly INSTAGRAM_SCRAPER_ACTOR = 'apify~instagram-scraper'; // Popular Instagram scraper actor
   
   constructor() {
     console.log('🔧 Initializing browser-compatible Apify client with token:', this.APIFY_TOKEN ? '***' + this.APIFY_TOKEN.slice(-4) : 'No token');

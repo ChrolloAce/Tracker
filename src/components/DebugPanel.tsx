@@ -36,7 +36,7 @@ const DebugPanel: React.FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          actorId: 'apify/instagram-scraper',
+          actorId: 'apify~instagram-scraper',
           input: {
             directUrls: ['https://www.instagram.com/reel/DHo-T-dp2QT/'],
             resultsType: 'posts',

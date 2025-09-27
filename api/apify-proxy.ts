@@ -23,7 +23,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('🔑 Using token:', APIFY_TOKEN ? 'Token found' : 'No token found');
 
     if (action === 'run') {
-      // Start actor run
+      // Start actor run - using the correct endpoint format
       const runResponse = await fetch(`https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${APIFY_TOKEN}`, {
         method: 'POST',
         headers: {
