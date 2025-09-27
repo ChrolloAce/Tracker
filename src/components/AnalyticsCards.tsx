@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
-import { MoreVertical, TrendingUp, TrendingDown } from 'lucide-react';
+import { MoreVertical, TrendingUp, TrendingDown, Eye, Heart, MessageCircle } from 'lucide-react';
 import { VideoSubmission } from '../types';
-import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import DateFilterService from '../services/DateFilterService';
 import { DateFilterType } from './DateRangeFilter';
@@ -24,6 +24,8 @@ interface MetricCardProps {
   change: number;
   changeType: 'increase' | 'decrease';
   chartData: { day: string; value: number }[];
+  icon: React.ComponentType<{ className?: string }>;
+  color: 'blue' | 'green' | 'purple';
 }
 
 const MetricCard: React.FC<MetricCardProps> = ({ 
@@ -31,7 +33,9 @@ const MetricCard: React.FC<MetricCardProps> = ({
   value, 
   change, 
   changeType, 
-  chartData 
+  chartData,
+  icon: Icon,
+  color
 }) => {
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
@@ -57,22 +61,64 @@ const MetricCard: React.FC<MetricCardProps> = ({
     return null;
   };
 
+  const getColorClasses = (color: string) => {
+    switch (color) {
+      case 'blue':
+        return {
+          bg: 'bg-blue-50',
+          icon: 'text-blue-600',
+          stroke: '#3b82f6',
+          gradient: 'blue-gradient'
+        };
+      case 'green':
+        return {
+          bg: 'bg-green-50',
+          icon: 'text-green-600',
+          stroke: '#22c55e',
+          gradient: 'green-gradient'
+        };
+      case 'purple':
+        return {
+          bg: 'bg-purple-50',
+          icon: 'text-purple-600',
+          stroke: '#a855f7',
+          gradient: 'purple-gradient'
+        };
+      default:
+        return {
+          bg: 'bg-gray-50',
+          icon: 'text-gray-600',
+          stroke: '#6b7280',
+          gradient: 'gray-gradient'
+        };
+    }
+  };
+
+  const colorClasses = getColorClasses(color);
+
   return (
-    <div className="bg-white rounded-lg p-6 shadow-card">
+    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium text-gray-500">{title}</h3>
-        <button className="text-gray-400 hover:text-gray-600">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-3">
+          <div className={`w-12 h-12 ${colorClasses.bg} rounded-lg flex items-center justify-center`}>
+            <Icon className={`w-6 h-6 ${colorClasses.icon}`} />
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">{title}</h3>
+          </div>
+        </div>
+        <button className="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-50 transition-colors">
           <MoreVertical className="w-4 h-4" />
         </button>
       </div>
 
       {/* Main Value */}
-      <div className="mb-4">
-        <div className="text-3xl font-bold text-gray-900">
+      <div className="mb-6">
+        <div className="text-3xl font-bold text-gray-900 mb-2">
           {formatNumber(value)}
         </div>
-        <div className={`flex items-center text-sm ${
+        <div className={`flex items-center text-sm font-medium ${
           changeType === 'increase' ? 'text-green-600' : 'text-red-600'
         }`}>
           {changeType === 'increase' ? (
@@ -80,40 +126,47 @@ const MetricCard: React.FC<MetricCardProps> = ({
           ) : (
             <TrendingDown className="w-4 h-4 mr-1" />
           )}
-          <span>{Math.abs(change).toFixed(1)}% WoW</span>
+          <span>{Math.abs(change).toFixed(1)}% from last period</span>
         </div>
       </div>
 
-      {/* Interactive Mini Chart */}
-      <div className="h-12 mt-4">
+      {/* Enhanced Interactive Chart */}
+      <div className="h-16">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={chartData}
-            margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
+            margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
           >
             <defs>
-              <linearGradient id={`areaGradient-${title}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#22c55e" stopOpacity={0.4} />
-                <stop offset="100%" stopColor="#22c55e" stopOpacity={0.1} />
+              <linearGradient id={`areaGradient-${color}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={colorClasses.stroke} stopOpacity={0.2} />
+                <stop offset="100%" stopColor={colorClasses.stroke} stopOpacity={0.05} />
               </linearGradient>
             </defs>
+            <XAxis 
+              dataKey="day" 
+              axisLine={false}
+              tickLine={false}
+              tick={false}
+            />
+            <YAxis hide />
             <Area
               type="monotone"
               dataKey="value"
-              stroke="#22c55e"
-              strokeWidth={3}
-              fill={`url(#areaGradient-${title})`}
+              stroke={colorClasses.stroke}
+              strokeWidth={2}
+              fill={`url(#areaGradient-${color})`}
               dot={false}
               activeDot={{ 
-                r: 4, 
-                fill: '#22c55e', 
+                r: 3, 
+                fill: colorClasses.stroke, 
                 strokeWidth: 2, 
                 stroke: '#fff' 
               }}
             />
             <Tooltip 
               content={<CustomTooltip />}
-              cursor={{ stroke: '#22c55e', strokeWidth: 1 }}
+              cursor={{ stroke: colorClasses.stroke, strokeWidth: 1, strokeOpacity: 0.5 }}
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -124,7 +177,6 @@ const MetricCard: React.FC<MetricCardProps> = ({
 
 export const AnalyticsCards: React.FC<AnalyticsCardsProps> = ({ 
   submissions, 
-  periodDescription = 'All Time',
   dateFilter = 'all',
   customDateRange 
 }) => {
@@ -184,20 +236,26 @@ export const AnalyticsCards: React.FC<AnalyticsCardsProps> = ({
 
   return (
     <div className="mb-8">
-      {/* Period Header */}
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">Analytics Overview</h2>
-        <p className="text-sm text-gray-600">Performance metrics for videos posted during {periodDescription}</p>
-      </div>
-      
       {/* Analytics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <MetricCard
+          title="Total Views"
+          value={totalViews}
+          change={viewsChange}
+          changeType={viewsChange >= 0 ? "increase" : "decrease"}
+          chartData={chartData.views}
+          icon={Eye}
+          color="blue"
+        />
+        
         <MetricCard
           title="Total Likes"
           value={totalLikes}
           change={likesChange}
           changeType={likesChange >= 0 ? "increase" : "decrease"}
           chartData={chartData.likes}
+          icon={Heart}
+          color="green"
         />
         
         <MetricCard
@@ -206,14 +264,8 @@ export const AnalyticsCards: React.FC<AnalyticsCardsProps> = ({
           change={commentsChange}
           changeType={commentsChange >= 0 ? "increase" : "decrease"}
           chartData={chartData.comments}
-        />
-        
-        <MetricCard
-          title="Total Views"
-          value={totalViews}
-          change={viewsChange}
-          changeType={viewsChange >= 0 ? "increase" : "decrease"}
-          chartData={chartData.views}
+          icon={MessageCircle}
+          color="purple"
         />
       </div>
     </div>

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, Edit3 } from 'lucide-react';
+import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, Edit3, Star, StarIcon } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { StatusBadge } from './ui/StatusBadge';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { clsx } from 'clsx';
 import InstagramApiService from '../services/InstagramApiService';
+import { theme } from '../theme';
 
 interface VideoSubmissionsTableProps {
   submissions: VideoSubmission[];
@@ -113,6 +114,90 @@ const DropdownMenu: React.FC<{
   );
 };
 
+// Progress Bar Component
+const ProgressBar: React.FC<{ 
+  value: number; 
+  max: number; 
+  color?: 'blue' | 'green' | 'purple' | 'gray';
+  size?: 'sm' | 'md';
+}> = ({ value, max, color = 'blue', size = 'sm' }) => {
+  const percentage = Math.min((value / max) * 100, 100);
+  
+  const colorClasses = {
+    blue: 'bg-blue-500',
+    green: 'bg-green-500',
+    purple: 'bg-purple-500',
+    gray: 'bg-gray-400'
+  };
+
+  const heightClass = size === 'md' ? 'h-2' : 'h-1.5';
+
+  return (
+    <div className={`w-full ${heightClass} bg-gray-200 rounded-full overflow-hidden`}>
+      <div 
+        className={`${heightClass} ${colorClasses[color]} rounded-full transition-all duration-300 ease-out`}
+        style={{ width: `${percentage}%` }}
+      />
+    </div>
+  );
+};
+
+// Star Rating Component
+const StarRating: React.FC<{ 
+  rating: number; 
+  maxRating?: number;
+  size?: 'sm' | 'md';
+  interactive?: boolean;
+  onChange?: (rating: number) => void;
+}> = ({ rating, maxRating = 5, size = 'sm', interactive = false, onChange }) => {
+  const [hoverRating, setHoverRating] = useState(0);
+  
+  const starSize = size === 'md' ? 'w-4 h-4' : 'w-3 h-3';
+
+  const handleClick = (newRating: number) => {
+    if (interactive && onChange) {
+      onChange(newRating);
+    }
+  };
+
+  return (
+    <div className="flex items-center space-x-0.5">
+      {Array.from({ length: maxRating }, (_, index) => {
+        const starIndex = index + 1;
+        const isActive = starIndex <= (interactive ? (hoverRating || rating) : rating);
+        
+        return (
+          <button
+            key={index}
+            onClick={() => handleClick(starIndex)}
+            onMouseEnter={() => interactive && setHoverRating(starIndex)}
+            onMouseLeave={() => interactive && setHoverRating(0)}
+            className={clsx(
+              starSize,
+              'transition-colors duration-150',
+              {
+                'cursor-pointer': interactive,
+                'cursor-default': !interactive,
+              }
+            )}
+            disabled={!interactive}
+          >
+            <Star 
+              className={clsx(
+                'w-full h-full',
+                {
+                  'text-yellow-400 fill-yellow-400': isActive,
+                  'text-gray-300': !isActive,
+                }
+              )}
+            />
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
 // Component for handling thumbnail loading with localStorage fallback
 const ThumbnailImage: React.FC<{ submission: VideoSubmission }> = ({ submission }) => {
   const [thumbnailSrc, setThumbnailSrc] = useState<string>(submission.thumbnail);
@@ -199,35 +284,44 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   const allSelected = submissions.length > 0 && selectedIds.size === submissions.length;
   const someSelected = selectedIds.size > 0 && selectedIds.size < submissions.length;
 
+  // Calculate max values for progress bars
+  const maxViews = Math.max(...submissions.map(s => s.views), 1);
+  const maxLikes = Math.max(...submissions.map(s => s.likes), 1);
+  const maxComments = Math.max(...submissions.map(s => s.comments), 1);
+
+  // Calculate performance rating based on engagement
+  const calculatePerformanceRating = (submission: VideoSubmission): number => {
+    const engagementRate = submission.views > 0 ? 
+      ((submission.likes + submission.comments) / submission.views) * 100 : 0;
+    
+    if (engagementRate >= 5) return 5;
+    if (engagementRate >= 3) return 4;
+    if (engagementRate >= 2) return 3;
+    if (engagementRate >= 1) return 2;
+    return 1;
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow-card overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
       {/* Table Header */}
-      <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+      <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/50">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Video Submissions</h2>
-              <p className="text-sm text-gray-600">Showing {submissions.length} videos posted during {periodDescription}</p>
-            </div>
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
+            <p className="text-sm text-gray-500 mt-1">Showing {submissions.length} videos posted during {periodDescription}</p>
+          </div>
+          <div className="flex items-center space-x-3">
             <div className="flex items-center space-x-2">
-              <button className="px-3 py-1 text-sm font-medium text-primary-600 bg-primary-50 rounded-md hover:bg-primary-100 transition-colors">
+              <button className="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
                 All
               </button>
-              <button className="px-3 py-1 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">
+              <button className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
                 Pending
               </button>
-              <button className="px-3 py-1 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">
+              <button className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
                 Approved
               </button>
             </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <select className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500">
-              <option>All Status</option>
-              <option>Pending</option>
-              <option>Approved</option>
-              <option>Rejected</option>
-            </select>
           </div>
         </div>
       </div>
@@ -235,9 +329,9 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
       {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="w-12 px-6 py-3 text-left">
+          <thead>
+            <tr className="border-b border-gray-100">
+              <th className="w-12 px-6 py-4 text-left">
                 <input
                   type="checkbox"
                   checked={allSelected}
@@ -245,113 +339,131 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                     if (el) el.indeterminate = someSelected;
                   }}
                   onChange={(e) => onSelectAll(e.target.checked)}
-                  className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 />
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Video
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
+              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Performance
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Engagement
+              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Progress
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Upload Date
+              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Rating
               </th>
-              <th className="w-12 px-6 py-3 text-left"></th>
+              <th className="w-12 px-6 py-4 text-left"></th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {submissions.map((submission, index) => (
-              <tr 
-                key={submission.id}
-                onClick={() => onVideoClick?.(submission)}
-                className={clsx(
-                  'hover:bg-gray-50 transition-colors cursor-pointer',
-                  index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
-                )}
-              >
-                <td className="px-6 py-4">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(submission.id)}
-                    onChange={(e) => onSelectionChange(submission.id, e.target.checked)}
-                    className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                  />
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-200 flex-shrink-0">
-                      <ThumbnailImage submission={submission} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center space-x-2">
+          <tbody className="bg-white divide-y divide-gray-50">
+            {submissions.map((submission, index) => {
+              const performanceRating = calculatePerformanceRating(submission);
+              
+              return (
+                <tr 
+                  key={submission.id}
+                  onClick={() => onVideoClick?.(submission)}
+                  className="hover:bg-gray-50/50 transition-colors cursor-pointer group"
+                >
+                  <td className="px-6 py-5">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(submission.id)}
+                      onChange={(e) => onSelectionChange(submission.id, e.target.checked)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </td>
+                  <td className="px-6 py-5">
+                    <div className="flex items-center space-x-4">
+                      <div className="relative">
+                        <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 ring-2 ring-white shadow-sm">
+                          <ThumbnailImage submission={submission} />
+                        </div>
+                        <div className="absolute -bottom-1 -right-1">
+                          <PlatformIcon platform={submission.platform} size="sm" />
+                        </div>
+                      </div>
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-gray-900 truncate">
                           {submission.title}
                         </p>
-                        <PlatformIcon platform={submission.platform} size="sm" />
+                        <p className="text-xs text-gray-500 mt-1">
+                          @{submission.uploaderHandle}
+                        </p>
                       </div>
-                      <p className="text-sm text-gray-500">
-                        @{submission.uploaderHandle}
-                      </p>
                     </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <StatusBadge status={submission.status} />
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center space-x-4 text-sm text-gray-500">
-                    <div className="flex items-center space-x-1">
-                      <Eye className="w-4 h-4" />
-                      <span>{formatNumber(submission.views)}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <Heart className="w-4 h-4" />
-                      <span>{formatNumber(submission.likes)}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <MessageCircle className="w-4 h-4" />
-                      <span>{formatNumber(submission.comments)}</span>
-                    </div>
-                    {submission.shares && submission.shares > 0 && (
-                      <div className="flex items-center space-x-1">
-                        <Share2 className="w-4 h-4" />
-                        <span>{formatNumber(submission.shares)}</span>
+                  </td>
+                  <td className="px-6 py-5">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs text-gray-600">
+                        <span>Views</span>
+                        <span className="font-medium">{formatNumber(submission.views)}</span>
                       </div>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-500">
-                  <div className="flex flex-col">
-                    <span>{formatUploadDate(submission.timestamp || submission.dateSubmitted.toISOString())}</span>
-                    <span className="text-xs text-gray-400">
-                      {new Date(submission.timestamp || submission.dateSubmitted.toISOString()).toLocaleDateString()}
-                    </span>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="relative">
-                    <DropdownMenu submission={submission} onDelete={onDelete} onStatusUpdate={onStatusUpdate} />
-                  </div>
-                </td>
-              </tr>
-            ))}
+                      <div className="flex items-center justify-between text-xs text-gray-600">
+                        <span>Likes</span>
+                        <span className="font-medium">{formatNumber(submission.likes)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-gray-600">
+                        <span>Comments</span>
+                        <span className="font-medium">{formatNumber(submission.comments)}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-5">
+                    <div className="space-y-3">
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                          <span>Views</span>
+                          <span>{Math.round((submission.views / maxViews) * 100)}%</span>
+                        </div>
+                        <ProgressBar 
+                          value={submission.views} 
+                          max={maxViews} 
+                          color="blue" 
+                        />
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                          <span>Engagement</span>
+                          <span>{Math.round(((submission.likes + submission.comments) / maxLikes) * 100)}%</span>
+                        </div>
+                        <ProgressBar 
+                          value={submission.likes + submission.comments} 
+                          max={maxLikes + maxComments} 
+                          color="green" 
+                        />
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-5">
+                    <div className="flex items-center justify-center">
+                      <StarRating rating={performanceRating} />
+                    </div>
+                  </td>
+                  <td className="px-6 py-5">
+                    <div className="relative opacity-0 group-hover:opacity-100 transition-opacity">
+                      <DropdownMenu submission={submission} onDelete={onDelete} onStatusUpdate={onStatusUpdate} />
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
       {/* Empty State */}
       {submissions.length === 0 && (
-        <div className="px-6 py-12 text-center">
-          <div className="w-12 h-12 mx-auto mb-4 text-gray-400">
-            <Eye className="w-full h-full" />
+        <div className="px-6 py-16 text-center">
+          <div className="w-16 h-16 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+            <Eye className="w-8 h-8 text-gray-400" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No video submissions yet</h3>
-          <p className="text-gray-500 mb-4">
-            Start by adding your first Instagram video submission.
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No videos found</h3>
+          <p className="text-gray-500 max-w-sm mx-auto">
+            No videos match the selected time period. Try adjusting your date filter or add some new video submissions.
           </p>
         </div>
       )}

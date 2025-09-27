@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { TopNavigation } from './components/layout/TopNavigation';
+import Sidebar from './components/layout/Sidebar';
 import { VideoSubmissionsTable } from './components/VideoSubmissionsTable';
 import { VideoSubmissionModal } from './components/VideoSubmissionModal';
 import { TikTokSearchModal } from './components/TikTokSearchModal';
@@ -11,6 +11,7 @@ import VideoApiService from './services/VideoApiService';
 import LocalStorageService from './services/LocalStorageService';
 import DateFilterService from './services/DateFilterService';
 import SnapshotService from './services/SnapshotService';
+import { theme, cssVariables } from './theme';
 
 interface DateRange {
   startDate: Date;
@@ -271,45 +272,68 @@ function App() {
     console.log('✅ TikTok search results added and saved locally!');
   }, []);
 
+  // Apply CSS variables to the root
+  useEffect(() => {
+    const root = document.documentElement;
+    Object.entries(cssVariables).forEach(([key, value]) => {
+      root.style.setProperty(key, value);
+    });
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <TopNavigation 
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <Sidebar 
         onAddVideo={() => setIsModalOpen(true)}
         onTikTokSearch={() => setIsTikTokSearchOpen(true)}
         onRefreshAll={handleRefreshAllVideos}
         isRefreshing={isRefreshing}
       />
       
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Date Range Filter */}
-        <div className="mb-6">
-          <DateRangeFilter
-            selectedFilter={dateFilter}
-            customRange={customDateRange}
-            onFilterChange={handleDateFilterChange}
-          />
-        </div>
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <header className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Reporting Overview</h1>
+              <p className="text-sm text-gray-600 mt-1">Track and analyze your video performance</p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <DateRangeFilter
+                selectedFilter={dateFilter}
+                customRange={customDateRange}
+                onFilterChange={handleDateFilterChange}
+              />
+            </div>
+          </div>
+        </header>
 
-        {/* Analytics Cards */}
-        <AnalyticsCards 
-          submissions={filteredSubmissions} 
-          periodDescription={periodDescription}
-          dateFilter={dateFilter}
-          customDateRange={customDateRange}
-        />
-        
-        {/* Video Submissions Table */}
-        <VideoSubmissionsTable
-          submissions={filteredSubmissions}
-          selectedIds={selectedIds}
-          onSelectionChange={handleSelectionChange}
-          onSelectAll={handleSelectAll}
-          onStatusUpdate={handleStatusUpdate}
-          onDelete={handleDelete}
-          onVideoClick={handleVideoClick}
-          periodDescription={periodDescription}
-        />
-      </main>
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-auto">
+          <div className="max-w-7xl mx-auto px-6 py-8">
+            {/* Analytics Cards */}
+            <AnalyticsCards 
+              submissions={filteredSubmissions} 
+              periodDescription={periodDescription}
+              dateFilter={dateFilter}
+              customDateRange={customDateRange}
+            />
+            
+            {/* Video Submissions Table */}
+            <VideoSubmissionsTable
+              submissions={filteredSubmissions}
+              selectedIds={selectedIds}
+              onSelectionChange={handleSelectionChange}
+              onSelectAll={handleSelectAll}
+              onStatusUpdate={handleStatusUpdate}
+              onDelete={handleDelete}
+              onVideoClick={handleVideoClick}
+              periodDescription={periodDescription}
+            />
+          </div>
+        </main>
+      </div>
 
       <VideoSubmissionModal
         isOpen={isModalOpen}
