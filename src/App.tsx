@@ -11,7 +11,7 @@ import VideoApiService from './services/VideoApiService';
 import LocalStorageService from './services/LocalStorageService';
 import DateFilterService from './services/DateFilterService';
 import SnapshotService from './services/SnapshotService';
-import { theme, cssVariables } from './theme';
+import { cssVariables } from './theme';
 
 interface DateRange {
   startDate: Date;

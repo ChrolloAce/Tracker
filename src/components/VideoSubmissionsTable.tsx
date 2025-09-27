@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, Edit3, Star, StarIcon } from 'lucide-react';
+import { MoreVertical, Eye, Trash2, Edit3, Star } from 'lucide-react';
 import { VideoSubmission } from '../types';
-import { StatusBadge } from './ui/StatusBadge';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { clsx } from 'clsx';
 import InstagramApiService from '../services/InstagramApiService';
-import { theme } from '../theme';
 
 interface VideoSubmissionsTableProps {
   submissions: VideoSubmission[];
@@ -263,24 +261,6 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
     }).format(date);
   };
 
-  const formatUploadDate = (timestamp: string): string => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 1) {
-      return 'Yesterday';
-    } else if (diffDays < 7) {
-      return `${diffDays} days ago`;
-    } else if (diffDays < 30) {
-      const weeks = Math.floor(diffDays / 7);
-      return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
-    } else {
-      return formatDate(date);
-    }
-  };
-
   const allSelected = submissions.length > 0 && selectedIds.size === submissions.length;
   const someSelected = selectedIds.size > 0 && selectedIds.size < submissions.length;
 
@@ -358,7 +338,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-50">
-            {submissions.map((submission, index) => {
+            {submissions.map((submission) => {
               const performanceRating = calculatePerformanceRating(submission);
               
               return (
