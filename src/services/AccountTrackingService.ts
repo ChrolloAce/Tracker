@@ -172,14 +172,73 @@ export class AccountTrackingService {
   // Sync Instagram account videos
   private static async syncInstagramVideos(account: TrackedAccount): Promise<AccountVideo[]> {
     try {
-      // Use Instagram API to fetch all videos from the account
-      // This would call the Instagram scraper with profile URL to get all posts
-      // For now, return empty array - you'll need to implement the actual API call
-      console.log(`Fetching Instagram videos for ${account.username}`);
+      console.log(`🔄 Fetching Instagram reels for @${account.username}...`);
       
-      return [];
+      // Use the Apify Instagram scraper to get profile reels
+      const profileUrl = `https://www.instagram.com/${account.username}/`;
+      
+      // Call the Apify proxy with Instagram scraper configuration
+      const proxyUrl = `${window.location.origin}/api/apify-proxy`;
+      
+      const response = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actorId: 'apify~instagram-scraper',
+          input: {
+            directUrls: [profileUrl],
+            resultsType: 'reels', // Scrape profile reels specifically
+            resultsLimit: 50 // Max 50 videos per account
+          },
+          action: 'run'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log(`📊 Instagram API response:`, result);
+
+      if (!result.items || !Array.isArray(result.items)) {
+        console.warn('No items found in Instagram response');
+        return [];
+      }
+
+      // Transform the Instagram data to AccountVideo format
+      const accountVideos: AccountVideo[] = [];
+      
+      for (const item of result.items) {
+        // Skip if not a video/reel
+        if (item.type !== 'Video' && item.type !== 'Reel') continue;
+        
+        const accountVideo: AccountVideo = {
+          id: `${account.id}_${item.id || Date.now()}`,
+          accountId: account.id,
+          videoId: item.id || item.shortCode || '',
+          url: item.url || `https://www.instagram.com/p/${item.shortCode}/`,
+          thumbnail: item.displayUrl || '',
+          caption: item.caption || '',
+          uploadDate: new Date(item.timestamp || Date.now()),
+          views: item.videoViewCount || item.videoPlayCount || 0,
+          likes: item.likesCount || 0,
+          comments: item.commentsCount || 0,
+          shares: 0, // Instagram doesn't provide share count
+          duration: item.videoDuration || 0,
+          isSponsored: item.isSponsored || false,
+          hashtags: item.hashtags || [],
+          mentions: item.mentions || []
+        };
+        
+        accountVideos.push(accountVideo);
+      }
+
+      console.log(`✅ Fetched ${accountVideos.length} Instagram videos for @${account.username}`);
+      return accountVideos;
+
     } catch (error) {
-      console.error('Failed to sync Instagram videos:', error);
+      console.error('❌ Failed to sync Instagram videos:', error);
       throw error;
     }
   }
@@ -187,14 +246,71 @@ export class AccountTrackingService {
   // Sync TikTok account videos
   private static async syncTikTokVideos(account: TrackedAccount): Promise<AccountVideo[]> {
     try {
-      // Use TikTok API to fetch all videos from the account
-      // This would call the TikTok scraper with profile URL to get all videos
-      // For now, return empty array - you'll need to implement the actual API call
-      console.log(`Fetching TikTok videos for @${account.username}`);
+      console.log(`🔄 Fetching TikTok videos for @${account.username}...`);
       
-      return [];
+      // Call the Apify proxy with TikTok scraper configuration
+      const proxyUrl = `${window.location.origin}/api/apify-proxy`;
+      
+      const response = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actorId: 'clockworks~tiktok-scraper',
+          input: {
+            profiles: [account.username], // TikTok username without @
+            maxItems: 50, // Max 50 videos per account
+            profileSections: ['Videos'],
+            profileVideoSorting: 'Latest'
+          },
+          action: 'run'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log(`📊 TikTok API response:`, result);
+
+      if (!result.items || !Array.isArray(result.items)) {
+        console.warn('No items found in TikTok response');
+        return [];
+      }
+
+      // Transform the TikTok data to AccountVideo format
+      const accountVideos: AccountVideo[] = [];
+      
+      for (const item of result.items) {
+        // Skip if it's profile data, not video data
+        if (!item.webVideoUrl && !item.id) continue;
+        
+        const accountVideo: AccountVideo = {
+          id: `${account.id}_${item.id || Date.now()}`,
+          accountId: account.id,
+          videoId: item.id || '',
+          url: item.webVideoUrl || `https://www.tiktok.com/@${account.username}/video/${item.id}`,
+          thumbnail: item['videoMeta.coverUrl'] || item.videoMeta?.coverUrl || item.coverUrl || '',
+          caption: item.text || item.description || '',
+          uploadDate: new Date(item.createTimeISO || item.createTime || Date.now()),
+          views: item.playCount || 0,
+          likes: item.diggCount || 0,
+          comments: item.commentCount || 0,
+          shares: item.shareCount || 0,
+          duration: item['videoMeta.duration'] || item.videoMeta?.duration || 0,
+          isSponsored: false, // TikTok doesn't provide this info
+          hashtags: item.hashtags || [],
+          mentions: item.mentions || []
+        };
+        
+        accountVideos.push(accountVideo);
+      }
+
+      console.log(`✅ Fetched ${accountVideos.length} TikTok videos for @${account.username}`);
+      return accountVideos;
+
     } catch (error) {
-      console.error('Failed to sync TikTok videos:', error);
+      console.error('❌ Failed to sync TikTok videos:', error);
       throw error;
     }
   }
