@@ -88,7 +88,6 @@ export class AccountTrackingService {
   private static async fetchInstagramProfile(username: string) {
     try {
       // Use Instagram API to fetch profile data
-      const profileUrl = `https://www.instagram.com/${username}/`;
       // This would use the Instagram scraper to get profile info
       // For now, return basic structure
       return {
