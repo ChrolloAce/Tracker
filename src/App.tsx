@@ -5,6 +5,7 @@ import { VideoSubmissionModal } from './components/VideoSubmissionModal';
 import { TikTokSearchModal } from './components/TikTokSearchModal';
 import { AnalyticsCards } from './components/AnalyticsCards';
 import DateRangeFilter, { DateFilterType } from './components/DateRangeFilter';
+import VideoAnalyticsModal from './components/VideoAnalyticsModal';
 import { VideoSubmission, InstagramVideoData } from './types';
 import VideoApiService from './services/VideoApiService';
 import LocalStorageService from './services/LocalStorageService';
@@ -24,6 +25,8 @@ function App() {
   const [dateFilter, setDateFilter] = useState<DateFilterType>('all');
   const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedVideoForAnalytics, setSelectedVideoForAnalytics] = useState<VideoSubmission | null>(null);
+  const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
 
   // Load saved data on app initialization
   useEffect(() => {
@@ -52,6 +55,16 @@ function App() {
   const handleDateFilterChange = useCallback((filter: DateFilterType, customRange?: DateRange) => {
     setDateFilter(filter);
     setCustomDateRange(customRange);
+  }, []);
+
+  const handleVideoClick = useCallback((video: VideoSubmission) => {
+    setSelectedVideoForAnalytics(video);
+    setIsAnalyticsModalOpen(true);
+  }, []);
+
+  const handleCloseAnalyticsModal = useCallback(() => {
+    setIsAnalyticsModalOpen(false);
+    setSelectedVideoForAnalytics(null);
   }, []);
 
   // Refresh all videos and create new snapshots
@@ -293,6 +306,7 @@ function App() {
           onSelectAll={handleSelectAll}
           onStatusUpdate={handleStatusUpdate}
           onDelete={handleDelete}
+          onVideoClick={handleVideoClick}
           periodDescription={periodDescription}
         />
       </main>
@@ -307,6 +321,12 @@ function App() {
         isOpen={isTikTokSearchOpen}
         onClose={() => setIsTikTokSearchOpen(false)}
         onVideosFound={handleTikTokVideosFound}
+      />
+
+      <VideoAnalyticsModal
+        video={selectedVideoForAnalytics}
+        isOpen={isAnalyticsModalOpen}
+        onClose={handleCloseAnalyticsModal}
       />
     </div>
   );

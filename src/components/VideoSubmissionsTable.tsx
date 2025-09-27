@@ -13,6 +13,7 @@ interface VideoSubmissionsTableProps {
   onSelectAll: (selected: boolean) => void;
   onStatusUpdate?: (id: string, status: VideoSubmission['status']) => void;
   onDelete?: (id: string) => void;
+  onVideoClick?: (video: VideoSubmission) => void;
   periodDescription?: string;
 }
 
@@ -157,6 +158,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   onSelectAll,
   onStatusUpdate,
   onDelete,
+  onVideoClick,
   periodDescription = 'All Time'
 }) => {
   const formatNumber = (num: number): string => {
@@ -265,8 +267,9 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
             {submissions.map((submission, index) => (
               <tr 
                 key={submission.id}
+                onClick={() => onVideoClick?.(submission)}
                 className={clsx(
-                  'hover:bg-gray-50 transition-colors',
+                  'hover:bg-gray-50 transition-colors cursor-pointer',
                   index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
                 )}
               >
