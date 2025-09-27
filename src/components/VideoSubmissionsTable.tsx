@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MoreVertical, Eye, Trash2, Edit3, Star } from 'lucide-react';
+import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, Edit3 } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { clsx } from 'clsx';
@@ -112,89 +112,6 @@ const DropdownMenu: React.FC<{
   );
 };
 
-// Progress Bar Component
-const ProgressBar: React.FC<{ 
-  value: number; 
-  max: number; 
-  color?: 'blue' | 'green' | 'purple' | 'gray';
-  size?: 'sm' | 'md';
-}> = ({ value, max, color = 'blue', size = 'sm' }) => {
-  const percentage = Math.min((value / max) * 100, 100);
-  
-  const colorClasses = {
-    blue: 'bg-blue-500',
-    green: 'bg-green-500',
-    purple: 'bg-purple-500',
-    gray: 'bg-gray-400'
-  };
-
-  const heightClass = size === 'md' ? 'h-2' : 'h-1.5';
-
-  return (
-    <div className={`w-full ${heightClass} bg-gray-200 rounded-full overflow-hidden`}>
-      <div 
-        className={`${heightClass} ${colorClasses[color]} rounded-full transition-all duration-300 ease-out`}
-        style={{ width: `${percentage}%` }}
-      />
-    </div>
-  );
-};
-
-// Star Rating Component
-const StarRating: React.FC<{ 
-  rating: number; 
-  maxRating?: number;
-  size?: 'sm' | 'md';
-  interactive?: boolean;
-  onChange?: (rating: number) => void;
-}> = ({ rating, maxRating = 5, size = 'sm', interactive = false, onChange }) => {
-  const [hoverRating, setHoverRating] = useState(0);
-  
-  const starSize = size === 'md' ? 'w-4 h-4' : 'w-3 h-3';
-
-  const handleClick = (newRating: number) => {
-    if (interactive && onChange) {
-      onChange(newRating);
-    }
-  };
-
-  return (
-    <div className="flex items-center space-x-0.5">
-      {Array.from({ length: maxRating }, (_, index) => {
-        const starIndex = index + 1;
-        const isActive = starIndex <= (interactive ? (hoverRating || rating) : rating);
-        
-        return (
-          <button
-            key={index}
-            onClick={() => handleClick(starIndex)}
-            onMouseEnter={() => interactive && setHoverRating(starIndex)}
-            onMouseLeave={() => interactive && setHoverRating(0)}
-            className={clsx(
-              starSize,
-              'transition-colors duration-150',
-              {
-                'cursor-pointer': interactive,
-                'cursor-default': !interactive,
-              }
-            )}
-            disabled={!interactive}
-          >
-            <Star 
-              className={clsx(
-                'w-full h-full',
-                {
-                  'text-yellow-400 fill-yellow-400': isActive,
-                  'text-gray-300': !isActive,
-                }
-              )}
-            />
-          </button>
-        );
-      })}
-    </div>
-  );
-};
 
 // Component for handling thumbnail loading with localStorage fallback
 const ThumbnailImage: React.FC<{ submission: VideoSubmission }> = ({ submission }) => {
@@ -256,21 +173,11 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   const allSelected = submissions.length > 0 && selectedIds.size === submissions.length;
   const someSelected = selectedIds.size > 0 && selectedIds.size < submissions.length;
 
-  // Calculate max values for progress bars
-  const maxViews = Math.max(...submissions.map(s => s.views), 1);
-  const maxLikes = Math.max(...submissions.map(s => s.likes), 1);
-  const maxComments = Math.max(...submissions.map(s => s.comments), 1);
-
-  // Calculate performance rating based on engagement
-  const calculatePerformanceRating = (submission: VideoSubmission): number => {
-    const engagementRate = submission.views > 0 ? 
-      ((submission.likes + submission.comments) / submission.views) * 100 : 0;
-    
-    if (engagementRate >= 5) return 5;
-    if (engagementRate >= 3) return 4;
-    if (engagementRate >= 2) return 3;
-    if (engagementRate >= 1) return 2;
-    return 1;
+  // Calculate engagement percentage
+  const calculateEngagementRate = (submission: VideoSubmission): number => {
+    if (submission.views === 0) return 0;
+    const totalEngagement = submission.likes + submission.comments + (submission.shares || 0);
+    return (totalEngagement / submission.views) * 100;
   };
 
   return (
@@ -300,10 +207,10 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full min-w-max">
           <thead>
             <tr className="border-b border-gray-100">
-              <th className="w-12 px-6 py-4 text-left">
+              <th className="w-12 px-6 py-4 text-left sticky left-0 bg-white z-10">
                 <input
                   type="checkbox"
                   checked={allSelected}
@@ -314,24 +221,30 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 />
               </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-12 bg-white z-10 min-w-[280px]">
                 Video
               </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Performance
+              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                Views
               </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Progress
+              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                Likes
               </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Rating
+              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                Comments
+              </th>
+              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                Shares
+              </th>
+              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
+                Engagement
               </th>
               <th className="w-12 px-6 py-4 text-left"></th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-50">
             {submissions.map((submission) => {
-              const performanceRating = calculatePerformanceRating(submission);
+              const engagementRate = calculateEngagementRate(submission);
               
               return (
                 <tr 
@@ -339,7 +252,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   onClick={() => onVideoClick?.(submission)}
                   className="hover:bg-gray-50/50 transition-colors cursor-pointer group"
                 >
-                  <td className="px-6 py-5">
+                  <td className="px-6 py-5 sticky left-0 bg-white z-10 group-hover:bg-gray-50/50">
                     <input
                       type="checkbox"
                       checked={selectedIds.has(submission.id)}
@@ -348,7 +261,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       onClick={(e) => e.stopPropagation()}
                     />
                   </td>
-                  <td className="px-6 py-5">
+                  <td className="px-6 py-5 sticky left-12 bg-white z-10 group-hover:bg-gray-50/50">
                     <div className="flex items-center space-x-4">
                       <div className="relative">
                         <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 ring-2 ring-white shadow-sm">
@@ -369,50 +282,49 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                     </div>
                   </td>
                   <td className="px-6 py-5">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs text-gray-600">
-                        <span>Views</span>
-                        <span className="font-medium">{formatNumber(submission.views)}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-gray-600">
-                        <span>Likes</span>
-                        <span className="font-medium">{formatNumber(submission.likes)}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-gray-600">
-                        <span>Comments</span>
-                        <span className="font-medium">{formatNumber(submission.comments)}</span>
-                      </div>
+                    <div className="flex items-center space-x-2">
+                      <Eye className="w-4 h-4 text-blue-500" />
+                      <span className="text-sm font-medium text-gray-900">
+                        {formatNumber(submission.views)}
+                      </span>
                     </div>
                   </td>
                   <td className="px-6 py-5">
-                    <div className="space-y-3">
-                      <div>
-                        <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                          <span>Views</span>
-                          <span>{Math.round((submission.views / maxViews) * 100)}%</span>
-                        </div>
-                        <ProgressBar 
-                          value={submission.views} 
-                          max={maxViews} 
-                          color="blue" 
-                        />
-                      </div>
-                      <div>
-                        <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                          <span>Engagement</span>
-                          <span>{Math.round(((submission.likes + submission.comments) / maxLikes) * 100)}%</span>
-                        </div>
-                        <ProgressBar 
-                          value={submission.likes + submission.comments} 
-                          max={maxLikes + maxComments} 
-                          color="green" 
-                        />
-                      </div>
+                    <div className="flex items-center space-x-2">
+                      <Heart className="w-4 h-4 text-red-500" />
+                      <span className="text-sm font-medium text-gray-900">
+                        {formatNumber(submission.likes)}
+                      </span>
                     </div>
                   </td>
                   <td className="px-6 py-5">
-                    <div className="flex items-center justify-center">
-                      <StarRating rating={performanceRating} />
+                    <div className="flex items-center space-x-2">
+                      <MessageCircle className="w-4 h-4 text-green-500" />
+                      <span className="text-sm font-medium text-gray-900">
+                        {formatNumber(submission.comments)}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-5">
+                    <div className="flex items-center space-x-2">
+                      <Share2 className="w-4 h-4 text-purple-500" />
+                      <span className="text-sm font-medium text-gray-900">
+                        {formatNumber(submission.shares || 0)}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-5">
+                    <div className="flex items-center space-x-2">
+                      <div className={clsx(
+                        "px-2 py-1 rounded-full text-xs font-medium",
+                        {
+                          "bg-green-100 text-green-800": engagementRate >= 3,
+                          "bg-yellow-100 text-yellow-800": engagementRate >= 1 && engagementRate < 3,
+                          "bg-red-100 text-red-800": engagementRate < 1,
+                        }
+                      )}>
+                        {engagementRate.toFixed(2)}%
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-5">
