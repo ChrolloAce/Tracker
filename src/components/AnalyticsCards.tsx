@@ -5,6 +5,7 @@ import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface AnalyticsCardsProps {
   submissions: VideoSubmission[];
+  periodDescription?: string;
 }
 
 interface MetricCardProps {
@@ -111,7 +112,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
   );
 };
 
-export const AnalyticsCards: React.FC<AnalyticsCardsProps> = ({ submissions }) => {
+export const AnalyticsCards: React.FC<AnalyticsCardsProps> = ({ submissions, periodDescription = 'All Time' }) => {
   // Calculate totals
   const totalLikes = submissions.reduce((sum, submission) => sum + submission.likes, 0);
   const totalComments = submissions.reduce((sum, submission) => sum + submission.comments, 0);
@@ -165,30 +166,39 @@ export const AnalyticsCards: React.FC<AnalyticsCardsProps> = ({ submissions }) =
   const viewsChange = calculateChange(chartData.views);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-      <MetricCard
-        title="Total Likes"
-        value={totalLikes}
-        change={likesChange}
-        changeType={likesChange >= 0 ? "increase" : "decrease"}
-        chartData={chartData.likes}
-      />
+    <div className="mb-8">
+      {/* Period Header */}
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold text-gray-900">Analytics Overview</h2>
+        <p className="text-sm text-gray-600">Performance metrics for {periodDescription}</p>
+      </div>
       
-      <MetricCard
-        title="Total Comments"
-        value={totalComments}
-        change={commentsChange}
-        changeType={commentsChange >= 0 ? "increase" : "decrease"}
-        chartData={chartData.comments}
-      />
-      
-      <MetricCard
-        title="Total Views"
-        value={totalViews}
-        change={viewsChange}
-        changeType={viewsChange >= 0 ? "increase" : "decrease"}
-        chartData={chartData.views}
-      />
+      {/* Analytics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <MetricCard
+          title="Total Likes"
+          value={totalLikes}
+          change={likesChange}
+          changeType={likesChange >= 0 ? "increase" : "decrease"}
+          chartData={chartData.likes}
+        />
+        
+        <MetricCard
+          title="Total Comments"
+          value={totalComments}
+          change={commentsChange}
+          changeType={commentsChange >= 0 ? "increase" : "decrease"}
+          chartData={chartData.comments}
+        />
+        
+        <MetricCard
+          title="Total Views"
+          value={totalViews}
+          change={viewsChange}
+          changeType={viewsChange >= 0 ? "increase" : "decrease"}
+          chartData={chartData.views}
+        />
+      </div>
     </div>
   );
 };

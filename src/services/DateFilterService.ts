@@ -1,0 +1,168 @@
+import { VideoSubmission } from '../types';
+import { DateFilterType } from '../components/DateRangeFilter';
+
+interface DateRange {
+  startDate: Date;
+  endDate: Date;
+}
+
+class DateFilterService {
+  /**
+   * Get date range based on filter type
+   */
+  static getDateRange(filterType: DateFilterType, customRange?: DateRange): DateRange {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch (filterType) {
+      case 'last7days':
+        return {
+          startDate: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000),
+          endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1) // End of today
+        };
+        
+      case 'last30days':
+        return {
+          startDate: new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000),
+          endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
+        };
+        
+      case 'last90days':
+        return {
+          startDate: new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000),
+          endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
+        };
+        
+      case 'mtd': // Month to Date
+        return {
+          startDate: new Date(now.getFullYear(), now.getMonth(), 1),
+          endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
+        };
+        
+      case 'ytd': // Year to Date
+        return {
+          startDate: new Date(now.getFullYear(), 0, 1),
+          endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
+        };
+        
+      case 'custom':
+        if (customRange) {
+          return customRange;
+        }
+        // Fallback to all time if no custom range provided
+        return {
+          startDate: new Date(2020, 0, 1), // Far past date
+          endDate: new Date(2030, 11, 31)  // Far future date
+        };
+        
+      case 'all':
+      default:
+        return {
+          startDate: new Date(2020, 0, 1), // Far past date
+          endDate: new Date(2030, 11, 31)  // Far future date
+        };
+    }
+  }
+
+  /**
+   * Filter video submissions by date range
+   */
+  static filterVideosByDateRange(
+    videos: VideoSubmission[], 
+    filterType: DateFilterType, 
+    customRange?: DateRange
+  ): VideoSubmission[] {
+    if (filterType === 'all') {
+      return videos;
+    }
+
+    const dateRange = this.getDateRange(filterType, customRange);
+    
+    return videos.filter(video => {
+      // Use dateSubmitted if available, otherwise fall back to timestamp or current date
+      const videoDate = video.dateSubmitted 
+        ? new Date(video.dateSubmitted)
+        : video.timestamp 
+        ? new Date(video.timestamp)
+        : new Date(); // Fallback to current date for older entries
+
+      return videoDate >= dateRange.startDate && videoDate <= dateRange.endDate;
+    });
+  }
+
+  /**
+   * Calculate analytics for filtered videos
+   */
+  static calculateFilteredAnalytics(filteredVideos: VideoSubmission[]) {
+    if (filteredVideos.length === 0) {
+      return {
+        totalVideos: 0,
+        totalViews: 0,
+        totalLikes: 0,
+        totalComments: 0,
+        totalShares: 0,
+        avgViews: 0,
+        avgLikes: 0,
+        avgEngagementRate: 0,
+        instagramCount: 0,
+        tiktokCount: 0
+      };
+    }
+
+    const totalViews = filteredVideos.reduce((sum, video) => sum + (video.views || 0), 0);
+    const totalLikes = filteredVideos.reduce((sum, video) => sum + (video.likes || 0), 0);
+    const totalComments = filteredVideos.reduce((sum, video) => sum + (video.comments || 0), 0);
+    const totalShares = filteredVideos.reduce((sum, video) => sum + (video.shares || 0), 0);
+    
+    const instagramCount = filteredVideos.filter(video => video.platform === 'instagram').length;
+    const tiktokCount = filteredVideos.filter(video => video.platform === 'tiktok').length;
+    
+    const avgViews = Math.round(totalViews / filteredVideos.length);
+    const avgLikes = Math.round(totalLikes / filteredVideos.length);
+    
+    // Calculate engagement rate (likes + comments + shares) / views * 100
+    const totalEngagements = totalLikes + totalComments + totalShares;
+    const avgEngagementRate = totalViews > 0 ? (totalEngagements / totalViews) * 100 : 0;
+
+    return {
+      totalVideos: filteredVideos.length,
+      totalViews,
+      totalLikes,
+      totalComments,
+      totalShares,
+      avgViews,
+      avgLikes,
+      avgEngagementRate: Math.round(avgEngagementRate * 100) / 100, // Round to 2 decimal places
+      instagramCount,
+      tiktokCount
+    };
+  }
+
+  /**
+   * Get period description for display
+   */
+  static getPeriodDescription(filterType: DateFilterType, customRange?: DateRange): string {
+    switch (filterType) {
+      case 'last7days':
+        return 'Last 7 Days';
+      case 'last30days':
+        return 'Last 30 Days';
+      case 'last90days':
+        return 'Last 90 Days';
+      case 'mtd':
+        return 'Month to Date';
+      case 'ytd':
+        return 'Year to Date';
+      case 'custom':
+        if (customRange) {
+          return `${customRange.startDate.toLocaleDateString()} - ${customRange.endDate.toLocaleDateString()}`;
+        }
+        return 'Custom Range';
+      case 'all':
+      default:
+        return 'All Time';
+    }
+  }
+}
+
+export default DateFilterService;

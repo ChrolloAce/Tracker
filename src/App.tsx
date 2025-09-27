@@ -4,15 +4,24 @@ import { VideoSubmissionsTable } from './components/VideoSubmissionsTable';
 import { VideoSubmissionModal } from './components/VideoSubmissionModal';
 import { TikTokSearchModal } from './components/TikTokSearchModal';
 import { AnalyticsCards } from './components/AnalyticsCards';
+import DateRangeFilter, { DateFilterType } from './components/DateRangeFilter';
 import { VideoSubmission, InstagramVideoData } from './types';
 import VideoApiService from './services/VideoApiService';
 import LocalStorageService from './services/LocalStorageService';
+import DateFilterService from './services/DateFilterService';
+
+interface DateRange {
+  startDate: Date;
+  endDate: Date;
+}
 
 function App() {
   const [submissions, setSubmissions] = useState<VideoSubmission[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
+  const [dateFilter, setDateFilter] = useState<DateFilterType>('all');
+  const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>();
 
   // Load saved data on app initialization
   useEffect(() => {
@@ -25,6 +34,22 @@ function App() {
     const storageInfo = LocalStorageService.getStorageInfo();
     console.log('📊 Loaded data:', storageInfo);
     console.log('🔍 Open browser console to see API logs when adding videos');
+  }, []);
+
+  // Filter submissions based on date range
+  const filteredSubmissions = DateFilterService.filterVideosByDateRange(
+    submissions, 
+    dateFilter, 
+    customDateRange
+  );
+
+  // Get period description for display
+  const periodDescription = DateFilterService.getPeriodDescription(dateFilter, customDateRange);
+
+  // Handle date filter changes
+  const handleDateFilterChange = useCallback((filter: DateFilterType, customRange?: DateRange) => {
+    setDateFilter(filter);
+    setCustomDateRange(customRange);
   }, []);
 
   const handleAddVideo = useCallback(async (videoUrl: string) => {
@@ -170,17 +195,30 @@ function App() {
       />
       
       <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* Date Range Filter */}
+        <div className="mb-6">
+          <DateRangeFilter
+            selectedFilter={dateFilter}
+            customRange={customDateRange}
+            onFilterChange={handleDateFilterChange}
+          />
+        </div>
+
         {/* Analytics Cards */}
-        <AnalyticsCards submissions={submissions} />
+        <AnalyticsCards 
+          submissions={filteredSubmissions} 
+          periodDescription={periodDescription}
+        />
         
         {/* Video Submissions Table */}
         <VideoSubmissionsTable
-          submissions={submissions}
+          submissions={filteredSubmissions}
           selectedIds={selectedIds}
           onSelectionChange={handleSelectionChange}
           onSelectAll={handleSelectAll}
           onStatusUpdate={handleStatusUpdate}
           onDelete={handleDelete}
+          periodDescription={periodDescription}
         />
       </main>
 

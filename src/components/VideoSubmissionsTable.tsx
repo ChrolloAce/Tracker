@@ -13,6 +13,7 @@ interface VideoSubmissionsTableProps {
   onSelectAll: (selected: boolean) => void;
   onStatusUpdate?: (id: string, status: VideoSubmission['status']) => void;
   onDelete?: (id: string) => void;
+  periodDescription?: string;
 }
 
 // Dropdown menu component for video actions
@@ -155,7 +156,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   onSelectionChange,
   onSelectAll,
   onStatusUpdate,
-  onDelete
+  onDelete,
+  periodDescription = 'All Time'
 }) => {
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
@@ -201,7 +203,10 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
       <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <h2 className="text-lg font-semibold text-gray-900">Video Submissions</h2>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Video Submissions</h2>
+              <p className="text-sm text-gray-600">Showing {submissions.length} videos for {periodDescription}</p>
+            </div>
             <div className="flex items-center space-x-2">
               <button className="px-3 py-1 text-sm font-medium text-primary-600 bg-primary-50 rounded-md hover:bg-primary-100 transition-colors">
                 All
