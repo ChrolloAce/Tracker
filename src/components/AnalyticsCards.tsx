@@ -5,6 +5,8 @@ import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'rec
 
 import DateFilterService from '../services/DateFilterService';
 import { DateFilterType } from './DateRangeFilter';
+import { TimePeriodType } from './TimePeriodSelector';
+import { TimePeriodService } from '../services/TimePeriodService';
 
 interface DateRange {
   startDate: Date;
@@ -16,6 +18,7 @@ interface AnalyticsCardsProps {
   periodDescription?: string;
   dateFilter?: DateFilterType;
   customDateRange?: DateRange;
+  timePeriod?: TimePeriodType;
 }
 
 interface MetricCardProps {
@@ -23,7 +26,7 @@ interface MetricCardProps {
   value: number;
   change: number;
   changeType: 'increase' | 'decrease';
-  chartData: { day: string; value: number }[];
+  chartData: { period: string; value: number }[];
   icon: React.ComponentType<{ className?: string }>;
   color: 'blue' | 'green' | 'purple';
 }
@@ -144,7 +147,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
               </linearGradient>
             </defs>
             <XAxis 
-              dataKey="day" 
+              dataKey="period" 
               axisLine={false}
               tickLine={false}
               tick={false}
@@ -178,7 +181,8 @@ const MetricCard: React.FC<MetricCardProps> = ({
 export const AnalyticsCards: React.FC<AnalyticsCardsProps> = ({ 
   submissions, 
   dateFilter = 'all',
-  customDateRange 
+  customDateRange,
+  timePeriod = 'weeks'
 }) => {
   // Calculate analytics using snapshot-based growth when applicable
   const analytics = useMemo(() => {
@@ -187,43 +191,34 @@ export const AnalyticsCards: React.FC<AnalyticsCardsProps> = ({
 
   const { totalLikes, totalComments, totalViews } = analytics;
 
-  // Generate realistic trend data based on actual submissions
+  // Generate time series data based on actual submissions and selected time period
   const chartData = useMemo(() => {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const timeSeriesData = TimePeriodService.generateTimeSeriesData(submissions, timePeriod);
     
-    // Create realistic historical data based on current totals
-    const generateRealisticTrend = (currentTotal: number) => {
-      const data = [];
-      let runningTotal = 0;
-      
-      // Simulate gradual growth over the week
-      for (let i = 0; i < 7; i++) {
-        const dailyGrowth = currentTotal / 7; // Spread total over 7 days
-        const variation = 1 + (Math.random() - 0.5) * 0.4; // ±20% daily variation
-        const dayValue = dailyGrowth * variation;
-        runningTotal += dayValue;
-        
-        data.push({
-          day: days[i],
-          value: Math.floor(runningTotal)
-        });
-      }
-      
-      // Ensure the last day matches the current total
-      data[6].value = currentTotal;
-      
-      return data;
-    };
+    const viewsData = timeSeriesData.map(period => ({
+      period: period.period,
+      value: period.views
+    }));
+    
+    const likesData = timeSeriesData.map(period => ({
+      period: period.period,
+      value: period.likes
+    }));
+    
+    const commentsData = timeSeriesData.map(period => ({
+      period: period.period,
+      value: period.comments
+    }));
 
     return {
-      likes: generateRealisticTrend(totalLikes),
-      comments: generateRealisticTrend(totalComments),
-      views: generateRealisticTrend(totalViews)
+      views: viewsData,
+      likes: likesData,
+      comments: commentsData
     };
-  }, [totalLikes, totalComments, totalViews]);
+  }, [submissions, timePeriod]);
 
-  // Calculate realistic week-over-week changes
-  const calculateChange = (data: { day: string; value: number }[]): number => {
+  // Calculate period-over-period changes
+  const calculateChange = (data: { period: string; value: number }[]): number => {
     if (data.length < 2) return 0;
     const current = data[data.length - 1].value;
     const previous = data[data.length - 2].value;

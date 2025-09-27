@@ -6,6 +6,7 @@ import { VideoSubmissionModal } from './components/VideoSubmissionModal';
 import { TikTokSearchModal } from './components/TikTokSearchModal';
 import { AnalyticsCards } from './components/AnalyticsCards';
 import DateRangeFilter, { DateFilterType } from './components/DateRangeFilter';
+import TimePeriodSelector, { TimePeriodType } from './components/TimePeriodSelector';
 import VideoAnalyticsModal from './components/VideoAnalyticsModal';
 import { VideoSubmission, InstagramVideoData } from './types';
 import VideoApiService from './services/VideoApiService';
@@ -30,6 +31,7 @@ function App() {
   const [selectedVideoForAnalytics, setSelectedVideoForAnalytics] = useState<VideoSubmission | null>(null);
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [timePeriod, setTimePeriod] = useState<TimePeriodType>('weeks');
 
   // Load saved data on app initialization
   useEffect(() => {
@@ -313,6 +315,10 @@ function App() {
               customRange={customDateRange}
               onFilterChange={handleDateFilterChange}
             />
+            <TimePeriodSelector
+              selectedPeriod={timePeriod}
+              onPeriodChange={setTimePeriod}
+            />
           </div>
         </div>
       </header>
@@ -332,6 +338,7 @@ function App() {
             periodDescription={periodDescription}
             dateFilter={dateFilter}
             customDateRange={customDateRange}
+            timePeriod={timePeriod}
           />
           
           {/* Video Submissions Table */}
