@@ -83,6 +83,10 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   }, [chartData]);
 
   const formatNumber = (num: number): string => {
+    return num.toLocaleString();
+  };
+
+  const formatNumberForChart = (num: number): string => {
     if (num >= 1000000) {
       return `${(num / 1000000).toFixed(1)}M`;
     } else if (num >= 1000) {
@@ -252,7 +256,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                     />
                     <YAxis 
                       tick={{ fontSize: 12 }}
-                      tickFormatter={formatNumber}
+                      tickFormatter={formatNumberForChart}
                     />
                     <Tooltip 
                       formatter={(value: number) => [formatNumber(value), 'Views']}
@@ -286,7 +290,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                     />
                     <YAxis 
                       tick={{ fontSize: 12 }}
-                      tickFormatter={formatNumber}
+                      tickFormatter={formatNumberForChart}
                     />
                     <Tooltip 
                       formatter={(value: number, name: string) => [formatNumber(value), name]}
