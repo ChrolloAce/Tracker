@@ -8,7 +8,7 @@ class LocalStorageService {
   saveSubmissions(submissions: VideoSubmission[]): void {
     try {
       console.log('💾 Saving submissions to localStorage:', submissions.length, 'items');
-      const serializedData = JSON.stringify(submissions, (key, value) => {
+      const serializedData = JSON.stringify(submissions, (_key, value) => {
         // Convert Date objects to ISO strings for serialization
         if (value instanceof Date) {
           return value.toISOString();

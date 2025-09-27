@@ -2,18 +2,7 @@ import { ApifyClient } from 'apify-client';
 import { InstagramVideoData } from '../types';
 import LocalStorageService from './LocalStorageService';
 
-interface TikTokVideoData {
-  id: string;
-  thumbnail_url: string;
-  caption: string;
-  username: string;
-  like_count: number;
-  comment_count: number;
-  view_count: number;
-  share_count: number;
-  timestamp: string;
-  duration: number;
-}
+// TikTokVideoData interface removed as it's not used
 
 class TikTokApiService {
   private apifyClient: ApifyClient;
@@ -227,7 +216,7 @@ class TikTokApiService {
 
       return dataUrl;
     } catch (error) {
-      console.warn('⚠️ CORS blocked TikTok thumbnail download (this is normal):', error.message);
+      console.warn('⚠️ CORS blocked TikTok thumbnail download (this is normal):', error instanceof Error ? error.message : 'Unknown error');
       console.log('📷 Using original TikTok URL directly (will work in img tags)');
       
       // Store the original URL as a fallback using LocalStorageService
@@ -280,7 +269,7 @@ class TikTokApiService {
         console.log(`🎬 Processing TikTok search result ${i + 1}:`, tiktokData.webVideoUrl || tiktokData.id);
         
         try {
-          const transformedData = await this.transformTikTokData(tiktokData, tiktokData.webVideoUrl || '');
+          const transformedData = await this.transformTikTokData(tiktokData, String(tiktokData.webVideoUrl || `https://www.tiktok.com/video/${tiktokData.id || i}`));
           transformedVideos.push(transformedData);
         } catch (error) {
           console.warn(`⚠️ Failed to transform TikTok video ${i + 1}:`, error);
@@ -339,7 +328,7 @@ class TikTokApiService {
         console.log(`🎬 Processing TikTok hashtag result ${i + 1}:`, tiktokData.webVideoUrl || tiktokData.id);
         
         try {
-          const transformedData = await this.transformTikTokData(tiktokData, tiktokData.webVideoUrl || '');
+          const transformedData = await this.transformTikTokData(tiktokData, String(tiktokData.webVideoUrl || `https://www.tiktok.com/hashtag/${tiktokData.id || i}`));
           transformedVideos.push(transformedData);
         } catch (error) {
           console.warn(`⚠️ Failed to transform TikTok video ${i + 1}:`, error);

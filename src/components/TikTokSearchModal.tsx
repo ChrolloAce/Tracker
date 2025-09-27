@@ -205,7 +205,7 @@ export const TikTokSearchModal: React.FC<TikTokSearchModalProps> = ({
                       {video.caption || 'Untitled Video'}
                     </p>
                     <p className="text-xs text-gray-500">
-                      @{video.username} • {video.like_count.toLocaleString()} likes • {video.view_count.toLocaleString()} views
+                      @{video.username} • {video.like_count.toLocaleString()} likes • {(video.view_count || 0).toLocaleString()} views
                     </p>
                   </div>
                 </div>

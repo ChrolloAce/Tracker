@@ -149,7 +149,7 @@ class InstagramApiService {
 
       return dataUrl;
     } catch (error) {
-      console.warn('⚠️ CORS blocked thumbnail download (this is normal for Instagram images):', error.message);
+      console.warn('⚠️ CORS blocked thumbnail download (this is normal for Instagram images):', error instanceof Error ? error.message : 'Unknown error');
       console.log('📷 Using original Instagram URL directly (will work in img tags)');
       
       // Store the original URL as a fallback using LocalStorageService

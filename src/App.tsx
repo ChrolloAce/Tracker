@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { TopNavigation } from './components/layout/TopNavigation';
 import { VideoSubmissionsTable } from './components/VideoSubmissionsTable';
 import { VideoSubmissionModal } from './components/VideoSubmissionModal';
