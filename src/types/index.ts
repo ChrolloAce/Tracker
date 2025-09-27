@@ -1,3 +1,14 @@
+export interface VideoSnapshot {
+  id: string;
+  videoId: string;
+  views: number;
+  likes: number;
+  comments: number;
+  shares?: number;
+  capturedAt: Date;
+  capturedBy: 'initial_upload' | 'manual_refresh' | 'scheduled_refresh';
+}
+
 export interface VideoSubmission {
   id: string;
   url: string; // Renamed from instagramUrl to support both platforms
@@ -7,12 +18,14 @@ export interface VideoSubmission {
   uploader: string;
   uploaderHandle: string;
   status: 'pending' | 'approved' | 'rejected';
-  views: number;
+  views: number; // Current/latest metrics
   likes: number;
   comments: number;
   shares?: number; // TikTok specific
   dateSubmitted: Date;
   timestamp?: string; // Original upload timestamp
+  snapshots?: VideoSnapshot[]; // Historical snapshots
+  lastRefreshed?: Date; // When metrics were last updated
   selected?: boolean;
 }
 

@@ -9,6 +9,7 @@ import { VideoSubmission, InstagramVideoData } from './types';
 import VideoApiService from './services/VideoApiService';
 import LocalStorageService from './services/LocalStorageService';
 import DateFilterService from './services/DateFilterService';
+import SnapshotService from './services/SnapshotService';
 
 interface DateRange {
   startDate: Date;
@@ -22,6 +23,7 @@ function App() {
   const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilterType>('all');
   const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Load saved data on app initialization
   useEffect(() => {
@@ -51,6 +53,63 @@ function App() {
     setDateFilter(filter);
     setCustomDateRange(customRange);
   }, []);
+
+  // Refresh all videos and create new snapshots
+  const handleRefreshAllVideos = useCallback(async () => {
+    if (isRefreshing) return; // Prevent multiple simultaneous refreshes
+    
+    setIsRefreshing(true);
+    console.log('🔄 Starting refresh of all videos...');
+    
+    const updatedSubmissions: VideoSubmission[] = [];
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const video of submissions) {
+      try {
+        console.log(`🔄 Refreshing "${video.title.substring(0, 30)}..."...`);
+        
+        // Fetch latest data from API
+        const { data: videoData } = await VideoApiService.fetchVideoData(video.url);
+        
+        // Create new snapshot with current metrics
+        const refreshSnapshot = SnapshotService.createRefreshSnapshot(video, {
+          views: videoData.view_count || 0,
+          likes: videoData.like_count,
+          comments: videoData.comment_count,
+          shares: video.platform === 'tiktok' ? (videoData as any).share_count : undefined
+        });
+
+        // Add snapshot to video
+        let updatedVideo = SnapshotService.addSnapshotToVideo(video, refreshSnapshot);
+        
+        // Clean up old snapshots to prevent storage bloat
+        updatedVideo = SnapshotService.cleanupOldSnapshots(updatedVideo);
+        
+        updatedSubmissions.push(updatedVideo);
+        successCount++;
+        
+      } catch (error) {
+        console.error(`❌ Failed to refresh video "${video.title}":`, error);
+        // Keep original video if refresh fails
+        updatedSubmissions.push(video);
+        errorCount++;
+      }
+    }
+
+    // Save updated submissions
+    LocalStorageService.saveSubmissions(updatedSubmissions);
+    setSubmissions(updatedSubmissions);
+    
+    console.log(`✅ Refresh completed: ${successCount} successful, ${errorCount} failed`);
+    
+    // Show user feedback (you could add a toast notification here)
+    if (successCount > 0) {
+      console.log(`🎉 Successfully refreshed ${successCount} videos with new snapshots!`);
+    }
+    
+    setIsRefreshing(false);
+  }, [submissions, isRefreshing]);
 
   const handleAddVideo = useCallback(async (videoUrl: string) => {
     console.log('🚀 Starting video submission process...');
@@ -86,12 +145,16 @@ function App() {
         status: newSubmission.status
       });
 
+      // Create initial snapshot with upload metrics
+      const initialSnapshot = SnapshotService.createInitialSnapshot(newSubmission);
+      const videoWithSnapshot = SnapshotService.addSnapshotToVideo(newSubmission, initialSnapshot);
+
       // Save to localStorage
-      LocalStorageService.addSubmission(newSubmission);
+      LocalStorageService.addSubmission(videoWithSnapshot);
       
       // Update state
-      setSubmissions(prev => [newSubmission, ...prev]);
-      console.log('✅ Video submission completed and saved locally!');
+      setSubmissions(prev => [videoWithSnapshot, ...prev]);
+      console.log('✅ Video submission completed with initial snapshot saved!');
       
     } catch (error) {
       console.error('❌ Failed to add video submission:', error);
@@ -192,6 +255,8 @@ function App() {
       <TopNavigation 
         onAddVideo={() => setIsModalOpen(true)}
         onTikTokSearch={() => setIsTikTokSearchOpen(true)}
+        onRefreshAll={handleRefreshAllVideos}
+        isRefreshing={isRefreshing}
       />
       
       <main className="max-w-7xl mx-auto px-6 py-8">
@@ -208,6 +273,8 @@ function App() {
         <AnalyticsCards 
           submissions={filteredSubmissions} 
           periodDescription={periodDescription}
+          dateFilter={dateFilter}
+          customDateRange={customDateRange}
         />
         
         {/* Video Submissions Table */}

@@ -3,9 +3,19 @@ import { MoreVertical, TrendingUp, TrendingDown } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
 
+import DateFilterService from '../services/DateFilterService';
+import { DateFilterType } from './DateRangeFilter';
+
+interface DateRange {
+  startDate: Date;
+  endDate: Date;
+}
+
 interface AnalyticsCardsProps {
   submissions: VideoSubmission[];
   periodDescription?: string;
+  dateFilter?: DateFilterType;
+  customDateRange?: DateRange;
 }
 
 interface MetricCardProps {
@@ -112,11 +122,18 @@ const MetricCard: React.FC<MetricCardProps> = ({
   );
 };
 
-export const AnalyticsCards: React.FC<AnalyticsCardsProps> = ({ submissions, periodDescription = 'All Time' }) => {
-  // Calculate totals
-  const totalLikes = submissions.reduce((sum, submission) => sum + submission.likes, 0);
-  const totalComments = submissions.reduce((sum, submission) => sum + submission.comments, 0);
-  const totalViews = submissions.reduce((sum, submission) => sum + submission.views, 0);
+export const AnalyticsCards: React.FC<AnalyticsCardsProps> = ({ 
+  submissions, 
+  periodDescription = 'All Time',
+  dateFilter = 'all',
+  customDateRange 
+}) => {
+  // Calculate analytics using snapshot-based growth when applicable
+  const analytics = useMemo(() => {
+    return DateFilterService.calculateFilteredAnalytics(submissions, dateFilter, customDateRange);
+  }, [submissions, dateFilter, customDateRange]);
+
+  const { totalLikes, totalComments, totalViews } = analytics;
 
   // Generate realistic trend data based on actual submissions
   const chartData = useMemo(() => {

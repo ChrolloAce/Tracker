@@ -1,13 +1,15 @@
 import React from 'react';
-import { Search, Plus, Settings, User, Hash } from 'lucide-react';
+import { Search, Plus, Settings, User, Hash, RefreshCw } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 interface TopNavigationProps {
   onAddVideo: () => void;
   onTikTokSearch: () => void;
+  onRefreshAll?: () => void;
+  isRefreshing?: boolean;
 }
 
-export const TopNavigation: React.FC<TopNavigationProps> = ({ onAddVideo, onTikTokSearch }) => {
+export const TopNavigation: React.FC<TopNavigationProps> = ({ onAddVideo, onTikTokSearch, onRefreshAll, isRefreshing = false }) => {
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
@@ -37,6 +39,18 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({ onAddVideo, onTikT
 
         {/* Right section - Actions and Profile */}
         <div className="flex items-center space-x-4">
+          {onRefreshAll && (
+            <Button 
+              onClick={onRefreshAll} 
+              variant="secondary" 
+              disabled={isRefreshing}
+              className="flex items-center space-x-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span>{isRefreshing ? 'Refreshing...' : 'Refresh All'}</span>
+            </Button>
+          )}
+          
           <Button 
             onClick={onTikTokSearch} 
             variant="secondary" 
