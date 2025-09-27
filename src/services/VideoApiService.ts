@@ -7,6 +7,10 @@ class VideoApiService {
   async fetchVideoData(url: string): Promise<{data: InstagramVideoData, platform: 'instagram' | 'tiktok'}> {
     console.log('🎯 Determining platform for URL:', url);
     
+    if (!url || typeof url !== 'string') {
+      throw new Error('Invalid URL provided. URL cannot be empty or undefined.');
+    }
+    
     const platform = this.detectPlatform(url);
     console.log('📱 Detected platform:', platform);
 
@@ -24,6 +28,10 @@ class VideoApiService {
   }
 
   private detectPlatform(url: string): 'instagram' | 'tiktok' | 'unknown' {
+    if (!url || typeof url !== 'string') {
+      return 'unknown';
+    }
+
     // Instagram URL patterns
     const instagramPatterns = [
       /instagram\.com\/p\/[A-Za-z0-9_-]+/,

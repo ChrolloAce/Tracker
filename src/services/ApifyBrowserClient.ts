@@ -13,10 +13,13 @@ interface ApifyDatasetItem {
 }
 
 class ApifyBrowserClient {
-  private proxyUrl = '/api/apify-proxy'; // Use Vercel API route
+  private proxyUrl: string;
 
   constructor(_token: string) {
     // Token is passed to the Vercel API proxy, not used directly here
+    // Use current origin for development, or absolute path for production
+    this.proxyUrl = `${window.location.origin}/api/apify-proxy`;
+    console.log('🔧 Apify proxy URL set to:', this.proxyUrl);
   }
 
   async runActor(actorId: string, input: any, _options: { timeout?: number } = {}): Promise<ApifyRunResult> {
