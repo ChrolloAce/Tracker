@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { clsx } from 'clsx';
 import Sidebar from './components/layout/Sidebar';
 import { VideoSubmissionsTable } from './components/VideoSubmissionsTable';
 import { VideoSubmissionModal } from './components/VideoSubmissionModal';
@@ -28,6 +29,7 @@ function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedVideoForAnalytics, setSelectedVideoForAnalytics] = useState<VideoSubmission | null>(null);
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Load saved data on app initialization
   useEffect(() => {
@@ -281,17 +283,25 @@ function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
+    <div className="min-h-screen bg-gray-50">
+      {/* Fixed Sidebar */}
       <Sidebar 
         onAddVideo={() => setIsModalOpen(true)}
         onTikTokSearch={() => setIsTikTokSearchOpen(true)}
         onRefreshAll={handleRefreshAllVideos}
         isRefreshing={isRefreshing}
+        onCollapsedChange={setIsSidebarCollapsed}
+        initialCollapsed={isSidebarCollapsed}
       />
       
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Main Content with dynamic left margin for sidebar */}
+      <div className={clsx(
+        'flex flex-col min-h-screen transition-all duration-300',
+        {
+          'ml-64': !isSidebarCollapsed,
+          'ml-16': isSidebarCollapsed,
+        }
+      )}>
         {/* Header */}
         <header className="bg-white border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">

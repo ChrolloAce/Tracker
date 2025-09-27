@@ -22,6 +22,8 @@ interface SidebarProps {
   onTikTokSearch?: () => void;
   onRefreshAll?: () => void;
   isRefreshing?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
+  initialCollapsed?: boolean;
 }
 
 interface NavItem {
@@ -38,9 +40,11 @@ const Sidebar: React.FC<SidebarProps> = ({
   onAddVideo, 
   onTikTokSearch, 
   onRefreshAll, 
-  isRefreshing 
+  isRefreshing,
+  onCollapsedChange,
+  initialCollapsed = false
 }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
   const [activeItem, setActiveItem] = useState('dashboard');
 
   const navigationItems: NavItem[] = [
@@ -154,7 +158,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <div className={clsx(
-      'flex flex-col h-screen bg-white border-r border-gray-200 transition-all duration-300',
+      'fixed left-0 top-0 flex flex-col h-screen bg-white border-r border-gray-200 transition-all duration-300 z-30',
       {
         'w-64': !isCollapsed,
         'w-16': isCollapsed,
@@ -174,7 +178,11 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
         )}
         <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={() => {
+            const newCollapsed = !isCollapsed;
+            setIsCollapsed(newCollapsed);
+            onCollapsedChange?.(newCollapsed);
+          }}
           className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
         >
           {isCollapsed ? (
