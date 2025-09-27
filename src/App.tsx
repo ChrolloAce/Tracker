@@ -294,56 +294,59 @@ function App() {
         initialCollapsed={isSidebarCollapsed}
       />
       
-      {/* Main Content with dynamic left margin for sidebar */}
-      <div className={clsx(
-        'flex flex-col min-h-screen transition-all duration-300',
+      {/* Fixed Header */}
+      <header className={clsx(
+        'fixed top-0 right-0 bg-white border-b border-gray-200 px-6 py-4 z-20 transition-all duration-300',
+        {
+          'left-64': !isSidebarCollapsed,
+          'left-16': isSidebarCollapsed,
+        }
+      )}>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Reporting Overview</h1>
+            <p className="text-sm text-gray-600 mt-1">Track and analyze your video performance</p>
+          </div>
+          <div className="flex items-center space-x-4">
+            <DateRangeFilter
+              selectedFilter={dateFilter}
+              customRange={customDateRange}
+              onFilterChange={handleDateFilterChange}
+            />
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content with dynamic margins for sidebar and header */}
+      <main className={clsx(
+        'pt-24 overflow-auto min-h-screen transition-all duration-300',
         {
           'ml-64': !isSidebarCollapsed,
           'ml-16': isSidebarCollapsed,
         }
       )}>
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Reporting Overview</h1>
-              <p className="text-sm text-gray-600 mt-1">Track and analyze your video performance</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <DateRangeFilter
-                selectedFilter={dateFilter}
-                customRange={customDateRange}
-                onFilterChange={handleDateFilterChange}
-              />
-            </div>
-          </div>
-        </header>
-
-        {/* Main Content Area */}
-        <main className="flex-1 overflow-auto">
-          <div className="max-w-7xl mx-auto px-6 py-8">
-            {/* Analytics Cards */}
-            <AnalyticsCards 
-              submissions={filteredSubmissions} 
-              periodDescription={periodDescription}
-              dateFilter={dateFilter}
-              customDateRange={customDateRange}
-            />
-            
-            {/* Video Submissions Table */}
-            <VideoSubmissionsTable
-              submissions={filteredSubmissions}
-              selectedIds={selectedIds}
-              onSelectionChange={handleSelectionChange}
-              onSelectAll={handleSelectAll}
-              onStatusUpdate={handleStatusUpdate}
-              onDelete={handleDelete}
-              onVideoClick={handleVideoClick}
-              periodDescription={periodDescription}
-            />
-          </div>
-        </main>
-      </div>
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          {/* Analytics Cards */}
+          <AnalyticsCards 
+            submissions={filteredSubmissions} 
+            periodDescription={periodDescription}
+            dateFilter={dateFilter}
+            customDateRange={customDateRange}
+          />
+          
+          {/* Video Submissions Table */}
+          <VideoSubmissionsTable
+            submissions={filteredSubmissions}
+            selectedIds={selectedIds}
+            onSelectionChange={handleSelectionChange}
+            onSelectAll={handleSelectAll}
+            onStatusUpdate={handleStatusUpdate}
+            onDelete={handleDelete}
+            onVideoClick={handleVideoClick}
+            periodDescription={periodDescription}
+          />
+        </div>
+      </main>
 
       <VideoSubmissionModal
         isOpen={isModalOpen}
