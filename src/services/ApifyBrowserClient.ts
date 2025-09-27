@@ -5,6 +5,7 @@ interface ApifyRunResult {
   id: string;
   status: string;
   defaultDatasetId: string;
+  items?: any[]; // Include items for proxy response
 }
 
 interface ApifyDatasetItem {
@@ -12,102 +13,82 @@ interface ApifyDatasetItem {
 }
 
 class ApifyBrowserClient {
-  private token: string;
-  private baseUrl = 'https://api.apify.com/v2';
+  private proxyUrl = '/api/apify-proxy'; // Use Vercel API route
 
-  constructor(token: string) {
-    this.token = token;
+  constructor(_token: string) {
+    // Token is passed to the Vercel API proxy, not used directly here
   }
 
-  async runActor(actorId: string, input: any, options: { timeout?: number } = {}): Promise<ApifyRunResult> {
-    console.log('🌐 Making direct Apify API call for actor:', actorId);
+  async runActor(actorId: string, input: any, _options: { timeout?: number } = {}): Promise<ApifyRunResult> {
+    console.log('🌐 Making Apify API call via Vercel proxy for actor:', actorId);
     console.log('📋 Input parameters:', input);
 
     try {
-      // Start the actor run
-      const runResponse = await fetch(`${this.baseUrl}/acts/${actorId}/runs?token=${this.token}`, {
+      // Call through Vercel API proxy to avoid CORS
+      const response = await fetch(this.proxyUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(input),
+        body: JSON.stringify({
+          actorId,
+          input,
+          action: 'run'
+        }),
       });
 
-      if (!runResponse.ok) {
-        const errorText = await runResponse.text();
-        throw new Error(`Failed to start actor run: ${runResponse.status} - ${errorText}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(`Proxy request failed: ${response.status} - ${errorData.error || 'Unknown error'}`);
       }
 
-      const runData = await runResponse.json();
-      console.log('🎯 Actor run started:', runData.data.id);
+      const data = await response.json();
+      console.log('🎯 Actor run completed via proxy:', data.run.id);
 
-      // Wait for the run to complete
-      const completedRun = await this.waitForRunCompletion(runData.data.id, options.timeout || 60000);
-      
       return {
-        id: completedRun.id,
-        status: completedRun.status,
-        defaultDatasetId: completedRun.defaultDatasetId
+        id: data.run.id,
+        status: data.run.status,
+        defaultDatasetId: data.run.defaultDatasetId,
+        items: data.items // Include items directly from proxy response
       };
 
     } catch (error) {
-      console.error('❌ Apify browser client error:', error);
+      console.error('❌ Apify proxy client error:', error);
       throw error;
     }
   }
 
   async getDatasetItems(datasetId: string): Promise<ApifyDatasetItem> {
-    console.log('📥 Fetching dataset items for:', datasetId);
+    console.log('📥 Fetching dataset items via proxy for:', datasetId);
 
     try {
-      const response = await fetch(`${this.baseUrl}/datasets/${datasetId}/items?token=${this.token}&format=json`);
+      const response = await fetch(this.proxyUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          datasetId,
+          action: 'dataset'
+        }),
+      });
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch dataset: ${response.status}`);
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(`Failed to fetch dataset via proxy: ${response.status} - ${errorData.error}`);
       }
 
-      const items = await response.json();
-      console.log('✅ Retrieved dataset items:', items.length);
+      const data = await response.json();
+      console.log('✅ Retrieved dataset items via proxy:', data.items.length);
 
-      return { items };
+      return { items: data.items };
     } catch (error) {
-      console.error('❌ Failed to fetch dataset items:', error);
+      console.error('❌ Failed to fetch dataset items via proxy:', error);
       throw error;
     }
   }
 
-  private async waitForRunCompletion(runId: string, timeout: number): Promise<any> {
-    const startTime = Date.now();
-    const pollInterval = 2000; // Poll every 2 seconds
-
-    while (Date.now() - startTime < timeout) {
-      try {
-        const response = await fetch(`${this.baseUrl}/actor-runs/${runId}?token=${this.token}`);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to check run status: ${response.status}`);
-        }
-
-        const runData = await response.json();
-        const status = runData.data.status;
-        
-        console.log('📊 Run status check:', status);
-
-        if (status === 'SUCCEEDED' || status === 'FAILED' || status === 'ABORTED' || status === 'TIMED-OUT') {
-          return runData.data;
-        }
-
-        // Wait before next poll
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
-        
-      } catch (error) {
-        console.warn('⚠️ Error checking run status:', error);
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
-      }
-    }
-
-    throw new Error(`Actor run timed out after ${timeout}ms`);
-  }
+  // waitForRunCompletion is now handled by the Vercel API proxy
 }
 
 export default ApifyBrowserClient;

@@ -40,11 +40,9 @@ class InstagramApiService {
         throw new Error(`Apify run failed with status: ${run.status}`);
       }
 
-      // Get the dataset items
-      console.log('📥 Fetching dataset items...');
-      const { items } = await this.apifyClient.getDatasetItems(run.defaultDatasetId);
-      
-      console.log('✅ Retrieved items from dataset:', items.length);
+      // Get the dataset items (now included in proxy response)
+      const items = (run as any).items || [];
+      console.log('✅ Retrieved items from proxy response:', items.length);
 
       if (!items || items.length === 0) {
         throw new Error('No data returned from Instagram scraper');

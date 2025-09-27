@@ -62,11 +62,9 @@ class TikTokApiService {
         throw new Error(`TikTok Apify run failed with status: ${run.status}. Check console for detailed logs.`);
       }
 
-      // Get the dataset items
-      console.log('📥 Fetching TikTok dataset items...');
-      const { items } = await this.apifyClient.getDatasetItems(run.defaultDatasetId);
-      
-      console.log('✅ Retrieved TikTok items from dataset:', items.length);
+      // Get the dataset items (now included in proxy response)
+      const items = (run as any).items || [];
+      console.log('✅ Retrieved TikTok items from proxy response:', items.length);
 
       if (!items || items.length === 0) {
         throw new Error('No TikTok data returned from scraper');
