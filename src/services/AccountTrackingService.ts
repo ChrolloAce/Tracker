@@ -1,6 +1,4 @@
 import { TrackedAccount, AccountVideo } from '../types/accounts';
-import InstagramApiService from './InstagramApiService';
-import TikTokApiService from './TikTokApiService';
 
 export class AccountTrackingService {
   private static readonly ACCOUNTS_STORAGE_KEY = 'tracked_accounts';
@@ -26,7 +24,7 @@ export class AccountTrackingService {
   // Save tracked accounts
   static saveTrackedAccounts(accounts: TrackedAccount[]): void {
     try {
-      const serialized = JSON.stringify(accounts, (key, value) => {
+      const serialized = JSON.stringify(accounts, (_key, value) => {
         if (value instanceof Date) {
           return value.toISOString();
         }
@@ -176,11 +174,9 @@ export class AccountTrackingService {
   private static async syncInstagramVideos(account: TrackedAccount): Promise<AccountVideo[]> {
     try {
       // Use Instagram API to fetch all videos from the account
-      const profileUrl = `https://www.instagram.com/${account.username}/`;
-      
       // This would call the Instagram scraper with profile URL to get all posts
       // For now, return empty array - you'll need to implement the actual API call
-      console.log(`Fetching Instagram videos for ${profileUrl}`);
+      console.log(`Fetching Instagram videos for ${account.username}`);
       
       return [];
     } catch (error) {
@@ -225,7 +221,7 @@ export class AccountTrackingService {
   // Save videos for a specific account
   private static saveAccountVideos(accountId: string, videos: AccountVideo[]): void {
     try {
-      const serialized = JSON.stringify(videos, (key, value) => {
+      const serialized = JSON.stringify(videos, (_key, value) => {
         if (value instanceof Date) {
           return value.toISOString();
         }

@@ -2,18 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Plus, 
   Users, 
-  TrendingUp, 
   Eye, 
   Heart, 
   MessageCircle, 
   Share2,
-  MoreVertical,
-  Sync,
+  RefreshCw,
   Trash2,
   Play,
-  Pause,
-  Calendar,
-  Hash,
   ExternalLink
 } from 'lucide-react';
 import { TrackedAccount, AccountVideo } from '../types/accounts';
@@ -193,7 +188,7 @@ const AccountsPage: React.FC = () => {
                         disabled={isSyncing === account.id}
                         className="p-1 text-gray-400 hover:text-blue-600 disabled:animate-spin"
                       >
-                        <Sync className="w-4 h-4" />
+                        <RefreshCw className="w-4 h-4" />
                       </button>
                       <button
                         onClick={(e) => {
@@ -263,7 +258,7 @@ const AccountsPage: React.FC = () => {
                     disabled={isSyncing === selectedAccount.id}
                     className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
                   >
-                    <Sync className={clsx('w-4 h-4', { 'animate-spin': isSyncing === selectedAccount.id })} />
+                    <RefreshCw className={clsx('w-4 h-4', { 'animate-spin': isSyncing === selectedAccount.id })} />
                     <span>{isSyncing === selectedAccount.id ? 'Syncing...' : 'Sync Videos'}</span>
                   </button>
                 </div>
