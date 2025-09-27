@@ -8,6 +8,7 @@ import { AnalyticsCards } from './components/AnalyticsCards';
 import DateRangeFilter, { DateFilterType } from './components/DateRangeFilter';
 import TimePeriodSelector, { TimePeriodType } from './components/TimePeriodSelector';
 import VideoAnalyticsModal from './components/VideoAnalyticsModal';
+import AccountsPage from './components/AccountsPage';
 import { VideoSubmission, InstagramVideoData } from './types';
 import VideoApiService from './services/VideoApiService';
 import LocalStorageService from './services/LocalStorageService';
@@ -32,6 +33,7 @@ function App() {
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [timePeriod, setTimePeriod] = useState<TimePeriodType>('weeks');
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   // Load saved data on app initialization
   useEffect(() => {
@@ -294,6 +296,8 @@ function App() {
         isRefreshing={isRefreshing}
         onCollapsedChange={setIsSidebarCollapsed}
         initialCollapsed={isSidebarCollapsed}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
       />
       
       {/* Fixed Header */}
@@ -306,20 +310,36 @@ function App() {
       )}>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Reporting Overview</h1>
-            <p className="text-sm text-gray-600 mt-1">Track and analyze your video performance</p>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {activeTab === 'dashboard' && 'Reporting Overview'}
+              {activeTab === 'accounts' && 'Account Tracking'}
+              {activeTab === 'analytics' && 'Analytics'}
+              {activeTab === 'videos' && 'Video Library'}
+              {activeTab === 'performance' && 'Performance'}
+              {activeTab === 'calendar' && 'Content Calendar'}
+            </h1>
+            <p className="text-sm text-gray-600 mt-1">
+              {activeTab === 'dashboard' && 'Track and analyze your video performance'}
+              {activeTab === 'accounts' && 'Monitor entire Instagram and TikTok accounts'}
+              {activeTab === 'analytics' && 'Deep dive into your content analytics'}
+              {activeTab === 'videos' && 'Manage your video content library'}
+              {activeTab === 'performance' && 'Analyze performance metrics and trends'}
+              {activeTab === 'calendar' && 'Plan and schedule your content'}
+            </p>
           </div>
-          <div className="flex items-center space-x-4">
-            <DateRangeFilter
-              selectedFilter={dateFilter}
-              customRange={customDateRange}
-              onFilterChange={handleDateFilterChange}
-            />
-            <TimePeriodSelector
-              selectedPeriod={timePeriod}
-              onPeriodChange={setTimePeriod}
-            />
-          </div>
+          {activeTab === 'dashboard' && (
+            <div className="flex items-center space-x-4">
+              <DateRangeFilter
+                selectedFilter={dateFilter}
+                customRange={customDateRange}
+                onFilterChange={handleDateFilterChange}
+              />
+              <TimePeriodSelector
+                selectedPeriod={timePeriod}
+                onPeriodChange={setTimePeriod}
+              />
+            </div>
+          )}
         </div>
       </header>
 
@@ -332,26 +352,47 @@ function App() {
         }
       )}>
         <div className="max-w-7xl mx-auto px-6 py-8">
-          {/* Analytics Cards */}
-          <AnalyticsCards 
-            submissions={filteredSubmissions} 
-            periodDescription={periodDescription}
-            dateFilter={dateFilter}
-            customDateRange={customDateRange}
-            timePeriod={timePeriod}
-          />
-          
-          {/* Video Submissions Table */}
-          <VideoSubmissionsTable
-            submissions={filteredSubmissions}
-            selectedIds={selectedIds}
-            onSelectionChange={handleSelectionChange}
-            onSelectAll={handleSelectAll}
-            onStatusUpdate={handleStatusUpdate}
-            onDelete={handleDelete}
-            onVideoClick={handleVideoClick}
-            periodDescription={periodDescription}
-          />
+          {/* Dashboard Tab */}
+          {activeTab === 'dashboard' && (
+            <>
+              {/* Analytics Cards */}
+              <AnalyticsCards 
+                submissions={filteredSubmissions} 
+                periodDescription={periodDescription}
+                dateFilter={dateFilter}
+                customDateRange={customDateRange}
+                timePeriod={timePeriod}
+              />
+              
+              {/* Video Submissions Table */}
+              <VideoSubmissionsTable
+                submissions={filteredSubmissions}
+                selectedIds={selectedIds}
+                onSelectionChange={handleSelectionChange}
+                onSelectAll={handleSelectAll}
+                onStatusUpdate={handleStatusUpdate}
+                onDelete={handleDelete}
+                onVideoClick={handleVideoClick}
+                periodDescription={periodDescription}
+              />
+            </>
+          )}
+
+          {/* Accounts Tab */}
+          {activeTab === 'accounts' && <AccountsPage />}
+
+          {/* Other Tabs - Placeholder */}
+          {activeTab !== 'dashboard' && activeTab !== 'accounts' && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">🚧</span>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Coming Soon</h3>
+              <p className="text-gray-500">
+                This feature is under development and will be available soon.
+              </p>
+            </div>
+          )}
         </div>
       </main>
 

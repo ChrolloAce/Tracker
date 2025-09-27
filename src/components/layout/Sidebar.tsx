@@ -24,6 +24,8 @@ interface SidebarProps {
   isRefreshing?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
   initialCollapsed?: boolean;
+  activeTab?: string;
+  onTabChange?: (tab: string) => void;
 }
 
 interface NavItem {
@@ -42,48 +44,54 @@ const Sidebar: React.FC<SidebarProps> = ({
   onRefreshAll, 
   isRefreshing,
   onCollapsedChange,
-  initialCollapsed = false
+  initialCollapsed = false,
+  activeTab = 'dashboard',
+  onTabChange
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
-  const [activeItem, setActiveItem] = useState('dashboard');
 
   const navigationItems: NavItem[] = [
     {
       id: 'dashboard',
       label: 'Dashboard',
       icon: Home,
-      isActive: activeItem === 'dashboard',
+      isActive: activeTab === 'dashboard',
+      onClick: () => onTabChange?.('dashboard'),
+    },
+    {
+      id: 'accounts',
+      label: 'Accounts',
+      icon: Users,
+      isActive: activeTab === 'accounts',
+      onClick: () => onTabChange?.('accounts'),
     },
     {
       id: 'analytics',
       label: 'Analytics',
       icon: BarChart3,
-      isActive: activeItem === 'analytics',
+      isActive: activeTab === 'analytics',
+      onClick: () => onTabChange?.('analytics'),
     },
     {
       id: 'videos',
       label: 'Videos',
       icon: Video,
-      badge: 12,
-      isActive: activeItem === 'videos',
+      isActive: activeTab === 'videos',
+      onClick: () => onTabChange?.('videos'),
     },
     {
       id: 'performance',
       label: 'Performance',
       icon: TrendingUp,
-      isActive: activeItem === 'performance',
-    },
-    {
-      id: 'audience',
-      label: 'Audience',
-      icon: Users,
-      isActive: activeItem === 'audience',
+      isActive: activeTab === 'performance',
+      onClick: () => onTabChange?.('performance'),
     },
     {
       id: 'calendar',
       label: 'Calendar',
       icon: Calendar,
-      isActive: activeItem === 'calendar',
+      isActive: activeTab === 'calendar',
+      onClick: () => onTabChange?.('calendar'),
     },
   ];
 
@@ -92,39 +100,39 @@ const Sidebar: React.FC<SidebarProps> = ({
       id: 'reports',
       label: 'Reports',
       icon: FileText,
-      isActive: activeItem === 'reports',
+      isActive: activeTab === 'reports',
+      onClick: () => onTabChange?.('reports'),
     },
     {
       id: 'notifications',
       label: 'Notifications',
       icon: Bell,
       badge: 3,
-      isActive: activeItem === 'notifications',
+      isActive: activeTab === 'notifications',
+      onClick: () => onTabChange?.('notifications'),
     },
     {
       id: 'help',
       label: 'Help & Support',
       icon: HelpCircle,
-      isActive: activeItem === 'help',
+      isActive: activeTab === 'help',
+      onClick: () => onTabChange?.('help'),
     },
     {
       id: 'settings',
       label: 'Settings',
       icon: Settings,
-      isActive: activeItem === 'settings',
+      isActive: activeTab === 'settings',
+      onClick: () => onTabChange?.('settings'),
     },
   ];
-
-  const handleItemClick = (itemId: string) => {
-    setActiveItem(itemId);
-  };
 
   const NavItemComponent: React.FC<{ item: NavItem }> = ({ item }) => {
     const Icon = item.icon;
     
     return (
       <button
-        onClick={() => handleItemClick(item.id)}
+        onClick={item.onClick}
         className={clsx(
           'w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group',
           {
