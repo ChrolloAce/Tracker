@@ -4,7 +4,6 @@ import { VideoSubmissionsTable } from './components/VideoSubmissionsTable';
 import { VideoSubmissionModal } from './components/VideoSubmissionModal';
 import { TikTokSearchModal } from './components/TikTokSearchModal';
 import { AnalyticsCards } from './components/AnalyticsCards';
-import DebugPanel from './components/DebugPanel';
 import { VideoSubmission, InstagramVideoData } from './types';
 import VideoApiService from './services/VideoApiService';
 import LocalStorageService from './services/LocalStorageService';
@@ -171,9 +170,6 @@ function App() {
       />
       
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Debug Panel */}
-        <DebugPanel />
-        
         {/* Analytics Cards */}
         <AnalyticsCards submissions={submissions} />
         
