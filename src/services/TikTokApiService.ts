@@ -1,19 +1,17 @@
-import { ApifyClient } from 'apify-client';
 import { InstagramVideoData } from '../types';
 import LocalStorageService from './LocalStorageService';
+import ApifyBrowserClient from './ApifyBrowserClient';
 
 // TikTokVideoData interface removed as it's not used
 
 class TikTokApiService {
-  private apifyClient: ApifyClient;
+  private apifyClient: ApifyBrowserClient;
   private readonly APIFY_TOKEN = import.meta.env.VITE_APIFY_TOKEN || 'apify_api_7wvIrJjtEH6dTZktJZAtcIGAylH7cX2jRweu';
   private readonly TIKTOK_SCRAPER_ACTOR = 'clockworks/tiktok-scraper'; // User's TikTok scraper
   
   constructor() {
-    console.log('🔧 Initializing TikTok Apify client with token:', this.APIFY_TOKEN ? '***' + this.APIFY_TOKEN.slice(-4) : 'No token');
-    this.apifyClient = new ApifyClient({
-      token: this.APIFY_TOKEN,
-    });
+    console.log('🔧 Initializing browser-compatible TikTok client with token:', this.APIFY_TOKEN ? '***' + this.APIFY_TOKEN.slice(-4) : 'No token');
+    this.apifyClient = new ApifyBrowserClient(this.APIFY_TOKEN);
   }
   
   async fetchVideoData(tiktokUrl: string): Promise<InstagramVideoData> {
@@ -35,7 +33,7 @@ class TikTokApiService {
         maxItems: 1,
       });
       
-      const run = await this.apifyClient.actor(this.TIKTOK_SCRAPER_ACTOR).call({
+      const run = await this.apifyClient.runActor(this.TIKTOK_SCRAPER_ACTOR, {
         postURLs: [tiktokUrl], // FIXED: postURLs with capital URL
         maxItems: 1,
         // Try additional parameters that might be required
@@ -51,9 +49,6 @@ class TikTokApiService {
       if (run.status !== 'SUCCEEDED') {
         // Get more details about the failure
         try {
-          const runDetails = await this.apifyClient.run(run.id).get();
-          console.error('❌ Run failure details:', runDetails);
-          
           // Try to get the log for more info
           const logResponse = await fetch(`https://api.apify.com/v2/logs/${run.id}?token=${this.APIFY_TOKEN}`);
           if (logResponse.ok) {
@@ -69,7 +64,7 @@ class TikTokApiService {
 
       // Get the dataset items
       console.log('📥 Fetching TikTok dataset items...');
-      const { items } = await this.apifyClient.dataset(run.defaultDatasetId).listItems();
+      const { items } = await this.apifyClient.getDatasetItems(run.defaultDatasetId);
       
       console.log('✅ Retrieved TikTok items from dataset:', items.length);
 
@@ -238,7 +233,7 @@ class TikTokApiService {
 
     try {
       // Run the TikTok scraper actor with search query
-      const run = await this.apifyClient.actor(this.TIKTOK_SCRAPER_ACTOR).call({
+      const run = await this.apifyClient.runActor(this.TIKTOK_SCRAPER_ACTOR, {
         searchQueries: [searchQuery], // FIXED: searchQueries for keyword search
         maxItems: maxVideos,
       });
@@ -252,7 +247,7 @@ class TikTokApiService {
 
       // Get the dataset items
       console.log('📥 Fetching TikTok search results...');
-      const { items } = await this.apifyClient.dataset(run.defaultDatasetId).listItems();
+      const { items } = await this.apifyClient.getDatasetItems(run.defaultDatasetId);
       
       console.log('✅ Retrieved TikTok search results:', items.length);
 
@@ -297,7 +292,7 @@ class TikTokApiService {
 
     try {
       // Run the TikTok scraper actor with hashtag
-      const run = await this.apifyClient.actor(this.TIKTOK_SCRAPER_ACTOR).call({
+      const run = await this.apifyClient.runActor(this.TIKTOK_SCRAPER_ACTOR, {
         hashtags: [cleanHashtag], // FIXED: hashtags array for hashtag search
         maxItems: maxVideos,
       });
@@ -311,7 +306,7 @@ class TikTokApiService {
 
       // Get the dataset items
       console.log('📥 Fetching TikTok hashtag results...');
-      const { items } = await this.apifyClient.dataset(run.defaultDatasetId).listItems();
+      const { items } = await this.apifyClient.getDatasetItems(run.defaultDatasetId);
       
       console.log('✅ Retrieved TikTok hashtag results:', items.length);
 
@@ -352,7 +347,7 @@ class TikTokApiService {
       const testUrl = 'https://www.tiktok.com/@test/video/1234567890';
       console.log('🔄 Running TikTok test with URL:', testUrl);
       
-      const run = await this.apifyClient.actor(this.TIKTOK_SCRAPER_ACTOR).call({
+      const run = await this.apifyClient.runActor(this.TIKTOK_SCRAPER_ACTOR, {
         postURLs: [testUrl], // FIXED: postURLs with capital URL
         maxItems: 1,
       }, { timeout: 60000 }); // 1 minute timeout

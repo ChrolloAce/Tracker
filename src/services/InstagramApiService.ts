@@ -1,17 +1,15 @@
-import { ApifyClient } from 'apify-client';
 import { InstagramVideoData } from '../types';
 import LocalStorageService from './LocalStorageService';
+import ApifyBrowserClient from './ApifyBrowserClient';
 
 class InstagramApiService {
-  private apifyClient: ApifyClient;
+  private apifyClient: ApifyBrowserClient;
   private readonly APIFY_TOKEN = import.meta.env.VITE_APIFY_TOKEN || 'apify_api_7wvIrJjtEH6dTZktJZAtcIGAylH7cX2jRweu';
   private readonly INSTAGRAM_SCRAPER_ACTOR = 'apify/instagram-scraper'; // Popular Instagram scraper actor
   
   constructor() {
-    console.log('🔧 Initializing Apify client with token:', this.APIFY_TOKEN ? '***' + this.APIFY_TOKEN.slice(-4) : 'No token');
-    this.apifyClient = new ApifyClient({
-      token: this.APIFY_TOKEN,
-    });
+    console.log('🔧 Initializing browser-compatible Apify client with token:', this.APIFY_TOKEN ? '***' + this.APIFY_TOKEN.slice(-4) : 'No token');
+    this.apifyClient = new ApifyBrowserClient(this.APIFY_TOKEN);
   }
   
   async fetchVideoData(instagramUrl: string): Promise<InstagramVideoData> {
@@ -28,7 +26,7 @@ class InstagramApiService {
 
     try {
       // Run the Instagram scraper actor
-      const run = await this.apifyClient.actor(this.INSTAGRAM_SCRAPER_ACTOR).call({
+      const run = await this.apifyClient.runActor(this.INSTAGRAM_SCRAPER_ACTOR, {
         directUrls: [instagramUrl],
         resultsType: 'posts',
         resultsLimit: 1,
@@ -44,7 +42,7 @@ class InstagramApiService {
 
       // Get the dataset items
       console.log('📥 Fetching dataset items...');
-      const { items } = await this.apifyClient.dataset(run.defaultDatasetId).listItems();
+      const { items } = await this.apifyClient.getDatasetItems(run.defaultDatasetId);
       
       console.log('✅ Retrieved items from dataset:', items.length);
 
@@ -171,7 +169,7 @@ class InstagramApiService {
       const testUrl = 'https://www.instagram.com/p/CyXample123/';
       console.log('🔄 Running test with URL:', testUrl);
       
-      const run = await this.apifyClient.actor(this.INSTAGRAM_SCRAPER_ACTOR).call({
+      const run = await this.apifyClient.runActor(this.INSTAGRAM_SCRAPER_ACTOR, {
         directUrls: [testUrl],
         resultsType: 'posts',
         resultsLimit: 1,
