@@ -58,6 +58,14 @@ function App() {
   const handleRefreshAllVideos = useCallback(async () => {
     if (isRefreshing) return; // Prevent multiple simultaneous refreshes
     
+    console.log('🔄 Refresh All button clicked!');
+    console.log(`📊 Found ${submissions.length} videos to refresh`);
+    
+    if (submissions.length === 0) {
+      console.log('⚠️ No videos to refresh. Add some videos first!');
+      return;
+    }
+    
     setIsRefreshing(true);
     console.log('🔄 Starting refresh of all videos...');
     
