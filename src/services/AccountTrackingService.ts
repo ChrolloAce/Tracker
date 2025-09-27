@@ -189,11 +189,9 @@ export class AccountTrackingService {
   private static async syncTikTokVideos(account: TrackedAccount): Promise<AccountVideo[]> {
     try {
       // Use TikTok API to fetch all videos from the account
-      const profileUrl = `https://www.tiktok.com/@${account.username}`;
-      
       // This would call the TikTok scraper with profile URL to get all videos
       // For now, return empty array - you'll need to implement the actual API call
-      console.log(`Fetching TikTok videos for ${profileUrl}`);
+      console.log(`Fetching TikTok videos for @${account.username}`);
       
       return [];
     } catch (error) {
