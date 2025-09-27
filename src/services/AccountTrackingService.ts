@@ -187,8 +187,8 @@ export class AccountTrackingService {
           actorId: 'apify~instagram-scraper',
           input: {
             directUrls: [profileUrl],
-            resultsType: 'posts', // Get posts from the profile
-            resultsLimit: 50 // Max 50 videos per account
+            resultsType: 'posts',
+            resultsLimit: 50
           },
           action: 'run'
         }),
@@ -210,13 +210,23 @@ export class AccountTrackingService {
       const accountVideos: AccountVideo[] = [];
       
       for (const item of result.items) {
-        // Skip if not a video/reel
-        if (item.type !== 'Video' && item.type !== 'Reel') continue;
+        console.log('📊 Processing Instagram item:', {
+          type: item.type,
+          shortCode: item.shortCode,
+          hasVideo: !!(item.videoViewCount || item.videoPlayCount),
+          fields: Object.keys(item)
+        });
+        
+        // Only include videos/reels (skip photos)
+        if (!item.videoViewCount && !item.videoPlayCount) {
+          console.log('⏭️ Skipping non-video post:', item.shortCode);
+          continue;
+        }
         
         const accountVideo: AccountVideo = {
-          id: `${account.id}_${item.id || Date.now()}`,
+          id: `${account.id}_${item.shortCode || item.id || Date.now()}`,
           accountId: account.id,
-          videoId: item.id || item.shortCode || '',
+          videoId: item.shortCode || item.id || '',
           url: item.url || `https://www.instagram.com/p/${item.shortCode}/`,
           thumbnail: item.displayUrl || '',
           caption: item.caption || '',
@@ -230,6 +240,12 @@ export class AccountTrackingService {
           hashtags: item.hashtags || [],
           mentions: item.mentions || []
         };
+        
+        console.log('✅ Added video to account:', {
+          videoId: accountVideo.videoId,
+          views: accountVideo.views,
+          likes: accountVideo.likes
+        });
         
         accountVideos.push(accountVideo);
       }
