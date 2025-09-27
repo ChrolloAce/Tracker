@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { X, ExternalLink, TrendingUp, TrendingDown, Calendar, Eye, Heart, MessageCircle, Share2 } from 'lucide-react';
-import { VideoSubmission, VideoSnapshot } from '../types';
+import { VideoSubmission } from '../types';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { PlatformIcon } from './ui/PlatformIcon';
 
