@@ -187,7 +187,7 @@ export class AccountTrackingService {
           actorId: 'apify~instagram-scraper',
           input: {
             directUrls: [profileUrl],
-            resultsType: 'reels', // Scrape profile reels specifically
+            resultsType: 'posts', // Get posts from the profile
             resultsLimit: 50 // Max 50 videos per account
           },
           action: 'run'
