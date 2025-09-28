@@ -476,42 +476,46 @@ export class AccountTrackingService {
     }
   }
 
-  // Download and store thumbnail/image locally
+  // Download and store thumbnail/image locally via proxy
   private static async downloadThumbnail(imageUrl: string, identifier: string): Promise<string | null> {
     try {
       if (!imageUrl) return null;
 
-      console.log(`📥 Downloading thumbnail: ${identifier}`);
+      console.log(`📥 Downloading thumbnail via proxy: ${identifier}`);
       
-      // Try to fetch the image
-      const response = await fetch(imageUrl, {
-        mode: 'no-cors',
-        credentials: 'omit'
-      }).catch(() => {
-        // If no-cors fails, try normal fetch
-        return fetch(imageUrl);
+      // Use our Vercel proxy to download the image and bypass CORS
+      const proxyUrl = `${window.location.origin}/api/image-proxy`;
+      
+      const response = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageUrl: imageUrl,
+          identifier: identifier
+        })
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.status}`);
+        throw new Error(`Proxy failed: ${response.status}`);
       }
 
-      const blob = await response.blob();
-      const arrayBuffer = await blob.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-      const mimeType = blob.type || 'image/jpeg';
-      const dataUrl = `data:${mimeType};base64,${base64}`;
+      const result = await response.json();
+      
+      if (result.success && result.dataUrl) {
+        // Store in localStorage with a unique key
+        const storageKey = `thumbnail_${identifier}`;
+        localStorage.setItem(storageKey, result.dataUrl);
 
-      // Store in localStorage with a unique key
-      const storageKey = `thumbnail_${identifier}`;
-      localStorage.setItem(storageKey, dataUrl);
-
-      console.log(`✅ Downloaded and stored thumbnail: ${identifier}`);
-      return dataUrl;
+        console.log(`✅ Downloaded and stored thumbnail via proxy: ${identifier}`);
+        return result.dataUrl;
+      } else {
+        throw new Error(result.error || 'Proxy download failed');
+      }
 
     } catch (error) {
       console.warn(`⚠️ Failed to download thumbnail for ${identifier}:`, error);
-      // Return original URL as fallback - img tags can still load it
+      // Return original URL as fallback - img tags can still load it directly
+      console.log(`📷 Using original URL as fallback: ${identifier}`);
       return imageUrl;
     }
   }
