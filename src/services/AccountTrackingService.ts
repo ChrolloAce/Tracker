@@ -206,6 +206,30 @@ export class AccountTrackingService {
         return [];
       }
 
+      // Extract and update profile information from the first item
+      if (result.items.length > 0) {
+        const firstItem = result.items[0];
+        if (firstItem.ownerFullName || firstItem.ownerUsername) {
+          console.log('👤 Updating profile info from Instagram data...');
+          
+          // Extract profile picture from comments or tagged users
+          const profilePicUrl = await this.extractProfilePicture(result.items);
+          
+          // Update account with profile data
+          const updatedAccount = {
+            ...account,
+            displayName: firstItem.ownerFullName || account.displayName,
+            profilePicture: profilePicUrl || account.profilePicture,
+            lastSynced: new Date()
+          };
+          
+          // Save updated account
+          const accounts = this.getTrackedAccounts();
+          const updatedAccounts = accounts.map(a => a.id === account.id ? updatedAccount : a);
+          this.saveTrackedAccounts(updatedAccounts);
+        }
+      }
+
       // Transform the Instagram data to AccountVideo format
       const accountVideos: AccountVideo[] = [];
       
@@ -217,18 +241,21 @@ export class AccountTrackingService {
           fields: Object.keys(item)
         });
         
-        // Only include videos/reels (skip photos)
+        // Only include videos/reels (skip photos and carousels without videos)
         if (!item.videoViewCount && !item.videoPlayCount) {
           console.log('⏭️ Skipping non-video post:', item.shortCode);
           continue;
         }
+        
+        // Download thumbnail locally
+        const localThumbnail = await this.downloadThumbnail(item.displayUrl, `ig_${item.shortCode}`);
         
         const accountVideo: AccountVideo = {
           id: `${account.id}_${item.shortCode || item.id || Date.now()}`,
           accountId: account.id,
           videoId: item.shortCode || item.id || '',
           url: item.url || `https://www.instagram.com/p/${item.shortCode}/`,
-          thumbnail: item.displayUrl || '',
+          thumbnail: localThumbnail || item.displayUrl || '',
           caption: item.caption || '',
           uploadDate: new Date(item.timestamp || Date.now()),
           views: item.videoViewCount || item.videoPlayCount || 0,
@@ -244,7 +271,8 @@ export class AccountTrackingService {
         console.log('✅ Added video to account:', {
           videoId: accountVideo.videoId,
           views: accountVideo.views,
-          likes: accountVideo.likes
+          likes: accountVideo.likes,
+          thumbnail: accountVideo.thumbnail ? 'Downloaded locally' : 'Using original URL'
         });
         
         accountVideos.push(accountVideo);
@@ -301,12 +329,16 @@ export class AccountTrackingService {
         // Skip if it's profile data, not video data
         if (!item.webVideoUrl && !item.id) continue;
         
+        // Download thumbnail locally
+        const thumbnailUrl = item['videoMeta.coverUrl'] || item.videoMeta?.coverUrl || item.coverUrl || '';
+        const localThumbnail = await this.downloadThumbnail(thumbnailUrl, `tt_${item.id}`);
+        
         const accountVideo: AccountVideo = {
           id: `${account.id}_${item.id || Date.now()}`,
           accountId: account.id,
           videoId: item.id || '',
           url: item.webVideoUrl || `https://www.tiktok.com/@${account.username}/video/${item.id}`,
-          thumbnail: item['videoMeta.coverUrl'] || item.videoMeta?.coverUrl || item.coverUrl || '',
+          thumbnail: localThumbnail || thumbnailUrl,
           caption: item.text || item.description || '',
           uploadDate: new Date(item.createTimeISO || item.createTime || Date.now()),
           views: item.playCount || 0,
@@ -318,6 +350,13 @@ export class AccountTrackingService {
           hashtags: item.hashtags || [],
           mentions: item.mentions || []
         };
+        
+        console.log('✅ Added TikTok video to account:', {
+          videoId: accountVideo.videoId,
+          views: accountVideo.views,
+          likes: accountVideo.likes,
+          thumbnail: accountVideo.thumbnail ? 'Downloaded locally' : 'Using original URL'
+        });
         
         accountVideos.push(accountVideo);
       }
@@ -390,6 +429,101 @@ export class AccountTrackingService {
       }
     } catch (error) {
       console.error('Failed to toggle account status:', error);
+    }
+  }
+
+  // Extract profile picture from Instagram data
+  private static async extractProfilePicture(items: any[]): Promise<string | null> {
+    try {
+      // Look for profile picture in comments, tagged users, or coauthors
+      for (const item of items) {
+        // Check comments for profile owner's picture
+        if (item.latestComments && Array.isArray(item.latestComments)) {
+          for (const comment of item.latestComments) {
+            if (comment.ownerUsername === item.ownerUsername && comment.ownerProfilePicUrl) {
+              console.log('📸 Found profile picture in comments');
+              return await this.downloadThumbnail(comment.ownerProfilePicUrl, `profile_${item.ownerUsername}`);
+            }
+          }
+        }
+
+        // Check tagged users
+        if (item.taggedUsers && Array.isArray(item.taggedUsers)) {
+          for (const user of item.taggedUsers) {
+            if (user.username === item.ownerUsername && user.profile_pic_url) {
+              console.log('📸 Found profile picture in tagged users');
+              return await this.downloadThumbnail(user.profile_pic_url, `profile_${item.ownerUsername}`);
+            }
+          }
+        }
+
+        // Check coauthors
+        if (item.coauthorProducers && Array.isArray(item.coauthorProducers)) {
+          for (const coauthor of item.coauthorProducers) {
+            if (coauthor.username === item.ownerUsername && coauthor.profile_pic_url) {
+              console.log('📸 Found profile picture in coauthors');
+              return await this.downloadThumbnail(coauthor.profile_pic_url, `profile_${item.ownerUsername}`);
+            }
+          }
+        }
+      }
+
+      console.log('⚠️ No profile picture found in Instagram data');
+      return null;
+    } catch (error) {
+      console.error('❌ Failed to extract profile picture:', error);
+      return null;
+    }
+  }
+
+  // Download and store thumbnail/image locally
+  private static async downloadThumbnail(imageUrl: string, identifier: string): Promise<string | null> {
+    try {
+      if (!imageUrl) return null;
+
+      console.log(`📥 Downloading thumbnail: ${identifier}`);
+      
+      // Try to fetch the image
+      const response = await fetch(imageUrl, {
+        mode: 'no-cors',
+        credentials: 'omit'
+      }).catch(() => {
+        // If no-cors fails, try normal fetch
+        return fetch(imageUrl);
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const arrayBuffer = await blob.arrayBuffer();
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      const mimeType = blob.type || 'image/jpeg';
+      const dataUrl = `data:${mimeType};base64,${base64}`;
+
+      // Store in localStorage with a unique key
+      const storageKey = `thumbnail_${identifier}`;
+      localStorage.setItem(storageKey, dataUrl);
+
+      console.log(`✅ Downloaded and stored thumbnail: ${identifier}`);
+      return dataUrl;
+
+    } catch (error) {
+      console.warn(`⚠️ Failed to download thumbnail for ${identifier}:`, error);
+      // Return original URL as fallback - img tags can still load it
+      return imageUrl;
+    }
+  }
+
+  // Load thumbnail from localStorage
+  static loadThumbnail(identifier: string): string | null {
+    try {
+      const storageKey = `thumbnail_${identifier}`;
+      return localStorage.getItem(storageKey);
+    } catch (error) {
+      console.error('Failed to load thumbnail:', error);
+      return null;
     }
   }
 }
