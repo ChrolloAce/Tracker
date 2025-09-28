@@ -174,32 +174,63 @@ export class AccountTrackingService {
     try {
       console.log(`🔄 Fetching Instagram reels for @${account.username}...`);
       
-      // Use the Apify Instagram scraper to get profile reels
-      const profileUrl = `https://www.instagram.com/${account.username}/`;
+      // Try multiple approaches to get the best reel data
+      const urlsToTry = [
+        `https://www.instagram.com/${account.username}/reels/`, // Reels tab specifically
+        `https://www.instagram.com/${account.username}/`, // Profile fallback
+      ];
+      
+      let result: any = null;
+      let usedUrl = '';
       
       // Call the Apify proxy with Instagram scraper configuration
       const proxyUrl = `${window.location.origin}/api/apify-proxy`;
       
-      const response = await fetch(proxyUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          actorId: 'apify~instagram-scraper',
-          input: {
-            directUrls: [profileUrl],
-            resultsType: 'posts',
-            resultsLimit: 50
-          },
-          action: 'run'
-        }),
-      });
+      for (const profileUrl of urlsToTry) {
+        console.log(`🎯 Trying URL: ${profileUrl}`);
+        
+        try {
+          const response = await fetch(proxyUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              actorId: 'apify~instagram-scraper',
+              input: {
+                directUrls: [profileUrl],
+                resultsType: 'posts',
+                resultsLimit: 50,
+                addParentData: false
+              },
+              action: 'run'
+            }),
+          });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          if (!response.ok) {
+            console.warn(`⚠️ Failed with ${profileUrl}: ${response.status}`);
+            continue;
+          }
+
+          const tempResult = await response.json();
+          
+          if (tempResult.items && Array.isArray(tempResult.items) && tempResult.items.length > 0) {
+            result = tempResult;
+            usedUrl = profileUrl;
+            console.log(`✅ Success with ${profileUrl}: ${tempResult.items.length} items`);
+            break;
+          } else {
+            console.warn(`⚠️ No items found with ${profileUrl}`);
+          }
+        } catch (error) {
+          console.warn(`⚠️ Error with ${profileUrl}:`, error);
+          continue;
+        }
       }
 
-      const result = await response.json();
-      console.log(`📊 Instagram API response:`, result);
+      if (!result) {
+        throw new Error('Failed to fetch data from any URL');
+      }
+
+      console.log(`📊 Instagram API response from ${usedUrl}:`, result);
 
       if (!result.items || !Array.isArray(result.items)) {
         console.warn('No items found in Instagram response');
@@ -242,10 +273,15 @@ export class AccountTrackingService {
         });
         
         // Only include videos/reels (skip photos and carousels without videos)
-        if (!item.videoViewCount && !item.videoPlayCount) {
-          console.log('⏭️ Skipping non-video post:', item.shortCode);
+        const isVideo = !!(item.videoViewCount || item.videoPlayCount || item.videoDuration);
+        const isReel = item.productType === 'clips' || item.type === 'Video';
+        
+        if (!isVideo && !isReel) {
+          console.log('⏭️ Skipping non-video post:', item.shortCode, 'Type:', item.type, 'ProductType:', item.productType);
           continue;
         }
+        
+        console.log('✅ Including video/reel:', item.shortCode, 'Type:', item.type, 'ProductType:', item.productType, 'Views:', item.videoViewCount || item.videoPlayCount);
         
         // Download thumbnail locally
         const localThumbnail = await this.downloadThumbnail(item.displayUrl, `ig_${item.shortCode}`);
