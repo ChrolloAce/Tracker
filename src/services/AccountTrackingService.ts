@@ -240,11 +240,19 @@ export class AccountTrackingService {
       // Extract and update profile information from the first item
       if (result.items.length > 0) {
         const firstItem = result.items[0];
+        console.log('👤 Processing profile info from Instagram data...');
+        console.log('📋 First item owner info:', {
+          ownerFullName: firstItem.ownerFullName,
+          ownerUsername: firstItem.ownerUsername,
+          ownerId: firstItem.ownerId
+        });
+        
         if (firstItem.ownerFullName || firstItem.ownerUsername) {
           console.log('👤 Updating profile info from Instagram data...');
           
           // Extract profile picture from comments or tagged users
           const profilePicUrl = await this.extractProfilePicture(result.items);
+          console.log('📸 Profile picture extraction result:', profilePicUrl ? 'Found and downloaded' : 'Not found');
           
           // Update account with profile data
           const updatedAccount = {
@@ -254,11 +262,23 @@ export class AccountTrackingService {
             lastSynced: new Date()
           };
           
+          console.log('💾 Saving updated account with profile data:', {
+            displayName: updatedAccount.displayName,
+            hasProfilePicture: !!updatedAccount.profilePicture,
+            profilePictureLength: updatedAccount.profilePicture?.length || 0
+          });
+          
           // Save updated account
           const accounts = this.getTrackedAccounts();
           const updatedAccounts = accounts.map(a => a.id === account.id ? updatedAccount : a);
           this.saveTrackedAccounts(updatedAccounts);
+          
+          console.log('✅ Profile info updated successfully');
+        } else {
+          console.log('⚠️ No owner info found in first item');
         }
+      } else {
+        console.log('⚠️ No items found to extract profile info from');
       }
 
       // Transform the Instagram data to AccountVideo format
@@ -471,13 +491,19 @@ export class AccountTrackingService {
   // Extract profile picture from Instagram data
   private static async extractProfilePicture(items: any[]): Promise<string | null> {
     try {
+      console.log('🔍 Searching for profile picture in Instagram data...');
+      
       // Look for profile picture in comments, tagged users, or coauthors
       for (const item of items) {
+        console.log(`📊 Checking item ${item.shortCode} for profile picture...`);
+        
         // Check comments for profile owner's picture
         if (item.latestComments && Array.isArray(item.latestComments)) {
+          console.log(`💬 Checking ${item.latestComments.length} comments for profile picture...`);
           for (const comment of item.latestComments) {
+            console.log(`👤 Comment by: ${comment.ownerUsername}, Target: ${item.ownerUsername}`);
             if (comment.ownerUsername === item.ownerUsername && comment.ownerProfilePicUrl) {
-              console.log('📸 Found profile picture in comments');
+              console.log('📸 Found profile picture in comments!', comment.ownerProfilePicUrl);
               return await this.downloadThumbnail(comment.ownerProfilePicUrl, `profile_${item.ownerUsername}`);
             }
           }
@@ -485,9 +511,11 @@ export class AccountTrackingService {
 
         // Check tagged users
         if (item.taggedUsers && Array.isArray(item.taggedUsers)) {
+          console.log(`🏷️ Checking ${item.taggedUsers.length} tagged users for profile picture...`);
           for (const user of item.taggedUsers) {
+            console.log(`👤 Tagged user: ${user.username}, Target: ${item.ownerUsername}`);
             if (user.username === item.ownerUsername && user.profile_pic_url) {
-              console.log('📸 Found profile picture in tagged users');
+              console.log('📸 Found profile picture in tagged users!', user.profile_pic_url);
               return await this.downloadThumbnail(user.profile_pic_url, `profile_${item.ownerUsername}`);
             }
           }
@@ -495,12 +523,20 @@ export class AccountTrackingService {
 
         // Check coauthors
         if (item.coauthorProducers && Array.isArray(item.coauthorProducers)) {
+          console.log(`🤝 Checking ${item.coauthorProducers.length} coauthors for profile picture...`);
           for (const coauthor of item.coauthorProducers) {
+            console.log(`👤 Coauthor: ${coauthor.username}, Target: ${item.ownerUsername}`);
             if (coauthor.username === item.ownerUsername && coauthor.profile_pic_url) {
-              console.log('📸 Found profile picture in coauthors');
+              console.log('📸 Found profile picture in coauthors!', coauthor.profile_pic_url);
               return await this.downloadThumbnail(coauthor.profile_pic_url, `profile_${item.ownerUsername}`);
             }
           }
+        }
+
+        // Also check if there's any owner profile pic directly on the item
+        if (item.ownerProfilePicUrl) {
+          console.log('📸 Found profile picture directly on item!', item.ownerProfilePicUrl);
+          return await this.downloadThumbnail(item.ownerProfilePicUrl, `profile_${item.ownerUsername}`);
         }
       }
 
