@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Plus, X } from 'lucide-react';
 
 interface VideoSubmissionModalProps {
   isOpen: boolean;
@@ -9,40 +9,114 @@ interface VideoSubmissionModalProps {
   onSubmit: (url: string) => Promise<void>;
 }
 
+interface VideoUrlInput {
+  id: string;
+  url: string;
+  error?: string;
+}
+
 export const VideoSubmissionModal: React.FC<VideoSubmissionModalProps> = ({
   isOpen,
   onClose,
   onSubmit
 }) => {
-  const [url, setUrl] = useState('');
+  const [urlInputs, setUrlInputs] = useState<VideoUrlInput[]>([
+    { id: '1', url: '' }
+  ]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [globalError, setGlobalError] = useState<string | null>(null);
+  const [successCount, setSuccessCount] = useState(0);
+  const [failureCount, setFailureCount] = useState(0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!url.trim()) {
-      setError('Please enter an Instagram URL');
+    // Validate all URLs
+    const validUrls: string[] = [];
+    const updatedInputs = urlInputs.map(input => {
+      const trimmedUrl = input.url.trim();
+      if (!trimmedUrl) {
+        return { ...input, error: 'Please enter a URL' };
+      }
+      if (!isValidVideoUrl(trimmedUrl)) {
+        return { ...input, error: 'Please enter a valid Instagram or TikTok URL' };
+      }
+      validUrls.push(trimmedUrl);
+      return { ...input, error: undefined };
+    });
+
+    setUrlInputs(updatedInputs);
+
+    if (validUrls.length === 0) {
+      setGlobalError('Please enter at least one valid URL');
       return;
     }
 
-    if (!isValidVideoUrl(url)) {
-      setError('Please enter a valid Instagram or TikTok URL');
+    if (updatedInputs.some(input => input.error)) {
+      setGlobalError('Please fix the errors above');
       return;
     }
 
     setIsLoading(true);
-    setError(null);
+    setGlobalError(null);
+    setSuccessCount(0);
+    setFailureCount(0);
 
-    try {
-      await onSubmit(url);
-      setUrl('');
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add video');
-    } finally {
-      setIsLoading(false);
+    // Process all URLs
+    let successCount = 0;
+    let failureCount = 0;
+
+    for (const url of validUrls) {
+      try {
+        await onSubmit(url);
+        successCount++;
+        setSuccessCount(successCount);
+      } catch (err) {
+        failureCount++;
+        setFailureCount(failureCount);
+        console.error(`Failed to add video ${url}:`, err);
+      }
     }
+
+    setIsLoading(false);
+
+    if (successCount > 0) {
+      if (failureCount === 0) {
+        // All successful - close modal
+        resetForm();
+        onClose();
+      } else {
+        // Some successful, some failed - show summary
+        setGlobalError(`Added ${successCount} videos successfully, ${failureCount} failed`);
+      }
+    } else {
+      // All failed
+      setGlobalError('Failed to add any videos. Please check the URLs and try again.');
+    }
+  };
+
+  const addUrlInput = () => {
+    const newId = Date.now().toString();
+    setUrlInputs(prev => [...prev, { id: newId, url: '' }]);
+  };
+
+  const removeUrlInput = (id: string) => {
+    if (urlInputs.length > 1) {
+      setUrlInputs(prev => prev.filter(input => input.id !== id));
+    }
+  };
+
+  const updateUrlInput = (id: string, url: string) => {
+    setUrlInputs(prev => prev.map(input => 
+      input.id === id ? { ...input, url, error: undefined } : input
+    ));
+  };
+
+  const resetForm = () => {
+    setUrlInputs([{ id: '1', url: '' }]);
+    setGlobalError(null);
+    setSuccessCount(0);
+    setFailureCount(0);
   };
 
   const isValidVideoUrl = (url: string): boolean => {
@@ -58,33 +132,80 @@ export const VideoSubmissionModal: React.FC<VideoSubmissionModalProps> = ({
 
   const handleClose = () => {
     if (!isLoading) {
-      setUrl('');
-      setError(null);
+      resetForm();
       onClose();
     }
   };
 
+  const hasValidUrls = urlInputs.some(input => input.url.trim());
+
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Add Video">
+    <Modal isOpen={isOpen} onClose={handleClose} title="Add Videos">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="video-url" className="block text-sm font-medium text-gray-700 mb-2">
-            Instagram or TikTok Video URL
-          </label>
-          <input
-            id="video-url"
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://www.instagram.com/p/... or https://www.tiktok.com/@user/video/..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            disabled={isLoading}
-          />
-          <p className="mt-1 text-xs text-gray-500">
-            Supports Instagram posts, reels, and TikTok videos
+          <div className="flex items-center justify-between mb-3">
+            <label className="block text-sm font-medium text-gray-700">
+              Instagram or TikTok Video URLs
+            </label>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={addUrlInput}
+              disabled={isLoading}
+              className="flex items-center space-x-1"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add URL</span>
+            </Button>
+          </div>
+
+          <div className="space-y-3">
+            {urlInputs.map((input, index) => (
+              <div key={input.id} className="flex items-start space-x-2">
+                <div className="flex-1">
+                  <input
+                    type="url"
+                    value={input.url}
+                    onChange={(e) => updateUrlInput(input.id, e.target.value)}
+                    placeholder="https://www.instagram.com/p/... or https://www.tiktok.com/@user/video/..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={isLoading}
+                  />
+                  {input.error && (
+                    <p className="mt-1 text-sm text-red-600">{input.error}</p>
+                  )}
+                </div>
+                {urlInputs.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => removeUrlInput(input.id)}
+                    disabled={isLoading}
+                    className="mt-0.5 p-2 text-gray-400 hover:text-red-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-2 text-xs text-gray-500">
+            Supports Instagram posts, reels, and TikTok videos. Add multiple URLs to process them all at once.
           </p>
-          {error && (
-            <p className="mt-2 text-sm text-danger-600">{error}</p>
+
+          {isLoading && (successCount > 0 || failureCount > 0) && (
+            <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-800">
+                Progress: {successCount} added, {failureCount} failed
+              </p>
+            </div>
+          )}
+
+          {globalError && (
+            <p className="mt-2 text-sm text-red-600">{globalError}</p>
           )}
         </div>
 
@@ -99,11 +220,16 @@ export const VideoSubmissionModal: React.FC<VideoSubmissionModalProps> = ({
           </Button>
           <Button
             type="submit"
-            disabled={isLoading || !url.trim()}
+            disabled={isLoading || !hasValidUrls}
             className="flex items-center space-x-2"
           >
             {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-            <span>{isLoading ? 'Adding...' : 'Add Video'}</span>
+            <span>
+              {isLoading 
+                ? `Adding ${urlInputs.filter(i => i.url.trim()).length} videos...` 
+                : `Add ${urlInputs.filter(i => i.url.trim()).length || 1} Video${urlInputs.filter(i => i.url.trim()).length !== 1 ? 's' : ''}`
+              }
+            </span>
           </Button>
         </div>
       </form>
