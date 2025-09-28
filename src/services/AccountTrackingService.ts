@@ -175,19 +175,53 @@ export class AccountTrackingService {
       console.log(`🔄 Fetching Instagram reels for @${account.username}...`);
       
       // Try multiple approaches to get the best reel data
-      const urlsToTry = [
-        `https://www.instagram.com/${account.username}/reels/`, // Reels tab specifically
-        `https://www.instagram.com/${account.username}/`, // Profile fallback
+      const approachesToTry = [
+        {
+          type: 'direct_reels',
+          input: {
+            directUrls: [`https://www.instagram.com/${account.username}/reels/`],
+            resultsType: 'posts',
+            resultsLimit: 100,
+            addParentData: false,
+            searchType: 'user',
+            scrollWaitSecs: 3,
+            pageTimeout: 60
+          }
+        },
+        {
+          type: 'direct_profile',
+          input: {
+            directUrls: [`https://www.instagram.com/${account.username}/`],
+            resultsType: 'posts',
+            resultsLimit: 100,
+            addParentData: false,
+            searchType: 'user',
+            scrollWaitSecs: 3,
+            pageTimeout: 60
+          }
+        },
+        {
+          type: 'username_search',
+          input: {
+            usernames: [account.username],
+            resultsType: 'posts',
+            resultsLimit: 100,
+            addParentData: false,
+            scrollWaitSecs: 3,
+            pageTimeout: 60
+          }
+        }
       ];
       
       let result: any = null;
-      let usedUrl = '';
+      let usedApproach = '';
       
       // Call the Apify proxy with Instagram scraper configuration
       const proxyUrl = `${window.location.origin}/api/apify-proxy`;
       
-      for (const profileUrl of urlsToTry) {
-        console.log(`🎯 Trying URL: ${profileUrl}`);
+      for (const approach of approachesToTry) {
+        console.log(`🎯 Trying approach: ${approach.type}`);
+        console.log(`📋 Input parameters:`, approach.input);
         
         try {
           const response = await fetch(proxyUrl, {
@@ -195,18 +229,13 @@ export class AccountTrackingService {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               actorId: 'apify~instagram-scraper',
-              input: {
-                directUrls: [profileUrl],
-                resultsType: 'posts',
-                resultsLimit: 50,
-                addParentData: false
-              },
+              input: approach.input,
               action: 'run'
             }),
           });
 
           if (!response.ok) {
-            console.warn(`⚠️ Failed with ${profileUrl}: ${response.status}`);
+            console.warn(`⚠️ Failed with ${approach.type}: ${response.status}`);
             continue;
           }
 
@@ -214,14 +243,21 @@ export class AccountTrackingService {
           
           if (tempResult.items && Array.isArray(tempResult.items) && tempResult.items.length > 0) {
             result = tempResult;
-            usedUrl = profileUrl;
-            console.log(`✅ Success with ${profileUrl}: ${tempResult.items.length} items`);
+            usedApproach = approach.type;
+            console.log(`✅ Success with ${approach.type}: ${tempResult.items.length} items`);
+            console.log(`📊 Item types found:`, tempResult.items.map((item: any) => ({
+              shortCode: item.shortCode,
+              type: item.type,
+              productType: item.productType,
+              hasVideo: !!(item.videoViewCount || item.videoPlayCount || item.videoDuration)
+            })));
             break;
           } else {
-            console.warn(`⚠️ No items found with ${profileUrl}`);
+            console.warn(`⚠️ No items found with ${approach.type}`);
+            console.log(`📋 Response structure:`, tempResult);
           }
         } catch (error) {
-          console.warn(`⚠️ Error with ${profileUrl}:`, error);
+          console.warn(`⚠️ Error with ${approach.type}:`, error);
           continue;
         }
       }
@@ -230,7 +266,7 @@ export class AccountTrackingService {
         throw new Error('Failed to fetch data from any URL');
       }
 
-      console.log(`📊 Instagram API response from ${usedUrl}:`, result);
+      console.log(`📊 Instagram API response from ${usedApproach}:`, result);
 
       if (!result.items || !Array.isArray(result.items)) {
         console.warn('No items found in Instagram response');
