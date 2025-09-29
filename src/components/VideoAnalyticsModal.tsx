@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { X, ExternalLink, TrendingUp, TrendingDown, Calendar, Eye, Heart, MessageCircle, Share2 } from 'lucide-react';
+import { X, ExternalLink, TrendingUp, TrendingDown, Calendar, Eye, Heart, MessageCircle } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { PlatformIcon } from './ui/PlatformIcon';

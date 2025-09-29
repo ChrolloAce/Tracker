@@ -1,4 +1,4 @@
-import { VideoSubmission, VideoSnapshot } from '../types';
+import { VideoSubmission } from '../types';
 
 export class TrendCalculationService {
   /**
