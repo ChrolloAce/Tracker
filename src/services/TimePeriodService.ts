@@ -25,8 +25,43 @@ export class TimePeriodService {
       return dateA.getTime() - dateB.getTime();
     });
 
-    const firstDate = new Date(sortedSubmissions[0].timestamp || sortedSubmissions[0].dateSubmitted);
-    const lastDate = new Date();
+    // Find the earliest date from either upload dates or snapshot dates
+    let earliestDate = new Date(sortedSubmissions[0].timestamp || sortedSubmissions[0].dateSubmitted);
+    let latestDate = new Date();
+
+    sortedSubmissions.forEach(submission => {
+      // Check upload date
+      const uploadDate = new Date(submission.timestamp || submission.dateSubmitted);
+      if (uploadDate < earliestDate) {
+        earliestDate = uploadDate;
+      }
+
+      // Check snapshot dates
+      if (submission.snapshots && submission.snapshots.length > 0) {
+        submission.snapshots.forEach(snapshot => {
+          const snapshotDate = new Date(snapshot.capturedAt);
+          if (snapshotDate < earliestDate) {
+            earliestDate = snapshotDate;
+          }
+          if (snapshotDate > latestDate) {
+            latestDate = snapshotDate;
+          }
+        });
+      }
+
+      // Check last refresh date
+      if (submission.lastRefreshed) {
+        const refreshDate = new Date(submission.lastRefreshed);
+        if (refreshDate > latestDate) {
+          latestDate = refreshDate;
+        }
+      }
+    });
+
+    console.log(`📅 Date range: ${earliestDate.toLocaleDateString()} to ${latestDate.toLocaleDateString()}`);
+    
+    const firstDate = earliestDate;
+    const lastDate = latestDate;
 
     // Generate periods between first video and now
     const periods = this.generatePeriods(firstDate, lastDate, timePeriod);
@@ -47,96 +82,94 @@ export class TimePeriodService {
       });
     });
 
-    // Track which videos were refreshed today to show today's growth
-    const today = new Date();
-    const todayPeriodKey = this.getPeriodKey(today, timePeriod);
-    
     console.log(`🔍 TimePeriodService processing ${sortedSubmissions.length} videos for period: ${timePeriod}`);
-    console.log(`📅 Today's period key: ${todayPeriodKey}`);
     
-    // First pass: Add historical data from snapshots to appropriate periods
+    // Process each video's snapshot history to build time-based data
     sortedSubmissions.forEach(submission => {
-      if (submission.snapshots && submission.snapshots.length > 0) {
-        submission.snapshots.forEach(snapshot => {
-          const snapshotDate = new Date(snapshot.capturedAt);
-          const snapshotPeriodKey = this.getPeriodKey(snapshotDate, timePeriod);
-          
-          const periodData = periodMap.get(snapshotPeriodKey);
-          if (periodData) {
-            // For snapshots, we track the growth from previous snapshot
-            // This is handled in the second pass
-          }
-        });
-      }
-    });
-    
-    // Second pass: Calculate current metrics and today's growth
-    sortedSubmissions.forEach(submission => {
-      const uploadDate = new Date(submission.timestamp || submission.dateSubmitted);
-      const uploadPeriodKey = this.getPeriodKey(uploadDate, timePeriod);
-      const refreshDate = submission.lastRefreshed ? new Date(submission.lastRefreshed) : null;
-      const wasRefreshedToday = refreshDate && this.isSameDay(refreshDate, today);
+      console.log(`📹 Processing "${submission.title.substring(0, 30)}" with ${submission.snapshots?.length || 0} snapshots`);
       
-      console.log(`📹 Video "${submission.title.substring(0, 30)}":`, {
-        lastRefreshed: refreshDate?.toISOString(),
-        wasRefreshedToday,
-        snapshotCount: submission.snapshots?.length || 0,
-        uploadPeriodKey,
-        todayPeriodKey
-      });
-      
-      // Get the most recent snapshot to calculate growth
-      const lastSnapshot = submission.snapshots && submission.snapshots.length > 0 
-        ? submission.snapshots.sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0]
-        : null;
-      
-      if (wasRefreshedToday) {
-        // Video was refreshed today - show growth in today's period
-        const todayPeriodData = periodMap.get(todayPeriodKey);
-        if (todayPeriodData) {
-          if (lastSnapshot) {
-            // Calculate growth since last snapshot
-            const viewsGrowth = Math.max(0, submission.views - lastSnapshot.views);
-            const likesGrowth = Math.max(0, submission.likes - lastSnapshot.likes);
-            const commentsGrowth = Math.max(0, submission.comments - lastSnapshot.comments);
-            const sharesGrowth = Math.max(0, (submission.shares || 0) - (lastSnapshot.shares || 0));
-            
-            console.log(`📊 Video "${submission.title.substring(0, 30)}" refreshed today:`, {
-              current: { views: submission.views, likes: submission.likes, comments: submission.comments },
-              lastSnapshot: { views: lastSnapshot.views, likes: lastSnapshot.likes, comments: lastSnapshot.comments },
-              growth: { views: viewsGrowth, likes: likesGrowth, comments: commentsGrowth },
-              refreshDate: refreshDate?.toISOString(),
-              todayPeriodKey
-            });
-            
-            todayPeriodData.views += viewsGrowth;
-            todayPeriodData.likes += likesGrowth;
-            todayPeriodData.comments += commentsGrowth;
-            todayPeriodData.shares += sharesGrowth;
-            
-            // Only count as a video if there was actual growth
-            if (viewsGrowth > 0 || likesGrowth > 0 || commentsGrowth > 0 || sharesGrowth > 0) {
-              todayPeriodData.videoCount += 1;
-            }
-          } else {
-            console.log(`⚠️ Video "${submission.title.substring(0, 30)}" refreshed today but no snapshots found`);
-            // No snapshots, use current values (this shouldn't happen for refreshed videos)
-            todayPeriodData.views += submission.views;
-            todayPeriodData.likes += submission.likes;
-            todayPeriodData.comments += submission.comments;
-            todayPeriodData.shares += submission.shares || 0;
-            todayPeriodData.videoCount += 1;
-          }
-        }
-      } else {
-        // Video was not refreshed today - add to upload period
+      if (!submission.snapshots || submission.snapshots.length === 0) {
+        // No snapshots - add current metrics to upload date
+        const uploadDate = new Date(submission.timestamp || submission.dateSubmitted);
+        const uploadPeriodKey = this.getPeriodKey(uploadDate, timePeriod);
         const uploadPeriodData = periodMap.get(uploadPeriodKey);
+        
         if (uploadPeriodData) {
           uploadPeriodData.views += submission.views;
           uploadPeriodData.likes += submission.likes;
           uploadPeriodData.comments += submission.comments;
           uploadPeriodData.shares += submission.shares || 0;
           uploadPeriodData.videoCount += 1;
+        }
+        
+        console.log(`  ➜ No snapshots: Added current metrics to upload date (${uploadPeriodKey})`);
+        return;
+      }
+
+      // Sort snapshots by date
+      const sortedSnapshots = submission.snapshots.sort((a, b) => 
+        new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+      );
+
+      // Process each snapshot
+      sortedSnapshots.forEach((snapshot, index) => {
+        const snapshotDate = new Date(snapshot.capturedAt);
+        const snapshotPeriodKey = this.getPeriodKey(snapshotDate, timePeriod);
+        const periodData = periodMap.get(snapshotPeriodKey);
+        
+        if (!periodData) return;
+
+        if (index === 0) {
+          // First snapshot (initial upload) - add full metrics
+          periodData.views += snapshot.views;
+          periodData.likes += snapshot.likes;
+          periodData.comments += snapshot.comments;
+          periodData.shares += snapshot.shares || 0;
+          periodData.videoCount += 1;
+          
+          console.log(`  ➜ Initial snapshot (${snapshotPeriodKey}): ${snapshot.views} views, ${snapshot.likes} likes`);
+        } else {
+          // Subsequent snapshots - add incremental growth
+          const previousSnapshot = sortedSnapshots[index - 1];
+          const viewsGrowth = Math.max(0, snapshot.views - previousSnapshot.views);
+          const likesGrowth = Math.max(0, snapshot.likes - previousSnapshot.likes);
+          const commentsGrowth = Math.max(0, snapshot.comments - previousSnapshot.comments);
+          const sharesGrowth = Math.max(0, (snapshot.shares || 0) - (previousSnapshot.shares || 0));
+          
+          periodData.views += viewsGrowth;
+          periodData.likes += likesGrowth;
+          periodData.comments += commentsGrowth;
+          periodData.shares += sharesGrowth;
+          
+          // Only count as activity if there was actual growth
+          if (viewsGrowth > 0 || likesGrowth > 0 || commentsGrowth > 0 || sharesGrowth > 0) {
+            periodData.videoCount += 1;
+          }
+          
+          console.log(`  ➜ Refresh snapshot (${snapshotPeriodKey}): +${viewsGrowth} views, +${likesGrowth} likes`);
+        }
+      });
+
+      // If current metrics are higher than last snapshot, add the difference to current period
+      const lastSnapshot = sortedSnapshots[sortedSnapshots.length - 1];
+      const currentViewsGrowth = Math.max(0, submission.views - lastSnapshot.views);
+      const currentLikesGrowth = Math.max(0, submission.likes - lastSnapshot.likes);
+      const currentCommentsGrowth = Math.max(0, submission.comments - lastSnapshot.comments);
+      const currentSharesGrowth = Math.max(0, (submission.shares || 0) - (lastSnapshot.shares || 0));
+      
+      if (currentViewsGrowth > 0 || currentLikesGrowth > 0 || currentCommentsGrowth > 0 || currentSharesGrowth > 0) {
+        const currentDate = submission.lastRefreshed ? new Date(submission.lastRefreshed) : new Date();
+        const currentPeriodKey = this.getPeriodKey(currentDate, timePeriod);
+        const currentPeriodData = periodMap.get(currentPeriodKey);
+        
+        if (currentPeriodData) {
+          currentPeriodData.views += currentViewsGrowth;
+          currentPeriodData.likes += currentLikesGrowth;
+          currentPeriodData.comments += currentCommentsGrowth;
+          currentPeriodData.shares += currentSharesGrowth;
+          currentPeriodData.videoCount += 1;
+          
+          console.log(`  ➜ Current growth (${currentPeriodKey}): +${currentViewsGrowth} views, +${currentLikesGrowth} likes`);
         }
       }
     });
