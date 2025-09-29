@@ -266,6 +266,7 @@ function App() {
       comments: video.comment_count,
       shares: (video as any).share_count || 0,
       dateSubmitted: new Date(),
+      uploadDate: video.timestamp ? new Date(video.timestamp) : new Date(), // Use timestamp or fallback to current date
       timestamp: video.timestamp,
     }));
 
