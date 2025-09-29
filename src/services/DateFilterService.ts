@@ -1,6 +1,5 @@
 import { VideoSubmission } from '../types';
 import { DateFilterType } from '../components/DateRangeFilter';
-import SnapshotService from './SnapshotService';
 
 interface DateRange {
   startDate: Date;
@@ -156,39 +155,42 @@ class DateFilterService {
       };
     }
 
-    // For time-based filters, calculate growth using snapshots
-    const dateRange = this.getDateRange(filterType, customRange);
-    const growthData = SnapshotService.calculateTotalGrowthForVideos(filteredVideos, dateRange);
+    // For time-based filters, show current totals for videos in the date range
+    // This shows the total performance of videos uploaded during this period
+    const totalViews = filteredVideos.reduce((sum, video) => sum + (video.views || 0), 0);
+    const totalLikes = filteredVideos.reduce((sum, video) => sum + (video.likes || 0), 0);
+    const totalComments = filteredVideos.reduce((sum, video) => sum + (video.comments || 0), 0);
+    const totalShares = filteredVideos.reduce((sum, video) => sum + (video.shares || 0), 0);
     
     const instagramCount = filteredVideos.filter(video => video.platform === 'instagram').length;
     const tiktokCount = filteredVideos.filter(video => video.platform === 'tiktok').length;
     
-    const avgViews = growthData.videosWithGrowth > 0 ? Math.round(growthData.totalViewsGrowth / growthData.videosWithGrowth) : 0;
-    const avgLikes = growthData.videosWithGrowth > 0 ? Math.round(growthData.totalLikesGrowth / growthData.videosWithGrowth) : 0;
+    const avgViews = filteredVideos.length > 0 ? Math.round(totalViews / filteredVideos.length) : 0;
+    const avgLikes = filteredVideos.length > 0 ? Math.round(totalLikes / filteredVideos.length) : 0;
     
-    // Calculate engagement rate based on growth
-    const totalEngagements = growthData.totalLikesGrowth + growthData.totalCommentsGrowth + growthData.totalSharesGrowth;
-    const avgEngagementRate = growthData.totalViewsGrowth > 0 ? (totalEngagements / growthData.totalViewsGrowth) * 100 : 0;
+    const totalEngagements = totalLikes + totalComments + totalShares;
+    const avgEngagementRate = totalViews > 0 ? (totalEngagements / totalViews) * 100 : 0;
 
     console.log(`📊 Analytics calculated for ${this.getPeriodDescription(filterType, customRange)}:`, {
-      totalViewsGrowth: growthData.totalViewsGrowth,
-      totalLikesGrowth: growthData.totalLikesGrowth,
-      videosWithSnapshots: growthData.videosWithGrowth,
-      growthBased: true
+      totalVideos: filteredVideos.length,
+      totalViews,
+      totalLikes,
+      totalComments,
+      showingCurrentTotals: true
     });
 
     return {
       totalVideos: filteredVideos.length,
-      totalViews: growthData.totalViewsGrowth,
-      totalLikes: growthData.totalLikesGrowth,
-      totalComments: growthData.totalCommentsGrowth,
-      totalShares: growthData.totalSharesGrowth,
+      totalViews,
+      totalLikes,
+      totalComments,
+      totalShares,
       avgViews,
       avgLikes,
       avgEngagementRate: Math.round(avgEngagementRate * 100) / 100,
       instagramCount,
       tiktokCount,
-      growthBased: true
+      growthBased: false // Changed to false - showing current totals, not growth
     };
   }
 
