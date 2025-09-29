@@ -34,10 +34,23 @@ export const MiniTrendChart: React.FC<MiniTrendChartProps> = ({ data, className 
     return `${x},${y}`;
   }).join(' ');
 
+  // Create area path for fill
+  const areaPoints = data.map((value, index) => {
+    const x = (index / (data.length - 1)) * width;
+    const y = height - ((value - minValue) / range) * height;
+    return `${x},${y}`;
+  });
+  const areaPath = `M0,${height} L${areaPoints.join(' L')} L${width},${height} Z`;
+
   // Determine color based on trend
   const getColor = () => {
     if (isFlat) return 'text-gray-400';
     return isUpward ? 'text-green-500' : 'text-red-500';
+  };
+
+  const getGradientId = () => {
+    if (isFlat) return 'gray-gradient';
+    return isUpward ? 'green-gradient' : 'red-gradient';
   };
 
   const getIcon = () => {
@@ -49,6 +62,28 @@ export const MiniTrendChart: React.FC<MiniTrendChartProps> = ({ data, className 
     <div className={`flex items-center space-x-1 ${className}`}>
       <div className="relative">
         <svg width={width} height={height} className="overflow-visible">
+          <defs>
+            <linearGradient id="green-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="rgb(34, 197, 94)" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="rgb(34, 197, 94)" stopOpacity="0.05" />
+            </linearGradient>
+            <linearGradient id="red-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="rgb(239, 68, 68)" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="rgb(239, 68, 68)" stopOpacity="0.05" />
+            </linearGradient>
+            <linearGradient id="gray-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="rgb(156, 163, 175)" stopOpacity="0.2" />
+              <stop offset="100%" stopColor="rgb(156, 163, 175)" stopOpacity="0.05" />
+            </linearGradient>
+          </defs>
+          
+          {/* Filled area */}
+          <path
+            d={areaPath}
+            fill={`url(#${getGradientId()})`}
+          />
+          
+          {/* Line */}
           <polyline
             points={points}
             fill="none"
@@ -58,6 +93,7 @@ export const MiniTrendChart: React.FC<MiniTrendChartProps> = ({ data, className 
             strokeLinejoin="round"
             className={getColor()}
           />
+          
           {/* Add dots at data points */}
           {data.map((value, index) => {
             const x = (index / (data.length - 1)) * width;

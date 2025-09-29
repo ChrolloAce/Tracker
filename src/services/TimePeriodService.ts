@@ -47,18 +47,49 @@ export class TimePeriodService {
       });
     });
 
+    // Track which videos were refreshed today to show today's growth
+    const today = new Date();
+    const todayPeriodKey = this.getPeriodKey(today, timePeriod);
+    
     // Aggregate data for each period
     sortedSubmissions.forEach(submission => {
       const uploadDate = new Date(submission.timestamp || submission.dateSubmitted);
-      const periodKey = this.getPeriodKey(uploadDate, timePeriod);
+      const uploadPeriodKey = this.getPeriodKey(uploadDate, timePeriod);
       
-      const periodData = periodMap.get(periodKey);
-      if (periodData) {
-        periodData.views += submission.views;
-        periodData.likes += submission.likes;
-        periodData.comments += submission.comments;
-        periodData.shares += submission.shares || 0;
-        periodData.videoCount += 1;
+      // Add video to its upload period
+      const uploadPeriodData = periodMap.get(uploadPeriodKey);
+      if (uploadPeriodData) {
+        uploadPeriodData.views += submission.views;
+        uploadPeriodData.likes += submission.likes;
+        uploadPeriodData.comments += submission.comments;
+        uploadPeriodData.shares += submission.shares || 0;
+        uploadPeriodData.videoCount += 1;
+      }
+      
+      // If video was refreshed today and it's not the same as upload period,
+      // also show the growth in today's period
+      const refreshDate = submission.lastRefreshed ? new Date(submission.lastRefreshed) : null;
+      if (refreshDate && this.isSameDay(refreshDate, today) && uploadPeriodKey !== todayPeriodKey) {
+        const todayPeriodData = periodMap.get(todayPeriodKey);
+        if (todayPeriodData) {
+          // Calculate the growth since last snapshot or upload
+          const lastSnapshot = submission.snapshots && submission.snapshots.length > 0 
+            ? submission.snapshots[submission.snapshots.length - 1]
+            : null;
+          
+          if (lastSnapshot) {
+            // Add the growth since last snapshot
+            const viewsGrowth = Math.max(0, submission.views - lastSnapshot.views);
+            const likesGrowth = Math.max(0, submission.likes - lastSnapshot.likes);
+            const commentsGrowth = Math.max(0, submission.comments - lastSnapshot.comments);
+            const sharesGrowth = Math.max(0, (submission.shares || 0) - (lastSnapshot.shares || 0));
+            
+            todayPeriodData.views += viewsGrowth;
+            todayPeriodData.likes += likesGrowth;
+            todayPeriodData.comments += commentsGrowth;
+            todayPeriodData.shares += sharesGrowth;
+          }
+        }
       }
     });
 
@@ -160,6 +191,12 @@ export class TimePeriodService {
     d.setUTCDate(d.getUTCDate() + 4 - dayNum);
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
     return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  }
+
+  private static isSameDay(date1: Date, date2: Date): boolean {
+    return date1.getFullYear() === date2.getFullYear() &&
+           date1.getMonth() === date2.getMonth() &&
+           date1.getDate() === date2.getDate();
   }
 
   static formatPeriodDescription(timePeriod: TimePeriodType): string {
