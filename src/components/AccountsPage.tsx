@@ -36,21 +36,39 @@ const AccountsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [syncError, setSyncError] = useState<string | null>(null);
 
-  // Load accounts on mount
+  // Load accounts on mount and restore selected account
   useEffect(() => {
     const loadedAccounts = AccountTrackingService.getTrackedAccounts();
     setAccounts(loadedAccounts);
+
+    // Restore selected account from localStorage
+    const savedSelectedAccountId = localStorage.getItem('selectedAccountId');
+    if (savedSelectedAccountId && loadedAccounts.length > 0) {
+      const savedAccount = loadedAccounts.find(a => a.id === savedSelectedAccountId);
+      if (savedAccount) {
+        console.log('🔄 Restoring selected account from localStorage:', savedAccount.username);
+        setSelectedAccount(savedAccount);
+      }
+    }
   }, []);
 
   // Load videos when account is selected
   useEffect(() => {
     if (selectedAccount) {
+      console.log('📱 Loading videos for account:', selectedAccount.username);
       const videos = AccountTrackingService.getAccountVideos(selectedAccount.id);
+      console.log('📹 Loaded videos from localStorage:', videos.length);
       setAccountVideos(videos);
       setViewMode('details');
+      
+      // Save selected account ID to localStorage for persistence
+      localStorage.setItem('selectedAccountId', selectedAccount.id);
     } else {
       setViewMode('table');
       setAccountVideos([]);
+      
+      // Clear selected account ID from localStorage
+      localStorage.removeItem('selectedAccountId');
     }
   }, [selectedAccount]);
 
@@ -88,10 +106,11 @@ const AccountsPage: React.FC = () => {
       
       // Update videos if this account is selected
       if (selectedAccount?.id === accountId) {
+        console.log('🔄 Updating displayed videos after sync:', videos.length);
         setAccountVideos(videos);
       }
       
-      console.log(`✅ Successfully synced ${videos.length} videos`);
+      console.log(`✅ Successfully synced ${videos.length} videos (saved to localStorage)`);
       
       // Show success message briefly
       if (videos.length === 0) {
@@ -130,6 +149,10 @@ const AccountsPage: React.FC = () => {
         // Update selected account if it's the one being refreshed
         if (selectedAccount?.id === accountId) {
           setSelectedAccount(updatedAccount);
+          // Also refresh videos from localStorage
+          const videos = AccountTrackingService.getAccountVideos(accountId);
+          console.log('🔄 Refreshed videos after profile update:', videos.length);
+          setAccountVideos(videos);
         }
       }
       
@@ -163,6 +186,7 @@ const AccountsPage: React.FC = () => {
     setSelectedAccount(null);
     setAccountVideos([]);
     setViewMode('table');
+    // This will be handled by the useEffect above
   };
 
   // Generate chart data from account videos
