@@ -28,6 +28,7 @@ const AccountsPage: React.FC = () => {
   const [selectedAccount, setSelectedAccount] = useState<TrackedAccount | null>(null);
   const [accountVideos, setAccountVideos] = useState<AccountVideo[]>([]);
   const [viewMode, setViewMode] = useState<'table' | 'details'>('table');
+  const [timePeriod, setTimePeriod] = useState<'all' | 'weekly' | 'monthly' | 'daily'>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState<string | null>(null);
   const [isRefreshingProfile, setIsRefreshingProfile] = useState<string | null>(null);
@@ -189,38 +190,172 @@ const AccountsPage: React.FC = () => {
     // This will be handled by the useEffect above
   };
 
-  // Generate chart data from account videos
-  const generateChartData = (videos: AccountVideo[]) => {
+  // Generate chart data based on time period and historical tracking
+  const generateChartData = (videos: AccountVideo[], period: 'all' | 'weekly' | 'monthly' | 'daily') => {
     if (videos.length === 0) {
       // Return sample data points for empty state
-      return Array.from({ length: 7 }, (_, i) => ({
-        date: new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      const now = new Date();
+      const points = period === 'daily' ? 7 : period === 'weekly' ? 4 : 12;
+      const interval = period === 'daily' ? 24 * 60 * 60 * 1000 : 
+                     period === 'weekly' ? 7 * 24 * 60 * 60 * 1000 : 
+                     30 * 24 * 60 * 60 * 1000;
+      
+      return Array.from({ length: points }, (_, i) => ({
+        date: new Date(now.getTime() - (points - 1 - i) * interval).toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: period === 'monthly' ? undefined : 'numeric',
+          year: period === 'monthly' ? 'numeric' : undefined
+        }),
         views: 0,
         likes: 0,
         comments: 0
       }));
     }
 
-    // Sort videos by upload date
-    const sortedVideos = [...videos].sort((a, b) => a.uploadDate.getTime() - b.uploadDate.getTime());
+    // Get time range based on period
+    const now = new Date();
+    let startDate: Date;
+    let interval: number;
+    let points: number;
+    
+    switch (period) {
+      case 'daily':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        interval = 24 * 60 * 60 * 1000;
+        points = 7;
+        break;
+      case 'weekly':
+        startDate = new Date(now.getTime() - 4 * 7 * 24 * 60 * 60 * 1000);
+        interval = 7 * 24 * 60 * 60 * 1000;
+        points = 4;
+        break;
+      case 'monthly':
+        startDate = new Date(now.getTime() - 12 * 30 * 24 * 60 * 60 * 1000);
+        interval = 30 * 24 * 60 * 60 * 1000;
+        points = 12;
+        break;
+      default: // 'all'
+        if (videos.length === 0) {
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          interval = 7 * 24 * 60 * 60 * 1000;
+          points = 5;
+        } else {
+          const oldestVideo = videos.reduce((oldest, video) => 
+            video.uploadDate < oldest.uploadDate ? video : oldest
+          );
+          startDate = oldestVideo.uploadDate;
+          const totalTime = now.getTime() - startDate.getTime();
+          points = Math.min(10, Math.max(5, Math.ceil(totalTime / (7 * 24 * 60 * 60 * 1000))));
+          interval = totalTime / (points - 1);
+        }
+    }
 
-    // Generate cumulative data over time
-    let cumulativeViews = 0;
-    let cumulativeLikes = 0;
-    let cumulativeComments = 0;
-
-    return sortedVideos.map((video) => {
-      cumulativeViews += video.views;
-      cumulativeLikes += video.likes;
-      cumulativeComments += video.comments;
-
+    // Create time buckets
+    const buckets = Array.from({ length: points }, (_, i) => {
+      const bucketDate = new Date(startDate.getTime() + i * interval);
       return {
-        date: video.uploadDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        views: cumulativeViews,
-        likes: cumulativeLikes,
-        comments: cumulativeComments
+        date: bucketDate.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: period === 'monthly' ? undefined : 'numeric',
+          year: period === 'monthly' ? 'numeric' : undefined
+        }),
+        timestamp: bucketDate.getTime(),
+        views: 0,
+        likes: 0,
+        comments: 0
       };
     });
+
+    // Fill buckets with video data
+    // For each video, add its metrics to all buckets after its upload date
+    videos.forEach(video => {
+      const videoTime = video.uploadDate.getTime();
+      buckets.forEach(bucket => {
+        if (bucket.timestamp >= videoTime) {
+          bucket.views += video.views;
+          bucket.likes += video.likes;
+          bucket.comments += video.comments;
+        }
+      });
+    });
+
+    return buckets.map(({ timestamp, ...bucket }) => bucket);
+  };
+
+  // Calculate percentage change from previous period
+  const calculatePercentageChange = (current: number, previous: number): string => {
+    if (previous === 0) return current > 0 ? '↗ +∞%' : '0.0%';
+    const change = ((current - previous) / previous) * 100;
+    const sign = change > 0 ? '↗' : change < 0 ? '↘' : '';
+    return `${sign} ${Math.abs(change).toFixed(1)}%`;
+  };
+
+  // Get period label for percentage display
+  const getPeriodLabel = (period: 'all' | 'weekly' | 'monthly' | 'daily'): string => {
+    switch (period) {
+      case 'daily': return 'from yesterday';
+      case 'weekly': return 'from last week';
+      case 'monthly': return 'from last month';
+      default: return 'from last period';
+    }
+  };
+
+  // Calculate metrics for current and previous periods
+  const getMetricsComparison = (videos: AccountVideo[], period: 'all' | 'weekly' | 'monthly' | 'daily') => {
+    if (videos.length === 0) {
+      return {
+        current: { views: 0, likes: 0, comments: 0 },
+        previous: { views: 0, likes: 0, comments: 0 },
+        periodLabel: getPeriodLabel(period)
+      };
+    }
+
+    const now = new Date();
+    let currentStart: Date, previousStart: Date, previousEnd: Date;
+
+    switch (period) {
+      case 'daily':
+        currentStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        previousStart = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+        previousEnd = currentStart;
+        break;
+      case 'weekly':
+        currentStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        previousStart = new Date(now.getTime() - 2 * 7 * 24 * 60 * 60 * 1000);
+        previousEnd = currentStart;
+        break;
+      case 'monthly':
+        currentStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        previousStart = new Date(now.getTime() - 2 * 30 * 24 * 60 * 60 * 1000);
+        previousEnd = currentStart;
+        break;
+      default: // 'all'
+        // For "all time", compare current total vs total from 30 days ago
+        currentStart = new Date(0); // Beginning of time
+        previousStart = new Date(0);
+        previousEnd = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+
+    const currentVideos = videos.filter(v => v.uploadDate >= currentStart);
+    const previousVideos = videos.filter(v => v.uploadDate >= previousStart && v.uploadDate < previousEnd);
+
+    const current = {
+      views: currentVideos.reduce((sum, v) => sum + v.views, 0),
+      likes: currentVideos.reduce((sum, v) => sum + v.likes, 0),
+      comments: currentVideos.reduce((sum, v) => sum + v.comments, 0)
+    };
+
+    const previous = {
+      views: previousVideos.reduce((sum, v) => sum + v.views, 0),
+      likes: previousVideos.reduce((sum, v) => sum + v.likes, 0),
+      comments: previousVideos.reduce((sum, v) => sum + v.comments, 0)
+    };
+
+    return {
+      current,
+      previous,
+      periodLabel: getPeriodLabel(period)
+    };
   };
 
   return (
@@ -573,18 +708,57 @@ const AccountsPage: React.FC = () => {
                   <p className="text-gray-600 mt-1">Track and analyze your video performance</p>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <button className="flex items-center space-x-2 px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
+                  <button 
+                    onClick={() => setTimePeriod('all')}
+                    className={clsx(
+                      'flex items-center space-x-2 px-4 py-2 border rounded-lg transition-colors',
+                      timePeriod === 'all' 
+                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    )}
+                  >
                     <Calendar className="w-4 h-4" />
                     <span>All Time</span>
                   </button>
-                  <button className="flex items-center space-x-2 px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
+                  <button 
+                    onClick={() => setTimePeriod('monthly')}
+                    className={clsx(
+                      'flex items-center space-x-2 px-4 py-2 border rounded-lg transition-colors',
+                      timePeriod === 'monthly' 
+                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    )}
+                  >
+                    <span>Monthly</span>
+                  </button>
+                  <button 
+                    onClick={() => setTimePeriod('weekly')}
+                    className={clsx(
+                      'flex items-center space-x-2 px-4 py-2 border rounded-lg transition-colors',
+                      timePeriod === 'weekly' 
+                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    )}
+                  >
                     <span>Weekly</span>
+                  </button>
+                  <button 
+                    onClick={() => setTimePeriod('daily')}
+                    className={clsx(
+                      'flex items-center space-x-2 px-4 py-2 border rounded-lg transition-colors',
+                      timePeriod === 'daily' 
+                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    )}
+                  >
+                    <span>Daily</span>
                   </button>
                 </div>
               </div>
 
               {(() => {
-                const chartData = generateChartData(accountVideos);
+                const chartData = generateChartData(accountVideos, timePeriod);
+                const metricsComparison = getMetricsComparison(accountVideos, timePeriod);
                 
                 return (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -608,8 +782,18 @@ const AccountsPage: React.FC = () => {
                         <div className="text-3xl font-bold text-gray-900 mb-1">
                           {formatNumber(selectedAccount.totalViews)}
                         </div>
-                        <div className="flex items-center text-sm text-green-600">
-                          <span>↗ 0.0% from last period</span>
+                        <div className={clsx(
+                          'flex items-center text-sm',
+                          selectedAccount.totalViews >= metricsComparison.previous.views 
+                            ? 'text-green-600' 
+                            : 'text-red-600'
+                        )}>
+                          <span>
+                            {calculatePercentageChange(
+                              selectedAccount.totalViews, 
+                              metricsComparison.previous.views
+                            )} {metricsComparison.periodLabel}
+                          </span>
                         </div>
                       </div>
 
@@ -657,8 +841,18 @@ const AccountsPage: React.FC = () => {
                         <div className="text-3xl font-bold text-gray-900 mb-1">
                           {formatNumber(selectedAccount.totalLikes)}
                         </div>
-                        <div className="flex items-center text-sm text-green-600">
-                          <span>↗ 0.0% from last period</span>
+                        <div className={clsx(
+                          'flex items-center text-sm',
+                          selectedAccount.totalLikes >= metricsComparison.previous.likes 
+                            ? 'text-green-600' 
+                            : 'text-red-600'
+                        )}>
+                          <span>
+                            {calculatePercentageChange(
+                              selectedAccount.totalLikes, 
+                              metricsComparison.previous.likes
+                            )} {metricsComparison.periodLabel}
+                          </span>
                         </div>
                       </div>
 
@@ -706,8 +900,18 @@ const AccountsPage: React.FC = () => {
                         <div className="text-3xl font-bold text-gray-900 mb-1">
                           {formatNumber(selectedAccount.totalComments)}
                         </div>
-                        <div className="flex items-center text-sm text-green-600">
-                          <span>↗ 0.0% from last period</span>
+                        <div className={clsx(
+                          'flex items-center text-sm',
+                          selectedAccount.totalComments >= metricsComparison.previous.comments 
+                            ? 'text-green-600' 
+                            : 'text-red-600'
+                        )}>
+                          <span>
+                            {calculatePercentageChange(
+                              selectedAccount.totalComments, 
+                              metricsComparison.previous.comments
+                            )} {metricsComparison.periodLabel}
+                          </span>
                         </div>
                       </div>
 
