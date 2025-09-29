@@ -9,6 +9,7 @@ import DateRangeFilter, { DateFilterType } from './components/DateRangeFilter';
 import TimePeriodSelector, { TimePeriodType } from './components/TimePeriodSelector';
 import VideoAnalyticsModal from './components/VideoAnalyticsModal';
 import AccountsPage from './components/AccountsPage';
+import { LoadingScreen } from './components/LoadingScreen';
 import { VideoSubmission, InstagramVideoData } from './types';
 import VideoApiService from './services/VideoApiService';
 import LocalStorageService from './services/LocalStorageService';
@@ -34,6 +35,7 @@ function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [timePeriod, setTimePeriod] = useState<TimePeriodType>('weeks');
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // Load saved data on app initialization
   useEffect(() => {
@@ -285,6 +287,16 @@ function App() {
       root.style.setProperty(key, value);
     });
   }, []);
+
+  // Show loading screen on initial load
+  if (isInitialLoading) {
+    return (
+      <LoadingScreen 
+        onComplete={() => setIsInitialLoading(false)}
+        duration={3500} // 3.5 seconds for a smooth experience
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50/50 via-purple-50/30 to-pink-50/50 relative">
