@@ -81,26 +81,36 @@ class DateFilterService {
     console.log(`📅 Date range: ${dateRange.startDate.toLocaleDateString()} - ${dateRange.endDate.toLocaleDateString()}`);
     
     const filteredVideos = videos.filter(video => {
-      // Use the original video upload date for filtering
-      // Priority: uploadDate (user-specified) > timestamp (from API) > dateSubmitted (when added to dashboard)
-      const videoDate = video.uploadDate
+      // Check BOTH upload date AND last refresh date to show videos with recent activity
+      // This ensures videos that were refreshed recently appear in the Recent Activity
+      const uploadDate = video.uploadDate
         ? new Date(video.uploadDate)
         : video.timestamp 
         ? new Date(video.timestamp)
         : video.dateSubmitted 
         ? new Date(video.dateSubmitted)
-        : new Date(); // Fallback to current date for older entries
+        : new Date();
 
-      const isInRange = videoDate >= dateRange.startDate && videoDate <= dateRange.endDate;
+      const lastActivityDate = video.lastRefreshed 
+        ? new Date(video.lastRefreshed)
+        : uploadDate;
+
+      // Video is in range if EITHER uploaded OR refreshed during the period
+      const uploadedInRange = uploadDate >= dateRange.startDate && uploadDate <= dateRange.endDate;
+      const refreshedInRange = lastActivityDate >= dateRange.startDate && lastActivityDate <= dateRange.endDate;
+      const isInRange = uploadedInRange || refreshedInRange;
       
       if (videos.length <= 10) { // Only log for small datasets to avoid spam
-        console.log(`📹 Video "${video.title.substring(0, 30)}..." posted on ${videoDate.toLocaleDateString()} - ${isInRange ? '✅ Included' : '❌ Excluded'}`);
+        const activityInfo = video.lastRefreshed 
+          ? `uploaded ${uploadDate.toLocaleDateString()}, refreshed ${lastActivityDate.toLocaleDateString()}`
+          : `uploaded ${uploadDate.toLocaleDateString()}`;
+        console.log(`📹 Video "${video.title.substring(0, 30)}..." ${activityInfo} - ${isInRange ? '✅ Included' : '❌ Excluded'}`);
       }
 
       return isInRange;
     });
 
-    console.log(`✅ Filtered to ${filteredVideos.length} videos based on original posting dates`);
+    console.log(`✅ Filtered to ${filteredVideos.length} videos based on upload or refresh activity`);
     return filteredVideos;
   }
 
