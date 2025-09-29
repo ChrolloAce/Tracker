@@ -68,28 +68,28 @@ const MetricCard: React.FC<MetricCardProps> = ({
     switch (color) {
       case 'blue':
         return {
-          bg: 'bg-blue-50',
+          bg: 'glass-primary',
           icon: 'text-blue-600',
           stroke: '#3b82f6',
           gradient: 'blue-gradient'
         };
       case 'green':
         return {
-          bg: 'bg-green-50',
+          bg: 'glass bg-green-50/20',
           icon: 'text-green-600',
           stroke: '#22c55e',
           gradient: 'green-gradient'
         };
       case 'purple':
         return {
-          bg: 'bg-purple-50',
+          bg: 'glass bg-purple-50/20',
           icon: 'text-purple-600',
           stroke: '#a855f7',
           gradient: 'purple-gradient'
         };
       default:
         return {
-          bg: 'bg-gray-50',
+          bg: 'glass bg-gray-50/20',
           icon: 'text-gray-600',
           stroke: '#6b7280',
           gradient: 'gray-gradient'
@@ -100,7 +100,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
   const colorClasses = getColorClasses(color);
 
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
+    <div className="glass-card p-6 hover:scale-105 glass-hover-glow">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">

@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import './styles/glassmorphism.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,11 +11,31 @@
   font-weight: 400;
   color-scheme: light;
   color: rgba(17, 24, 39, 1);
-  background-color: rgba(249, 250, 251, 1);
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Glassmorphism CSS Variables */
+  --glass-bg-light: rgba(255, 255, 255, 0.25);
+  --glass-bg-medium: rgba(255, 255, 255, 0.18);
+  --glass-bg-heavy: rgba(255, 255, 255, 0.1);
+  --glass-bg-primary: rgba(59, 130, 246, 0.1);
+  --glass-border-light: rgba(255, 255, 255, 0.18);
+  --glass-border-medium: rgba(255, 255, 255, 0.3);
+  --glass-border-heavy: rgba(255, 255, 255, 0.5);
+  --glass-border-primary: rgba(59, 130, 246, 0.3);
+  --glass-shadow-light: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  --glass-shadow-medium: 0 8px 32px 0 rgba(31, 38, 135, 0.5);
+  --glass-shadow-heavy: 0 8px 32px 0 rgba(31, 38, 135, 0.7);
+  --glass-shadow-colored: 0 8px 32px 0 rgba(59, 130, 246, 0.15);
+  --glass-blur-sm: blur(4px);
+  --glass-blur-md: blur(8px);
+  --glass-blur-lg: blur(16px);
+  --glass-blur-xl: blur(24px);
+  --glass-gradient-primary: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(29, 78, 216, 0.05) 100%);
+  --glass-gradient-neutral: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
 }
 
 /* Custom scrollbar */

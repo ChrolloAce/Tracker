@@ -2,7 +2,7 @@ import React from 'react';
 import { clsx } from 'clsx';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'glass' | 'glass-primary' | 'glass-success' | 'glass-danger';
   size?: 'sm' | 'md' | 'lg';
   children: React.ReactNode;
 }
@@ -17,12 +17,18 @@ export const Button: React.FC<ButtonProps> = ({
   return (
     <button
       className={clsx(
-        'inline-flex items-center justify-center font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-white/30 focus:ring-offset-2 focus:ring-offset-transparent disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-md border border-white/20 shadow-lg hover:shadow-xl',
+        'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed',
         {
-          // Variants - Glass effect with sharp edges
-          'bg-gradient-to-r from-blue-500/80 to-purple-600/80 text-white hover:from-blue-600/90 hover:to-purple-700/90 hover:border-white/30': variant === 'primary',
-          'bg-white/10 text-gray-700 hover:bg-white/20 hover:text-gray-800 border-gray-300/30': variant === 'secondary',
-          'text-gray-700 hover:bg-white/10 border-transparent hover:border-white/20': variant === 'ghost',
+          // Standard variants
+          'bg-primary-500 text-white hover:bg-primary-600 shadow-md hover:shadow-lg focus:ring-primary-500': variant === 'primary',
+          'bg-gray-100 text-gray-700 hover:bg-gray-200 shadow-sm hover:shadow-md focus:ring-gray-500': variant === 'secondary',
+          'text-gray-700 hover:bg-gray-100 focus:ring-gray-500': variant === 'ghost',
+          
+          // Glass variants
+          'glass-button text-gray-700 hover:text-gray-800 focus:ring-blue-500': variant === 'glass',
+          'glass-button-primary hover:scale-105 focus:ring-blue-500': variant === 'glass-primary',
+          'glass-button-success hover:scale-105 focus:ring-green-500': variant === 'glass-success',
+          'glass-button-danger hover:scale-105 focus:ring-red-500': variant === 'glass-danger',
           
           // Sizes
           'px-3 py-1.5 text-sm': size === 'sm',
@@ -31,10 +37,6 @@ export const Button: React.FC<ButtonProps> = ({
         },
         className
       )}
-      style={{
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-      }}
       {...props}
     >
       {children}

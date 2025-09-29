@@ -9,7 +9,6 @@ import DateRangeFilter, { DateFilterType } from './components/DateRangeFilter';
 import TimePeriodSelector, { TimePeriodType } from './components/TimePeriodSelector';
 import VideoAnalyticsModal from './components/VideoAnalyticsModal';
 import AccountsPage from './components/AccountsPage';
-import { LoadingScreen } from './components/LoadingScreen';
 import { VideoSubmission, InstagramVideoData } from './types';
 import VideoApiService from './services/VideoApiService';
 import LocalStorageService from './services/LocalStorageService';
@@ -35,7 +34,6 @@ function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [timePeriod, setTimePeriod] = useState<TimePeriodType>('weeks');
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // Load saved data on app initialization
   useEffect(() => {
@@ -288,23 +286,8 @@ function App() {
     });
   }, []);
 
-  // Show loading screen on initial load
-  if (isInitialLoading) {
-    return (
-      <LoadingScreen 
-        onComplete={() => setIsInitialLoading(false)}
-        duration={3500} // 3.5 seconds for a smooth experience
-      />
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50/50 via-purple-50/30 to-pink-50/50 relative">
-      {/* Glass background overlay */}
-      <div className="fixed inset-0 bg-gradient-to-br from-white/20 via-blue-100/10 to-purple-100/20 backdrop-blur-sm pointer-events-none" style={{
-        backdropFilter: 'blur(100px)',
-        WebkitBackdropFilter: 'blur(100px)',
-      }} />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Fixed Sidebar */}
       <Sidebar 
         onAddVideo={() => setIsModalOpen(true)}
@@ -318,19 +301,13 @@ function App() {
       />
       
       {/* Fixed Header */}
-      <header 
-        className={clsx(
-          'fixed top-0 right-0 bg-white/10 backdrop-blur-md border-b border-white/20 px-6 py-4 z-20 transition-all duration-300 shadow-lg',
-          {
-            'left-64': !isSidebarCollapsed,
-            'left-16': isSidebarCollapsed,
-          }
-        )}
-        style={{
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-        }}
-      >
+      <header className={clsx(
+        'fixed top-0 right-0 bg-white border-b border-gray-200 px-6 py-4 z-20 transition-all duration-300',
+        {
+          'left-64': !isSidebarCollapsed,
+          'left-16': isSidebarCollapsed,
+        }
+      )}>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
