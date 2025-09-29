@@ -38,14 +38,29 @@ class LocalStorageService {
 
       const submissions = JSON.parse(data, (key, value) => {
         // Convert ISO strings back to Date objects
-        if (key === 'dateSubmitted' && typeof value === 'string') {
+        if ((key === 'dateSubmitted' || key === 'uploadDate') && typeof value === 'string') {
           return new Date(value);
         }
         return value;
       }) as VideoSubmission[];
 
-      console.log('✅ Loaded submissions from localStorage:', submissions.length, 'items');
-      return submissions;
+      // Migrate existing data that doesn't have uploadDate
+      const migratedSubmissions = submissions.map(submission => {
+        if (!submission.uploadDate) {
+          // Use timestamp if available, otherwise fall back to dateSubmitted
+          const fallbackDate = submission.timestamp 
+            ? new Date(submission.timestamp) 
+            : submission.dateSubmitted;
+          return {
+            ...submission,
+            uploadDate: fallbackDate
+          };
+        }
+        return submission;
+      });
+
+      console.log('✅ Loaded submissions from localStorage:', migratedSubmissions.length, 'items');
+      return migratedSubmissions;
     } catch (error) {
       console.error('❌ Failed to load submissions:', error);
       return [];

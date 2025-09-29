@@ -6,12 +6,13 @@ import { Loader2, Plus, X } from 'lucide-react';
 interface VideoSubmissionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (url: string) => Promise<void>;
+  onSubmit: (url: string, uploadDate: Date) => Promise<void>;
 }
 
 interface VideoUrlInput {
   id: string;
   url: string;
+  uploadDate: string; // ISO date string
   error?: string;
 }
 
@@ -21,7 +22,7 @@ export const VideoSubmissionModal: React.FC<VideoSubmissionModalProps> = ({
   onSubmit
 }) => {
   const [urlInputs, setUrlInputs] = useState<VideoUrlInput[]>([
-    { id: '1', url: '' }
+    { id: '1', url: '', uploadDate: new Date().toISOString().split('T')[0] }
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
@@ -31,8 +32,8 @@ export const VideoSubmissionModal: React.FC<VideoSubmissionModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate all URLs
-    const validUrls: string[] = [];
+    // Validate all URLs and dates
+    const validInputs: Array<{ url: string; uploadDate: Date }> = [];
     const updatedInputs = urlInputs.map(input => {
       const trimmedUrl = input.url.trim();
       if (!trimmedUrl) {
@@ -41,14 +42,23 @@ export const VideoSubmissionModal: React.FC<VideoSubmissionModalProps> = ({
       if (!isValidVideoUrl(trimmedUrl)) {
         return { ...input, error: 'Please enter a valid Instagram or TikTok URL' };
       }
-      validUrls.push(trimmedUrl);
+      if (!input.uploadDate) {
+        return { ...input, error: 'Please enter an upload date' };
+      }
+      
+      const uploadDate = new Date(input.uploadDate);
+      if (isNaN(uploadDate.getTime())) {
+        return { ...input, error: 'Please enter a valid upload date' };
+      }
+      
+      validInputs.push({ url: trimmedUrl, uploadDate });
       return { ...input, error: undefined };
     });
 
     setUrlInputs(updatedInputs);
 
-    if (validUrls.length === 0) {
-      setGlobalError('Please enter at least one valid URL');
+    if (validInputs.length === 0) {
+      setGlobalError('Please enter at least one valid URL with upload date');
       return;
     }
 
@@ -62,19 +72,19 @@ export const VideoSubmissionModal: React.FC<VideoSubmissionModalProps> = ({
     setSuccessCount(0);
     setFailureCount(0);
 
-    // Process all URLs
+    // Process all URLs with upload dates
     let successCount = 0;
     let failureCount = 0;
 
-    for (const url of validUrls) {
+    for (const input of validInputs) {
       try {
-        await onSubmit(url);
+        await onSubmit(input.url, input.uploadDate);
         successCount++;
         setSuccessCount(successCount);
       } catch (err) {
         failureCount++;
         setFailureCount(failureCount);
-        console.error(`Failed to add video ${url}:`, err);
+        console.error(`Failed to add video ${input.url}:`, err);
       }
     }
 
@@ -97,7 +107,11 @@ export const VideoSubmissionModal: React.FC<VideoSubmissionModalProps> = ({
 
   const addUrlInput = () => {
     const newId = Date.now().toString();
-    setUrlInputs(prev => [...prev, { id: newId, url: '' }]);
+    setUrlInputs(prev => [...prev, { 
+      id: newId, 
+      url: '', 
+      uploadDate: new Date().toISOString().split('T')[0] 
+    }]);
   };
 
   const removeUrlInput = (id: string) => {
@@ -112,8 +126,14 @@ export const VideoSubmissionModal: React.FC<VideoSubmissionModalProps> = ({
     ));
   };
 
+  const updateUploadDate = (id: string, uploadDate: string) => {
+    setUrlInputs(prev => prev.map(input => 
+      input.id === id ? { ...input, uploadDate, error: undefined } : input
+    ));
+  };
+
   const resetForm = () => {
-    setUrlInputs([{ id: '1', url: '' }]);
+    setUrlInputs([{ id: '1', url: '', uploadDate: new Date().toISOString().split('T')[0] }]);
     setGlobalError(null);
     setSuccessCount(0);
     setFailureCount(0);
@@ -160,33 +180,51 @@ export const VideoSubmissionModal: React.FC<VideoSubmissionModalProps> = ({
             </Button>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             {urlInputs.map((input) => (
-              <div key={input.id} className="flex items-start space-x-2">
-                <div className="flex-1">
+              <div key={input.id} className="space-y-3 p-4 border border-gray-200 rounded-lg">
+                <div className="flex items-start space-x-2">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Video URL
+                    </label>
+                    <input
+                      type="url"
+                      value={input.url}
+                      onChange={(e) => updateUrlInput(input.id, e.target.value)}
+                      placeholder="https://www.instagram.com/p/... or https://www.tiktok.com/@user/video/..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      disabled={isLoading}
+                    />
+                  </div>
+                  {urlInputs.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => removeUrlInput(input.id)}
+                      disabled={isLoading}
+                      className="mt-6 p-2 text-gray-400 hover:text-red-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Upload Date
+                  </label>
                   <input
-                    type="url"
-                    value={input.url}
-                    onChange={(e) => updateUrlInput(input.id, e.target.value)}
-                    placeholder="https://www.instagram.com/p/... or https://www.tiktok.com/@user/video/..."
+                    type="date"
+                    value={input.uploadDate}
+                    onChange={(e) => updateUploadDate(input.id, e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     disabled={isLoading}
                   />
-                  {input.error && (
-                    <p className="mt-1 text-sm text-red-600">{input.error}</p>
-                  )}
                 </div>
-                {urlInputs.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => removeUrlInput(input.id)}
-                    disabled={isLoading}
-                    className="mt-0.5 p-2 text-gray-400 hover:text-red-600"
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
+                {input.error && (
+                  <p className="text-sm text-red-600">{input.error}</p>
                 )}
               </div>
             ))}

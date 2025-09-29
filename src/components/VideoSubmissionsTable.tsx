@@ -161,12 +161,14 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   onDelete,
   onVideoClick
 }) => {
+  console.log('🎬 VideoSubmissionsTable rendered with', submissions.length, 'videos');
+  console.log('📅 Sample submission uploadDate check:', submissions[0]?.uploadDate);
   const [platformFilter, setPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'youtube'>('all');
-  const [sortBy, setSortBy] = useState<'views' | 'likes' | 'comments' | 'shares' | 'engagement'>('views');
+  const [sortBy, setSortBy] = useState<'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'uploadDate' | 'dateSubmitted'>('views');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Handle sorting
-  const handleSort = (column: 'views' | 'likes' | 'comments' | 'shares' | 'engagement') => {
+  const handleSort = (column: 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'uploadDate' | 'dateSubmitted') => {
     if (sortBy === column) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
@@ -217,6 +219,14 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
           aValue = a.likes + a.comments + (a.shares || 0);
           bValue = b.likes + b.comments + (b.shares || 0);
           break;
+        case 'uploadDate':
+          aValue = new Date(a.uploadDate || a.dateSubmitted).getTime();
+          bValue = new Date(b.uploadDate || b.dateSubmitted).getTime();
+          break;
+        case 'dateSubmitted':
+          aValue = new Date(a.dateSubmitted).getTime();
+          bValue = new Date(b.dateSubmitted).getTime();
+          break;
         default:
           aValue = a.views;
           bValue = b.views;
@@ -233,7 +243,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
 
   // Sortable header component
   const SortableHeader: React.FC<{
-    column: 'views' | 'likes' | 'comments' | 'shares' | 'engagement';
+    column: 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'uploadDate' | 'dateSubmitted';
     children: React.ReactNode;
     className?: string;
   }> = ({ column, children, className }) => (
@@ -379,6 +389,12 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
               <SortableHeader column="engagement" className="min-w-[140px]">
                 Engagement
               </SortableHeader>
+              <SortableHeader column="uploadDate" className="min-w-[120px] bg-blue-50">
+                📅 Upload Date
+              </SortableHeader>
+              <SortableHeader column="dateSubmitted" className="min-w-[120px] bg-green-50">
+                ➕ Date Added
+              </SortableHeader>
               <th className="w-12 px-6 py-4 text-left"></th>
             </tr>
           </thead>
@@ -471,6 +487,31 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       )}>
                         {engagementRate.toFixed(2)}%
                       </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-5 bg-blue-50/50">
+                    <div className="text-sm font-medium text-gray-900">
+                      📅 {submission.uploadDate ? 
+                        new Date(submission.uploadDate).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        }) : 
+                        new Date(submission.dateSubmitted).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })
+                      }
+                    </div>
+                  </td>
+                  <td className="px-6 py-5 bg-green-50/50">
+                    <div className="text-sm font-medium text-gray-900">
+                      ➕ {new Date(submission.dateSubmitted).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
                     </div>
                   </td>
                   <td className="px-6 py-5">

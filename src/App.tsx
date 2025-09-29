@@ -139,9 +139,10 @@ function App() {
     setIsRefreshing(false);
   }, [submissions, isRefreshing]);
 
-  const handleAddVideo = useCallback(async (videoUrl: string) => {
+  const handleAddVideo = useCallback(async (videoUrl: string, uploadDate: Date) => {
     console.log('🚀 Starting video submission process...');
     console.log('📋 URL submitted:', videoUrl);
+    console.log('📅 Upload date:', uploadDate.toISOString());
     
     try {
       console.log('📡 Calling Video API service...');
@@ -162,7 +163,8 @@ function App() {
         comments: videoData.comment_count,
         shares: platform === 'tiktok' ? (videoData as any).share_count : undefined,
         dateSubmitted: new Date(),
-        timestamp: videoData.timestamp, // Original upload timestamp
+        uploadDate: uploadDate, // User-provided upload date
+        timestamp: videoData.timestamp, // Original upload timestamp (legacy)
       };
 
       console.log('💾 Adding new submission to dashboard:', {

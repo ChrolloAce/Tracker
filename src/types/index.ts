@@ -23,7 +23,8 @@ export interface VideoSubmission {
   comments: number;
   shares?: number; // TikTok specific
   dateSubmitted: Date;
-  timestamp?: string; // Original upload timestamp
+  uploadDate: Date; // When the video was originally uploaded to the platform
+  timestamp?: string; // Original upload timestamp (legacy)
   snapshots?: VideoSnapshot[]; // Historical snapshots
   lastRefreshed?: Date; // When metrics were last updated
   selected?: boolean;
