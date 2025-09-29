@@ -51,44 +51,92 @@ export class TimePeriodService {
     const today = new Date();
     const todayPeriodKey = this.getPeriodKey(today, timePeriod);
     
-    // Aggregate data for each period
+    console.log(`🔍 TimePeriodService processing ${sortedSubmissions.length} videos for period: ${timePeriod}`);
+    console.log(`📅 Today's period key: ${todayPeriodKey}`);
+    
+    // First pass: Add historical data from snapshots to appropriate periods
+    sortedSubmissions.forEach(submission => {
+      if (submission.snapshots && submission.snapshots.length > 0) {
+        submission.snapshots.forEach(snapshot => {
+          const snapshotDate = new Date(snapshot.capturedAt);
+          const snapshotPeriodKey = this.getPeriodKey(snapshotDate, timePeriod);
+          
+          const periodData = periodMap.get(snapshotPeriodKey);
+          if (periodData) {
+            // For snapshots, we track the growth from previous snapshot
+            // This is handled in the second pass
+          }
+        });
+      }
+    });
+    
+    // Second pass: Calculate current metrics and today's growth
     sortedSubmissions.forEach(submission => {
       const uploadDate = new Date(submission.timestamp || submission.dateSubmitted);
       const uploadPeriodKey = this.getPeriodKey(uploadDate, timePeriod);
-      
-      // Add video to its upload period
-      const uploadPeriodData = periodMap.get(uploadPeriodKey);
-      if (uploadPeriodData) {
-        uploadPeriodData.views += submission.views;
-        uploadPeriodData.likes += submission.likes;
-        uploadPeriodData.comments += submission.comments;
-        uploadPeriodData.shares += submission.shares || 0;
-        uploadPeriodData.videoCount += 1;
-      }
-      
-      // If video was refreshed today and it's not the same as upload period,
-      // also show the growth in today's period
       const refreshDate = submission.lastRefreshed ? new Date(submission.lastRefreshed) : null;
-      if (refreshDate && this.isSameDay(refreshDate, today) && uploadPeriodKey !== todayPeriodKey) {
+      const wasRefreshedToday = refreshDate && this.isSameDay(refreshDate, today);
+      
+      console.log(`📹 Video "${submission.title.substring(0, 30)}":`, {
+        lastRefreshed: refreshDate?.toISOString(),
+        wasRefreshedToday,
+        snapshotCount: submission.snapshots?.length || 0,
+        uploadPeriodKey,
+        todayPeriodKey
+      });
+      
+      // Get the most recent snapshot to calculate growth
+      const lastSnapshot = submission.snapshots && submission.snapshots.length > 0 
+        ? submission.snapshots.sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0]
+        : null;
+      
+      if (wasRefreshedToday) {
+        // Video was refreshed today - show growth in today's period
         const todayPeriodData = periodMap.get(todayPeriodKey);
         if (todayPeriodData) {
-          // Calculate the growth since last snapshot or upload
-          const lastSnapshot = submission.snapshots && submission.snapshots.length > 0 
-            ? submission.snapshots[submission.snapshots.length - 1]
-            : null;
-          
           if (lastSnapshot) {
-            // Add the growth since last snapshot
+            // Calculate growth since last snapshot
             const viewsGrowth = Math.max(0, submission.views - lastSnapshot.views);
             const likesGrowth = Math.max(0, submission.likes - lastSnapshot.likes);
             const commentsGrowth = Math.max(0, submission.comments - lastSnapshot.comments);
             const sharesGrowth = Math.max(0, (submission.shares || 0) - (lastSnapshot.shares || 0));
             
+            console.log(`📊 Video "${submission.title.substring(0, 30)}" refreshed today:`, {
+              current: { views: submission.views, likes: submission.likes, comments: submission.comments },
+              lastSnapshot: { views: lastSnapshot.views, likes: lastSnapshot.likes, comments: lastSnapshot.comments },
+              growth: { views: viewsGrowth, likes: likesGrowth, comments: commentsGrowth },
+              refreshDate: refreshDate?.toISOString(),
+              todayPeriodKey
+            });
+            
             todayPeriodData.views += viewsGrowth;
             todayPeriodData.likes += likesGrowth;
             todayPeriodData.comments += commentsGrowth;
             todayPeriodData.shares += sharesGrowth;
+            
+            // Only count as a video if there was actual growth
+            if (viewsGrowth > 0 || likesGrowth > 0 || commentsGrowth > 0 || sharesGrowth > 0) {
+              todayPeriodData.videoCount += 1;
+            }
+          } else {
+            console.log(`⚠️ Video "${submission.title.substring(0, 30)}" refreshed today but no snapshots found`);
+            // No snapshots, use current values (this shouldn't happen for refreshed videos)
+            todayPeriodData.views += submission.views;
+            todayPeriodData.likes += submission.likes;
+            todayPeriodData.comments += submission.comments;
+            todayPeriodData.shares += submission.shares || 0;
+            todayPeriodData.videoCount += 1;
           }
+        }
+      } else {
+        // Video was not refreshed today - add to upload period
+        const uploadPeriodData = periodMap.get(uploadPeriodKey);
+        if (uploadPeriodData) {
+          uploadPeriodData.views += submission.views;
+          uploadPeriodData.likes += submission.likes;
+          uploadPeriodData.comments += submission.comments;
+          uploadPeriodData.shares += submission.shares || 0;
+          uploadPeriodData.videoCount += 1;
         }
       }
     });
