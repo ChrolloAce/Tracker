@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { X, ExternalLink, TrendingUp, TrendingDown, Calendar, Eye, Heart, MessageCircle, Share2 } from 'lucide-react';
 import { VideoSubmission } from '../types';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { PlatformIcon } from './ui/PlatformIcon';
 
 interface VideoAnalyticsModalProps {
@@ -86,14 +86,6 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     return num.toLocaleString();
   };
 
-  const formatNumberForChart = (num: number): string => {
-    if (num >= 1000000) {
-      return `${(num / 1000000).toFixed(1)}M`;
-    } else if (num >= 1000) {
-      return `${(num / 1000).toFixed(1)}K`;
-    }
-    return num.toString();
-  };
 
   const formatGrowth = (growth: number, percentage: number): string => {
     const sign = growth >= 0 ? '+' : '';
@@ -134,8 +126,6 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
               <p className="text-gray-600">@{video.uploaderHandle}</p>
               <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500">
                 <span>Posted: {new Date(video.timestamp || video.dateSubmitted).toLocaleDateString()}</span>
-                <span>•</span>
-                <span>Snapshots: {video.snapshots?.length || 0}</span>
                 {video.lastRefreshed && (
                   <>
                     <span>•</span>
@@ -238,89 +228,151 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         {/* Performance Charts */}
         {chartData.length > 1 && (
           <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Performance Over Time</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Performance Analytics</h3>
             
-            {/* Views Chart */}
-            <div className="mb-8">
-              <h4 className="text-md font-medium text-gray-700 mb-3">Views Growth</h4>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="date" 
-                      tick={{ fontSize: 12 }}
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                    />
-                    <YAxis 
-                      tick={{ fontSize: 12 }}
-                      tickFormatter={formatNumberForChart}
-                    />
-                    <Tooltip 
-                      formatter={(value: number) => [formatNumber(value), 'Views']}
-                      labelFormatter={(label) => `Date: ${label}`}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="views" 
-                      stroke="#3B82F6" 
-                      fill="#3B82F6" 
-                      fillOpacity={0.3}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Total Views Chart */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                      <Eye className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">TOTAL VIEWS</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mb-4">
+                  <div className="text-3xl font-bold text-gray-900 mb-1">
+                    {formatNumber(video.views)}
+                  </div>
+                  {totalGrowth.views !== 0 && (
+                    <div className={`flex items-center text-sm ${getGrowthColor(totalGrowth.views)}`}>
+                      {getGrowthIcon(totalGrowth.views)}
+                      <span className="ml-1">
+                        {formatGrowth(totalGrowth.views, growthPercentages.views)}
+                      </span>
+                    </div>
+                  )}
+                </div>
 
-            {/* Engagement Chart */}
-            <div className="mb-8">
-              <h4 className="text-md font-medium text-gray-700 mb-3">Engagement Growth</h4>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="date" 
-                      tick={{ fontSize: 12 }}
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                    />
-                    <YAxis 
-                      tick={{ fontSize: 12 }}
-                      tickFormatter={formatNumberForChart}
-                    />
-                    <Tooltip 
-                      formatter={(value: number, name: string) => [formatNumber(value), name]}
-                      labelFormatter={(label) => `Date: ${label}`}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="likes" 
-                      stroke="#EF4444" 
-                      strokeWidth={2}
-                      name="Likes"
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="comments" 
-                      stroke="#10B981" 
-                      strokeWidth={2}
-                      name="Comments"
-                    />
-                    {video.platform === 'tiktok' && (
-                      <Line 
+                <div className="h-20">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData}>
+                      <defs>
+                        <linearGradient id="viewsGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <Area 
                         type="monotone" 
-                        dataKey="shares" 
+                        dataKey="views" 
+                        stroke="#3B82F6" 
+                        strokeWidth={2}
+                        fill="url(#viewsGradient)" 
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Total Likes Chart */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
+                      <Heart className="w-6 h-6 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">TOTAL LIKES</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mb-4">
+                  <div className="text-3xl font-bold text-gray-900 mb-1">
+                    {formatNumber(video.likes)}
+                  </div>
+                  {totalGrowth.likes !== 0 && (
+                    <div className={`flex items-center text-sm ${getGrowthColor(totalGrowth.likes)}`}>
+                      {getGrowthIcon(totalGrowth.likes)}
+                      <span className="ml-1">
+                        {formatGrowth(totalGrowth.likes, growthPercentages.likes)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="h-20">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData}>
+                      <defs>
+                        <linearGradient id="likesGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10B981" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <Area 
+                        type="monotone" 
+                        dataKey="likes" 
+                        stroke="#10B981" 
+                        strokeWidth={2}
+                        fill="url(#likesGradient)" 
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Total Comments Chart */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center">
+                      <MessageCircle className="w-6 h-6 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">TOTAL COMMENTS</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mb-4">
+                  <div className="text-3xl font-bold text-gray-900 mb-1">
+                    {formatNumber(video.comments)}
+                  </div>
+                  {totalGrowth.comments !== 0 && (
+                    <div className={`flex items-center text-sm ${getGrowthColor(totalGrowth.comments)}`}>
+                      {getGrowthIcon(totalGrowth.comments)}
+                      <span className="ml-1">
+                        {formatGrowth(totalGrowth.comments, growthPercentages.comments)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="h-20">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData}>
+                      <defs>
+                        <linearGradient id="commentsGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <Area 
+                        type="monotone" 
+                        dataKey="comments" 
                         stroke="#8B5CF6" 
                         strokeWidth={2}
-                        name="Shares"
+                        fill="url(#commentsGradient)" 
                       />
-                    )}
-                  </LineChart>
-                </ResponsiveContainer>
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </div>
           </div>
