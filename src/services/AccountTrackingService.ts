@@ -352,26 +352,28 @@ export class AccountTrackingService {
     try {
       console.log(`🔄 Fetching Instagram reels for @${account.username}...`);
       
-      // Try multiple approaches to get the best reel data - prioritize comprehensive data collection
+      // Prioritize direct reels endpoint as requested by user
       const approachesToTry = [
         {
-          type: 'comprehensive_profile',
+          type: 'direct_reels_primary',
           input: {
-            directUrls: [`https://www.instagram.com/${account.username}/`],
-            resultsType: 'posts',
-            resultsLimit: 200, // Increased limit to get more videos
-            addParentData: true, // Include profile data
-            searchType: 'user',
-            scrollWaitSecs: 4, // Longer wait for more content to load
-            pageTimeout: 90 // Extended timeout for larger data sets
+            addParentData: false,
+            directUrls: [`https://www.instagram.com/${account.username}/reels/`],
+            enhanceUserSearchWithFacebookPage: false,
+            isUserReelFeedURL: false,
+            isUserTaggedFeedURL: false,
+            resultsLimit: 50,
+            resultsType: "stories",
+            searchLimit: 1,
+            searchType: "hashtag"
           }
         },
         {
-          type: 'direct_reels',
+          type: 'direct_reels_extended',
           input: {
             directUrls: [`https://www.instagram.com/${account.username}/reels/`],
             resultsType: 'posts',
-            resultsLimit: 150,
+            resultsLimit: 100,
             addParentData: true,
             searchType: 'user',
             scrollWaitSecs: 4,
@@ -379,12 +381,13 @@ export class AccountTrackingService {
           }
         },
         {
-          type: 'username_search',
+          type: 'comprehensive_profile',
           input: {
-            usernames: [account.username],
+            directUrls: [`https://www.instagram.com/${account.username}/`],
             resultsType: 'posts',
             resultsLimit: 150,
             addParentData: true,
+            searchType: 'user',
             scrollWaitSecs: 4,
             pageTimeout: 90
           }
@@ -394,7 +397,7 @@ export class AccountTrackingService {
           input: {
             directUrls: [`https://www.instagram.com/${account.username}/`],
             resultsType: 'posts',
-            resultsLimit: 50, // Smaller fallback for reliability
+            resultsLimit: 30,
             addParentData: false,
             searchType: 'user',
             scrollWaitSecs: 2,
@@ -574,7 +577,40 @@ export class AccountTrackingService {
           duration: item.videoDuration || 0,
           isSponsored: item.isSponsored || false,
           hashtags: item.hashtags || [],
-          mentions: item.mentions || []
+          mentions: item.mentions || [],
+          // Store the full original API data for reference
+          rawData: {
+            id: item.id,
+            type: item.type,
+            shortCode: item.shortCode,
+            caption: item.caption,
+            hashtags: item.hashtags || [],
+            mentions: item.mentions || [],
+            url: item.url,
+            commentsCount: item.commentsCount,
+            dimensionsHeight: item.dimensionsHeight,
+            dimensionsWidth: item.dimensionsWidth,
+            images: item.images || [],
+            videoUrl: item.videoUrl,
+            likesCount: item.likesCount,
+            timestamp: item.timestamp,
+            ownerFullName: item.ownerFullName,
+            ownerUsername: item.ownerUsername,
+            ownerId: item.ownerId,
+            productType: item.productType,
+            isSponsored: item.isSponsored,
+            videoDuration: item.videoDuration,
+            inputUrl: item.inputUrl,
+            firstComment: item.firstComment,
+            latestComments: item.latestComments || [],
+            displayUrl: item.displayUrl,
+            alt: item.alt,
+            videoViewCount: item.videoViewCount,
+            videoPlayCount: item.videoPlayCount,
+            childPosts: item.childPosts || [],
+            musicInfo: item.musicInfo,
+            isCommentsDisabled: item.isCommentsDisabled
+          }
         };
         
         console.log('✅ Added video to account:', {

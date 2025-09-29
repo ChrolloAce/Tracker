@@ -35,6 +35,7 @@ export interface AccountVideo {
   isSponsored?: boolean;
   hashtags: string[];
   mentions: string[];
+  rawData?: any; // Store the full original API response data
 }
 
 export interface AccountAnalytics {
