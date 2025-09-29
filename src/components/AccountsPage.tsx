@@ -8,9 +8,16 @@ import {
   Filter,
   Search,
   MoreHorizontal,
-  AlertCircle
+  AlertCircle,
+  ArrowLeft,
+  Play,
+  Eye,
+  Heart,
+  MessageCircle,
+  ExternalLink,
+  Calendar
 } from 'lucide-react';
-import { TrackedAccount } from '../types/accounts';
+import { TrackedAccount, AccountVideo } from '../types/accounts';
 import { AccountTrackingService } from '../services/AccountTrackingService';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { clsx } from 'clsx';
@@ -18,6 +25,8 @@ import { clsx } from 'clsx';
 const AccountsPage: React.FC = () => {
   const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<TrackedAccount | null>(null);
+  const [accountVideos, setAccountVideos] = useState<AccountVideo[]>([]);
+  const [viewMode, setViewMode] = useState<'table' | 'details'>('table');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState<string | null>(null);
   const [isRefreshingProfile, setIsRefreshingProfile] = useState<string | null>(null);
@@ -31,6 +40,18 @@ const AccountsPage: React.FC = () => {
     const loadedAccounts = AccountTrackingService.getTrackedAccounts();
     setAccounts(loadedAccounts);
   }, []);
+
+  // Load videos when account is selected
+  useEffect(() => {
+    if (selectedAccount) {
+      const videos = AccountTrackingService.getAccountVideos(selectedAccount.id);
+      setAccountVideos(videos);
+      setViewMode('details');
+    } else {
+      setViewMode('table');
+      setAccountVideos([]);
+    }
+  }, [selectedAccount]);
 
 
   const handleAddAccount = useCallback(async () => {
@@ -64,6 +85,10 @@ const AccountsPage: React.FC = () => {
       const updatedAccounts = AccountTrackingService.getTrackedAccounts();
       setAccounts(updatedAccounts);
       
+      // Update videos if this account is selected
+      if (selectedAccount?.id === accountId) {
+        setAccountVideos(videos);
+      }
       
       console.log(`✅ Successfully synced ${videos.length} videos`);
       
@@ -87,6 +112,7 @@ const AccountsPage: React.FC = () => {
       
       if (selectedAccount?.id === accountId) {
         setSelectedAccount(null);
+        setAccountVideos([]);
       }
     }
   }, [selectedAccount]);
@@ -132,23 +158,69 @@ const AccountsPage: React.FC = () => {
     }).format(date);
   };
 
+  const handleBackToTable = () => {
+    setSelectedAccount(null);
+    setAccountVideos([]);
+    setViewMode('table');
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          {viewMode === 'details' && selectedAccount && (
+            <button
+              onClick={handleBackToTable}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 text-gray-600" />
+            </button>
+          )}
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
-          <p className="text-gray-600 mt-1">
-            View and analyze performance metrics for your tracked social media accounts
-          </p>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {viewMode === 'details' && selectedAccount 
+                ? `@${selectedAccount.username}` 
+                : 'Accounts'
+              }
+            </h1>
+            <p className="text-gray-600 mt-1">
+              {viewMode === 'details' && selectedAccount
+                ? `${accountVideos.length} videos • ${formatNumber(selectedAccount.totalViews)} total views • ${selectedAccount.platform}`
+                : 'View and analyze performance metrics for your tracked social media accounts'
+              }
+            </p>
+          </div>
         </div>
+        <div className="flex items-center space-x-3">
+          {viewMode === 'details' && selectedAccount && (
+            <>
+              <button
+                onClick={() => handleRefreshProfile(selectedAccount.id)}
+                disabled={isRefreshingProfile === selectedAccount.id}
+                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+              >
+                <User className={clsx('w-4 h-4', { 'animate-spin': isRefreshingProfile === selectedAccount.id })} />
+                <span>{isRefreshingProfile === selectedAccount.id ? 'Refreshing...' : 'Refresh Profile'}</span>
+              </button>
+              <button
+                onClick={() => handleSyncAccount(selectedAccount.id)}
+                disabled={isSyncing === selectedAccount.id}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={clsx('w-4 h-4', { 'animate-spin': isSyncing === selectedAccount.id })} />
+                <span>{isSyncing === selectedAccount.id ? 'Syncing...' : 'Sync Videos'}</span>
+              </button>
+            </>
+          )}
         <button
           onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl"
         >
           <Plus className="w-4 h-4" />
-          <span className="font-medium">Track Account</span>
-        </button>
+            <span className="font-medium">Track Account</span>
+          </button>
+        </div>
       </div>
 
       {/* Error Display */}
@@ -165,218 +237,383 @@ const AccountsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Controls Bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search by name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 w-80 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-            />
-          </div>
-          <button className="flex items-center space-x-2 px-3 py-2 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-            <Filter className="w-4 h-4" />
-            <span className="text-sm">Select projects</span>
-          </button>
-        </div>
-        <div className="flex items-center space-x-3">
-          <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Accounts Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        {accounts.length === 0 ? (
-          <div className="p-12 text-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Users className="w-8 h-8 text-gray-400" />
+      {/* Controls Bar - Only show in table mode */}
+      {viewMode === 'table' && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search by name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-4 py-2 w-80 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+              />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No accounts tracked yet</h3>
-            <p className="text-gray-500 mb-6">
-              Start tracking Instagram or TikTok accounts to monitor their content performance
-            </p>
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl"
-            >
-              <Plus className="w-4 h-4" />
-              <span className="font-medium">Track Account</span>
+            <button className="flex items-center space-x-2 px-3 py-2 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+              <Filter className="w-4 h-4" />
+              <span className="text-sm">Select projects</span>
             </button>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Username
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Platform
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Last post
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Followers
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Posts
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Views
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Likes
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Comments
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {accounts
-                  .filter(account => 
-                    searchQuery === '' || 
-                    account.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    account.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
-                  )
-                  .map((account) => (
-                    <tr 
-                  key={account.id}
-                  className={clsx(
-                        'hover:bg-gray-50 transition-colors cursor-pointer',
-                    {
-                          'bg-blue-50': selectedAccount?.id === account.id,
-                    }
-                  )}
-                      onClick={() => setSelectedAccount(account)}
-                >
-                      {/* Username Column */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center space-x-3">
-                    <div className="relative">
-                      {account.profilePicture ? (
-                        <img
-                          src={account.profilePicture}
-                          alt={`@${account.username}`}
-                          className="w-10 h-10 rounded-full object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            const fallback = target.nextElementSibling as HTMLElement;
-                            if (fallback) fallback.classList.remove('hidden');
-                          }}
-                        />
-                      ) : null}
-                      <div className={`w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center ${account.profilePicture ? 'hidden' : ''}`}>
-                              <Users className="w-5 h-5 text-gray-500" />
-                      </div>
-                    </div>
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
-                              {account.displayName || account.username}
-                      </div>
-                            <div className="text-sm text-gray-500">@{account.username}</div>
-                      </div>
-                    </div>
-                      </td>
+          <div className="flex items-center space-x-3">
+            <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
-                      {/* Platform Column */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center space-x-2">
-                          <PlatformIcon platform={account.platform} size="sm" />
-                          <span className="text-sm text-gray-900 capitalize">{account.platform}</span>
-                        </div>
-                      </td>
-
-                      {/* Last Post Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {account.lastSynced ? formatDate(account.lastSynced) : 'Never'}
-                      </td>
-
-                      {/* Followers Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {account.followerCount ? formatNumber(account.followerCount) : 'N/A'}
-                      </td>
-
-                      {/* Posts Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatNumber(account.totalVideos)}
-                      </td>
-
-                      {/* Views Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {formatNumber(account.totalViews)}
-                      </td>
-
-                      {/* Likes Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatNumber(account.totalLikes)}
-                      </td>
-
-                      {/* Comments Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatNumber(account.totalComments)}
-                      </td>
-
-                      {/* Actions Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end space-x-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRefreshProfile(account.id);
-                            }}
-                            disabled={isRefreshingProfile === account.id}
-                            className="text-gray-400 hover:text-green-600 transition-colors disabled:animate-spin"
-                            title="Refresh profile"
-                          >
-                            <User className="w-4 h-4" />
-                          </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSyncAccount(account.id);
-                        }}
-                        disabled={isSyncing === account.id}
-                            className="text-gray-400 hover:text-blue-600 transition-colors disabled:animate-spin"
-                            title="Sync videos"
+      {/* Main Content */}
+      {viewMode === 'table' ? (
+        /* Accounts Table */
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          {accounts.length === 0 ? (
+            <div className="p-12 text-center">
+              <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Users className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No accounts tracked yet</h3>
+              <p className="text-gray-500 mb-6">
+                Start tracking Instagram or TikTok accounts to monitor their content performance
+              </p>
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="font-medium">Track Account</span>
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Username
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Platform
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Last post
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Followers
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Posts
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Views
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Likes
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Comments
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {accounts
+                    .filter(account => 
+                      searchQuery === '' || 
+                      account.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      account.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
+                    )
+                    .map((account) => (
+                      <tr 
+                        key={account.id}
+                        className={clsx(
+                          'hover:bg-gray-50 transition-colors cursor-pointer',
+                          {
+                            'bg-blue-50': selectedAccount?.id === account.id,
+                          }
+                        )}
+                        onClick={() => setSelectedAccount(account)}
                       >
-                        <RefreshCw className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveAccount(account.id);
-                        }}
-                            className="text-gray-400 hover:text-red-600 transition-colors"
-                            title="Remove account"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                          <button className="text-gray-400 hover:text-gray-600 transition-colors">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                }
-              </tbody>
-            </table>
+                        {/* Username Column */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center space-x-3">
+                            <div className="relative">
+                              {account.profilePicture ? (
+                                <img
+                                  src={account.profilePicture}
+                                  alt={`@${account.username}`}
+                                  className="w-10 h-10 rounded-full object-cover"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    const fallback = target.nextElementSibling as HTMLElement;
+                                    if (fallback) fallback.classList.remove('hidden');
+                                  }}
+                                />
+                              ) : null}
+                              <div className={`w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center ${account.profilePicture ? 'hidden' : ''}`}>
+                                <Users className="w-5 h-5 text-gray-500" />
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {account.displayName || account.username}
+                              </div>
+                              <div className="text-sm text-gray-500">@{account.username}</div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Platform Column */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center space-x-2">
+                            <PlatformIcon platform={account.platform} size="sm" />
+                            <span className="text-sm text-gray-900 capitalize">{account.platform}</span>
+                          </div>
+                        </td>
+
+                        {/* Last Post Column */}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {account.lastSynced ? formatDate(account.lastSynced) : 'Never'}
+                        </td>
+
+                        {/* Followers Column */}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {account.followerCount ? formatNumber(account.followerCount) : 'N/A'}
+                        </td>
+
+                        {/* Posts Column */}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {formatNumber(account.totalVideos)}
+                        </td>
+
+                        {/* Views Column */}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {formatNumber(account.totalViews)}
+                        </td>
+
+                        {/* Likes Column */}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {formatNumber(account.totalLikes)}
+                        </td>
+
+                        {/* Comments Column */}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {formatNumber(account.totalComments)}
+                        </td>
+
+                        {/* Actions Column */}
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex items-center justify-end space-x-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRefreshProfile(account.id);
+                              }}
+                              disabled={isRefreshingProfile === account.id}
+                              className="text-gray-400 hover:text-green-600 transition-colors disabled:animate-spin"
+                              title="Refresh profile"
+                            >
+                              <User className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSyncAccount(account.id);
+                              }}
+                              disabled={isSyncing === account.id}
+                              className="text-gray-400 hover:text-blue-600 transition-colors disabled:animate-spin"
+                              title="Sync videos"
+                            >
+                              <RefreshCw className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveAccount(account.id);
+                              }}
+                              className="text-gray-400 hover:text-red-600 transition-colors"
+                              title="Remove account"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <button className="text-gray-400 hover:text-gray-600 transition-colors">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  }
+                </tbody>
+              </table>
             </div>
           )}
-      </div>
+        </div>
+      ) : (
+        /* Account Details View */
+        selectedAccount && (
+          <div className="space-y-6">
+            {/* Account Profile Card */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+              <div className="flex items-center space-x-6">
+                <div className="relative">
+                  {selectedAccount.profilePicture ? (
+                    <img
+                      src={selectedAccount.profilePicture}
+                      alt={`@${selectedAccount.username}`}
+                      className="w-24 h-24 rounded-2xl object-cover border-4 border-gray-100"
+                    />
+                  ) : (
+                    <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center border-4 border-gray-100">
+                      <Users className="w-12 h-12 text-gray-500" />
+                    </div>
+                  )}
+                  <div className="absolute -bottom-2 -right-2">
+                    <PlatformIcon platform={selectedAccount.platform} size="lg" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    {selectedAccount.displayName || `@${selectedAccount.username}`}
+                  </h2>
+                  <div className="flex items-center space-x-6 text-sm text-gray-600">
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="w-4 h-4" />
+                      <span>Joined {formatDate(selectedAccount.dateAdded)}</span>
+                    </div>
+                    {selectedAccount.followerCount && (
+                      <div>
+                        <span className="font-semibold">{formatNumber(selectedAccount.followerCount)}</span> followers
+                      </div>
+                    )}
+                    <div className={clsx(
+                      'flex items-center space-x-2',
+                      selectedAccount.isActive ? 'text-green-600' : 'text-red-600'
+                    )}>
+                      <div className={clsx(
+                        'w-2 h-2 rounded-full',
+                        selectedAccount.isActive ? 'bg-green-500' : 'bg-red-500'
+                      )}></div>
+                      <span>{selectedAccount.isActive ? 'Active' : 'Paused'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-8">
+                <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
+                  <div className="text-3xl font-bold text-blue-600 mb-1">{formatNumber(selectedAccount.totalVideos)}</div>
+                  <div className="text-sm font-medium text-blue-700">Videos</div>
+                </div>
+                <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl">
+                  <div className="text-3xl font-bold text-green-600 mb-1">{formatNumber(selectedAccount.totalViews)}</div>
+                  <div className="text-sm font-medium text-green-700">Views</div>
+                </div>
+                <div className="text-center p-4 bg-gradient-to-br from-red-50 to-red-100 rounded-xl">
+                  <div className="text-3xl font-bold text-red-600 mb-1">{formatNumber(selectedAccount.totalLikes)}</div>
+                  <div className="text-sm font-medium text-red-700">Likes</div>
+                </div>
+                <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl">
+                  <div className="text-3xl font-bold text-purple-600 mb-1">{formatNumber(selectedAccount.totalComments)}</div>
+                  <div className="text-sm font-medium text-purple-700">Comments</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Videos Grid */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">Recent Videos</h3>
+                <p className="text-gray-500">{accountVideos.length} videos</p>
+              </div>
+              
+              {accountVideos.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {accountVideos.map((video) => (
+                    <div key={video.id} className="group cursor-pointer">
+                      <div className="relative bg-gray-100 rounded-xl overflow-hidden aspect-[9/16] mb-3">
+                        {video.thumbnail ? (
+                          <img 
+                            src={video.thumbnail} 
+                            alt="Video thumbnail" 
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Play className="w-12 h-12 text-gray-400" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
+                          <Play className="w-12 h-12 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                        </div>
+                        {video.duration && (
+                          <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                            {Math.floor(video.duration / 60)}:{Math.floor(video.duration % 60).toString().padStart(2, '0')}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-gray-900 line-clamp-2">
+                          {video.caption || 'No caption'}
+                        </p>
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <div className="flex items-center space-x-4">
+                            <div className="flex items-center space-x-1">
+                              <Eye className="w-3 h-3" />
+                              <span>{formatNumber(video.views)}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <Heart className="w-3 h-3" />
+                              <span>{formatNumber(video.likes)}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <MessageCircle className="w-3 h-3" />
+                              <span>{formatNumber(video.comments)}</span>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => window.open(video.url, '_blank')}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-blue-600 transition-all"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <p className="text-xs text-gray-400">
+                          {formatDate(video.uploadDate)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <Play className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <h4 className="text-lg font-medium text-gray-900 mb-2">No videos synced</h4>
+                  <p className="text-gray-500 mb-6">
+                    Click "Sync Videos" to fetch all videos from this account
+                  </p>
+                  <button
+                    onClick={() => handleSyncAccount(selectedAccount.id)}
+                    disabled={isSyncing === selectedAccount.id}
+                    className="inline-flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw className={clsx('w-4 h-4', { 'animate-spin': isSyncing === selectedAccount.id })} />
+                    <span>{isSyncing === selectedAccount.id ? 'Syncing...' : 'Sync Videos'}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      )}
 
 
       {/* Add Account Modal */}

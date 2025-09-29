@@ -3,6 +3,8 @@ import { VideoSubmission } from '../types';
 class LocalStorageService {
   private readonly SUBMISSIONS_KEY = 'instagram_submissions';
   private readonly THUMBNAILS_KEY_PREFIX = 'thumbnail_';
+  private readonly PROFILE_PICS_KEY_PREFIX = 'profile_pic_';
+  private readonly ACCOUNT_VIDEOS_KEY_PREFIX = 'account_videos_';
 
   // Save all submissions to localStorage
   saveSubmissions(submissions: VideoSubmission[]): void {
@@ -133,16 +135,111 @@ class LocalStorageService {
     }
   }
 
+  // Save profile picture data
+  saveProfilePicture(accountId: string, profilePicData: string): void {
+    try {
+      const key = `${this.PROFILE_PICS_KEY_PREFIX}${accountId}`;
+      localStorage.setItem(key, profilePicData);
+      console.log('👤 Profile picture saved for account:', accountId);
+    } catch (error) {
+      console.warn('⚠️ Could not save profile picture (probably too large):', error);
+    }
+  }
+
+  // Load profile picture data
+  loadProfilePicture(accountId: string): string | null {
+    try {
+      const key = `${this.PROFILE_PICS_KEY_PREFIX}${accountId}`;
+      const profilePic = localStorage.getItem(key);
+      if (profilePic) {
+        console.log('📱 Loaded profile picture from localStorage for:', accountId);
+        return profilePic;
+      }
+    } catch (error) {
+      console.warn('⚠️ Could not load profile picture from localStorage:', error);
+    }
+    return null;
+  }
+
+  // Remove profile picture data
+  removeProfilePicture(accountId: string): void {
+    try {
+      const key = `${this.PROFILE_PICS_KEY_PREFIX}${accountId}`;
+      localStorage.removeItem(key);
+      console.log('🗑️ Removed profile picture for account:', accountId);
+    } catch (error) {
+      console.warn('⚠️ Could not remove profile picture:', error);
+    }
+  }
+
+  // Save account videos data
+  saveAccountVideos(accountId: string, videos: any[]): void {
+    try {
+      const key = `${this.ACCOUNT_VIDEOS_KEY_PREFIX}${accountId}`;
+      const serializedData = JSON.stringify(videos, (_key, value) => {
+        // Convert Date objects to ISO strings for serialization
+        if (value instanceof Date) {
+          return value.toISOString();
+        }
+        return value;
+      });
+      localStorage.setItem(key, serializedData);
+      console.log('💾 Account videos saved for:', accountId, '(', videos.length, 'videos)');
+    } catch (error) {
+      console.error('❌ Failed to save account videos:', error);
+    }
+  }
+
+  // Load account videos data
+  loadAccountVideos(accountId: string): any[] {
+    try {
+      const key = `${this.ACCOUNT_VIDEOS_KEY_PREFIX}${accountId}`;
+      const data = localStorage.getItem(key);
+      
+      if (!data) {
+        console.log('📭 No saved videos found for account:', accountId);
+        return [];
+      }
+
+      const videos = JSON.parse(data, (key, value) => {
+        // Convert ISO strings back to Date objects
+        if (key === 'uploadDate' && typeof value === 'string') {
+          return new Date(value);
+        }
+        return value;
+      });
+
+      console.log('✅ Loaded account videos from localStorage:', accountId, '(', videos.length, 'videos)');
+      return videos;
+    } catch (error) {
+      console.error('❌ Failed to load account videos:', error);
+      return [];
+    }
+  }
+
+  // Remove account videos data
+  removeAccountVideos(accountId: string): void {
+    try {
+      const key = `${this.ACCOUNT_VIDEOS_KEY_PREFIX}${accountId}`;
+      localStorage.removeItem(key);
+      console.log('🗑️ Removed videos for account:', accountId);
+    } catch (error) {
+      console.warn('⚠️ Could not remove account videos:', error);
+    }
+  }
+
   // Clear all saved data
   clearAllData(): void {
     try {
       // Remove submissions
       localStorage.removeItem(this.SUBMISSIONS_KEY);
       
-      // Remove all thumbnails
+      // Remove all thumbnails, profile pictures, and account videos
       const keys = Object.keys(localStorage);
       keys.forEach(key => {
-        if (key.startsWith(this.THUMBNAILS_KEY_PREFIX)) {
+        if (key.startsWith(this.THUMBNAILS_KEY_PREFIX) || 
+            key.startsWith(this.PROFILE_PICS_KEY_PREFIX) ||
+            key.startsWith(this.ACCOUNT_VIDEOS_KEY_PREFIX)) {
           localStorage.removeItem(key);
         }
       });

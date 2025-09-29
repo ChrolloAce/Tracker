@@ -1,8 +1,8 @@
 import { TrackedAccount, AccountVideo } from '../types/accounts';
+import LocalStorageService from './LocalStorageService';
 
 export class AccountTrackingService {
   private static readonly ACCOUNTS_STORAGE_KEY = 'tracked_accounts';
-  private static readonly ACCOUNT_VIDEOS_STORAGE_KEY = 'account_videos';
 
   // Get all tracked accounts
   static getTrackedAccounts(): TrackedAccount[] {
@@ -10,11 +10,18 @@ export class AccountTrackingService {
       const stored = localStorage.getItem(this.ACCOUNTS_STORAGE_KEY);
       if (!stored) return [];
       
-      return JSON.parse(stored).map((account: any) => ({
-        ...account,
-        dateAdded: new Date(account.dateAdded),
-        lastSynced: account.lastSynced ? new Date(account.lastSynced) : undefined,
-      }));
+      return JSON.parse(stored).map((account: any) => {
+        // Try to load locally stored profile picture
+        const localProfilePic = LocalStorageService.loadProfilePicture(account.username);
+        
+        return {
+          ...account,
+          dateAdded: new Date(account.dateAdded),
+          lastSynced: account.lastSynced ? new Date(account.lastSynced) : undefined,
+          // Use local profile picture if available, otherwise use stored URL
+          profilePicture: localProfilePic || account.profilePicture,
+        };
+      });
     } catch (error) {
       console.error('Failed to load tracked accounts:', error);
       return [];
@@ -724,33 +731,12 @@ export class AccountTrackingService {
 
   // Get videos for a specific account
   static getAccountVideos(accountId: string): AccountVideo[] {
-    try {
-      const stored = localStorage.getItem(`${this.ACCOUNT_VIDEOS_STORAGE_KEY}_${accountId}`);
-      if (!stored) return [];
-      
-      return JSON.parse(stored).map((video: any) => ({
-        ...video,
-        uploadDate: new Date(video.uploadDate),
-      }));
-    } catch (error) {
-      console.error('Failed to load account videos:', error);
-      return [];
-    }
+    return LocalStorageService.loadAccountVideos(accountId);
   }
 
   // Save videos for a specific account
   private static saveAccountVideos(accountId: string, videos: AccountVideo[]): void {
-    try {
-      const serialized = JSON.stringify(videos, (_key, value) => {
-        if (value instanceof Date) {
-          return value.toISOString();
-        }
-        return value;
-      });
-      localStorage.setItem(`${this.ACCOUNT_VIDEOS_STORAGE_KEY}_${accountId}`, serialized);
-    } catch (error) {
-      console.error('Failed to save account videos:', error);
-    }
+    LocalStorageService.saveAccountVideos(accountId, videos);
   }
 
   // Remove account
@@ -760,8 +746,9 @@ export class AccountTrackingService {
       const accounts = this.getTrackedAccounts().filter(a => a.id !== accountId);
       this.saveTrackedAccounts(accounts);
 
-      // Remove videos data
-      localStorage.removeItem(`${this.ACCOUNT_VIDEOS_STORAGE_KEY}_${accountId}`);
+      // Remove videos data and profile picture
+      LocalStorageService.removeAccountVideos(accountId);
+      LocalStorageService.removeProfilePicture(accountId);
       
       console.log(`✅ Removed account ${accountId}`);
     } catch (error) {
@@ -911,11 +898,17 @@ export class AccountTrackingService {
       const result = await response.json();
       
       if (result.success && result.dataUrl) {
-        // Store in localStorage with a unique key
-        const storageKey = `thumbnail_${identifier}`;
-        localStorage.setItem(storageKey, result.dataUrl);
+        // Store using LocalStorageService based on identifier type
+        if (identifier.startsWith('profile_')) {
+          // This is a profile picture - extract account identifier
+          const accountIdentifier = identifier.replace('profile_', '');
+          LocalStorageService.saveProfilePicture(accountIdentifier, result.dataUrl);
+        } else {
+          // This is a video thumbnail
+          LocalStorageService.saveThumbnail(identifier, result.dataUrl);
+        }
 
-        console.log(`✅ Downloaded and stored thumbnail via proxy: ${identifier}`);
+        console.log(`✅ Downloaded and stored image via proxy: ${identifier}`);
         return result.dataUrl;
       } else {
         throw new Error(result.error || 'Proxy download failed');
@@ -931,12 +924,13 @@ export class AccountTrackingService {
 
   // Load thumbnail from localStorage
   static loadThumbnail(identifier: string): string | null {
-    try {
-      const storageKey = `thumbnail_${identifier}`;
-      return localStorage.getItem(storageKey);
-    } catch (error) {
-      console.error('Failed to load thumbnail:', error);
-      return null;
+    if (identifier.startsWith('profile_')) {
+      // This is a profile picture - extract account identifier
+      const accountIdentifier = identifier.replace('profile_', '');
+      return LocalStorageService.loadProfilePicture(accountIdentifier);
+    } else {
+      // This is a video thumbnail
+      return LocalStorageService.loadThumbnail(identifier);
     }
   }
 }
