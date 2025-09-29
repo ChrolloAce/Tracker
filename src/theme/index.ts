@@ -145,21 +145,6 @@ export const theme = {
     xl: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
     '2xl': '0 25px 50px -12px rgb(0 0 0 / 0.25)',
     card: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
-    
-    // Glassmorphism shadows
-    glass: {
-      light: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
-      medium: '0 8px 32px 0 rgba(31, 38, 135, 0.5)',
-      heavy: '0 8px 32px 0 rgba(31, 38, 135, 0.7)',
-      colored: '0 8px 32px 0 rgba(59, 130, 246, 0.15)',
-    },
-    
-    // Inner shadows for glass effects
-    inner: {
-      light: 'inset 0 2px 4px 0 rgba(255, 255, 255, 0.1)',
-      medium: 'inset 0 2px 4px 0 rgba(255, 255, 255, 0.2)',
-      heavy: 'inset 0 2px 4px 0 rgba(255, 255, 255, 0.3)',
-    }
   },
   
   layout: {
@@ -186,48 +171,6 @@ export const theme = {
       default: 'cubic-bezier(0.4, 0, 0.2, 1)',
       smooth: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
     }
-  },
-
-  // Glassmorphism effects
-  glass: {
-    // Background colors with transparency
-    backgrounds: {
-      light: 'rgba(255, 255, 255, 0.25)',
-      medium: 'rgba(255, 255, 255, 0.18)',
-      heavy: 'rgba(255, 255, 255, 0.1)',
-      dark: 'rgba(0, 0, 0, 0.1)',
-      primary: 'rgba(59, 130, 246, 0.1)',
-      success: 'rgba(34, 197, 94, 0.1)',
-      warning: 'rgba(245, 158, 11, 0.1)',
-      error: 'rgba(239, 68, 68, 0.1)',
-    },
-    
-    // Border colors with transparency
-    borders: {
-      light: 'rgba(255, 255, 255, 0.18)',
-      medium: 'rgba(255, 255, 255, 0.3)',
-      heavy: 'rgba(255, 255, 255, 0.5)',
-      primary: 'rgba(59, 130, 246, 0.3)',
-      success: 'rgba(34, 197, 94, 0.3)',
-      warning: 'rgba(245, 158, 11, 0.3)',
-      error: 'rgba(239, 68, 68, 0.3)',
-    },
-    
-    // Backdrop blur values
-    blur: {
-      sm: 'blur(4px)',
-      md: 'blur(8px)',
-      lg: 'blur(16px)',
-      xl: 'blur(24px)',
-    },
-    
-    // Gradient overlays
-    gradients: {
-      primary: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(29, 78, 216, 0.05) 100%)',
-      secondary: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.05) 100%)',
-      neutral: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)',
-      dark: 'linear-gradient(135deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.05) 100%)',
-    }
   }
 } as const;
 
@@ -246,23 +189,6 @@ export const cssVariables = {
   '--radius-default': theme.borderRadius.lg,
   '--sidebar-width': theme.layout.sidebar.width,
   '--header-height': theme.layout.header.height,
-  
-  // Glassmorphism variables
-  '--glass-bg-light': theme.glass.backgrounds.light,
-  '--glass-bg-medium': theme.glass.backgrounds.medium,
-  '--glass-bg-heavy': theme.glass.backgrounds.heavy,
-  '--glass-bg-primary': theme.glass.backgrounds.primary,
-  '--glass-border-light': theme.glass.borders.light,
-  '--glass-border-medium': theme.glass.borders.medium,
-  '--glass-border-primary': theme.glass.borders.primary,
-  '--glass-shadow-light': theme.shadows.glass.light,
-  '--glass-shadow-medium': theme.shadows.glass.medium,
-  '--glass-shadow-colored': theme.shadows.glass.colored,
-  '--glass-blur-sm': theme.glass.blur.sm,
-  '--glass-blur-md': theme.glass.blur.md,
-  '--glass-blur-lg': theme.glass.blur.lg,
-  '--glass-gradient-primary': theme.glass.gradients.primary,
-  '--glass-gradient-neutral': theme.glass.gradients.neutral,
 } as const;
 
 // Utility functions

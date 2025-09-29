@@ -134,10 +134,10 @@ const Sidebar: React.FC<SidebarProps> = ({
       <button
         onClick={item.onClick}
         className={clsx(
-          'w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 group',
+          'w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group',
           {
-            'glass-button-primary border-r-2 border-blue-600': item.isActive,
-            'glass-button text-gray-600 hover:text-gray-900': !item.isActive,
+            'bg-blue-50 text-blue-700 border-r-2 border-blue-600': item.isActive,
+            'text-gray-600 hover:text-gray-900 hover:bg-gray-50': !item.isActive,
           }
         )}
       >
@@ -166,7 +166,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <div className={clsx(
-      'fixed left-0 top-0 flex flex-col h-screen glass-sidebar transition-all duration-300 z-30',
+      'fixed left-0 top-0 flex flex-col h-screen bg-white border-r border-gray-200 transition-all duration-300 z-30',
       {
         'w-64': !isCollapsed,
         'w-16': isCollapsed,

@@ -24,14 +24,14 @@ export const Modal: React.FC<ModalProps> = ({
       <div className="flex min-h-screen items-center justify-center p-4">
         {/* Backdrop */}
         <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm transition-all duration-300"
+          className="fixed inset-0 bg-black bg-opacity-25 transition-opacity"
           onClick={onClose}
         />
         
         {/* Modal */}
         <div 
           className={clsx(
-            'relative w-full max-w-md transform glass-modal p-6 transition-all duration-300 animate-scale-in',
+            'relative w-full max-w-md transform overflow-hidden rounded-lg bg-white p-6 shadow-xl transition-all',
             className
           )}
         >
@@ -42,7 +42,7 @@ export const Modal: React.FC<ModalProps> = ({
             </h3>
             <button
               onClick={onClose}
-              className="glass-button p-2 text-gray-400 hover:text-gray-600 transition-all duration-300 hover:scale-110"
+              className="rounded-md p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
             >
               <X className="h-5 w-5" />
             </button>

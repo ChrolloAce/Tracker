@@ -9,7 +9,8 @@ import {
   RefreshCw,
   Trash2,
   Play,
-  ExternalLink
+  ExternalLink,
+  User
 } from 'lucide-react';
 import { TrackedAccount, AccountVideo } from '../types/accounts';
 import { AccountTrackingService } from '../services/AccountTrackingService';
@@ -22,6 +23,7 @@ const AccountsPage: React.FC = () => {
   const [accountVideos, setAccountVideos] = useState<AccountVideo[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState<string | null>(null);
+  const [isRefreshingProfile, setIsRefreshingProfile] = useState<string | null>(null);
   const [newAccountUsername, setNewAccountUsername] = useState('');
   const [newAccountPlatform, setNewAccountPlatform] = useState<'instagram' | 'tiktok'>('instagram');
 
@@ -94,6 +96,30 @@ const AccountsPage: React.FC = () => {
     }
   }, [selectedAccount]);
 
+  const handleRefreshProfile = useCallback(async (accountId: string) => {
+    setIsRefreshingProfile(accountId);
+    try {
+      const updatedAccount = await AccountTrackingService.refreshAccountProfile(accountId);
+      
+      if (updatedAccount) {
+        // Update accounts list
+        setAccounts(prev => prev.map(a => a.id === accountId ? updatedAccount : a));
+        
+        // Update selected account if it's the one being refreshed
+        if (selectedAccount?.id === accountId) {
+          setSelectedAccount(updatedAccount);
+        }
+      }
+      
+      console.log(`✅ Refreshed profile for account`);
+    } catch (error) {
+      console.error('Profile refresh failed:', error);
+      alert('Profile refresh failed. Please try again.');
+    } finally {
+      setIsRefreshingProfile(null);
+    }
+  }, [selectedAccount]);
+
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
       return `${(num / 1000000).toFixed(1)}M`;
@@ -157,7 +183,7 @@ const AccountsPage: React.FC = () => {
                         <img
                           src={account.profilePicture}
                           alt={`@${account.username}`}
-                          className="w-10 h-10 rounded-full object-cover"
+                          className="w-10 h-10 rounded-full object-cover border border-gray-200"
                           onError={(e) => {
                             // Fallback to default avatar if image fails to load
                             const target = e.target as HTMLImageElement;
@@ -165,10 +191,16 @@ const AccountsPage: React.FC = () => {
                             const fallback = target.nextElementSibling as HTMLElement;
                             if (fallback) fallback.classList.remove('hidden');
                           }}
+                          onLoad={(e) => {
+                            // Hide fallback when image loads successfully
+                            const target = e.target as HTMLImageElement;
+                            const fallback = target.nextElementSibling as HTMLElement;
+                            if (fallback) fallback.classList.add('hidden');
+                          }}
                         />
                       ) : null}
-                      <div className={`w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center ${account.profilePicture ? 'hidden' : ''}`}>
-                        <Users className="w-5 h-5 text-gray-400" />
+                      <div className={`w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center ${account.profilePicture ? 'hidden' : ''}`}>
+                        <Users className="w-5 h-5 text-gray-500" />
                       </div>
                       <div className="absolute -bottom-1 -right-1">
                         <PlatformIcon platform={account.platform} size="sm" />
@@ -194,7 +226,18 @@ const AccountsPage: React.FC = () => {
                         </p>
                       )}
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRefreshProfile(account.id);
+                        }}
+                        disabled={isRefreshingProfile === account.id}
+                        className="p-1 text-gray-400 hover:text-green-600 disabled:animate-spin"
+                        title="Refresh profile picture and info"
+                      >
+                        <User className="w-4 h-4" />
+                      </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -202,6 +245,7 @@ const AccountsPage: React.FC = () => {
                         }}
                         disabled={isSyncing === account.id}
                         className="p-1 text-gray-400 hover:text-blue-600 disabled:animate-spin"
+                        title="Sync videos"
                       >
                         <RefreshCw className="w-4 h-4" />
                       </button>
@@ -211,6 +255,7 @@ const AccountsPage: React.FC = () => {
                           handleRemoveAccount(account.id);
                         }}
                         className="p-1 text-gray-400 hover:text-red-600"
+                        title="Remove account"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -244,11 +289,31 @@ const AccountsPage: React.FC = () => {
             <div className="space-y-6">
               {/* Account Stats */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center space-x-4">
                     <div className="relative">
-                      <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
-                        <Users className="w-8 h-8 text-gray-400" />
+                      {selectedAccount.profilePicture ? (
+                        <img
+                          src={selectedAccount.profilePicture}
+                          alt={`@${selectedAccount.username}`}
+                          className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
+                          onError={(e) => {
+                            // Fallback to default avatar if image fails to load
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const fallback = target.nextElementSibling as HTMLElement;
+                            if (fallback) fallback.classList.remove('hidden');
+                          }}
+                          onLoad={(e) => {
+                            // Hide fallback when image loads successfully
+                            const target = e.target as HTMLImageElement;
+                            const fallback = target.nextElementSibling as HTMLElement;
+                            if (fallback) fallback.classList.add('hidden');
+                          }}
+                        />
+                      ) : null}
+                      <div className={`w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center ${selectedAccount.profilePicture ? 'hidden' : ''}`}>
+                        <Users className="w-8 h-8 text-gray-500" />
                       </div>
                       <div className="absolute -bottom-1 -right-1">
                         <PlatformIcon platform={selectedAccount.platform} size="md" />
@@ -268,14 +333,24 @@ const AccountsPage: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleSyncAccount(selectedAccount.id)}
-                    disabled={isSyncing === selectedAccount.id}
-                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                  >
-                    <RefreshCw className={clsx('w-4 h-4', { 'animate-spin': isSyncing === selectedAccount.id })} />
-                    <span>{isSyncing === selectedAccount.id ? 'Syncing...' : 'Sync Videos'}</span>
-                  </button>
+                  <div className="flex items-center space-x-3">
+                    <button
+                      onClick={() => handleRefreshProfile(selectedAccount.id)}
+                      disabled={isRefreshingProfile === selectedAccount.id}
+                      className="flex items-center space-x-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                    >
+                      <User className={clsx('w-4 h-4', { 'animate-spin': isRefreshingProfile === selectedAccount.id })} />
+                      <span>{isRefreshingProfile === selectedAccount.id ? 'Refreshing...' : 'Refresh Profile'}</span>
+                    </button>
+                    <button
+                      onClick={() => handleSyncAccount(selectedAccount.id)}
+                      disabled={isSyncing === selectedAccount.id}
+                      className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                    >
+                      <RefreshCw className={clsx('w-4 h-4', { 'animate-spin': isSyncing === selectedAccount.id })} />
+                      <span>{isSyncing === selectedAccount.id ? 'Syncing...' : 'Sync Videos'}</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Stats Grid */}

@@ -181,9 +181,9 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   };
 
   return (
-    <div className="glass-table overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
       {/* Table Header */}
-      <div className="px-6 py-5 border-b border-white/20 glass-light">
+      <div className="px-6 py-5 border-b border-gray-100 bg-gray-50/50">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>

@@ -87,9 +87,107 @@ export class AccountTrackingService {
   // Fetch Instagram profile data
   private static async fetchInstagramProfile(username: string) {
     try {
-      // Use Instagram API to fetch profile data
-      // This would use the Instagram scraper to get profile info
-      // For now, return basic structure
+      console.log(`🔄 Fetching Instagram profile for @${username}...`);
+      
+      // Call the Apify proxy to get profile data
+      const proxyUrl = `${window.location.origin}/api/apify-proxy`;
+      
+      const response = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actorId: 'apify~instagram-scraper',
+          input: {
+            directUrls: [`https://www.instagram.com/${username}/`],
+            resultsType: 'posts',
+            resultsLimit: 50, // Get more posts to increase chance of getting profile data
+            addParentData: true, // This helps get profile info
+            searchType: 'user',
+            scrollWaitSecs: 2,
+            pageTimeout: 60
+          },
+          action: 'run'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log(`📊 Instagram profile API response:`, result);
+
+      if (!result.items || !Array.isArray(result.items) || result.items.length === 0) {
+        console.warn('No items found in Instagram profile response');
+        return {
+          displayName: username,
+          profilePicture: '',
+          followerCount: 0,
+          followingCount: 0,
+          postCount: 0,
+          bio: '',
+          isVerified: false,
+        };
+      }
+
+      // Extract profile information from the first item
+      const firstItem = result.items[0];
+      console.log('👤 Processing profile info from first item:', {
+        ownerFullName: firstItem.ownerFullName,
+        ownerUsername: firstItem.ownerUsername,
+        ownerId: firstItem.ownerId
+      });
+
+      // Try to get profile picture from various sources
+      let profilePictureUrl = '';
+      
+      // Method 1: Direct profile picture from item
+      if (firstItem.ownerProfilePicUrl) {
+        profilePictureUrl = firstItem.ownerProfilePicUrl;
+        console.log('📸 Found profile picture from owner data:', profilePictureUrl);
+      }
+      
+      // Method 2: Look in comments for profile owner's picture
+      if (!profilePictureUrl && firstItem.latestComments && Array.isArray(firstItem.latestComments)) {
+        for (const comment of firstItem.latestComments) {
+          if (comment.ownerUsername === username && comment.ownerProfilePicUrl) {
+            profilePictureUrl = comment.ownerProfilePicUrl;
+            console.log('📸 Found profile picture in comments:', profilePictureUrl);
+            break;
+          }
+        }
+      }
+
+      // Method 3: Look in all items for any profile picture reference
+      if (!profilePictureUrl) {
+        for (const item of result.items.slice(0, 10)) { // Check first 10 items
+          if (item.ownerProfilePicUrl) {
+            profilePictureUrl = item.ownerProfilePicUrl;
+            console.log('📸 Found profile picture in item:', item.shortCode, profilePictureUrl);
+            break;
+          }
+        }
+      }
+
+      // Download profile picture locally if found
+      let localProfilePicture = '';
+      if (profilePictureUrl) {
+        localProfilePicture = await this.downloadThumbnail(profilePictureUrl, `profile_${username}`) || '';
+        console.log('💾 Profile picture download result:', localProfilePicture ? 'Success' : 'Failed');
+      }
+
+      return {
+        displayName: firstItem.ownerFullName || username,
+        profilePicture: localProfilePicture,
+        followerCount: 0, // Instagram API doesn't provide this easily
+        followingCount: 0,
+        postCount: result.items.length, // Use the number of posts we found
+        bio: '',
+        isVerified: firstItem.isVerified || false,
+      };
+    } catch (error) {
+      console.error('Failed to fetch Instagram profile:', error);
+      // Return basic structure on error
       return {
         displayName: username,
         profilePicture: '',
@@ -99,17 +197,100 @@ export class AccountTrackingService {
         bio: '',
         isVerified: false,
       };
-    } catch (error) {
-      console.error('Failed to fetch Instagram profile:', error);
-      throw error;
     }
   }
 
   // Fetch TikTok profile data
   private static async fetchTikTokProfile(username: string) {
     try {
-      // Use TikTok API to fetch profile data
-      // For now, return basic structure
+      console.log(`🔄 Fetching TikTok profile for @${username}...`);
+      
+      // Call the Apify proxy to get profile data
+      const proxyUrl = `${window.location.origin}/api/apify-proxy`;
+      
+      const response = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actorId: 'clockworks~tiktok-scraper',
+          input: {
+            profiles: [username], // TikTok username without @
+            maxItems: 30, // Get more videos to increase chance of getting profile data
+            profileSections: ['Videos', 'Info'],
+            profileVideoSorting: 'Latest'
+          },
+          action: 'run'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log(`📊 TikTok profile API response:`, result);
+
+      if (!result.items || !Array.isArray(result.items) || result.items.length === 0) {
+        console.warn('No items found in TikTok profile response');
+        return {
+          displayName: username,
+          profilePicture: '',
+          followerCount: 0,
+          followingCount: 0,
+          postCount: 0,
+          bio: '',
+          isVerified: false,
+        };
+      }
+
+      // Look for profile information in the response
+      let profileInfo = null;
+      let videoCount = 0;
+      let profilePictureUrl = '';
+
+      // Check for profile data in items
+      for (const item of result.items) {
+        // Count videos
+        if (item.webVideoUrl || item.id) {
+          videoCount++;
+        }
+        
+        // Look for profile info
+        if (item.authorMeta || item.author) {
+          const author = item.authorMeta || item.author;
+          if (!profileInfo && author.name === username) {
+            profileInfo = author;
+            profilePictureUrl = author.avatar || author.profilePicture || '';
+            console.log('👤 Found TikTok profile info:', {
+              name: author.name,
+              displayName: author.displayName || author.nickname,
+              verified: author.verified,
+              hasAvatar: !!profilePictureUrl
+            });
+            break;
+          }
+        }
+      }
+
+      // Download profile picture locally if found
+      let localProfilePicture = '';
+      if (profilePictureUrl) {
+        localProfilePicture = await this.downloadThumbnail(profilePictureUrl, `profile_${username}`) || '';
+        console.log('💾 TikTok profile picture download result:', localProfilePicture ? 'Success' : 'Failed');
+      }
+
+      return {
+        displayName: profileInfo?.displayName || profileInfo?.nickname || username,
+        profilePicture: localProfilePicture,
+        followerCount: profileInfo?.fans || 0,
+        followingCount: profileInfo?.following || 0,
+        postCount: videoCount,
+        bio: profileInfo?.signature || '',
+        isVerified: profileInfo?.verified || false,
+      };
+    } catch (error) {
+      console.error('Failed to fetch TikTok profile:', error);
+      // Return basic structure on error
       return {
         displayName: username,
         profilePicture: '',
@@ -119,9 +300,6 @@ export class AccountTrackingService {
         bio: '',
         isVerified: false,
       };
-    } catch (error) {
-      console.error('Failed to fetch TikTok profile:', error);
-      throw error;
     }
   }
 
@@ -174,30 +352,30 @@ export class AccountTrackingService {
     try {
       console.log(`🔄 Fetching Instagram reels for @${account.username}...`);
       
-      // Try multiple approaches to get the best reel data
+      // Try multiple approaches to get the best reel data - prioritize comprehensive data collection
       const approachesToTry = [
+        {
+          type: 'comprehensive_profile',
+          input: {
+            directUrls: [`https://www.instagram.com/${account.username}/`],
+            resultsType: 'posts',
+            resultsLimit: 200, // Increased limit to get more videos
+            addParentData: true, // Include profile data
+            searchType: 'user',
+            scrollWaitSecs: 4, // Longer wait for more content to load
+            pageTimeout: 90 // Extended timeout for larger data sets
+          }
+        },
         {
           type: 'direct_reels',
           input: {
             directUrls: [`https://www.instagram.com/${account.username}/reels/`],
             resultsType: 'posts',
-            resultsLimit: 100,
-            addParentData: false,
+            resultsLimit: 150,
+            addParentData: true,
             searchType: 'user',
-            scrollWaitSecs: 3,
-            pageTimeout: 60
-          }
-        },
-        {
-          type: 'direct_profile',
-          input: {
-            directUrls: [`https://www.instagram.com/${account.username}/`],
-            resultsType: 'posts',
-            resultsLimit: 100,
-            addParentData: false,
-            searchType: 'user',
-            scrollWaitSecs: 3,
-            pageTimeout: 60
+            scrollWaitSecs: 4,
+            pageTimeout: 90
           }
         },
         {
@@ -205,9 +383,21 @@ export class AccountTrackingService {
           input: {
             usernames: [account.username],
             resultsType: 'posts',
-            resultsLimit: 100,
+            resultsLimit: 150,
+            addParentData: true,
+            scrollWaitSecs: 4,
+            pageTimeout: 90
+          }
+        },
+        {
+          type: 'fallback_profile',
+          input: {
+            directUrls: [`https://www.instagram.com/${account.username}/`],
+            resultsType: 'posts',
+            resultsLimit: 50, // Smaller fallback for reliability
             addParentData: false,
-            scrollWaitSecs: 3,
+            searchType: 'user',
+            scrollWaitSecs: 2,
             pageTimeout: 60
           }
         }
@@ -428,8 +618,8 @@ export class AccountTrackingService {
           actorId: 'clockworks~tiktok-scraper',
           input: {
             profiles: [account.username], // TikTok username without @
-            maxItems: 50, // Max 50 videos per account
-            profileSections: ['Videos'],
+            maxItems: 100, // Increased to get more videos per account
+            profileSections: ['Videos', 'Info'], // Include profile info
             profileVideoSorting: 'Latest'
           },
           action: 'run'
@@ -555,6 +745,47 @@ export class AccountTrackingService {
       }
     } catch (error) {
       console.error('Failed to toggle account status:', error);
+    }
+  }
+
+  // Refresh account profile data (useful for updating profile pictures and info)
+  static async refreshAccountProfile(accountId: string): Promise<TrackedAccount | null> {
+    try {
+      const accounts = this.getTrackedAccounts();
+      const account = accounts.find(a => a.id === accountId);
+      
+      if (!account) {
+        throw new Error('Account not found');
+      }
+
+      console.log(`🔄 Refreshing profile data for @${account.username} (${account.platform})`);
+
+      // Fetch fresh profile data
+      const profileData = await this.fetchAccountProfile(account.username, account.platform);
+      
+      // Update account with new profile data
+      const updatedAccount = {
+        ...account,
+        displayName: profileData.displayName || account.displayName,
+        profilePicture: profileData.profilePicture || account.profilePicture,
+        followerCount: profileData.followerCount || account.followerCount,
+        followingCount: profileData.followingCount || account.followingCount,
+        postCount: profileData.postCount || account.postCount,
+        bio: profileData.bio || account.bio,
+        isVerified: profileData.isVerified ?? account.isVerified,
+        lastSynced: new Date()
+      };
+
+      // Save updated account
+      const updatedAccounts = accounts.map(a => a.id === accountId ? updatedAccount : a);
+      this.saveTrackedAccounts(updatedAccounts);
+
+      console.log(`✅ Refreshed profile data for @${account.username}`);
+      return updatedAccount;
+
+    } catch (error) {
+      console.error('Failed to refresh account profile:', error);
+      throw error;
     }
   }
 
