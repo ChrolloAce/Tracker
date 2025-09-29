@@ -49,15 +49,35 @@ const MetricCard: React.FC<MetricCardProps> = ({
     return num.toString();
   };
 
+  // Normalize chart data to show trends better
+  // Use cumulative sum to show growth trajectory
+  const normalizedChartData = React.useMemo(() => {
+    let cumulative = 0;
+    return chartData.map(point => {
+      cumulative += point.value;
+      return {
+        ...point,
+        displayValue: cumulative,
+        originalValue: point.value
+      };
+    });
+  }, [chartData]);
+
   // Custom tooltip for the chart
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
+      const dataPoint = payload[0].payload;
       return (
         <div className="bg-white p-2 border border-gray-200 rounded-lg shadow-lg">
           <p className="text-sm font-medium text-gray-900">
-            {formatNumber(payload[0].value)}
+            {formatNumber(dataPoint.originalValue || payload[0].value)}
           </p>
           <p className="text-xs text-gray-500">{label}</p>
+          {dataPoint.displayValue && (
+            <p className="text-xs text-gray-400">
+              Total: {formatNumber(dataPoint.displayValue)}
+            </p>
+          )}
         </div>
       );
     }
@@ -133,11 +153,11 @@ const MetricCard: React.FC<MetricCardProps> = ({
         </div>
       </div>
 
-      {/* Enhanced Interactive Chart */}
+      {/* Enhanced Interactive Chart - Using cumulative data for better trend visibility */}
       <div className="h-16">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
-            data={chartData}
+            data={normalizedChartData}
             margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
           >
             <defs>
@@ -152,10 +172,14 @@ const MetricCard: React.FC<MetricCardProps> = ({
               tickLine={false}
               tick={false}
             />
-            <YAxis hide />
+            <YAxis 
+              hide 
+              domain={['dataMin', 'dataMax']}
+              scale="linear"
+            />
             <Area
               type="monotone"
-              dataKey="value"
+              dataKey="displayValue"
               stroke={colorClasses.stroke}
               strokeWidth={2}
               fill={`url(#areaGradient-${color})`}
@@ -217,12 +241,23 @@ export const AnalyticsCards: React.FC<AnalyticsCardsProps> = ({
     };
   }, [submissions, timePeriod]);
 
-  // Calculate period-over-period changes
+  // Calculate period-over-period changes (comparing recent activity vs older periods)
   const calculateChange = (data: { period: string; value: number }[]): number => {
     if (data.length < 2) return 0;
-    const current = data[data.length - 1].value;
-    const previous = data[data.length - 2].value;
-    return previous > 0 ? ((current - previous) / previous) * 100 : 0;
+    
+    // Compare the most recent period activity vs the overall average
+    const recentPeriodCount = Math.min(3, Math.floor(data.length / 3)); // Last 33% or 3 periods
+    const recentData = data.slice(-recentPeriodCount);
+    const olderData = data.slice(0, -recentPeriodCount);
+    
+    if (olderData.length === 0) return 0;
+    
+    const recentAverage = recentData.reduce((sum, p) => sum + p.value, 0) / recentData.length;
+    const olderAverage = olderData.reduce((sum, p) => sum + p.value, 0) / olderData.length;
+    
+    if (olderAverage === 0) return recentAverage > 0 ? 100 : 0;
+    
+    return ((recentAverage - olderAverage) / olderAverage) * 100;
   };
 
   const likesChange = calculateChange(chartData.likes);
