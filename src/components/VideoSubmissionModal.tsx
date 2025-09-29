@@ -161,7 +161,7 @@ export const VideoSubmissionModal: React.FC<VideoSubmissionModalProps> = ({
           </div>
 
           <div className="space-y-3">
-            {urlInputs.map((input, index) => (
+            {urlInputs.map((input) => (
               <div key={input.id} className="flex items-start space-x-2">
                 <div className="flex-1">
                   <input

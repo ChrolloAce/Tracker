@@ -240,16 +240,25 @@ export class AccountTrackingService {
           }
 
           const tempResult = await response.json();
+          console.log(`📋 Raw API response for ${approach.type}:`, {
+            hasItems: !!tempResult.items,
+            itemsLength: tempResult.items?.length || 0,
+            responseKeys: Object.keys(tempResult)
+          });
           
           if (tempResult.items && Array.isArray(tempResult.items) && tempResult.items.length > 0) {
             result = tempResult;
             usedApproach = approach.type;
             console.log(`✅ Success with ${approach.type}: ${tempResult.items.length} items`);
-            console.log(`📊 Item types found:`, tempResult.items.map((item: any) => ({
+            console.log(`📊 All items found:`, tempResult.items.map((item: any, index: number) => ({
+              index: index + 1,
               shortCode: item.shortCode,
               type: item.type,
               productType: item.productType,
-              hasVideo: !!(item.videoViewCount || item.videoPlayCount || item.videoDuration)
+              hasVideo: !!(item.videoViewCount || item.videoPlayCount || item.videoDuration),
+              videoViews: item.videoViewCount || item.videoPlayCount || 0,
+              videoDuration: item.videoDuration || 0,
+              hasVideoUrl: !!item.videoUrl
             })));
             break;
           } else {
@@ -328,12 +337,30 @@ export class AccountTrackingService {
           fields: Object.keys(item)
         });
         
-        // Only include videos/reels (skip photos and carousels without videos)
-        const isVideo = !!(item.videoViewCount || item.videoPlayCount || item.videoDuration);
-        const isReel = item.productType === 'clips' || item.type === 'Video';
+        // More inclusive filtering for videos/reels
+        const hasVideoMetrics = !!(item.videoViewCount || item.videoPlayCount);
+        const hasVideoDuration = !!(item.videoDuration && item.videoDuration > 0);
+        const isVideoType = item.type === 'Video';
+        const isReelProduct = item.productType === 'clips';
+        const hasVideoUrl = !!(item.videoUrl);
         
-        if (!isVideo && !isReel) {
-          console.log('⏭️ Skipping non-video post:', item.shortCode, 'Type:', item.type, 'ProductType:', item.productType);
+        // Include if it has any video indicators
+        const shouldInclude = hasVideoMetrics || hasVideoDuration || isVideoType || isReelProduct || hasVideoUrl;
+        
+        console.log('🔍 Video filtering check:', {
+          shortCode: item.shortCode,
+          type: item.type,
+          productType: item.productType,
+          hasVideoMetrics,
+          hasVideoDuration,
+          isVideoType,
+          isReelProduct,
+          hasVideoUrl,
+          shouldInclude
+        });
+        
+        if (!shouldInclude) {
+          console.log('⏭️ Skipping non-video post:', item.shortCode);
           continue;
         }
         
@@ -370,6 +397,13 @@ export class AccountTrackingService {
         accountVideos.push(accountVideo);
       }
 
+      console.log(`📊 Instagram sync summary for @${account.username}:`, {
+        totalItemsFromAPI: result.items.length,
+        videosProcessed: accountVideos.length,
+        filterRatio: `${accountVideos.length}/${result.items.length}`,
+        usedApproach: usedApproach
+      });
+      
       console.log(`✅ Fetched ${accountVideos.length} Instagram videos for @${account.username}`);
       return accountVideos;
 
