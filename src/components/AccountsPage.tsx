@@ -16,7 +16,7 @@ import {
   MessageCircle,
   ExternalLink,
   Calendar
-} from 'lucide-react';
+  } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis } from 'recharts';
 import { TrackedAccount, AccountVideo } from '../types/accounts';
 import { AccountTrackingService } from '../services/AccountTrackingService';
@@ -29,9 +29,6 @@ const AccountsPage: React.FC = () => {
   const [accountVideos, setAccountVideos] = useState<AccountVideo[]>([]);
   const [viewMode, setViewMode] = useState<'table' | 'details'>('table');
   const [timePeriod, setTimePeriod] = useState<'all' | 'weekly' | 'monthly' | 'daily'>('all');
-  const [platformFilter, setPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'youtube'>('all');
-  const [sortBy, setSortBy] = useState<'upload' | 'views' | 'likes' | 'comments' | 'engagement'>('upload');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState<string | null>(null);
   const [isRefreshingProfile, setIsRefreshingProfile] = useState<string | null>(null);
@@ -361,63 +358,6 @@ const AccountsPage: React.FC = () => {
     };
   };
 
-  // Handle sorting
-  const handleSort = (column: 'upload' | 'views' | 'likes' | 'comments' | 'engagement') => {
-    if (sortBy === column) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(column);
-      setSortOrder('desc');
-    }
-  };
-
-  // Filter and sort videos
-  const getFilteredAndSortedVideos = () => {
-    let filteredVideos = accountVideos;
-
-    // Apply platform filter
-    if (platformFilter !== 'all') {
-      // For now, since all videos in accountVideos are from the selected account,
-      // we only show videos if the selected account matches the platform filter
-      if (selectedAccount?.platform !== platformFilter) {
-        filteredVideos = [];
-      }
-    }
-
-    // Apply sorting
-    const sortedVideos = [...filteredVideos].sort((a, b) => {
-      let aValue: number;
-      let bValue: number;
-
-      switch (sortBy) {
-        case 'views':
-          aValue = a.views;
-          bValue = b.views;
-          break;
-        case 'likes':
-          aValue = a.likes;
-          bValue = b.likes;
-          break;
-        case 'comments':
-          aValue = a.comments;
-          bValue = b.comments;
-          break;
-        case 'engagement':
-          aValue = a.likes + a.comments;
-          bValue = b.likes + b.comments;
-          break;
-        default: // 'upload'
-          aValue = a.uploadDate.getTime();
-          bValue = b.uploadDate.getTime();
-          break;
-      }
-
-      return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
-    });
-
-    return sortedVideos;
-  };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -443,8 +383,8 @@ const AccountsPage: React.FC = () => {
                 ? `${accountVideos.length} videos • ${formatNumber(selectedAccount.totalViews)} total views • ${selectedAccount.platform}`
                 : 'View and analyze performance metrics for your tracked social media accounts'
               }
-          </p>
-        </div>
+            </p>
+          </div>
         </div>
         <div className="flex items-center space-x-3">
           {viewMode === 'details' && selectedAccount && (
@@ -473,7 +413,7 @@ const AccountsPage: React.FC = () => {
         >
           <Plus className="w-4 h-4" />
             <span className="font-medium">Track Account</span>
-        </button>
+          </button>
         </div>
       </div>
 
@@ -488,7 +428,7 @@ const AccountsPage: React.FC = () => {
           >
             ×
           </button>
-            </div>
+        </div>
       )}
 
       {/* Controls Bar - Only show in table mode */}
@@ -582,48 +522,48 @@ const AccountsPage: React.FC = () => {
                     )
                     .map((account) => (
                       <tr 
-                  key={account.id}
-                  className={clsx(
+                        key={account.id}
+                        className={clsx(
                           'hover:bg-gray-50 transition-colors cursor-pointer',
-                    {
+                          {
                             'bg-blue-50': selectedAccount?.id === account.id,
-                    }
-                  )}
+                          }
+                        )}
                         onClick={() => setSelectedAccount(account)}
-                >
+                      >
                         {/* Username Column */}
                         <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center space-x-3">
-                    <div className="relative">
-                      {account.profilePicture ? (
-                        <img
-                          src={account.profilePicture}
-                          alt={`@${account.username}`}
-                          className="w-10 h-10 rounded-full object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            const fallback = target.nextElementSibling as HTMLElement;
-                            if (fallback) fallback.classList.remove('hidden');
-                          }}
-                        />
-                      ) : null}
-                      <div className={`w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center ${account.profilePicture ? 'hidden' : ''}`}>
+                          <div className="flex items-center space-x-3">
+                            <div className="relative">
+                              {account.profilePicture ? (
+                                <img
+                                  src={account.profilePicture}
+                                  alt={`@${account.username}`}
+                                  className="w-10 h-10 rounded-full object-cover"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    const fallback = target.nextElementSibling as HTMLElement;
+                                    if (fallback) fallback.classList.remove('hidden');
+                                  }}
+                                />
+                              ) : null}
+                              <div className={`w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center ${account.profilePicture ? 'hidden' : ''}`}>
                                 <Users className="w-5 h-5 text-gray-500" />
-                      </div>
-                      </div>
+                              </div>
+                            </div>
                             <div>
                               <div className="text-sm font-medium text-gray-900">
                                 {account.displayName || account.username}
-                    </div>
+                              </div>
                               <div className="text-sm text-gray-500">@{account.username}</div>
-                      </div>
-                      </div>
+                            </div>
+                          </div>
                         </td>
 
                         {/* Platform Column */}
                         <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-2">
                             <PlatformIcon platform={account.platform} size="sm" />
                             <span className="text-sm text-gray-900 capitalize">{account.platform}</span>
                           </div>
@@ -673,40 +613,40 @@ const AccountsPage: React.FC = () => {
                             >
                               <User className="w-4 h-4" />
                             </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSyncAccount(account.id);
-                        }}
-                        disabled={isSyncing === account.id}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSyncAccount(account.id);
+                              }}
+                              disabled={isSyncing === account.id}
                               className="text-gray-400 hover:text-blue-600 transition-colors disabled:animate-spin"
                               title="Sync videos"
-                      >
-                        <RefreshCw className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveAccount(account.id);
-                        }}
+                            >
+                              <RefreshCw className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveAccount(account.id);
+                              }}
                               className="text-gray-400 hover:text-red-600 transition-colors"
                               title="Remove account"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                             <button className="text-gray-400 hover:text-gray-600 transition-colors">
                               <MoreHorizontal className="w-4 h-4" />
-                      </button>
-                    </div>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
                   }
                 </tbody>
               </table>
-                  </div>
+            </div>
           )}
-                </div>
+        </div>
       ) : (
         /* Account Details View */
         selectedAccount && (
@@ -768,7 +708,7 @@ const AccountsPage: React.FC = () => {
                   <p className="text-gray-600 mt-1">Track and analyze your video performance</p>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <button
+                  <button 
                     onClick={() => setTimePeriod('all')}
                     className={clsx(
                       'flex items-center space-x-2 px-4 py-2 border rounded-lg transition-colors',
@@ -813,8 +753,8 @@ const AccountsPage: React.FC = () => {
                   >
                     <span>Daily</span>
                   </button>
-            </div>
-          </div>
+                </div>
+              </div>
 
               {(() => {
                 const chartData = generateChartData(accountVideos, timePeriod);
@@ -836,12 +776,12 @@ const AccountsPage: React.FC = () => {
                         <button className="p-1 text-gray-400 hover:text-gray-600">
                           <MoreHorizontal className="w-4 h-4" />
                         </button>
-        </div>
-
+                      </div>
+                      
                       <div className="mb-4">
                         <div className="text-3xl font-bold text-gray-900 mb-1">
                           {formatNumber(selectedAccount.totalViews)}
-                      </div>
+                        </div>
                         <div className={clsx(
                           'flex items-center text-sm',
                           selectedAccount.totalViews >= metricsComparison.previous.views 
@@ -854,7 +794,7 @@ const AccountsPage: React.FC = () => {
                               metricsComparison.previous.views
                             )} {metricsComparison.periodLabel}
                           </span>
-                      </div>
+                        </div>
                       </div>
 
                       <div className="h-20">
@@ -887,8 +827,8 @@ const AccountsPage: React.FC = () => {
                         <div className="flex items-center space-x-3">
                           <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
                             <Heart className="w-6 h-6 text-green-600" />
-                    </div>
-                    <div>
+                          </div>
+                          <div>
                             <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">TOTAL LIKES</p>
                           </div>
                         </div>
@@ -912,9 +852,9 @@ const AccountsPage: React.FC = () => {
                               selectedAccount.totalLikes, 
                               metricsComparison.previous.likes
                             )} {metricsComparison.periodLabel}
-                        </span>
+                          </span>
+                        </div>
                       </div>
-                    </div>
 
                       <div className="h-20">
                         <ResponsiveContainer width="100%" height="100%">
@@ -937,8 +877,8 @@ const AccountsPage: React.FC = () => {
                             />
                           </AreaChart>
                         </ResponsiveContainer>
-                  </div>
-                </div>
+                      </div>
+                    </div>
 
                     {/* Total Comments Chart */}
                     <div className="bg-white border border-gray-100 rounded-2xl p-6">
@@ -946,20 +886,20 @@ const AccountsPage: React.FC = () => {
                         <div className="flex items-center space-x-3">
                           <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center">
                             <MessageCircle className="w-6 h-6 text-purple-600" />
-                  </div>
+                          </div>
                           <div>
                             <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">TOTAL COMMENTS</p>
-                  </div>
-                  </div>
+                          </div>
+                        </div>
                         <button className="p-1 text-gray-400 hover:text-gray-600">
                           <MoreHorizontal className="w-4 h-4" />
-                  </button>
-                  </div>
-
+                        </button>
+                      </div>
+                      
                       <div className="mb-4">
                         <div className="text-3xl font-bold text-gray-900 mb-1">
                           {formatNumber(selectedAccount.totalComments)}
-                  </div>
+                        </div>
                         <div className={clsx(
                           'flex items-center text-sm',
                           selectedAccount.totalComments >= metricsComparison.previous.comments 
@@ -972,8 +912,8 @@ const AccountsPage: React.FC = () => {
                               metricsComparison.previous.comments
                             )} {metricsComparison.periodLabel}
                           </span>
-                </div>
-              </div>
+                        </div>
+                      </div>
 
                       <div className="h-20">
                         <ResponsiveContainer width="100%" height="100%">
@@ -996,156 +936,39 @@ const AccountsPage: React.FC = () => {
                             />
                           </AreaChart>
                         </ResponsiveContainer>
-                  </div>
-                </div>
+                      </div>
+                    </div>
                   </div>
                 );
               })()}
-                </div>
-                
+            </div>
+
             {/* Videos Grid */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900">Recent Activity</h3>
-                </div>
-                        <div className="flex items-center space-x-4">
-                  {/* Platform Filters */}
-                  <div className="flex items-center space-x-2">
-                    <button 
-                      onClick={() => setPlatformFilter('all')}
-                      className={clsx(
-                        'px-3 py-1.5 text-sm rounded-lg transition-colors',
-                        platformFilter === 'all' 
-                          ? 'bg-blue-100 text-blue-700 border border-blue-200' 
-                          : 'text-gray-600 hover:bg-gray-100'
-                      )}
-                    >
-                      All
-                    </button>
-                    <button 
-                      onClick={() => setPlatformFilter('instagram')}
-                      className={clsx(
-                        'px-3 py-1.5 text-sm rounded-lg transition-colors',
-                        platformFilter === 'instagram' 
-                          ? 'bg-blue-100 text-blue-700 border border-blue-200' 
-                          : 'text-gray-600 hover:bg-gray-100'
-                      )}
-                    >
-                      Instagram
-                    </button>
-                    <button 
-                      onClick={() => setPlatformFilter('tiktok')}
-                      className={clsx(
-                        'px-3 py-1.5 text-sm rounded-lg transition-colors',
-                        platformFilter === 'tiktok' 
-                          ? 'bg-blue-100 text-blue-700 border border-blue-200' 
-                          : 'text-gray-600 hover:bg-gray-100'
-                      )}
-                    >
-                      TikTok
-                    </button>
-                    <button 
-                      onClick={() => setPlatformFilter('youtube')}
-                      className={clsx(
-                        'px-3 py-1.5 text-sm rounded-lg transition-colors',
-                        platformFilter === 'youtube' 
-                          ? 'bg-blue-100 text-blue-700 border border-blue-200' 
-                          : 'text-gray-600 hover:bg-gray-100'
-                      )}
-                    >
-                      YouTube
-                    </button>
-                  </div>
-                </div>
-                </div>
-                
-              {/* Sortable Headers */}
-              <div className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg mb-4">
-                <div className="flex-1">
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">VIDEO</span>
-                </div>
-                <div className="flex items-center space-x-8 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <button 
-                    onClick={() => handleSort('views')}
-                    className={clsx(
-                      'flex items-center space-x-1 hover:text-gray-700 transition-colors',
-                      sortBy === 'views' && 'text-blue-600'
-                    )}
-                  >
-                    <span>VIEWS</span>
-                    {sortBy === 'views' && (
-                      <span className="text-blue-600">
-                        {sortOrder === 'desc' ? '↓' : '↑'}
-                      </span>
-                    )}
-                  </button>
-                  <button 
-                    onClick={() => handleSort('likes')}
-                    className={clsx(
-                      'flex items-center space-x-1 hover:text-gray-700 transition-colors',
-                      sortBy === 'likes' && 'text-blue-600'
-                    )}
-                  >
-                    <span>LIKES</span>
-                    {sortBy === 'likes' && (
-                      <span className="text-blue-600">
-                        {sortOrder === 'desc' ? '↓' : '↑'}
-                      </span>
-                    )}
-                  </button>
-                  <button 
-                    onClick={() => handleSort('comments')}
-                    className={clsx(
-                      'flex items-center space-x-1 hover:text-gray-700 transition-colors',
-                      sortBy === 'comments' && 'text-blue-600'
-                    )}
-                  >
-                    <span>COMMENTS</span>
-                    {sortBy === 'comments' && (
-                      <span className="text-blue-600">
-                        {sortOrder === 'desc' ? '↓' : '↑'}
-                      </span>
-                    )}
-                  </button>
-                  <button 
-                    onClick={() => handleSort('engagement')}
-                    className={clsx(
-                      'flex items-center space-x-1 hover:text-gray-700 transition-colors',
-                      sortBy === 'engagement' && 'text-blue-600'
-                    )}
-                  >
-                    <span>ENGAGEMENT</span>
-                    {sortBy === 'engagement' && (
-                      <span className="text-blue-600">
-                        {sortOrder === 'desc' ? '↓' : '↑'}
-                      </span>
-                    )}
-                  </button>
-                </div>
+                <h3 className="text-xl font-semibold text-gray-900">Recent Videos</h3>
+                <p className="text-gray-500">{accountVideos.length} videos</p>
               </div>
               
-                  {(() => {
-                const filteredVideos = getFilteredAndSortedVideos();
-                return filteredVideos.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {filteredVideos.map((video) => (
+              {accountVideos.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {accountVideos.map((video) => (
                     <div key={video.id} className="group cursor-pointer">
                       <div className="relative bg-gray-100 rounded-xl overflow-hidden aspect-[9/16] mb-3">
-                            {video.thumbnail ? (
+                        {video.thumbnail ? (
                           <img 
                             src={video.thumbnail} 
                             alt="Video thumbnail" 
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                           />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
                             <Play className="w-12 h-12 text-gray-400" />
-                              </div>
-                            )}
+                          </div>
+                        )}
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
                           <Play className="w-12 h-12 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                          </div>
+                        </div>
                         {video.duration && (
                           <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
                             {Math.floor(video.duration / 60)}:{Math.floor(video.duration % 60).toString().padStart(2, '0')}
@@ -1155,22 +978,22 @@ const AccountsPage: React.FC = () => {
                       
                       <div className="space-y-2">
                         <p className="text-sm font-medium text-gray-900 line-clamp-2">
-                              {video.caption || 'No caption'}
-                            </p>
+                          {video.caption || 'No caption'}
+                        </p>
                         <div className="flex items-center justify-between text-xs text-gray-500">
                           <div className="flex items-center space-x-4">
-                              <div className="flex items-center space-x-1">
-                                <Eye className="w-3 h-3" />
-                                <span>{formatNumber(video.views)}</span>
-                              </div>
-                              <div className="flex items-center space-x-1">
-                                <Heart className="w-3 h-3" />
-                                <span>{formatNumber(video.likes)}</span>
-                              </div>
-                              <div className="flex items-center space-x-1">
-                                <MessageCircle className="w-3 h-3" />
-                                <span>{formatNumber(video.comments)}</span>
-                              </div>
+                            <div className="flex items-center space-x-1">
+                              <Eye className="w-3 h-3" />
+                              <span>{formatNumber(video.views)}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <Heart className="w-3 h-3" />
+                              <span>{formatNumber(video.likes)}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <MessageCircle className="w-3 h-3" />
+                              <span>{formatNumber(video.comments)}</span>
+                            </div>
                           </div>
                           <button
                             onClick={() => window.open(video.url, '_blank')}
@@ -1181,12 +1004,12 @@ const AccountsPage: React.FC = () => {
                         </div>
                         <p className="text-xs text-gray-400">
                           {formatDate(video.uploadDate)}
-                      </p>
+                        </p>
+                      </div>
                     </div>
+                  ))}
                 </div>
-                    ))}
-            </div>
-          ) : (
+              ) : (
                 <div className="text-center py-12">
                   <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <Play className="w-8 h-8 text-gray-400" />
@@ -1203,11 +1026,10 @@ const AccountsPage: React.FC = () => {
                     <RefreshCw className={clsx('w-4 h-4', { 'animate-spin': isSyncing === selectedAccount.id })} />
                     <span>{isSyncing === selectedAccount.id ? 'Syncing...' : 'Sync Videos'}</span>
                   </button>
+                </div>
+              )}
             </div>
-                );
-              })()}
-        </div>
-      </div>
+          </div>
         )
       )}
 

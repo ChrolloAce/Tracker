@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, Edit3 } from 'lucide-react';
+import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, Edit3, ChevronUp, ChevronDown } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { clsx } from 'clsx';
@@ -13,7 +13,6 @@ interface VideoSubmissionsTableProps {
   onStatusUpdate?: (id: string, status: VideoSubmission['status']) => void;
   onDelete?: (id: string) => void;
   onVideoClick?: (video: VideoSubmission) => void;
-  periodDescription?: string;
 }
 
 // Dropdown menu component for video actions
@@ -158,9 +157,111 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   onSelectAll,
   onStatusUpdate,
   onDelete,
-  onVideoClick,
-  periodDescription = 'All Time'
+  onVideoClick
 }) => {
+  const [platformFilter, setPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'youtube'>('all');
+  const [sortBy, setSortBy] = useState<'views' | 'likes' | 'comments' | 'shares' | 'engagement'>('views');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Handle sorting
+  const handleSort = (column: 'views' | 'likes' | 'comments' | 'shares' | 'engagement') => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('desc');
+    }
+  };
+
+  // Filter and sort submissions
+  const getFilteredAndSortedSubmissions = () => {
+    let filtered = submissions;
+
+    // Apply platform filter
+    if (platformFilter !== 'all') {
+      filtered = submissions.filter(submission => {
+        // Check if submission has platform property, otherwise infer from URL
+        const platform = submission.platform || 
+          (submission.url?.includes('instagram.com') ? 'instagram' : 
+           submission.url?.includes('tiktok.com') ? 'tiktok' : 
+           submission.url?.includes('youtube.com') ? 'youtube' : 'unknown');
+        return platform === platformFilter;
+      });
+    }
+
+    // Apply sorting
+    const sorted = [...filtered].sort((a, b) => {
+      let aValue: number;
+      let bValue: number;
+
+      switch (sortBy) {
+        case 'views':
+          aValue = a.views;
+          bValue = b.views;
+          break;
+        case 'likes':
+          aValue = a.likes;
+          bValue = b.likes;
+          break;
+        case 'comments':
+          aValue = a.comments;
+          bValue = b.comments;
+          break;
+        case 'shares':
+          aValue = a.shares || 0;
+          bValue = b.shares || 0;
+          break;
+        case 'engagement':
+          aValue = a.likes + a.comments + (a.shares || 0);
+          bValue = b.likes + b.comments + (b.shares || 0);
+          break;
+        default:
+          aValue = a.views;
+          bValue = b.views;
+          break;
+      }
+
+      return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+    });
+
+    return sorted;
+  };
+
+  const filteredAndSortedSubmissions = getFilteredAndSortedSubmissions();
+
+  // Sortable header component
+  const SortableHeader: React.FC<{
+    column: 'views' | 'likes' | 'comments' | 'shares' | 'engagement';
+    children: React.ReactNode;
+    className?: string;
+  }> = ({ column, children, className }) => (
+    <th 
+      className={clsx(
+        'px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none',
+        className
+      )}
+      onClick={() => handleSort(column)}
+    >
+      <div className="flex items-center space-x-1">
+        <span>{children}</span>
+        <div className="flex flex-col">
+          <ChevronUp 
+            className={clsx(
+              'w-3 h-3 -mb-1',
+              sortBy === column && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'
+            )} 
+          />
+          <ChevronDown 
+            className={clsx(
+              'w-3 h-3',
+              sortBy === column && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'
+            )} 
+          />
+        </div>
+      </div>
+    </th>
+  );
+
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
       return `${(num / 1000000).toFixed(1)}M`;
@@ -170,8 +271,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
     return num.toString();
   };
 
-  const allSelected = submissions.length > 0 && selectedIds.size === submissions.length;
-  const someSelected = selectedIds.size > 0 && selectedIds.size < submissions.length;
+  const allSelected = filteredAndSortedSubmissions.length > 0 && selectedIds.size === filteredAndSortedSubmissions.length;
+  const someSelected = selectedIds.size > 0 && selectedIds.size < filteredAndSortedSubmissions.length;
 
   // Calculate engagement percentage
   const calculateEngagementRate = (submission: VideoSubmission): number => {
@@ -187,18 +288,52 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
-            <p className="text-sm text-gray-500 mt-1">Showing {submissions.length} videos posted during {periodDescription}</p>
           </div>
           <div className="flex items-center space-x-3">
             <div className="flex items-center space-x-2">
-              <button className="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+              <button 
+                onClick={() => setPlatformFilter('all')}
+                className={clsx(
+                  'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors',
+                  platformFilter === 'all' 
+                    ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                )}
+              >
                 All
               </button>
-              <button className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-                Pending
+              <button 
+                onClick={() => setPlatformFilter('instagram')}
+                className={clsx(
+                  'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors',
+                  platformFilter === 'instagram' 
+                    ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                )}
+              >
+                Instagram
               </button>
-              <button className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-                Approved
+              <button 
+                onClick={() => setPlatformFilter('tiktok')}
+                className={clsx(
+                  'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors',
+                  platformFilter === 'tiktok' 
+                    ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                )}
+              >
+                TikTok
+              </button>
+              <button 
+                onClick={() => setPlatformFilter('youtube')}
+                className={clsx(
+                  'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors',
+                  platformFilter === 'youtube' 
+                    ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                )}
+              >
+                YouTube
               </button>
             </div>
           </div>
@@ -224,26 +359,26 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-12 bg-white z-10 min-w-[280px]">
                 Video
               </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+              <SortableHeader column="views" className="min-w-[120px]">
                 Views
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+              </SortableHeader>
+              <SortableHeader column="likes" className="min-w-[120px]">
                 Likes
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+              </SortableHeader>
+              <SortableHeader column="comments" className="min-w-[120px]">
                 Comments
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+              </SortableHeader>
+              <SortableHeader column="shares" className="min-w-[120px]">
                 Shares
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
+              </SortableHeader>
+              <SortableHeader column="engagement" className="min-w-[140px]">
                 Engagement
-              </th>
+              </SortableHeader>
               <th className="w-12 px-6 py-4 text-left"></th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-50">
-            {submissions.map((submission) => {
+            {filteredAndSortedSubmissions.map((submission) => {
               const engagementRate = calculateEngagementRate(submission);
               
               return (

@@ -373,7 +373,6 @@ function App() {
                 onStatusUpdate={handleStatusUpdate}
                 onDelete={handleDelete}
                 onVideoClick={handleVideoClick}
-                periodDescription={periodDescription}
               />
             </>
           )}
