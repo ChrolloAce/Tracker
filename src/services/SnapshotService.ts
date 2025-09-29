@@ -18,6 +18,14 @@ class SnapshotService {
    * Create initial snapshot when video is first uploaded
    */
   static createInitialSnapshot(video: VideoSubmission): VideoSnapshot {
+    // Use the video's upload date for the snapshot, not the current date
+    // This ensures the snapshot is tied to when the video was actually posted
+    const snapshotDate = video.uploadDate 
+      ? new Date(video.uploadDate)
+      : video.timestamp 
+      ? new Date(video.timestamp)
+      : new Date(); // Fallback to current date if neither is available
+    
     const snapshot: VideoSnapshot = {
       id: `${video.id}_${Date.now()}`,
       videoId: video.id,
@@ -25,11 +33,11 @@ class SnapshotService {
       likes: video.likes,
       comments: video.comments,
       shares: video.shares || 0,
-      capturedAt: new Date(),
+      capturedAt: snapshotDate,
       capturedBy: 'initial_upload'
     };
 
-    console.log(`📸 Created initial snapshot for video "${video.title.substring(0, 30)}...":`, {
+    console.log(`📸 Created initial snapshot for video "${video.title.substring(0, 30)}..." at ${snapshotDate.toLocaleDateString()}:`, {
       views: snapshot.views,
       likes: snapshot.likes,
       comments: snapshot.comments,

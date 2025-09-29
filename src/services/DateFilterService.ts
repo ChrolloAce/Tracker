@@ -82,9 +82,11 @@ class DateFilterService {
     console.log(`📅 Date range: ${dateRange.startDate.toLocaleDateString()} - ${dateRange.endDate.toLocaleDateString()}`);
     
     const filteredVideos = videos.filter(video => {
-      // Use the original video posting date (timestamp) for filtering
-      // This is when the video was actually posted on Instagram/TikTok, not when it was added to our dashboard
-      const videoDate = video.timestamp 
+      // Use the original video upload date for filtering
+      // Priority: uploadDate (user-specified) > timestamp (from API) > dateSubmitted (when added to dashboard)
+      const videoDate = video.uploadDate
+        ? new Date(video.uploadDate)
+        : video.timestamp 
         ? new Date(video.timestamp)
         : video.dateSubmitted 
         ? new Date(video.dateSubmitted)
