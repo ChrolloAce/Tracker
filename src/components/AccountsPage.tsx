@@ -15,8 +15,10 @@ import {
   Heart,
   MessageCircle,
   ExternalLink,
-  Calendar
+  Calendar,
+  TrendingUp
 } from 'lucide-react';
+import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis, LineChart, Line } from 'recharts';
 import { TrackedAccount, AccountVideo } from '../types/accounts';
 import { AccountTrackingService } from '../services/AccountTrackingService';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -164,6 +166,48 @@ const AccountsPage: React.FC = () => {
     setViewMode('table');
   };
 
+  // Generate chart data from account videos
+  const generateChartData = (videos: AccountVideo[]) => {
+    if (videos.length === 0) return { views: [], likes: [], comments: [], engagement: [] };
+
+    // Sort videos by upload date
+    const sortedVideos = [...videos].sort((a, b) => a.uploadDate.getTime() - b.uploadDate.getTime());
+
+    // Generate time series data
+    const chartData = sortedVideos.map((video, index) => ({
+      date: video.uploadDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      views: video.views,
+      likes: video.likes,
+      comments: video.comments,
+      engagement: video.likes + video.comments,
+      videoIndex: index + 1
+    }));
+
+    return {
+      views: chartData,
+      likes: chartData,
+      comments: chartData,
+      engagement: chartData
+    };
+  };
+
+  // Custom tooltip for charts
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+          <p className="font-medium text-gray-900">{label}</p>
+          {payload.map((entry: any, index: number) => (
+            <p key={index} style={{ color: entry.color }} className="text-sm">
+              {`${entry.name}: ${formatNumber(entry.value)}`}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -219,7 +263,7 @@ const AccountsPage: React.FC = () => {
         >
           <Plus className="w-4 h-4" />
             <span className="font-medium">Track Account</span>
-          </button>
+        </button>
         </div>
       </div>
 
@@ -328,48 +372,48 @@ const AccountsPage: React.FC = () => {
                     )
                     .map((account) => (
                       <tr 
-                        key={account.id}
-                        className={clsx(
+                  key={account.id}
+                  className={clsx(
                           'hover:bg-gray-50 transition-colors cursor-pointer',
-                          {
+                    {
                             'bg-blue-50': selectedAccount?.id === account.id,
-                          }
-                        )}
+                    }
+                  )}
                         onClick={() => setSelectedAccount(account)}
-                      >
+                >
                         {/* Username Column */}
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center space-x-3">
-                            <div className="relative">
-                              {account.profilePicture ? (
-                                <img
-                                  src={account.profilePicture}
-                                  alt={`@${account.username}`}
-                                  className="w-10 h-10 rounded-full object-cover"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.style.display = 'none';
-                                    const fallback = target.nextElementSibling as HTMLElement;
-                                    if (fallback) fallback.classList.remove('hidden');
-                                  }}
-                                />
-                              ) : null}
-                              <div className={`w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center ${account.profilePicture ? 'hidden' : ''}`}>
+                  <div className="flex items-center space-x-3">
+                    <div className="relative">
+                      {account.profilePicture ? (
+                        <img
+                          src={account.profilePicture}
+                          alt={`@${account.username}`}
+                          className="w-10 h-10 rounded-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const fallback = target.nextElementSibling as HTMLElement;
+                            if (fallback) fallback.classList.remove('hidden');
+                          }}
+                        />
+                      ) : null}
+                      <div className={`w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center ${account.profilePicture ? 'hidden' : ''}`}>
                                 <Users className="w-5 h-5 text-gray-500" />
-                              </div>
-                            </div>
+                      </div>
+                    </div>
                             <div>
                               <div className="text-sm font-medium text-gray-900">
                                 {account.displayName || account.username}
-                              </div>
+                      </div>
                               <div className="text-sm text-gray-500">@{account.username}</div>
-                            </div>
-                          </div>
+                      </div>
+                    </div>
                         </td>
 
                         {/* Platform Column */}
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2">
                             <PlatformIcon platform={account.platform} size="sm" />
                             <span className="text-sm text-gray-900 capitalize">{account.platform}</span>
                           </div>
@@ -419,27 +463,27 @@ const AccountsPage: React.FC = () => {
                             >
                               <User className="w-4 h-4" />
                             </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSyncAccount(account.id);
-                              }}
-                              disabled={isSyncing === account.id}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSyncAccount(account.id);
+                        }}
+                        disabled={isSyncing === account.id}
                               className="text-gray-400 hover:text-blue-600 transition-colors disabled:animate-spin"
                               title="Sync videos"
-                            >
-                              <RefreshCw className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRemoveAccount(account.id);
-                              }}
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveAccount(account.id);
+                        }}
                               className="text-gray-400 hover:text-red-600 transition-colors"
                               title="Remove account"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                             <button className="text-gray-400 hover:text-gray-600 transition-colors">
                               <MoreHorizontal className="w-4 h-4" />
                             </button>
@@ -488,8 +532,8 @@ const AccountsPage: React.FC = () => {
                     {selectedAccount.followerCount && (
                       <div>
                         <span className="font-semibold">{formatNumber(selectedAccount.followerCount)}</span> followers
-                      </div>
-                    )}
+                </div>
+              )}
                     <div className={clsx(
                       'flex items-center space-x-2',
                       selectedAccount.isActive ? 'text-green-600' : 'text-red-600'
@@ -500,54 +544,288 @@ const AccountsPage: React.FC = () => {
                       )}></div>
                       <span>{selectedAccount.isActive ? 'Active' : 'Paused'}</span>
                     </div>
+            </div>
+          </div>
+        </div>
+
+              {/* Analytics Charts Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                {(() => {
+                  const chartData = generateChartData(accountVideos);
+                  
+                  return (
+                    <>
+                      {/* Views Chart */}
+                      <div className="bg-white border border-gray-200 rounded-xl p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h4 className="text-lg font-semibold text-gray-900">Views Over Time</h4>
+                            <p className="text-sm text-gray-500">{formatNumber(selectedAccount.totalViews)} total views</p>
+                          </div>
+                          <div className="flex items-center space-x-2 text-green-600">
+                            <TrendingUp className="w-4 h-4" />
+                            <Eye className="w-5 h-5" />
+                          </div>
+                        </div>
+                        <div className="h-48">
+                          {chartData.views.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                              <AreaChart data={chartData.views}>
+                                <defs>
+                                  <linearGradient id="viewsGradient" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#10B981" stopOpacity={0.3} />
+                                    <stop offset="100%" stopColor="#10B981" stopOpacity={0.05} />
+                                  </linearGradient>
+                                </defs>
+                                <XAxis 
+                                  dataKey="date" 
+                                  axisLine={false}
+                                  tickLine={false}
+                                  tick={{ fontSize: 12, fill: '#6B7280' }}
+                                />
+                                <YAxis 
+                                  axisLine={false}
+                                  tickLine={false}
+                                  tick={{ fontSize: 12, fill: '#6B7280' }}
+                                  tickFormatter={formatNumber}
+                                />
+                                <Area
+                                  type="monotone"
+                                  dataKey="views"
+                                  stroke="#10B981"
+                                  strokeWidth={2}
+                                  fill="url(#viewsGradient)"
+                                  dot={false}
+                                  activeDot={{ r: 4, fill: '#10B981', strokeWidth: 2, stroke: '#fff' }}
+                                />
+                                <Tooltip content={<CustomTooltip />} />
+                              </AreaChart>
+                            </ResponsiveContainer>
+                          ) : (
+                            <div className="flex items-center justify-center h-full text-gray-400">
+                              <div className="text-center">
+                                <Eye className="w-8 h-8 mx-auto mb-2" />
+                                <p>No data available</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Engagement Chart */}
+                      <div className="bg-white border border-gray-200 rounded-xl p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h4 className="text-lg font-semibold text-gray-900">Engagement Over Time</h4>
+                            <p className="text-sm text-gray-500">{formatNumber(selectedAccount.totalLikes + selectedAccount.totalComments)} total engagement</p>
+                          </div>
+                          <div className="flex items-center space-x-2 text-red-600">
+                            <TrendingUp className="w-4 h-4" />
+                            <Heart className="w-5 h-5" />
+                          </div>
+                        </div>
+                        <div className="h-48">
+                          {chartData.engagement.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={chartData.engagement}>
+                                <XAxis 
+                                  dataKey="date" 
+                                  axisLine={false}
+                                  tickLine={false}
+                                  tick={{ fontSize: 12, fill: '#6B7280' }}
+                                />
+                                <YAxis 
+                                  axisLine={false}
+                                  tickLine={false}
+                                  tick={{ fontSize: 12, fill: '#6B7280' }}
+                                  tickFormatter={formatNumber}
+                                />
+                                <Line
+                                  type="monotone"
+                                  dataKey="likes"
+                                  stroke="#EF4444"
+                                  strokeWidth={2}
+                                  dot={false}
+                                  activeDot={{ r: 4, fill: '#EF4444', strokeWidth: 2, stroke: '#fff' }}
+                                  name="Likes"
+                                />
+                                <Line
+                                  type="monotone"
+                                  dataKey="comments"
+                                  stroke="#8B5CF6"
+                                  strokeWidth={2}
+                                  dot={false}
+                                  activeDot={{ r: 4, fill: '#8B5CF6', strokeWidth: 2, stroke: '#fff' }}
+                                  name="Comments"
+                                />
+                                <Tooltip content={<CustomTooltip />} />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          ) : (
+                            <div className="flex items-center justify-center h-full text-gray-400">
+                              <div className="text-center">
+                                <Heart className="w-8 h-8 mx-auto mb-2" />
+                                <p>No data available</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Performance Summary */}
+                      <div className="bg-white border border-gray-200 rounded-xl p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h4 className="text-lg font-semibold text-gray-900">Performance Summary</h4>
+                            <p className="text-sm text-gray-500">Key metrics overview</p>
+                          </div>
+                          <div className="flex items-center space-x-2 text-blue-600">
+                            <TrendingUp className="w-4 h-4" />
+                            <Users className="w-5 h-5" />
+                          </div>
+                        </div>
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                              <span className="text-sm font-medium text-gray-700">Total Videos</span>
+                            </div>
+                            <span className="text-lg font-bold text-blue-600">{formatNumber(selectedAccount.totalVideos)}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                              <span className="text-sm font-medium text-gray-700">Total Views</span>
+                            </div>
+                            <span className="text-lg font-bold text-green-600">{formatNumber(selectedAccount.totalViews)}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                              <span className="text-sm font-medium text-gray-700">Total Likes</span>
+                            </div>
+                            <span className="text-lg font-bold text-red-600">{formatNumber(selectedAccount.totalLikes)}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                              <span className="text-sm font-medium text-gray-700">Total Comments</span>
+                            </div>
+                            <span className="text-lg font-bold text-purple-600">{formatNumber(selectedAccount.totalComments)}</span>
+                    </div>
+                          <div className="pt-2 border-t border-gray-200">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-gray-700">Avg. Views per Video</span>
+                              <span className="text-lg font-bold text-gray-900">
+                                {selectedAccount.totalVideos > 0 ? formatNumber(Math.round(selectedAccount.totalViews / selectedAccount.totalVideos)) : '0'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-8">
-                <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
-                  <div className="text-3xl font-bold text-blue-600 mb-1">{formatNumber(selectedAccount.totalVideos)}</div>
-                  <div className="text-sm font-medium text-blue-700">Videos</div>
-                </div>
-                <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl">
-                  <div className="text-3xl font-bold text-green-600 mb-1">{formatNumber(selectedAccount.totalViews)}</div>
-                  <div className="text-sm font-medium text-green-700">Views</div>
-                </div>
-                <div className="text-center p-4 bg-gradient-to-br from-red-50 to-red-100 rounded-xl">
-                  <div className="text-3xl font-bold text-red-600 mb-1">{formatNumber(selectedAccount.totalLikes)}</div>
-                  <div className="text-sm font-medium text-red-700">Likes</div>
-                </div>
-                <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl">
-                  <div className="text-3xl font-bold text-purple-600 mb-1">{formatNumber(selectedAccount.totalComments)}</div>
-                  <div className="text-sm font-medium text-purple-700">Comments</div>
+                      {/* Video Performance Distribution */}
+                      <div className="bg-white border border-gray-200 rounded-xl p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h4 className="text-lg font-semibold text-gray-900">Video Performance</h4>
+                            <p className="text-sm text-gray-500">Individual video metrics</p>
+                          </div>
+                          <div className="flex items-center space-x-2 text-purple-600">
+                            <TrendingUp className="w-4 h-4" />
+                            <Play className="w-5 h-5" />
+                          </div>
+                        </div>
+                        <div className="h-48">
+                          {chartData.views.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                              <AreaChart data={chartData.views}>
+                                <defs>
+                                  <linearGradient id="performanceGradient" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#8B5CF6" stopOpacity={0.3} />
+                                    <stop offset="100%" stopColor="#8B5CF6" stopOpacity={0.05} />
+                                  </linearGradient>
+                                </defs>
+                                <XAxis 
+                                  dataKey="videoIndex" 
+                                  axisLine={false}
+                                  tickLine={false}
+                                  tick={{ fontSize: 12, fill: '#6B7280' }}
+                                  label={{ value: 'Video #', position: 'insideBottom', offset: -5, style: { textAnchor: 'middle', fontSize: 12, fill: '#6B7280' } }}
+                                />
+                                <YAxis 
+                                  axisLine={false}
+                                  tickLine={false}
+                                  tick={{ fontSize: 12, fill: '#6B7280' }}
+                                  tickFormatter={formatNumber}
+                                />
+                                <Area
+                                  type="monotone"
+                                  dataKey="views"
+                                  stroke="#8B5CF6"
+                                  strokeWidth={2}
+                                  fill="url(#performanceGradient)"
+                                  dot={{ fill: '#8B5CF6', strokeWidth: 2, stroke: '#fff', r: 3 }}
+                                  activeDot={{ r: 4, fill: '#8B5CF6', strokeWidth: 2, stroke: '#fff' }}
+                                />
+                                <Tooltip 
+                                  content={({ active, payload, label }) => {
+                                    if (active && payload && payload.length) {
+                                      const data = payload[0].payload;
+                                      return (
+                                        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+                                          <p className="font-medium text-gray-900">Video #{label}</p>
+                                          <p className="text-sm text-gray-600">{data.date}</p>
+                                          <p className="text-sm" style={{ color: payload[0].color }}>
+                                            Views: {formatNumber(data.views)}
+                                          </p>
+                  </div>
+                                      );
+                                    }
+                                    return null;
+                                  }}
+                                />
+                              </AreaChart>
+                            </ResponsiveContainer>
+                          ) : (
+                            <div className="flex items-center justify-center h-full text-gray-400">
+                              <div className="text-center">
+                                <Play className="w-8 h-8 mx-auto mb-2" />
+                                <p>No data available</p>
+                  </div>
+                  </div>
+                          )}
+                  </div>
+                      </div>
+                    </>
+                  );
+                })()}
                 </div>
               </div>
-            </div>
 
             {/* Videos Grid */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-semibold text-gray-900">Recent Videos</h3>
                 <p className="text-gray-500">{accountVideos.length} videos</p>
-              </div>
-              
-              {accountVideos.length > 0 ? (
+                </div>
+                
+                  {accountVideos.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {accountVideos.map((video) => (
                     <div key={video.id} className="group cursor-pointer">
                       <div className="relative bg-gray-100 rounded-xl overflow-hidden aspect-[9/16] mb-3">
-                        {video.thumbnail ? (
+                            {video.thumbnail ? (
                           <img 
                             src={video.thumbnail} 
                             alt="Video thumbnail" 
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                           />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
                             <Play className="w-12 h-12 text-gray-400" />
-                          </div>
-                        )}
+                              </div>
+                            )}
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
                           <Play className="w-12 h-12 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                         </div>
@@ -560,22 +838,22 @@ const AccountsPage: React.FC = () => {
                       
                       <div className="space-y-2">
                         <p className="text-sm font-medium text-gray-900 line-clamp-2">
-                          {video.caption || 'No caption'}
-                        </p>
+                              {video.caption || 'No caption'}
+                            </p>
                         <div className="flex items-center justify-between text-xs text-gray-500">
                           <div className="flex items-center space-x-4">
-                            <div className="flex items-center space-x-1">
-                              <Eye className="w-3 h-3" />
-                              <span>{formatNumber(video.views)}</span>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                              <Heart className="w-3 h-3" />
-                              <span>{formatNumber(video.likes)}</span>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                              <MessageCircle className="w-3 h-3" />
-                              <span>{formatNumber(video.comments)}</span>
-                            </div>
+                              <div className="flex items-center space-x-1">
+                                <Eye className="w-3 h-3" />
+                                <span>{formatNumber(video.views)}</span>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <Heart className="w-3 h-3" />
+                                <span>{formatNumber(video.likes)}</span>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <MessageCircle className="w-3 h-3" />
+                                <span>{formatNumber(video.comments)}</span>
+                              </div>
                           </div>
                           <button
                             onClick={() => window.open(video.url, '_blank')}
@@ -595,7 +873,7 @@ const AccountsPage: React.FC = () => {
                 <div className="text-center py-12">
                   <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <Play className="w-8 h-8 text-gray-400" />
-                  </div>
+              </div>
                   <h4 className="text-lg font-medium text-gray-900 mb-2">No videos synced</h4>
                   <p className="text-gray-500 mb-6">
                     Click "Sync Videos" to fetch all videos from this account
@@ -608,10 +886,10 @@ const AccountsPage: React.FC = () => {
                     <RefreshCw className={clsx('w-4 h-4', { 'animate-spin': isSyncing === selectedAccount.id })} />
                     <span>{isSyncing === selectedAccount.id ? 'Syncing...' : 'Sync Videos'}</span>
                   </button>
-                </div>
-              )}
             </div>
-          </div>
+          )}
+        </div>
+      </div>
         )
       )}
 
