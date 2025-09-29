@@ -184,12 +184,8 @@ export const AnalyticsCards: React.FC<AnalyticsCardsProps> = ({
   customDateRange,
   timePeriod = 'weeks'
 }) => {
-  // Calculate analytics using snapshot-based growth when applicable
-  const analytics = useMemo(() => {
-    return DateFilterService.calculateFilteredAnalytics(submissions, dateFilter, customDateRange);
-  }, [submissions, dateFilter, customDateRange]);
-
-  const { totalLikes, totalComments, totalViews } = analytics;
+  // We don't use analytics totals anymore - we calculate from graph data instead
+  // This was kept for potential future use but is currently unused
 
   // Generate time series data based on actual submissions and selected time period
   // Use the date filter range to constrain the graph timeline
@@ -225,6 +221,19 @@ export const AnalyticsCards: React.FC<AnalyticsCardsProps> = ({
       comments: commentsData
     };
   }, [submissions, timePeriod, dateFilter, customDateRange]);
+
+  // Calculate totals from graph data - this ensures the numbers match what's shown in graphs
+  const totalViews = useMemo(() => {
+    return chartData.views.reduce((sum, period) => sum + period.value, 0);
+  }, [chartData.views]);
+
+  const totalLikes = useMemo(() => {
+    return chartData.likes.reduce((sum, period) => sum + period.value, 0);
+  }, [chartData.likes]);
+
+  const totalComments = useMemo(() => {
+    return chartData.comments.reduce((sum, period) => sum + period.value, 0);
+  }, [chartData.comments]);
 
   // Calculate period-over-period changes
   const calculateChange = (data: { period: string; value: number }[]): number => {
