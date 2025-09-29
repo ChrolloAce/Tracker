@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, Edit3, ChevronUp, ChevronDown } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
+import { MiniTrendChart } from './ui/MiniTrendChart';
+import { TrendCalculationService } from '../services/TrendCalculationService';
 import { clsx } from 'clsx';
 import InstagramApiService from '../services/InstagramApiService';
 
@@ -359,6 +361,9 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-12 bg-white z-10 min-w-[280px]">
                 Video
               </th>
+              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[80px]">
+                Trend
+              </th>
               <SortableHeader column="views" className="min-w-[120px]">
                 Views
               </SortableHeader>
@@ -415,6 +420,12 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                         </p>
                       </div>
                     </div>
+                  </td>
+                  <td className="px-6 py-5">
+                    <MiniTrendChart 
+                      data={TrendCalculationService.getViewsTrend(submission)}
+                      className="flex items-center justify-center"
+                    />
                   </td>
                   <td className="px-6 py-5">
                     <div className="flex items-center space-x-2">
