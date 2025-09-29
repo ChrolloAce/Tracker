@@ -82,6 +82,9 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     };
   }, [chartData]);
 
+  // Show current metrics when only one snapshot exists
+  const showGrowth = chartData.length > 1;
+
   const formatNumber = (num: number): string => {
     return num.toLocaleString();
   };
@@ -226,7 +229,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         </div>
 
         {/* Performance Charts */}
-        {chartData.length > 1 && (
+        {chartData.length > 0 && (
           <div className="p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-6">Performance Analytics</h3>
             
@@ -248,12 +251,17 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                   <div className="text-3xl font-bold text-gray-900 mb-1">
                     {formatNumber(video.views)}
                   </div>
-                  {totalGrowth.views !== 0 && (
+                  {showGrowth && totalGrowth.views !== 0 && (
                     <div className={`flex items-center text-sm ${getGrowthColor(totalGrowth.views)}`}>
                       {getGrowthIcon(totalGrowth.views)}
                       <span className="ml-1">
                         {formatGrowth(totalGrowth.views, growthPercentages.views)}
                       </span>
+                    </div>
+                  )}
+                  {!showGrowth && (
+                    <div className="flex items-center text-sm text-gray-500">
+                      <span>Current snapshot</span>
                     </div>
                   )}
                 </div>
@@ -296,12 +304,17 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                   <div className="text-3xl font-bold text-gray-900 mb-1">
                     {formatNumber(video.likes)}
                   </div>
-                  {totalGrowth.likes !== 0 && (
+                  {showGrowth && totalGrowth.likes !== 0 && (
                     <div className={`flex items-center text-sm ${getGrowthColor(totalGrowth.likes)}`}>
                       {getGrowthIcon(totalGrowth.likes)}
                       <span className="ml-1">
                         {formatGrowth(totalGrowth.likes, growthPercentages.likes)}
                       </span>
+                    </div>
+                  )}
+                  {!showGrowth && (
+                    <div className="flex items-center text-sm text-gray-500">
+                      <span>Current snapshot</span>
                     </div>
                   )}
                 </div>
@@ -344,12 +357,17 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                   <div className="text-3xl font-bold text-gray-900 mb-1">
                     {formatNumber(video.comments)}
                   </div>
-                  {totalGrowth.comments !== 0 && (
+                  {showGrowth && totalGrowth.comments !== 0 && (
                     <div className={`flex items-center text-sm ${getGrowthColor(totalGrowth.comments)}`}>
                       {getGrowthIcon(totalGrowth.comments)}
                       <span className="ml-1">
                         {formatGrowth(totalGrowth.comments, growthPercentages.comments)}
                       </span>
+                    </div>
+                  )}
+                  {!showGrowth && (
+                    <div className="flex items-center text-sm text-gray-500">
+                      <span>Current snapshot</span>
                     </div>
                   )}
                 </div>
