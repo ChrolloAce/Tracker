@@ -20,18 +20,18 @@ export class TimePeriodService {
 
     // Sort submissions by upload date
     const sortedSubmissions = [...submissions].sort((a, b) => {
-      const dateA = new Date(a.timestamp || a.dateSubmitted);
-      const dateB = new Date(b.timestamp || b.dateSubmitted);
+      const dateA = new Date(a.uploadDate || a.timestamp || a.dateSubmitted);
+      const dateB = new Date(b.uploadDate || b.timestamp || b.dateSubmitted);
       return dateA.getTime() - dateB.getTime();
     });
 
     // Find the earliest date from either upload dates or snapshot dates
-    let earliestDate = new Date(sortedSubmissions[0].timestamp || sortedSubmissions[0].dateSubmitted);
+    let earliestDate = new Date(sortedSubmissions[0].uploadDate || sortedSubmissions[0].timestamp || sortedSubmissions[0].dateSubmitted);
     let latestDate = new Date();
 
     sortedSubmissions.forEach(submission => {
       // Check upload date
-      const uploadDate = new Date(submission.timestamp || submission.dateSubmitted);
+      const uploadDate = new Date(submission.uploadDate || submission.timestamp || submission.dateSubmitted);
       if (uploadDate < earliestDate) {
         earliestDate = uploadDate;
       }
@@ -90,7 +90,7 @@ export class TimePeriodService {
       
       if (!submission.snapshots || submission.snapshots.length === 0) {
         // No snapshots - add current metrics to upload date
-        const uploadDate = new Date(submission.timestamp || submission.dateSubmitted);
+        const uploadDate = new Date(submission.uploadDate || submission.timestamp || submission.dateSubmitted);
         const uploadPeriodKey = this.getPeriodKey(uploadDate, timePeriod);
         const uploadPeriodData = periodMap.get(uploadPeriodKey);
         
