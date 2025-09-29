@@ -192,8 +192,17 @@ export const AnalyticsCards: React.FC<AnalyticsCardsProps> = ({
   const { totalLikes, totalComments, totalViews } = analytics;
 
   // Generate time series data based on actual submissions and selected time period
+  // Use the date filter range to constrain the graph timeline
   const chartData = useMemo(() => {
-    const timeSeriesData = TimePeriodService.generateTimeSeriesData(submissions, timePeriod);
+    const dateRange = dateFilter !== 'all' 
+      ? DateFilterService.getDateRange(dateFilter, customDateRange)
+      : undefined;
+    
+    const timeSeriesData = TimePeriodService.generateTimeSeriesData(
+      submissions, 
+      timePeriod,
+      dateRange
+    );
     
     const viewsData = timeSeriesData.map(period => ({
       period: period.period,
@@ -215,7 +224,7 @@ export const AnalyticsCards: React.FC<AnalyticsCardsProps> = ({
       likes: likesData,
       comments: commentsData
     };
-  }, [submissions, timePeriod]);
+  }, [submissions, timePeriod, dateFilter, customDateRange]);
 
   // Calculate period-over-period changes
   const calculateChange = (data: { period: string; value: number }[]): number => {

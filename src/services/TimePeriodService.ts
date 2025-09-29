@@ -11,10 +11,16 @@ interface PeriodData {
   videoCount: number;
 }
 
+interface DateRange {
+  startDate: Date;
+  endDate: Date;
+}
+
 export class TimePeriodService {
   static generateTimeSeriesData(
     submissions: VideoSubmission[],
-    timePeriod: TimePeriodType
+    timePeriod: TimePeriodType,
+    dateRange?: DateRange
   ): PeriodData[] {
     if (submissions.length === 0) return [];
 
@@ -25,38 +31,48 @@ export class TimePeriodService {
       return dateA.getTime() - dateB.getTime();
     });
 
-    // Find the earliest date from either upload dates or snapshot dates
-    let earliestDate = new Date(sortedSubmissions[0].uploadDate || sortedSubmissions[0].timestamp || sortedSubmissions[0].dateSubmitted);
-    let latestDate = new Date();
+    // If date range is provided, use it; otherwise find from submissions
+    let earliestDate: Date;
+    let latestDate: Date;
+    
+    if (dateRange) {
+      earliestDate = dateRange.startDate;
+      latestDate = dateRange.endDate;
+      console.log(`📊 Using provided date range for graphs: ${earliestDate.toLocaleDateString()} to ${latestDate.toLocaleDateString()}`);
+    } else {
+      // Find the earliest date from either upload dates or snapshot dates
+      earliestDate = new Date(sortedSubmissions[0].uploadDate || sortedSubmissions[0].timestamp || sortedSubmissions[0].dateSubmitted);
+      latestDate = new Date();
 
-    sortedSubmissions.forEach(submission => {
-      // Check upload date
-      const uploadDate = new Date(submission.uploadDate || submission.timestamp || submission.dateSubmitted);
-      if (uploadDate < earliestDate) {
-        earliestDate = uploadDate;
-      }
-
-      // Check snapshot dates
-      if (submission.snapshots && submission.snapshots.length > 0) {
-        submission.snapshots.forEach(snapshot => {
-          const snapshotDate = new Date(snapshot.capturedAt);
-          if (snapshotDate < earliestDate) {
-            earliestDate = snapshotDate;
-          }
-          if (snapshotDate > latestDate) {
-            latestDate = snapshotDate;
-          }
-        });
-      }
-
-      // Check last refresh date
-      if (submission.lastRefreshed) {
-        const refreshDate = new Date(submission.lastRefreshed);
-        if (refreshDate > latestDate) {
-          latestDate = refreshDate;
+      sortedSubmissions.forEach(submission => {
+        // Check upload date
+        const uploadDate = new Date(submission.uploadDate || submission.timestamp || submission.dateSubmitted);
+        if (uploadDate < earliestDate) {
+          earliestDate = uploadDate;
         }
-      }
-    });
+
+        // Check snapshot dates
+        if (submission.snapshots && submission.snapshots.length > 0) {
+          submission.snapshots.forEach(snapshot => {
+            const snapshotDate = new Date(snapshot.capturedAt);
+            if (snapshotDate < earliestDate) {
+              earliestDate = snapshotDate;
+            }
+            if (snapshotDate > latestDate) {
+              latestDate = snapshotDate;
+            }
+          });
+        }
+
+        // Check last refresh date
+        if (submission.lastRefreshed) {
+          const refreshDate = new Date(submission.lastRefreshed);
+          if (refreshDate > latestDate) {
+            latestDate = refreshDate;
+          }
+        }
+      });
+    }
 
     console.log(`📅 Date range: ${earliestDate.toLocaleDateString()} to ${latestDate.toLocaleDateString()}`);
     
