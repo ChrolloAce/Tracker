@@ -41,7 +41,47 @@ function App() {
     console.log('📱 Loading saved data from localStorage...');
     
     const savedSubmissions = LocalStorageService.loadSubmissions();
-    setSubmissions(savedSubmissions);
+    
+    // 🔧 MIGRATION: Fix existing snapshots to use upload dates instead of current dates
+    console.log('🔄 Migrating existing snapshots to use correct upload dates...');
+    const migratedSubmissions = savedSubmissions.map(video => {
+      if (!video.snapshots || video.snapshots.length === 0) {
+        return video;
+      }
+      
+      // Find the initial upload snapshot (the first one, marked as 'initial_upload')
+      const initialSnapshotIndex = video.snapshots.findIndex(s => s.capturedBy === 'initial_upload');
+      
+      if (initialSnapshotIndex !== -1) {
+        const initialSnapshot = video.snapshots[initialSnapshotIndex];
+        const correctUploadDate = video.uploadDate 
+          ? new Date(video.uploadDate)
+          : video.timestamp 
+          ? new Date(video.timestamp)
+          : new Date(video.dateSubmitted);
+        
+        // Check if the snapshot date is wrong (newer than upload date by more than 1 day)
+        const snapshotDate = new Date(initialSnapshot.capturedAt);
+        const daysDifference = (snapshotDate.getTime() - correctUploadDate.getTime()) / (1000 * 60 * 60 * 24);
+        
+        if (daysDifference > 1) {
+          console.log(`  📅 Fixing "${video.title.substring(0, 30)}..." snapshot date from ${snapshotDate.toLocaleDateString()} to ${correctUploadDate.toLocaleDateString()}`);
+          
+          // Update the initial snapshot with correct date
+          video.snapshots[initialSnapshotIndex] = {
+            ...initialSnapshot,
+            capturedAt: correctUploadDate
+          };
+          
+          // Save the migrated video
+          LocalStorageService.addSubmission(video);
+        }
+      }
+      
+      return video;
+    });
+    
+    setSubmissions(migratedSubmissions);
     
     const storageInfo = LocalStorageService.getStorageInfo();
     console.log('📊 Loaded data:', storageInfo);
