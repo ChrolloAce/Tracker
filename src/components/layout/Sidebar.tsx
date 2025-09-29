@@ -136,8 +136,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         className={clsx(
           'w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group',
           {
-            'bg-blue-50 text-blue-700 border-r-2 border-blue-600': item.isActive,
-            'text-gray-600 hover:text-gray-900 hover:bg-gray-50': !item.isActive,
+            'bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-700 border-r-2 border-blue-600 backdrop-blur-sm': item.isActive,
+            'text-gray-600 hover:text-gray-900 hover:bg-white/20': !item.isActive,
           }
         )}
       >
@@ -165,13 +165,19 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <div className={clsx(
-      'fixed left-0 top-0 flex flex-col h-screen bg-white border-r border-gray-200 transition-all duration-300 z-30',
-      {
-        'w-64': !isCollapsed,
-        'w-16': isCollapsed,
-      }
-    )}>
+    <div 
+      className={clsx(
+        'fixed left-0 top-0 flex flex-col h-screen bg-white/10 backdrop-blur-md border-r border-white/20 transition-all duration-300 z-30 shadow-xl',
+        {
+          'w-64': !isCollapsed,
+          'w-16': isCollapsed,
+        }
+      )}
+      style={{
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+      }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200">
         {!isCollapsed && (
@@ -191,7 +197,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             setIsCollapsed(newCollapsed);
             onCollapsedChange?.(newCollapsed);
           }}
-          className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+          className="p-1.5 text-gray-600 hover:text-gray-800 hover:bg-white/20 backdrop-blur-sm transition-all duration-200"
         >
           {isCollapsed ? (
             <ChevronRight className="w-4 h-4" />
@@ -215,7 +221,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={onTikTokSearch}
-                className="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors duration-200"
+                className="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-700 bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 transition-all duration-200"
               >
                 <Search className="w-4 h-4 mr-1" />
                 Search
@@ -223,7 +229,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               <button
                 onClick={onRefreshAll}
                 disabled={isRefreshing}
-                className="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors duration-200 disabled:opacity-50"
+                className="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-700 bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 transition-all duration-200 disabled:opacity-50"
               >
                 <TrendingUp className={clsx('w-4 h-4 mr-1', { 'animate-spin': isRefreshing })} />
                 Refresh
