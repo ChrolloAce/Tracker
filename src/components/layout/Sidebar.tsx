@@ -144,8 +144,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         className={clsx(
           'w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group',
           {
-            'bg-blue-50 text-blue-700 border-r-2 border-blue-600': item.isActive,
-            'text-gray-600 hover:text-gray-900 hover:bg-gray-50': !item.isActive,
+            'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-r-2 border-blue-600': item.isActive,
+            'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700': !item.isActive,
           }
         )}
       >
@@ -174,22 +174,22 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <div className={clsx(
-      'fixed left-0 top-0 flex flex-col h-screen bg-white border-r border-gray-200 transition-all duration-300 z-30',
+      'fixed left-0 top-0 flex flex-col h-screen bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 z-30',
       {
         'w-64': !isCollapsed,
         'w-16': isCollapsed,
       }
     )}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
         {!isCollapsed && (
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
               <BarChart3 className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-900">VideoAnalytics</h1>
-              <p className="text-xs text-gray-500">Dashboard</p>
+              <h1 className="text-lg font-bold text-gray-900 dark:text-white">VideoAnalytics</h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Dashboard</p>
             </div>
           </div>
         )}
@@ -249,7 +249,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       </nav>
 
       {/* Bottom Navigation */}
-      <div className="px-3 py-4 border-t border-gray-200 space-y-1">
+      <div className="px-3 py-4 border-t border-gray-200 dark:border-gray-700 space-y-1">
         {bottomItems.map((item) => (
           <NavItemComponent key={item.id} item={item} />
         ))}
@@ -257,16 +257,16 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       {/* User Profile */}
       {!isCollapsed && (
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-gradient-to-br from-gray-400 to-gray-500 rounded-full flex items-center justify-center">
               <span className="text-sm font-medium text-white">U</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
+              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                 User Account
               </p>
-              <p className="text-xs text-gray-500 truncate">
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                 user@example.com
               </p>
             </div>
