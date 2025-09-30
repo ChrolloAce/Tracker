@@ -256,13 +256,29 @@ Consider clearing old accounts from the Accounts tab.
         return value;
       });
       
-      // Extract videos from metadata wrapper
-      const videos = Array.isArray(parsed) ? parsed : (parsed._metadata ? parsed.slice(0, -1) : []);
+      // Extract videos from metadata wrapper or return as-is if it's an array
+      let videos: any[];
       
-      // Update last accessed time
-      if (parsed._metadata) {
-        parsed._metadata.lastAccessed = Date.now();
-        localStorage.setItem(key, JSON.stringify(parsed));
+      if (Array.isArray(parsed)) {
+        // Old format: just an array
+        videos = parsed;
+      } else if (parsed && typeof parsed === 'object' && parsed._metadata) {
+        // New format: object with data property and metadata
+        if (parsed.data && Array.isArray(parsed.data)) {
+          videos = parsed.data;
+          
+          // Update last accessed time
+          parsed._metadata.lastAccessed = Date.now();
+          localStorage.setItem(key, JSON.stringify(parsed));
+        } else {
+          // Fallback: maybe old spread format with numeric keys
+          const { _metadata, ...videoData } = parsed;
+          videos = Object.values(videoData).filter(v => v && typeof v === 'object');
+        }
+      } else {
+        // Unknown format
+        console.warn('⚠️ Unknown video data format, returning empty array');
+        videos = [];
       }
 
       console.log('✅ Loaded account videos from localStorage:', accountId, '(', videos.length, 'videos)');

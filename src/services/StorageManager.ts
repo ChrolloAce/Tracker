@@ -269,6 +269,18 @@ class StorageManager {
    * Add metadata to track when data was last accessed
    */
   static wrapWithMetadata(data: any): any {
+    // If data is an array, wrap it properly
+    if (Array.isArray(data)) {
+      return {
+        data: data,
+        _metadata: {
+          lastAccessed: Date.now(),
+          version: 1
+        }
+      };
+    }
+    
+    // If data is an object, spread it
     return {
       ...data,
       _metadata: {
