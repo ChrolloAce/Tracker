@@ -44,15 +44,24 @@ export class AccountTrackingService {
   }
 
   // Add a new account to track
-  static async addAccount(username: string, platform: 'instagram' | 'tiktok'): Promise<TrackedAccount> {
+  static async addAccount(username: string, platform: 'instagram' | 'tiktok' | 'youtube', accountType: 'my' | 'competitor' = 'my'): Promise<TrackedAccount> {
     try {
-      // Fetch account profile data
-      const profileData = await this.fetchAccountProfile(username, platform);
+      // Fetch account profile data (skip for YouTube for now)
+      const profileData = platform !== 'youtube' ? await this.fetchAccountProfile(username, platform) : {
+        displayName: username,
+        profilePicture: undefined,
+        followerCount: 0,
+        followingCount: 0,
+        postCount: 0,
+        bio: '',
+        isVerified: false
+      };
       
       const newAccount: TrackedAccount = {
         id: `${platform}_${username}_${Date.now()}`,
         username,
         platform,
+        accountType,
         displayName: profileData.displayName,
         profilePicture: profileData.profilePicture,
         followerCount: profileData.followerCount,

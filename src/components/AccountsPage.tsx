@@ -33,7 +33,8 @@ const AccountsPage: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState<string | null>(null);
   const [isRefreshingProfile, setIsRefreshingProfile] = useState<string | null>(null);
   const [newAccountUsername, setNewAccountUsername] = useState('');
-  const [newAccountPlatform, setNewAccountPlatform] = useState<'instagram' | 'tiktok'>('instagram');
+  const [newAccountPlatform, setNewAccountPlatform] = useState<'instagram' | 'tiktok' | 'youtube'>('instagram');
+  const [newAccountType, setNewAccountType] = useState<'my' | 'competitor'>('my');
   const [searchQuery, setSearchQuery] = useState('');
   const [syncError, setSyncError] = useState<string | null>(null);
   const [accountType, setAccountType] = useState<'my' | 'competitor'>('my');
@@ -81,19 +82,21 @@ const AccountsPage: React.FC = () => {
     try {
       const account = await AccountTrackingService.addAccount(
         newAccountUsername.trim(),
-        newAccountPlatform
+        newAccountPlatform,
+        newAccountType
       );
       
       setAccounts(prev => [...prev, account]);
       setNewAccountUsername('');
+      setNewAccountType('my');
       setIsAddModalOpen(false);
       
-      console.log(`✅ Added account @${account.username}`);
+      console.log(`✅ Added ${newAccountType} account @${account.username}`);
     } catch (error) {
       console.error('Failed to add account:', error);
       alert('Failed to add account. Please check the username and try again.');
     }
-  }, [newAccountUsername, newAccountPlatform]);
+  }, [newAccountUsername, newAccountPlatform, newAccountType]);
 
   const handleSyncAccount = useCallback(async (accountId: string) => {
     setIsSyncing(accountId);
@@ -1090,7 +1093,7 @@ const AccountsPage: React.FC = () => {
                 <Plus className="w-8 h-8 text-blue-600" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Add Account to Track</h2>
-              <p className="text-gray-500">Start monitoring a new Instagram or TikTok account</p>
+              <p className="text-gray-500 dark:text-gray-400">Start monitoring a new Instagram, TikTok, or YouTube account</p>
             </div>
             
             <div className="space-y-6">
@@ -1098,30 +1101,74 @@ const AccountsPage: React.FC = () => {
                 <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
                   Choose Platform
                 </label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <button
                     onClick={() => setNewAccountPlatform('instagram')}
                     className={clsx(
-                      'flex items-center justify-center space-x-3 py-4 px-4 rounded-xl border-2 transition-all duration-200',
+                      'flex flex-col items-center justify-center space-y-2 py-4 px-3 rounded-xl border-2 transition-all duration-200',
                       newAccountPlatform === 'instagram'
                         ? 'border-blue-500 bg-blue-600 text-white shadow-md'
-                        : 'border-gray-700 dark:border-gray-700 hover:border-gray-600 dark:hover:border-gray-600 hover:bg-gray-800 dark:hover:bg-gray-800'
+                        : 'border-gray-700 dark:border-gray-700 hover:border-gray-600 dark:hover:border-gray-600 hover:bg-gray-800 dark:hover:bg-gray-800 text-gray-300'
                     )}
                   >
                     <PlatformIcon platform="instagram" size="md" />
-                    <span className="font-medium">Instagram</span>
+                    <span className="font-medium text-xs">Instagram</span>
                   </button>
                   <button
                     onClick={() => setNewAccountPlatform('tiktok')}
                     className={clsx(
-                      'flex items-center justify-center space-x-3 py-4 px-4 rounded-xl border-2 transition-all duration-200',
+                      'flex flex-col items-center justify-center space-y-2 py-4 px-3 rounded-xl border-2 transition-all duration-200',
                       newAccountPlatform === 'tiktok'
                         ? 'border-blue-500 bg-blue-600 text-white shadow-md'
-                        : 'border-gray-700 dark:border-gray-700 hover:border-gray-600 dark:hover:border-gray-600 hover:bg-gray-800 dark:hover:bg-gray-800'
+                        : 'border-gray-700 dark:border-gray-700 hover:border-gray-600 dark:hover:border-gray-600 hover:bg-gray-800 dark:hover:bg-gray-800 text-gray-300'
                     )}
                   >
                     <PlatformIcon platform="tiktok" size="md" />
-                    <span className="font-medium">TikTok</span>
+                    <span className="font-medium text-xs">TikTok</span>
+                  </button>
+                  <button
+                    onClick={() => setNewAccountPlatform('youtube')}
+                    className={clsx(
+                      'flex flex-col items-center justify-center space-y-2 py-4 px-3 rounded-xl border-2 transition-all duration-200',
+                      newAccountPlatform === 'youtube'
+                        ? 'border-blue-500 bg-blue-600 text-white shadow-md'
+                        : 'border-gray-700 dark:border-gray-700 hover:border-gray-600 dark:hover:border-gray-600 hover:bg-gray-800 dark:hover:bg-gray-800 text-gray-300'
+                    )}
+                  >
+                    <Play className="w-6 h-6" />
+                    <span className="font-medium text-xs">YouTube</span>
+                  </button>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                  Account Type
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setNewAccountType('my')}
+                    className={clsx(
+                      'flex items-center justify-center space-x-2 py-3 px-4 rounded-xl border-2 transition-all duration-200',
+                      newAccountType === 'my'
+                        ? 'border-blue-500 bg-blue-600 text-white shadow-md'
+                        : 'border-gray-700 dark:border-gray-700 hover:border-gray-600 dark:hover:border-gray-600 hover:bg-gray-800 dark:hover:bg-gray-800 text-gray-300'
+                    )}
+                  >
+                    <User className="w-4 h-4" />
+                    <span className="font-medium">My Account</span>
+                  </button>
+                  <button
+                    onClick={() => setNewAccountType('competitor')}
+                    className={clsx(
+                      'flex items-center justify-center space-x-2 py-3 px-4 rounded-xl border-2 transition-all duration-200',
+                      newAccountType === 'competitor'
+                        ? 'border-purple-500 bg-purple-600 text-white shadow-md'
+                        : 'border-gray-700 dark:border-gray-700 hover:border-gray-600 dark:hover:border-gray-600 hover:bg-gray-800 dark:hover:bg-gray-800 text-gray-300'
+                    )}
+                  >
+                    <Users className="w-4 h-4" />
+                    <span className="font-medium">Competitor</span>
                   </button>
                 </div>
               </div>

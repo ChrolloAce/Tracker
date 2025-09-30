@@ -1,7 +1,8 @@
 export interface TrackedAccount {
   id: string;
   username: string;
-  platform: 'instagram' | 'tiktok';
+  platform: 'instagram' | 'tiktok' | 'youtube';
+  accountType: 'my' | 'competitor'; // New field
   displayName?: string;
   profilePicture?: string;
   followerCount?: number;
