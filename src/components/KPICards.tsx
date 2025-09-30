@@ -14,9 +14,13 @@ import {
 } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
+import { DateFilterType } from './DateRangeFilter';
+import { TimePeriodType } from './TimePeriodSelector';
 
 interface KPICardsProps {
   submissions: VideoSubmission[];
+  dateFilter?: DateFilterType;
+  timePeriod?: TimePeriodType;
 }
 
 interface KPICardData {
@@ -32,7 +36,7 @@ interface KPICardData {
   ctaText?: string;
 }
 
-const KPICards: React.FC<KPICardsProps> = ({ submissions }) => {
+const KPICards: React.FC<KPICardsProps> = ({ submissions, dateFilter = 'all', timePeriod = 'weeks' }) => {
   const kpiData = useMemo(() => {
     // Calculate metrics
     const totalViews = submissions.reduce((sum, v) => sum + (v.views || 0), 0);
@@ -65,27 +69,44 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions }) => {
       ? ((last7DaysViews - previous7DaysViews) / previous7DaysViews) * 100 
       : 0;
 
-    // Generate sparkline data (last 30 days with cumulative totals)
+    // Generate sparkline data based on time period
     const generateSparklineData = (metric: 'views' | 'likes' | 'comments') => {
       const data = [];
       const sortedSubmissions = [...submissions].sort((a, b) => 
         new Date(a.uploadDate).getTime() - new Date(b.uploadDate).getTime()
       );
       
-      for (let i = 29; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        date.setHours(0, 0, 0, 0);
+      // Determine number of data points and interval based on timePeriod
+      let numPoints = 30;
+      let intervalMs = 24 * 60 * 60 * 1000; // 1 day
+      
+      if (timePeriod === 'hours') {
+        numPoints = 24; // Last 24 hours
+        intervalMs = 60 * 60 * 1000; // 1 hour
+      } else if (timePeriod === 'days') {
+        numPoints = 30; // Last 30 days
+        intervalMs = 24 * 60 * 60 * 1000; // 1 day
+      } else if (timePeriod === 'weeks') {
+        numPoints = 12; // Last 12 weeks
+        intervalMs = 7 * 24 * 60 * 60 * 1000; // 1 week
+      } else if (timePeriod === 'months') {
+        numPoints = 12; // Last 12 months
+        intervalMs = 30 * 24 * 60 * 60 * 1000; // ~1 month
+      }
+      
+      for (let i = numPoints - 1; i >= 0; i--) {
+        const date = new Date(Date.now() - (i * intervalMs));
         
-        // Get cumulative value up to this date
-        const cumulativeValue = sortedSubmissions
+        // Get value for videos in this time period
+        const periodValue = sortedSubmissions
           .filter(v => {
             const uploadDate = new Date(v.uploadDate);
-            return uploadDate <= date;
+            const periodStart = new Date(date.getTime() - intervalMs);
+            return uploadDate >= periodStart && uploadDate <= date;
           })
           .reduce((sum, v) => sum + (v[metric] || 0), 0);
         
-        data.push({ value: cumulativeValue });
+        data.push({ value: periodValue });
       }
       return data;
     };
@@ -126,15 +147,6 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions }) => {
         sparklineData: generateSparklineData('comments')
       },
       {
-        id: 'videos',
-        label: 'Published Videos',
-        value: publishedVideos,
-        icon: Video,
-        accent: 'violet',
-        period: 'All time',
-        sparklineData: generateSparklineData('views')
-      },
-      {
         id: 'shares',
         label: 'Shares',
         value: formatNumber(totalShares),
@@ -142,6 +154,15 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions }) => {
         accent: 'orange',
         period: 'Total shares',
         sparklineData: generateSparklineData('comments')
+      },
+      {
+        id: 'videos',
+        label: 'Published Videos',
+        value: publishedVideos,
+        icon: Video,
+        accent: 'violet',
+        period: 'All time',
+        sparklineData: generateSparklineData('views')
       },
       {
         id: 'accounts',
@@ -174,7 +195,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions }) => {
     ];
 
     return cards;
-  }, [submissions]);
+  }, [submissions, dateFilter, timePeriod]);
 
   return (
     <div className="grid gap-4 md:gap-5 xl:gap-6 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
