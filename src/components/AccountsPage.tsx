@@ -15,7 +15,9 @@ import {
   Heart,
   MessageCircle,
   ExternalLink,
-  Calendar
+  Calendar,
+  Share2,
+  Activity
   } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis } from 'recharts';
 import { TrackedAccount, AccountVideo } from '../types/accounts';
@@ -75,33 +77,6 @@ const AccountsPage: React.FC = () => {
     }
   }, [selectedAccount]);
 
-
-  const handleAddAccount = useCallback(async () => {
-    if (!newAccountUsername.trim()) return;
-
-    try {
-      const account = await AccountTrackingService.addAccount(
-        newAccountUsername.trim(),
-        newAccountPlatform,
-        newAccountType
-      );
-      
-      setAccounts(prev => [...prev, account]);
-      setNewAccountUsername('');
-      setNewAccountType('my');
-      setIsAddModalOpen(false);
-      
-      console.log(`✅ Added ${newAccountType} account @${account.username}`);
-      
-      // Automatically sync videos for the newly added account
-      console.log(`🔄 Auto-syncing videos for @${account.username}...`);
-      handleSyncAccount(account.id);
-    } catch (error) {
-      console.error('Failed to add account:', error);
-      alert('Failed to add account. Please check the username and try again.');
-    }
-  }, [newAccountUsername, newAccountPlatform, newAccountType, handleSyncAccount]);
-
   const handleSyncAccount = useCallback(async (accountId: string) => {
     setIsSyncing(accountId);
     setSyncError(null);
@@ -133,6 +108,32 @@ const AccountsPage: React.FC = () => {
       setIsSyncing(null);
     }
   }, [selectedAccount]);
+
+  const handleAddAccount = useCallback(async () => {
+    if (!newAccountUsername.trim()) return;
+
+    try {
+      const account = await AccountTrackingService.addAccount(
+        newAccountUsername.trim(),
+        newAccountPlatform,
+        newAccountType
+      );
+      
+      setAccounts(prev => [...prev, account]);
+      setNewAccountUsername('');
+      setNewAccountType('my');
+      setIsAddModalOpen(false);
+      
+      console.log(`✅ Added ${newAccountType} account @${account.username}`);
+      
+      // Automatically sync videos for the newly added account
+      console.log(`🔄 Auto-syncing videos for @${account.username}...`);
+      handleSyncAccount(account.id);
+    } catch (error) {
+      console.error('Failed to add account:', error);
+      alert('Failed to add account. Please check the username and try again.');
+    }
+  }, [newAccountUsername, newAccountPlatform, newAccountType, handleSyncAccount]);
 
   const handleRemoveAccount = useCallback((accountId: string) => {
     if (window.confirm('Are you sure you want to remove this account?')) {
