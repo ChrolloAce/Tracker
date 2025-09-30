@@ -16,13 +16,14 @@ import LinkRedirect from './components/LinkRedirect';
 import LoginPage from './components/LoginPage';
 import { VideoSubmission, InstagramVideoData } from './types';
 import VideoApiService from './services/VideoApiService';
-import LocalStorageService from './services/LocalStorageService';
 import DateFilterService from './services/DateFilterService';
 import SnapshotService from './services/SnapshotService';
-import { AccountTrackingService } from './services/AccountTrackingService';
 import ThemeService from './services/ThemeService';
+import FirestoreDataService from './services/FirestoreDataService';
+import DataMigrationService from './services/DataMigrationService';
 import { cssVariables } from './theme';
 import { useAuth } from './contexts/AuthContext';
+import { Timestamp } from 'firebase/firestore';
 
 interface DateRange {
   startDate: Date;
@@ -30,11 +31,25 @@ interface DateRange {
 }
 
 function App() {
-  // Get authentication state
-  const { user, loading } = useAuth();
+  // Get authentication state and current organization
+  const { user, loading, currentOrgId } = useAuth();
 
   // Check if this is a link redirect URL
   const isLinkRedirect = window.location.pathname.startsWith('/l/');
+
+  // State
+  const [submissions, setSubmissions] = useState<VideoSubmission[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
+  const [dateFilter, setDateFilter] = useState<DateFilterType>('all');
+  const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedVideoForAnalytics, setSelectedVideoForAnalytics] = useState<VideoSubmission | null>(null);
+  const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [timePeriod, setTimePeriod] = useState<TimePeriodType>('weeks');
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [dataLoading, setDataLoading] = useState(true);
 
   // Show login page if not authenticated
   if (loading) {
@@ -52,110 +67,74 @@ function App() {
     return <LoginPage />;
   }
 
-  const [submissions, setSubmissions] = useState<VideoSubmission[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
-  const [dateFilter, setDateFilter] = useState<DateFilterType>('all');
-  const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>();
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [selectedVideoForAnalytics, setSelectedVideoForAnalytics] = useState<VideoSubmission | null>(null);
-  const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [timePeriod, setTimePeriod] = useState<TimePeriodType>('weeks');
-  const [activeTab, setActiveTab] = useState('dashboard');
-
   // If this is a link redirect, show redirect component instead
   if (isLinkRedirect) {
     return <LinkRedirect />;
   }
 
-  // Load saved data on app initialization
+  // Load data from Firestore on app initialization
   useEffect(() => {
-    console.log('🎯 Instagram Submissions Dashboard initialized');
-    console.log('📱 Loading saved data from localStorage...');
-    
-    // Initialize theme
-    ThemeService.initializeTheme();
-    
-    const savedSubmissions = LocalStorageService.loadSubmissions();
-    
-    // Load tracked account videos and merge with manual submissions
-    const trackedAccounts = AccountTrackingService.getTrackedAccounts();
-    const accountVideos: VideoSubmission[] = [];
-    
-    trackedAccounts.forEach(account => {
-      const videos = AccountTrackingService.getAccountVideos(account.id);
-      videos.forEach(video => {
-        // Convert AccountVideo to VideoSubmission format
-        accountVideos.push({
-          id: video.id || `${account.id}_${video.videoId || Date.now()}`,
-          url: video.url,
-          platform: account.platform,
-          thumbnail: video.thumbnail || '',
-          title: video.caption || `Video from @${account.username}`,
-          uploader: account.displayName || account.username,
-          uploaderHandle: account.username,
-          status: 'approved',
-          views: video.viewsCount || video.views || 0,
-          likes: video.likesCount || video.likes || 0,
-          comments: video.commentsCount || video.comments || 0,
-          shares: video.sharesCount || video.shares,
-          dateSubmitted: account.dateAdded,
-          uploadDate: video.uploadDate || (video.timestamp ? new Date(video.timestamp) : account.dateAdded),
-          lastRefreshed: account.lastSynced,
-        });
-      });
-    });
-    
-    console.log(`📊 Loaded ${accountVideos.length} videos from ${trackedAccounts.length} tracked accounts`);
-    
-    const allSubmissions = [...savedSubmissions, ...accountVideos];
-    
-    // 🔧 MIGRATION: Fix existing snapshots to use upload dates instead of current dates
-    console.log('🔄 Migrating existing snapshots to use correct upload dates...');
-    const migratedSubmissions = allSubmissions.map(video => {
-      if (!video.snapshots || video.snapshots.length === 0) {
-        return video;
-      }
-      
-      // Find the initial upload snapshot (the first one, marked as 'initial_upload')
-      const initialSnapshotIndex = video.snapshots.findIndex(s => s.capturedBy === 'initial_upload');
-      
-      if (initialSnapshotIndex !== -1) {
-        const initialSnapshot = video.snapshots[initialSnapshotIndex];
-        const correctUploadDate = video.uploadDate 
-          ? new Date(video.uploadDate)
-          : video.timestamp 
-          ? new Date(video.timestamp)
-          : new Date(video.dateSubmitted);
+    if (!user || !currentOrgId) {
+      setDataLoading(false);
+      return;
+    }
+
+    const loadData = async () => {
+      try {
+        console.log('🎯 ViewTrack Dashboard initialized');
+        console.log('🔥 Loading data from Firestore...');
+        console.log('📁 Organization ID:', currentOrgId);
         
-        // Check if the snapshot date is wrong (newer than upload date by more than 1 day)
-        const snapshotDate = new Date(initialSnapshot.capturedAt);
-        const daysDifference = (snapshotDate.getTime() - correctUploadDate.getTime()) / (1000 * 60 * 60 * 24);
+        // Initialize theme
+        ThemeService.initializeTheme();
         
-        if (daysDifference > 1) {
-          console.log(`  📅 Fixing "${video.title.substring(0, 30)}..." snapshot date from ${snapshotDate.toLocaleDateString()} to ${correctUploadDate.toLocaleDateString()}`);
-          
-          // Update the initial snapshot with correct date
-          video.snapshots[initialSnapshotIndex] = {
-            ...initialSnapshot,
-            capturedAt: correctUploadDate
-          };
-          
-          // Save the migrated video
-          LocalStorageService.addSubmission(video);
+        // Run migration if needed (only runs once)
+        if (!DataMigrationService.isMigrationCompleted()) {
+          console.log('🔄 Running data migration from localStorage to Firestore...');
+          try {
+            await DataMigrationService.migrateAllData(currentOrgId, user.uid);
+            console.log('✅ Data migration completed!');
+          } catch (error) {
+            console.error('❌ Migration failed:', error);
+          }
         }
+        
+        // Load videos from Firestore
+        const firestoreVideos = await FirestoreDataService.getVideos(currentOrgId, { limitCount: 1000 });
+        
+        // Convert Firestore videos to VideoSubmission format
+        const allSubmissions: VideoSubmission[] = firestoreVideos.map(video => ({
+          id: video.id,
+          url: video.url || '',
+          platform: video.platform as 'instagram' | 'tiktok' | 'youtube',
+          thumbnail: video.thumbnail || '',
+          title: video.title || '',
+          uploader: '', // Will be populated from tracked account if available
+          uploaderHandle: '',
+          status: video.status === 'archived' ? 'rejected' : 'approved',
+          views: video.views,
+          likes: video.likes,
+          comments: video.comments,
+          shares: video.shares,
+          dateSubmitted: video.dateAdded.toDate(),
+          uploadDate: video.uploadDate.toDate(),
+          lastRefreshed: video.lastRefreshed?.toDate(),
+          snapshots: [] // Will be loaded on-demand when viewing analytics
+        }));
+        
+        console.log(`✅ Loaded ${allSubmissions.length} videos from Firestore`);
+        
+        setSubmissions(allSubmissions);
+        console.log('🔍 Open browser console to see API logs when adding videos');
+      } catch (error) {
+        console.error('❌ Failed to load data from Firestore:', error);
+      } finally {
+        setDataLoading(false);
       }
-      
-      return video;
-    });
-    
-    setSubmissions(migratedSubmissions);
-    
-    const storageInfo = LocalStorageService.getStorageInfo();
-    console.log('📊 Loaded data:', storageInfo);
-    console.log('🔍 Open browser console to see API logs when adding videos');
-  }, []);
+    };
+
+    loadData();
+  }, [user, currentOrgId]);
 
   // Filter submissions based on date range
   const filteredSubmissions = DateFilterService.filterVideosByDateRange(
@@ -182,7 +161,7 @@ function App() {
 
   // Refresh all videos and create new snapshots
   const handleRefreshAllVideos = useCallback(async () => {
-    if (isRefreshing) return; // Prevent multiple simultaneous refreshes
+    if (isRefreshing || !user || !currentOrgId) return;
     
     console.log('🔄 Refresh All button clicked!');
     console.log(`📊 Found ${submissions.length} videos to refresh`);
@@ -206,19 +185,23 @@ function App() {
         // Fetch latest data from API
         const { data: videoData } = await VideoApiService.fetchVideoData(video.url);
         
-        // Create new snapshot with current metrics
-        const refreshSnapshot = SnapshotService.createRefreshSnapshot(video, {
+        // Create new snapshot in Firestore
+        await FirestoreDataService.addVideoSnapshot(currentOrgId, video.id, user.uid, {
           views: videoData.view_count || 0,
           likes: videoData.like_count,
           comments: videoData.comment_count,
           shares: video.platform === 'tiktok' ? (videoData as any).share_count : undefined
         });
-
-        // Add snapshot to video
-        let updatedVideo = SnapshotService.addSnapshotToVideo(video, refreshSnapshot);
         
-        // Clean up old snapshots to prevent storage bloat
-        updatedVideo = SnapshotService.cleanupOldSnapshots(updatedVideo);
+        // Update local state with new metrics
+        const updatedVideo = {
+          ...video,
+          views: videoData.view_count || 0,
+          likes: videoData.like_count,
+          comments: videoData.comment_count,
+          shares: video.platform === 'tiktok' ? (videoData as any).share_count : video.shares,
+          lastRefreshed: new Date()
+        };
         
         updatedSubmissions.push(updatedVideo);
         successCount++;
@@ -231,19 +214,17 @@ function App() {
       }
     }
 
-    // Save updated submissions
-    LocalStorageService.saveSubmissions(updatedSubmissions);
+    // Update state
     setSubmissions(updatedSubmissions);
     
     console.log(`✅ Refresh completed: ${successCount} successful, ${errorCount} failed`);
     
-    // Show user feedback (you could add a toast notification here)
     if (successCount > 0) {
       console.log(`🎉 Successfully refreshed ${successCount} videos with new snapshots!`);
     }
     
     setIsRefreshing(false);
-  }, [submissions, isRefreshing]);
+  }, [submissions, isRefreshing, user, currentOrgId]);
 
   const handleAddVideo = useCallback(async (videoUrl: string, uploadDate: Date) => {
     console.log('🚀 Starting video submission process...');
@@ -281,16 +262,37 @@ function App() {
         status: newSubmission.status
       });
 
-      // Create initial snapshot with upload metrics
-      const initialSnapshot = SnapshotService.createInitialSnapshot(newSubmission);
-      const videoWithSnapshot = SnapshotService.addSnapshotToVideo(newSubmission, initialSnapshot);
+      // Save to Firestore
+      if (user && currentOrgId) {
+        const videoId = await FirestoreDataService.addVideo(currentOrgId, user.uid, {
+          platform: newSubmission.platform,
+          url: newSubmission.url,
+          videoId: newSubmission.id,
+          title: newSubmission.title,
+          thumbnail: newSubmission.thumbnail,
+          uploadDate: Timestamp.fromDate(uploadDate),
+          views: videoData.data.view_count || 0,
+          likes: videoData.data.like_count,
+          comments: videoData.data.comment_count,
+          shares: 0,
+          status: 'active',
+          isSingular: true
+        });
 
-      // Save to localStorage
-      LocalStorageService.addSubmission(videoWithSnapshot);
+        // Create initial snapshot
+        await FirestoreDataService.addVideoSnapshot(currentOrgId, videoId, user.uid, {
+          views: videoData.data.view_count || 0,
+          likes: videoData.data.like_count,
+          comments: videoData.data.comment_count
+        });
+
+        // Update local state
+        newSubmission.id = videoId;
+      }
       
       // Update state
-      setSubmissions(prev => [videoWithSnapshot, ...prev]);
-      console.log('✅ Video submission completed with initial snapshot saved!');
+      setSubmissions(prev => [newSubmission, ...prev]);
+      console.log('✅ Video submission completed and saved to Firestore!');
       
     } catch (error) {
       console.error('❌ Failed to add video submission:', error);
@@ -300,34 +302,50 @@ function App() {
       });
       throw error;
     }
-  }, []);
+  }, [user, currentOrgId]);
 
 
-  const handleStatusUpdate = useCallback((id: string, status: VideoSubmission['status']) => {
+  const handleStatusUpdate = useCallback(async (id: string, status: VideoSubmission['status']) => {
+    if (!user || !currentOrgId) return;
+    
     console.log('📝 Updating submission status:', id, '→', status);
     
-    // Update in localStorage
-    LocalStorageService.updateSubmissionStatus(id, status);
-    
-    // Update state
-    setSubmissions(prev => prev.map(submission => 
-      submission.id === id ? { ...submission, status } : submission
-    ));
-    
-    console.log('✅ Status updated and saved locally');
-  }, []);
+    try {
+      // Update in Firestore
+      await FirestoreDataService.updateTrackedAccount(currentOrgId, id, {
+        status: status === 'rejected' ? 'archived' : 'active'
+      } as any);
+      
+      // Update state
+      setSubmissions(prev => prev.map(submission => 
+        submission.id === id ? { ...submission, status } : submission
+      ));
+      
+      console.log('✅ Status updated and saved to Firestore');
+    } catch (error) {
+      console.error('Failed to update status:', error);
+    }
+  }, [user, currentOrgId]);
 
-  const handleDelete = useCallback((id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
+    if (!user || !currentOrgId) return;
+    
     console.log('🗑️ Deleting submission:', id);
     
-    // Remove from localStorage
-    LocalStorageService.removeSubmission(id);
-    
-    // Update state
-    setSubmissions(prev => prev.filter(submission => submission.id !== id));
-    
-    console.log('✅ Submission deleted and removed from storage');
-  }, []);
+    try {
+      // Delete from Firestore (archive it)
+      await FirestoreDataService.updateTrackedAccount(currentOrgId, id, {
+        status: 'archived'
+      } as any);
+      
+      // Update state
+      setSubmissions(prev => prev.filter(submission => submission.id !== id));
+      
+      console.log('✅ Submission deleted and removed from Firestore');
+    } catch (error) {
+      console.error('Failed to delete video:', error);
+    }
+  }, [user, currentOrgId]);
 
   const handleTikTokVideosFound = useCallback((videos: InstagramVideoData[]) => {
     console.log('🎵 Adding TikTok search results to dashboard:', videos.length, 'videos');
