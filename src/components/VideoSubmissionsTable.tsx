@@ -365,7 +365,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                     if (el) el.indeterminate = someSelected;
                   }}
                   onChange={(e) => onSelectAll(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  className="w-4 h-4 text-blue-600 bg-zinc-800 border-zinc-600 rounded focus:ring-blue-500 focus:ring-offset-zinc-900"
                 />
               </th>
               <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider sticky left-12 bg-zinc-900/60 backdrop-blur z-10 min-w-[280px]">
@@ -389,10 +389,10 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
               <SortableHeader column="engagement" className="min-w-[140px]">
                 Engagement
               </SortableHeader>
-              <SortableHeader column="uploadDate" className="min-w-[120px] bg-blue-50">
+              <SortableHeader column="uploadDate" className="min-w-[120px]">
                 📅 Upload Date
               </SortableHeader>
-              <SortableHeader column="dateSubmitted" className="min-w-[120px] bg-green-50">
+              <SortableHeader column="dateSubmitted" className="min-w-[120px]">
                 ➕ Date Added
               </SortableHeader>
               <th className="w-12 px-6 py-4 text-left"></th>
@@ -413,7 +413,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       type="checkbox"
                       checked={selectedIds.has(submission.id)}
                       onChange={(e) => onSelectionChange(submission.id, e.target.checked)}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      className="w-4 h-4 text-blue-600 bg-zinc-800 border-zinc-600 rounded focus:ring-blue-500 focus:ring-offset-zinc-900"
                       onClick={(e) => e.stopPropagation()}
                     />
                   </td>

@@ -7,6 +7,7 @@ import {
   AtSign, 
   Video, 
   DollarSign,
+  Download,
   TrendingUp,
   TrendingDown,
   ChevronRight
@@ -129,7 +130,8 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions }) => {
         value: publishedVideos,
         icon: Video,
         accent: 'orange',
-        period: 'All time'
+        period: 'All time',
+        sparklineData: generateSparklineData('views')
       },
       {
         id: 'accounts',
@@ -137,7 +139,8 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions }) => {
         value: activeAccounts,
         icon: AtSign,
         accent: 'teal',
-        period: 'Total tracked'
+        period: 'Total tracked',
+        sparklineData: generateSparklineData('views')
       },
       {
         id: 'engagement',
@@ -145,7 +148,8 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions }) => {
         value: `${engagementRate.toFixed(1)}%`,
         icon: Activity,
         accent: 'violet',
-        period: 'Last 28 days'
+        period: 'Last 28 days',
+        sparklineData: generateSparklineData('likes')
       },
       {
         id: 'link-clicks',
@@ -156,6 +160,16 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions }) => {
         isEmpty: true,
         ctaText: 'Set up +',
         period: 'Track link performance'
+      },
+      {
+        id: 'app-downloads',
+        label: 'App Downloads',
+        value: '0',
+        icon: Download,
+        accent: 'slate',
+        isEmpty: true,
+        ctaText: 'Set up +',
+        period: 'Track app installs'
       }
     ];
 
