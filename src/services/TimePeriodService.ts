@@ -219,6 +219,9 @@ export class TimePeriodService {
 
   private static getPeriodKey(date: Date, timePeriod: TimePeriodType): string {
     switch (timePeriod) {
+      case 'hours':
+        // YYYY-MM-DD-HH format for hourly grouping
+        return `${date.toISOString().split('T')[0]}-${String(date.getHours()).padStart(2, '0')}`;
       case 'days':
         return date.toISOString().split('T')[0]; // YYYY-MM-DD
       case 'weeks':
@@ -238,6 +241,13 @@ export class TimePeriodService {
 
   private static getPeriodLabel(date: Date, timePeriod: TimePeriodType): string {
     switch (timePeriod) {
+      case 'hours':
+        return date.toLocaleString('en-US', { 
+          month: 'short', 
+          day: 'numeric', 
+          hour: 'numeric',
+          hour12: true 
+        });
       case 'days':
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       case 'weeks':
@@ -257,6 +267,9 @@ export class TimePeriodService {
 
   private static advancePeriod(date: Date, timePeriod: TimePeriodType): void {
     switch (timePeriod) {
+      case 'hours':
+        date.setHours(date.getHours() + 1);
+        break;
       case 'days':
         date.setDate(date.getDate() + 1);
         break;
@@ -293,6 +306,8 @@ export class TimePeriodService {
 
   static formatPeriodDescription(timePeriod: TimePeriodType): string {
     switch (timePeriod) {
+      case 'hours':
+        return 'hourly breakdown';
       case 'days':
         return 'daily breakdown';
       case 'weeks':
