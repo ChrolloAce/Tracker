@@ -336,7 +336,7 @@ function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
       {/* Fixed Sidebar */}
       <Sidebar 
         onAddVideo={() => setIsModalOpen(true)}
@@ -351,7 +351,7 @@ function App() {
       
       {/* Fixed Header */}
       <header className={clsx(
-        'fixed top-0 right-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 z-20 transition-all duration-300',
+        'fixed top-0 right-0 bg-white dark:bg-[#111111] border-b border-gray-200 dark:border-gray-800 px-6 py-4 z-20 transition-all duration-300',
         {
           'left-64': !isSidebarCollapsed,
           'left-16': isSidebarCollapsed,
@@ -441,7 +441,7 @@ function App() {
 
           {/* Other Tabs - Placeholder */}
           {!['dashboard', 'accounts', 'contracts', 'settings'].includes(activeTab) && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-12 text-center">
+            <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">🚧</span>
               </div>

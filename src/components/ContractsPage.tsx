@@ -14,11 +14,11 @@ const ContractsPage: React.FC = () => {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
               <FileText className="w-8 h-8 text-blue-600" />
               Contracts
             </h1>
-            <p className="mt-2 text-gray-600">
+            <p className="mt-2 text-gray-600 dark:text-gray-400">
               Manage your brand deals and sponsorship contracts
             </p>
           </div>
@@ -36,25 +36,25 @@ const ContractsPage: React.FC = () => {
           <input
             type="text"
             placeholder="Search contracts..."
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+        <button className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-[#1A1A1A] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200">
           <Filter className="w-4 h-4 text-gray-600" />
-          <span className="text-sm font-medium text-gray-700">Filter</span>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter</span>
         </button>
       </div>
 
       {/* Empty State */}
-      <div className="bg-white rounded-xl border border-gray-200 p-12">
+      <div className="bg-white dark:bg-[#161616] rounded-xl border border-gray-200 dark:border-gray-800 p-12">
         <div className="text-center max-w-md mx-auto">
           <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
             <FileText className="w-8 h-8 text-blue-600" />
           </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
             No Contracts Yet
           </h3>
-          <p className="text-gray-600 mb-6">
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
             Start by creating your first contract to track brand deals, sponsorships, and collaboration agreements.
           </p>
           <button className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200">

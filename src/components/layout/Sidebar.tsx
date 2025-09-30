@@ -174,14 +174,14 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <div className={clsx(
-      'fixed left-0 top-0 flex flex-col h-screen bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 z-30',
+      'fixed left-0 top-0 flex flex-col h-screen bg-white dark:bg-[#111111] border-r border-gray-200 dark:border-gray-800 transition-all duration-300 z-30',
       {
         'w-64': !isCollapsed,
         'w-16': isCollapsed,
       }
     )}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
         {!isCollapsed && (
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
@@ -249,7 +249,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       </nav>
 
       {/* Bottom Navigation */}
-      <div className="px-3 py-4 border-t border-gray-200 dark:border-gray-700 space-y-1">
+      <div className="px-3 py-4 border-t border-gray-200 dark:border-gray-800 space-y-1">
         {bottomItems.map((item) => (
           <NavItemComponent key={item.id} item={item} />
         ))}
@@ -257,7 +257,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       {/* User Profile */}
       {!isCollapsed && (
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="p-4 border-t border-gray-200 dark:border-gray-800">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-gradient-to-br from-gray-400 to-gray-500 rounded-full flex items-center justify-center">
               <span className="text-sm font-medium text-white">U</span>

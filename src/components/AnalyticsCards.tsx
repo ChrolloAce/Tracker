@@ -53,7 +53,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
+        <div className="bg-white dark:bg-[#1A1A1A] p-2 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg">
           <p className="text-sm font-medium text-gray-900 dark:text-white">
             {formatNumber(payload[0].value)}
           </p>
@@ -100,7 +100,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
   const colorClasses = getColorClasses(color);
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow duration-200">
+    <div className="bg-white dark:bg-[#161616] rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 hover:shadow-md transition-shadow duration-200">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">

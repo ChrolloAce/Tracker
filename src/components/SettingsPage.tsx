@@ -39,8 +39,8 @@ const SettingsPage: React.FC = () => {
       <div className="space-y-6">
         
         {/* Appearance Section */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+        <div className="bg-white dark:bg-[#161616] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#1A1A1A]">
             <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
               <Palette className="w-5 h-5 text-blue-600" />
               Appearance
@@ -102,8 +102,8 @@ const SettingsPage: React.FC = () => {
         </div>
 
         {/* Notifications Section */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+        <div className="bg-white dark:bg-[#161616] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#1A1A1A]">
             <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
               <Bell className="w-5 h-5 text-blue-600" />
               Notifications
@@ -129,8 +129,8 @@ const SettingsPage: React.FC = () => {
         </div>
 
         {/* Account Section */}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+        <div className="bg-white dark:bg-[#161616] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#1A1A1A]">
             <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
               <User className="w-5 h-5 text-blue-600" />
               Account
@@ -144,7 +144,7 @@ const SettingsPage: React.FC = () => {
         </div>
 
         {/* About Section */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white dark:bg-[#161616] rounded-xl border border-gray-200 dark:border-gray-800 p-6">
           <div className="text-center">
             <p className="text-sm text-gray-600">
               VideoAnalytics Dashboard v1.0.0
@@ -211,7 +211,7 @@ interface SettingsItemProps {
 
 const SettingsItem: React.FC<SettingsItemProps> = ({ icon: Icon, label }) => {
   return (
-    <button className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+    <button className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200">
       <div className="flex items-center gap-3">
         <Icon className="w-5 h-5 text-gray-600" />
         <span className="text-sm font-medium text-gray-900">{label}</span>
