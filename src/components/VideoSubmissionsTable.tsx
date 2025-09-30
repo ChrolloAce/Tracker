@@ -363,18 +363,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
         <table className="w-full min-w-max">
           <thead>
             <tr className="border-b border-white/5">
-              <th className="w-12 px-6 py-4 text-left sticky left-0 bg-zinc-900/60 backdrop-blur z-10">
-                <input
-                  type="checkbox"
-                  checked={allSelected}
-                  ref={(el) => {
-                    if (el) el.indeterminate = someSelected;
-                  }}
-                  onChange={(e) => onSelectAll(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 bg-zinc-800 border-zinc-600 rounded focus:ring-blue-500 focus:ring-offset-zinc-900"
-                />
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider sticky left-12 bg-zinc-900/60 backdrop-blur z-10 min-w-[280px]">
+              <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider sticky left-0 bg-zinc-900/60 backdrop-blur z-10 min-w-[280px]">
                 Video
               </th>
               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[80px]">
@@ -415,15 +404,6 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   className="hover:bg-white/5 transition-colors cursor-pointer group"
                 >
                   <td className="px-6 py-5 sticky left-0 bg-zinc-900/60 backdrop-blur z-10 group-hover:bg-white/5">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(submission.id)}
-                      onChange={(e) => onSelectionChange(submission.id, e.target.checked)}
-                      className="w-4 h-4 text-blue-600 bg-zinc-800 border-zinc-600 rounded focus:ring-blue-500 focus:ring-offset-zinc-900"
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </td>
-                  <td className="px-6 py-5 sticky left-12 bg-zinc-900/60 backdrop-blur z-10 group-hover:bg-white/5">
                     <div className="flex items-center space-x-4">
                       <div className="relative">
                         <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 ring-2 ring-white shadow-sm">
@@ -495,8 +475,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-5 bg-blue-50/50">
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                  <td className="px-6 py-5">
+                    <div className="text-sm text-zinc-300">
                       📅 {submission.uploadDate ? 
                         new Date(submission.uploadDate).toLocaleDateString('en-US', {
                           month: 'short',
@@ -511,8 +491,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       }
                     </div>
                   </td>
-                  <td className="px-6 py-5 bg-green-50/50">
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                  <td className="px-6 py-5">
+                    <div className="text-sm text-zinc-300">
                       ➕ {new Date(submission.dateSubmitted).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
