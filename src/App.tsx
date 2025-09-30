@@ -18,6 +18,7 @@ import VideoApiService from './services/VideoApiService';
 import LocalStorageService from './services/LocalStorageService';
 import DateFilterService from './services/DateFilterService';
 import SnapshotService from './services/SnapshotService';
+import { AccountTrackingService } from './services/AccountTrackingService';
 import ThemeService from './services/ThemeService';
 import { cssVariables } from './theme';
 
@@ -57,9 +58,41 @@ function App() {
     
     const savedSubmissions = LocalStorageService.loadSubmissions();
     
+    // Load tracked account videos and merge with manual submissions
+    const trackedAccounts = AccountTrackingService.getTrackedAccounts();
+    const accountVideos: VideoSubmission[] = [];
+    
+    trackedAccounts.forEach(account => {
+      const videos = AccountTrackingService.getAccountVideos(account.id);
+      videos.forEach(video => {
+        // Convert AccountVideo to VideoSubmission format
+        accountVideos.push({
+          id: video.id || `${account.id}_${video.videoId || Date.now()}`,
+          url: video.url,
+          platform: account.platform as 'instagram' | 'tiktok',
+          thumbnail: video.thumbnail || '',
+          title: video.caption || `Video from @${account.username}`,
+          uploader: account.displayName || account.username,
+          uploaderHandle: account.username,
+          status: 'approved',
+          views: video.viewsCount || video.views || 0,
+          likes: video.likesCount || video.likes || 0,
+          comments: video.commentsCount || video.comments || 0,
+          shares: video.sharesCount || video.shares,
+          dateSubmitted: account.dateAdded,
+          uploadDate: video.uploadDate || (video.timestamp ? new Date(video.timestamp) : account.dateAdded),
+          lastRefreshed: account.lastSynced,
+        });
+      });
+    });
+    
+    console.log(`📊 Loaded ${accountVideos.length} videos from ${trackedAccounts.length} tracked accounts`);
+    
+    const allSubmissions = [...savedSubmissions, ...accountVideos];
+    
     // 🔧 MIGRATION: Fix existing snapshots to use upload dates instead of current dates
     console.log('🔄 Migrating existing snapshots to use correct upload dates...');
-    const migratedSubmissions = savedSubmissions.map(video => {
+    const migratedSubmissions = allSubmissions.map(video => {
       if (!video.snapshots || video.snapshots.length === 0) {
         return video;
       }
