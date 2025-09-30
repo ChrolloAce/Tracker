@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { X, BarChart3, Globe, Monitor, Smartphone, Tablet, ExternalLink } from 'lucide-react';
+import { X, Globe, Monitor, Smartphone, Tablet, ExternalLink } from 'lucide-react';
 import { TrackedLink, LinkAnalytics } from '../types/trackedLinks';
 import TrackedLinksService from '../services/TrackedLinksService';
-import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 interface LinkAnalyticsModalProps {
   isOpen: boolean;
