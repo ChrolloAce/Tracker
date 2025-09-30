@@ -294,9 +294,9 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+    <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg overflow-hidden">
       {/* Table Header */}
-      <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-[#1A1A1A]">
+      <div className="px-6 py-5 border-b border-white/5 bg-zinc-900/40">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Activity</h2>
@@ -356,8 +356,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
       <div className="overflow-x-auto">
         <table className="w-full min-w-max">
           <thead>
-            <tr className="border-b border-gray-100 dark:border-gray-800">
-              <th className="w-12 px-6 py-4 text-left sticky left-0 bg-white dark:bg-[#161616] z-10">
+            <tr className="border-b border-white/5">
+              <th className="w-12 px-6 py-4 text-left sticky left-0 bg-zinc-900/60 backdrop-blur z-10">
                 <input
                   type="checkbox"
                   checked={allSelected}
@@ -368,7 +368,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 />
               </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky left-12 bg-white dark:bg-[#161616] z-10 min-w-[280px]">
+              <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider sticky left-12 bg-zinc-900/60 backdrop-blur z-10 min-w-[280px]">
                 Video
               </th>
               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[80px]">
@@ -398,7 +398,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
               <th className="w-12 px-6 py-4 text-left"></th>
             </tr>
           </thead>
-          <tbody className="bg-white dark:bg-[#161616] divide-y divide-gray-50 dark:divide-gray-800">
+          <tbody className="bg-zinc-900/60 divide-y divide-white/5">
             {filteredAndSortedSubmissions.map((submission) => {
               const engagementRate = calculateEngagementRate(submission);
               
@@ -406,9 +406,9 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                 <tr 
                   key={submission.id}
                   onClick={() => onVideoClick?.(submission)}
-                  className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer group"
+                  className="hover:bg-white/5 transition-colors cursor-pointer group"
                 >
-                  <td className="px-6 py-5 sticky left-0 bg-white dark:bg-[#161616] z-10 group-hover:bg-gray-50/50 dark:group-hover:bg-gray-800/50">
+                  <td className="px-6 py-5 sticky left-0 bg-zinc-900/60 backdrop-blur z-10 group-hover:bg-white/5">
                     <input
                       type="checkbox"
                       checked={selectedIds.has(submission.id)}
@@ -417,7 +417,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       onClick={(e) => e.stopPropagation()}
                     />
                   </td>
-                  <td className="px-6 py-5 sticky left-12 bg-white dark:bg-[#161616] z-10 group-hover:bg-gray-50/50 dark:group-hover:bg-gray-800/50">
+                  <td className="px-6 py-5 sticky left-12 bg-zinc-900/60 backdrop-blur z-10 group-hover:bg-white/5">
                     <div className="flex items-center space-x-4">
                       <div className="relative">
                         <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 ring-2 ring-white shadow-sm">

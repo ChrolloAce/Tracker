@@ -107,22 +107,6 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions }) => {
         sparklineData: generateSparklineData('views')
       },
       {
-        id: 'accounts',
-        label: 'Active Accounts',
-        value: activeAccounts,
-        icon: AtSign,
-        accent: 'teal',
-        period: 'Total tracked'
-      },
-      {
-        id: 'videos',
-        label: 'Published Videos',
-        value: publishedVideos,
-        icon: Video,
-        accent: 'orange',
-        period: 'All time'
-      },
-      {
         id: 'likes',
         label: 'Likes',
         value: formatNumber(totalLikes),
@@ -141,32 +125,38 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions }) => {
         sparklineData: generateSparklineData('comments')
       },
       {
+        id: 'videos',
+        label: 'Published Videos',
+        value: publishedVideos,
+        icon: Video,
+        accent: 'orange',
+        period: 'All time'
+      },
+      {
+        id: 'accounts',
+        label: 'Active Accounts',
+        value: activeAccounts,
+        icon: AtSign,
+        accent: 'teal',
+        period: 'Total tracked'
+      },
+      {
         id: 'engagement',
-        label: 'Engagement',
+        label: 'Engagement Rate',
         value: `${engagementRate.toFixed(1)}%`,
         icon: Activity,
         accent: 'violet',
         period: 'Last 28 days'
       },
       {
-        id: 'revenue',
-        label: 'App Revenue',
-        value: '$0',
+        id: 'link-clicks',
+        label: 'Link Clicks',
+        value: '0',
         icon: DollarSign,
         accent: 'emerald',
         isEmpty: true,
         ctaText: 'Set up +',
-        period: 'Connect revenue tracking'
-      },
-      {
-        id: 'installs',
-        label: 'App Installs',
-        value: '0',
-        icon: Download,
-        accent: 'slate',
-        isEmpty: true,
-        ctaText: 'Set up +',
-        period: 'Connect install tracking'
+        period: 'Track link performance'
       }
     ];
 
@@ -174,7 +164,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions }) => {
   }, [submissions]);
 
   return (
-    <div className="grid gap-4 md:gap-5 xl:gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid gap-4 md:gap-5 xl:gap-6 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {kpiData.map((card) => (
         <KPICard key={card.id} data={card} />
       ))}
