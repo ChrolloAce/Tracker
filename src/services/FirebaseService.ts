@@ -9,12 +9,11 @@ import {
   query,
   where,
   orderBy,
-  Timestamp,
-  DocumentData
+  Timestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { VideoSubmission } from '../types';
-import { TrackedAccount, AccountVideo } from '../types/accounts';
+import { TrackedAccount } from '../types/accounts';
 import { TrackedLink } from '../types/trackedLinks';
 
 /**
@@ -25,7 +24,6 @@ class FirebaseService {
   // Collection names
   private static VIDEOS_COLLECTION = 'videos';
   private static ACCOUNTS_COLLECTION = 'accounts';
-  private static ACCOUNT_VIDEOS_COLLECTION = 'accountVideos';
   private static LINKS_COLLECTION = 'trackedLinks';
   private static SETTINGS_COLLECTION = 'settings';
 

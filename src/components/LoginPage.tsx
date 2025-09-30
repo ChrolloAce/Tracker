@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { LogIn, Mail, Lock } from 'lucide-react';
+import { Mail, Lock } from 'lucide-react';
 
 const LoginPage: React.FC = () => {
   const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
