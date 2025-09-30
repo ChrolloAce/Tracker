@@ -393,7 +393,7 @@ const AccountsPage: React.FC = () => {
             </button>
           )}
         <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               {viewMode === 'details' && selectedAccount 
                 ? `@${selectedAccount.username}` 
                 : 'Accounts'
@@ -508,13 +508,13 @@ const AccountsPage: React.FC = () => {
       {/* Main Content */}
       {viewMode === 'table' ? (
         /* Accounts Table */
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 overflow-hidden">
           {accounts.length === 0 ? (
             <div className="p-12 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Users className="w-8 h-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No accounts tracked yet</h3>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white dark:text-white mb-2">No accounts tracked yet</h3>
               <p className="text-gray-500 dark:text-gray-400 mb-6">
                 Start tracking Instagram or TikTok accounts to monitor their content performance
               </p>
@@ -571,9 +571,9 @@ const AccountsPage: React.FC = () => {
                       <tr 
                         key={account.id}
                         className={clsx(
-                          'hover:bg-gray-50 transition-colors cursor-pointer',
+                          'hover:bg-white/5 dark:hover:bg-white/5 transition-colors cursor-pointer',
                           {
-                            'bg-blue-50': selectedAccount?.id === account.id,
+                            'bg-blue-900/20 dark:bg-blue-900/20': selectedAccount?.id === account.id,
                           }
                         )}
                         onClick={() => setSelectedAccount(account)}
@@ -600,7 +600,7 @@ const AccountsPage: React.FC = () => {
                               </div>
                             </div>
                             <div>
-                              <div className="text-sm font-medium text-gray-900">
+                              <div className="text-sm font-medium text-gray-900 dark:text-white">
                                 {account.displayName || account.username}
                               </div>
                               <div className="text-sm text-gray-500">@{account.username}</div>
@@ -612,37 +612,37 @@ const AccountsPage: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center space-x-2">
                             <PlatformIcon platform={account.platform} size="sm" />
-                            <span className="text-sm text-gray-900 capitalize">{account.platform}</span>
+                            <span className="text-sm text-gray-900 dark:text-white capitalize">{account.platform}</span>
                           </div>
                         </td>
 
                         {/* Last Post Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                           {account.lastSynced ? formatDate(account.lastSynced) : 'Never'}
                         </td>
 
                         {/* Followers Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                           {account.followerCount ? formatNumber(account.followerCount) : 'N/A'}
                         </td>
 
                         {/* Posts Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                           {formatNumber(account.totalVideos)}
                         </td>
 
                         {/* Views Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white dark:text-white">
                           {formatNumber(account.totalViews)}
                         </td>
 
                         {/* Likes Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                           {formatNumber(account.totalLikes)}
                         </td>
 
                         {/* Comments Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                           {formatNumber(account.totalComments)}
                         </td>
 
@@ -699,7 +699,7 @@ const AccountsPage: React.FC = () => {
         selectedAccount && (
           <div className="space-y-6">
             {/* Account Profile Card */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+            <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 p-8">
               <div className="flex items-center space-x-6">
                 <div className="relative">
                   {selectedAccount.profilePicture ? (
@@ -718,7 +718,7 @@ const AccountsPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                     {selectedAccount.displayName || `@${selectedAccount.username}`}
                   </h2>
                   <div className="flex items-center space-x-6 text-sm text-gray-600">
@@ -748,10 +748,10 @@ const AccountsPage: React.FC = () => {
              </div>
 
             {/* Analytics Charts Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+            <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 p-8">
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">Reporting Overview</h3>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">Reporting Overview</h3>
                   <p className="text-gray-600 mt-1">Track and analyze your video performance</p>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -760,8 +760,8 @@ const AccountsPage: React.FC = () => {
                     className={clsx(
                       'flex items-center space-x-2 px-4 py-2 border rounded-lg transition-colors',
                       timePeriod === 'all' 
-                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                        ? 'border-blue-500 bg-blue-600 text-white' 
+                        : 'border-gray-700 dark:border-gray-700 text-gray-400 dark:text-gray-400 hover:bg-gray-800 dark:hover:bg-gray-800'
                     )}
                   >
                     <Calendar className="w-4 h-4" />
@@ -772,8 +772,8 @@ const AccountsPage: React.FC = () => {
                     className={clsx(
                       'flex items-center space-x-2 px-4 py-2 border rounded-lg transition-colors',
                       timePeriod === 'monthly' 
-                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                        ? 'border-blue-500 bg-blue-600 text-white' 
+                        : 'border-gray-700 dark:border-gray-700 text-gray-400 dark:text-gray-400 hover:bg-gray-800 dark:hover:bg-gray-800'
                     )}
                   >
                     <span>Monthly</span>
@@ -783,8 +783,8 @@ const AccountsPage: React.FC = () => {
                     className={clsx(
                       'flex items-center space-x-2 px-4 py-2 border rounded-lg transition-colors',
                       timePeriod === 'weekly' 
-                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                        ? 'border-blue-500 bg-blue-600 text-white' 
+                        : 'border-gray-700 dark:border-gray-700 text-gray-400 dark:text-gray-400 hover:bg-gray-800 dark:hover:bg-gray-800'
                     )}
                   >
                     <span>Weekly</span>
@@ -794,8 +794,8 @@ const AccountsPage: React.FC = () => {
                     className={clsx(
                       'flex items-center space-x-2 px-4 py-2 border rounded-lg transition-colors',
                       timePeriod === 'daily' 
-                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                        ? 'border-blue-500 bg-blue-600 text-white' 
+                        : 'border-gray-700 dark:border-gray-700 text-gray-400 dark:text-gray-400 hover:bg-gray-800 dark:hover:bg-gray-800'
                     )}
                   >
                     <span>Daily</span>
@@ -810,10 +810,10 @@ const AccountsPage: React.FC = () => {
                 return (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Total Views Chart */}
-                    <div className="bg-white border border-gray-100 rounded-2xl p-6">
+                    <div className="bg-zinc-900/60 dark:bg-zinc-900/60 border border-white/10 rounded-2xl p-6">
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                          <div className="w-12 h-12 bg-blue-500/10 dark:bg-blue-500/10 rounded-xl flex items-center justify-center">
                             <Eye className="w-6 h-6 text-blue-600" />
                           </div>
                           <div>
@@ -826,7 +826,7 @@ const AccountsPage: React.FC = () => {
                       </div>
                       
                       <div className="mb-4">
-                        <div className="text-3xl font-bold text-gray-900 mb-1">
+                        <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
                           {formatNumber(selectedAccount.totalViews)}
                         </div>
                         <div className={clsx(
@@ -869,10 +869,10 @@ const AccountsPage: React.FC = () => {
                     </div>
 
                     {/* Total Likes Chart */}
-                    <div className="bg-white border border-gray-100 rounded-2xl p-6">
+                    <div className="bg-zinc-900/60 dark:bg-zinc-900/60 border border-white/10 rounded-2xl p-6">
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
+                          <div className="w-12 h-12 bg-green-500/10 dark:bg-green-500/10 rounded-xl flex items-center justify-center">
                             <Heart className="w-6 h-6 text-green-600" />
                           </div>
                           <div>
@@ -885,7 +885,7 @@ const AccountsPage: React.FC = () => {
                       </div>
                       
                       <div className="mb-4">
-                        <div className="text-3xl font-bold text-gray-900 mb-1">
+                        <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
                           {formatNumber(selectedAccount.totalLikes)}
                         </div>
                         <div className={clsx(
@@ -928,10 +928,10 @@ const AccountsPage: React.FC = () => {
                     </div>
 
                     {/* Total Comments Chart */}
-                    <div className="bg-white border border-gray-100 rounded-2xl p-6">
+                    <div className="bg-zinc-900/60 dark:bg-zinc-900/60 border border-white/10 rounded-2xl p-6">
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center">
+                          <div className="w-12 h-12 bg-purple-500/10 dark:bg-purple-500/10 rounded-xl flex items-center justify-center">
                             <MessageCircle className="w-6 h-6 text-purple-600" />
                           </div>
                           <div>
@@ -944,7 +944,7 @@ const AccountsPage: React.FC = () => {
                       </div>
                       
                       <div className="mb-4">
-                        <div className="text-3xl font-bold text-gray-900 mb-1">
+                        <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
                           {formatNumber(selectedAccount.totalComments)}
                         </div>
                         <div className={clsx(
@@ -991,9 +991,9 @@ const AccountsPage: React.FC = () => {
             </div>
 
             {/* Videos Grid */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-gray-900">Recent Videos</h3>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Recent Videos</h3>
                 <p className="text-gray-500">{accountVideos.length} videos</p>
               </div>
               
@@ -1024,7 +1024,7 @@ const AccountsPage: React.FC = () => {
                       </div>
                       
                       <div className="space-y-2">
-                        <p className="text-sm font-medium text-gray-900 line-clamp-2">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
                           {video.caption || 'No caption'}
                         </p>
                         <div className="flex items-center justify-between text-xs text-gray-500">
@@ -1061,7 +1061,7 @@ const AccountsPage: React.FC = () => {
                   <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <Play className="w-8 h-8 text-gray-400" />
                   </div>
-                  <h4 className="text-lg font-medium text-gray-900 mb-2">No videos synced</h4>
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No videos synced</h4>
                   <p className="text-gray-500 mb-6">
                     Click "Sync Videos" to fetch all videos from this account
                   </p>
@@ -1084,18 +1084,18 @@ const AccountsPage: React.FC = () => {
       {/* Add Account Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
+          <div className="bg-zinc-900 dark:bg-zinc-900 rounded-2xl p-8 w-full max-w-md shadow-2xl">
             <div className="text-center mb-6">
               <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Plus className="w-8 h-8 text-blue-600" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Add Account to Track</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Add Account to Track</h2>
               <p className="text-gray-500">Start monitoring a new Instagram or TikTok account</p>
             </div>
             
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-3">
+                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
                   Choose Platform
                 </label>
                 <div className="grid grid-cols-2 gap-3">
@@ -1104,8 +1104,8 @@ const AccountsPage: React.FC = () => {
                     className={clsx(
                       'flex items-center justify-center space-x-3 py-4 px-4 rounded-xl border-2 transition-all duration-200',
                       newAccountPlatform === 'instagram'
-                        ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-md'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        ? 'border-blue-500 bg-blue-600 text-white shadow-md'
+                        : 'border-gray-700 dark:border-gray-700 hover:border-gray-600 dark:hover:border-gray-600 hover:bg-gray-800 dark:hover:bg-gray-800'
                     )}
                   >
                     <PlatformIcon platform="instagram" size="md" />
@@ -1116,8 +1116,8 @@ const AccountsPage: React.FC = () => {
                     className={clsx(
                       'flex items-center justify-center space-x-3 py-4 px-4 rounded-xl border-2 transition-all duration-200',
                       newAccountPlatform === 'tiktok'
-                        ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-md'
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        ? 'border-blue-500 bg-blue-600 text-white shadow-md'
+                        : 'border-gray-700 dark:border-gray-700 hover:border-gray-600 dark:hover:border-gray-600 hover:bg-gray-800 dark:hover:bg-gray-800'
                     )}
                   >
                     <PlatformIcon platform="tiktok" size="md" />
@@ -1127,7 +1127,7 @@ const AccountsPage: React.FC = () => {
               </div>
               
               <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-3">
+                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
                   Username
                 </label>
                 <div className="relative">
