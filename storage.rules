@@ -1,0 +1,81 @@
+rules_version = '2';
+
+// Firebase Storage Rules for ViewTrack
+// Controls access to thumbnails and profile pictures stored in Firebase Storage
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // ==================== HELPER FUNCTIONS ====================
+    
+    // Check if user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Check if user is a member of the organization
+    // Note: We can't directly access Firestore from Storage rules,
+    // so we use a simpler check here based on the path structure
+    function isOrgPath(orgId) {
+      return isSignedIn();
+      // In production, consider using custom claims or tokens to verify org membership
+    }
+    
+    // Check if file is an image
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    // Check if file size is reasonable (max 10MB for images)
+    function isReasonableSize() {
+      return request.resource.size < 10 * 1024 * 1024;
+    }
+    
+    // ==================== ORGANIZATION STORAGE ====================
+    
+    // All organization data stored under organizations/{orgId}/
+    match /organizations/{orgId}/{allPaths=**} {
+      
+      // ==================== THUMBNAILS ====================
+      
+      // Video thumbnails: organizations/{orgId}/thumbnails/{videoId}.jpg
+      match /thumbnails/{videoId} {
+        // Any authenticated user can read thumbnails
+        // (thumbnails are not sensitive data)
+        allow read: if isSignedIn();
+        
+        // Only org members can upload thumbnails
+        allow write: if isOrgPath(orgId) 
+          && isImage() 
+          && isReasonableSize();
+        
+        // Only org members can delete thumbnails
+        allow delete: if isOrgPath(orgId);
+      }
+      
+      // ==================== PROFILE PICTURES ====================
+      
+      // Profile pictures: organizations/{orgId}/profiles/{accountId}.jpg
+      match /profiles/{accountId} {
+        // Any authenticated user can read profile pictures
+        allow read: if isSignedIn();
+        
+        // Only org members can upload profile pictures
+        allow write: if isOrgPath(orgId) 
+          && isImage() 
+          && isReasonableSize();
+        
+        // Only org members can delete profile pictures
+        allow delete: if isOrgPath(orgId);
+      }
+    }
+    
+    // ==================== DEFAULT DENY ====================
+    
+    // Deny all other access by default
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

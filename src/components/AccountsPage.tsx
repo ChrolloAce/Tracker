@@ -21,11 +21,13 @@ import {
   } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis } from 'recharts';
 import { TrackedAccount, AccountVideo } from '../types/accounts';
-import { AccountTrackingService } from '../services/AccountTrackingService';
+import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { clsx } from 'clsx';
+import { useAuth } from '../contexts/AuthContext';
 
 const AccountsPage: React.FC = () => {
+  const { user, currentOrgId } = useAuth();
   const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<TrackedAccount | null>(null);
   const [accountVideos, setAccountVideos] = useState<AccountVideo[]>([]);
@@ -40,64 +42,88 @@ const AccountsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [syncError, setSyncError] = useState<string | null>(null);
   const [accountType, setAccountType] = useState<'my' | 'competitor'>('my');
+  const [loading, setLoading] = useState(true);
 
   // Load accounts on mount and restore selected account
   useEffect(() => {
-    const loadedAccounts = AccountTrackingService.getTrackedAccounts();
-    setAccounts(loadedAccounts);
-
-    // Restore selected account from localStorage
-    const savedSelectedAccountId = localStorage.getItem('selectedAccountId');
-    if (savedSelectedAccountId && loadedAccounts.length > 0) {
-      const savedAccount = loadedAccounts.find(a => a.id === savedSelectedAccountId);
-      if (savedAccount) {
-        console.log('🔄 Restoring selected account from localStorage:', savedAccount.username);
-        setSelectedAccount(savedAccount);
+    const loadAccounts = async () => {
+      if (!currentOrgId) {
+        setLoading(false);
+        return;
       }
-    }
-  }, []);
+
+      try {
+        console.log('📥 Loading accounts from Firestore...');
+        const loadedAccounts = await AccountTrackingServiceFirebase.getTrackedAccounts(currentOrgId);
+        setAccounts(loadedAccounts);
+
+        // Restore selected account from localStorage
+        const savedSelectedAccountId = localStorage.getItem('selectedAccountId');
+        if (savedSelectedAccountId && loadedAccounts.length > 0) {
+          const savedAccount = loadedAccounts.find(a => a.id === savedSelectedAccountId);
+          if (savedAccount) {
+            console.log('🔄 Restoring selected account:', savedAccount.username);
+            setSelectedAccount(savedAccount);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Failed to load accounts:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAccounts();
+  }, [currentOrgId]);
 
   // Load videos when account is selected
   useEffect(() => {
-    if (selectedAccount) {
-      console.log('📱 Loading videos for account:', selectedAccount.username);
-      const videos = AccountTrackingService.getAccountVideos(selectedAccount.id);
-      console.log('📹 Loaded videos from localStorage:', videos.length);
-      setAccountVideos(videos);
-      setViewMode('details');
-      
-      // Save selected account ID to localStorage for persistence
-      localStorage.setItem('selectedAccountId', selectedAccount.id);
-    } else {
-      setViewMode('table');
-      setAccountVideos([]);
-      
-      // Clear selected account ID from localStorage
-      localStorage.removeItem('selectedAccountId');
-    }
-  }, [selectedAccount]);
+    const loadVideos = async () => {
+      if (selectedAccount && currentOrgId) {
+        console.log('📱 Loading videos for account:', selectedAccount.username);
+        const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, selectedAccount.id);
+        console.log('📹 Loaded videos from Firestore:', videos.length);
+        setAccountVideos(videos);
+        setViewMode('details');
+        
+        // Save selected account ID to localStorage for persistence
+        localStorage.setItem('selectedAccountId', selectedAccount.id);
+      } else {
+        setViewMode('table');
+        setAccountVideos([]);
+        
+        // Clear selected account ID from localStorage
+        localStorage.removeItem('selectedAccountId');
+      }
+    };
+
+    loadVideos();
+  }, [selectedAccount, currentOrgId]);
 
   const handleSyncAccount = useCallback(async (accountId: string) => {
+    if (!currentOrgId || !user) return;
+
     setIsSyncing(accountId);
     setSyncError(null);
     try {
       console.log(`🔄 Starting sync for account ${accountId}...`);
-      const videos = await AccountTrackingService.syncAccountVideos(accountId);
+      const videoCount = await AccountTrackingServiceFirebase.syncAccountVideos(currentOrgId, user.uid, accountId);
       
       // Update accounts list
-      const updatedAccounts = AccountTrackingService.getTrackedAccounts();
+      const updatedAccounts = await AccountTrackingServiceFirebase.getTrackedAccounts(currentOrgId);
       setAccounts(updatedAccounts);
       
       // Update videos if this account is selected
       if (selectedAccount?.id === accountId) {
+        const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, accountId);
         console.log('🔄 Updating displayed videos after sync:', videos.length);
         setAccountVideos(videos);
       }
       
-      console.log(`✅ Successfully synced ${videos.length} videos (saved to localStorage)`);
+      console.log(`✅ Successfully synced ${videoCount} videos to Firestore`);
       
       // Show success message briefly
-      if (videos.length === 0) {
+      if (videoCount === 0) {
         setSyncError('No videos found. This might be a private account or the username may be incorrect.');
       }
     } catch (error) {
@@ -107,63 +133,77 @@ const AccountsPage: React.FC = () => {
     } finally {
       setIsSyncing(null);
     }
-  }, [selectedAccount]);
+  }, [selectedAccount, currentOrgId, user]);
 
   const handleAddAccount = useCallback(async () => {
-    if (!newAccountUsername.trim()) return;
+    if (!newAccountUsername.trim() || !currentOrgId || !user) return;
 
     try {
-      const account = await AccountTrackingService.addAccount(
+      const accountId = await AccountTrackingServiceFirebase.addAccount(
+        currentOrgId,
+        user.uid,
         newAccountUsername.trim(),
         newAccountPlatform,
         newAccountType
       );
       
-      setAccounts(prev => [...prev, account]);
+      // Reload accounts
+      const updatedAccounts = await AccountTrackingServiceFirebase.getTrackedAccounts(currentOrgId);
+      setAccounts(updatedAccounts);
+      
       setNewAccountUsername('');
       setNewAccountType('my');
       setIsAddModalOpen(false);
       
-      console.log(`✅ Added ${newAccountType} account @${account.username}`);
+      console.log(`✅ Added ${newAccountType} account @${newAccountUsername}`);
       
       // Automatically sync videos for the newly added account
-      console.log(`🔄 Auto-syncing videos for @${account.username}...`);
-      handleSyncAccount(account.id);
+      console.log(`🔄 Auto-syncing videos...`);
+      handleSyncAccount(accountId);
     } catch (error) {
       console.error('Failed to add account:', error);
       alert('Failed to add account. Please check the username and try again.');
     }
-  }, [newAccountUsername, newAccountPlatform, newAccountType, handleSyncAccount]);
+  }, [newAccountUsername, newAccountPlatform, newAccountType, currentOrgId, user, handleSyncAccount]);
 
-  const handleRemoveAccount = useCallback((accountId: string) => {
-    if (window.confirm('Are you sure you want to remove this account?')) {
-      AccountTrackingService.removeAccount(accountId);
+  const handleRemoveAccount = useCallback(async (accountId: string) => {
+    if (!currentOrgId || !window.confirm('Are you sure you want to remove this account?')) return;
+
+    try {
+      await AccountTrackingServiceFirebase.removeAccount(currentOrgId, accountId);
       setAccounts(prev => prev.filter(a => a.id !== accountId));
       
       if (selectedAccount?.id === accountId) {
         setSelectedAccount(null);
         setAccountVideos([]);
       }
+    } catch (error) {
+      console.error('Failed to remove account:', error);
+      alert('Failed to remove account. Please try again.');
     }
-  }, [selectedAccount]);
+  }, [selectedAccount, currentOrgId]);
 
   const handleRefreshProfile = useCallback(async (accountId: string) => {
+    if (!currentOrgId || !user) return;
+
     setIsRefreshingProfile(accountId);
     try {
-      const updatedAccount = await AccountTrackingService.refreshAccountProfile(accountId);
+      await AccountTrackingServiceFirebase.refreshAccountProfile(currentOrgId, user.uid, accountId);
       
-      if (updatedAccount) {
-        // Update accounts list
-        setAccounts(prev => prev.map(a => a.id === accountId ? updatedAccount : a));
-        
-        // Update selected account if it's the one being refreshed
-        if (selectedAccount?.id === accountId) {
+      // Update accounts list
+      const updatedAccounts = await AccountTrackingServiceFirebase.getTrackedAccounts(currentOrgId);
+      setAccounts(updatedAccounts);
+      
+      // Update selected account if it's the one being refreshed
+      if (selectedAccount?.id === accountId) {
+        const updatedAccount = updatedAccounts.find(a => a.id === accountId);
+        if (updatedAccount) {
           setSelectedAccount(updatedAccount);
-          // Also refresh videos from localStorage
-          const videos = AccountTrackingService.getAccountVideos(accountId);
-          console.log('🔄 Refreshed videos after profile update:', videos.length);
-          setAccountVideos(videos);
         }
+        // Also refresh videos from Firestore
+        const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, accountId);
+        console.log('🔄 Refreshed videos after profile update:', videos.length);
+        setAccountVideos(videos);
       }
       
       console.log(`✅ Refreshed profile for account`);
@@ -173,7 +213,7 @@ const AccountsPage: React.FC = () => {
     } finally {
       setIsRefreshingProfile(null);
     }
-  }, [selectedAccount]);
+  }, [selectedAccount, currentOrgId, user]);
 
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
@@ -191,6 +231,30 @@ const AccountsPage: React.FC = () => {
       year: 'numeric'
     }).format(date);
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-500" />
+          <p className="text-gray-600 dark:text-gray-400">Loading accounts from Firebase...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show auth required state
+  if (!user || !currentOrgId) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 mx-auto mb-4 text-yellow-500" />
+          <p className="text-gray-600 dark:text-gray-400">Please sign in to manage accounts</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleBackToTable = () => {
     setSelectedAccount(null);

@@ -191,6 +191,153 @@ class FirestoreDataService {
   }
 
   /**
+   * Add or update multiple videos for a tracked account (batch operation)
+   */
+  static async syncAccountVideos(
+    orgId: string,
+    accountId: string,
+    userId: string,
+    videos: Array<{
+      videoId: string;
+      url: string;
+      thumbnail: string;
+      caption: string;
+      uploadDate: Date;
+      views: number;
+      likes: number;
+      comments: number;
+      shares?: number;
+      duration?: number;
+      hashtags?: string[];
+      mentions?: string[];
+    }>
+  ): Promise<void> {
+    try {
+      console.log(`💾 Syncing ${videos.length} videos to Firestore for account ${accountId}`);
+      
+      // Process in batches of 500 (Firestore limit)
+      const batchSize = 500;
+      for (let i = 0; i < videos.length; i += batchSize) {
+        const batch = writeBatch(db);
+        const batchVideos = videos.slice(i, i + batchSize);
+        
+        for (const video of batchVideos) {
+          // Use videoId as document ID for easy updates
+          const videoRef = doc(db, 'organizations', orgId, 'videos', video.videoId);
+          
+          // Check if video exists
+          const existingDoc = await getDoc(videoRef);
+          
+          if (existingDoc.exists()) {
+            // Update existing video metrics
+            batch.update(videoRef, {
+              views: video.views,
+              likes: video.likes,
+              comments: video.comments,
+              shares: video.shares || 0,
+              lastRefreshed: Timestamp.now()
+            });
+          } else {
+            // Create new video document
+            const videoData: VideoDoc = {
+              id: videoRef.id,
+              orgId,
+              trackedAccountId: accountId,
+              videoId: video.videoId,
+              url: video.url,
+              thumbnail: video.thumbnail,
+              title: video.caption?.substring(0, 100) || '',
+              caption: video.caption,
+              platform: accountId.startsWith('instagram') ? 'instagram' : 
+                        accountId.startsWith('tiktok') ? 'tiktok' : 'youtube',
+              uploadDate: Timestamp.fromDate(video.uploadDate),
+              views: video.views,
+              likes: video.likes,
+              comments: video.comments,
+              shares: video.shares || 0,
+              duration: video.duration || 0,
+              hashtags: video.hashtags || [],
+              mentions: video.mentions || [],
+              status: 'active',
+              dateAdded: Timestamp.now(),
+              addedBy: userId,
+              lastRefreshed: Timestamp.now()
+            };
+            
+            batch.set(videoRef, videoData);
+          }
+        }
+        
+        await batch.commit();
+        console.log(`✅ Synced batch ${i / batchSize + 1} of ${Math.ceil(videos.length / batchSize)}`);
+      }
+      
+      console.log(`✅ Successfully synced all ${videos.length} videos to Firestore`);
+    } catch (error) {
+      console.error('❌ Failed to sync videos to Firestore:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get videos for a specific tracked account
+   */
+  static async getAccountVideos(orgId: string, accountId: string, limitCount: number = 100): Promise<VideoDoc[]> {
+    try {
+      const q = query(
+        collection(db, 'organizations', orgId, 'videos'),
+        where('trackedAccountId', '==', accountId),
+        orderBy('uploadDate', 'desc'),
+        limit(limitCount)
+      );
+      
+      const snapshot = await getDocs(q);
+      const videos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as VideoDoc));
+      
+      console.log(`✅ Loaded ${videos.length} videos from Firestore for account ${accountId}`);
+      return videos;
+    } catch (error) {
+      console.error('❌ Failed to load account videos from Firestore:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Delete all videos for a tracked account
+   */
+  static async deleteAccountVideos(orgId: string, accountId: string): Promise<void> {
+    try {
+      console.log(`🗑️ Deleting all videos for account ${accountId}`);
+      
+      // Get all videos for this account
+      const q = query(
+        collection(db, 'organizations', orgId, 'videos'),
+        where('trackedAccountId', '==', accountId)
+      );
+      
+      const snapshot = await getDocs(q);
+      
+      // Delete in batches
+      const batchSize = 500;
+      for (let i = 0; i < snapshot.docs.length; i += batchSize) {
+        const batch = writeBatch(db);
+        const batchDocs = snapshot.docs.slice(i, i + batchSize);
+        
+        batchDocs.forEach(doc => {
+          batch.delete(doc.ref);
+        });
+        
+        await batch.commit();
+      }
+      
+      console.log(`✅ Deleted ${snapshot.docs.length} videos for account ${accountId}`);
+    } catch (error) {
+      console.error('❌ Failed to delete account videos:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Add video snapshot (refresh data)
    */
   static async addVideoSnapshot(

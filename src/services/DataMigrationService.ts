@@ -1,6 +1,7 @@
 import { Timestamp } from 'firebase/firestore';
 import LocalStorageService from './LocalStorageService';
 import FirestoreDataService from './FirestoreDataService';
+import FirebaseStorageService from './FirebaseStorageService';
 import { VideoDoc, TrackedAccount, TrackedLink } from '../types/firestore';
 
 /**
@@ -34,22 +35,26 @@ class DataMigrationService {
       return;
     }
     
-    console.log('🚀 Starting data migration from localStorage to Firestore...');
+    console.log('🚀 Starting data migration from localStorage to Firestore and Firebase Storage...');
     
     try {
       // Migrate videos
       await this.migrateVideos(orgId, userId);
       
-      // Migrate tracked accounts
+      // Migrate tracked accounts (with profile pictures)
       await this.migrateTrackedAccounts(orgId, userId);
       
       // Migrate tracked links
       await this.migrateTrackedLinks(orgId, userId);
       
+      // Migrate thumbnails to Firebase Storage
+      await this.migrateThumbnails(orgId);
+      
       // Mark migration as completed
       this.markMigrationCompleted();
       
       console.log('✅ Data migration completed successfully!');
+      console.log('💡 You can now safely clear localStorage by running: DataMigrationService.clearLocalStorageData()');
     } catch (error) {
       console.error('❌ Migration failed:', error);
       throw error;
@@ -113,15 +118,31 @@ class DataMigrationService {
     
     for (const localAccount of localAccounts) {
       try {
+        // Migrate profile picture to Firebase Storage if it exists
+        let profilePictureUrl = localAccount.profilePicture;
+        if (profilePictureUrl && profilePictureUrl.startsWith('data:')) {
+          console.log(`  📤 Uploading profile picture for @${localAccount.username}...`);
+          try {
+            profilePictureUrl = await FirebaseStorageService.uploadProfilePicture(
+              orgId,
+              localAccount.id,
+              profilePictureUrl
+            );
+            console.log(`  ✓ Profile picture uploaded for @${localAccount.username}`);
+          } catch (error) {
+            console.error(`  ⚠️ Failed to upload profile picture for @${localAccount.username}:`, error);
+            // Continue with original URL
+          }
+        }
+        
         const accountData: Omit<TrackedAccount, 'id' | 'orgId' | 'dateAdded' | 'addedBy' | 'totalVideos' | 'totalViews' | 'totalLikes' | 'totalComments' | 'totalShares'> = {
           platform: localAccount.platform,
           username: localAccount.username,
           displayName: localAccount.displayName,
-          profilePicture: localAccount.profilePicture,
+          profilePicture: profilePictureUrl,
           accountType: localAccount.accountType || 'my',
           followerCount: localAccount.followerCount,
           followingCount: localAccount.followingCount,
-          postCount: localAccount.postCount,
           bio: localAccount.bio,
           isVerified: localAccount.isVerified,
           lastSynced: localAccount.lastSynced ? this.toTimestamp(localAccount.lastSynced) : undefined,
@@ -192,6 +213,48 @@ class DataMigrationService {
     const dateObj = date instanceof Date ? date : new Date(date);
     return Timestamp.fromDate(dateObj);
   }
+
+  /**
+   * Migrate thumbnails from localStorage to Firebase Storage
+   */
+  private static async migrateThumbnails(orgId: string): Promise<void> {
+    console.log('🖼️ Migrating thumbnails to Firebase Storage...');
+    
+    const keys = Object.keys(localStorage);
+    const thumbnailKeys = keys.filter(key => key.startsWith('thumbnail_'));
+    
+    if (thumbnailKeys.length === 0) {
+      console.log('ℹ️ No thumbnails to migrate');
+      return;
+    }
+    
+    console.log(`📤 Found ${thumbnailKeys.length} thumbnails to migrate...`);
+    
+    let migrated = 0;
+    let failed = 0;
+    
+    for (const key of thumbnailKeys) {
+      try {
+        const dataUrl = localStorage.getItem(key);
+        if (!dataUrl || !dataUrl.startsWith('data:')) {
+          console.log(`  ⏭️ Skipping non-data URL: ${key}`);
+          continue;
+        }
+        
+        const videoId = key.replace('thumbnail_', '');
+        
+        // Upload to Firebase Storage
+        await FirebaseStorageService.uploadThumbnail(orgId, videoId, dataUrl);
+        console.log(`  ✓ Migrated thumbnail: ${videoId}`);
+        migrated++;
+      } catch (error) {
+        console.error(`  ✗ Failed to migrate thumbnail ${key}:`, error);
+        failed++;
+      }
+    }
+    
+    console.log(`✅ Thumbnail migration completed: ${migrated} migrated, ${failed} failed`);
+  }
   
   /**
    * Clear all localStorage data (use with caution!)
@@ -201,6 +264,7 @@ class DataMigrationService {
       LocalStorageService.clearAll();
       localStorage.removeItem(this.MIGRATION_KEY);
       console.log('🗑️ All localStorage data cleared');
+      console.log('💡 Reload the page to see the migrated data from Firebase');
     }
   }
 }
