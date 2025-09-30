@@ -272,13 +272,6 @@ function App() {
     // Update state
     setSubmissions(prev => prev.filter(submission => submission.id !== id));
     
-    // Remove from selected if it was selected
-    setSelectedIds(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(id);
-      return newSet;
-    });
-    
     console.log('✅ Submission deleted and removed from storage');
   }, []);
 
