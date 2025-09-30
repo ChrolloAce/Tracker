@@ -5,6 +5,7 @@ import { VideoSubmissionsTable } from './components/VideoSubmissionsTable';
 import { VideoSubmissionModal } from './components/VideoSubmissionModal';
 import { TikTokSearchModal } from './components/TikTokSearchModal';
 import KPICards from './components/KPICards';
+import { AnalyticsCards } from './components/AnalyticsCards';
 import DateRangeFilter, { DateFilterType } from './components/DateRangeFilter';
 import TimePeriodSelector, { TimePeriodType } from './components/TimePeriodSelector';
 import VideoAnalyticsModal from './components/VideoAnalyticsModal';
@@ -413,6 +414,16 @@ function App() {
             <>
               {/* KPI Cards */}
               <KPICards submissions={filteredSubmissions} />
+              
+              {/* Analytics Graphs with Time Period Controls */}
+              <div className="mt-6">
+                <AnalyticsCards 
+                  submissions={filteredSubmissions}
+                  dateFilter={dateFilter}
+                  customDateRange={customDateRange}
+                  timePeriod={timePeriod}
+                />
+              </div>
               
               {/* Video Submissions Table */}
               <div className="mt-6">
