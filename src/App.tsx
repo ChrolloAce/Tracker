@@ -48,6 +48,7 @@ function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [timePeriod, setTimePeriod] = useState<TimePeriodType>('weeks');
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   // Show login page if not authenticated
   if (loading) {
@@ -72,7 +73,7 @@ function App() {
 
   // Load data from Firestore on app initialization
   useEffect(() => {
-    if (!user || !currentOrgId) {
+    if (!user || !currentOrgId || isDataLoaded) {
       return;
     }
 
@@ -122,14 +123,16 @@ function App() {
         console.log(`✅ Loaded ${allSubmissions.length} videos from Firestore`);
         
         setSubmissions(allSubmissions);
+        setIsDataLoaded(true);
         console.log('🔍 Open browser console to see API logs when adding videos');
       } catch (error) {
         console.error('❌ Failed to load data from Firestore:', error);
+        setIsDataLoaded(true); // Set to true even on error to prevent infinite retries
       }
     };
 
     loadData();
-  }, [user, currentOrgId]);
+  }, [user, currentOrgId, isDataLoaded]);
 
   // Filter submissions based on date range
   const filteredSubmissions = DateFilterService.filterVideosByDateRange(
