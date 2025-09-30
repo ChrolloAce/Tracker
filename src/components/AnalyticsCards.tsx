@@ -53,11 +53,11 @@ const MetricCard: React.FC<MetricCardProps> = ({
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-2 border border-gray-200 rounded-lg shadow-lg">
-          <p className="text-sm font-medium text-gray-900">
+        <div className="bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
+          <p className="text-sm font-medium text-gray-900 dark:text-white">
             {formatNumber(payload[0].value)}
           </p>
-          <p className="text-xs text-gray-500">{label}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
         </div>
       );
     }
@@ -100,7 +100,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
   const colorClasses = getColorClasses(color);
 
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
+    <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow duration-200">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
@@ -108,17 +108,17 @@ const MetricCard: React.FC<MetricCardProps> = ({
             <Icon className={`w-6 h-6 ${colorClasses.icon}`} />
           </div>
           <div>
-            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">{title}</h3>
+            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{title}</h3>
           </div>
         </div>
-        <button className="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-50 transition-colors">
+        <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
           <MoreVertical className="w-4 h-4" />
         </button>
       </div>
 
       {/* Main Value */}
       <div className="mb-6">
-        <div className="text-3xl font-bold text-gray-900 mb-2">
+        <div className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
           {formatNumber(value)}
         </div>
         <div className={`flex items-center text-sm font-medium ${
