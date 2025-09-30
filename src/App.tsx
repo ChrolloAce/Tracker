@@ -13,6 +13,7 @@ import ContractsPage from './components/ContractsPage';
 import SettingsPage from './components/SettingsPage';
 import TrackedLinksPage from './components/TrackedLinksPage';
 import LinkRedirect from './components/LinkRedirect';
+import LoginPage from './components/LoginPage';
 import { VideoSubmission, InstagramVideoData } from './types';
 import VideoApiService from './services/VideoApiService';
 import LocalStorageService from './services/LocalStorageService';
@@ -21,6 +22,7 @@ import SnapshotService from './services/SnapshotService';
 import { AccountTrackingService } from './services/AccountTrackingService';
 import ThemeService from './services/ThemeService';
 import { cssVariables } from './theme';
+import { useAuth } from './contexts/AuthContext';
 
 interface DateRange {
   startDate: Date;
@@ -28,8 +30,27 @@ interface DateRange {
 }
 
 function App() {
+  // Get authentication state
+  const { user, loading } = useAuth();
+
   // Check if this is a link redirect URL
   const isLinkRedirect = window.location.pathname.startsWith('/l/');
+
+  // Show login page if not authenticated
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user && !isLinkRedirect) {
+    return <LoginPage />;
+  }
 
   const [submissions, setSubmissions] = useState<VideoSubmission[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
