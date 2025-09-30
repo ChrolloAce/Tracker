@@ -193,8 +193,8 @@ class LocalStorageService {
     try {
       const key = `${this.ACCOUNT_VIDEOS_KEY_PREFIX}${accountId}`;
       
-      // Limit to most recent 50 videos to save space
-      const limitedVideos = StorageManager.limitAccountVideos(videos, 50);
+      // Limit to most recent 20 videos and strip unnecessary data to save space
+      const limitedVideos = StorageManager.limitAccountVideos(videos, 20);
       
       // Add metadata for tracking last access
       const dataWithMetadata = StorageManager.wrapWithMetadata(limitedVideos);
@@ -230,8 +230,9 @@ class LocalStorageService {
 ⚠️ STORAGE WARNING
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Your browser storage is ${percentUsed.toFixed(1)}% full (${usedMB.toFixed(2)} MB used).
-We're keeping the most recent 50 videos per account to save space.
-Consider clearing old data or downloading important analytics.
+We're keeping the most recent 20 videos per account to save space.
+Unnecessary data (long captions, query params) has been removed.
+Consider clearing old accounts from the Accounts tab.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     `);
   }

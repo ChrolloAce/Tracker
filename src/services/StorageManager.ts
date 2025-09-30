@@ -165,8 +165,17 @@ class StorageManager {
           
           // For account videos, try to free up space
           if (options.isAccountVideos) {
-            const bytesNeeded = dataSize - (this.MAX_BYTES - usedBytes) + (1024 * 100); // Add 100KB buffer
-            const cleanedUp = this.cleanupAccountVideos(bytesNeeded);
+            const bytesNeeded = dataSize - (this.MAX_BYTES - usedBytes) + (1024 * 200); // Add 200KB buffer
+            
+            // First attempt: Clean up other account videos
+            let cleanedUp = this.cleanupAccountVideos(bytesNeeded);
+            
+            // Second attempt: If still not enough, clear ALL account videos and try fresh
+            if (!cleanedUp) {
+              console.warn('🧹 Aggressive cleanup: Clearing all account videos to make space');
+              this.clearAllAccountVideos();
+              cleanedUp = true; // We cleared everything, should have space now
+            }
             
             if (cleanedUp) {
               // Try again after cleanup
@@ -176,6 +185,8 @@ class StorageManager {
                 return true;
               } catch (retryError) {
                 console.error('❌ Still failed after cleanup:', retryError);
+                // Last resort: The data itself might be too large
+                console.error('💥 Data is too large even with empty storage. Size:', (dataSize / 1024).toFixed(2), 'KB');
                 return false;
               }
             }
@@ -194,23 +205,64 @@ class StorageManager {
   }
 
   /**
-   * Limit account videos to most recent N items
+   * Limit account videos to most recent N items and strip unnecessary data
    */
-  static limitAccountVideos(videos: any[], maxVideos: number = 50): any[] {
-    if (videos.length <= maxVideos) {
-      return videos;
-    }
-
-    console.log(`🔪 Trimming account videos from ${videos.length} to ${maxVideos}`);
+  static limitAccountVideos(videos: any[], maxVideos: number = 20): any[] {
+    console.log(`📦 Processing ${videos.length} videos for storage optimization...`);
     
-    // Sort by upload date (newest first) and take the top N
+    // Sort by upload date (newest first)
     const sorted = [...videos].sort((a, b) => {
       const dateA = new Date(a.uploadDate || a.timestamp || 0).getTime();
       const dateB = new Date(b.uploadDate || b.timestamp || 0).getTime();
       return dateB - dateA;
     });
 
-    return sorted.slice(0, maxVideos);
+    // Take only the most recent videos
+    const limited = sorted.slice(0, maxVideos);
+    
+    // Strip out unnecessary fields to reduce size
+    const optimized = limited.map(video => ({
+      id: video.id,
+      url: video.url,
+      thumbnail: video.thumbnail ? this.compressUrl(video.thumbnail) : video.thumbnail,
+      caption: video.caption ? video.caption.substring(0, 200) : video.caption, // Limit caption length
+      likesCount: video.likesCount,
+      commentsCount: video.commentsCount,
+      viewsCount: video.viewsCount,
+      playsCount: video.playsCount,
+      sharesCount: video.sharesCount,
+      uploadDate: video.uploadDate,
+      timestamp: video.timestamp,
+      // Remove large fields like full HTML, detailed metadata, etc.
+    }));
+
+    console.log(`✂️ Trimmed from ${videos.length} to ${optimized.length} videos and removed unnecessary fields`);
+    
+    return optimized;
+  }
+
+  /**
+   * Compress URLs by removing query parameters if too long
+   */
+  private static compressUrl(url: string): string {
+    if (url.length < 200) return url;
+    
+    try {
+      const urlObj = new URL(url);
+      // Keep only essential query params for Instagram/TikTok
+      const essentialParams = ['_nc_ht', '_nc_cat', 'stp'];
+      const newParams = new URLSearchParams();
+      
+      essentialParams.forEach(param => {
+        const value = urlObj.searchParams.get(param);
+        if (value) newParams.set(param, value);
+      });
+      
+      urlObj.search = newParams.toString();
+      return urlObj.toString();
+    } catch {
+      return url;
+    }
   }
 
   /**
@@ -269,6 +321,24 @@ class StorageManager {
         console.log('🗑️ Removed old thumbnail:', item.key);
       });
     }
+  }
+
+  /**
+   * Clear all account videos (emergency cleanup)
+   */
+  static clearAllAccountVideos(): void {
+    console.log('🧹 Clearing all account_videos_ entries...');
+    let count = 0;
+    
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key?.startsWith('account_videos_')) {
+        localStorage.removeItem(key);
+        count++;
+      }
+    }
+    
+    console.log(`✅ Cleared ${count} account video entries`);
   }
 }
 
