@@ -406,7 +406,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                 <tr 
                   key={submission.id}
                   onClick={() => onVideoClick?.(submission)}
-                  className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer group">
+                  className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer group"
                 >
                   <td className="px-6 py-5 sticky left-0 bg-white dark:bg-[#161616] z-10 group-hover:bg-gray-50/50 dark:group-hover:bg-gray-800/50">
                     <input
