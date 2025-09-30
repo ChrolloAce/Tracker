@@ -201,7 +201,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           <div className="space-y-2">
             <button
               onClick={onAddVideo}
-              className="w-full flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200"
+              className="w-full flex items-center justify-center px-4 py-2.5 bg-blue-600 dark:bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors duration-200"
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Video
@@ -209,7 +209,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={onTikTokSearch}
-                className="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors duration-200"
+                className="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors duration-200"
               >
                 <Search className="w-4 h-4 mr-1" />
                 Search
@@ -217,7 +217,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               <button
                 onClick={onRefreshAll}
                 disabled={isRefreshing}
-                className="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors duration-200 disabled:opacity-50"
+                className="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors duration-200 disabled:opacity-50"
               >
                 <RefreshCw className={clsx('w-4 h-4 mr-1', { 'animate-spin': isRefreshing })} />
                 Refresh

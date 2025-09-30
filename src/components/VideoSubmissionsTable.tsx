@@ -308,8 +308,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                 className={clsx(
                   'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors',
                   platformFilter === 'all' 
-                    ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50' 
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
                 )}
               >
                 All
@@ -319,8 +319,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                 className={clsx(
                   'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors',
                   platformFilter === 'instagram' 
-                    ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50' 
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
                 )}
               >
                 Instagram
@@ -330,8 +330,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                 className={clsx(
                   'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors',
                   platformFilter === 'tiktok' 
-                    ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50' 
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
                 )}
               >
                 TikTok
