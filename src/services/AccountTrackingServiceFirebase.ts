@@ -326,25 +326,25 @@ export class AccountTrackingServiceFirebase {
         accountId,
         userId,
         videos.map(v => ({
-          videoId: v.videoId,
-          url: v.url,
-          thumbnail: v.thumbnail,
-          caption: v.caption,
-          uploadDate: v.uploadDate,
-          views: v.views,
-          likes: v.likes,
-          comments: v.comments,
+          videoId: v.videoId || '',
+          url: v.url || '',
+          thumbnail: v.thumbnail || '',
+          caption: v.caption || '',
+          uploadDate: v.uploadDate || new Date(),
+          views: v.views || 0,
+          likes: v.likes || 0,
+          comments: v.comments || 0,
           shares: v.shares || 0,
-          duration: v.duration,
-          hashtags: v.hashtags,
-          mentions: v.mentions
+          duration: v.duration || 0,
+          hashtags: v.hashtags || [],
+          mentions: v.mentions || []
         }))
       );
 
       // Update account stats
-      const totalViews = videos.reduce((sum, v) => sum + v.views, 0);
-      const totalLikes = videos.reduce((sum, v) => sum + v.likes, 0);
-      const totalComments = videos.reduce((sum, v) => sum + v.comments, 0);
+      const totalViews = videos.reduce((sum, v) => sum + (v.views || 0), 0);
+      const totalLikes = videos.reduce((sum, v) => sum + (v.likes || 0), 0);
+      const totalComments = videos.reduce((sum, v) => sum + (v.comments || 0), 0);
       const totalShares = videos.reduce((sum, v) => sum + (v.shares || 0), 0);
 
       await FirestoreDataService.updateTrackedAccount(orgId, accountId, {
@@ -529,16 +529,16 @@ export class AccountTrackingServiceFirebase {
         videoId: v.videoId || '',
         url: v.url || '',
         thumbnail: v.thumbnail || '',
-        caption: v.caption || '',
+        caption: v.description || '',
         uploadDate: v.uploadDate.toDate(),
-        views: v.views,
-        likes: v.likes,
-        comments: v.comments,
+        views: v.views || 0,
+        likes: v.likes || 0,
+        comments: v.comments || 0,
         shares: v.shares || 0,
         duration: v.duration || 0,
         isSponsored: false,
         hashtags: v.hashtags || [],
-        mentions: v.mentions || []
+        mentions: []
       }));
     } catch (error) {
       console.error('❌ Failed to load account videos:', error);
@@ -575,7 +575,7 @@ export class AccountTrackingServiceFirebase {
   /**
    * Refresh account profile data
    */
-  static async refreshAccountProfile(orgId: string, userId: string, accountId: string): Promise<void> {
+  static async refreshAccountProfile(orgId: string, _userId: string, accountId: string): Promise<void> {
     try {
       const accounts = await this.getTrackedAccounts(orgId);
       const account = accounts.find(a => a.id === accountId);

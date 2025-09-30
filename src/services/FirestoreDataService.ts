@@ -247,7 +247,7 @@ class FirestoreDataService {
               url: video.url,
               thumbnail: video.thumbnail,
               title: video.caption?.substring(0, 100) || '',
-              caption: video.caption,
+              description: video.caption,
               platform: accountId.startsWith('instagram') ? 'instagram' : 
                         accountId.startsWith('tiktok') ? 'tiktok' : 'youtube',
               uploadDate: Timestamp.fromDate(video.uploadDate),
@@ -257,8 +257,8 @@ class FirestoreDataService {
               shares: video.shares || 0,
               duration: video.duration || 0,
               hashtags: video.hashtags || [],
-              mentions: video.mentions || [],
               status: 'active',
+              isSingular: false,
               dateAdded: Timestamp.now(),
               addedBy: userId,
               lastRefreshed: Timestamp.now()

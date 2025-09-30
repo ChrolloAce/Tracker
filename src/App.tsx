@@ -17,7 +17,6 @@ import LoginPage from './components/LoginPage';
 import { VideoSubmission, InstagramVideoData } from './types';
 import VideoApiService from './services/VideoApiService';
 import DateFilterService from './services/DateFilterService';
-import SnapshotService from './services/SnapshotService';
 import ThemeService from './services/ThemeService';
 import FirestoreDataService from './services/FirestoreDataService';
 import DataMigrationService from './services/DataMigrationService';
@@ -49,7 +48,6 @@ function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [timePeriod, setTimePeriod] = useState<TimePeriodType>('weeks');
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [dataLoading, setDataLoading] = useState(true);
 
   // Show login page if not authenticated
   if (loading) {
@@ -112,10 +110,10 @@ function App() {
           uploader: '', // Will be populated from tracked account if available
           uploaderHandle: '',
           status: video.status === 'archived' ? 'rejected' : 'approved',
-          views: video.views,
-          likes: video.likes,
-          comments: video.comments,
-          shares: video.shares,
+          views: video.views || 0,
+          likes: video.likes || 0,
+          comments: video.comments || 0,
+          shares: video.shares || 0,
           dateSubmitted: video.dateAdded.toDate(),
           uploadDate: video.uploadDate.toDate(),
           lastRefreshed: video.lastRefreshed?.toDate(),
@@ -271,9 +269,9 @@ function App() {
           title: newSubmission.title,
           thumbnail: newSubmission.thumbnail,
           uploadDate: Timestamp.fromDate(uploadDate),
-          views: videoData.data.view_count || 0,
-          likes: videoData.data.like_count,
-          comments: videoData.data.comment_count,
+          views: videoData.viewCount || 0,
+          likes: videoData.likesCount || 0,
+          comments: videoData.commentsCount || 0,
           shares: 0,
           status: 'active',
           isSingular: true
@@ -281,9 +279,9 @@ function App() {
 
         // Create initial snapshot
         await FirestoreDataService.addVideoSnapshot(currentOrgId, videoId, user.uid, {
-          views: videoData.data.view_count || 0,
-          likes: videoData.data.like_count,
-          comments: videoData.data.comment_count
+          views: videoData.viewCount || 0,
+          likes: videoData.likesCount || 0,
+          comments: videoData.commentsCount || 0
         });
 
         // Update local state
