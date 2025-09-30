@@ -4,15 +4,13 @@ import {
   setDoc, 
   getDoc, 
   getDocs, 
-  deleteDoc,
   query,
   where,
   orderBy,
   limit,
   Timestamp,
   writeBatch,
-  increment,
-  addDoc
+  increment
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { 

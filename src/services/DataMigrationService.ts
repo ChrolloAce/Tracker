@@ -2,9 +2,6 @@ import { Timestamp } from 'firebase/firestore';
 import LocalStorageService from './LocalStorageService';
 import FirestoreDataService from './FirestoreDataService';
 import { VideoDoc, TrackedAccount, TrackedLink } from '../types/firestore';
-import { VideoSubmission } from '../types';
-import { TrackedAccount as LocalTrackedAccount } from '../types/accounts';
-import { TrackedLink as LocalTrackedLink } from '../types/trackedLinks';
 
 /**
  * DataMigrationService - Migrates data from localStorage to Firestore
@@ -83,10 +80,10 @@ class DataMigrationService {
           thumbnail: localVideo.thumbnail,
           uploadDate: this.toTimestamp(localVideo.uploadDate),
           lastRefreshed: this.toTimestamp(localVideo.lastRefreshed),
-          views: localVideo.currentMetrics.views,
-          likes: localVideo.currentMetrics.likes,
-          comments: localVideo.currentMetrics.comments,
-          shares: localVideo.currentMetrics.shares,
+          views: localVideo.views,
+          likes: localVideo.likes,
+          comments: localVideo.comments,
+          shares: localVideo.shares,
           status: 'active',
           isSingular: true // All localStorage videos are singular
         };
