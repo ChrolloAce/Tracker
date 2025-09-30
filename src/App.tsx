@@ -4,7 +4,7 @@ import Sidebar from './components/layout/Sidebar';
 import { VideoSubmissionsTable } from './components/VideoSubmissionsTable';
 import { VideoSubmissionModal } from './components/VideoSubmissionModal';
 import { TikTokSearchModal } from './components/TikTokSearchModal';
-import StatsOverview from './components/StatsOverview';
+import KPICards from './components/KPICards';
 import DateRangeFilter, { DateFilterType } from './components/DateRangeFilter';
 import TimePeriodSelector, { TimePeriodType } from './components/TimePeriodSelector';
 import VideoAnalyticsModal from './components/VideoAnalyticsModal';
@@ -411,8 +411,8 @@ function App() {
           {/* Dashboard Tab */}
           {activeTab === 'dashboard' && (
             <>
-              {/* Stats Overview */}
-              <StatsOverview submissions={filteredSubmissions} />
+              {/* KPI Cards */}
+              <KPICards submissions={filteredSubmissions} />
               
               {/* Video Submissions Table */}
               <div className="mt-6">
