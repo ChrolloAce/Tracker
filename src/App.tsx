@@ -4,7 +4,7 @@ import Sidebar from './components/layout/Sidebar';
 import { VideoSubmissionsTable } from './components/VideoSubmissionsTable';
 import { VideoSubmissionModal } from './components/VideoSubmissionModal';
 import { TikTokSearchModal } from './components/TikTokSearchModal';
-import { AnalyticsCards } from './components/AnalyticsCards';
+import StatsOverview from './components/StatsOverview';
 import DateRangeFilter, { DateFilterType } from './components/DateRangeFilter';
 import TimePeriodSelector, { TimePeriodType } from './components/TimePeriodSelector';
 import VideoAnalyticsModal from './components/VideoAnalyticsModal';
@@ -414,25 +414,21 @@ function App() {
           {/* Dashboard Tab */}
           {activeTab === 'dashboard' && (
             <>
-              {/* Analytics Cards */}
-              <AnalyticsCards 
-                submissions={filteredSubmissions} 
-                periodDescription={periodDescription}
-                dateFilter={dateFilter}
-                customDateRange={customDateRange}
-                timePeriod={timePeriod}
-              />
+              {/* Stats Overview */}
+              <StatsOverview submissions={filteredSubmissions} />
               
               {/* Video Submissions Table */}
-              <VideoSubmissionsTable
-                submissions={filteredSubmissions}
-                selectedIds={selectedIds}
-                onSelectionChange={handleSelectionChange}
-                onSelectAll={handleSelectAll}
-                onStatusUpdate={handleStatusUpdate}
-                onDelete={handleDelete}
-                onVideoClick={handleVideoClick}
-              />
+              <div className="mt-6">
+                <VideoSubmissionsTable
+                  submissions={filteredSubmissions}
+                  selectedIds={selectedIds}
+                  onSelectionChange={handleSelectionChange}
+                  onSelectAll={handleSelectAll}
+                  onStatusUpdate={handleStatusUpdate}
+                  onDelete={handleDelete}
+                  onVideoClick={handleVideoClick}
+                />
+              </div>
             </>
           )}
 
