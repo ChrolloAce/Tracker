@@ -152,7 +152,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
               tickLine={false}
               tick={false}
             />
-            <YAxis hide />
+            <YAxis hide scale="sqrt" domain={[0, 'auto']} />
             <Area
               type="monotone"
               dataKey="value"
