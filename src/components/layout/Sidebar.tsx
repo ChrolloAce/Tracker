@@ -13,7 +13,8 @@ import {
   HelpCircle,
   FileSignature,
   Eye,
-  Link
+  Link,
+  RefreshCw
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -218,7 +219,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 disabled={isRefreshing}
                 className="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors duration-200 disabled:opacity-50"
               >
-                <TrendingUp className={clsx('w-4 h-4 mr-1', { 'animate-spin': isRefreshing })} />
+                <RefreshCw className={clsx('w-4 h-4 mr-1', { 'animate-spin': isRefreshing })} />
                 Refresh
               </button>
             </div>
