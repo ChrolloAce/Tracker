@@ -54,7 +54,6 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { user, logout } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const handleLogout = async () => {
     if (window.confirm('Are you sure you want to sign out?')) {
