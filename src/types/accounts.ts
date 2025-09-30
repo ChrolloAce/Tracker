@@ -21,20 +21,27 @@ export interface TrackedAccount {
 
 export interface AccountVideo {
   id: string;
-  accountId: string;
-  videoId: string;
+  accountId?: string;
+  videoId?: string;
   url: string;
-  thumbnail: string;
-  caption: string;
-  uploadDate: Date;
-  views: number;
-  likes: number;
-  comments: number;
+  thumbnail?: string;
+  caption?: string;
+  uploadDate?: Date;
+  timestamp?: string; // Fallback date string
+  // Support both naming conventions from API
+  views?: number;
+  likes?: number;
+  comments?: number;
+  viewsCount?: number;
+  likesCount?: number;
+  commentsCount?: number;
+  playsCount?: number;
+  sharesCount?: number;
   shares?: number;
   duration?: number;
   isSponsored?: boolean;
-  hashtags: string[];
-  mentions: string[];
+  hashtags?: string[];
+  mentions?: string[];
   rawData?: any; // Store the full original API response data
 }
 

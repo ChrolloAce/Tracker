@@ -332,10 +332,10 @@ export class AccountTrackingService {
 
       // Update account stats
       account.totalVideos = videos.length;
-      account.totalViews = videos.reduce((sum, v) => sum + v.views, 0);
-      account.totalLikes = videos.reduce((sum, v) => sum + v.likes, 0);
-      account.totalComments = videos.reduce((sum, v) => sum + v.comments, 0);
-      account.totalShares = videos.reduce((sum, v) => sum + (v.shares || 0), 0);
+      account.totalViews = videos.reduce((sum, v) => sum + (v.viewsCount || v.views || 0), 0);
+      account.totalLikes = videos.reduce((sum, v) => sum + (v.likesCount || v.likes || 0), 0);
+      account.totalComments = videos.reduce((sum, v) => sum + (v.commentsCount || v.comments || 0), 0);
+      account.totalShares = videos.reduce((sum, v) => sum + (v.sharesCount || v.shares || 0), 0);
       account.lastSynced = new Date();
 
       // Save updated account

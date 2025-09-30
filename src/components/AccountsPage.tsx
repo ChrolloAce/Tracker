@@ -240,13 +240,23 @@ const AccountsPage: React.FC = () => {
           interval = 7 * 24 * 60 * 60 * 1000;
           points = 5;
         } else {
-          const oldestVideo = videos.reduce((oldest, video) => 
-            video.uploadDate < oldest.uploadDate ? video : oldest
-          );
-          startDate = oldestVideo.uploadDate;
-          const totalTime = now.getTime() - startDate.getTime();
-          points = Math.min(10, Math.max(5, Math.ceil(totalTime / (7 * 24 * 60 * 60 * 1000))));
-          interval = totalTime / (points - 1);
+          // Filter out videos without uploadDate and find oldest
+          const videosWithDates = videos.filter(v => v.uploadDate || v.timestamp);
+          if (videosWithDates.length === 0) {
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            interval = 7 * 24 * 60 * 60 * 1000;
+            points = 5;
+          } else {
+            const oldestVideo = videosWithDates.reduce((oldest, video) => {
+              const oldestDate = oldest.uploadDate || (oldest.timestamp ? new Date(oldest.timestamp) : new Date());
+              const videoDate = video.uploadDate || (video.timestamp ? new Date(video.timestamp) : new Date());
+              return videoDate < oldestDate ? video : oldest;
+            });
+            startDate = oldestVideo.uploadDate || (oldestVideo.timestamp ? new Date(oldestVideo.timestamp) : new Date());
+            const totalTime = now.getTime() - startDate.getTime();
+            points = Math.min(10, Math.max(5, Math.ceil(totalTime / (7 * 24 * 60 * 60 * 1000))));
+            interval = totalTime / (points - 1);
+          }
         }
     }
 
@@ -269,12 +279,16 @@ const AccountsPage: React.FC = () => {
     // Fill buckets with video data
     // For each video, add its metrics to all buckets after its upload date
     videos.forEach(video => {
-      const videoTime = video.uploadDate.getTime();
+      // Get video date (uploadDate or timestamp)
+      const videoDate = video.uploadDate || (video.timestamp ? new Date(video.timestamp) : null);
+      if (!videoDate) return; // Skip videos without dates
+      
+      const videoTime = videoDate.getTime();
       buckets.forEach(bucket => {
         if (bucket.timestamp >= videoTime) {
-          bucket.views += video.views;
-          bucket.likes += video.likes;
-          bucket.comments += video.comments;
+          bucket.views += video.viewsCount || video.views || 0;
+          bucket.likes += video.likesCount || video.likes || 0;
+          bucket.comments += video.commentsCount || video.comments || 0;
         }
       });
     });
@@ -336,19 +350,25 @@ const AccountsPage: React.FC = () => {
         previousEnd = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     }
 
-    const currentVideos = videos.filter(v => v.uploadDate >= currentStart);
-    const previousVideos = videos.filter(v => v.uploadDate >= previousStart && v.uploadDate < previousEnd);
+    const currentVideos = videos.filter(v => {
+      const videoDate = v.uploadDate || (v.timestamp ? new Date(v.timestamp) : null);
+      return videoDate && videoDate >= currentStart;
+    });
+    const previousVideos = videos.filter(v => {
+      const videoDate = v.uploadDate || (v.timestamp ? new Date(v.timestamp) : null);
+      return videoDate && videoDate >= previousStart && videoDate < previousEnd;
+    });
 
     const current = {
-      views: currentVideos.reduce((sum, v) => sum + v.views, 0),
-      likes: currentVideos.reduce((sum, v) => sum + v.likes, 0),
-      comments: currentVideos.reduce((sum, v) => sum + v.comments, 0)
+      views: currentVideos.reduce((sum, v) => sum + (v.viewsCount || v.views || 0), 0),
+      likes: currentVideos.reduce((sum, v) => sum + (v.likesCount || v.likes || 0), 0),
+      comments: currentVideos.reduce((sum, v) => sum + (v.commentsCount || v.comments || 0), 0)
     };
 
     const previous = {
-      views: previousVideos.reduce((sum, v) => sum + v.views, 0),
-      likes: previousVideos.reduce((sum, v) => sum + v.likes, 0),
-      comments: previousVideos.reduce((sum, v) => sum + v.comments, 0)
+      views: previousVideos.reduce((sum, v) => sum + (v.viewsCount || v.views || 0), 0),
+      likes: previousVideos.reduce((sum, v) => sum + (v.likesCount || v.likes || 0), 0),
+      comments: previousVideos.reduce((sum, v) => sum + (v.commentsCount || v.comments || 0), 0)
     };
 
     return {
@@ -984,15 +1004,15 @@ const AccountsPage: React.FC = () => {
                           <div className="flex items-center space-x-4">
                             <div className="flex items-center space-x-1">
                               <Eye className="w-3 h-3" />
-                              <span>{formatNumber(video.views)}</span>
+                              <span>{formatNumber(video.viewsCount || video.views || 0)}</span>
                             </div>
                             <div className="flex items-center space-x-1">
                               <Heart className="w-3 h-3" />
-                              <span>{formatNumber(video.likes)}</span>
+                              <span>{formatNumber(video.likesCount || video.likes || 0)}</span>
                             </div>
                             <div className="flex items-center space-x-1">
                               <MessageCircle className="w-3 h-3" />
-                              <span>{formatNumber(video.comments)}</span>
+                              <span>{formatNumber(video.commentsCount || video.comments || 0)}</span>
                             </div>
                           </div>
                           <button
@@ -1003,7 +1023,7 @@ const AccountsPage: React.FC = () => {
                           </button>
                         </div>
                         <p className="text-xs text-gray-400">
-                          {formatDate(video.uploadDate)}
+                          {formatDate(video.uploadDate || (video.timestamp ? new Date(video.timestamp) : new Date()))}
                         </p>
                       </div>
                     </div>
