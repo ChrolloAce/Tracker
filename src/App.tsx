@@ -12,6 +12,7 @@ import AccountsPage from './components/AccountsPage';
 import ContractsPage from './components/ContractsPage';
 import SettingsPage from './components/SettingsPage';
 import TrackedLinksPage from './components/TrackedLinksPage';
+import LinkRedirect from './components/LinkRedirect';
 import { VideoSubmission, InstagramVideoData } from './types';
 import VideoApiService from './services/VideoApiService';
 import LocalStorageService from './services/LocalStorageService';
@@ -26,6 +27,9 @@ interface DateRange {
 }
 
 function App() {
+  // Check if this is a link redirect URL
+  const isLinkRedirect = window.location.pathname.startsWith('/l/');
+
   const [submissions, setSubmissions] = useState<VideoSubmission[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -38,6 +42,11 @@ function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [timePeriod, setTimePeriod] = useState<TimePeriodType>('weeks');
   const [activeTab, setActiveTab] = useState('dashboard');
+
+  // If this is a link redirect, show redirect component instead
+  if (isLinkRedirect) {
+    return <LinkRedirect />;
+  }
 
   // Load saved data on app initialization
   useEffect(() => {
