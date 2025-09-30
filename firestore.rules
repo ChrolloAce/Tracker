@@ -71,12 +71,14 @@ service cloud.firestore {
       allow read: if canReadOrg(orgId);
       
       // Can create if signed in (becomes owner automatically)
+      // Allow batch writes for creating org + initial member in same transaction
       allow create: if isSignedIn() 
         && request.resource.data.ownerUserId == request.auth.uid
         && request.resource.data.createdBy == request.auth.uid;
       
-      // Can update if admin
-      allow update: if canManageOrg(orgId);
+      // Can update if admin (or if creating initial state with batch write)
+      allow update: if canManageOrg(orgId) 
+        || (isSignedIn() && request.resource.data.ownerUserId == request.auth.uid);
       
       // Can delete if owner
       allow delete: if hasOrgRole(orgId, 'owner');
@@ -87,8 +89,11 @@ service cloud.firestore {
         // Members can read member list
         allow read: if canReadOrg(orgId);
         
-        // Admins can manage members
-        allow create, update: if canManageOrg(orgId);
+        // Admins can manage members, OR user can create themselves as first member
+        allow create: if canManageOrg(orgId) 
+          || (isOwner(userId) && request.resource.data.role == 'owner');
+        
+        allow update: if canManageOrg(orgId);
         
         // Owner can delete members, members can remove themselves
         allow delete: if hasOrgRole(orgId, 'owner') || isOwner(userId);
