@@ -11,6 +11,7 @@ import VideoAnalyticsModal from './components/VideoAnalyticsModal';
 import AccountsPage from './components/AccountsPage';
 import ContractsPage from './components/ContractsPage';
 import SettingsPage from './components/SettingsPage';
+import TrackedLinksPage from './components/TrackedLinksPage';
 import { VideoSubmission, InstagramVideoData } from './types';
 import VideoApiService from './services/VideoApiService';
 import LocalStorageService from './services/LocalStorageService';
@@ -435,18 +436,8 @@ function App() {
           {/* Settings Tab */}
           {activeTab === 'settings' && <SettingsPage />}
 
-          {/* Tracked Links Tab - Placeholder */}
-          {activeTab === 'analytics' && (
-            <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
-              <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">🔗</span>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Tracked Links</h3>
-              <p className="text-gray-500 dark:text-gray-400">
-                Track clicks and engagement on your shared links. Coming soon!
-              </p>
-            </div>
-          )}
+          {/* Tracked Links Tab */}
+          {activeTab === 'analytics' && <TrackedLinksPage />}
 
           {/* Creators Tab - Placeholder */}
           {activeTab === 'creators' && (
