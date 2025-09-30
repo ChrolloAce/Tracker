@@ -242,9 +242,10 @@ export class AccountTrackingService {
           actorId: 'clockworks~tiktok-scraper',
           input: {
             profiles: [username], // TikTok username without @
-            maxItems: 30, // Get more videos to increase chance of getting profile data
-            profileSections: ['Videos', 'Info'],
-            profileVideoSorting: 'Latest'
+            resultsPerPage: 30, // Get 30 videos to extract profile data
+            shouldDownloadCovers: false,
+            shouldDownloadVideos: false,
+            shouldDownloadSubtitles: false
           },
           action: 'run'
         }),
@@ -681,10 +682,10 @@ export class AccountTrackingService {
           actorId: 'clockworks~tiktok-scraper',
           input: {
             profiles: [account.username], // TikTok username without @
-            maxItems: 500, // Fetch as many videos as possible
-            maxPosts: 500, // Alternative parameter name
-            profileSections: ['Videos', 'Info'], // Include profile info
-            profileVideoSorting: 'Latest'
+            resultsPerPage: 100, // Number of posts to scrape per profile (max 100)
+            shouldDownloadCovers: false, // Don't download covers (we'll handle thumbnails ourselves)
+            shouldDownloadVideos: false, // Don't download videos (too heavy)
+            shouldDownloadSubtitles: false // Don't need subtitles
           },
           action: 'run'
         }),

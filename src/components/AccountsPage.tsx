@@ -92,11 +92,15 @@ const AccountsPage: React.FC = () => {
       setIsAddModalOpen(false);
       
       console.log(`✅ Added ${newAccountType} account @${account.username}`);
+      
+      // Automatically sync videos for the newly added account
+      console.log(`🔄 Auto-syncing videos for @${account.username}...`);
+      handleSyncAccount(account.id);
     } catch (error) {
       console.error('Failed to add account:', error);
       alert('Failed to add account. Please check the username and try again.');
     }
-  }, [newAccountUsername, newAccountPlatform, newAccountType]);
+  }, [newAccountUsername, newAccountPlatform, newAccountType, handleSyncAccount]);
 
   const handleSyncAccount = useCallback(async (accountId: string) => {
     setIsSyncing(accountId);
