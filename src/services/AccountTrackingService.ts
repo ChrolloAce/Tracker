@@ -380,7 +380,7 @@ export class AccountTrackingService {
           input: {
             directUrls: [`https://www.instagram.com/${account.username}/reels/`],
             resultsType: 'posts',
-            resultsLimit: 100,
+            resultsLimit: 200, // Increased to fetch more videos
             addParentData: true,
             searchType: 'user',
             scrollWaitSecs: 4,
@@ -392,7 +392,7 @@ export class AccountTrackingService {
           input: {
             directUrls: [`https://www.instagram.com/${account.username}/`],
             resultsType: 'posts',
-            resultsLimit: 150,
+            resultsLimit: 250, // Increased to fetch more videos  
             addParentData: true,
             searchType: 'user',
             scrollWaitSecs: 4,
