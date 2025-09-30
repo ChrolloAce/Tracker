@@ -64,22 +64,27 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions }) => {
       ? ((last7DaysViews - previous7DaysViews) / previous7DaysViews) * 100 
       : 0;
 
-    // Generate sparkline data (last 14 days)
+    // Generate sparkline data (last 30 days with cumulative totals)
     const generateSparklineData = (metric: 'views' | 'likes' | 'comments') => {
       const data = [];
-      for (let i = 13; i >= 0; i--) {
+      const sortedSubmissions = [...submissions].sort((a, b) => 
+        new Date(a.uploadDate).getTime() - new Date(b.uploadDate).getTime()
+      );
+      
+      for (let i = 29; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
         date.setHours(0, 0, 0, 0);
         
-        const dayVideos = submissions.filter(v => {
-          const uploadDate = new Date(v.uploadDate);
-          uploadDate.setHours(0, 0, 0, 0);
-          return uploadDate.getTime() === date.getTime();
-        });
+        // Get cumulative value up to this date
+        const cumulativeValue = sortedSubmissions
+          .filter(v => {
+            const uploadDate = new Date(v.uploadDate);
+            return uploadDate <= date;
+          })
+          .reduce((sum, v) => sum + (v[metric] || 0), 0);
         
-        const value = dayVideos.reduce((sum, v) => sum + (v[metric] || 0), 0);
-        data.push({ value });
+        data.push({ value: cumulativeValue });
       }
       return data;
     };

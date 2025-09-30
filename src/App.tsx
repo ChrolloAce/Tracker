@@ -412,18 +412,8 @@ function App() {
           {/* Dashboard Tab */}
           {activeTab === 'dashboard' && (
             <>
-              {/* KPI Cards */}
+              {/* KPI Cards with Working Sparklines */}
               <KPICards submissions={filteredSubmissions} />
-              
-              {/* Analytics Graphs with Time Period Controls */}
-              <div className="mt-6">
-                <AnalyticsCards 
-                  submissions={filteredSubmissions}
-                  dateFilter={dateFilter}
-                  customDateRange={customDateRange}
-                  timePeriod={timePeriod}
-                />
-              </div>
               
               {/* Video Submissions Table */}
               <div className="mt-6">
