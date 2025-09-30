@@ -69,7 +69,7 @@ function App() {
         accountVideos.push({
           id: video.id || `${account.id}_${video.videoId || Date.now()}`,
           url: video.url,
-          platform: account.platform as 'instagram' | 'tiktok',
+          platform: account.platform,
           thumbnail: video.thumbnail || '',
           title: video.caption || `Video from @${account.username}`,
           uploader: account.displayName || account.username,

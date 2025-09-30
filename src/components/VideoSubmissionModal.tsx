@@ -40,7 +40,7 @@ export const VideoSubmissionModal: React.FC<VideoSubmissionModalProps> = ({
         return { ...input, error: 'Please enter a URL' };
       }
       if (!isValidVideoUrl(trimmedUrl)) {
-        return { ...input, error: 'Please enter a valid Instagram or TikTok URL' };
+        return { ...input, error: 'Please enter a valid Instagram, TikTok, or YouTube URL' };
       }
       if (!input.uploadDate) {
         return { ...input, error: 'Please enter an upload date' };
@@ -143,11 +143,21 @@ export const VideoSubmissionModal: React.FC<VideoSubmissionModalProps> = ({
     // Instagram patterns
     const instagramRegex = /^https?:\/\/(www\.)?instagram\.com\/(p|reel|tv)\/[A-Za-z0-9_-]+/;
     
-    // TikTok patterns
-    const tiktokRegex = /^https?:\/\/(www\.|vm\.)?tiktok\.com\/@[\w.-]+\/video\/\d+/;
-    const shortTikTokRegex = /^https?:\/\/vm\.tiktok\.com\/[A-Za-z0-9]+/;
+    // TikTok patterns - more flexible
+    const tiktokRegex = /^https?:\/\/(www\.|vm\.|m\.)?tiktok\.com/;
+    const tiktokVideoRegex = /tiktok\.com\/@[\w.-]+\/video\/\d+/;
+    const shortTikTokRegex = /tiktok\.com\/[A-Za-z0-9]+/;
     
-    return instagramRegex.test(url) || tiktokRegex.test(url) || shortTikTokRegex.test(url);
+    // YouTube Shorts patterns
+    const youtubeRegex = /^https?:\/\/(www\.|m\.)?youtube\.com\/shorts\/[A-Za-z0-9_-]+/;
+    const youtubeMobileRegex = /^https?:\/\/youtu\.be\/[A-Za-z0-9_-]+/;
+    
+    return instagramRegex.test(url) || 
+           tiktokRegex.test(url) || 
+           tiktokVideoRegex.test(url) || 
+           shortTikTokRegex.test(url) ||
+           youtubeRegex.test(url) ||
+           youtubeMobileRegex.test(url);
   };
 
   const handleClose = () => {
@@ -231,7 +241,7 @@ export const VideoSubmissionModal: React.FC<VideoSubmissionModalProps> = ({
           </div>
 
           <p className="mt-2 text-xs text-gray-500">
-            Supports Instagram posts, reels, and TikTok videos. Add multiple URLs to process them all at once.
+            Supports Instagram posts, reels, TikTok videos, and YouTube Shorts. Add multiple URLs to process them all at once.
           </p>
 
           {isLoading && (successCount > 0 || failureCount > 0) && (
