@@ -38,11 +38,53 @@ interface KPICardData {
 
 const KPICards: React.FC<KPICardsProps> = ({ submissions, dateFilter = 'all', timePeriod = 'weeks' }) => {
   const kpiData = useMemo(() => {
-    // Calculate metrics
-    const totalViews = submissions.reduce((sum, v) => sum + (v.views || 0), 0);
-    const totalLikes = submissions.reduce((sum, v) => sum + (v.likes || 0), 0);
-    const totalComments = submissions.reduce((sum, v) => sum + (v.comments || 0), 0);
-    const totalShares = submissions.reduce((sum, v) => sum + (v.shares || 0), 0);
+    // For filtered date ranges, calculate growth during that period using snapshots
+    // For "all time", show total current metrics
+    const isFilteredPeriod = dateFilter !== 'all';
+    
+    let totalViews = 0;
+    let totalLikes = 0;
+    let totalComments = 0;
+    let totalShares = 0;
+    
+    if (isFilteredPeriod) {
+      // Calculate delta (growth) for the filtered period using snapshots
+      submissions.forEach(video => {
+        if (!video.snapshots || video.snapshots.length === 0) {
+          // No snapshots: count full current metrics (newly added video)
+          totalViews += video.views || 0;
+          totalLikes += video.likes || 0;
+          totalComments += video.comments || 0;
+          totalShares += video.shares || 0;
+        } else {
+          // Has snapshots: find the earliest snapshot in the period and calculate delta
+          const sortedSnapshots = [...video.snapshots].sort((a, b) => 
+            new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+          );
+          
+          // Find the first snapshot at or before the period start
+          const periodStartSnapshot = sortedSnapshots[0];
+          
+          // Calculate growth since that snapshot
+          const viewsDelta = Math.max(0, (video.views || 0) - (periodStartSnapshot?.views || 0));
+          const likesDelta = Math.max(0, (video.likes || 0) - (periodStartSnapshot?.likes || 0));
+          const commentsDelta = Math.max(0, (video.comments || 0) - (periodStartSnapshot?.comments || 0));
+          const sharesDelta = Math.max(0, (video.shares || 0) - (periodStartSnapshot?.shares || 0));
+          
+          totalViews += viewsDelta;
+          totalLikes += likesDelta;
+          totalComments += commentsDelta;
+          totalShares += sharesDelta;
+        }
+      });
+    } else {
+      // "All time": show total current metrics
+      totalViews = submissions.reduce((sum, v) => sum + (v.views || 0), 0);
+      totalLikes = submissions.reduce((sum, v) => sum + (v.likes || 0), 0);
+      totalComments = submissions.reduce((sum, v) => sum + (v.comments || 0), 0);
+      totalShares = submissions.reduce((sum, v) => sum + (v.shares || 0), 0);
+    }
+    
     const activeAccounts = new Set(submissions.map(v => v.uploaderHandle)).size;
     const publishedVideos = submissions.length;
     
@@ -70,7 +112,8 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, dateFilter = 'all', ti
       : 0;
 
     // Generate sparkline data based on time period
-    // Shows cumulative trend of all videos in the filtered set
+    // For filtered periods: shows growth over time
+    // For "all": shows cumulative metrics over time
     const generateSparklineData = (metric: 'views' | 'likes' | 'comments') => {
       const data = [];
       
@@ -92,21 +135,47 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, dateFilter = 'all', ti
         intervalMs = 30 * 24 * 60 * 60 * 1000; // ~1 month
       }
       
-      // Generate trend showing cumulative growth over time
+      // Generate trend showing growth over time
       for (let i = numPoints - 1; i >= 0; i--) {
-        const date = new Date(Date.now() - (i * intervalMs));
+        const pointDate = new Date(Date.now() - (i * intervalMs));
         
-        // Count all videos that existed at this point in time
-        // (were uploaded before or on this date)
-        const videosAtThisTime = submissions.filter(v => {
-          const uploadDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
-          return uploadDate <= date;
-        });
-        
-        // Sum up the metric values for all videos that existed at this time
-        const cumulativeValue = videosAtThisTime.reduce((sum, v) => sum + (v[metric] || 0), 0);
-        
-        data.push({ value: cumulativeValue });
+        if (isFilteredPeriod) {
+          // For filtered periods: show cumulative growth within the period
+          let pointValue = 0;
+          
+          submissions.forEach(video => {
+            // Find the snapshot closest to this point in time
+            if (video.snapshots && video.snapshots.length > 0) {
+              const snapshotAtPoint = video.snapshots
+                .filter(s => new Date(s.capturedAt) <= pointDate)
+                .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
+              
+              if (snapshotAtPoint) {
+                // Get the baseline (earliest snapshot in period)
+                const baseline = video.snapshots
+                  .sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime())[0];
+                
+                // Calculate delta from baseline to this point
+                const delta = Math.max(0, (snapshotAtPoint[metric] || 0) - (baseline[metric] || 0));
+                pointValue += delta;
+              }
+            } else if (new Date(video.uploadDate || video.dateSubmitted) <= pointDate) {
+              // No snapshots but video exists: count its current value
+              pointValue += video[metric] || 0;
+            }
+          });
+          
+          data.push({ value: pointValue });
+        } else {
+          // "All time": show cumulative total of all videos that existed at this point
+          const videosAtThisTime = submissions.filter(v => {
+            const uploadDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
+            return uploadDate <= pointDate;
+          });
+          
+          const cumulativeValue = videosAtThisTime.reduce((sum, v) => sum + (v[metric] || 0), 0);
+          data.push({ value: cumulativeValue });
+        }
       }
       return data;
     };
