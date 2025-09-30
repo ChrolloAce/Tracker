@@ -73,7 +73,6 @@ function App() {
   // Load data from Firestore on app initialization
   useEffect(() => {
     if (!user || !currentOrgId) {
-      setDataLoading(false);
       return;
     }
 
@@ -126,8 +125,6 @@ function App() {
         console.log('🔍 Open browser console to see API logs when adding videos');
       } catch (error) {
         console.error('❌ Failed to load data from Firestore:', error);
-      } finally {
-        setDataLoading(false);
       }
     };
 
@@ -269,9 +266,9 @@ function App() {
           title: newSubmission.title,
           thumbnail: newSubmission.thumbnail,
           uploadDate: Timestamp.fromDate(uploadDate),
-          views: videoData.viewCount || 0,
-          likes: videoData.likesCount || 0,
-          comments: videoData.commentsCount || 0,
+          views: videoData.view_count || 0,
+          likes: videoData.like_count || 0,
+          comments: videoData.comment_count || 0,
           shares: 0,
           status: 'active',
           isSingular: true
@@ -279,9 +276,9 @@ function App() {
 
         // Create initial snapshot
         await FirestoreDataService.addVideoSnapshot(currentOrgId, videoId, user.uid, {
-          views: videoData.viewCount || 0,
-          likes: videoData.likesCount || 0,
-          comments: videoData.commentsCount || 0
+          views: videoData.view_count || 0,
+          likes: videoData.like_count || 0,
+          comments: videoData.comment_count || 0
         });
 
         // Update local state
@@ -366,10 +363,8 @@ function App() {
       timestamp: video.timestamp,
     }));
 
-    // Save all new submissions
-    newSubmissions.forEach(submission => {
-      LocalStorageService.addSubmission(submission);
-    });
+    // Note: Submissions are now saved to Firestore, not localStorage
+    // TODO: Implement Firestore save for TikTok search results
 
     // Update state
     setSubmissions(prev => [...newSubmissions, ...prev]);
