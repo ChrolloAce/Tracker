@@ -2,7 +2,7 @@ import React from 'react';
 import { clsx } from 'clsx';
 
 interface PlatformIconProps {
-  platform: 'instagram' | 'tiktok';
+  platform: 'instagram' | 'tiktok' | 'youtube';
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
@@ -35,7 +35,7 @@ export const PlatformIcon: React.FC<PlatformIconProps> = ({
             `;
           }}
         />
-      ) : (
+      ) : platform === 'tiktok' ? (
         <img 
           src="/TiktokLogo.png" 
           alt="TikTok" 
@@ -46,6 +46,21 @@ export const PlatformIcon: React.FC<PlatformIconProps> = ({
             target.outerHTML = `
               <div class="${clsx(sizeClasses[size], 'bg-black rounded-lg flex items-center justify-center')}">
                 <span class="text-white text-xs font-bold">TT</span>
+              </div>
+            `;
+          }}
+        />
+      ) : (
+        <img 
+          src="/Youtube_shorts_icon.svg.png" 
+          alt="YouTube" 
+          className="w-full h-full object-contain"
+          onError={(e) => {
+            // Fallback to inline SVG if image fails to load
+            const target = e.target as HTMLImageElement;
+            target.outerHTML = `
+              <div class="${clsx(sizeClasses[size], 'bg-red-600 rounded-lg flex items-center justify-center')}">
+                <span class="text-white text-xs font-bold">YT</span>
               </div>
             `;
           }}

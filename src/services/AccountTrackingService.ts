@@ -92,11 +92,22 @@ export class AccountTrackingService {
   }
 
   // Fetch account profile data
-  private static async fetchAccountProfile(username: string, platform: 'instagram' | 'tiktok') {
+  private static async fetchAccountProfile(username: string, platform: 'instagram' | 'tiktok' | 'youtube') {
     if (platform === 'instagram') {
       return await this.fetchInstagramProfile(username);
-    } else {
+    } else if (platform === 'tiktok') {
       return await this.fetchTikTokProfile(username);
+    } else {
+      // YouTube - return placeholder data for now
+      return {
+        displayName: username,
+        profilePicture: undefined,
+        followerCount: 0,
+        followingCount: 0,
+        postCount: 0,
+        bio: '',
+        isVerified: false
+      };
     }
   }
 
