@@ -207,7 +207,7 @@ class StorageManager {
   /**
    * Limit account videos to most recent N items and strip unnecessary data
    */
-  static limitAccountVideos(videos: any[], maxVideos: number = 100): any[] {
+  static limitAccountVideos(videos: any[], maxVideos: number = 20): any[] {
     console.log(`📦 Processing ${videos.length} videos for storage optimization...`);
     
     // Sort by upload date (newest first)

@@ -380,7 +380,7 @@ export class AccountTrackingService {
           input: {
             directUrls: [`https://www.instagram.com/${account.username}/reels/`],
             resultsType: 'posts',
-            resultsLimit: 200, // Increased to fetch more videos
+            resultsLimit: 100,
             addParentData: true,
             searchType: 'user',
             scrollWaitSecs: 4,
@@ -392,7 +392,7 @@ export class AccountTrackingService {
           input: {
             directUrls: [`https://www.instagram.com/${account.username}/`],
             resultsType: 'posts',
-            resultsLimit: 250, // Increased to fetch more videos  
+            resultsLimit: 150,
             addParentData: true,
             searchType: 'user',
             scrollWaitSecs: 4,
@@ -661,7 +661,8 @@ export class AccountTrackingService {
           actorId: 'clockworks~tiktok-scraper',
           input: {
             profiles: [account.username], // TikTok username without @
-            maxItems: 100, // Increased to get more videos per account
+            maxItems: 500, // Fetch as many videos as possible
+            maxPosts: 500, // Alternative parameter name
             profileSections: ['Videos', 'Info'], // Include profile info
             profileVideoSorting: 'Latest'
           },
