@@ -6,6 +6,9 @@ import { MiniTrendChart } from './ui/MiniTrendChart';
 import { TrendCalculationService } from '../services/TrendCalculationService';
 import { clsx } from 'clsx';
 import InstagramApiService from '../services/InstagramApiService';
+import InstagramIcon from '/Instagram_icon.png';
+import TikTokIcon from '/TiktokLogo.png';
+import YouTubeShortsIcon from '../Youtube_shorts_icon.svg.png';
 
 interface VideoSubmissionsTableProps {
   submissions: VideoSubmission[];
@@ -317,35 +320,38 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
               <button 
                 onClick={() => setPlatformFilter('instagram')}
                 className={clsx(
-                  'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors',
+                  'p-2 rounded-lg transition-all',
                   platformFilter === 'instagram' 
-                    ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50' 
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    ? 'bg-blue-50 dark:bg-blue-900/30 ring-2 ring-blue-500 dark:ring-blue-400' 
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 opacity-60 hover:opacity-100'
                 )}
+                title="Instagram"
               >
-                Instagram
+                <img src={InstagramIcon} alt="Instagram" className="w-6 h-6 object-contain" />
               </button>
               <button 
                 onClick={() => setPlatformFilter('tiktok')}
                 className={clsx(
-                  'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors',
+                  'p-2 rounded-lg transition-all',
                   platformFilter === 'tiktok' 
-                    ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50' 
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    ? 'bg-blue-50 dark:bg-blue-900/30 ring-2 ring-blue-500 dark:ring-blue-400' 
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 opacity-60 hover:opacity-100'
                 )}
+                title="TikTok"
               >
-                TikTok
+                <img src={TikTokIcon} alt="TikTok" className="w-6 h-6 object-contain" />
               </button>
               <button 
                 onClick={() => setPlatformFilter('youtube')}
                 className={clsx(
-                  'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors',
+                  'p-2 rounded-lg transition-all',
                   platformFilter === 'youtube' 
-                    ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    ? 'bg-blue-50 dark:bg-blue-900/30 ring-2 ring-blue-500 dark:ring-blue-400' 
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 opacity-60 hover:opacity-100'
                 )}
+                title="YouTube Shorts"
               >
-                YouTube
+                <img src={YouTubeShortsIcon} alt="YouTube Shorts" className="w-6 h-6 object-contain" />
               </button>
             </div>
           </div>
