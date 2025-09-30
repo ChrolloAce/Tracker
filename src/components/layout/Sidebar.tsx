@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { 
   BarChart3, 
   Video, 
-  TrendingUp, 
   Users, 
   Settings, 
   Bell, 
@@ -10,8 +9,6 @@ import {
   Plus,
   ChevronLeft,
   ChevronRight,
-  Home,
-  Calendar,
   FileText,
   HelpCircle,
   FileSignature,
