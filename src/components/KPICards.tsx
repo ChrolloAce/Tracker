@@ -70,11 +70,9 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, dateFilter = 'all', ti
       : 0;
 
     // Generate sparkline data based on time period
+    // Shows cumulative trend of all videos in the filtered set
     const generateSparklineData = (metric: 'views' | 'likes' | 'comments') => {
       const data = [];
-      const sortedSubmissions = [...submissions].sort((a, b) => 
-        new Date(a.uploadDate).getTime() - new Date(b.uploadDate).getTime()
-      );
       
       // Determine number of data points and interval based on timePeriod
       let numPoints = 30;
@@ -94,19 +92,21 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, dateFilter = 'all', ti
         intervalMs = 30 * 24 * 60 * 60 * 1000; // ~1 month
       }
       
+      // Generate trend showing cumulative growth over time
       for (let i = numPoints - 1; i >= 0; i--) {
         const date = new Date(Date.now() - (i * intervalMs));
         
-        // Get value for videos in this time period
-        const periodValue = sortedSubmissions
-          .filter(v => {
-            const uploadDate = new Date(v.uploadDate);
-            const periodStart = new Date(date.getTime() - intervalMs);
-            return uploadDate >= periodStart && uploadDate <= date;
-          })
-          .reduce((sum, v) => sum + (v[metric] || 0), 0);
+        // Count all videos that existed at this point in time
+        // (were uploaded before or on this date)
+        const videosAtThisTime = submissions.filter(v => {
+          const uploadDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
+          return uploadDate <= date;
+        });
         
-        data.push({ value: periodValue });
+        // Sum up the metric values for all videos that existed at this time
+        const cumulativeValue = videosAtThisTime.reduce((sum, v) => sum + (v[metric] || 0), 0);
+        
+        data.push({ value: cumulativeValue });
       }
       return data;
     };
