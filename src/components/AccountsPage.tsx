@@ -212,7 +212,8 @@ const AccountsPage: React.FC = () => {
         }),
         views: 0,
         likes: 0,
-        comments: 0
+        comments: 0,
+        shares: 0
       }));
     }
 
@@ -276,7 +277,8 @@ const AccountsPage: React.FC = () => {
         timestamp: bucketDate.getTime(),
         views: 0,
         likes: 0,
-        comments: 0
+        comments: 0,
+        shares: 0
       };
     });
 
@@ -293,6 +295,7 @@ const AccountsPage: React.FC = () => {
           bucket.views += video.viewsCount || video.views || 0;
           bucket.likes += video.likesCount || video.likes || 0;
           bucket.comments += video.commentsCount || video.comments || 0;
+          bucket.shares += video.sharesCount || video.shares || 0;
         }
       });
     });
@@ -811,7 +814,7 @@ const AccountsPage: React.FC = () => {
                 const metricsComparison = getMetricsComparison(accountVideos, timePeriod);
                 
                 return (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {/* Total Views Chart */}
                     <div className="bg-zinc-900/60 dark:bg-zinc-900/60 border border-white/10 rounded-2xl p-6">
                       <div className="flex items-center justify-between mb-4">
@@ -988,84 +991,225 @@ const AccountsPage: React.FC = () => {
                         </ResponsiveContainer>
                       </div>
                     </div>
+
+                    {/* Total Shares Chart */}
+                    <div className="bg-zinc-900/60 dark:bg-zinc-900/60 border border-white/10 rounded-2xl p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-orange-500/10 dark:bg-orange-500/10 rounded-xl flex items-center justify-center">
+                            <Share2 className="w-6 h-6 text-orange-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">TOTAL SHARES</p>
+                          </div>
+                        </div>
+                        <button className="p-1 text-gray-400 hover:text-gray-600">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
+                      </div>
+                      
+                      <div className="mb-4">
+                        <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
+                          {formatNumber(selectedAccount.totalShares || 0)}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          <span>Total shares</span>
+                        </div>
+                      </div>
+
+                      <div className="h-20">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={chartData}>
+                            <defs>
+                              <linearGradient id="sharesGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#F97316" stopOpacity={0.3} />
+                                <stop offset="100%" stopColor="#F97316" stopOpacity={0.05} />
+                              </linearGradient>
+                            </defs>
+                            <XAxis dataKey="date" hide />
+                            <YAxis hide />
+                            <Area
+                              type="monotone"
+                              dataKey="shares"
+                              stroke="#F97316"
+                              strokeWidth={2}
+                              fill="url(#sharesGradient)"
+                              dot={false}
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
                   </div>
                 );
               })()}
             </div>
 
-            {/* Videos Grid */}
-            <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Recent Videos</h3>
-                <p className="text-gray-500">{accountVideos.length} videos</p>
+            {/* Videos Table */}
+            <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg overflow-hidden">
+              <div className="px-6 py-5 border-b border-white/5 bg-zinc-900/40">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-white">Recent Videos</h2>
+                  <p className="text-sm text-gray-400">{accountVideos.length} videos</p>
+                </div>
               </div>
               
               {accountVideos.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {accountVideos.map((video) => (
-                    <div key={video.id} className="group cursor-pointer">
-                      <div className="relative bg-gray-100 rounded-xl overflow-hidden aspect-[9/16] mb-3">
-                        {video.thumbnail ? (
-                          <img 
-                            src={video.thumbnail} 
-                            alt="Video thumbnail" 
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Play className="w-12 h-12 text-gray-400" />
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
-                          <Play className="w-12 h-12 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                        </div>
-                        {video.duration && (
-                          <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                            {Math.floor(video.duration / 60)}:{Math.floor(video.duration % 60).toString().padStart(2, '0')}
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
-                          {video.caption || 'No caption'}
-                        </p>
-                        <div className="flex items-center justify-between text-xs text-gray-500">
-                          <div className="flex items-center space-x-4">
-                            <div className="flex items-center space-x-1">
-                              <Eye className="w-3 h-3" />
-                              <span>{formatNumber(video.viewsCount || video.views || 0)}</span>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                              <Heart className="w-3 h-3" />
-                              <span>{formatNumber(video.likesCount || video.likes || 0)}</span>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                              <MessageCircle className="w-3 h-3" />
-                              <span>{formatNumber(video.commentsCount || video.comments || 0)}</span>
-                            </div>
-                          </div>
-                          <button
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-max">
+                    <thead>
+                      <tr className="border-b border-white/5">
+                        <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider sticky left-0 bg-zinc-900/60 backdrop-blur z-10 min-w-[280px]">
+                          Video
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
+                          Views
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
+                          Likes
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
+                          Comments
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
+                          Shares
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[140px]">
+                          Engagement
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
+                          Upload Date
+                        </th>
+                        <th className="w-12 px-6 py-4 text-left"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-zinc-900/60 divide-y divide-white/5">
+                      {accountVideos.map((video) => {
+                        const views = video.viewsCount || video.views || 0;
+                        const likes = video.likesCount || video.likes || 0;
+                        const comments = video.commentsCount || video.comments || 0;
+                        const shares = video.sharesCount || video.shares || 0;
+                        const engagementRate = views > 0 ? ((likes + comments) / views) * 100 : 0;
+                        
+                        return (
+                          <tr 
+                            key={video.id}
+                            className="hover:bg-white/5 transition-colors cursor-pointer group"
                             onClick={() => window.open(video.url, '_blank')}
-                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-blue-600 transition-all"
                           >
-                            <ExternalLink className="w-3 h-3" />
-                          </button>
-                        </div>
-                        <p className="text-xs text-gray-400">
-                          {formatDate(video.uploadDate || (video.timestamp ? new Date(video.timestamp) : new Date()))}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                            <td className="px-6 py-5 sticky left-0 bg-zinc-900/60 backdrop-blur z-10 group-hover:bg-white/5">
+                              <div className="flex items-center space-x-4">
+                                <div className="relative">
+                                  <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 ring-2 ring-white shadow-sm">
+                                    {video.thumbnail ? (
+                                      <img 
+                                        src={video.thumbnail} 
+                                        alt="Thumbnail"
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center bg-gray-700">
+                                        <Play className="w-4 h-4 text-gray-400" />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="absolute -bottom-1 -right-1">
+                                    <PlatformIcon platform={selectedAccount.platform} size="sm" />
+                                  </div>
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-medium text-white truncate">
+                                    {video.caption || 'No caption'}
+                                  </p>
+                                  <p className="text-xs text-gray-400 mt-1">
+                                    @{selectedAccount.username}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-5">
+                              <div className="flex items-center space-x-2">
+                                <Eye className="w-4 h-4 text-blue-500" />
+                                <span className="text-sm font-medium text-white">
+                                  {formatNumber(views)}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-5">
+                              <div className="flex items-center space-x-2">
+                                <Heart className="w-4 h-4 text-red-500" />
+                                <span className="text-sm font-medium text-white">
+                                  {formatNumber(likes)}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-5">
+                              <div className="flex items-center space-x-2">
+                                <MessageCircle className="w-4 h-4 text-green-500" />
+                                <span className="text-sm font-medium text-white">
+                                  {formatNumber(comments)}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-5">
+                              <div className="flex items-center space-x-2">
+                                <Share2 className="w-4 h-4 text-orange-500" />
+                                <span className="text-sm font-medium text-white">
+                                  {formatNumber(shares)}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-5">
+                              <div className="flex items-center space-x-2">
+                                <Activity className="w-4 h-4 text-purple-500" />
+                                <span className="text-sm font-medium text-white">
+                                  {engagementRate.toFixed(2)}%
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-5">
+                              <div className="text-sm text-zinc-300">
+                                {video.uploadDate ? 
+                                  new Date(video.uploadDate).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                  }) : 
+                                  (video.timestamp ? 
+                                    new Date(video.timestamp).toLocaleDateString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      year: 'numeric'
+                                    }) : 
+                                    'Unknown'
+                                  )
+                                }
+                              </div>
+                            </td>
+                            <td className="px-6 py-5">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.open(video.url, '_blank');
+                                }}
+                                className="text-gray-400 hover:text-blue-400 transition-colors"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <div className="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <Play className="w-8 h-8 text-gray-400" />
                   </div>
-                  <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No videos synced</h4>
-                  <p className="text-gray-500 mb-6">
+                  <h4 className="text-lg font-medium text-white mb-2">No videos synced</h4>
+                  <p className="text-gray-400 mb-6">
                     Click "Sync Videos" to fetch all videos from this account
                   </p>
                   <button
