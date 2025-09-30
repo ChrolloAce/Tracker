@@ -4,7 +4,7 @@ import { InstagramVideoData } from '../types';
 
 class VideoApiService {
   
-  async fetchVideoData(url: string): Promise<{data: InstagramVideoData, platform: 'instagram' | 'tiktok'}> {
+  async fetchVideoData(url: string): Promise<{data: InstagramVideoData, platform: 'instagram' | 'tiktok' | 'youtube'}> {
     console.log('🎯 Determining platform for URL:', url);
     
     if (!url || typeof url !== 'string') {
@@ -22,12 +22,15 @@ class VideoApiService {
       console.log('🎵 Using TikTok API service...');
       const data = await TikTokApiService.fetchVideoData(url);
       return { data, platform: 'tiktok' };
+    } else if (platform === 'youtube') {
+      console.log('▶️ YouTube support coming soon...');
+      throw new Error('YouTube support is not yet implemented. Please provide an Instagram or TikTok URL.');
     } else {
-      throw new Error('Unsupported platform. Please provide an Instagram or TikTok URL.');
+      throw new Error('Unsupported platform. Please provide an Instagram, TikTok, or YouTube URL.');
     }
   }
 
-  private detectPlatform(url: string): 'instagram' | 'tiktok' | 'unknown' {
+  private detectPlatform(url: string): 'instagram' | 'tiktok' | 'youtube' | 'unknown' {
     if (!url || typeof url !== 'string') {
       return 'unknown';
     }
@@ -39,11 +42,20 @@ class VideoApiService {
       /instagram\.com\/tv\/[A-Za-z0-9_-]+/
     ];
 
-    // TikTok URL patterns  
+    // TikTok URL patterns - including /photo/ for TikTok photo posts
     const tiktokPatterns = [
       /tiktok\.com\/@[\w.-]+\/video\/\d+/,
+      /tiktok\.com\/@[\w.-]+\/photo\/\d+/,  // Added support for TikTok photo posts
       /vm\.tiktok\.com\/[A-Za-z0-9]+/,
-      /tiktok\.com\/t\/[A-Za-z0-9]+/
+      /vt\.tiktok\.com\/[A-Za-z0-9]+/,
+      /tiktok\.com\/t\/[A-Za-z0-9]+/,
+      /m\.tiktok\.com/  // Mobile TikTok URLs
+    ];
+
+    // YouTube URL patterns
+    const youtubePatterns = [
+      /youtube\.com\/shorts\/[A-Za-z0-9_-]+/,
+      /youtu\.be\/[A-Za-z0-9_-]+/
     ];
 
     // Check Instagram patterns
@@ -60,6 +72,13 @@ class VideoApiService {
       }
     }
 
+    // Check YouTube patterns
+    for (const pattern of youtubePatterns) {
+      if (pattern.test(url)) {
+        return 'youtube';
+      }
+    }
+
     return 'unknown';
   }
 
@@ -68,15 +87,17 @@ class VideoApiService {
   }
 
   getSupportedPlatforms(): string[] {
-    return ['Instagram', 'TikTok'];
+    return ['Instagram', 'TikTok', 'YouTube'];
   }
 
   getUrlExamples(): { platform: string; example: string }[] {
     return [
       { platform: 'Instagram', example: 'https://www.instagram.com/p/ABC123/' },
       { platform: 'Instagram Reel', example: 'https://www.instagram.com/reel/XYZ789/' },
-      { platform: 'TikTok', example: 'https://www.tiktok.com/@username/video/1234567890' },
-      { platform: 'TikTok Short', example: 'https://vm.tiktok.com/ABC123/' }
+      { platform: 'TikTok Video', example: 'https://www.tiktok.com/@username/video/1234567890' },
+      { platform: 'TikTok Photo', example: 'https://www.tiktok.com/@username/photo/1234567890' },
+      { platform: 'TikTok Short', example: 'https://vm.tiktok.com/ABC123/' },
+      { platform: 'YouTube Shorts', example: 'https://www.youtube.com/shorts/ABC123' }
     ];
   }
 }
