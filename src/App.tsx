@@ -111,9 +111,6 @@ function App() {
     customDateRange
   );
 
-  // Get period description for display
-  const periodDescription = DateFilterService.getPeriodDescription(dateFilter, customDateRange);
-
   // Handle date filter changes
   const handleDateFilterChange = useCallback((filter: DateFilterType, customRange?: DateRange) => {
     setDateFilter(filter);
