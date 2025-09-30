@@ -9,11 +9,14 @@ import DateRangeFilter, { DateFilterType } from './components/DateRangeFilter';
 import TimePeriodSelector, { TimePeriodType } from './components/TimePeriodSelector';
 import VideoAnalyticsModal from './components/VideoAnalyticsModal';
 import AccountsPage from './components/AccountsPage';
+import ContractsPage from './components/ContractsPage';
+import SettingsPage from './components/SettingsPage';
 import { VideoSubmission, InstagramVideoData } from './types';
 import VideoApiService from './services/VideoApiService';
 import LocalStorageService from './services/LocalStorageService';
 import DateFilterService from './services/DateFilterService';
 import SnapshotService from './services/SnapshotService';
+import ThemeService from './services/ThemeService';
 import { cssVariables } from './theme';
 
 interface DateRange {
@@ -39,6 +42,9 @@ function App() {
   useEffect(() => {
     console.log('🎯 Instagram Submissions Dashboard initialized');
     console.log('📱 Loading saved data from localStorage...');
+    
+    // Initialize theme
+    ThemeService.initializeTheme();
     
     const savedSubmissions = LocalStorageService.loadSubmissions();
     
@@ -356,18 +362,22 @@ function App() {
             <h1 className="text-2xl font-bold text-gray-900">
               {activeTab === 'dashboard' && 'Reporting Overview'}
               {activeTab === 'accounts' && 'Account Tracking'}
+              {activeTab === 'contracts' && 'Contracts'}
               {activeTab === 'analytics' && 'Analytics'}
               {activeTab === 'videos' && 'Video Library'}
               {activeTab === 'performance' && 'Performance'}
               {activeTab === 'calendar' && 'Content Calendar'}
+              {activeTab === 'settings' && 'Settings'}
             </h1>
             <p className="text-sm text-gray-600 mt-1">
               {activeTab === 'dashboard' && 'Track and analyze your video performance'}
               {activeTab === 'accounts' && 'Monitor entire Instagram and TikTok accounts'}
+              {activeTab === 'contracts' && 'Manage brand deals and sponsorships'}
               {activeTab === 'analytics' && 'Deep dive into your content analytics'}
               {activeTab === 'videos' && 'Manage your video content library'}
               {activeTab === 'performance' && 'Analyze performance metrics and trends'}
               {activeTab === 'calendar' && 'Plan and schedule your content'}
+              {activeTab === 'settings' && 'Configure your preferences'}
             </p>
           </div>
           {activeTab === 'dashboard' && (
@@ -423,8 +433,14 @@ function App() {
           {/* Accounts Tab */}
           {activeTab === 'accounts' && <AccountsPage />}
 
+          {/* Contracts Tab */}
+          {activeTab === 'contracts' && <ContractsPage />}
+
+          {/* Settings Tab */}
+          {activeTab === 'settings' && <SettingsPage />}
+
           {/* Other Tabs - Placeholder */}
-          {activeTab !== 'dashboard' && activeTab !== 'accounts' && (
+          {!['dashboard', 'accounts', 'contracts', 'settings'].includes(activeTab) && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">🚧</span>

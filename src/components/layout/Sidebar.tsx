@@ -13,7 +13,8 @@ import {
   Home,
   Calendar,
   FileText,
-  HelpCircle
+  HelpCircle,
+  FileSignature
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -78,6 +79,13 @@ const Sidebar: React.FC<SidebarProps> = ({
       icon: Video,
       isActive: activeTab === 'videos',
       onClick: () => onTabChange?.('videos'),
+    },
+    {
+      id: 'contracts',
+      label: 'Contracts',
+      icon: FileSignature,
+      isActive: activeTab === 'contracts',
+      onClick: () => onTabChange?.('contracts'),
     },
     {
       id: 'performance',
