@@ -6,8 +6,7 @@ import {
   Activity, 
   AtSign, 
   Video, 
-  DollarSign, 
-  Download,
+  DollarSign,
   TrendingUp,
   TrendingDown,
   ChevronRight
