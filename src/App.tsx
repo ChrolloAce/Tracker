@@ -360,23 +360,19 @@ function App() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {activeTab === 'dashboard' && 'Reporting Overview'}
-              {activeTab === 'accounts' && 'Account Tracking'}
+              {activeTab === 'dashboard' && 'Video Views'}
+              {activeTab === 'accounts' && 'Tracked Accounts'}
               {activeTab === 'contracts' && 'Contracts'}
-              {activeTab === 'analytics' && 'Analytics'}
-              {activeTab === 'videos' && 'Video Library'}
-              {activeTab === 'performance' && 'Performance'}
-              {activeTab === 'calendar' && 'Content Calendar'}
+              {activeTab === 'analytics' && 'Tracked Links'}
+              {activeTab === 'creators' && 'Creators'}
               {activeTab === 'settings' && 'Settings'}
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
               {activeTab === 'dashboard' && 'Track and analyze your video performance'}
               {activeTab === 'accounts' && 'Monitor entire Instagram and TikTok accounts'}
               {activeTab === 'contracts' && 'Manage brand deals and sponsorships'}
-              {activeTab === 'analytics' && 'Deep dive into your content analytics'}
-              {activeTab === 'videos' && 'Manage your video content library'}
-              {activeTab === 'performance' && 'Analyze performance metrics and trends'}
-              {activeTab === 'calendar' && 'Plan and schedule your content'}
+              {activeTab === 'analytics' && 'Track and analyze your shared links'}
+              {activeTab === 'creators' && 'Manage and discover content creators'}
               {activeTab === 'settings' && 'Configure your preferences'}
             </p>
           </div>
@@ -439,8 +435,34 @@ function App() {
           {/* Settings Tab */}
           {activeTab === 'settings' && <SettingsPage />}
 
+          {/* Tracked Links Tab - Placeholder */}
+          {activeTab === 'analytics' && (
+            <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
+              <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">🔗</span>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Tracked Links</h3>
+              <p className="text-gray-500 dark:text-gray-400">
+                Track clicks and engagement on your shared links. Coming soon!
+              </p>
+            </div>
+          )}
+
+          {/* Creators Tab - Placeholder */}
+          {activeTab === 'creators' && (
+            <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
+              <div className="w-16 h-16 bg-purple-50 dark:bg-purple-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">👥</span>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Creators</h3>
+              <p className="text-gray-500 dark:text-gray-400">
+                Discover and manage content creators. Coming soon!
+              </p>
+            </div>
+          )}
+
           {/* Other Tabs - Placeholder */}
-          {!['dashboard', 'accounts', 'contracts', 'settings'].includes(activeTab) && (
+          {!['dashboard', 'accounts', 'contracts', 'settings', 'analytics', 'creators'].includes(activeTab) && (
             <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">🚧</span>

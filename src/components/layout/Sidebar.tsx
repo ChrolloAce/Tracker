@@ -14,7 +14,9 @@ import {
   Calendar,
   FileText,
   HelpCircle,
-  FileSignature
+  FileSignature,
+  Eye,
+  Link
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -54,31 +56,31 @@ const Sidebar: React.FC<SidebarProps> = ({
   const navigationItems: NavItem[] = [
     {
       id: 'dashboard',
-      label: 'Dashboard',
-      icon: Home,
+      label: 'Video Views',
+      icon: Eye,
       isActive: activeTab === 'dashboard',
       onClick: () => onTabChange?.('dashboard'),
     },
     {
       id: 'accounts',
-      label: 'Accounts',
+      label: 'Tracked Accounts',
       icon: Users,
       isActive: activeTab === 'accounts',
       onClick: () => onTabChange?.('accounts'),
     },
     {
       id: 'analytics',
-      label: 'Analytics',
-      icon: BarChart3,
+      label: 'Tracked Links',
+      icon: Link,
       isActive: activeTab === 'analytics',
       onClick: () => onTabChange?.('analytics'),
     },
     {
-      id: 'videos',
-      label: 'Videos',
+      id: 'creators',
+      label: 'Creators',
       icon: Video,
-      isActive: activeTab === 'videos',
-      onClick: () => onTabChange?.('videos'),
+      isActive: activeTab === 'creators',
+      onClick: () => onTabChange?.('creators'),
     },
     {
       id: 'contracts',
@@ -86,20 +88,6 @@ const Sidebar: React.FC<SidebarProps> = ({
       icon: FileSignature,
       isActive: activeTab === 'contracts',
       onClick: () => onTabChange?.('contracts'),
-    },
-    {
-      id: 'performance',
-      label: 'Performance',
-      icon: TrendingUp,
-      isActive: activeTab === 'performance',
-      onClick: () => onTabChange?.('performance'),
-    },
-    {
-      id: 'calendar',
-      label: 'Calendar',
-      icon: Calendar,
-      isActive: activeTab === 'calendar',
-      onClick: () => onTabChange?.('calendar'),
     },
   ];
 
@@ -189,7 +177,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
             <div>
               <h1 className="text-lg font-bold text-gray-900 dark:text-white">VideoAnalytics</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Dashboard</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Pro</p>
             </div>
           </div>
         )}
