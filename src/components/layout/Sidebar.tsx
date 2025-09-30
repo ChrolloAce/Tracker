@@ -17,6 +17,8 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import blackLogo from '../blacklogo.png';
+import whiteLogo from '../whitelogo.png';
 
 interface SidebarProps {
   onAddVideo?: () => void;
@@ -168,15 +170,35 @@ const Sidebar: React.FC<SidebarProps> = ({
     )}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
-        {!isCollapsed && (
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-white" />
-            </div>
+        {!isCollapsed ? (
+          <div className="flex items-center space-x-3">
+            <img 
+              src={blackLogo} 
+              alt="ViewTrack Logo" 
+              className="w-8 h-8 object-contain dark:hidden"
+            />
+            <img 
+              src={whiteLogo} 
+              alt="ViewTrack Logo" 
+              className="w-8 h-8 object-contain hidden dark:block"
+            />
             <div>
-              <h1 className="text-lg font-bold text-gray-900 dark:text-white">VideoAnalytics</h1>
+              <h1 className="text-lg font-bold text-gray-900 dark:text-white">ViewTrack</h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">Pro</p>
             </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center w-full">
+            <img 
+              src={blackLogo} 
+              alt="ViewTrack" 
+              className="w-8 h-8 object-contain dark:hidden"
+            />
+            <img 
+              src={whiteLogo} 
+              alt="ViewTrack" 
+              className="w-8 h-8 object-contain hidden dark:block"
+            />
           </div>
         )}
         <button
@@ -185,7 +207,10 @@ const Sidebar: React.FC<SidebarProps> = ({
             setIsCollapsed(newCollapsed);
             onCollapsedChange?.(newCollapsed);
           }}
-          className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+          className={clsx(
+            "p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors",
+            isCollapsed && "absolute -right-3 top-5 bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700"
+          )}
         >
           {isCollapsed ? (
             <ChevronRight className="w-4 h-4" />
