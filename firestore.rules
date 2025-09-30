@@ -1,0 +1,188 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ==================== HELPER FUNCTIONS ====================
+    
+    // Check if user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Check if user is the document owner
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // Get organization member data
+    function getOrgMember(orgId) {
+      return get(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)).data;
+    }
+    
+    // Check if user is a member of the organization
+    function isOrgMember(orgId) {
+      return isSignedIn() 
+        && exists(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid))
+        && getOrgMember(orgId).status == 'active';
+    }
+    
+    // Check if user has specific role or higher
+    function hasOrgRole(orgId, role) {
+      let member = getOrgMember(orgId);
+      return isOrgMember(orgId) && (
+        role == 'member' ||
+        (role == 'admin' && member.role in ['admin', 'owner']) ||
+        (role == 'owner' && member.role == 'owner')
+      );
+    }
+    
+    // Check if user can read org data
+    function canReadOrg(orgId) {
+      return isOrgMember(orgId);
+    }
+    
+    // Check if user can write org data
+    function canWriteOrg(orgId) {
+      return hasOrgRole(orgId, 'member');
+    }
+    
+    // Check if user can manage org (admin actions)
+    function canManageOrg(orgId) {
+      return hasOrgRole(orgId, 'admin');
+    }
+    
+    // ==================== USER ACCOUNTS ====================
+    
+    // Users can only access their own account
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
+      
+      // User preferences
+      match /preferences/{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+    
+    // ==================== ORGANIZATIONS ====================
+    
+    match /organizations/{orgId} {
+      // Can read if member
+      allow read: if canReadOrg(orgId);
+      
+      // Can create if signed in (becomes owner automatically)
+      allow create: if isSignedIn() 
+        && request.resource.data.ownerUserId == request.auth.uid
+        && request.resource.data.createdBy == request.auth.uid;
+      
+      // Can update if admin
+      allow update: if canManageOrg(orgId);
+      
+      // Can delete if owner
+      allow delete: if hasOrgRole(orgId, 'owner');
+      
+      // ==================== ORG MEMBERS ====================
+      
+      match /members/{userId} {
+        // Members can read member list
+        allow read: if canReadOrg(orgId);
+        
+        // Admins can manage members
+        allow create, update: if canManageOrg(orgId);
+        
+        // Owner can delete members, members can remove themselves
+        allow delete: if hasOrgRole(orgId, 'owner') || isOwner(userId);
+      }
+      
+      // ==================== ORG SETTINGS ====================
+      
+      match /settings/{document=**} {
+        allow read: if canReadOrg(orgId);
+        allow write: if canManageOrg(orgId);
+      }
+      
+      // ==================== TRACKED ACCOUNTS ====================
+      
+      match /trackedAccounts/{accountId} {
+        // Members can read
+        allow read: if canReadOrg(orgId);
+        
+        // Members can create/update/delete
+        allow create: if canWriteOrg(orgId) 
+          && request.resource.data.orgId == orgId
+          && request.resource.data.addedBy == request.auth.uid;
+        
+        allow update, delete: if canWriteOrg(orgId);
+      }
+      
+      // ==================== VIDEOS ====================
+      
+      match /videos/{videoId} {
+        // Members can read
+        allow read: if canReadOrg(orgId);
+        
+        // Members can create videos
+        allow create: if canWriteOrg(orgId) 
+          && request.resource.data.orgId == orgId
+          && request.resource.data.addedBy == request.auth.uid;
+        
+        // Members can update/delete videos
+        allow update, delete: if canWriteOrg(orgId);
+        
+        // ==================== VIDEO SNAPSHOTS ====================
+        
+        match /snapshots/{snapshotId} {
+          // Members can read snapshots
+          allow read: if canReadOrg(orgId);
+          
+          // Members can create snapshots (for manual refresh)
+          // Cloud Functions can also create (via Admin SDK, bypasses rules)
+          allow create: if canWriteOrg(orgId) 
+            && request.resource.data.capturedBy == request.auth.uid;
+          
+          // Snapshots are immutable after creation
+          allow update, delete: if false;
+        }
+      }
+      
+      // ==================== TRACKED LINKS ====================
+      
+      match /links/{linkId} {
+        // Members can read
+        allow read: if canReadOrg(orgId);
+        
+        // Members can create links
+        allow create: if canWriteOrg(orgId) 
+          && request.resource.data.orgId == orgId
+          && request.resource.data.createdBy == request.auth.uid;
+        
+        // Members can update/delete links
+        allow update, delete: if canWriteOrg(orgId);
+        
+        // ==================== LINK CLICKS ====================
+        
+        match /clicks/{clickId} {
+          // Members can read click analytics
+          allow read: if canReadOrg(orgId);
+          
+          // Public can create click events (via Cloud Function or client)
+          // This is okay because shortCode is public
+          allow create: if true;
+          
+          // Clicks are immutable
+          allow update, delete: if false;
+        }
+      }
+    }
+    
+    // ==================== PUBLIC LINK REDIRECTS ====================
+    
+    // Public collection for link shortcode -> orgId/linkId lookup
+    // This allows unauthenticated users to resolve short links
+    match /publicLinks/{shortCode} {
+      allow read: if true; // Public read for redirects
+      allow write: if false; // Only Cloud Functions can write
+    }
+  }
+}
+

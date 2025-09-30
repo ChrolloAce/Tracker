@@ -340,6 +340,45 @@ Consider clearing old accounts from the Accounts tab.
       percentUsed
     };
   }
+
+  // For migration: Load tracked accounts
+  loadAccounts(): any[] {
+    try {
+      const stored = localStorage.getItem('tracked_accounts');
+      if (!stored) return [];
+      
+      return JSON.parse(stored).map((account: any) => ({
+        ...account,
+        dateAdded: new Date(account.dateAdded),
+        lastSynced: account.lastSynced ? new Date(account.lastSynced) : undefined,
+      }));
+    } catch (error) {
+      console.error('Failed to load tracked accounts:', error);
+      return [];
+    }
+  }
+
+  // For migration: Load tracked links
+  loadLinks(): any[] {
+    try {
+      const stored = localStorage.getItem('tracked_links');
+      if (!stored) return [];
+      
+      return JSON.parse(stored).map((link: any) => ({
+        ...link,
+        createdAt: new Date(link.createdAt),
+        lastClickedAt: link.lastClickedAt ? new Date(link.lastClickedAt) : undefined,
+      }));
+    } catch (error) {
+      console.error('Failed to load tracked links:', error);
+      return [];
+    }
+  }
+
+  // For migration: Clear all data
+  clearAll(): void {
+    this.clearAllData();
+  }
 }
 
 export default new LocalStorageService();
