@@ -1,4 +1,5 @@
 import { VideoSubmission } from '../types';
+import StorageManager from './StorageManager';
 
 class LocalStorageService {
   private readonly SUBMISSIONS_KEY = 'instagram_submissions';
@@ -191,18 +192,48 @@ class LocalStorageService {
   saveAccountVideos(accountId: string, videos: any[]): void {
     try {
       const key = `${this.ACCOUNT_VIDEOS_KEY_PREFIX}${accountId}`;
-      const serializedData = JSON.stringify(videos, (_key, value) => {
+      
+      // Limit to most recent 50 videos to save space
+      const limitedVideos = StorageManager.limitAccountVideos(videos, 50);
+      
+      // Add metadata for tracking last access
+      const dataWithMetadata = StorageManager.wrapWithMetadata(limitedVideos);
+      
+      const serializedData = JSON.stringify(dataWithMetadata, (_key, value) => {
         // Convert Date objects to ISO strings for serialization
         if (value instanceof Date) {
           return value.toISOString();
         }
         return value;
       });
-      localStorage.setItem(key, serializedData);
-      console.log('💾 Account videos saved for:', accountId, '(', videos.length, 'videos)');
+      
+      // Use safe storage method with quota management
+      const success = StorageManager.safeSetItem(key, serializedData, { isAccountVideos: true });
+      
+      if (success) {
+        console.log('💾 Account videos saved for:', accountId, '(', limitedVideos.length, 'videos)');
+      } else {
+        console.error('❌ Failed to save account videos - storage quota exceeded');
+        // Show user-friendly message
+        this.showStorageWarning();
+      }
     } catch (error) {
       console.error('❌ Failed to save account videos:', error);
     }
+  }
+  
+  // Show storage warning to user
+  private showStorageWarning(): void {
+    // You can emit an event or show a notification here
+    const { usedMB, percentUsed } = StorageManager.getStorageUsage();
+    console.warn(`
+⚠️ STORAGE WARNING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Your browser storage is ${percentUsed.toFixed(1)}% full (${usedMB.toFixed(2)} MB used).
+We're keeping the most recent 50 videos per account to save space.
+Consider clearing old data or downloading important analytics.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    `);
   }
 
   // Load account videos data
@@ -216,13 +247,22 @@ class LocalStorageService {
         return [];
       }
 
-      const videos = JSON.parse(data, (key, value) => {
+      const parsed = JSON.parse(data, (key, value) => {
         // Convert ISO strings back to Date objects
         if (key === 'uploadDate' && typeof value === 'string') {
           return new Date(value);
         }
         return value;
       });
+      
+      // Extract videos from metadata wrapper
+      const videos = Array.isArray(parsed) ? parsed : (parsed._metadata ? parsed.slice(0, -1) : []);
+      
+      // Update last accessed time
+      if (parsed._metadata) {
+        parsed._metadata.lastAccessed = Date.now();
+        localStorage.setItem(key, JSON.stringify(parsed));
+      }
 
       console.log('✅ Loaded account videos from localStorage:', accountId, '(', videos.length, 'videos)');
       return videos;
@@ -266,26 +306,21 @@ class LocalStorageService {
   }
 
   // Get storage usage info
-  getStorageInfo(): { totalSubmissions: number; totalThumbnails: number; estimatedSize: string } {
+  getStorageInfo(): { totalSubmissions: number; totalThumbnails: number; estimatedSize: string; percentUsed: number } {
     const submissions = this.loadSubmissions();
     const keys = Object.keys(localStorage);
     const thumbnailKeys = keys.filter(key => key.startsWith(this.THUMBNAILS_KEY_PREFIX));
     
-    // Estimate storage size
-    let totalSize = 0;
-    keys.forEach(key => {
-      const value = localStorage.getItem(key);
-      if (value) {
-        totalSize += key.length + value.length;
-      }
-    });
+    const { usedMB, percentUsed } = StorageManager.getStorageUsage();
     
-    const sizeInMB = (totalSize / (1024 * 1024)).toFixed(2);
+    // Log detailed stats
+    StorageManager.logStorageStats();
     
     return {
       totalSubmissions: submissions.length,
       totalThumbnails: thumbnailKeys.length,
-      estimatedSize: `${sizeInMB} MB`
+      estimatedSize: `${usedMB.toFixed(2)} MB`,
+      percentUsed
     };
   }
 }
