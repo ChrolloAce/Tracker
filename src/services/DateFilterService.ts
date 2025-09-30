@@ -15,6 +15,12 @@ class DateFilterService {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
     switch (filterType) {
+      case 'today':
+        return {
+          startDate: today,
+          endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1) // End of today
+        };
+        
       case 'last7days':
         return {
           startDate: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000),
