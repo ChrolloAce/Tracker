@@ -288,6 +288,27 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
     return (totalEngagement / submission.views) * 100;
   };
 
+  // Get relative time string (e.g. "3 hours ago", "2 days ago")
+  const getRelativeTime = (date: Date): string => {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSeconds = Math.floor(diffMs / 1000);
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    const diffWeeks = Math.floor(diffDays / 7);
+    const diffMonths = Math.floor(diffDays / 30);
+    const diffYears = Math.floor(diffDays / 365);
+
+    if (diffYears > 0) return `${diffYears} year${diffYears > 1 ? 's' : ''} ago`;
+    if (diffMonths > 0) return `${diffMonths} month${diffMonths > 1 ? 's' : ''} ago`;
+    if (diffWeeks > 0) return `${diffWeeks} week${diffWeeks > 1 ? 's' : ''} ago`;
+    if (diffDays > 0) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    if (diffHours > 0) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffMinutes > 0) return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
+    return 'Just now';
+  };
+
   return (
     <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg overflow-hidden">
       {/* Table Header */}
@@ -377,11 +398,14 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                 Engagement
               </SortableHeader>
               <SortableHeader column="uploadDate" className="min-w-[120px]">
-                📅 Upload Date
+                Upload Date
               </SortableHeader>
               <SortableHeader column="dateSubmitted" className="min-w-[120px]">
-                ➕ Date Added
+                Date Added
               </SortableHeader>
+              <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
+                Last Refresh
+              </th>
               <th className="w-12 px-6 py-4 text-left"></th>
             </tr>
           </thead>
@@ -469,7 +493,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   </td>
                   <td className="px-6 py-5">
                     <div className="text-sm text-zinc-300">
-                      📅 {submission.uploadDate ? 
+                      {submission.uploadDate ? 
                         new Date(submission.uploadDate).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
@@ -485,11 +509,16 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   </td>
                   <td className="px-6 py-5">
                     <div className="text-sm text-zinc-300">
-                      ➕ {new Date(submission.dateSubmitted).toLocaleDateString('en-US', {
+                      {new Date(submission.dateSubmitted).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric'
                       })}
+                    </div>
+                  </td>
+                  <td className="px-6 py-5">
+                    <div className="text-sm text-zinc-400">
+                      {submission.lastRefreshed ? getRelativeTime(new Date(submission.lastRefreshed)) : 'Never'}
                     </div>
                   </td>
                   <td className="px-6 py-5">

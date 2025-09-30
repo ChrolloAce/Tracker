@@ -7,7 +7,7 @@ import {
   AtSign, 
   Video, 
   DollarSign,
-  Download,
+  Share2,
   TrendingUp,
   TrendingDown,
   ChevronRight
@@ -38,6 +38,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions }) => {
     const totalViews = submissions.reduce((sum, v) => sum + (v.views || 0), 0);
     const totalLikes = submissions.reduce((sum, v) => sum + (v.likes || 0), 0);
     const totalComments = submissions.reduce((sum, v) => sum + (v.comments || 0), 0);
+    const totalShares = submissions.reduce((sum, v) => sum + (v.shares || 0), 0);
     const activeAccounts = new Set(submissions.map(v => v.uploaderHandle)).size;
     const publishedVideos = submissions.length;
     
@@ -129,9 +130,18 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions }) => {
         label: 'Published Videos',
         value: publishedVideos,
         icon: Video,
-        accent: 'orange',
+        accent: 'violet',
         period: 'All time',
         sparklineData: generateSparklineData('views')
+      },
+      {
+        id: 'shares',
+        label: 'Shares',
+        value: formatNumber(totalShares),
+        icon: Share2,
+        accent: 'orange',
+        period: 'Total shares',
+        sparklineData: generateSparklineData('comments')
       },
       {
         id: 'accounts',
@@ -160,16 +170,6 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions }) => {
         isEmpty: true,
         ctaText: 'Set up +',
         period: 'Track link performance'
-      },
-      {
-        id: 'app-downloads',
-        label: 'App Downloads',
-        value: '0',
-        icon: Download,
-        accent: 'slate',
-        isEmpty: true,
-        ctaText: 'Set up +',
-        period: 'Track app installs'
       }
     ];
 
