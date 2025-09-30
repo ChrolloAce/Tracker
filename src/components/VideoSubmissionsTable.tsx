@@ -12,9 +12,6 @@ import YouTubeShortsIcon from '../Youtube_shorts_icon.svg.png';
 
 interface VideoSubmissionsTableProps {
   submissions: VideoSubmission[];
-  selectedIds: Set<string>;
-  onSelectionChange: (id: string, selected: boolean) => void;
-  onSelectAll: (selected: boolean) => void;
   onStatusUpdate?: (id: string, status: VideoSubmission['status']) => void;
   onDelete?: (id: string) => void;
   onVideoClick?: (video: VideoSubmission) => void;
@@ -157,9 +154,6 @@ const ThumbnailImage: React.FC<{ submission: VideoSubmission }> = ({ submission 
 
 export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   submissions,
-  selectedIds,
-  onSelectionChange,
-  onSelectAll,
   onStatusUpdate,
   onDelete,
   onVideoClick
@@ -286,8 +280,6 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
     return num.toString();
   };
 
-  const allSelected = filteredAndSortedSubmissions.length > 0 && selectedIds.size === filteredAndSortedSubmissions.length;
-  const someSelected = selectedIds.size > 0 && selectedIds.size < filteredAndSortedSubmissions.length;
 
   // Calculate engagement percentage
   const calculateEngagementRate = (submission: VideoSubmission): number => {

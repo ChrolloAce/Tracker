@@ -31,7 +31,6 @@ function App() {
   const isLinkRedirect = window.location.pathname.startsWith('/l/');
 
   const [submissions, setSubmissions] = useState<VideoSubmission[]>([]);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilterType>('all');
@@ -249,25 +248,6 @@ function App() {
     }
   }, []);
 
-  const handleSelectionChange = useCallback((id: string, selected: boolean) => {
-    setSelectedIds(prev => {
-      const newSet = new Set(prev);
-      if (selected) {
-        newSet.add(id);
-      } else {
-        newSet.delete(id);
-      }
-      return newSet;
-    });
-  }, []);
-
-  const handleSelectAll = useCallback((selected: boolean) => {
-    if (selected) {
-      setSelectedIds(new Set(submissions.map(s => s.id)));
-    } else {
-      setSelectedIds(new Set());
-    }
-  }, [submissions]);
 
   const handleStatusUpdate = useCallback((id: string, status: VideoSubmission['status']) => {
     console.log('📝 Updating submission status:', id, '→', status);
@@ -418,9 +398,6 @@ function App() {
               <div className="mt-6">
                 <VideoSubmissionsTable
                   submissions={filteredSubmissions}
-                  selectedIds={selectedIds}
-                  onSelectionChange={handleSelectionChange}
-                  onSelectAll={handleSelectAll}
                   onStatusUpdate={handleStatusUpdate}
                   onDelete={handleDelete}
                   onVideoClick={handleVideoClick}
