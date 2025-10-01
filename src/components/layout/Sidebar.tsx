@@ -4,7 +4,6 @@ import {
   Users, 
   Settings, 
   Bell, 
-  Search,
   Plus,
   ChevronLeft,
   ChevronRight,
@@ -13,7 +12,6 @@ import {
   FileSignature,
   Eye,
   Link,
-  RefreshCw,
   LogOut
 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -23,9 +21,6 @@ import whiteLogo from '../whitelogo.png';
 
 interface SidebarProps {
   onAddVideo?: () => void;
-  onTikTokSearch?: () => void;
-  onRefreshAll?: () => void;
-  isRefreshing?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
   initialCollapsed?: boolean;
   activeTab?: string;
@@ -43,10 +38,7 @@ interface NavItem {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
-  onAddVideo, 
-  onTikTokSearch, 
-  onRefreshAll, 
-  isRefreshing,
+  onAddVideo,
   onCollapsedChange,
   initialCollapsed = false,
   activeTab = 'dashboard',
