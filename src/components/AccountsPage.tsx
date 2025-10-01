@@ -805,9 +805,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
 
              </div>
 
-            {/* KPI Cards Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Analytics Charts Section */}
+            <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 p-8">
+              <div className="mb-8">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Reporting Overview</h3>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">Track and analyze your video performance</p>
+              </div>
+
               {(() => {
+                const chartData = generateChartData(accountVideos, timePeriod);
+                const metricsComparison = getMetricsComparison(accountVideos, timePeriod);
+                
                 // Calculate engagement rate
                 const totalEngagement = selectedAccount.totalLikes + selectedAccount.totalComments;
                 const engagementRate = selectedAccount.totalViews > 0 
@@ -901,9 +909,11 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                   teal: 'bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400',
                   slate: 'bg-slate-50 dark:bg-slate-500/10 text-slate-600 dark:text-slate-400'
                 };
-
+                
                 return (
                   <>
+                  {/* KPI Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     {kpiCards.map((card) => {
                       const Icon = card.icon;
                       return (
@@ -931,23 +941,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                         </div>
                       );
                     })}
-                  </>
-                );
-              })()}
-            </div>
+                  </div>
 
-            {/* Analytics Charts Section */}
-            <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 p-8">
-              <div className="mb-8">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Reporting Overview</h3>
-                <p className="text-gray-600 dark:text-gray-400 mt-1">Track and analyze your video performance</p>
-              </div>
-
-              {(() => {
-                const chartData = generateChartData(accountVideos, timePeriod);
-                const metricsComparison = getMetricsComparison(accountVideos, timePeriod);
-                
-                return (
+                  {/* Charts */}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {/* Total Views Chart */}
                     <div className="bg-zinc-900/60 dark:bg-zinc-900/60 border border-white/10 rounded-2xl p-6">
@@ -1189,6 +1185,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                       </div>
                     </div>
                   </div>
+                  </>
                 );
               })()}
             </div>
