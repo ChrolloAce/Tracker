@@ -1210,7 +1210,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-semibold text-white">Recent Videos</h2>
                   <div className="flex items-center space-x-4">
-                    <p className="text-sm text-gray-400">{accountVideos.filter(v => platformFilter === 'all' || selectedAccount.platform === platformFilter).length} videos</p>
+                    <p className="text-sm text-gray-400">{accountVideos.length} videos</p>
                     
                     {/* Column Visibility Toggle */}
                     <div className="relative">
