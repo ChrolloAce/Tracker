@@ -37,10 +37,21 @@ export default async function handler(
     const { getFirestore } = await import('firebase-admin/firestore');
 
     if (getApps().length === 0) {
+      // Handle private key - replace both \\n and literal \n with actual newlines
+      let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
+      
+      // Remove quotes if they exist
+      if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+        privateKey = privateKey.slice(1, -1);
+      }
+      
+      // Replace escaped newlines with actual newlines
+      privateKey = privateKey.replace(/\\n/g, '\n');
+
       const serviceAccount = {
         projectId: process.env.FIREBASE_PROJECT_ID,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        privateKey: privateKey,
       };
 
       initializeApp({
