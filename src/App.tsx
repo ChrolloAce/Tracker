@@ -1,5 +1,6 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { clsx } from 'clsx';
+import { ArrowLeft } from 'lucide-react';
 import Sidebar from './components/layout/Sidebar';
 import { VideoSubmissionsTable } from './components/VideoSubmissionsTable';
 import { VideoSubmissionModal } from './components/VideoSubmissionModal';
@@ -8,7 +9,7 @@ import KPICards from './components/KPICards';
 import DateRangeFilter, { DateFilterType } from './components/DateRangeFilter';
 import TimePeriodSelector, { TimePeriodType } from './components/TimePeriodSelector';
 import VideoAnalyticsModal from './components/VideoAnalyticsModal';
-import AccountsPage from './components/AccountsPage';
+import AccountsPage, { AccountsPageRef } from './components/AccountsPage';
 import ContractsPage from './components/ContractsPage';
 import SettingsPage from './components/SettingsPage';
 import SubscriptionPage from './components/SubscriptionPage';
@@ -57,6 +58,11 @@ function App() {
   const [timePeriod, setTimePeriod] = useState<TimePeriodType>('weeks');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isLoadingData, setIsLoadingData] = useState(true);
+  
+  // Accounts page state
+  const [accountsTimePeriod, setAccountsTimePeriod] = useState<'all' | 'weekly' | 'monthly' | 'daily'>('all');
+  const [accountsViewMode, setAccountsViewMode] = useState<'table' | 'details'>('table');
+  const accountsPageRef = useRef<AccountsPageRef | null>(null);
 
   // Load data from Firestore on app initialization and when project changes
   useEffect(() => {
@@ -382,25 +388,35 @@ function App() {
         }
       )}>
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {activeTab === 'dashboard' && 'Dashboard'}
-              {activeTab === 'accounts' && 'Tracked Accounts'}
-              {activeTab === 'contracts' && 'Contracts'}
-              {activeTab === 'subscription' && 'Subscription Plans'}
-              {activeTab === 'analytics' && 'Tracked Links'}
-              {activeTab === 'creators' && 'Creators'}
-              {activeTab === 'settings' && 'Settings'}
-            </h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              {activeTab === 'dashboard' && 'Track and analyze your video performance'}
-              {activeTab === 'accounts' && 'Monitor entire Instagram and TikTok accounts'}
-              {activeTab === 'contracts' && 'Manage brand deals and sponsorships'}
-              {activeTab === 'subscription' && 'Choose the perfect plan to scale your tracking'}
-              {activeTab === 'analytics' && 'Track and analyze your shared links'}
-              {activeTab === 'creators' && 'Manage and discover content creators'}
-              {activeTab === 'settings' && 'Configure your preferences'}
-            </p>
+          <div className="flex items-center space-x-4">
+            {activeTab === 'accounts' && accountsViewMode === 'details' && (
+              <button
+                onClick={() => accountsPageRef.current?.handleBackToTable()}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
+              </button>
+            )}
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                {activeTab === 'dashboard' && 'Dashboard'}
+                {activeTab === 'accounts' && 'Tracked Accounts'}
+                {activeTab === 'contracts' && 'Contracts'}
+                {activeTab === 'subscription' && 'Subscription Plans'}
+                {activeTab === 'analytics' && 'Tracked Links'}
+                {activeTab === 'creators' && 'Creators'}
+                {activeTab === 'settings' && 'Settings'}
+              </h1>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                {activeTab === 'dashboard' && 'Track and analyze your video performance'}
+                {activeTab === 'accounts' && 'Monitor entire Instagram and TikTok accounts'}
+                {activeTab === 'contracts' && 'Manage brand deals and sponsorships'}
+                {activeTab === 'subscription' && 'Choose the perfect plan to scale your tracking'}
+                {activeTab === 'analytics' && 'Track and analyze your shared links'}
+                {activeTab === 'creators' && 'Manage and discover content creators'}
+                {activeTab === 'settings' && 'Configure your preferences'}
+              </p>
+            </div>
           </div>
           {activeTab === 'dashboard' && (
             <div className="flex items-center space-x-4">
@@ -413,6 +429,54 @@ function App() {
                 selectedPeriod={timePeriod}
                 onPeriodChange={setTimePeriod}
               />
+            </div>
+          )}
+          {activeTab === 'accounts' && (
+            <div className="flex items-center space-x-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-1">
+              <button
+                onClick={() => setAccountsTimePeriod('daily')}
+                className={clsx(
+                  'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                  accountsTimePeriod === 'daily'
+                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                )}
+              >
+                Daily
+              </button>
+              <button
+                onClick={() => setAccountsTimePeriod('weekly')}
+                className={clsx(
+                  'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                  accountsTimePeriod === 'weekly'
+                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                )}
+              >
+                Weekly
+              </button>
+              <button
+                onClick={() => setAccountsTimePeriod('monthly')}
+                className={clsx(
+                  'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                  accountsTimePeriod === 'monthly'
+                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                )}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setAccountsTimePeriod('all')}
+                className={clsx(
+                  'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                  accountsTimePeriod === 'all'
+                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                )}
+              >
+                All Time
+              </button>
             </div>
           )}
         </div>
@@ -455,7 +519,14 @@ function App() {
           </div>
 
           {/* Accounts Tab */}
-          {activeTab === 'accounts' && <AccountsPage />}
+          {activeTab === 'accounts' && (
+            <AccountsPage 
+              ref={accountsPageRef}
+              timePeriod={accountsTimePeriod}
+              onTimePeriodChange={setAccountsTimePeriod}
+              onViewModeChange={setAccountsViewMode}
+            />
+          )}
 
           {/* Contracts Tab */}
           {activeTab === 'contracts' && <ContractsPage />}

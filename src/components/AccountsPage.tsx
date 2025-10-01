@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { 
   Plus, 
   Users, 
@@ -9,7 +9,6 @@ import {
   Search,
   MoreHorizontal,
   AlertCircle,
-  ArrowLeft,
   Play,
   Eye,
   Heart,
@@ -31,7 +30,17 @@ import { TrendCalculationService } from '../services/TrendCalculationService';
 import { VideoSubmission } from '../types';
 import VideoPlayerModal from './VideoPlayerModal';
 
-const AccountsPage: React.FC = () => {
+interface AccountsPageProps {
+  timePeriod: 'all' | 'weekly' | 'monthly' | 'daily';
+  onTimePeriodChange: (period: 'all' | 'weekly' | 'monthly' | 'daily') => void;
+  onViewModeChange: (mode: 'table' | 'details') => void;
+}
+
+export interface AccountsPageRef {
+  handleBackToTable: () => void;
+}
+
+const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ timePeriod, onTimePeriodChange, onViewModeChange }, ref) => {
   const { user, currentOrgId, currentProjectId } = useAuth();
   const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<TrackedAccount | null>(null);
@@ -39,7 +48,6 @@ const AccountsPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'table' | 'details'>('table');
   const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
   const [selectedVideoForPlayer, setSelectedVideoForPlayer] = useState<{url: string; title: string; platform: 'instagram' | 'tiktok' | 'youtube' } | null>(null);
-  const [timePeriod, setTimePeriod] = useState<'all' | 'weekly' | 'monthly' | 'daily'>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState<string | null>(null);
   const [isRefreshingProfile, setIsRefreshingProfile] = useState<string | null>(null);
@@ -92,11 +100,13 @@ const AccountsPage: React.FC = () => {
         console.log('📹 Loaded videos from Firestore:', videos.length);
         setAccountVideos(videos);
         setViewMode('details');
+        onViewModeChange('details');
         
         // Save selected account ID to localStorage for persistence
         localStorage.setItem('selectedAccountId', selectedAccount.id);
       } else {
         setViewMode('table');
+        onViewModeChange('table');
         setAccountVideos([]);
         
         // Clear selected account ID from localStorage
@@ -105,7 +115,7 @@ const AccountsPage: React.FC = () => {
     };
 
     loadVideos();
-  }, [selectedAccount, currentOrgId]);
+  }, [selectedAccount, currentOrgId, currentProjectId, onViewModeChange]);
 
   const handleSyncAccount = useCallback(async (accountId: string) => {
     if (!currentOrgId || !currentProjectId || !user) return;
@@ -257,12 +267,17 @@ const AccountsPage: React.FC = () => {
     );
   }
 
-  const handleBackToTable = () => {
+  const handleBackToTable = useCallback(() => {
     setSelectedAccount(null);
     setAccountVideos([]);
     setViewMode('table');
-    // This will be handled by the useEffect above
-  };
+    onViewModeChange('table');
+  }, [onViewModeChange]);
+
+  // Expose handleBackToTable to parent component
+  useImperativeHandle(ref, () => ({
+    handleBackToTable
+  }));
 
   // Generate chart data based on time period and historical tracking
   const generateChartData = (videos: AccountVideo[], period: 'all' | 'weekly' | 'monthly' | 'daily') => {
@@ -457,76 +472,6 @@ const AccountsPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center space-x-4">
-          {viewMode === 'details' && selectedAccount && (
-            <button
-              onClick={handleBackToTable}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
-            </button>
-          )}
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Tracked Accounts
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Monitor entire Instagram and TikTok accounts
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-1">
-            <button
-              onClick={() => setTimePeriod('daily')}
-              className={clsx(
-                'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
-                timePeriod === 'daily'
-                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-              )}
-            >
-              Daily
-            </button>
-            <button
-              onClick={() => setTimePeriod('weekly')}
-              className={clsx(
-                'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
-                timePeriod === 'weekly'
-                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-              )}
-            >
-              Weekly
-            </button>
-            <button
-              onClick={() => setTimePeriod('monthly')}
-              className={clsx(
-                'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
-                timePeriod === 'monthly'
-                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-              )}
-            >
-              Monthly
-            </button>
-            <button
-              onClick={() => setTimePeriod('all')}
-              className={clsx(
-                'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
-                timePeriod === 'all'
-                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-              )}
-            >
-              All Time
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Error Display */}
       {syncError && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center space-x-3">
@@ -596,8 +541,20 @@ const AccountsPage: React.FC = () => {
 
       {/* Main Content */}
       {viewMode === 'table' ? (
-        /* Accounts Table */
-        <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 overflow-hidden">
+        <div className="space-y-6">
+          {/* Add Account Button */}
+          <div className="flex justify-end">
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="font-medium">Track Account</span>
+            </button>
+          </div>
+          
+          {/* Accounts Table */}
+          <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 overflow-hidden">
           {accounts.length === 0 ? (
             <div className="p-12 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -782,6 +739,7 @@ const AccountsPage: React.FC = () => {
               </table>
             </div>
           )}
+          </div>
         </div>
       ) : (
         /* Account Details View */
@@ -828,58 +786,9 @@ const AccountsPage: React.FC = () => {
 
             {/* Analytics Charts Section */}
             <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 p-8">
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">Reporting Overview</h3>
-                  <p className="text-gray-600 mt-1">Track and analyze your video performance</p>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <button 
-                    onClick={() => setTimePeriod('all')}
-                    className={clsx(
-                      'flex items-center space-x-2 px-4 py-2 border rounded-lg transition-colors',
-                      timePeriod === 'all' 
-                        ? 'border-blue-500 bg-blue-600 text-white' 
-                        : 'border-gray-700 dark:border-gray-700 text-gray-400 dark:text-gray-400 hover:bg-gray-800 dark:hover:bg-gray-800'
-                    )}
-                  >
-                    <Calendar className="w-4 h-4" />
-                    <span>All Time</span>
-                  </button>
-                  <button 
-                    onClick={() => setTimePeriod('monthly')}
-                    className={clsx(
-                      'flex items-center space-x-2 px-4 py-2 border rounded-lg transition-colors',
-                      timePeriod === 'monthly' 
-                        ? 'border-blue-500 bg-blue-600 text-white' 
-                        : 'border-gray-700 dark:border-gray-700 text-gray-400 dark:text-gray-400 hover:bg-gray-800 dark:hover:bg-gray-800'
-                    )}
-                  >
-                    <span>Monthly</span>
-                  </button>
-                  <button 
-                    onClick={() => setTimePeriod('weekly')}
-                    className={clsx(
-                      'flex items-center space-x-2 px-4 py-2 border rounded-lg transition-colors',
-                      timePeriod === 'weekly' 
-                        ? 'border-blue-500 bg-blue-600 text-white' 
-                        : 'border-gray-700 dark:border-gray-700 text-gray-400 dark:text-gray-400 hover:bg-gray-800 dark:hover:bg-gray-800'
-                    )}
-                  >
-                    <span>Weekly</span>
-                  </button>
-                  <button 
-                    onClick={() => setTimePeriod('daily')}
-                    className={clsx(
-                      'flex items-center space-x-2 px-4 py-2 border rounded-lg transition-colors',
-                      timePeriod === 'daily' 
-                        ? 'border-blue-500 bg-blue-600 text-white' 
-                        : 'border-gray-700 dark:border-gray-700 text-gray-400 dark:text-gray-400 hover:bg-gray-800 dark:hover:bg-gray-800'
-                    )}
-                  >
-                    <span>Daily</span>
-                  </button>
-                </div>
+              <div className="mb-8">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Reporting Overview</h3>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">Track and analyze your video performance</p>
               </div>
 
               {(() => {
@@ -1228,13 +1137,11 @@ const AccountsPage: React.FC = () => {
                                     <PlatformIcon platform={selectedAccount.platform} size="sm" />
                                   </div>
                                 </div>
-                                <div className="min-w-0 flex-1">
+                                <div className="min-w-0 flex-1 max-w-[200px]">
                                   <p className="text-sm font-medium text-white truncate" title={video.caption || 'No caption'}>
-                                    {video.caption && video.caption.length > 50 
-                                      ? `${video.caption.substring(0, 50)}...` 
-                                      : video.caption || 'No caption'}
+                                    {video.caption || 'No caption'}
                                   </p>
-                                  <p className="text-xs text-gray-400 mt-1">
+                                  <p className="text-xs text-gray-400 mt-1 truncate">
                                     @{selectedAccount.username}
                                   </p>
                                 </div>
@@ -1523,6 +1430,8 @@ const AccountsPage: React.FC = () => {
       )}
     </div>
   );
-};
+});
+
+AccountsPage.displayName = 'AccountsPage';
 
 export default AccountsPage;
