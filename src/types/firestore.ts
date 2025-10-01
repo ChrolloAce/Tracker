@@ -34,6 +34,10 @@ export interface UserAccount {
 export interface Organization {
   id: string;
   name: string;
+  slug?: string; // URL-friendly identifier
+  website?: string;
+  logoUrl?: string;
+  metadata?: Record<string, any>; // For storing additional onboarding data
   createdAt: Timestamp;
   createdBy: string; // userId
   ownerUserId: string;
@@ -43,6 +47,7 @@ export interface Organization {
   trackedAccountCount: number;
   videoCount: number;
   linkCount: number;
+  projectCount?: number;
   
   // Settings
   settings?: {

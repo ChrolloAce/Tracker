@@ -73,21 +73,35 @@ class OrganizationService {
   /**
    * Create a new organization
    */
-  static async createOrganization(userId: string, name: string): Promise<string> {
+  static async createOrganization(
+    userId: string, 
+    data: {
+      name: string;
+      slug?: string;
+      website?: string;
+      logoUrl?: string;
+      metadata?: Record<string, any>;
+    }
+  ): Promise<string> {
     const batch = writeBatch(db);
     
     // Create organization
     const orgRef = doc(collection(db, 'organizations'));
     const orgData: Organization = {
       id: orgRef.id,
-      name,
+      name: data.name,
+      slug: data.slug,
+      website: data.website,
+      logoUrl: data.logoUrl,
+      metadata: data.metadata,
       createdAt: Timestamp.now(),
       createdBy: userId,
       ownerUserId: userId,
       memberCount: 1,
       trackedAccountCount: 0,
       videoCount: 0,
-      linkCount: 0
+      linkCount: 0,
+      projectCount: 0
     };
     
     batch.set(orgRef, orgData);
@@ -172,7 +186,7 @@ class OrganizationService {
     
     // Create default organization
     const defaultName = email.split('@')[0] + "'s Workspace";
-    return await this.createOrganization(userId, defaultName);
+    return await this.createOrganization(userId, { name: defaultName });
   }
 
   // ==================== MEMBERS ====================

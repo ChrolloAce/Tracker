@@ -70,6 +70,37 @@ class FirebaseStorageService {
   }
 
   /**
+   * Upload an organization logo to Firebase Storage
+   * @param userId User ID (for path organization)
+   * @param imageFile File object of the image
+   * @returns Download URL of the uploaded image
+   */
+  static async uploadOrganizationLogo(userId: string, imageFile: File): Promise<string> {
+    try {
+      console.log(`📤 Uploading organization logo to Firebase Storage`);
+      
+      // Generate unique filename
+      const timestamp = Date.now();
+      const filename = `${timestamp}-${imageFile.name}`;
+      
+      // Create a reference to the org logo location
+      const imageRef = ref(storage, `users/${userId}/org-logos/${filename}`);
+      
+      // Upload the file
+      await uploadBytes(imageRef, imageFile);
+      
+      // Get the download URL
+      const downloadURL = await getDownloadURL(imageRef);
+      
+      console.log(`✅ Organization logo uploaded successfully`);
+      return downloadURL;
+    } catch (error) {
+      console.error(`❌ Failed to upload organization logo:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Upload a project image to Firebase Storage
    * @param orgId Organization ID
    * @param imageFile File object of the image

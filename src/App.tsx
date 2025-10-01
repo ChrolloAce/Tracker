@@ -16,6 +16,7 @@ import TrackedLinksPage from './components/TrackedLinksPage';
 import LinkRedirect from './components/LinkRedirect';
 import LoginPage from './components/LoginPage';
 import { PageLoadingSkeleton } from './components/ui/LoadingSkeleton';
+import OrganizationOnboarding from './components/OrganizationOnboarding';
 import { VideoSubmission, InstagramVideoData } from './types';
 import VideoApiService from './services/VideoApiService';
 import DateFilterService from './services/DateFilterService';
@@ -340,6 +341,11 @@ function App() {
   // If this is a link redirect, show redirect component instead
   if (isLinkRedirect) {
     return <LinkRedirect />;
+  }
+
+  // Show organization onboarding if user has no organization
+  if (user && !loading && !currentOrgId) {
+    return <OrganizationOnboarding />;
   }
 
   return (
