@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Link as LinkIcon, Plus, Copy, ExternalLink, Trash2, BarChart, QrCode, Search } from 'lucide-react';
 import { TrackedLink } from '../types/trackedLinks';
+import { TrackedAccount } from '../types/firestore';
 import TrackedLinksService from '../services/TrackedLinksService';
+import FirestoreDataService from '../services/FirestoreDataService';
 import CreateLinkModal from './CreateLinkModal';
 import LinkAnalyticsModal from './LinkAnalyticsModal';
+import { useAuth } from '../contexts/AuthContext';
 import { clsx } from 'clsx';
 
 const TrackedLinksPage: React.FC = () => {
+  const { currentOrgId } = useAuth();
   const [links, setLinks] = useState<TrackedLink[]>([]);
+  const [accounts, setAccounts] = useState<Map<string, TrackedAccount>>(new Map());
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedLink, setSelectedLink] = useState<TrackedLink | null>(null);
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
@@ -16,15 +21,27 @@ const TrackedLinksPage: React.FC = () => {
 
   useEffect(() => {
     loadLinks();
-  }, []);
+    loadAccounts();
+  }, [currentOrgId]);
+
+  const loadAccounts = async () => {
+    if (!currentOrgId) return;
+    try {
+      const accountsData = await FirestoreDataService.getTrackedAccounts(currentOrgId);
+      const accountsMap = new Map(accountsData.map(acc => [acc.id, acc]));
+      setAccounts(accountsMap);
+    } catch (error) {
+      console.error('Failed to load accounts:', error);
+    }
+  };
 
   const loadLinks = () => {
     const allLinks = TrackedLinksService.getAllLinks();
     setLinks(allLinks.filter(link => link.isActive));
   };
 
-  const handleCreateLink = (originalUrl: string, title: string, description?: string, tags?: string[]) => {
-    TrackedLinksService.createLink(originalUrl, title, description, tags);
+  const handleCreateLink = (originalUrl: string, title: string, description?: string, tags?: string[], linkedAccountId?: string) => {
+    TrackedLinksService.createLink(originalUrl, title, description, tags, linkedAccountId);
     loadLinks();
     setIsCreateModalOpen(false);
   };
@@ -173,33 +190,60 @@ const TrackedLinksPage: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
               {filteredLinks.length > 0 ? (
-                filteredLinks.map((link) => (
-                  <tr key={link.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {link.title}
-                        </p>
-                        <div className="flex items-center space-x-1 mt-1">
-                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs">
-                            {link.originalUrl}
-                          </p>
-                          <a
-                            href={link.originalUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                          >
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
+                filteredLinks.map((link) => {
+                  const linkedAccount = link.linkedAccountId ? accounts.get(link.linkedAccountId) : null;
+                  
+                  return (
+                    <tr key={link.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center space-x-3">
+                          {linkedAccount && (
+                            <div className="flex-shrink-0">
+                              {linkedAccount.profilePicture ? (
+                                <img
+                                  src={linkedAccount.profilePicture}
+                                  alt={linkedAccount.username}
+                                  className="w-8 h-8 rounded-full object-cover ring-2 ring-white dark:ring-gray-800"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center ring-2 ring-white dark:ring-gray-800">
+                                  <span className="text-xs font-bold text-white">
+                                    {linkedAccount.username.charAt(0).toUpperCase()}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                              {link.title}
+                            </p>
+                            <div className="flex items-center space-x-1 mt-1">
+                              {linkedAccount && (
+                                <span className="text-xs text-blue-600 dark:text-blue-400 mr-2">
+                                  @{linkedAccount.username}
+                                </span>
+                              )}
+                              <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs">
+                                {link.originalUrl}
+                              </p>
+                              <a
+                                href={link.originalUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </div>
+                            {link.description && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                {link.description}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        {link.description && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            {link.description}
-                          </p>
-                        )}
-                      </div>
-                    </td>
+                      </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-2">
                         <code className="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
@@ -263,7 +307,8 @@ const TrackedLinksPage: React.FC = () => {
                       </div>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center">

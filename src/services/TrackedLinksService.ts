@@ -19,7 +19,7 @@ class TrackedLinksService {
   /**
    * Create a new tracked link
    */
-  createLink(originalUrl: string, title: string, description?: string, tags?: string[]): TrackedLink {
+  createLink(originalUrl: string, title: string, description?: string, tags?: string[], linkedAccountId?: string): TrackedLink {
     const links = this.getAllLinks();
     
     // Generate unique short code
@@ -35,6 +35,7 @@ class TrackedLinksService {
       title,
       description,
       tags,
+      linkedAccountId,
       createdAt: new Date(),
       totalClicks: 0,
       uniqueClicks: 0,
@@ -44,7 +45,7 @@ class TrackedLinksService {
     links.push(newLink);
     this.saveLinks(links);
     
-    console.log('✅ Created tracked link:', shortCode, '→', originalUrl);
+    console.log('✅ Created tracked link:', shortCode, '→', originalUrl, linkedAccountId ? `(linked to ${linkedAccountId})` : '');
     return newLink;
   }
 

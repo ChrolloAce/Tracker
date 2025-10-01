@@ -1,18 +1,33 @@
-import React, { useState } from 'react';
-import { X, Link as LinkIcon, Tag } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Link as LinkIcon, Tag, User } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import FirestoreDataService from '../services/FirestoreDataService';
+import { TrackedAccount } from '../types/firestore';
 
 interface CreateLinkModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreate: (originalUrl: string, title: string, description?: string, tags?: string[]) => void;
+  onCreate: (originalUrl: string, title: string, description?: string, tags?: string[], linkedAccountId?: string) => void;
 }
 
 const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCreate }) => {
+  const { currentOrgId } = useAuth();
   const [originalUrl, setOriginalUrl] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState('');
+  const [linkedAccountId, setLinkedAccountId] = useState<string>('');
+  const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
   const [error, setError] = useState('');
+
+  // Load accounts when modal opens
+  useEffect(() => {
+    if (isOpen && currentOrgId) {
+      FirestoreDataService.getTrackedAccounts(currentOrgId)
+        .then(setAccounts)
+        .catch(err => console.error('Failed to load accounts:', err));
+    }
+  }, [isOpen, currentOrgId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +55,8 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
       originalUrl,
       title.trim(),
       description.trim() || undefined,
-      tagArray.length > 0 ? tagArray : undefined
+      tagArray.length > 0 ? tagArray : undefined,
+      linkedAccountId || undefined
     );
 
     // Reset form
@@ -48,6 +64,7 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
     setTitle('');
     setDescription('');
     setTags('');
+    setLinkedAccountId('');
   };
 
   if (!isOpen) return null;
@@ -113,6 +130,31 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
               rows={3}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
+          </div>
+
+          {/* Linked Account */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Link to Account (optional)
+            </label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <select
+                value={linkedAccountId}
+                onChange={(e) => setLinkedAccountId(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer"
+              >
+                <option value="">None</option>
+                {accounts.map(account => (
+                  <option key={account.id} value={account.id}>
+                    @{account.username} ({account.platform})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Attribute link clicks to a tracked account
+            </p>
           </div>
 
           {/* Tags */}
