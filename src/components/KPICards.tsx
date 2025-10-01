@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { 
   Play, 
   Heart, 
@@ -17,6 +17,7 @@ import { LinkClick } from '../services/LinkClicksService';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { DateFilterType } from './DateRangeFilter';
 import { TimePeriodType } from './TimePeriodSelector';
+import MetricComparisonModal from './MetricComparisonModal';
 
 interface KPICardsProps {
   submissions: VideoSubmission[];
@@ -39,6 +40,14 @@ interface KPICardData {
 }
 
 const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateFilter = 'all', timePeriod = 'weeks' }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedMetric, setSelectedMetric] = useState<'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts' | 'engagement' | 'linkClicks'>('views');
+
+  const handleCardClick = (metricId: string) => {
+    setSelectedMetric(metricId as any);
+    setIsModalOpen(true);
+  };
+
   const kpiData = useMemo(() => {
     // For filtered date ranges, calculate growth during that period using snapshots
     // For "all time", show total current metrics
@@ -268,11 +277,22 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
   }, [submissions, linkClicks, dateFilter, timePeriod]);
 
   return (
-    <div className="grid gap-4 md:gap-5 xl:gap-6 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {kpiData.map((card) => (
-        <KPICard key={card.id} data={card} />
-      ))}
-    </div>
+    <>
+      <div className="grid gap-4 md:gap-5 xl:gap-6 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {kpiData.map((card) => (
+          <KPICard key={card.id} data={card} onClick={() => handleCardClick(card.id)} />
+        ))}
+      </div>
+
+      <MetricComparisonModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        submissions={submissions}
+        linkClicks={linkClicks}
+        dateFilter={dateFilter}
+        initialMetric={selectedMetric}
+      />
+    </>
   );
 };
 
@@ -305,7 +325,7 @@ const KPISparkline: React.FC<{
   );
 };
 
-const KPICard: React.FC<{ data: KPICardData }> = ({ data }) => {
+const KPICard: React.FC<{ data: KPICardData; onClick?: () => void }> = ({ data, onClick }) => {
   const accentColors = {
     emerald: {
       icon: 'bg-emerald-500/10 ring-emerald-500/20',
@@ -362,7 +382,9 @@ const KPICard: React.FC<{ data: KPICardData }> = ({ data }) => {
   const Icon = data.icon;
 
   return (
-    <div className="group relative min-h-[8rem] rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 p-4 lg:p-5">
+    <div 
+      onClick={onClick}
+      className="group relative min-h-[8rem] rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 p-4 lg:p-5 cursor-pointer">
       <div className="flex items-start justify-between h-full">
         {/* Left: Text Stack */}
         <div className="flex-1 flex flex-col justify-between min-h-full">
