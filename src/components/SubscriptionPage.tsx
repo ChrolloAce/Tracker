@@ -35,9 +35,15 @@ const SubscriptionPage: React.FC = () => {
     setLoading(true);
     try {
       await StripeService.createCheckoutSession(currentOrgId, planTier, billingCycle);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create checkout session:', error);
-      alert('Failed to start checkout. Please try again.');
+      
+      // Show helpful message if Stripe isn't configured
+      if (error.message?.includes('Stripe not configured') || error.message?.includes('503')) {
+        alert('💳 Payments are not configured yet!\n\nTo enable subscriptions:\n1. Create a Stripe account\n2. Add Stripe keys to environment variables\n3. See STRIPE_SETUP_GUIDE.md for details');
+      } else {
+        alert('Failed to start checkout. Please try again or contact support.');
+      }
     } finally {
       setLoading(false);
     }

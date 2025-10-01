@@ -1,10 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-11-20.acacia',
-});
-
 /**
  * Create a Stripe Checkout session
  */
@@ -15,6 +11,18 @@ export default async function handler(
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Check if Stripe is configured
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return res.status(503).json({ 
+      error: 'Stripe not configured',
+      message: 'Please add STRIPE_SECRET_KEY to environment variables'
+    });
+  }
+
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: '2024-11-20.acacia',
+  });
 
   const { orgId, planTier, billingCycle } = req.body;
 
