@@ -45,11 +45,12 @@ export interface AccountsPageRef {
 const mapDateFilterToTimePeriod = (filter: DateFilterType): 'all' | 'weekly' | 'monthly' | 'daily' => {
   switch (filter) {
     case 'today': return 'daily';
-    case 'last7Days': return 'weekly';
-    case 'last30Days': return 'monthly';
-    case 'last90Days': return 'monthly';
-    case 'monthToDate': return 'monthly';
-    case 'yearToDate': return 'all';
+    case 'last7days': return 'weekly';
+    case 'last30days': return 'monthly';
+    case 'last90days': return 'monthly';
+    case 'mtd': return 'monthly';
+    case 'ytd': return 'all';
+    case 'custom': return 'all';
     default: return 'all';
   }
 };
