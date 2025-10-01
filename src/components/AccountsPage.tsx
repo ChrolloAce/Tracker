@@ -17,9 +17,7 @@ import {
   Calendar,
   Share2,
   Activity,
-  Video,
-  TrendingUp,
-  TrendingDown
+  Video
   } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import { TrackedAccount, AccountVideo } from '../types/accounts';
@@ -47,8 +45,11 @@ export interface AccountsPageRef {
 const mapDateFilterToTimePeriod = (filter: DateFilterType): 'all' | 'weekly' | 'monthly' | 'daily' => {
   switch (filter) {
     case 'today': return 'daily';
-    case 'last7': return 'weekly';
-    case 'last30': return 'monthly';
+    case 'last7Days': return 'weekly';
+    case 'last30Days': return 'monthly';
+    case 'last90Days': return 'monthly';
+    case 'monthToDate': return 'monthly';
+    case 'yearToDate': return 'all';
     default: return 'all';
   }
 };
@@ -812,7 +813,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                   ? (totalEngagement / selectedAccount.totalViews) * 100 
                   : 0;
 
-                const kpiCards = [
+                type AccentType = 'emerald' | 'pink' | 'blue' | 'violet' | 'orange' | 'teal' | 'slate';
+
+                const kpiCards: Array<{
+                  id: string;
+                  label: string;
+                  value: string | number;
+                  icon: React.ComponentType<{ className?: string }>;
+                  accent: AccentType;
+                  period: string;
+                  subtext?: string;
+                }> = [
                   {
                     id: 'views',
                     label: 'Views',
@@ -880,7 +891,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                   }
                 ];
 
-                const accentColors = {
+                const accentColors: Record<AccentType, string> = {
                   emerald: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
                   pink: 'bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400',
                   blue: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400',
