@@ -6,9 +6,6 @@ import { MiniTrendChart } from './ui/MiniTrendChart';
 import { TrendCalculationService } from '../services/TrendCalculationService';
 import { clsx } from 'clsx';
 import InstagramApiService from '../services/InstagramApiService';
-import InstagramIcon from '/Instagram_icon.png';
-import TikTokIcon from '/TiktokLogo.png';
-import YouTubeShortsIcon from '../Youtube_shorts_icon.svg.png';
 import VideoPlayerModal from './VideoPlayerModal';
 
 interface VideoSubmissionsTableProps {
@@ -166,7 +163,6 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
 }) => {
   console.log('🎬 VideoSubmissionsTable rendered with', submissions.length, 'videos');
   console.log('📅 Sample submission uploadDate check:', submissions[0]?.uploadDate);
-  const [platformFilter, setPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'youtube'>('all');
   const [sortBy, setSortBy] = useState<'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'uploadDate' | 'dateSubmitted'>('views');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
@@ -198,22 +194,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
 
   // Filter and sort submissions
   const getFilteredAndSortedSubmissions = () => {
-    let filtered = submissions;
-
-    // Apply platform filter
-    if (platformFilter !== 'all') {
-      filtered = submissions.filter(submission => {
-        // Check if submission has platform property, otherwise infer from URL
-        const platform = submission.platform || 
-          (submission.url?.includes('instagram.com') ? 'instagram' : 
-           submission.url?.includes('tiktok.com') ? 'tiktok' : 
-           submission.url?.includes('youtube.com') ? 'youtube' : 'unknown');
-        return platform === platformFilter;
-      });
-    }
-
     // Apply sorting
-    const sorted = [...filtered].sort((a, b) => {
+    const sorted = [...submissions].sort((a, b) => {
       let aValue: number;
       let bValue: number;
 
