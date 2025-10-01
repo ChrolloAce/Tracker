@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { clsx } from 'clsx';
 import Sidebar from './components/layout/Sidebar';
 import { VideoSubmissionsTable } from './components/VideoSubmissionsTable';
@@ -134,12 +134,14 @@ function App() {
     loadData();
   }, [user, currentOrgId, isDataLoaded]);
 
-  // Filter submissions based on date range
-  const filteredSubmissions = DateFilterService.filterVideosByDateRange(
-    submissions, 
-    dateFilter, 
-    customDateRange
-  );
+  // Filter submissions based on date range (memoized to prevent infinite loops)
+  const filteredSubmissions = useMemo(() => {
+    return DateFilterService.filterVideosByDateRange(
+      submissions, 
+      dateFilter, 
+      customDateRange
+    );
+  }, [submissions, dateFilter, customDateRange]);
 
   // Handle date filter changes
   const handleDateFilterChange = useCallback((filter: DateFilterType, customRange?: DateRange) => {
