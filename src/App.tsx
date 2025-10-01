@@ -56,7 +56,6 @@ function App() {
   // Load data from Firestore on app initialization and when project changes
   useEffect(() => {
     if (!user || !currentOrgId || !currentProjectId) {
-      setIsLoadingData(false);
       return;
     }
 

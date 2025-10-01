@@ -75,7 +75,7 @@ const AccountsPage: React.FC = () => {
     };
 
     loadAccounts();
-  }, [currentOrgId]);
+  }, [currentOrgId, currentProjectId]);
 
   // Load videos when account is selected
   useEffect(() => {

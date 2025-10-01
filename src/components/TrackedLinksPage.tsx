@@ -21,16 +21,18 @@ const TrackedLinksPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadLinks();
-    loadAccounts();
-    
-    // Set up auto-refresh every 10 seconds to update click counts
-    const interval = setInterval(() => {
+    if (currentOrgId && currentProjectId) {
       loadLinks();
-    }, 10000);
-    
-    return () => clearInterval(interval);
-  }, [currentOrgId]);
+      loadAccounts();
+      
+      // Set up auto-refresh every 10 seconds to update click counts
+      const interval = setInterval(() => {
+        loadLinks(false); // Don't show loading on auto-refresh
+      }, 10000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [currentOrgId, currentProjectId]);
 
   const loadAccounts = async () => {
     if (!currentOrgId || !currentProjectId) return;
@@ -43,13 +45,19 @@ const TrackedLinksPage: React.FC = () => {
     }
   };
 
-  const loadLinks = async (showRefreshIndicator = false) => {
+  const loadLinks = async (showRefreshIndicator = true) => {
     if (!currentOrgId || !currentProjectId) {
-      setLoading(false);
       return;
     }
+    
+    // Only show loading skeleton on initial load
+    if (showRefreshIndicator && links.length === 0) {
+      setLoading(true);
+    } else if (showRefreshIndicator) {
+      setIsRefreshing(true);
+    }
+    
     try {
-      if (showRefreshIndicator) setIsRefreshing(true);
       console.log('🔗 Loading tracked links...');
       const allLinks = await FirestoreDataService.getLinks(currentOrgId, currentProjectId);
       console.log(`✅ Loaded ${allLinks.length} links with click data:`, 
