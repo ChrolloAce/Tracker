@@ -59,6 +59,19 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ timePerio
   const [accountType, setAccountType] = useState<'my' | 'competitor'>('my');
   const [loading, setLoading] = useState(true);
 
+  // Handle back to table navigation
+  const handleBackToTable = useCallback(() => {
+    setSelectedAccount(null);
+    setAccountVideos([]);
+    setViewMode('table');
+    onViewModeChange('table');
+  }, [onViewModeChange]);
+
+  // Expose handleBackToTable to parent component
+  useImperativeHandle(ref, () => ({
+    handleBackToTable
+  }), [handleBackToTable]);
+
   // Load accounts on mount and restore selected account
   useEffect(() => {
     const loadAccounts = async () => {
@@ -266,18 +279,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ timePerio
       </div>
     );
   }
-
-  const handleBackToTable = useCallback(() => {
-    setSelectedAccount(null);
-    setAccountVideos([]);
-    setViewMode('table');
-    onViewModeChange('table');
-  }, [onViewModeChange]);
-
-  // Expose handleBackToTable to parent component
-  useImperativeHandle(ref, () => ({
-    handleBackToTable
-  }));
 
   // Generate chart data based on time period and historical tracking
   const generateChartData = (videos: AccountVideo[], period: 'all' | 'weekly' | 'monthly' | 'daily') => {
