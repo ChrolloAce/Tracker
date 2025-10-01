@@ -477,56 +477,54 @@ const AccountsPage: React.FC = () => {
             </p>
           </div>
         </div>
-        {viewMode === 'details' && selectedAccount && (
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-1">
-              <button
-                onClick={() => setTimePeriod('daily')}
-                className={clsx(
-                  'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
-                  timePeriod === 'daily'
-                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                )}
-              >
-                Daily
-              </button>
-              <button
-                onClick={() => setTimePeriod('weekly')}
-                className={clsx(
-                  'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
-                  timePeriod === 'weekly'
-                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                )}
-              >
-                Weekly
-              </button>
-              <button
-                onClick={() => setTimePeriod('monthly')}
-                className={clsx(
-                  'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
-                  timePeriod === 'monthly'
-                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                )}
-              >
-                Monthly
-              </button>
-              <button
-                onClick={() => setTimePeriod('all')}
-                className={clsx(
-                  'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
-                  timePeriod === 'all'
-                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                )}
-              >
-                All Time
-              </button>
-            </div>
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-1">
+            <button
+              onClick={() => setTimePeriod('daily')}
+              className={clsx(
+                'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                timePeriod === 'daily'
+                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              )}
+            >
+              Daily
+            </button>
+            <button
+              onClick={() => setTimePeriod('weekly')}
+              className={clsx(
+                'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                timePeriod === 'weekly'
+                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              )}
+            >
+              Weekly
+            </button>
+            <button
+              onClick={() => setTimePeriod('monthly')}
+              className={clsx(
+                'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                timePeriod === 'monthly'
+                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              )}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setTimePeriod('all')}
+              className={clsx(
+                'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                timePeriod === 'all'
+                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              )}
+            >
+              All Time
+            </button>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Error Display */}
@@ -1231,8 +1229,10 @@ const AccountsPage: React.FC = () => {
                                   </div>
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-medium text-white truncate">
-                                    {video.caption || 'No caption'}
+                                  <p className="text-sm font-medium text-white truncate" title={video.caption || 'No caption'}>
+                                    {video.caption && video.caption.length > 50 
+                                      ? `${video.caption.substring(0, 50)}...` 
+                                      : video.caption || 'No caption'}
                                   </p>
                                   <p className="text-xs text-gray-400 mt-1">
                                     @{selectedAccount.username}
