@@ -71,11 +71,11 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
   }
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative w-full" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={clsx(
-          'flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors',
+          'w-full flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors',
           'hover:bg-gray-100 dark:hover:bg-gray-800',
           'border border-gray-200 dark:border-gray-700',
           isOpen && 'bg-gray-100 dark:bg-gray-800'

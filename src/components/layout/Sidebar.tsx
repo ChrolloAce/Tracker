@@ -89,6 +89,9 @@ const Sidebar: React.FC<SidebarProps> = ({
       isActive: activeTab === 'contracts',
       onClick: () => onTabChange?.('contracts'),
     },
+  ];
+
+  const bottomItems: NavItem[] = [
     {
       id: 'subscription',
       label: 'Upgrade',
@@ -96,9 +99,6 @@ const Sidebar: React.FC<SidebarProps> = ({
       isActive: activeTab === 'subscription',
       onClick: () => onTabChange?.('subscription'),
     },
-  ];
-
-  const bottomItems: NavItem[] = [
     {
       id: 'settings',
       label: 'Settings',
