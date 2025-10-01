@@ -1,5 +1,6 @@
 import React from 'react';
-import { Settings, Lock, User, Globe } from 'lucide-react';
+import { Settings, Lock, User, Globe, LogOut } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 /**
  * SettingsPage Component
@@ -8,6 +9,17 @@ import { Settings, Lock, User, Globe } from 'lucide-react';
  * Features: App always in dark mode, notifications, account settings
  */
 const SettingsPage: React.FC = () => {
+  const { logout } = useAuth();
+
+  const handleLogout = async () => {
+    if (window.confirm('Are you sure you want to sign out?')) {
+      try {
+        await logout();
+      } catch (error) {
+        console.error('Failed to sign out:', error);
+      }
+    }
+  };
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -37,6 +49,15 @@ const SettingsPage: React.FC = () => {
             <SettingsItem icon={User} label="Profile Settings" />
             <SettingsItem icon={Lock} label="Privacy & Security" />
             <SettingsItem icon={Globe} label="Language & Region" />
+            <button 
+              onClick={handleLogout}
+              className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-200"
+            >
+              <div className="flex items-center gap-3">
+                <LogOut className="w-5 h-5 text-red-600 dark:text-red-400" />
+                <span className="text-sm font-medium text-red-600 dark:text-red-400">Sign Out</span>
+              </div>
+            </button>
           </div>
         </div>
 
