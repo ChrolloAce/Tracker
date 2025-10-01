@@ -158,63 +158,62 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
 
 
         {/* Performance Charts */}
-        {chartData.length > 0 && (
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Performance Analytics</h3>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Total Views Chart */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
-                      <Eye className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">TOTAL VIEWS</p>
-                    </div>
+        <div className={`p-6 ${chartData.length === 0 ? 'hidden' : ''}`}>
+          <h3 className="text-lg font-semibold text-gray-900 mb-6">Performance Analytics</h3>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Total Views Chart */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                    <Eye className="w-6 h-6 text-blue-600" />
                   </div>
-                </div>
-                
-                <div className="mb-4">
-                  <div className="text-3xl font-bold text-gray-900 mb-1">
-                    {formatNumber(video.views)}
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">TOTAL VIEWS</p>
                   </div>
-                  {showGrowth && totalGrowth.views !== 0 && (
-                    <div className={`flex items-center text-sm ${getGrowthColor(totalGrowth.views)}`}>
-                      {getGrowthIcon(totalGrowth.views)}
-                      <span className="ml-1">
-                        {formatGrowth(totalGrowth.views, growthPercentages.views)}
-                      </span>
-                    </div>
-                  )}
-                  {!showGrowth && (
-                    <div className="flex items-center text-sm text-gray-500">
-                      <span>Current snapshot</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="h-20">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData}>
-                      <defs>
-                        <linearGradient id="viewsGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <Area 
-                        type="monotone" 
-                        dataKey="views" 
-                        stroke="#3B82F6" 
-                        strokeWidth={2}
-                        fill="url(#viewsGradient)" 
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
                 </div>
               </div>
+              
+              <div className="mb-4">
+                <div className="text-3xl font-bold text-gray-900 mb-1">
+                  {formatNumber(video.views)}
+                </div>
+                {showGrowth && totalGrowth.views !== 0 && (
+                  <div className={`flex items-center text-sm ${getGrowthColor(totalGrowth.views)}`}>
+                    {getGrowthIcon(totalGrowth.views)}
+                    <span className="ml-1">
+                      {formatGrowth(totalGrowth.views, growthPercentages.views)}
+                    </span>
+                  </div>
+                )}
+                {!showGrowth && (
+                  <div className="flex items-center text-sm text-gray-500">
+                    <span>Current snapshot</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="h-20">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id="viewsGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <Area 
+                      type="monotone" 
+                      dataKey="views" 
+                      stroke="#3B82F6" 
+                      strokeWidth={2}
+                      fill="url(#viewsGradient)" 
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
 
               {/* Total Likes Chart */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -323,7 +322,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
               </div>
             </div>
           </div>
-        )}
+        </div>
 
         {/* Snapshot History */}
         {video.snapshots && video.snapshots.length > 0 && (
@@ -412,7 +411,6 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
           </div>
         )}
       </div>
-    </div>
   );
 };
 
