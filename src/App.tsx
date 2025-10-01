@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { clsx } from 'clsx';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ChevronDown } from 'lucide-react';
 import Sidebar from './components/layout/Sidebar';
 import { VideoSubmissionsTable } from './components/VideoSubmissionsTable';
 import { VideoSubmissionModal } from './components/VideoSubmissionModal';
@@ -62,6 +62,7 @@ function App() {
   // Accounts page state
   const [accountsDateFilter, setAccountsDateFilter] = useState<DateFilterType>('all');
   const [accountsViewMode, setAccountsViewMode] = useState<'table' | 'details'>('table');
+  const [accountsPlatformFilter, setAccountsPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'youtube'>('all');
   const accountsPageRef = useRef<AccountsPageRef | null>(null);
 
   // Load data from Firestore on app initialization and when project changes
@@ -432,10 +433,27 @@ function App() {
             </div>
           )}
           {activeTab === 'accounts' && (
-            <DateRangeFilter
-              selectedFilter={accountsDateFilter}
-              onFilterChange={(filter) => setAccountsDateFilter(filter)}
-            />
+            <div className="flex items-center space-x-4">
+              {/* Platform Filter Dropdown */}
+              <div className="relative">
+                <select
+                  value={accountsPlatformFilter}
+                  onChange={(e) => setAccountsPlatformFilter(e.target.value as 'all' | 'instagram' | 'tiktok' | 'youtube')}
+                  className="appearance-none pl-4 pr-10 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                >
+                  <option value="all">All Platforms</option>
+                  <option value="instagram">Instagram</option>
+                  <option value="tiktok">TikTok</option>
+                  <option value="youtube">YouTube</option>
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
+              
+              <DateRangeFilter
+                selectedFilter={accountsDateFilter}
+                onFilterChange={(filter) => setAccountsDateFilter(filter)}
+              />
+            </div>
           )}
         </div>
       </header>
@@ -481,6 +499,7 @@ function App() {
             <AccountsPage 
               ref={accountsPageRef}
               dateFilter={accountsDateFilter}
+              platformFilter={accountsPlatformFilter}
               onViewModeChange={setAccountsViewMode}
             />
           )}

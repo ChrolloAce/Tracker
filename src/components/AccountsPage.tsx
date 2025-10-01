@@ -34,6 +34,7 @@ import { DateFilterType } from './DateRangeFilter';
 
 interface AccountsPageProps {
   dateFilter: DateFilterType;
+  platformFilter: 'all' | 'instagram' | 'tiktok' | 'youtube';
   onViewModeChange: (mode: 'table' | 'details') => void;
 }
 
@@ -55,7 +56,7 @@ const mapDateFilterToTimePeriod = (filter: DateFilterType): 'all' | 'weekly' | '
   }
 };
 
-const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilter, onViewModeChange }, ref) => {
+const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilter, platformFilter, onViewModeChange }, ref) => {
   // Convert dateFilter to timePeriod for existing calculation functions
   const timePeriod = mapDateFilterToTimePeriod(dateFilter);
   const { user, currentOrgId, currentProjectId } = useAuth();
@@ -75,6 +76,19 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [syncError, setSyncError] = useState<string | null>(null);
   const [accountType, setAccountType] = useState<'my' | 'competitor'>('my');
   const [loading, setLoading] = useState(true);
+  const [showColumnToggle, setShowColumnToggle] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState({
+    video: true,
+    platform: true,
+    preview: true,
+    trend: true,
+    views: true,
+    likes: true,
+    comments: true,
+    shares: true,
+    engagement: true,
+    uploadDate: true
+  });
 
   // Handle back to table navigation
   const handleBackToTable = useCallback(() => {
@@ -1195,7 +1209,50 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
               <div className="px-6 py-5 border-b border-white/5 bg-zinc-900/40">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-semibold text-white">Recent Videos</h2>
-                  <p className="text-sm text-gray-400">{accountVideos.length} videos</p>
+                  <div className="flex items-center space-x-4">
+                    <p className="text-sm text-gray-400">{accountVideos.filter(v => platformFilter === 'all' || selectedAccount.platform === platformFilter).length} videos</p>
+                    
+                    {/* Column Visibility Toggle */}
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowColumnToggle(!showColumnToggle)}
+                        className="flex items-center space-x-2 px-3 py-1.5 text-sm text-gray-400 hover:text-white border border-white/10 rounded-lg hover:border-white/20 transition-colors"
+                      >
+                        <Filter className="w-4 h-4" />
+                        <span>Columns</span>
+                      </button>
+                      
+                      {showColumnToggle && (
+                        <div className="absolute right-0 top-full mt-2 w-64 bg-zinc-800 border border-white/10 rounded-lg shadow-xl p-4 z-50">
+                          <h3 className="text-sm font-semibold text-white mb-3">Toggle Columns</h3>
+                          <div className="space-y-2">
+                            {Object.entries({
+                              video: 'Video',
+                              platform: 'Platform',
+                              preview: 'Preview',
+                              trend: 'Trend',
+                              views: 'Views',
+                              likes: 'Likes',
+                              comments: 'Comments',
+                              shares: 'Shares',
+                              engagement: 'Engagement Rate',
+                              uploadDate: 'Upload Date'
+                            }).map(([key, label]) => (
+                              <label key={key} className="flex items-center space-x-2 cursor-pointer hover:bg-white/5 p-2 rounded">
+                                <input
+                                  type="checkbox"
+                                  checked={visibleColumns[key as keyof typeof visibleColumns]}
+                                  onChange={(e) => setVisibleColumns(prev => ({ ...prev, [key]: e.target.checked }))}
+                                  className="w-4 h-4 rounded border-gray-600 text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-sm text-gray-300">{label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
               
@@ -1204,33 +1261,56 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                   <table className="w-full min-w-max">
                     <thead>
                       <tr className="border-b border-white/5">
-                        <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider sticky left-0 bg-zinc-900/60 backdrop-blur z-10 min-w-[280px]">
-                          Video
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[100px]">
-                          Preview
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[80px]">
-                          Trend
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
-                          Views
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
-                          Likes
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
-                          Comments
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
-                          Shares
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[140px]">
-                          Engagement
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
-                          Upload Date
-                        </th>
+                        {visibleColumns.video && (
+                          <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider sticky left-0 bg-zinc-900/60 backdrop-blur z-10 min-w-[280px]">
+                            Video
+                          </th>
+                        )}
+                        {visibleColumns.platform && (
+                          <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[100px]">
+                            Platform
+                          </th>
+                        )}
+                        {visibleColumns.preview && (
+                          <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[100px]">
+                            Preview
+                          </th>
+                        )}
+                        {visibleColumns.trend && (
+                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[80px]">
+                            Trend
+                          </th>
+                        )}
+                        {visibleColumns.views && (
+                          <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
+                            Views
+                          </th>
+                        )}
+                        {visibleColumns.likes && (
+                          <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
+                            Likes
+                          </th>
+                        )}
+                        {visibleColumns.comments && (
+                          <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
+                            Comments
+                          </th>
+                        )}
+                        {visibleColumns.shares && (
+                          <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
+                            Shares
+                          </th>
+                        )}
+                        {visibleColumns.engagement && (
+                          <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[140px]">
+                            Engagement
+                          </th>
+                        )}
+                        {visibleColumns.uploadDate && (
+                          <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
+                            Upload Date
+                          </th>
+                        )}
                         <th className="w-12 px-6 py-4 text-left"></th>
                       </tr>
                     </thead>
@@ -1266,6 +1346,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                             key={video.id}
                             className="hover:bg-white/5 transition-colors cursor-pointer group"
                           >
+                            {visibleColumns.video && (
                             <td className="px-6 py-5 sticky left-0 bg-zinc-900/60 backdrop-blur z-10 group-hover:bg-white/5">
                               <div className="flex items-center space-x-4">
                                 <div className="relative">
@@ -1296,6 +1377,13 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                 </div>
                               </div>
                             </td>
+                            )}
+                            {visibleColumns.platform && (
+                            <td className="px-6 py-5">
+                              <PlatformIcon platform={selectedAccount.platform} size="md" />
+                            </td>
+                            )}
+                            {visibleColumns.preview && (
                             <td className="px-6 py-5">
                               <button
                                 onClick={(e) => {
@@ -1329,12 +1417,16 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                 </div>
                               </button>
                             </td>
+                            )}
+                            {visibleColumns.trend && (
                             <td className="px-6 py-5">
                               <MiniTrendChart 
                                 data={TrendCalculationService.getViewsTrend(videoSubmission)}
                                 className="flex items-center justify-center"
                               />
                             </td>
+                            )}
+                            {visibleColumns.views && (
                             <td className="px-6 py-5">
                               <div className="flex items-center space-x-2">
                                 <Eye className="w-4 h-4 text-white" />
@@ -1343,6 +1435,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                 </span>
                               </div>
                             </td>
+                            )}
+                            {visibleColumns.likes && (
                             <td className="px-6 py-5">
                               <div className="flex items-center space-x-2">
                                 <Heart className="w-4 h-4 text-white" />
@@ -1351,6 +1445,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                 </span>
                               </div>
                             </td>
+                            )}
+                            {visibleColumns.comments && (
                             <td className="px-6 py-5">
                               <div className="flex items-center space-x-2">
                                 <MessageCircle className="w-4 h-4 text-white" />
@@ -1359,6 +1455,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                 </span>
                               </div>
                             </td>
+                            )}
+                            {visibleColumns.shares && (
                             <td className="px-6 py-5">
                               <div className="flex items-center space-x-2">
                                 <Share2 className="w-4 h-4 text-white" />
@@ -1367,6 +1465,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                 </span>
                               </div>
                             </td>
+                            )}
+                            {visibleColumns.engagement && (
                             <td className="px-6 py-5">
                               <div className="flex items-center space-x-2">
                                 <Activity className="w-4 h-4 text-purple-500" />
@@ -1375,6 +1475,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                 </span>
                               </div>
                             </td>
+                            )}
+                            {visibleColumns.uploadDate && (
                             <td className="px-6 py-5">
                               <div className="text-sm text-zinc-300">
                                 {video.uploadDate ? 
@@ -1394,6 +1496,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                 }
                               </div>
                             </td>
+                            )}
                             <td className="px-6 py-5">
                               <button
                                 onClick={(e) => {
