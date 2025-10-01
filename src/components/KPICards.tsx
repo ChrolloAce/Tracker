@@ -275,6 +275,35 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, dateFilter = 'all', ti
   );
 };
 
+// Separate component to handle sparkline rendering consistently
+const KPISparkline: React.FC<{
+  data: Array<{ value: number }>;
+  id: string;
+  gradient: string[];
+  stroke: string;
+}> = ({ data, id, gradient, stroke }) => {
+  return (
+    <ResponsiveContainer width="100%" height={56}>
+      <AreaChart data={data}>
+        <defs>
+          <linearGradient id={`gradient-${id}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={gradient[0]} stopOpacity={0.3} />
+            <stop offset="100%" stopColor={gradient[1]} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <Area
+          type="monotone"
+          dataKey="value"
+          stroke={stroke}
+          strokeWidth={2}
+          fill={`url(#gradient-${id})`}
+          isAnimationActive={false}
+        />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+};
+
 const KPICard: React.FC<{ data: KPICardData }> = ({ data }) => {
   const accentColors = {
     emerald: {
@@ -383,24 +412,12 @@ const KPICard: React.FC<{ data: KPICardData }> = ({ data }) => {
         {/* Right: Sparkline */}
         {data.sparklineData && !data.isEmpty && (
           <div className="w-[40%] h-full flex items-center ml-2">
-            <ResponsiveContainer width="100%" height={56}>
-              <AreaChart data={data.sparklineData}>
-                <defs>
-                  <linearGradient id={`gradient-${data.id}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={colors.gradient[0]} stopOpacity={0.3} />
-                    <stop offset="100%" stopColor={colors.gradient[1]} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke={colors.stroke}
-                  strokeWidth={2}
-                  fill={`url(#gradient-${data.id})`}
-                  isAnimationActive={false}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            <KPISparkline
+              data={data.sparklineData}
+              id={data.id}
+              gradient={colors.gradient}
+              stroke={colors.stroke}
+            />
           </div>
         )}
 
