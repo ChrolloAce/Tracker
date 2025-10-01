@@ -377,7 +377,7 @@ function App() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {activeTab === 'dashboard' && 'Video Views'}
+              {activeTab === 'dashboard' && 'Dashboard'}
               {activeTab === 'accounts' && 'Tracked Accounts'}
               {activeTab === 'contracts' && 'Contracts'}
               {activeTab === 'subscription' && 'Subscription Plans'}

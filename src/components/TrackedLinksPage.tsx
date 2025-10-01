@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link as LinkIcon, Plus, Copy, ExternalLink, Trash2, BarChart, QrCode, Search } from 'lucide-react';
+import { Link as LinkIcon, Plus, Copy, ExternalLink, Trash2, BarChart, QrCode, Search, RefreshCw } from 'lucide-react';
 import { TrackedLink, TrackedAccount } from '../types/firestore';
 import FirestoreDataService from '../services/FirestoreDataService';
 import CreateLinkModal from './CreateLinkModal';
@@ -16,10 +16,18 @@ const TrackedLinksPage: React.FC = () => {
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     loadLinks();
     loadAccounts();
+    
+    // Set up auto-refresh every 10 seconds to update click counts
+    const interval = setInterval(() => {
+      loadLinks();
+    }, 10000);
+    
+    return () => clearInterval(interval);
   }, [currentOrgId]);
 
   const loadAccounts = async () => {
@@ -33,13 +41,20 @@ const TrackedLinksPage: React.FC = () => {
     }
   };
 
-  const loadLinks = async () => {
+  const loadLinks = async (showRefreshIndicator = false) => {
     if (!currentOrgId) return;
     try {
+      if (showRefreshIndicator) setIsRefreshing(true);
+      console.log('🔗 Loading tracked links...');
       const allLinks = await FirestoreDataService.getLinks(currentOrgId);
+      console.log(`✅ Loaded ${allLinks.length} links with click data:`, 
+        allLinks.map(l => ({ title: l.title, clicks: l.totalClicks || 0 }))
+      );
       setLinks(allLinks);
     } catch (error) {
-      console.error('Failed to load links:', error);
+      console.error('❌ Failed to load links:', error);
+    } finally {
+      if (showRefreshIndicator) setIsRefreshing(false);
     }
   };
 
@@ -130,13 +145,23 @@ const TrackedLinksPage: React.FC = () => {
               Create short links and track their performance
             </p>
           </div>
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create Link</span>
-          </button>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => loadLinks(true)}
+              disabled={isRefreshing}
+              className="flex items-center space-x-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </button>
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create Link</span>
+            </button>
+          </div>
         </div>
 
         {/* Search Bar */}
@@ -169,7 +194,7 @@ const TrackedLinksPage: React.FC = () => {
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Total Clicks</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {formatNumber(links.reduce((sum, link) => sum + link.totalClicks, 0))}
+                {formatNumber(links.reduce((sum, link) => sum + (link.totalClicks || 0), 0))}
               </p>
             </div>
             <BarChart className="w-8 h-8 text-green-500 opacity-20" />
@@ -181,7 +206,7 @@ const TrackedLinksPage: React.FC = () => {
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Unique Clicks</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {formatNumber(links.reduce((sum, link) => sum + link.uniqueClicks, 0))}
+                {formatNumber(links.reduce((sum, link) => sum + (link.uniqueClicks || 0), 0))}
               </p>
             </div>
             <BarChart className="w-8 h-8 text-purple-500 opacity-20" />
@@ -304,10 +329,10 @@ const TrackedLinksPage: React.FC = () => {
                     <td className="px-6 py-4">
                       <div>
                         <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {formatNumber(link.totalClicks)}
+                          {formatNumber(link.totalClicks || 0)}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {link.uniqueClicks} unique
+                          {(link.uniqueClicks || 0)} unique
                         </p>
                       </div>
                     </td>

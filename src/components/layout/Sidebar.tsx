@@ -58,7 +58,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const navigationItems: NavItem[] = [
     {
       id: 'dashboard',
-      label: 'Video Views',
+      label: 'Dashboard',
       icon: Eye,
       isActive: activeTab === 'dashboard',
       onClick: () => onTabChange?.('dashboard'),
