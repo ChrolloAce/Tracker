@@ -43,7 +43,6 @@ function App() {
   const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilterType>('all');
   const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>();
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedVideoForAnalytics, setSelectedVideoForAnalytics] = useState<VideoSubmission | null>(null);
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -159,73 +158,6 @@ function App() {
     setIsAnalyticsModalOpen(false);
     setSelectedVideoForAnalytics(null);
   }, []);
-
-  // Refresh all videos and create new snapshots
-  const handleRefreshAllVideos = useCallback(async () => {
-    if (isRefreshing || !user || !currentOrgId) return;
-    
-    console.log('🔄 Refresh All button clicked!');
-    console.log(`📊 Found ${submissions.length} videos to refresh`);
-    
-    if (submissions.length === 0) {
-      console.log('⚠️ No videos to refresh. Add some videos first!');
-      return;
-    }
-    
-    setIsRefreshing(true);
-    console.log('🔄 Starting refresh of all videos...');
-    
-    const updatedSubmissions: VideoSubmission[] = [];
-    let successCount = 0;
-    let errorCount = 0;
-
-    for (const video of submissions) {
-      try {
-        console.log(`🔄 Refreshing "${video.title.substring(0, 30)}..."...`);
-        
-        // Fetch latest data from API
-        const { data: videoData } = await VideoApiService.fetchVideoData(video.url);
-        
-        // Create new snapshot in Firestore
-        await FirestoreDataService.addVideoSnapshot(currentOrgId, video.id, user.uid, {
-          views: videoData.view_count || 0,
-          likes: videoData.like_count,
-          comments: videoData.comment_count,
-          shares: video.platform === 'tiktok' ? (videoData as any).share_count : undefined
-        });
-        
-        // Update local state with new metrics
-        const updatedVideo = {
-          ...video,
-          views: videoData.view_count || 0,
-          likes: videoData.like_count,
-          comments: videoData.comment_count,
-          shares: video.platform === 'tiktok' ? (videoData as any).share_count : video.shares,
-          lastRefreshed: new Date()
-        };
-        
-        updatedSubmissions.push(updatedVideo);
-        successCount++;
-        
-      } catch (error) {
-        console.error(`❌ Failed to refresh video "${video.title}":`, error);
-        // Keep original video if refresh fails
-        updatedSubmissions.push(video);
-        errorCount++;
-      }
-    }
-
-    // Update state
-    setSubmissions(updatedSubmissions);
-    
-    console.log(`✅ Refresh completed: ${successCount} successful, ${errorCount} failed`);
-    
-    if (successCount > 0) {
-      console.log(`🎉 Successfully refreshed ${successCount} videos with new snapshots!`);
-    }
-    
-    setIsRefreshing(false);
-  }, [submissions, isRefreshing, user, currentOrgId]);
 
   const handleAddVideo = useCallback(async (videoUrl: string, uploadDate: Date) => {
     console.log('🚀 Starting video submission process...');
@@ -404,9 +336,6 @@ function App() {
       {/* Fixed Sidebar */}
       <Sidebar 
         onAddVideo={() => setIsModalOpen(true)}
-        onTikTokSearch={() => setIsTikTokSearchOpen(true)}
-        onRefreshAll={handleRefreshAllVideos}
-        isRefreshing={isRefreshing}
         onCollapsedChange={setIsSidebarCollapsed}
         initialCollapsed={isSidebarCollapsed}
         activeTab={activeTab}
