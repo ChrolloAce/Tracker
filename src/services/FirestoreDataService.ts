@@ -426,9 +426,13 @@ class FirestoreDataService {
     const orgRef = doc(db, 'organizations', orgId);
     batch.update(orgRef, { linkCount: increment(1) });
     
-    // Create public link lookup (for redirects)
+    // Create public link lookup (for redirects) - includes URL for instant redirect
     const publicLinkRef = doc(db, 'publicLinks', linkData.shortCode);
-    batch.set(publicLinkRef, { orgId, linkId: linkRef.id });
+    batch.set(publicLinkRef, { 
+      orgId, 
+      linkId: linkRef.id, 
+      url: cleanLinkData.originalUrl 
+    });
     
     await batch.commit();
     console.log(`✅ Created link ${linkData.shortCode}`);
@@ -514,12 +518,12 @@ class FirestoreDataService {
   }
 
   /**
-   * Resolve short code to link data
+   * Resolve short code to link data (includes URL for instant redirect)
    */
-  static async resolveShortCode(shortCode: string): Promise<{ orgId: string; linkId: string } | null> {
+  static async resolveShortCode(shortCode: string): Promise<{ orgId: string; linkId: string; url: string } | null> {
     const publicLinkDoc = await getDoc(doc(db, 'publicLinks', shortCode));
     if (publicLinkDoc.exists()) {
-      return publicLinkDoc.data() as { orgId: string; linkId: string };
+      return publicLinkDoc.data() as { orgId: string; linkId: string; url: string };
     }
     return null;
   }

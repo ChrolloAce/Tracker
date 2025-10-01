@@ -11,63 +11,49 @@ const LinkRedirect: React.FC = () => {
 
       if (match) {
         const shortCode = match[1];
-        console.log('🔗 Short code detected:', shortCode);
 
         try {
-          // Resolve the short code to get orgId and linkId
+          // Get link info (single fast read with URL included)
           const resolved = await FirestoreDataService.resolveShortCode(shortCode);
 
-          if (resolved) {
-            // Get the full link data
-            const link = await FirestoreDataService.getLinkById(resolved.orgId, resolved.linkId);
+          if (resolved && resolved.url) {
+            // INSTANT REDIRECT - happens immediately
+            window.location.replace(resolved.url);
 
-            if (link) {
-              console.log('✅ Link found:', link.originalUrl);
-
-              // Record the click with basic device detection
-              const userAgent = navigator.userAgent.toLowerCase();
-              let deviceType: 'mobile' | 'tablet' | 'desktop' = 'desktop';
-              
-              if (/mobile|android|iphone/.test(userAgent)) {
-                deviceType = 'mobile';
-              } else if (/tablet|ipad/.test(userAgent)) {
-                deviceType = 'tablet';
-              }
-
-              // Get browser info
-              let browser = 'Unknown';
-              if (userAgent.includes('chrome')) browser = 'Chrome';
-              else if (userAgent.includes('safari')) browser = 'Safari';
-              else if (userAgent.includes('firefox')) browser = 'Firefox';
-              else if (userAgent.includes('edge')) browser = 'Edge';
-
-              // Get OS info
-              let os = 'Unknown';
-              if (userAgent.includes('windows')) os = 'Windows';
-              else if (userAgent.includes('mac')) os = 'macOS';
-              else if (userAgent.includes('linux')) os = 'Linux';
-              else if (userAgent.includes('android')) os = 'Android';
-              else if (userAgent.includes('ios') || userAgent.includes('iphone') || userAgent.includes('ipad')) os = 'iOS';
-
-              // Record the click (don't await - let it complete in background)
-              FirestoreDataService.recordLinkClick(resolved.orgId, resolved.linkId, {
-                userAgent: navigator.userAgent,
-                deviceType,
-                browser,
-                os,
-                referrer: document.referrer || 'Direct',
-                country: undefined,
-                city: undefined
-              }).catch(err => console.error('Failed to record click:', err));
-
-              // Instant redirect - no delay
-              window.location.replace(link.originalUrl);
-            } else {
-              console.log('❌ Link not found');
-              setStatus('not_found');
+            // Record analytics in background (after redirect starts)
+            const userAgent = navigator.userAgent.toLowerCase();
+            let deviceType: 'mobile' | 'tablet' | 'desktop' = 'desktop';
+            
+            if (/mobile|android|iphone/.test(userAgent)) {
+              deviceType = 'mobile';
+            } else if (/tablet|ipad/.test(userAgent)) {
+              deviceType = 'tablet';
             }
+
+            let browser = 'Unknown';
+            if (userAgent.includes('chrome')) browser = 'Chrome';
+            else if (userAgent.includes('safari')) browser = 'Safari';
+            else if (userAgent.includes('firefox')) browser = 'Firefox';
+            else if (userAgent.includes('edge')) browser = 'Edge';
+
+            let os = 'Unknown';
+            if (userAgent.includes('windows')) os = 'Windows';
+            else if (userAgent.includes('mac')) os = 'macOS';
+            else if (userAgent.includes('linux')) os = 'Linux';
+            else if (userAgent.includes('android')) os = 'Android';
+            else if (userAgent.includes('ios') || userAgent.includes('iphone') || userAgent.includes('ipad')) os = 'iOS';
+
+            // Background analytics (won't delay redirect)
+            FirestoreDataService.recordLinkClick(resolved.orgId, resolved.linkId, {
+              userAgent: navigator.userAgent,
+              deviceType,
+              browser,
+              os,
+              referrer: document.referrer || 'Direct',
+              country: undefined,
+              city: undefined
+            }).catch(err => console.error('Analytics failed:', err));
           } else {
-            console.log('❌ Short code not found');
             setStatus('not_found');
           }
         } catch (error) {
