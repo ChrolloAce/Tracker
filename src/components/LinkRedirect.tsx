@@ -56,7 +56,6 @@ const LinkRedirect: React.FC = () => {
                 browser,
                 os,
                 referrer: document.referrer || 'Direct',
-                ipAddress: undefined,
                 country: undefined,
                 city: undefined
               }).catch(err => console.error('Failed to record click:', err));

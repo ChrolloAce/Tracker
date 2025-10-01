@@ -13,6 +13,10 @@ export interface TrackedLink {
   uniqueClicks: number;
   lastClickedAt?: Date;
   
+  // Associations
+  linkedVideoId?: string;
+  linkedAccountId?: string;
+  
   // Optional metadata
   qrCodeUrl?: string;
   isActive: boolean;

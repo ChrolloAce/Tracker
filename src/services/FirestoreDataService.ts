@@ -10,7 +10,8 @@ import {
   limit,
   Timestamp,
   writeBatch,
-  increment
+  increment,
+  updateDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { 

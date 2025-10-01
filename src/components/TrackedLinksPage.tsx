@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link as LinkIcon, Plus, Copy, ExternalLink, Trash2, BarChart, QrCode, Search } from 'lucide-react';
-import { TrackedLink } from '../types/trackedLinks';
-import { TrackedAccount } from '../types/firestore';
-import TrackedLinksService from '../services/TrackedLinksService';
+import { TrackedLink, TrackedAccount } from '../types/firestore';
 import FirestoreDataService from '../services/FirestoreDataService';
 import CreateLinkModal from './CreateLinkModal';
 import LinkAnalyticsModal from './LinkAnalyticsModal';

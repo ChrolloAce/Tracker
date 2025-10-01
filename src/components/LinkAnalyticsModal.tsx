@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, Globe, Monitor, Smartphone, Tablet, ExternalLink } from 'lucide-react';
-import { TrackedLink, LinkAnalytics } from '../types/trackedLinks';
+import { TrackedLink } from '../types/firestore';
+import { LinkAnalytics } from '../types/trackedLinks';
 import TrackedLinksService from '../services/TrackedLinksService';
 import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
