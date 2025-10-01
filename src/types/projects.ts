@@ -9,8 +9,9 @@ export interface Project {
   orgId: string;
   name: string;
   description?: string;
-  color: string; // Hex color for UI
-  icon?: string; // Emoji or icon name
+  color?: string; // Hex color for UI (optional for backward compatibility)
+  icon?: string; // Emoji or icon name (optional)
+  imageUrl?: string; // Custom uploaded image
   createdAt: Timestamp;
   createdBy: string; // userId
   isArchived: boolean;
@@ -42,6 +43,16 @@ export interface CreateProjectData {
   description?: string;
   color?: string;
   icon?: string;
+  imageUrl?: string;
+}
+
+/**
+ * Data for updating a project
+ */
+export interface UpdateProjectData {
+  name?: string;
+  description?: string;
+  imageUrl?: string;
 }
 
 /**

@@ -1,4 +1,4 @@
-import { ref, uploadString, getDownloadURL, deleteObject, listAll } from 'firebase/storage';
+import { ref, uploadString, uploadBytes, getDownloadURL, deleteObject, listAll } from 'firebase/storage';
 import { storage } from './firebase';
 
 /**
@@ -65,6 +65,37 @@ class FirebaseStorageService {
       return downloadURL;
     } catch (error) {
       console.error(`❌ Failed to upload profile picture ${accountId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Upload a project image to Firebase Storage
+   * @param orgId Organization ID
+   * @param imageFile File object of the image
+   * @returns Download URL of the uploaded image
+   */
+  static async uploadProjectImage(orgId: string, imageFile: File): Promise<string> {
+    try {
+      console.log(`📤 Uploading project image to Firebase Storage`);
+      
+      // Generate unique filename
+      const timestamp = Date.now();
+      const filename = `${timestamp}-${imageFile.name}`;
+      
+      // Create a reference to the project image location
+      const imageRef = ref(storage, `organizations/${orgId}/projects/${filename}`);
+      
+      // Upload the file
+      await uploadBytes(imageRef, imageFile);
+      
+      // Get the download URL
+      const downloadURL = await getDownloadURL(imageRef);
+      
+      console.log(`✅ Project image uploaded successfully`);
+      return downloadURL;
+    } catch (error) {
+      console.error(`❌ Failed to upload project image:`, error);
       throw error;
     }
   }

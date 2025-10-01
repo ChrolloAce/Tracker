@@ -33,8 +33,9 @@ class ProjectService {
       orgId,
       name: data.name,
       description: data.description,
-      color: data.color || '#3B82F6', // Default blue
-      icon: data.icon || '📁',
+      imageUrl: data.imageUrl,
+      color: data.color,
+      icon: data.icon,
       createdAt: Timestamp.now(),
       createdBy: userId,
       isArchived: false,
@@ -162,7 +163,7 @@ class ProjectService {
   static async updateProject(
     orgId: string,
     projectId: string,
-    updates: Partial<Pick<Project, 'name' | 'description' | 'color' | 'icon'>>
+    updates: Partial<Pick<Project, 'name' | 'description' | 'color' | 'icon' | 'imageUrl'>>
   ): Promise<void> {
     const projectRef = doc(db, 'organizations', orgId, 'projects', projectId);
     await updateDoc(projectRef, updates);

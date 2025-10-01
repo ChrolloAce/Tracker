@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { X, FolderPlus, Check } from 'lucide-react';
+import { X, FolderPlus, Upload, Image as ImageIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ProjectService from '../services/ProjectService';
-import { PROJECT_COLORS, PROJECT_ICONS } from '../types/projects';
-import { clsx } from 'clsx';
+import FirebaseStorageService from '../services/FirebaseStorageService';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -14,11 +13,43 @@ interface CreateProjectModalProps {
 const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { currentOrgId, user, switchProject } = useAuth();
   const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [selectedColor, setSelectedColor] = useState(PROJECT_COLORS[0].value);
-  const [selectedIcon, setSelectedIcon] = useState(PROJECT_ICONS[0]);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image size must be less than 5MB');
+      return;
+    }
+
+    setImageFile(file);
+    setError(null);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,11 +68,28 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
       setLoading(true);
       setError(null);
 
+      let imageUrl: string | undefined;
+
+      // Upload image if provided
+      if (imageFile) {
+        setUploadingImage(true);
+        try {
+          imageUrl = await FirebaseStorageService.uploadProjectImage(
+            currentOrgId,
+            imageFile
+          );
+          console.log('✅ Uploaded project image:', imageUrl);
+        } catch (uploadError) {
+          console.error('Failed to upload image:', uploadError);
+          setError('Failed to upload image. Creating project without image.');
+        } finally {
+          setUploadingImage(false);
+        }
+      }
+
       const projectId = await ProjectService.createProject(currentOrgId, user.uid, {
         name: name.trim(),
-        description: description.trim() || undefined,
-        color: selectedColor,
-        icon: selectedIcon,
+        imageUrl,
       });
 
       console.log('✅ Created project:', projectId);
@@ -51,9 +99,8 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
 
       // Reset form
       setName('');
-      setDescription('');
-      setSelectedColor(PROJECT_COLORS[0].value);
-      setSelectedIcon(PROJECT_ICONS[0]);
+      setImageFile(null);
+      setImagePreview(null);
 
       if (onSuccess) {
         onSuccess();
@@ -75,7 +122,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -87,7 +134,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
                 Create New Project
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Organize your tracking data into projects
+                Organize your tracking data
               </p>
             </div>
           </div>
@@ -117,7 +164,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Q4 Marketing Campaign"
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               maxLength={50}
               required
             />
@@ -126,72 +173,46 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
             </p>
           </div>
 
-          {/* Description */}
+          {/* Image Upload */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Description (Optional)
+              Project Image (Optional)
             </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief description of this project..."
-              rows={3}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              maxLength={200}
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              {description.length}/200 characters
-            </p>
-          </div>
-
-          {/* Icon Selector */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Choose an Icon
-            </label>
-            <div className="grid grid-cols-12 gap-2">
-              {PROJECT_ICONS.map((icon) => (
+            
+            {!imagePreview ? (
+              <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg cursor-pointer hover:border-blue-500 dark:hover:border-blue-500 transition-colors">
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  <Upload className="w-10 h-10 text-gray-400 mb-3" />
+                  <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                    Click to upload image
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                    PNG, JPG, GIF up to 5MB
+                  </p>
+                </div>
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleImageSelect}
+                />
+              </label>
+            ) : (
+              <div className="relative">
+                <img
+                  src={imagePreview}
+                  alt="Project preview"
+                  className="w-full h-40 object-cover rounded-lg"
+                />
                 <button
-                  key={icon}
                   type="button"
-                  onClick={() => setSelectedIcon(icon)}
-                  className={clsx(
-                    'w-10 h-10 rounded-lg flex items-center justify-center text-xl transition-all',
-                    selectedIcon === icon
-                      ? 'bg-blue-100 dark:bg-blue-900/30 ring-2 ring-blue-500'
-                      : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
-                  )}
+                  onClick={handleRemoveImage}
+                  className="absolute top-2 right-2 p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
                 >
-                  {icon}
+                  <X className="w-4 h-4" />
                 </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Color Selector */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Choose a Color
-            </label>
-            <div className="grid grid-cols-6 gap-3">
-              {PROJECT_COLORS.map((color) => (
-                <button
-                  key={color.value}
-                  type="button"
-                  onClick={() => setSelectedColor(color.value)}
-                  className={clsx(
-                    'h-12 rounded-lg flex items-center justify-center transition-all relative',
-                    'hover:scale-105',
-                    selectedColor === color.value && 'ring-2 ring-offset-2 ring-gray-400 dark:ring-offset-gray-900'
-                  )}
-                  style={{ backgroundColor: color.value }}
-                >
-                  {selectedColor === color.value && (
-                    <Check className="w-5 h-5 text-white drop-shadow-lg" />
-                  )}
-                </button>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Preview */}
@@ -200,21 +221,24 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
               Preview
             </label>
             <div className="flex items-center space-x-3 px-4 py-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center text-xl"
-                style={{ backgroundColor: selectedColor }}
-              >
-                {selectedIcon}
-              </div>
+              {imagePreview ? (
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  className="w-10 h-10 rounded-lg object-cover"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                  <ImageIcon className="w-5 h-5 text-gray-400" />
+                </div>
+              )}
               <div>
                 <p className="font-medium text-gray-900 dark:text-white">
                   {name || 'Project Name'}
                 </p>
-                {description && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                    {description}
-                  </p>
-                )}
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {imageFile ? imageFile.name : 'No image'}
+                </p>
               </div>
             </div>
           </div>
@@ -231,10 +255,10 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
             </button>
             <button
               type="submit"
-              disabled={loading || !name.trim()}
+              disabled={loading || uploadingImage || !name.trim()}
               className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-lg transition-colors"
             >
-              {loading ? 'Creating...' : 'Create Project'}
+              {uploadingImage ? 'Uploading...' : loading ? 'Creating...' : 'Create Project'}
             </button>
           </div>
         </form>
@@ -244,4 +268,3 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
 };
 
 export default CreateProjectModal;
-

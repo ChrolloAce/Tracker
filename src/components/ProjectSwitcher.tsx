@@ -79,12 +79,17 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
           isOpen && 'bg-gray-100 dark:bg-gray-800'
         )}
       >
-        <span
-          className="w-2 h-2 rounded-full"
-          style={{ backgroundColor: currentProject.color }}
-        />
+        {currentProject.imageUrl ? (
+          <img
+            src={currentProject.imageUrl}
+            alt={currentProject.name}
+            className="w-6 h-6 rounded object-cover"
+          />
+        ) : (
+          <span className="text-base">{currentProject.icon || '📁'}</span>
+        )}
         <span className="text-sm font-medium text-gray-900 dark:text-white">
-          {currentProject.icon} {currentProject.name}
+          {currentProject.name}
         </span>
         <ChevronDown className={clsx(
           'w-4 h-4 text-gray-500 transition-transform',
@@ -118,12 +123,19 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
                 )}
               >
                 <div className="flex-shrink-0 mt-0.5">
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-semibold"
-                    style={{ backgroundColor: project.color }}
-                  >
-                    {project.icon}
-                  </div>
+                  {project.imageUrl ? (
+                    <img
+                      src={project.imageUrl}
+                      alt={project.name}
+                      className="w-8 h-8 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-200 dark:bg-gray-700"
+                    >
+                      <span className="text-lg">{project.icon || '📁'}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex-1 min-w-0">
