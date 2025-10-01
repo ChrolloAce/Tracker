@@ -2,12 +2,15 @@
   "functions": {
     "api/apify-proxy.ts": {
       "maxDuration": 300
+    },
+    "api/redirect.ts": {
+      "maxDuration": 10
     }
   },
   "rewrites": [
     {
       "source": "/l/:shortCode",
-      "destination": "/index.html"
+      "destination": "/api/redirect?shortCode=:shortCode"
     },
     {
       "source": "/(.*)",
