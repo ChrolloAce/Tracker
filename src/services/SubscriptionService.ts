@@ -1,0 +1,304 @@
+import { 
+  doc, 
+  getDoc, 
+  setDoc, 
+  updateDoc, 
+  Timestamp 
+} from 'firebase/firestore';
+import { db } from './firebase';
+import { 
+  OrganizationSubscription, 
+  PlanTier, 
+  PlanLimits, 
+  UsageLimit,
+  SUBSCRIPTION_PLANS 
+} from '../types/subscription';
+
+/**
+ * Subscription and billing management service
+ */
+class SubscriptionService {
+  
+  /**
+   * Get organization's subscription
+   */
+  static async getSubscription(orgId: string): Promise<OrganizationSubscription | null> {
+    const subDoc = await getDoc(doc(db, 'organizations', orgId, 'billing', 'subscription'));
+    if (subDoc.exists()) {
+      const data = subDoc.data();
+      return {
+        ...data,
+        currentPeriodStart: data.currentPeriodStart.toDate(),
+        currentPeriodEnd: data.currentPeriodEnd.toDate(),
+        trialEnd: data.trialEnd?.toDate(),
+        usage: {
+          ...data.usage,
+          lastReset: data.usage.lastReset.toDate(),
+        },
+        createdAt: data.createdAt.toDate(),
+        updatedAt: data.updatedAt.toDate(),
+      } as OrganizationSubscription;
+    }
+    return null;
+  }
+
+  /**
+   * Get current plan tier for organization
+   */
+  static async getPlanTier(orgId: string): Promise<PlanTier> {
+    const subscription = await this.getSubscription(orgId);
+    return subscription?.planTier || 'basic'; // Default to basic
+  }
+
+  /**
+   * Check if organization can perform action based on plan limits
+   */
+  static async canPerformAction(
+    orgId: string,
+    action: 'addAccount' | 'addVideo' | 'addTeamMember' | 'makeMCPCall' | 'addLink' | 'refreshOnDemand'
+  ): Promise<{ allowed: boolean; reason?: string; limit?: number; current?: number }> {
+    const subscription = await this.getSubscription(orgId);
+    
+    if (!subscription) {
+      return { allowed: false, reason: 'No active subscription' };
+    }
+
+    const plan = SUBSCRIPTION_PLANS[subscription.planTier];
+    
+    switch (action) {
+      case 'addAccount':
+        if (plan.features.maxAccounts === -1) return { allowed: true };
+        if (subscription.usage.accounts >= plan.features.maxAccounts) {
+          return {
+            allowed: false,
+            reason: `Account limit reached (${plan.features.maxAccounts})`,
+            limit: plan.features.maxAccounts,
+            current: subscription.usage.accounts,
+          };
+        }
+        return { allowed: true };
+
+      case 'addVideo':
+        if (plan.features.maxVideos === -1) return { allowed: true };
+        if (subscription.usage.videos >= plan.features.maxVideos) {
+          return {
+            allowed: false,
+            reason: `Video limit reached (${plan.features.maxVideos})`,
+            limit: plan.features.maxVideos,
+            current: subscription.usage.videos,
+          };
+        }
+        return { allowed: true };
+
+      case 'addTeamMember':
+        if (plan.features.teamSeats === -1) return { allowed: true };
+        if (subscription.usage.teamMembers >= plan.features.teamSeats) {
+          return {
+            allowed: false,
+            reason: `Team seat limit reached (${plan.features.teamSeats})`,
+            limit: plan.features.teamSeats,
+            current: subscription.usage.teamMembers,
+          };
+        }
+        return { allowed: true };
+
+      case 'makeMCPCall':
+        if (plan.features.mcpCallsPerMonth === -1) return { allowed: true };
+        if (subscription.usage.mcpCalls >= plan.features.mcpCallsPerMonth) {
+          return {
+            allowed: false,
+            reason: `API call limit reached (${plan.features.mcpCallsPerMonth}/month)`,
+            limit: plan.features.mcpCallsPerMonth,
+            current: subscription.usage.mcpCalls,
+          };
+        }
+        return { allowed: true };
+
+      case 'addLink':
+        if (plan.features.maxLinks === -1) return { allowed: true };
+        if (subscription.usage.links >= plan.features.maxLinks) {
+          return {
+            allowed: false,
+            reason: `Link limit reached (${plan.features.maxLinks})`,
+            limit: plan.features.maxLinks,
+            current: subscription.usage.links,
+          };
+        }
+        return { allowed: true };
+
+      case 'refreshOnDemand':
+        if (!plan.features.refreshOnDemand) {
+          return {
+            allowed: false,
+            reason: 'On-demand refresh not available in your plan',
+          };
+        }
+        return { allowed: true };
+
+      default:
+        return { allowed: true };
+    }
+  }
+
+  /**
+   * Get plan limits with current usage
+   */
+  static async getPlanLimits(orgId: string): Promise<PlanLimits> {
+    const subscription = await this.getSubscription(orgId);
+    
+    if (!subscription) {
+      throw new Error('No active subscription');
+    }
+
+    const plan = SUBSCRIPTION_PLANS[subscription.planTier];
+    
+    const calculateLimit = (current: number, max: number): UsageLimit => {
+      const isUnlimited = max === -1;
+      const percentage = isUnlimited ? 0 : (current / max) * 100;
+      return {
+        current,
+        limit: max,
+        percentage,
+        isOverLimit: !isUnlimited && current >= max,
+      };
+    };
+
+    return {
+      accounts: calculateLimit(subscription.usage.accounts, plan.features.maxAccounts),
+      videos: calculateLimit(subscription.usage.videos, plan.features.maxVideos),
+      teamSeats: calculateLimit(subscription.usage.teamMembers, plan.features.teamSeats),
+      mcpCalls: calculateLimit(subscription.usage.mcpCalls, plan.features.mcpCallsPerMonth),
+      links: calculateLimit(subscription.usage.links, plan.features.maxLinks),
+    };
+  }
+
+  /**
+   * Increment usage counter
+   */
+  static async incrementUsage(
+    orgId: string,
+    metric: 'accounts' | 'videos' | 'teamMembers' | 'mcpCalls' | 'links',
+    amount: number = 1
+  ): Promise<void> {
+    const subRef = doc(db, 'organizations', orgId, 'billing', 'subscription');
+    const subscription = await this.getSubscription(orgId);
+    
+    if (!subscription) {
+      throw new Error('No active subscription');
+    }
+
+    await updateDoc(subRef, {
+      [`usage.${metric}`]: subscription.usage[metric] + amount,
+      updatedAt: Timestamp.now(),
+    });
+  }
+
+  /**
+   * Decrement usage counter
+   */
+  static async decrementUsage(
+    orgId: string,
+    metric: 'accounts' | 'videos' | 'teamMembers' | 'mcpCalls' | 'links',
+    amount: number = 1
+  ): Promise<void> {
+    const subRef = doc(db, 'organizations', orgId, 'billing', 'subscription');
+    const subscription = await this.getSubscription(orgId);
+    
+    if (!subscription) {
+      throw new Error('No active subscription');
+    }
+
+    const newValue = Math.max(0, subscription.usage[metric] - amount);
+    
+    await updateDoc(subRef, {
+      [`usage.${metric}`]: newValue,
+      updatedAt: Timestamp.now(),
+    });
+  }
+
+  /**
+   * Reset monthly usage counters (called by cron job)
+   */
+  static async resetMonthlyUsage(orgId: string): Promise<void> {
+    const subRef = doc(db, 'organizations', orgId, 'billing', 'subscription');
+    
+    await updateDoc(subRef, {
+      'usage.mcpCalls': 0,
+      'usage.lastReset': Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+  }
+
+  /**
+   * Create default subscription for new organization (free trial)
+   */
+  static async createDefaultSubscription(orgId: string): Promise<void> {
+    const subRef = doc(db, 'organizations', orgId, 'billing', 'subscription');
+    
+    const trialEnd = new Date();
+    trialEnd.setDate(trialEnd.getDate() + 7); // 7-day trial
+    
+    const subscription: Omit<OrganizationSubscription, 'id'> = {
+      orgId,
+      planTier: 'basic',
+      status: 'trialing',
+      stripeCustomerId: '',
+      stripeSubscriptionId: '',
+      stripePriceId: '',
+      billingCycle: 'monthly',
+      currentPeriodStart: new Date(),
+      currentPeriodEnd: trialEnd,
+      cancelAtPeriodEnd: false,
+      trialEnd,
+      usage: {
+        accounts: 0,
+        videos: 0,
+        teamMembers: 1,
+        mcpCalls: 0,
+        links: 0,
+        lastReset: new Date(),
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    await setDoc(subRef, {
+      ...subscription,
+      currentPeriodStart: Timestamp.fromDate(subscription.currentPeriodStart),
+      currentPeriodEnd: Timestamp.fromDate(subscription.currentPeriodEnd),
+      trialEnd: subscription.trialEnd ? Timestamp.fromDate(subscription.trialEnd) : null,
+      usage: {
+        ...subscription.usage,
+        lastReset: Timestamp.fromDate(subscription.usage.lastReset),
+      },
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+  }
+
+  /**
+   * Check if feature is available in current plan
+   */
+  static async hasFeature(orgId: string, feature: keyof typeof SUBSCRIPTION_PLANS.basic.features): Promise<boolean> {
+    const subscription = await this.getSubscription(orgId);
+    if (!subscription) return false;
+    
+    const plan = SUBSCRIPTION_PLANS[subscription.planTier];
+    const featureValue = plan.features[feature];
+    
+    // Handle boolean features
+    if (typeof featureValue === 'boolean') {
+      return featureValue;
+    }
+    
+    // Handle numeric features (-1 means unlimited/available)
+    if (typeof featureValue === 'number') {
+      return featureValue !== 0;
+    }
+    
+    return false;
+  }
+}
+
+export default SubscriptionService;
+
