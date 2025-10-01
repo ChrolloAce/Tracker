@@ -87,8 +87,8 @@ class DateFilterService {
     console.log(`📅 Date range: ${dateRange.startDate.toLocaleDateString()} - ${dateRange.endDate.toLocaleDateString()}`);
     
     const filteredVideos = videos.filter(video => {
-      // Check BOTH upload date AND last refresh date to show videos with recent activity
-      // This ensures videos that were refreshed recently appear in the Recent Activity
+      // Filter ONLY by upload date (when video was posted on the platform)
+      // NOT by refresh date or date added
       const uploadDate = video.uploadDate
         ? new Date(video.uploadDate)
         : video.timestamp 
@@ -97,26 +97,17 @@ class DateFilterService {
         ? new Date(video.dateSubmitted)
         : new Date();
 
-      const lastActivityDate = video.lastRefreshed 
-        ? new Date(video.lastRefreshed)
-        : uploadDate;
-
-      // Video is in range if EITHER uploaded OR refreshed during the period
-      const uploadedInRange = uploadDate >= dateRange.startDate && uploadDate <= dateRange.endDate;
-      const refreshedInRange = lastActivityDate >= dateRange.startDate && lastActivityDate <= dateRange.endDate;
-      const isInRange = uploadedInRange || refreshedInRange;
+      // Video is in range if uploaded during the period
+      const isInRange = uploadDate >= dateRange.startDate && uploadDate <= dateRange.endDate;
       
       if (videos.length <= 10) { // Only log for small datasets to avoid spam
-        const activityInfo = video.lastRefreshed 
-          ? `uploaded ${uploadDate.toLocaleDateString()}, refreshed ${lastActivityDate.toLocaleDateString()}`
-          : `uploaded ${uploadDate.toLocaleDateString()}`;
-        console.log(`📹 Video "${video.title.substring(0, 30)}..." ${activityInfo} - ${isInRange ? '✅ Included' : '❌ Excluded'}`);
+        console.log(`📹 Video "${video.title.substring(0, 30)}..." uploaded ${uploadDate.toLocaleDateString()} - ${isInRange ? '✅ Included' : '❌ Excluded'}`);
       }
 
       return isInRange;
     });
 
-    console.log(`✅ Filtered to ${filteredVideos.length} videos based on upload or refresh activity`);
+    console.log(`✅ Filtered to ${filteredVideos.length} videos based on upload date`);
     return filteredVideos;
   }
 
