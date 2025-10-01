@@ -32,7 +32,7 @@ import { VideoSubmission } from '../types';
 import VideoPlayerModal from './VideoPlayerModal';
 import { DateFilterType } from './DateRangeFilter';
 
-interface AccountsPageProps {
+export interface AccountsPageProps {
   dateFilter: DateFilterType;
   platformFilter: 'all' | 'instagram' | 'tiktok' | 'youtube';
   onViewModeChange: (mode: 'table' | 'details') => void;
