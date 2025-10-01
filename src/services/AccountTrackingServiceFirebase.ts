@@ -343,7 +343,8 @@ export class AccountTrackingServiceFirebase {
           duration: v.duration || 0,
           hashtags: v.hashtags || [],
           mentions: v.mentions || []
-        }))
+        })),
+        account.platform // Pass the platform from the account
       );
 
       // Update account stats

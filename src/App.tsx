@@ -23,6 +23,7 @@ import DataMigrationService from './services/DataMigrationService';
 import { cssVariables } from './theme';
 import { useAuth } from './contexts/AuthContext';
 import { Timestamp } from 'firebase/firestore';
+import { fixVideoPlatforms } from './services/FixVideoPlatform';
 
 interface DateRange {
   startDate: Date;
@@ -113,12 +114,17 @@ function App() {
     loadData();
   }, [user, currentOrgId, isDataLoaded]);
 
-  // Apply CSS variables to the root
+  // Apply CSS variables to the root and expose fix function
   useEffect(() => {
     const root = document.documentElement;
     Object.entries(cssVariables).forEach(([key, value]) => {
       root.style.setProperty(key, value);
     });
+    
+    // Expose fix function to console for one-time fixes
+    if (typeof window !== 'undefined') {
+      (window as any).fixVideoPlatforms = fixVideoPlatforms;
+    }
   }, []);
 
   // Filter submissions based on date range (memoized to prevent infinite loops)

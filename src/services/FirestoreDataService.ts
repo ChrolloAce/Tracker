@@ -210,7 +210,8 @@ class FirestoreDataService {
       duration?: number;
       hashtags?: string[];
       mentions?: string[];
-    }>
+    }>,
+    platform?: 'instagram' | 'tiktok' | 'youtube'
   ): Promise<void> {
     try {
       console.log(`💾 Syncing ${videos.length} videos to Firestore for account ${accountId}`);
@@ -248,8 +249,7 @@ class FirestoreDataService {
               thumbnail: video.thumbnail,
               title: video.caption?.substring(0, 100) || '',
               description: video.caption,
-              platform: accountId.startsWith('instagram') ? 'instagram' : 
-                        accountId.startsWith('tiktok') ? 'tiktok' : 'youtube',
+              platform: platform || 'instagram', // Use passed platform or default to instagram
               uploadDate: Timestamp.fromDate(video.uploadDate),
               views: video.views,
               likes: video.likes,
