@@ -771,6 +771,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ timePerio
                   </h2>
                   <div className="flex items-center space-x-6 text-sm text-gray-600 dark:text-gray-400">
                     <div className="flex items-center space-x-2">
+                      <span className="text-gray-500 dark:text-gray-500">@{selectedAccount.username}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
                       <Calendar className="w-4 h-4" />
                       <span>Joined {formatDate(selectedAccount.dateAdded)}</span>
                     </div>
