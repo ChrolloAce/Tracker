@@ -189,10 +189,10 @@ const ProjectCreationFlow: React.FC<ProjectCreationFlowProps> = ({ onClose, onSu
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="w-full max-w-4xl h-[90vh] bg-[#0A0A0A] rounded-2xl overflow-hidden flex">
+    <div className="min-h-screen bg-[#0A0A0A] flex">
+      <div className="w-full flex">
         {/* Left side - Form */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col max-w-3xl mx-auto lg:mx-0 lg:ml-auto lg:mr-0">
           {/* Header */}
           <div className="p-8 border-b border-gray-800">
             <div className="flex items-center justify-between mb-6">
@@ -520,7 +520,7 @@ const ProjectCreationFlow: React.FC<ProjectCreationFlowProps> = ({ onClose, onSu
         </div>
 
         {/* Right side - Decorative grid pattern */}
-        <div className="hidden lg:block w-1/3 bg-gradient-to-br from-[#0A0A0A] via-purple-900/5 to-pink-900/5 relative overflow-hidden">
+        <div className="hidden lg:block flex-1 bg-gradient-to-br from-[#0A0A0A] via-purple-900/5 to-pink-900/5 relative overflow-hidden">
           <div className="absolute inset-0" style={{
             backgroundImage: `
               linear-gradient(to right, rgba(139, 92, 246, 0.1) 1px, transparent 1px),
@@ -530,6 +530,9 @@ const ProjectCreationFlow: React.FC<ProjectCreationFlowProps> = ({ onClose, onSu
             transform: 'rotate(-12deg) scale(1.5)',
             transformOrigin: 'center'
           }} />
+          {/* Floating decorative elements */}
+          <div className="absolute top-20 right-20 w-32 h-32 bg-purple-600/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-40 right-40 w-40 h-40 bg-pink-600/10 rounded-full blur-3xl" />
         </div>
       </div>
     </div>
