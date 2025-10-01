@@ -48,7 +48,7 @@ const TrackedLinksPage: React.FC = () => {
     
     try {
       // Generate unique short code
-      const shortCode = TrackedLinksService['generateShortCode']?.() || generateShortCode();
+      const shortCode = generateShortCode();
       
       await FirestoreDataService.createLink(currentOrgId, user.uid, {
         shortCode,
@@ -313,11 +313,11 @@ const TrackedLinksPage: React.FC = () => {
                     </td>
                     <td className="px-6 py-4">
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {new Date(link.createdAt).toLocaleDateString()}
+                        {link.createdAt.toDate().toLocaleDateString()}
                       </p>
                       {link.lastClickedAt && (
                         <p className="text-xs text-gray-400 dark:text-gray-500">
-                          Last: {new Date(link.lastClickedAt).toLocaleDateString()}
+                          Last: {link.lastClickedAt.toDate().toLocaleDateString()}
                         </p>
                       )}
                     </td>
