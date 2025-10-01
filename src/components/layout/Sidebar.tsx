@@ -117,7 +117,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         className={clsx(
           'w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group',
           {
-            'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-r-2 border-blue-600': item.isActive,
+            'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-r-2 border-gray-300 dark:border-gray-600': item.isActive,
             'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700': !item.isActive,
           }
         )}
@@ -126,8 +126,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           className={clsx(
             'flex-shrink-0 w-5 h-5 transition-colors duration-200',
             {
-              'text-blue-600': item.isActive,
-              'text-gray-400 group-hover:text-gray-600': !item.isActive,
+              'text-gray-900 dark:text-white': item.isActive,
+              'text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300': !item.isActive,
             }
           )} 
         />
@@ -135,7 +135,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           <>
             <span className="ml-3 truncate">{item.label}</span>
             {item.badge && (
-              <span className="ml-auto inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-blue-600 rounded-full">
+              <span className="ml-auto inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-gray-900 bg-white dark:text-white dark:bg-gray-700 rounded-full">
                 {item.badge}
               </span>
             )}
@@ -237,8 +237,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                 className="w-10 h-10 rounded-full object-cover ring-2 ring-white dark:ring-gray-800"
               />
             ) : (
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center ring-2 ring-white dark:ring-gray-800">
-                <span className="text-sm font-bold text-white">
+              <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center ring-2 ring-white dark:ring-gray-800">
+                <span className="text-sm font-bold text-gray-900 dark:text-white">
                   {user.displayName?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || 'U'}
                 </span>
               </div>

@@ -154,10 +154,9 @@ const LoginPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full relative bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white py-3.5 rounded-xl font-semibold hover:shadow-xl hover:shadow-purple-500/25 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02]"
+                  className="w-full relative bg-white text-gray-900 py-3.5 rounded-xl font-semibold hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-[1.02] border border-gray-200"
                 >
                   <span className="relative z-10">{loading ? 'Please wait...' : isSignUp ? 'Sign Up' : 'Sign In'}</span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-700 via-purple-700 to-pink-700 rounded-xl opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
                 </button>
               </form>
 

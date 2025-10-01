@@ -14,7 +14,7 @@ const SettingsPage: React.FC = () => {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-          <Settings className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+          <Settings className="w-8 h-8 text-gray-900 dark:text-white" />
           Settings
         </h1>
         <p className="mt-2 text-gray-600 dark:text-gray-400">
@@ -29,7 +29,7 @@ const SettingsPage: React.FC = () => {
         <div className="bg-white dark:bg-[#161616] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#1A1A1A]">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <User className="w-5 h-5 text-gray-900 dark:text-white" />
               Account
             </h2>
           </div>

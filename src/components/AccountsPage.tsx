@@ -483,7 +483,7 @@ const AccountsPage: React.FC = () => {
               <button
                 onClick={() => handleRefreshProfile(selectedAccount.id)}
                 disabled={isRefreshingProfile === selectedAccount.id}
-                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                className="flex items-center space-x-2 px-4 py-2 bg-white text-gray-900 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 border border-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 dark:border-gray-700"
               >
                 <User className={clsx('w-4 h-4', { 'animate-spin': isRefreshingProfile === selectedAccount.id })} />
                 <span>{isRefreshingProfile === selectedAccount.id ? 'Refreshing...' : 'Refresh Profile'}</span>
@@ -491,7 +491,7 @@ const AccountsPage: React.FC = () => {
               <button
                 onClick={() => handleSyncAccount(selectedAccount.id)}
                 disabled={isSyncing === selectedAccount.id}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                className="flex items-center space-x-2 px-4 py-2 bg-white text-gray-900 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 border border-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 dark:border-gray-700"
               >
                 <RefreshCw className={clsx('w-4 h-4', { 'animate-spin': isSyncing === selectedAccount.id })} />
                 <span>{isSyncing === selectedAccount.id ? 'Syncing...' : 'Sync Videos'}</span>
@@ -500,7 +500,7 @@ const AccountsPage: React.FC = () => {
           )}
         <button
           onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+            className="flex items-center space-x-2 px-4 py-2 bg-white text-gray-900 rounded-lg hover:bg-gray-100 transition-all duration-200 border border-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 dark:border-gray-700"
         >
           <Plus className="w-4 h-4" />
             <span className="font-medium">Track Account</span>

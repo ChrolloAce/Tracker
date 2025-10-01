@@ -175,7 +175,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Performance Analytics</h3>
             {chartData.length === 1 && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">
                 Initial Snapshot
               </span>
             )}
@@ -186,8 +186,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
             <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-                    <Eye className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center">
+                    <Eye className="w-6 h-6 text-gray-900 dark:text-white" />
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">TOTAL VIEWS</p>
@@ -393,7 +393,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                   {[...video.snapshots]
                     .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())
                     .map((snapshot, index) => (
-                    <tr key={snapshot.id} className={index === 0 ? 'bg-blue-50 dark:bg-blue-900/20' : ''}>
+                    <tr key={snapshot.id} className={index === 0 ? 'bg-gray-100 dark:bg-gray-800' : ''}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
                         <div className="flex items-center space-x-2">
                           <Calendar className="w-4 h-4 text-gray-400" />
@@ -419,8 +419,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                           snapshot.capturedBy === 'initial_upload' 
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-blue-100 text-blue-800'
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                            : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
                         }`}>
                           {snapshot.capturedBy === 'initial_upload' ? 'Initial' : 'Refresh'}
                         </span>

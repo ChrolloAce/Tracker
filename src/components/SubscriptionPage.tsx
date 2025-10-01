@@ -227,7 +227,7 @@ const SubscriptionPage: React.FC = () => {
                       : plan.id === 'free'
                       ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-500 cursor-not-allowed'
                       : isRecommended
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      ? 'bg-white text-gray-900 hover:bg-gray-100 border border-gray-300'
                       : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
                   }`}
                 >
