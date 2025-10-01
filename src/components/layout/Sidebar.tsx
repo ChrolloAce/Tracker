@@ -7,8 +7,7 @@ import {
   ChevronRight,
   FileSignature,
   Eye,
-  Link,
-  Crown
+  Link
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '../../contexts/AuthContext';
@@ -81,13 +80,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const bottomItems: NavItem[] = [
-    {
-      id: 'subscription',
-      label: 'Upgrade',
-      icon: Crown,
-      isActive: activeTab === 'subscription',
-      onClick: () => onTabChange?.('subscription'),
-    },
     {
       id: 'settings',
       label: 'Settings',

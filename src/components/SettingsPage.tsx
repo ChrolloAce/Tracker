@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings, Lock, User, Globe, LogOut } from 'lucide-react';
+import { Settings, Lock, User, Globe, LogOut, Crown } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 /**
@@ -36,6 +36,34 @@ const SettingsPage: React.FC = () => {
 
       {/* Settings Sections */}
       <div className="space-y-6">
+        
+        {/* Upgrade Section */}
+        <div className="bg-white dark:bg-[#161616] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#1A1A1A]">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <Crown className="w-5 h-5 text-gray-900 dark:text-white" />
+              Subscription
+            </h2>
+          </div>
+          <div className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-medium text-gray-900 dark:text-white mb-1">
+                  Upgrade Your Plan
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Unlock advanced features and unlimited tracking
+                </p>
+              </div>
+              <button 
+                onClick={() => window.location.href = '#subscription'}
+                className="px-4 py-2 bg-white text-gray-900 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 dark:border-gray-700"
+              >
+                View Plans
+              </button>
+            </div>
+          </div>
+        </div>
         
         {/* Account Section */}
         <div className="bg-white dark:bg-[#161616] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
