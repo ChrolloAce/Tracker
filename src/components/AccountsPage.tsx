@@ -1309,7 +1309,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                     <tbody className="bg-zinc-900/60 divide-y divide-white/5">
                       {(() => {
                         // Pagination calculations
-                        const totalPages = Math.ceil(accountVideos.length / itemsPerPage);
                         const startIndex = (currentPage - 1) * itemsPerPage;
                         const endIndex = startIndex + itemsPerPage;
                         const paginatedVideos = accountVideos.slice(startIndex, endIndex);
