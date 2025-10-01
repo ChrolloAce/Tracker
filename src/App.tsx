@@ -452,26 +452,24 @@ function App() {
       )}>
         <div className="max-w-7xl mx-auto px-6 py-8">
           {/* Dashboard Tab */}
-          {activeTab === 'dashboard' && (
-            <>
-              {/* KPI Cards with Working Sparklines */}
-              <KPICards 
+          <div className={activeTab === 'dashboard' ? '' : 'hidden'}>
+            {/* KPI Cards with Working Sparklines */}
+            <KPICards 
+              submissions={filteredSubmissions}
+              dateFilter={dateFilter}
+              timePeriod={timePeriod}
+            />
+            
+            {/* Video Submissions Table */}
+            <div className="mt-6">
+              <VideoSubmissionsTable
                 submissions={filteredSubmissions}
-                dateFilter={dateFilter}
-                timePeriod={timePeriod}
+                onStatusUpdate={handleStatusUpdate}
+                onDelete={handleDelete}
+                onVideoClick={handleVideoClick}
               />
-              
-              {/* Video Submissions Table */}
-              <div className="mt-6">
-                <VideoSubmissionsTable
-                  submissions={filteredSubmissions}
-                  onStatusUpdate={handleStatusUpdate}
-                  onDelete={handleDelete}
-                  onVideoClick={handleVideoClick}
-                />
-              </div>
-            </>
-          )}
+            </div>
+          </div>
 
           {/* Accounts Tab */}
           {activeTab === 'accounts' && <AccountsPage />}
