@@ -11,6 +11,7 @@ import VideoAnalyticsModal from './components/VideoAnalyticsModal';
 import AccountsPage from './components/AccountsPage';
 import ContractsPage from './components/ContractsPage';
 import SettingsPage from './components/SettingsPage';
+import SubscriptionPage from './components/SubscriptionPage';
 import TrackedLinksPage from './components/TrackedLinksPage';
 import LinkRedirect from './components/LinkRedirect';
 import LoginPage from './components/LoginPage';
@@ -356,6 +357,7 @@ function App() {
               {activeTab === 'dashboard' && 'Video Views'}
               {activeTab === 'accounts' && 'Tracked Accounts'}
               {activeTab === 'contracts' && 'Contracts'}
+              {activeTab === 'subscription' && 'Subscription Plans'}
               {activeTab === 'analytics' && 'Tracked Links'}
               {activeTab === 'creators' && 'Creators'}
               {activeTab === 'settings' && 'Settings'}
@@ -364,6 +366,7 @@ function App() {
               {activeTab === 'dashboard' && 'Track and analyze your video performance'}
               {activeTab === 'accounts' && 'Monitor entire Instagram and TikTok accounts'}
               {activeTab === 'contracts' && 'Manage brand deals and sponsorships'}
+              {activeTab === 'subscription' && 'Choose the perfect plan to scale your tracking'}
               {activeTab === 'analytics' && 'Track and analyze your shared links'}
               {activeTab === 'creators' && 'Manage and discover content creators'}
               {activeTab === 'settings' && 'Configure your preferences'}
@@ -419,6 +422,9 @@ function App() {
 
           {/* Contracts Tab */}
           {activeTab === 'contracts' && <ContractsPage />}
+
+          {/* Subscription Tab */}
+          {activeTab === 'subscription' && <SubscriptionPage />}
 
           {/* Settings Tab */}
           {activeTab === 'settings' && <SettingsPage />}

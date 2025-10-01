@@ -12,7 +12,8 @@ import {
   FileSignature,
   Eye,
   Link,
-  LogOut
+  LogOut,
+  Crown
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '../../contexts/AuthContext';
@@ -92,6 +93,13 @@ const Sidebar: React.FC<SidebarProps> = ({
       icon: FileSignature,
       isActive: activeTab === 'contracts',
       onClick: () => onTabChange?.('contracts'),
+    },
+    {
+      id: 'subscription',
+      label: 'Upgrade',
+      icon: Crown,
+      isActive: activeTab === 'subscription',
+      onClick: () => onTabChange?.('subscription'),
     },
   ];
 
