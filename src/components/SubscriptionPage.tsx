@@ -54,13 +54,13 @@ const SubscriptionPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
       {/* Hero Section */}
-      <div className="relative pt-16 pb-12 overflow-hidden">
+      <div className="relative pt-12 pb-8 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-4">
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-3">
               Simple, transparent pricing
             </h1>
-            <p className="text-xl text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
+            <p className="text-lg text-gray-600 dark:text-gray-400 mb-6 max-w-2xl mx-auto">
               Choose the perfect plan to track your content and grow your reach
             </p>
 
@@ -95,8 +95,8 @@ const SubscriptionPage: React.FC = () => {
       </div>
 
       {/* Pricing Cards */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-        <div className="flex flex-col lg:flex-row gap-6 items-center lg:items-stretch justify-center">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+        <div className="flex flex-col lg:flex-row gap-4 items-center lg:items-stretch justify-center">
           {mainPlans.map((plan) => {
             const price = billingCycle === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice;
             const isCurrentPlan = currentPlan === plan.id;
@@ -105,16 +105,16 @@ const SubscriptionPage: React.FC = () => {
             return (
               <div
                 key={plan.id}
-                className={`relative flex flex-col w-full max-w-sm bg-white dark:bg-[#161616] rounded-2xl p-8 border transition-all ${
+                className={`relative flex flex-col w-full max-w-xs bg-white dark:bg-[#161616] rounded-xl p-6 border transition-all ${
                   isRecommended
-                    ? 'border-blue-500 shadow-xl lg:scale-105 lg:-mt-4 lg:mb-4'
+                    ? 'border-blue-500 shadow-xl lg:scale-105'
                     : 'border-gray-200 dark:border-gray-800'
                 }`}
               >
                 {/* Recommended Badge */}
                 {isRecommended && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <span className="bg-blue-600 text-white px-4 py-1.5 rounded-full text-sm font-semibold">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
                       Most Popular
                     </span>
                   </div>
@@ -122,43 +122,44 @@ const SubscriptionPage: React.FC = () => {
 
                 {/* Current Plan Badge */}
                 {isCurrentPlan && (
-                  <div className="absolute top-6 right-6">
-                    <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                      Current Plan
+                  <div className="absolute top-4 right-4">
+                    <span className="bg-green-500 text-white px-2.5 py-0.5 rounded-full text-xs font-semibold">
+                      Current
                     </span>
                   </div>
                 )}
 
-                {/* Icon */}
-                <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-6 ${
-                  plan.id === 'basic' ? 'bg-gray-100 dark:bg-gray-800' :
-                  plan.id === 'pro' ? 'bg-blue-50 dark:bg-blue-900/20' :
-                  'bg-purple-50 dark:bg-purple-900/20'
-                }`}>
-                  {plan.id === 'basic' && <Zap className="w-7 h-7 text-gray-600 dark:text-gray-400" />}
-                  {plan.id === 'pro' && <Crown className="w-7 h-7 text-blue-600 dark:text-blue-400" />}
-                  {plan.id === 'ultra' && <Rocket className="w-7 h-7 text-purple-600 dark:text-purple-400" />}
+                {/* Icon & Title */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    plan.id === 'basic' ? 'bg-gray-100 dark:bg-gray-800' :
+                    plan.id === 'pro' ? 'bg-blue-50 dark:bg-blue-900/20' :
+                    'bg-purple-50 dark:bg-purple-900/20'
+                  }`}>
+                    {plan.id === 'basic' && <Zap className="w-5 h-5 text-gray-600 dark:text-gray-400" />}
+                    {plan.id === 'pro' && <Crown className="w-5 h-5 text-blue-600 dark:text-blue-400" />}
+                    {plan.id === 'ultra' && <Rocket className="w-5 h-5 text-purple-600 dark:text-purple-400" />}
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                    {plan.displayName}
+                  </h3>
                 </div>
 
-                {/* Plan Name */}
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                  {plan.displayName}
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 min-h-[40px]">
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
                   {plan.description}
                 </p>
 
                 {/* Price */}
-                <div className="mb-8">
+                <div className="mb-5">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-5xl font-bold text-gray-900 dark:text-white">
+                    <span className="text-4xl font-bold text-gray-900 dark:text-white">
                       ${price}
                     </span>
-                    <span className="text-gray-600 dark:text-gray-400">/month</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">/mo</span>
                   </div>
                   {billingCycle === 'yearly' && (
-                    <p className="text-sm text-green-600 dark:text-green-400 mt-2">
-                      ${(price * 12).toFixed(0)} billed annually
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                      ${(price * 12).toFixed(0)}/year
                     </p>
                   )}
                 </div>
@@ -167,7 +168,7 @@ const SubscriptionPage: React.FC = () => {
                 <button
                   onClick={() => handleSelectPlan(plan.id)}
                   disabled={loading || isCurrentPlan}
-                  className={`w-full py-3.5 px-6 rounded-xl font-semibold transition-all mb-8 ${
+                  className={`w-full py-2.5 px-4 rounded-lg font-semibold text-sm transition-all mb-5 ${
                     isCurrentPlan
                       ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-500 cursor-not-allowed'
                       : isRecommended
@@ -179,57 +180,57 @@ const SubscriptionPage: React.FC = () => {
                 </button>
 
                 {/* Features */}
-                <div className="flex-1 space-y-4">
-                  <div className="flex items-start gap-3">
-                    <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                <div className="flex-1 space-y-2.5">
+                  <div className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <span className="text-xs text-gray-700 dark:text-gray-300">
                       <strong>{plan.features.teamSeats}</strong> team {plan.features.teamSeats === 1 ? 'seat' : 'seats'}
                     </span>
                   </div>
-                  <div className="flex items-start gap-3">
-                    <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">
-                      Track <strong>{plan.features.maxAccounts === -1 ? 'unlimited' : plan.features.maxAccounts}</strong> accounts
+                  <div className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <span className="text-xs text-gray-700 dark:text-gray-300">
+                      <strong>{plan.features.maxAccounts === -1 ? 'Unlimited' : plan.features.maxAccounts}</strong> accounts
                     </span>
                   </div>
-                  <div className="flex items-start gap-3">
-                    <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">
-                      Up to <strong>{plan.features.maxVideos.toLocaleString()}</strong> videos
+                  <div className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <span className="text-xs text-gray-700 dark:text-gray-300">
+                      <strong>{plan.features.maxVideos.toLocaleString()}</strong> videos
                     </span>
                   </div>
-                  <div className="flex items-start gap-3">
-                    <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">
-                      Refresh every <strong>{plan.features.dataRefreshHours}h</strong>
+                  <div className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <span className="text-xs text-gray-700 dark:text-gray-300">
+                      <strong>{plan.features.dataRefreshHours}h</strong> refresh
                     </span>
                   </div>
-                  <div className="flex items-start gap-3">
-                    <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">
-                      <strong>{plan.features.mcpCallsPerMonth.toLocaleString()}</strong> API calls/month
+                  <div className="flex items-center gap-2">
+                    <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <span className="text-xs text-gray-700 dark:text-gray-300">
+                      <strong>{plan.features.mcpCallsPerMonth.toLocaleString()}</strong> API calls
                     </span>
                   </div>
                   {plan.features.refreshOnDemand && (
-                    <div className="flex items-start gap-3">
-                      <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                    <div className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      <span className="text-xs text-gray-700 dark:text-gray-300">
                         On-demand refresh
                       </span>
                     </div>
                   )}
                   {plan.features.apiAccess && (
-                    <div className="flex items-start gap-3">
-                      <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                    <div className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      <span className="text-xs text-gray-700 dark:text-gray-300">
                         API access
                       </span>
                     </div>
                   )}
                   {plan.features.prioritySupport && (
-                    <div className="flex items-start gap-3">
-                      <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                    <div className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      <span className="text-xs text-gray-700 dark:text-gray-300">
                         Priority support
                       </span>
                     </div>
@@ -242,12 +243,12 @@ const SubscriptionPage: React.FC = () => {
       </div>
 
       {/* Comparison Table */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
             Compare all features
           </h2>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             Choose the plan that's right for you
           </p>
         </div>
@@ -257,16 +258,16 @@ const SubscriptionPage: React.FC = () => {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-800">
-                  <th className="text-left py-6 px-6 text-sm font-semibold text-gray-900 dark:text-white">
+                  <th className="text-left py-4 px-4 text-sm font-semibold text-gray-900 dark:text-white">
                     Features
                   </th>
-                  <th className="text-center py-6 px-6 text-sm font-semibold text-gray-900 dark:text-white">
+                  <th className="text-center py-4 px-4 text-sm font-semibold text-gray-900 dark:text-white">
                     Basic
                   </th>
-                  <th className="text-center py-6 px-6 text-sm font-semibold text-gray-900 dark:text-white bg-blue-50 dark:bg-blue-900/10">
+                  <th className="text-center py-4 px-4 text-sm font-semibold text-gray-900 dark:text-white bg-blue-50 dark:bg-blue-900/10">
                     Pro
                   </th>
-                  <th className="text-center py-6 px-6 text-sm font-semibold text-gray-900 dark:text-white">
+                  <th className="text-center py-4 px-4 text-sm font-semibold text-gray-900 dark:text-white">
                     Ultra
                   </th>
                 </tr>
@@ -333,12 +334,12 @@ const SubscriptionPage: React.FC = () => {
       </div>
 
       {/* FAQ Section */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
             Frequently asked questions
           </h2>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             Everything you need to know about the product and billing
           </p>
         </div>
@@ -407,16 +408,16 @@ const ComparisonRow: React.FC<ComparisonRowProps> = ({ feature, basic, pro, ultr
 
   return (
     <tr>
-      <td className="py-4 px-6 text-sm font-medium text-gray-900 dark:text-white">
+      <td className="py-3 px-4 text-xs font-medium text-gray-900 dark:text-white">
         {feature}
       </td>
-      <td className="py-4 px-6 text-center">
+      <td className="py-3 px-4 text-center">
         {renderCell(basic)}
       </td>
-      <td className="py-4 px-6 text-center bg-blue-50 dark:bg-blue-900/10">
+      <td className="py-3 px-4 text-center bg-blue-50 dark:bg-blue-900/10">
         {renderCell(pro)}
       </td>
-      <td className="py-4 px-6 text-center">
+      <td className="py-3 px-4 text-center">
         {renderCell(ultra)}
       </td>
     </tr>
@@ -432,23 +433,23 @@ interface FAQItemProps {
 
 const FAQItem: React.FC<FAQItemProps> = ({ question, answer, isExpanded, onToggle }) => {
   return (
-    <div className="bg-white dark:bg-[#161616] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+    <div className="bg-white dark:bg-[#161616] rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
       <button
         onClick={onToggle}
-        className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+        className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
       >
-        <span className="text-base font-semibold text-gray-900 dark:text-white pr-8">
+        <span className="text-sm font-semibold text-gray-900 dark:text-white pr-6">
           {question}
         </span>
         <ChevronDown
-          className={`w-5 h-5 text-gray-500 flex-shrink-0 transition-transform ${
+          className={`w-4 h-4 text-gray-500 flex-shrink-0 transition-transform ${
             isExpanded ? 'transform rotate-180' : ''
           }`}
         />
       </button>
       {isExpanded && (
-        <div className="px-6 pb-5">
-          <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+        <div className="px-5 pb-4">
+          <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
             {answer}
           </p>
         </div>
