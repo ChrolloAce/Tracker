@@ -471,6 +471,39 @@ class FirestoreDataService {
   }
 
   /**
+   * Update a tracked link
+   */
+  static async updateLink(
+    orgId: string,
+    linkId: string,
+    updates: Partial<TrackedLink>
+  ): Promise<void> {
+    const linkRef = doc(db, 'organizations', orgId, 'links', linkId);
+    await updateDoc(linkRef, updates);
+    console.log(`✅ Updated link ${linkId}`);
+  }
+
+  /**
+   * Delete a tracked link (soft delete)
+   */
+  static async deleteLink(orgId: string, linkId: string): Promise<void> {
+    const linkRef = doc(db, 'organizations', orgId, 'links', linkId);
+    await updateDoc(linkRef, { isActive: false });
+    console.log(`✅ Deleted link ${linkId}`);
+  }
+
+  /**
+   * Get link by ID
+   */
+  static async getLinkById(orgId: string, linkId: string): Promise<TrackedLink | null> {
+    const linkDoc = await getDoc(doc(db, 'organizations', orgId, 'links', linkId));
+    if (linkDoc.exists()) {
+      return { id: linkDoc.id, ...linkDoc.data() } as TrackedLink;
+    }
+    return null;
+  }
+
+  /**
    * Resolve short code to link data
    */
   static async resolveShortCode(shortCode: string): Promise<{ orgId: string; linkId: string } | null> {

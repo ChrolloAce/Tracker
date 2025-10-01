@@ -10,7 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { clsx } from 'clsx';
 
 const TrackedLinksPage: React.FC = () => {
-  const { currentOrgId } = useAuth();
+  const { currentOrgId, user } = useAuth();
   const [links, setLinks] = useState<TrackedLink[]>([]);
   const [accounts, setAccounts] = useState<Map<string, TrackedAccount>>(new Map());
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -35,26 +35,67 @@ const TrackedLinksPage: React.FC = () => {
     }
   };
 
-  const loadLinks = () => {
-    const allLinks = TrackedLinksService.getAllLinks();
-    setLinks(allLinks.filter(link => link.isActive));
-  };
-
-  const handleCreateLink = (originalUrl: string, title: string, description?: string, tags?: string[], linkedAccountId?: string) => {
-    TrackedLinksService.createLink(originalUrl, title, description, tags, linkedAccountId);
-    loadLinks();
-    setIsCreateModalOpen(false);
-  };
-
-  const handleDeleteLink = (linkId: string) => {
-    if (window.confirm('Are you sure you want to delete this link?')) {
-      TrackedLinksService.deleteLink(linkId);
-      loadLinks();
+  const loadLinks = async () => {
+    if (!currentOrgId) return;
+    try {
+      const allLinks = await FirestoreDataService.getLinks(currentOrgId);
+      setLinks(allLinks);
+    } catch (error) {
+      console.error('Failed to load links:', error);
     }
   };
 
+  const handleCreateLink = async (originalUrl: string, title: string, description?: string, tags?: string[], linkedAccountId?: string) => {
+    if (!currentOrgId || !user) return;
+    
+    try {
+      // Generate unique short code
+      const shortCode = TrackedLinksService['generateShortCode']?.() || generateShortCode();
+      
+      await FirestoreDataService.createLink(currentOrgId, user.uid, {
+        shortCode,
+        originalUrl,
+        title,
+        description,
+        tags,
+        linkedAccountId,
+        linkedVideoId: undefined,
+        lastClickedAt: undefined,
+        isActive: true
+      });
+      
+      await loadLinks();
+      setIsCreateModalOpen(false);
+    } catch (error) {
+      console.error('Failed to create link:', error);
+      alert('Failed to create link. Please try again.');
+    }
+  };
+
+  const handleDeleteLink = async (linkId: string) => {
+    if (!currentOrgId || !window.confirm('Are you sure you want to delete this link?')) return;
+    
+    try {
+      await FirestoreDataService.deleteLink(currentOrgId, linkId);
+      await loadLinks();
+    } catch (error) {
+      console.error('Failed to delete link:', error);
+      alert('Failed to delete link. Please try again.');
+    }
+  };
+
+  // Helper to generate short code
+  const generateShortCode = (length: number = 6): string => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+
   const handleCopyLink = (shortCode: string) => {
-    const url = TrackedLinksService.getTrackingUrl(shortCode);
+    const url = `${window.location.origin}/l/${shortCode}`;
     navigator.clipboard.writeText(url);
     setCopiedCode(shortCode);
     setTimeout(() => setCopiedCode(null), 2000);
