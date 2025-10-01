@@ -28,18 +28,21 @@ class ProjectService {
   ): Promise<string> {
     const projectRef = doc(collection(db, 'organizations', orgId, 'projects'));
     
-    const project: Project = {
+    // Clean undefined values
+    const project: any = {
       id: projectRef.id,
       orgId,
       name: data.name,
-      description: data.description,
-      imageUrl: data.imageUrl,
-      color: data.color,
-      icon: data.icon,
       createdAt: Timestamp.now(),
       createdBy: userId,
       isArchived: false,
     };
+
+    // Only add optional fields if they exist
+    if (data.description !== undefined) project.description = data.description;
+    if (data.imageUrl !== undefined) project.imageUrl = data.imageUrl;
+    if (data.color !== undefined) project.color = data.color;
+    if (data.icon !== undefined) project.icon = data.icon;
 
     // Initialize project stats
     const statsRef = doc(db, 'organizations', orgId, 'projects', projectRef.id, 'stats', 'current');
