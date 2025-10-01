@@ -384,6 +384,9 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
               <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider sticky left-0 bg-zinc-900/60 backdrop-blur z-10 min-w-[280px]">
                 Video
               </th>
+              <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[100px]">
+                Preview
+              </th>
               <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[80px]">
                 Trend
               </th>
@@ -421,15 +424,42 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
               return (
                 <tr 
                   key={submission.id}
-                  onClick={() => onVideoClick?.(submission)}
+                  onClick={(e) => {
+                    // Don't trigger row click if clicking on video preview link
+                    if (!(e.target as HTMLElement).closest('a')) {
+                      onVideoClick?.(submission);
+                    }
+                  }}
                   className="hover:bg-white/5 transition-colors cursor-pointer group"
                 >
                   <td className="px-6 py-5 sticky left-0 bg-zinc-900/60 backdrop-blur z-10 group-hover:bg-white/5">
                     <div className="flex items-center space-x-4">
                       <div className="relative">
-                        <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 ring-2 ring-white shadow-sm">
-                          <ThumbnailImage submission={submission} />
-                        </div>
+                        {submission.uploaderProfilePicture ? (
+                          <img
+                            src={submission.uploaderProfilePicture}
+                            alt={submission.uploaderHandle || submission.uploader || 'Account'}
+                            className="w-10 h-10 rounded-full object-cover flex-shrink-0 ring-2 ring-white shadow-sm"
+                            onError={(e) => {
+                              // Fallback to default avatar if profile picture fails to load
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              const parent = target.parentElement;
+                              if (parent) {
+                                const fallback = document.createElement('div');
+                                fallback.className = 'w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 ring-2 ring-white shadow-sm';
+                                fallback.innerHTML = `<span class="text-sm font-bold text-gray-900 dark:text-white">${(submission.uploaderHandle || submission.uploader || 'U').charAt(0).toUpperCase()}</span>`;
+                                parent.appendChild(fallback);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 ring-2 ring-white shadow-sm">
+                            <span className="text-sm font-bold text-gray-900 dark:text-white">
+                              {(submission.uploaderHandle || submission.uploader || 'U').charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                        )}
                         <div className="absolute -bottom-1 -right-1">
                           <PlatformIcon platform={submission.platform} size="sm" />
                         </div>
@@ -445,6 +475,19 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                         </p>
                       </div>
                     </div>
+                  </td>
+                  <td className="px-6 py-5">
+                    <a
+                      href={submission.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block hover:opacity-80 transition-opacity"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
+                        <ThumbnailImage submission={submission} />
+                      </div>
+                    </a>
                   </td>
                   <td className="px-6 py-5">
                     <MiniTrendChart 

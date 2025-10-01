@@ -105,6 +105,7 @@ function App() {
             title: video.title || '',
             uploader: account?.displayName || account?.username || '',
             uploaderHandle: account?.username || '',
+            uploaderProfilePicture: account?.profilePicture,
             status: video.status === 'archived' ? 'rejected' : 'approved',
             views: video.views || 0,
             likes: video.likes || 0,

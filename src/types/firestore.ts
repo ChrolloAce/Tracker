@@ -104,6 +104,12 @@ export interface TrackedAccount {
   totalLikes: number;
   totalComments: number;
   totalShares?: number;
+  // Outlier detection
+  outlierAnalysis?: {
+    topPerformersCount: number;
+    underperformersCount: number;
+    lastCalculated: Timestamp;
+  };
 }
 
 // ==================== VIDEOS ====================

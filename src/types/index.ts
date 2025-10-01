@@ -17,6 +17,7 @@ export interface VideoSubmission {
   title: string;
   uploader: string;
   uploaderHandle: string;
+  uploaderProfilePicture?: string; // Account profile picture
   status: 'pending' | 'approved' | 'rejected';
   views: number; // Current/latest metrics
   likes: number;

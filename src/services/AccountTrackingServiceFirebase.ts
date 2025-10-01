@@ -1,6 +1,8 @@
 import { TrackedAccount, AccountVideo } from '../types/accounts';
 import FirestoreDataService from './FirestoreDataService';
 import FirebaseStorageService from './FirebaseStorageService';
+import OutlierDetectionService from './OutlierDetectionService';
+import { Timestamp } from 'firebase/firestore';
 
 /**
  * AccountTrackingServiceFirebase
@@ -355,13 +357,30 @@ export class AccountTrackingServiceFirebase {
       const totalComments = videos.reduce((sum, v) => sum + (v.comments || 0), 0);
       const totalShares = videos.reduce((sum, v) => sum + (v.shares || 0), 0);
 
+      // Calculate outliers
+      const outlierAnalysis = OutlierDetectionService.detectOutliers(
+        videos,
+        accountId,
+        account.username
+      );
+
+      console.log(`📊 Outlier Analysis for @${account.username}:`);
+      console.log(`   - Top performers: ${outlierAnalysis.topPerformers.length} videos`);
+      console.log(`   - Underperformers: ${outlierAnalysis.underperformers.length} videos`);
+      console.log(`   - ${OutlierDetectionService.getOutlierSummary(outlierAnalysis)}`);
+
       await FirestoreDataService.updateTrackedAccount(orgId, projectId, accountId, {
         totalVideos: videos.length,
         totalViews,
         totalLikes,
         totalComments,
         totalShares,
-        lastSynced: new Date() as any
+        lastSynced: new Date() as any,
+        outlierAnalysis: {
+          topPerformersCount: outlierAnalysis.topPerformers.length,
+          underperformersCount: outlierAnalysis.underperformers.length,
+          lastCalculated: Timestamp.fromDate(outlierAnalysis.lastCalculated)
+        }
       });
 
       console.log(`✅ Synced ${videos.length} videos for @${account.username}`);
