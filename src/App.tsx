@@ -60,7 +60,7 @@ function App() {
   const [isLoadingData, setIsLoadingData] = useState(true);
   
   // Accounts page state
-  const [accountsTimePeriod, setAccountsTimePeriod] = useState<'all' | 'weekly' | 'monthly' | 'daily'>('all');
+  const [accountsDateFilter, setAccountsDateFilter] = useState<DateFilterType>('all');
   const [accountsViewMode, setAccountsViewMode] = useState<'table' | 'details'>('table');
   const accountsPageRef = useRef<AccountsPageRef | null>(null);
 
@@ -432,52 +432,10 @@ function App() {
             </div>
           )}
           {activeTab === 'accounts' && (
-            <div className="flex items-center space-x-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-1">
-              <button
-                onClick={() => setAccountsTimePeriod('daily')}
-                className={clsx(
-                  'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
-                  accountsTimePeriod === 'daily'
-                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                )}
-              >
-                Daily
-              </button>
-              <button
-                onClick={() => setAccountsTimePeriod('weekly')}
-                className={clsx(
-                  'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
-                  accountsTimePeriod === 'weekly'
-                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                )}
-              >
-                Weekly
-              </button>
-              <button
-                onClick={() => setAccountsTimePeriod('monthly')}
-                className={clsx(
-                  'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
-                  accountsTimePeriod === 'monthly'
-                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                )}
-              >
-                Monthly
-              </button>
-              <button
-                onClick={() => setAccountsTimePeriod('all')}
-                className={clsx(
-                  'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
-                  accountsTimePeriod === 'all'
-                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                )}
-              >
-                All Time
-              </button>
-            </div>
+            <DateRangeFilter
+              selectedFilter={accountsDateFilter}
+              onFilterChange={(filter) => setAccountsDateFilter(filter)}
+            />
           )}
         </div>
       </header>
@@ -522,8 +480,7 @@ function App() {
           {activeTab === 'accounts' && (
             <AccountsPage 
               ref={accountsPageRef}
-              timePeriod={accountsTimePeriod}
-              onTimePeriodChange={setAccountsTimePeriod}
+              dateFilter={accountsDateFilter}
               onViewModeChange={setAccountsViewMode}
             />
           )}

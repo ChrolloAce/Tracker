@@ -29,10 +29,10 @@ import { MiniTrendChart } from './ui/MiniTrendChart';
 import { TrendCalculationService } from '../services/TrendCalculationService';
 import { VideoSubmission } from '../types';
 import VideoPlayerModal from './VideoPlayerModal';
+import { DateFilterType } from './DateRangeFilter';
 
 interface AccountsPageProps {
-  timePeriod: 'all' | 'weekly' | 'monthly' | 'daily';
-  onTimePeriodChange: (period: 'all' | 'weekly' | 'monthly' | 'daily') => void;
+  dateFilter: DateFilterType;
   onViewModeChange: (mode: 'table' | 'details') => void;
 }
 
@@ -40,7 +40,19 @@ export interface AccountsPageRef {
   handleBackToTable: () => void;
 }
 
-const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ timePeriod, onViewModeChange }, ref) => {
+// Map dateFilter to timePeriod for calculations
+const mapDateFilterToTimePeriod = (filter: DateFilterType): 'all' | 'weekly' | 'monthly' | 'daily' => {
+  switch (filter) {
+    case 'today': return 'daily';
+    case 'last7': return 'weekly';
+    case 'last30': return 'monthly';
+    default: return 'all';
+  }
+};
+
+const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilter, onViewModeChange }, ref) => {
+  // Convert dateFilter to timePeriod for existing calculation functions
+  const timePeriod = mapDateFilterToTimePeriod(dateFilter);
   const { user, currentOrgId, currentProjectId } = useAuth();
   const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<TrackedAccount | null>(null);
