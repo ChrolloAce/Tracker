@@ -80,25 +80,33 @@ function App() {
         // Load videos from Firestore
         const firestoreVideos = await FirestoreDataService.getVideos(currentOrgId, { limitCount: 1000 });
         
+        // Load tracked accounts to get uploader info
+        const accounts = await FirestoreDataService.getTrackedAccounts(currentOrgId);
+        const accountsMap = new Map(accounts.map(acc => [acc.id, acc]));
+        
         // Convert Firestore videos to VideoSubmission format
-        const allSubmissions: VideoSubmission[] = firestoreVideos.map(video => ({
-          id: video.id,
-          url: video.url || '',
-          platform: video.platform as 'instagram' | 'tiktok' | 'youtube',
-          thumbnail: video.thumbnail || '',
-          title: video.title || '',
-          uploader: '', // Will be populated from tracked account if available
-          uploaderHandle: '',
-          status: video.status === 'archived' ? 'rejected' : 'approved',
-          views: video.views || 0,
-          likes: video.likes || 0,
-          comments: video.comments || 0,
-          shares: video.shares || 0,
-          dateSubmitted: video.dateAdded.toDate(),
-          uploadDate: video.uploadDate.toDate(),
-          lastRefreshed: video.lastRefreshed?.toDate(),
-          snapshots: [] // Will be loaded on-demand when viewing analytics
-        }));
+        const allSubmissions: VideoSubmission[] = firestoreVideos.map(video => {
+          const account = video.trackedAccountId ? accountsMap.get(video.trackedAccountId) : null;
+          
+          return {
+            id: video.id,
+            url: video.url || '',
+            platform: video.platform as 'instagram' | 'tiktok' | 'youtube',
+            thumbnail: video.thumbnail || '',
+            title: video.title || '',
+            uploader: account?.displayName || account?.username || '',
+            uploaderHandle: account?.username || '',
+            status: video.status === 'archived' ? 'rejected' : 'approved',
+            views: video.views || 0,
+            likes: video.likes || 0,
+            comments: video.comments || 0,
+            shares: video.shares || 0,
+            dateSubmitted: video.dateAdded.toDate(),
+            uploadDate: video.uploadDate.toDate(),
+            lastRefreshed: video.lastRefreshed?.toDate(),
+            snapshots: [] // Will be loaded on-demand when viewing analytics
+          };
+        });
         
         console.log(`✅ Loaded ${allSubmissions.length} videos from Firestore`);
         
