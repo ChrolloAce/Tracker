@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, Edit3, ChevronUp, ChevronDown } from 'lucide-react';
+import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, Edit3, ChevronUp, ChevronDown, Filter } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { MiniTrendChart } from './ui/MiniTrendChart';
@@ -171,6 +171,20 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
   const [selectedVideoForPlayer, setSelectedVideoForPlayer] = useState<VideoSubmission | null>(null);
+  const [showColumnToggle, setShowColumnToggle] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState({
+    video: true,
+    preview: true,
+    trend: true,
+    views: true,
+    likes: true,
+    comments: true,
+    shares: true,
+    engagement: true,
+    uploadDate: true,
+    dateAdded: true,
+    lastRefresh: true
+  });
 
   // Handle sorting
   const handleSort = (column: 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'uploadDate' | 'dateSubmitted') => {
@@ -326,54 +340,46 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Activity</h2>
           </div>
           <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2">
-              <button 
-                onClick={() => setPlatformFilter('all')}
-                className={clsx(
-                  'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors',
-                  platformFilter === 'all' 
-                    ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50' 
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
-                )}
+            {/* Column Visibility Toggle */}
+            <div className="relative">
+              <button
+                onClick={() => setShowColumnToggle(!showColumnToggle)}
+                className="flex items-center space-x-2 px-3 py-1.5 text-sm text-gray-400 hover:text-white border border-white/10 rounded-lg hover:border-white/20 transition-colors"
               >
-                All
+                <Filter className="w-4 h-4" />
+                <span>Columns</span>
               </button>
-              <button 
-                onClick={() => setPlatformFilter('instagram')}
-                className={clsx(
-                  'p-2 rounded-lg transition-all',
-                  platformFilter === 'instagram' 
-                    ? 'bg-blue-50 dark:bg-blue-900/30 ring-2 ring-blue-500 dark:ring-blue-400' 
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 opacity-60 hover:opacity-100'
-                )}
-                title="Instagram"
-              >
-                <img src={InstagramIcon} alt="Instagram" className="w-6 h-6 object-contain" />
-              </button>
-              <button 
-                onClick={() => setPlatformFilter('tiktok')}
-                className={clsx(
-                  'p-2 rounded-lg transition-all',
-                  platformFilter === 'tiktok' 
-                    ? 'bg-blue-50 dark:bg-blue-900/30 ring-2 ring-blue-500 dark:ring-blue-400' 
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 opacity-60 hover:opacity-100'
-                )}
-                title="TikTok"
-              >
-                <img src={TikTokIcon} alt="TikTok" className="w-6 h-6 object-contain" />
-              </button>
-              <button 
-                onClick={() => setPlatformFilter('youtube')}
-                className={clsx(
-                  'p-2 rounded-lg transition-all',
-                  platformFilter === 'youtube' 
-                    ? 'bg-blue-50 dark:bg-blue-900/30 ring-2 ring-blue-500 dark:ring-blue-400' 
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 opacity-60 hover:opacity-100'
-                )}
-                title="YouTube Shorts"
-              >
-                <img src={YouTubeShortsIcon} alt="YouTube Shorts" className="w-6 h-6 object-contain" />
-              </button>
+              
+              {showColumnToggle && (
+                <div className="absolute right-0 top-full mt-2 w-64 bg-zinc-800 border border-white/10 rounded-lg shadow-xl p-4 z-50">
+                  <h3 className="text-sm font-semibold text-white mb-3">Toggle Columns</h3>
+                  <div className="space-y-2">
+                    {Object.entries({
+                      video: 'Video',
+                      preview: 'Preview',
+                      trend: 'Trend',
+                      views: 'Views',
+                      likes: 'Likes',
+                      comments: 'Comments',
+                      shares: 'Shares',
+                      engagement: 'Engagement Rate',
+                      uploadDate: 'Upload Date',
+                      dateAdded: 'Date Added',
+                      lastRefresh: 'Last Refresh'
+                    }).map(([key, label]) => (
+                      <label key={key} className="flex items-center space-x-2 cursor-pointer hover:bg-white/5 p-2 rounded">
+                        <input
+                          type="checkbox"
+                          checked={visibleColumns[key as keyof typeof visibleColumns]}
+                          onChange={(e) => setVisibleColumns(prev => ({ ...prev, [key]: e.target.checked }))}
+                          className="w-4 h-4 rounded border-gray-600 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-300">{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -384,39 +390,61 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
         <table className="w-full min-w-max">
           <thead>
             <tr className="border-b border-white/5">
-              <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider sticky left-0 bg-zinc-900/60 backdrop-blur z-10 min-w-[280px]">
-                Video
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[100px]">
-                Preview
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[80px]">
-                Trend
-              </th>
-              <SortableHeader column="views" className="min-w-[120px]">
-                Views
-              </SortableHeader>
-              <SortableHeader column="likes" className="min-w-[120px]">
-                Likes
-              </SortableHeader>
-              <SortableHeader column="comments" className="min-w-[120px]">
-                Comments
-              </SortableHeader>
-              <SortableHeader column="shares" className="min-w-[120px]">
-                Shares
-              </SortableHeader>
-              <SortableHeader column="engagement" className="min-w-[140px]">
-                Engagement
-              </SortableHeader>
-              <SortableHeader column="uploadDate" className="min-w-[120px]">
-                Upload Date
-              </SortableHeader>
-              <SortableHeader column="dateSubmitted" className="min-w-[120px]">
-                Date Added
-              </SortableHeader>
-              <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
-                Last Refresh
-              </th>
+              {visibleColumns.video && (
+                <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider sticky left-0 bg-zinc-900/60 backdrop-blur z-10 min-w-[280px]">
+                  Video
+                </th>
+              )}
+              {visibleColumns.preview && (
+                <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[100px]">
+                  Preview
+                </th>
+              )}
+              {visibleColumns.trend && (
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[80px]">
+                  Trend
+                </th>
+              )}
+              {visibleColumns.views && (
+                <SortableHeader column="views" className="min-w-[120px]">
+                  Views
+                </SortableHeader>
+              )}
+              {visibleColumns.likes && (
+                <SortableHeader column="likes" className="min-w-[120px]">
+                  Likes
+                </SortableHeader>
+              )}
+              {visibleColumns.comments && (
+                <SortableHeader column="comments" className="min-w-[120px]">
+                  Comments
+                </SortableHeader>
+              )}
+              {visibleColumns.shares && (
+                <SortableHeader column="shares" className="min-w-[120px]">
+                  Shares
+                </SortableHeader>
+              )}
+              {visibleColumns.engagement && (
+                <SortableHeader column="engagement" className="min-w-[140px]">
+                  Engagement
+                </SortableHeader>
+              )}
+              {visibleColumns.uploadDate && (
+                <SortableHeader column="uploadDate" className="min-w-[120px]">
+                  Upload Date
+                </SortableHeader>
+              )}
+              {visibleColumns.dateAdded && (
+                <SortableHeader column="dateSubmitted" className="min-w-[120px]">
+                  Date Added
+                </SortableHeader>
+              )}
+              {visibleColumns.lastRefresh && (
+                <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
+                  Last Refresh
+                </th>
+              )}
               <th className="w-12 px-6 py-4 text-left"></th>
             </tr>
           </thead>
@@ -435,151 +463,173 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   }}
                   className="hover:bg-white/5 transition-colors cursor-pointer group"
                 >
-                  <td className="px-6 py-5 sticky left-0 bg-zinc-900/60 backdrop-blur z-10 group-hover:bg-white/5">
-                    <div className="flex items-center space-x-4">
-                      <div className="relative">
-                        {submission.uploaderProfilePicture ? (
-                          <img
-                            src={submission.uploaderProfilePicture}
-                            alt={submission.uploaderHandle || submission.uploader || 'Account'}
-                            className="w-10 h-10 rounded-full object-cover flex-shrink-0 ring-2 ring-white shadow-sm"
-                            onError={(e) => {
-                              // Fallback to default avatar if profile picture fails to load
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = 'none';
-                              const parent = target.parentElement;
-                              if (parent) {
-                                const fallback = document.createElement('div');
-                                fallback.className = 'w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 ring-2 ring-white shadow-sm';
-                                fallback.innerHTML = `<span class="text-sm font-bold text-gray-900 dark:text-white">${(submission.uploaderHandle || submission.uploader || 'U').charAt(0).toUpperCase()}</span>`;
-                                parent.appendChild(fallback);
-                              }
-                            }}
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 ring-2 ring-white shadow-sm">
-                            <span className="text-sm font-bold text-gray-900 dark:text-white">
-                              {(submission.uploaderHandle || submission.uploader || 'U').charAt(0).toUpperCase()}
-                            </span>
+                  {visibleColumns.video && (
+                    <td className="px-6 py-5 sticky left-0 bg-zinc-900/60 backdrop-blur z-10 group-hover:bg-white/5">
+                      <div className="flex items-center space-x-4">
+                        <div className="relative">
+                          {submission.uploaderProfilePicture ? (
+                            <img
+                              src={submission.uploaderProfilePicture}
+                              alt={submission.uploaderHandle || submission.uploader || 'Account'}
+                              className="w-10 h-10 rounded-full object-cover flex-shrink-0 ring-2 ring-white shadow-sm"
+                              onError={(e) => {
+                                // Fallback to default avatar if profile picture fails to load
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent) {
+                                  const fallback = document.createElement('div');
+                                  fallback.className = 'w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 ring-2 ring-white shadow-sm';
+                                  fallback.innerHTML = `<span class="text-sm font-bold text-gray-900 dark:text-white">${(submission.uploaderHandle || submission.uploader || 'U').charAt(0).toUpperCase()}</span>`;
+                                  parent.appendChild(fallback);
+                                }
+                              }}
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 ring-2 ring-white shadow-sm">
+                              <span className="text-sm font-bold text-gray-900 dark:text-white">
+                                {(submission.uploaderHandle || submission.uploader || 'U').charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                          )}
+                          <div className="absolute -bottom-1 -right-1">
+                            <PlatformIcon platform={submission.platform} size="sm" />
                           </div>
-                        )}
-                        <div className="absolute -bottom-1 -right-1">
-                          <PlatformIcon platform={submission.platform} size="sm" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={submission.title}>
+                            {submission.title && submission.title.length > 15 
+                              ? `${submission.title.substring(0, 15)}...` 
+                              : submission.title}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            @{submission.uploaderHandle || submission.uploader || 'unknown'}
+                          </p>
                         </div>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={submission.title}>
-                          {submission.title && submission.title.length > 15 
-                            ? `${submission.title.substring(0, 15)}...` 
-                            : submission.title}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          @{submission.uploaderHandle || submission.uploader || 'unknown'}
-                        </p>
+                    </td>
+                  )}
+                  {visibleColumns.preview && (
+                    <td className="px-6 py-5">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedVideoForPlayer(submission);
+                          setVideoPlayerOpen(true);
+                        }}
+                        className="block hover:opacity-80 transition-opacity group cursor-pointer"
+                      >
+                        <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-sm hover:shadow-md transition-all relative">
+                          <ThumbnailImage submission={submission} />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                            <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                            </svg>
+                          </div>
+                        </div>
+                      </button>
+                    </td>
+                  )}
+                  {visibleColumns.trend && (
+                    <td className="px-6 py-5">
+                      <MiniTrendChart 
+                        data={TrendCalculationService.getViewsTrend(submission)}
+                        className="flex items-center justify-center"
+                      />
+                    </td>
+                  )}
+                  {visibleColumns.views && (
+                    <td className="px-6 py-5">
+                      <div className="flex items-center space-x-2">
+                        <Eye className="w-4 h-4 text-gray-900 dark:text-white" />
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {formatNumber(submission.views)}
+                        </span>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-5">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedVideoForPlayer(submission);
-                        setVideoPlayerOpen(true);
-                      }}
-                      className="block hover:opacity-80 transition-opacity group cursor-pointer"
-                    >
-                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-sm hover:shadow-md transition-all relative">
-                        <ThumbnailImage submission={submission} />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                          <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                          </svg>
+                    </td>
+                  )}
+                  {visibleColumns.likes && (
+                    <td className="px-6 py-5">
+                      <div className="flex items-center space-x-2">
+                        <Heart className="w-4 h-4 text-gray-900 dark:text-white" />
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {formatNumber(submission.likes)}
+                        </span>
+                      </div>
+                    </td>
+                  )}
+                  {visibleColumns.comments && (
+                    <td className="px-6 py-5">
+                      <div className="flex items-center space-x-2">
+                        <MessageCircle className="w-4 h-4 text-gray-900 dark:text-white" />
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {formatNumber(submission.comments)}
+                        </span>
+                      </div>
+                    </td>
+                  )}
+                  {visibleColumns.shares && (
+                    <td className="px-6 py-5">
+                      <div className="flex items-center space-x-2">
+                        <Share2 className="w-4 h-4 text-gray-900 dark:text-white" />
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {formatNumber(submission.shares || 0)}
+                        </span>
+                      </div>
+                    </td>
+                  )}
+                  {visibleColumns.engagement && (
+                    <td className="px-6 py-5">
+                      <div className="flex items-center space-x-2">
+                        <div className={clsx(
+                          "px-2 py-1 rounded-full text-xs font-medium",
+                          {
+                            "bg-green-100 text-green-800": engagementRate >= 3,
+                            "bg-yellow-100 text-yellow-800": engagementRate >= 1 && engagementRate < 3,
+                            "bg-red-100 text-red-800": engagementRate < 1,
+                          }
+                        )}>
+                          {engagementRate.toFixed(2)}%
                         </div>
                       </div>
-                    </button>
-                  </td>
-                  <td className="px-6 py-5">
-                    <MiniTrendChart 
-                      data={TrendCalculationService.getViewsTrend(submission)}
-                      className="flex items-center justify-center"
-                    />
-                  </td>
-                  <td className="px-6 py-5">
-                    <div className="flex items-center space-x-2">
-                      <Eye className="w-4 h-4 text-gray-900 dark:text-white" />
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {formatNumber(submission.views)}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-5">
-                    <div className="flex items-center space-x-2">
-                      <Heart className="w-4 h-4 text-gray-900 dark:text-white" />
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {formatNumber(submission.likes)}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-5">
-                    <div className="flex items-center space-x-2">
-                      <MessageCircle className="w-4 h-4 text-gray-900 dark:text-white" />
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {formatNumber(submission.comments)}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-5">
-                    <div className="flex items-center space-x-2">
-                      <Share2 className="w-4 h-4 text-gray-900 dark:text-white" />
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {formatNumber(submission.shares || 0)}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-5">
-                    <div className="flex items-center space-x-2">
-                      <div className={clsx(
-                        "px-2 py-1 rounded-full text-xs font-medium",
-                        {
-                          "bg-green-100 text-green-800": engagementRate >= 3,
-                          "bg-yellow-100 text-yellow-800": engagementRate >= 1 && engagementRate < 3,
-                          "bg-red-100 text-red-800": engagementRate < 1,
+                    </td>
+                  )}
+                  {visibleColumns.uploadDate && (
+                    <td className="px-6 py-5">
+                      <div className="text-sm text-zinc-300">
+                        {submission.uploadDate ? 
+                          new Date(submission.uploadDate).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          }) : 
+                          new Date(submission.dateSubmitted).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })
                         }
-                      )}>
-                        {engagementRate.toFixed(2)}%
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-5">
-                    <div className="text-sm text-zinc-300">
-                      {submission.uploadDate ? 
-                        new Date(submission.uploadDate).toLocaleDateString('en-US', {
+                    </td>
+                  )}
+                  {visibleColumns.dateAdded && (
+                    <td className="px-6 py-5">
+                      <div className="text-sm text-zinc-300">
+                        {new Date(submission.dateSubmitted).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric'
-                        }) : 
-                        new Date(submission.dateSubmitted).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        })
-                      }
-                    </div>
-                  </td>
-                  <td className="px-6 py-5">
-                    <div className="text-sm text-zinc-300">
-                      {new Date(submission.dateSubmitted).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
-                    </div>
-                  </td>
-                  <td className="px-6 py-5">
-                    <div className="text-sm text-zinc-400">
-                      {submission.lastRefreshed ? getRelativeTime(new Date(submission.lastRefreshed)) : 'Never'}
-                    </div>
-                  </td>
+                        })}
+                      </div>
+                    </td>
+                  )}
+                  {visibleColumns.lastRefresh && (
+                    <td className="px-6 py-5">
+                      <div className="text-sm text-zinc-400">
+                        {submission.lastRefreshed ? getRelativeTime(new Date(submission.lastRefreshed)) : 'Never'}
+                      </div>
+                    </td>
+                  )}
                   <td className="px-6 py-5">
                     <div className="relative opacity-0 group-hover:opacity-100 transition-opacity">
                       <DropdownMenu submission={submission} onDelete={onDelete} onStatusUpdate={onStatusUpdate} />
