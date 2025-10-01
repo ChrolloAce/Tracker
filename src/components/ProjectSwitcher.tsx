@@ -85,7 +85,7 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
           <img
             src={currentProject.imageUrl}
             alt={currentProject.name}
-            className="w-6 h-6 rounded object-cover"
+            className="w-6 h-6 rounded object-contain bg-gray-100 dark:bg-gray-800"
           />
         ) : (
           <span className="text-base">{currentProject.icon || '📁'}</span>
@@ -129,7 +129,7 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
                     <img
                       src={project.imageUrl}
                       alt={project.name}
-                      className="w-8 h-8 rounded-lg object-cover"
+                      className="w-8 h-8 rounded-lg object-contain bg-gray-100 dark:bg-gray-800"
                     />
                   ) : (
                     <div
@@ -167,11 +167,6 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
                       {project.description}
                     </p>
                   )}
-                  <div className="flex items-center space-x-3 mt-2 text-xs text-gray-400">
-                    <span>{project.stats.trackedAccountCount} accounts</span>
-                    <span>•</span>
-                    <span>{project.stats.linkCount} links</span>
-                  </div>
                 </div>
               </button>
             ))}
