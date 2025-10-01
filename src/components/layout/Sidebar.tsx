@@ -3,7 +3,6 @@ import {
   Video, 
   Users, 
   Settings, 
-  Plus,
   ChevronLeft,
   ChevronRight,
   FileSignature,
@@ -19,7 +18,6 @@ import blackLogo from '../blacklogo.png';
 import whiteLogo from '../whitelogo.png';
 
 interface SidebarProps {
-  onAddVideo?: () => void;
   onCollapsedChange?: (collapsed: boolean) => void;
   initialCollapsed?: boolean;
   activeTab?: string;
@@ -37,7 +35,6 @@ interface NavItem {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
-  onAddVideo,
   onCollapsedChange,
   initialCollapsed = false,
   activeTab = 'dashboard',
@@ -210,21 +207,8 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Project Switcher */}
       {!isCollapsed && (
-        <div className="p-4 border-b border-gray-100 dark:border-gray-800">
+        <div className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
           <ProjectSwitcher onCreateProject={() => window.location.href = '/create-project'} />
-        </div>
-      )}
-
-      {/* Quick Actions */}
-      {!isCollapsed && (
-        <div className="px-4 pb-4 border-b border-gray-100 dark:border-gray-800">
-          <button
-            onClick={onAddVideo}
-            className="w-full flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 backdrop-blur-md bg-white/10 dark:bg-white/5 border border-gray-200/20 dark:border-white/10 text-gray-900 dark:text-white hover:bg-white/20 dark:hover:bg-white/10 hover:border-gray-300/30 dark:hover:border-white/20 shadow-lg"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Video
-          </button>
         </div>
       )}
 
