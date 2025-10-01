@@ -15,7 +15,7 @@ import {
 import { clsx } from 'clsx';
 import { useAuth } from '../../contexts/AuthContext';
 import ProjectSwitcher from '../ProjectSwitcher';
-import CreateProjectModal from '../CreateProjectModal';
+import ProjectCreationFlow from '../ProjectCreationFlow';
 import blackLogo from '../blacklogo.png';
 import whiteLogo from '../whitelogo.png';
 
@@ -295,11 +295,15 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       )}
 
-      {/* Create Project Modal */}
-      <CreateProjectModal
-        isOpen={showCreateProject}
-        onClose={() => setShowCreateProject(false)}
-      />
+      {/* Create Project Flow */}
+      {showCreateProject && (
+        <ProjectCreationFlow
+          onClose={() => setShowCreateProject(false)}
+          onSuccess={() => {
+            setShowCreateProject(false);
+          }}
+        />
+      )}
     </div>
   );
 };
