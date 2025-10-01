@@ -27,11 +27,17 @@ class StripeService {
         }),
       });
 
-      const { url } = await response.json();
+      const data = await response.json();
+
+      // Check if the response was successful
+      if (!response.ok) {
+        console.error('API Error Response:', data);
+        throw new Error(data.error || `Server error: ${response.status}`);
+      }
 
       // Redirect to Stripe Checkout
-      if (url) {
-        window.location.href = url;
+      if (data.url) {
+        window.location.href = data.url;
       } else {
         throw new Error('No checkout URL returned');
       }
@@ -54,10 +60,20 @@ class StripeService {
         body: JSON.stringify({ orgId }),
       });
 
-      const { url } = await response.json();
+      const data = await response.json();
+
+      // Check if the response was successful
+      if (!response.ok) {
+        console.error('API Error Response:', data);
+        throw new Error(data.error || `Server error: ${response.status}`);
+      }
       
       // Redirect to Stripe Customer Portal
-      window.location.href = url;
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No portal URL returned');
+      }
     } catch (error) {
       console.error('Error creating portal session:', error);
       throw error;

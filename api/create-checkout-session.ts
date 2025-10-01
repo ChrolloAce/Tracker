@@ -38,11 +38,14 @@ export default async function handler(
     console.log('Price ID:', priceId);
 
     if (!priceId) {
+      const viteKey = `VITE_STRIPE_${planTier.toUpperCase()}_${billingCycle.toUpperCase()}`;
+      const regularKey = `STRIPE_${planTier.toUpperCase()}_${billingCycle.toUpperCase()}`;
       console.error('No price ID found for:', planTier, billingCycle);
-      console.error('Available env vars:', Object.keys(process.env).filter(k => k.includes('STRIPE')));
+      console.error('Looked for env vars:', viteKey, 'or', regularKey);
+      console.error('Available STRIPE env vars:', Object.keys(process.env).filter(k => k.includes('STRIPE')));
       return res.status(400).json({ 
-        error: 'Invalid plan or billing cycle',
-        debug: { planTier, billingCycle, envVarNeeded: `STRIPE_${planTier.toUpperCase()}_${billingCycle.toUpperCase()}` }
+        error: `Missing Stripe Price ID for ${planTier} ${billingCycle}`,
+        details: `Please set ${viteKey} or ${regularKey} in environment variables`
       });
     }
 
@@ -98,6 +101,12 @@ export default async function handler(
       }
     }
 
+    // Get base URL - fallback to Vercel URL if NEXT_PUBLIC_BASE_URL not set
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL 
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:5173');
+    
+    console.log('Using base URL:', baseUrl);
+
     // Create Checkout Session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -109,18 +118,23 @@ export default async function handler(
           quantity: 1,
         },
       ],
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:5173'}/settings?success=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:5173'}/settings?canceled=true`,
+      success_url: `${baseUrl}/settings?success=true`,
+      cancel_url: `${baseUrl}/settings?canceled=true`,
       metadata: {
         orgId,
         planTier,
       },
     });
 
+    console.log('Checkout session created successfully:', session.id);
     res.json({ url: session.url });
   } catch (error: any) {
     console.error('Error creating checkout session:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      error: error.message || 'Failed to create checkout session',
+      details: error.toString()
+    });
   }
 }
 
