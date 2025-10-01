@@ -56,7 +56,7 @@ const mapDateFilterToTimePeriod = (filter: DateFilterType): 'all' | 'weekly' | '
   }
 };
 
-const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilter, platformFilter, onViewModeChange }, ref) => {
+const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilter, platformFilter: _platformFilter, onViewModeChange }, ref) => {
   // Convert dateFilter to timePeriod for existing calculation functions
   const timePeriod = mapDateFilterToTimePeriod(dateFilter);
   const { user, currentOrgId, currentProjectId } = useAuth();
