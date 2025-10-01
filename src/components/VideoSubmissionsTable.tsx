@@ -9,6 +9,7 @@ import InstagramApiService from '../services/InstagramApiService';
 import InstagramIcon from '/Instagram_icon.png';
 import TikTokIcon from '/TiktokLogo.png';
 import YouTubeShortsIcon from '../Youtube_shorts_icon.svg.png';
+import VideoPlayerModal from './VideoPlayerModal';
 
 interface VideoSubmissionsTableProps {
   submissions: VideoSubmission[];
@@ -168,6 +169,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   const [platformFilter, setPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'youtube'>('all');
   const [sortBy, setSortBy] = useState<'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'uploadDate' | 'dateSubmitted'>('views');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
+  const [selectedVideoForPlayer, setSelectedVideoForPlayer] = useState<VideoSubmission | null>(null);
 
   // Handle sorting
   const handleSort = (column: 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'uploadDate' | 'dateSubmitted') => {
@@ -477,17 +480,23 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                     </div>
                   </td>
                   <td className="px-6 py-5">
-                    <a
-                      href={submission.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block hover:opacity-80 transition-opacity"
-                      onClick={(e) => e.stopPropagation()}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedVideoForPlayer(submission);
+                        setVideoPlayerOpen(true);
+                      }}
+                      className="block hover:opacity-80 transition-opacity group cursor-pointer"
                     >
-                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-sm hover:shadow-md transition-all relative">
                         <ThumbnailImage submission={submission} />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                          <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                          </svg>
+                        </div>
                       </div>
-                    </a>
+                    </button>
                   </td>
                   <td className="px-6 py-5">
                     <MiniTrendChart 
@@ -594,6 +603,20 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
             No videos match the selected time period. Try adjusting your date filter or add some new video submissions.
           </p>
         </div>
+      )}
+
+      {/* Video Player Modal */}
+      {selectedVideoForPlayer && (
+        <VideoPlayerModal
+          isOpen={videoPlayerOpen}
+          onClose={() => {
+            setVideoPlayerOpen(false);
+            setSelectedVideoForPlayer(null);
+          }}
+          videoUrl={selectedVideoForPlayer.url}
+          title={selectedVideoForPlayer.title}
+          platform={selectedVideoForPlayer.platform}
+        />
       )}
     </div>
   );

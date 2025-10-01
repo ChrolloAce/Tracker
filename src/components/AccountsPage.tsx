@@ -26,6 +26,10 @@ import { PlatformIcon } from './ui/PlatformIcon';
 import { clsx } from 'clsx';
 import { useAuth } from '../contexts/AuthContext';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
+import { MiniTrendChart } from './ui/MiniTrendChart';
+import { TrendCalculationService } from '../services/TrendCalculationService';
+import { VideoSubmission } from '../types';
+import VideoPlayerModal from './VideoPlayerModal';
 
 const AccountsPage: React.FC = () => {
   const { user, currentOrgId, currentProjectId } = useAuth();
@@ -33,6 +37,8 @@ const AccountsPage: React.FC = () => {
   const [selectedAccount, setSelectedAccount] = useState<TrackedAccount | null>(null);
   const [accountVideos, setAccountVideos] = useState<AccountVideo[]>([]);
   const [viewMode, setViewMode] = useState<'table' | 'details'>('table');
+  const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
+  const [selectedVideoForPlayer, setSelectedVideoForPlayer] = useState<{url: string; title: string; platform: 'instagram' | 'tiktok' | 'youtube' } | null>(null);
   const [timePeriod, setTimePeriod] = useState<'all' | 'weekly' | 'monthly' | 'daily'>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState<string | null>(null);
@@ -1140,6 +1146,12 @@ const AccountsPage: React.FC = () => {
                         <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider sticky left-0 bg-zinc-900/60 backdrop-blur z-10 min-w-[280px]">
                           Video
                         </th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[100px]">
+                          Preview
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[80px]">
+                          Trend
+                        </th>
                         <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
                           Views
                         </th>
@@ -1169,11 +1181,29 @@ const AccountsPage: React.FC = () => {
                         const shares = video.sharesCount || video.shares || 0;
                         const engagementRate = views > 0 ? ((likes + comments) / views) * 100 : 0;
                         
+                        // Convert AccountVideo to VideoSubmission for TrendCalculationService
+                        const videoSubmission: VideoSubmission = {
+                          id: video.id || video.videoId || '',
+                          url: video.url || '',
+                          platform: selectedAccount.platform,
+                          thumbnail: video.thumbnail || '',
+                          title: video.caption || 'No caption',
+                          uploader: selectedAccount.displayName || selectedAccount.username,
+                          uploaderHandle: selectedAccount.username,
+                          status: 'approved' as const,
+                          views: views,
+                          likes: likes,
+                          comments: comments,
+                          shares: shares,
+                          dateSubmitted: new Date(),
+                          uploadDate: video.uploadDate || new Date(),
+                          snapshots: []
+                        };
+
                         return (
                           <tr 
                             key={video.id}
                             className="hover:bg-white/5 transition-colors cursor-pointer group"
-                            onClick={() => window.open(video.url, '_blank')}
                           >
                             <td className="px-6 py-5 sticky left-0 bg-zinc-900/60 backdrop-blur z-10 group-hover:bg-white/5">
                               <div className="flex items-center space-x-4">
@@ -1204,6 +1234,45 @@ const AccountsPage: React.FC = () => {
                                   </p>
                                 </div>
                               </div>
+                            </td>
+                            <td className="px-6 py-5">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedVideoForPlayer({
+                                    url: video.url || '',
+                                    title: video.caption || 'No caption',
+                                    platform: selectedAccount.platform
+                                  });
+                                  setVideoPlayerOpen(true);
+                                }}
+                                className="block hover:opacity-80 transition-opacity group/video cursor-pointer"
+                              >
+                                <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-sm hover:shadow-md transition-all relative">
+                                  {video.thumbnail ? (
+                                    <img 
+                                      src={video.thumbnail} 
+                                      alt="Thumbnail"
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-gray-700">
+                                      <Play className="w-6 h-6 text-gray-400" />
+                                    </div>
+                                  )}
+                                  <div className="absolute inset-0 bg-black/0 group-hover/video:bg-black/40 transition-colors flex items-center justify-center">
+                                    <svg className="w-8 h-8 text-white opacity-0 group-hover/video:opacity-100 transition-opacity" fill="currentColor" viewBox="0 0 20 20">
+                                      <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                                    </svg>
+                                  </div>
+                                </div>
+                              </button>
+                            </td>
+                            <td className="px-6 py-5">
+                              <MiniTrendChart 
+                                data={TrendCalculationService.getViewsTrend(videoSubmission)}
+                                className="flex items-center justify-center"
+                              />
                             </td>
                             <td className="px-6 py-5">
                               <div className="flex items-center space-x-2">
@@ -1432,6 +1501,20 @@ const AccountsPage: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Video Player Modal */}
+      {selectedVideoForPlayer && (
+        <VideoPlayerModal
+          isOpen={videoPlayerOpen}
+          onClose={() => {
+            setVideoPlayerOpen(false);
+            setSelectedVideoForPlayer(null);
+          }}
+          videoUrl={selectedVideoForPlayer.url}
+          title={selectedVideoForPlayer.title}
+          platform={selectedVideoForPlayer.platform}
+        />
       )}
     </div>
   );
