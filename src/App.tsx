@@ -50,27 +50,6 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
-  // Show login page if not authenticated
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user && !isLinkRedirect) {
-    return <LoginPage />;
-  }
-
-  // If this is a link redirect, show redirect component instead
-  if (isLinkRedirect) {
-    return <LinkRedirect />;
-  }
-
   // Load data from Firestore on app initialization
   useEffect(() => {
     if (!user || !currentOrgId || isDataLoaded) {
@@ -133,6 +112,14 @@ function App() {
 
     loadData();
   }, [user, currentOrgId, isDataLoaded]);
+
+  // Apply CSS variables to the root
+  useEffect(() => {
+    const root = document.documentElement;
+    Object.entries(cssVariables).forEach(([key, value]) => {
+      root.style.setProperty(key, value);
+    });
+  }, []);
 
   // Filter submissions based on date range (memoized to prevent infinite loops)
   const filteredSubmissions = useMemo(() => {
@@ -377,13 +364,26 @@ function App() {
     console.log('✅ TikTok search results added and saved locally!');
   }, []);
 
-  // Apply CSS variables to the root
-  useEffect(() => {
-    const root = document.documentElement;
-    Object.entries(cssVariables).forEach(([key, value]) => {
-      root.style.setProperty(key, value);
-    });
-  }, []);
+  // Show login page if not authenticated
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user && !isLinkRedirect) {
+    return <LoginPage />;
+  }
+
+  // If this is a link redirect, show redirect component instead
+  if (isLinkRedirect) {
+    return <LinkRedirect />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
