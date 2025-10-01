@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '../../contexts/AuthContext';
+import ProjectSwitcher from '../ProjectSwitcher';
+import CreateProjectModal from '../CreateProjectModal';
 import blackLogo from '../blacklogo.png';
 import whiteLogo from '../whitelogo.png';
 
@@ -44,6 +46,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { user, logout } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
+  const [showCreateProject, setShowCreateProject] = useState(false);
 
   const handleLogout = async () => {
     if (window.confirm('Are you sure you want to sign out?')) {
@@ -207,9 +210,16 @@ const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
 
-      {/* Quick Actions */}
+      {/* Project Switcher */}
       {!isCollapsed && (
         <div className="p-4 border-b border-gray-100 dark:border-gray-800">
+          <ProjectSwitcher onCreateProject={() => setShowCreateProject(true)} />
+        </div>
+      )}
+
+      {/* Quick Actions */}
+      {!isCollapsed && (
+        <div className="px-4 pb-4 border-b border-gray-100 dark:border-gray-800">
           <button
             onClick={onAddVideo}
             className="w-full flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 backdrop-blur-md bg-white/10 dark:bg-white/5 border border-gray-200/20 dark:border-white/10 text-gray-900 dark:text-white hover:bg-white/20 dark:hover:bg-white/10 hover:border-gray-300/30 dark:hover:border-white/20 shadow-lg"
@@ -284,6 +294,12 @@ const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
       )}
+
+      {/* Create Project Modal */}
+      <CreateProjectModal
+        isOpen={showCreateProject}
+        onClose={() => setShowCreateProject(false)}
+      />
     </div>
   );
 };
