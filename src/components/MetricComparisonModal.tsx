@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { X, Info } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { LinkClick } from '../services/LinkClicksService';
@@ -41,6 +41,30 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
 }) => {
   const [primaryMetric, setPrimaryMetric] = useState<MetricType>(initialMetric);
   const [secondaryMetric, setSecondaryMetric] = useState<MetricType>('likes');
+
+  // Helper function to get metric value from video
+  const getMetricValue = useCallback((video: VideoSubmission, metric: MetricType): number => {
+    switch (metric) {
+      case 'views':
+        return video.views || 0;
+      case 'likes':
+        return video.likes || 0;
+      case 'comments':
+        return video.comments || 0;
+      case 'shares':
+        return video.shares || 0;
+      case 'videos':
+        return 1;
+      case 'accounts':
+        return 0; // Would need account tracking
+      case 'engagement':
+        return (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
+      case 'linkClicks':
+        return 0; // Handled separately
+      default:
+        return 0;
+    }
+  }, []);
 
   const chartData = useMemo(() => {
     // Group submissions by date
@@ -90,30 +114,7 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
         primary: values.primary,
         secondary: values.secondary,
       }));
-  }, [submissions, linkClicks, primaryMetric, secondaryMetric]);
-
-  const getMetricValue = (video: VideoSubmission, metric: MetricType): number => {
-    switch (metric) {
-      case 'views':
-        return video.views || 0;
-      case 'likes':
-        return video.likes || 0;
-      case 'comments':
-        return video.comments || 0;
-      case 'shares':
-        return video.shares || 0;
-      case 'videos':
-        return 1;
-      case 'accounts':
-        return 0; // Would need account tracking
-      case 'engagement':
-        return (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
-      case 'linkClicks':
-        return 0; // Handled separately
-      default:
-        return 0;
-    }
-  };
+  }, [submissions, linkClicks, primaryMetric, secondaryMetric, getMetricValue]);
 
   const formatNumber = (num: number): string => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)} M`;
