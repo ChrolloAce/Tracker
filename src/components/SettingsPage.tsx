@@ -1,36 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { Settings, Moon, Sun, Bell, Lock, User, Globe, Palette } from 'lucide-react';
-import ThemeService, { ThemeMode } from '../services/ThemeService';
+import React, { useState } from 'react';
+import { Settings, Moon, Bell, Lock, User, Globe, Palette } from 'lucide-react';
 import { clsx } from 'clsx';
 
 /**
  * SettingsPage Component
  * 
  * Purpose: Application settings and preferences
- * Features: Theme toggle, notifications, account settings
+ * Features: App always in dark mode, notifications, account settings
  */
 const SettingsPage: React.FC = () => {
-  const [currentTheme, setCurrentTheme] = useState<ThemeMode>(ThemeService.getCurrentTheme());
-
-  useEffect(() => {
-    // Initialize theme on mount
-    ThemeService.applyTheme(currentTheme);
-  }, []);
-
-  const handleThemeToggle = () => {
-    const newTheme = ThemeService.toggleTheme();
-    setCurrentTheme(newTheme);
-  };
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-          <Settings className="w-8 h-8 text-blue-600" />
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+          <Settings className="w-8 h-8 text-blue-600 dark:text-blue-400" />
           Settings
         </h1>
-        <p className="mt-2 text-gray-600">
+        <p className="mt-2 text-gray-600 dark:text-gray-400">
           Manage your preferences and account settings
         </p>
       </div>
@@ -41,61 +29,37 @@ const SettingsPage: React.FC = () => {
         {/* Appearance Section */}
         <div className="bg-white dark:bg-[#161616] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#1A1A1A]">
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <Palette className="w-5 h-5 text-blue-600" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <Palette className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               Appearance
             </h2>
           </div>
           <div className="p-6">
-            {/* Theme Toggle */}
+            {/* Dark Mode Info (Always On) */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={clsx(
-                  'w-12 h-12 rounded-lg flex items-center justify-center',
-                  currentTheme === 'dark' ? 'bg-gray-800' : 'bg-blue-50'
-                )}>
-                  {currentTheme === 'dark' ? (
-                    <Moon className="w-6 h-6 text-blue-400" />
-                  ) : (
-                    <Sun className="w-6 h-6 text-yellow-500" />
-                  )}
+                <div className="w-12 h-12 rounded-lg bg-gray-800 flex items-center justify-center">
+                  <Moon className="w-6 h-6 text-blue-400" />
                 </div>
                 <div>
-                  <h3 className="text-base font-medium text-gray-900">
-                    Theme Mode
+                  <h3 className="text-base font-medium text-gray-900 dark:text-white">
+                    Dark Mode
                   </h3>
-                  <p className="text-sm text-gray-600">
-                    Current: <span className="font-medium capitalize">{currentTheme} Mode</span>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Always enabled for optimal viewing
                   </p>
                 </div>
               </div>
               
-              {/* Toggle Switch */}
-              <button
-                onClick={handleThemeToggle}
-                className={clsx(
-                  'relative inline-flex h-8 w-16 items-center rounded-full transition-colors duration-300',
-                  currentTheme === 'dark' ? 'bg-blue-600' : 'bg-gray-300'
-                )}
-              >
-                <span
-                  className={clsx(
-                    'inline-block h-6 w-6 transform rounded-full bg-white transition-transform duration-300 shadow-lg',
-                    currentTheme === 'dark' ? 'translate-x-9' : 'translate-x-1'
-                  )}
-                >
-                  {currentTheme === 'dark' ? (
-                    <Moon className="w-4 h-4 text-blue-600 m-1" />
-                  ) : (
-                    <Sun className="w-4 h-4 text-yellow-500 m-1" />
-                  )}
-                </span>
-              </button>
+              {/* Status Badge */}
+              <div className="px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-400">Active</span>
+              </div>
             </div>
 
-            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-800">
-                💡 <strong>Tip:</strong> Dark mode reduces eye strain in low-light environments and can help save battery on OLED screens.
+            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+              <p className="text-sm text-blue-800 dark:text-blue-300">
+                💡 <strong>Tip:</strong> ViewTrack is designed exclusively for dark mode to reduce eye strain and provide the best viewing experience for video analytics.
               </p>
             </div>
           </div>
