@@ -2,7 +2,7 @@ import { Timestamp } from 'firebase/firestore';
 import LocalStorageService from './LocalStorageService';
 import FirestoreDataService from './FirestoreDataService';
 import FirebaseStorageService from './FirebaseStorageService';
-import { VideoDoc, TrackedAccount, TrackedLink } from '../types/firestore';
+import { VideoDoc } from '../types/firestore';
 
 /**
  * DataMigrationService - Migrates data from localStorage to Firestore
