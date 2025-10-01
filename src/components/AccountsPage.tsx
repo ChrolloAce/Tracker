@@ -27,7 +27,7 @@ import { clsx } from 'clsx';
 import { useAuth } from '../contexts/AuthContext';
 
 const AccountsPage: React.FC = () => {
-  const { user, currentOrgId } = useAuth();
+  const { user, currentOrgId, currentProjectId } = useAuth();
   const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<TrackedAccount | null>(null);
   const [accountVideos, setAccountVideos] = useState<AccountVideo[]>([]);
@@ -47,14 +47,14 @@ const AccountsPage: React.FC = () => {
   // Load accounts on mount and restore selected account
   useEffect(() => {
     const loadAccounts = async () => {
-      if (!currentOrgId) {
+      if (!currentOrgId || !currentProjectId) {
         setLoading(false);
         return;
       }
 
       try {
         console.log('📥 Loading accounts from Firestore...');
-        const loadedAccounts = await AccountTrackingServiceFirebase.getTrackedAccounts(currentOrgId);
+        const loadedAccounts = await AccountTrackingServiceFirebase.getTrackedAccounts(currentOrgId, currentProjectId);
         setAccounts(loadedAccounts);
 
         // Restore selected account from localStorage
@@ -79,9 +79,9 @@ const AccountsPage: React.FC = () => {
   // Load videos when account is selected
   useEffect(() => {
     const loadVideos = async () => {
-      if (selectedAccount && currentOrgId) {
+      if (selectedAccount && currentOrgId && currentProjectId) {
         console.log('📱 Loading videos for account:', selectedAccount.username);
-        const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, selectedAccount.id);
+        const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, currentProjectId, selectedAccount.id);
         console.log('📹 Loaded videos from Firestore:', videos.length);
         setAccountVideos(videos);
         setViewMode('details');
@@ -101,21 +101,21 @@ const AccountsPage: React.FC = () => {
   }, [selectedAccount, currentOrgId]);
 
   const handleSyncAccount = useCallback(async (accountId: string) => {
-    if (!currentOrgId || !user) return;
+    if (!currentOrgId || !currentProjectId || !user) return;
 
     setIsSyncing(accountId);
     setSyncError(null);
     try {
       console.log(`🔄 Starting sync for account ${accountId}...`);
-      const videoCount = await AccountTrackingServiceFirebase.syncAccountVideos(currentOrgId, user.uid, accountId);
+      const videoCount = await AccountTrackingServiceFirebase.syncAccountVideos(currentOrgId, currentProjectId, user.uid, accountId);
       
       // Update accounts list
-      const updatedAccounts = await AccountTrackingServiceFirebase.getTrackedAccounts(currentOrgId);
+      const updatedAccounts = await AccountTrackingServiceFirebase.getTrackedAccounts(currentOrgId, currentProjectId);
       setAccounts(updatedAccounts);
       
       // Update videos if this account is selected
       if (selectedAccount?.id === accountId) {
-        const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, accountId);
+        const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, currentProjectId, accountId);
         console.log('🔄 Updating displayed videos after sync:', videos.length);
         setAccountVideos(videos);
       }
@@ -136,11 +136,12 @@ const AccountsPage: React.FC = () => {
   }, [selectedAccount, currentOrgId, user]);
 
   const handleAddAccount = useCallback(async () => {
-    if (!newAccountUsername.trim() || !currentOrgId || !user) return;
+    if (!newAccountUsername.trim() || !currentOrgId || !currentProjectId || !user) return;
 
     try {
       const accountId = await AccountTrackingServiceFirebase.addAccount(
         currentOrgId,
+        currentProjectId,
         user.uid,
         newAccountUsername.trim(),
         newAccountPlatform,
@@ -148,7 +149,7 @@ const AccountsPage: React.FC = () => {
       );
       
       // Reload accounts
-      const updatedAccounts = await AccountTrackingServiceFirebase.getTrackedAccounts(currentOrgId);
+      const updatedAccounts = await AccountTrackingServiceFirebase.getTrackedAccounts(currentOrgId, currentProjectId);
       setAccounts(updatedAccounts);
       
       setNewAccountUsername('');
@@ -167,10 +168,10 @@ const AccountsPage: React.FC = () => {
   }, [newAccountUsername, newAccountPlatform, newAccountType, currentOrgId, user, handleSyncAccount]);
 
   const handleRemoveAccount = useCallback(async (accountId: string) => {
-    if (!currentOrgId || !window.confirm('Are you sure you want to remove this account?')) return;
+    if (!currentOrgId || !currentProjectId || !window.confirm('Are you sure you want to remove this account?')) return;
 
     try {
-      await AccountTrackingServiceFirebase.removeAccount(currentOrgId, accountId);
+      await AccountTrackingServiceFirebase.removeAccount(currentOrgId, currentProjectId, accountId);
       setAccounts(prev => prev.filter(a => a.id !== accountId));
       
       if (selectedAccount?.id === accountId) {
@@ -184,14 +185,14 @@ const AccountsPage: React.FC = () => {
   }, [selectedAccount, currentOrgId]);
 
   const handleRefreshProfile = useCallback(async (accountId: string) => {
-    if (!currentOrgId || !user) return;
+    if (!currentOrgId || !currentProjectId || !user) return;
 
     setIsRefreshingProfile(accountId);
     try {
-      await AccountTrackingServiceFirebase.refreshAccountProfile(currentOrgId, user.uid, accountId);
+      await AccountTrackingServiceFirebase.refreshAccountProfile(currentOrgId, currentProjectId, user.uid, accountId);
       
       // Update accounts list
-      const updatedAccounts = await AccountTrackingServiceFirebase.getTrackedAccounts(currentOrgId);
+      const updatedAccounts = await AccountTrackingServiceFirebase.getTrackedAccounts(currentOrgId, currentProjectId);
       setAccounts(updatedAccounts);
       
       // Update selected account if it's the one being refreshed
@@ -201,7 +202,7 @@ const AccountsPage: React.FC = () => {
           setSelectedAccount(updatedAccount);
         }
         // Also refresh videos from Firestore
-        const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, accountId);
+        const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, currentProjectId, accountId);
         console.log('🔄 Refreshed videos after profile update:', videos.length);
         setAccountVideos(videos);
       }

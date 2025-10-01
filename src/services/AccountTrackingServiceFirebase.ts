@@ -15,11 +15,11 @@ import FirebaseStorageService from './FirebaseStorageService';
 export class AccountTrackingServiceFirebase {
   
   /**
-   * Get all tracked accounts for an organization
+   * Get all tracked accounts for a project
    */
-  static async getTrackedAccounts(orgId: string, platform?: 'instagram' | 'tiktok' | 'youtube'): Promise<TrackedAccount[]> {
+  static async getTrackedAccounts(orgId: string, projectId: string, platform?: 'instagram' | 'tiktok' | 'youtube'): Promise<TrackedAccount[]> {
     try {
-      const firestoreAccounts = await FirestoreDataService.getTrackedAccounts(orgId, platform);
+      const firestoreAccounts = await FirestoreDataService.getTrackedAccounts(orgId, projectId, platform);
       
       // Convert Firestore format to TrackedAccount format
       return firestoreAccounts.map(acc => ({
@@ -50,17 +50,18 @@ export class AccountTrackingServiceFirebase {
   }
 
   /**
-   * Add a new account to track
+   * Add a new account to track in a project
    */
   static async addAccount(
     orgId: string,
+    projectId: string,
     userId: string,
     username: string,
     platform: 'instagram' | 'tiktok' | 'youtube',
     accountType: 'my' | 'competitor' = 'my'
   ): Promise<string> {
     try {
-      console.log(`➕ Adding ${accountType} account @${username} on ${platform}`);
+      console.log(`➕ Adding ${accountType} account @${username} on ${platform} to project ${projectId}`);
       
       // Fetch account profile data
       const profileData = platform !== 'youtube' 
@@ -93,7 +94,7 @@ export class AccountTrackingServiceFirebase {
         accountData.profilePicture = profileData.profilePicture;
       }
       
-      const accountId = await FirestoreDataService.addTrackedAccount(orgId, userId, accountData);
+      const accountId = await FirestoreDataService.addTrackedAccount(orgId, projectId, userId, accountData);
 
       console.log(`✅ Added ${accountType} account @${username}`);
       return accountId;
@@ -308,10 +309,10 @@ export class AccountTrackingServiceFirebase {
   /**
    * Sync account videos (fetch all videos from the platform and save to Firestore)
    */
-  static async syncAccountVideos(orgId: string, userId: string, accountId: string): Promise<number> {
+  static async syncAccountVideos(orgId: string, projectId: string, userId: string, accountId: string): Promise<number> {
     try {
       // Get account from Firestore
-      const accounts = await this.getTrackedAccounts(orgId);
+      const accounts = await this.getTrackedAccounts(orgId, projectId);
       const account = accounts.find(a => a.id === accountId);
       
       if (!account) {
@@ -328,6 +329,7 @@ export class AccountTrackingServiceFirebase {
       // Sync to Firestore
       await FirestoreDataService.syncAccountVideos(
         orgId,
+        projectId,
         accountId,
         userId,
         videos.map(v => ({
@@ -353,7 +355,7 @@ export class AccountTrackingServiceFirebase {
       const totalComments = videos.reduce((sum, v) => sum + (v.comments || 0), 0);
       const totalShares = videos.reduce((sum, v) => sum + (v.shares || 0), 0);
 
-      await FirestoreDataService.updateTrackedAccount(orgId, accountId, {
+      await FirestoreDataService.updateTrackedAccount(orgId, projectId, accountId, {
         totalVideos: videos.length,
         totalViews,
         totalLikes,
@@ -524,9 +526,9 @@ export class AccountTrackingServiceFirebase {
   /**
    * Get videos for a specific account
    */
-  static async getAccountVideos(orgId: string, accountId: string): Promise<AccountVideo[]> {
+  static async getAccountVideos(orgId: string, projectId: string, accountId: string): Promise<AccountVideo[]> {
     try {
-      const videos = await FirestoreDataService.getAccountVideos(orgId, accountId);
+      const videos = await FirestoreDataService.getAccountVideos(orgId, projectId, accountId);
       
       // Convert to AccountVideo format
       return videos.map(v => ({
@@ -555,12 +557,12 @@ export class AccountTrackingServiceFirebase {
   /**
    * Remove account and all its data
    */
-  static async removeAccount(orgId: string, accountId: string): Promise<void> {
+  static async removeAccount(orgId: string, projectId: string, accountId: string): Promise<void> {
     try {
       console.log(`🗑️ Removing account ${accountId}...`);
       
       // Delete all videos
-      await FirestoreDataService.deleteAccountVideos(orgId, accountId);
+      await FirestoreDataService.deleteAccountVideos(orgId, projectId, accountId);
       
       // Delete all thumbnails
       await FirebaseStorageService.deleteAccountThumbnails(orgId, accountId);
@@ -569,7 +571,7 @@ export class AccountTrackingServiceFirebase {
       await FirebaseStorageService.deleteProfilePicture(orgId, accountId);
       
       // Delete account
-      await FirestoreDataService.deleteTrackedAccount(orgId, accountId);
+      await FirestoreDataService.deleteTrackedAccount(orgId, projectId, accountId);
       
       console.log(`✅ Removed account ${accountId}`);
     } catch (error) {
@@ -581,9 +583,9 @@ export class AccountTrackingServiceFirebase {
   /**
    * Refresh account profile data
    */
-  static async refreshAccountProfile(orgId: string, _userId: string, accountId: string): Promise<void> {
+  static async refreshAccountProfile(orgId: string, projectId: string, _userId: string, accountId: string): Promise<void> {
     try {
-      const accounts = await this.getTrackedAccounts(orgId);
+      const accounts = await this.getTrackedAccounts(orgId, projectId);
       const account = accounts.find(a => a.id === accountId);
       
       if (!account) {
@@ -594,7 +596,7 @@ export class AccountTrackingServiceFirebase {
 
       const profileData = await this.fetchAccountProfile(orgId, account.username, account.platform as any);
       
-      await FirestoreDataService.updateTrackedAccount(orgId, accountId, {
+      await FirestoreDataService.updateTrackedAccount(orgId, projectId, accountId, {
         displayName: profileData.displayName,
         profilePicture: profileData.profilePicture,
         followerCount: profileData.followerCount,

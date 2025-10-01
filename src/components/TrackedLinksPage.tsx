@@ -8,7 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { clsx } from 'clsx';
 
 const TrackedLinksPage: React.FC = () => {
-  const { currentOrgId, user } = useAuth();
+  const { currentOrgId, currentProjectId, user } = useAuth();
   const [links, setLinks] = useState<TrackedLink[]>([]);
   const [accounts, setAccounts] = useState<Map<string, TrackedAccount>>(new Map());
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -31,9 +31,9 @@ const TrackedLinksPage: React.FC = () => {
   }, [currentOrgId]);
 
   const loadAccounts = async () => {
-    if (!currentOrgId) return;
+    if (!currentOrgId || !currentProjectId) return;
     try {
-      const accountsData = await FirestoreDataService.getTrackedAccounts(currentOrgId);
+      const accountsData = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
       const accountsMap = new Map(accountsData.map(acc => [acc.id, acc]));
       setAccounts(accountsMap);
     } catch (error) {
@@ -42,11 +42,11 @@ const TrackedLinksPage: React.FC = () => {
   };
 
   const loadLinks = async (showRefreshIndicator = false) => {
-    if (!currentOrgId) return;
+    if (!currentOrgId || !currentProjectId) return;
     try {
       if (showRefreshIndicator) setIsRefreshing(true);
       console.log('🔗 Loading tracked links...');
-      const allLinks = await FirestoreDataService.getLinks(currentOrgId);
+      const allLinks = await FirestoreDataService.getLinks(currentOrgId, currentProjectId);
       console.log(`✅ Loaded ${allLinks.length} links with click data:`, 
         allLinks.map(l => ({ title: l.title, clicks: l.totalClicks || 0 }))
       );
@@ -59,13 +59,13 @@ const TrackedLinksPage: React.FC = () => {
   };
 
   const handleCreateLink = async (originalUrl: string, title: string, description?: string, tags?: string[], linkedAccountId?: string) => {
-    if (!currentOrgId || !user) return;
+    if (!currentOrgId || !currentProjectId || !user) return;
     
     try {
       // Generate unique short code
       const shortCode = generateShortCode();
       
-      await FirestoreDataService.createLink(currentOrgId, user.uid, {
+      await FirestoreDataService.createLink(currentOrgId, currentProjectId, user.uid, {
         shortCode,
         originalUrl,
         title,
@@ -86,10 +86,10 @@ const TrackedLinksPage: React.FC = () => {
   };
 
   const handleDeleteLink = async (linkId: string) => {
-    if (!currentOrgId || !window.confirm('Are you sure you want to delete this link?')) return;
+    if (!currentOrgId || !currentProjectId || !window.confirm('Are you sure you want to delete this link?')) return;
     
     try {
-      await FirestoreDataService.deleteLink(currentOrgId, linkId);
+      await FirestoreDataService.deleteLink(currentOrgId, currentProjectId, linkId);
       await loadLinks();
     } catch (error) {
       console.error('Failed to delete link:', error);

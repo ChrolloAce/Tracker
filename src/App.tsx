@@ -32,8 +32,8 @@ interface DateRange {
 }
 
 function App() {
-  // Get authentication state and current organization
-  const { user, loading, currentOrgId } = useAuth();
+  // Get authentication state, current organization, and current project
+  const { user, loading, currentOrgId, currentProjectId } = useAuth();
 
   // Check if this is a link redirect URL
   const isLinkRedirect = window.location.pathname.startsWith('/l/');
@@ -54,7 +54,7 @@ function App() {
 
   // Load data from Firestore on app initialization
   useEffect(() => {
-    if (!user || !currentOrgId || isDataLoaded) {
+    if (!user || !currentOrgId || !currentProjectId || isDataLoaded) {
       return;
     }
 
@@ -70,11 +70,15 @@ function App() {
         // No migration needed - all new data goes directly to projects!
         console.log('📁 Projects-first architecture enabled');
         
-        // Load videos from Firestore
-        const firestoreVideos = await FirestoreDataService.getVideos(currentOrgId, { limitCount: 1000 });
+        // Load videos from Firestore for current project
+        const firestoreVideos = currentProjectId 
+          ? await FirestoreDataService.getVideos(currentOrgId, currentProjectId, { limitCount: 1000 })
+          : [];
         
         // Load tracked accounts to get uploader info
-        const accounts = await FirestoreDataService.getTrackedAccounts(currentOrgId);
+        const accounts = currentProjectId
+          ? await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId)
+          : [];
         const accountsMap = new Map(accounts.map(acc => [acc.id, acc]));
         
         // Load link clicks
@@ -212,7 +216,7 @@ function App() {
 
       // Save to Firestore
       if (user && currentOrgId) {
-        const videoId = await FirestoreDataService.addVideo(currentOrgId, user.uid, {
+        const videoId = await FirestoreDataService.addVideo(currentOrgId, currentProjectId!, user.uid, {
           platform: newSubmission.platform,
           url: newSubmission.url,
           videoId: newSubmission.id,
@@ -228,7 +232,7 @@ function App() {
         });
 
         // Create initial snapshot
-        await FirestoreDataService.addVideoSnapshot(currentOrgId, videoId, user.uid, {
+        await FirestoreDataService.addVideoSnapshot(currentOrgId, currentProjectId!, videoId, user.uid, {
           views: videoData.view_count || 0,
           likes: videoData.like_count || 0,
           comments: videoData.comment_count || 0
@@ -260,7 +264,7 @@ function App() {
     
     try {
       // Update in Firestore
-      await FirestoreDataService.updateTrackedAccount(currentOrgId, id, {
+      await FirestoreDataService.updateTrackedAccount(currentOrgId, currentProjectId!, id, {
         status: status === 'rejected' ? 'archived' : 'active'
       } as any);
       
@@ -282,7 +286,7 @@ function App() {
     
     try {
       // Delete from Firestore (archive it)
-      await FirestoreDataService.updateTrackedAccount(currentOrgId, id, {
+      await FirestoreDataService.updateTrackedAccount(currentOrgId, currentProjectId!, id, {
         status: 'archived'
       } as any);
       

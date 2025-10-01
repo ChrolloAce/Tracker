@@ -11,7 +11,7 @@ interface CreateLinkModalProps {
 }
 
 const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCreate }) => {
-  const { currentOrgId } = useAuth();
+  const { currentOrgId, currentProjectId } = useAuth();
   const [originalUrl, setOriginalUrl] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -22,12 +22,12 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
 
   // Load accounts when modal opens
   useEffect(() => {
-    if (isOpen && currentOrgId) {
-      FirestoreDataService.getTrackedAccounts(currentOrgId)
+    if (isOpen && currentOrgId && currentProjectId) {
+      FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId)
         .then(setAccounts)
         .catch(err => console.error('Failed to load accounts:', err));
     }
-  }, [isOpen, currentOrgId]);
+  }, [isOpen, currentOrgId, currentProjectId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

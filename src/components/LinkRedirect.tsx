@@ -44,7 +44,7 @@ const LinkRedirect: React.FC = () => {
             else if (userAgent.includes('ios') || userAgent.includes('iphone') || userAgent.includes('ipad')) os = 'iOS';
 
             // Background analytics (won't delay redirect)
-            FirestoreDataService.recordLinkClick(resolved.orgId, resolved.linkId, {
+            FirestoreDataService.recordLinkClick(resolved.orgId, resolved.projectId, resolved.linkId, {
               userAgent: navigator.userAgent,
               deviceType,
               browser,
