@@ -74,7 +74,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [newAccountType, setNewAccountType] = useState<'my' | 'competitor'>('my');
   const [searchQuery, setSearchQuery] = useState('');
   const [syncError, setSyncError] = useState<string | null>(null);
-  const [accountType, setAccountType] = useState<'my' | 'competitor'>('my');
   const [loading, setLoading] = useState(true);
   const [showColumnToggle, setShowColumnToggle] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState({
