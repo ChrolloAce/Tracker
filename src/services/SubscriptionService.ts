@@ -51,6 +51,67 @@ class SubscriptionService {
   }
 
   /**
+   * Check if subscription is expired or needs renewal
+   */
+  static async isSubscriptionExpired(orgId: string): Promise<boolean> {
+    const subscription = await this.getSubscription(orgId);
+    
+    if (!subscription) return true; // No subscription = expired
+    
+    // If subscription is canceled or past_due, it's expired
+    if (subscription.status === 'canceled' || subscription.status === 'past_due') {
+      return true;
+    }
+    
+    // Check if current period has ended
+    const now = new Date();
+    if (subscription.currentPeriodEnd < now) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  /**
+   * Get subscription status with expiration info
+   */
+  static async getSubscriptionStatus(orgId: string): Promise<{
+    planTier: PlanTier;
+    isActive: boolean;
+    isExpired: boolean;
+    expiresAt: Date | null;
+    daysUntilExpiry: number | null;
+    needsRenewal: boolean;
+  }> {
+    const subscription = await this.getSubscription(orgId);
+    
+    if (!subscription) {
+      return {
+        planTier: 'free',
+        isActive: false,
+        isExpired: true,
+        expiresAt: null,
+        daysUntilExpiry: null,
+        needsRenewal: true,
+      };
+    }
+
+    const now = new Date();
+    const expiresAt = subscription.currentPeriodEnd;
+    const isExpired = expiresAt < now || subscription.status !== 'active';
+    const daysUntilExpiry = Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    
+    return {
+      planTier: subscription.planTier,
+      isActive: subscription.status === 'active',
+      isExpired,
+      expiresAt,
+      daysUntilExpiry: isExpired ? null : daysUntilExpiry,
+      needsRenewal: isExpired || subscription.cancelAtPeriodEnd,
+    };
+  }
+
+  /**
    * Check if organization can perform action based on plan limits
    */
   static async canPerformAction(

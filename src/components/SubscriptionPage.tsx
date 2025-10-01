@@ -10,18 +10,30 @@ const SubscriptionPage: React.FC = () => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [currentPlan, setCurrentPlan] = useState<PlanTier>('basic');
   const [loading, setLoading] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<{
+    planTier: PlanTier;
+    isActive: boolean;
+    isExpired: boolean;
+    expiresAt: Date | null;
+    daysUntilExpiry: number | null;
+    needsRenewal: boolean;
+  } | null>(null);
 
   useEffect(() => {
-    loadCurrentPlan();
+    loadSubscriptionInfo();
   }, [currentOrgId]);
 
-  const loadCurrentPlan = async () => {
+  const loadSubscriptionInfo = async () => {
     if (!currentOrgId) return;
     try {
-      const tier = await SubscriptionService.getPlanTier(currentOrgId);
+      const [tier, status] = await Promise.all([
+        SubscriptionService.getPlanTier(currentOrgId),
+        SubscriptionService.getSubscriptionStatus(currentOrgId),
+      ]);
       setCurrentPlan(tier);
+      setSubscriptionStatus(status);
     } catch (error) {
-      console.error('Failed to load plan:', error);
+      console.error('Failed to load subscription info:', error);
     }
   };
 
@@ -56,13 +68,55 @@ const SubscriptionPage: React.FC = () => {
       {/* Hero Section */}
       <div className="relative pt-12 pb-8 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Subscription Status Banner */}
+          {subscriptionStatus && subscriptionStatus.needsRenewal && subscriptionStatus.planTier !== 'free' && (
+            <div className={`mb-6 rounded-xl border p-4 ${
+              subscriptionStatus.isExpired 
+                ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' 
+                : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+            }`}>
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 mt-0.5">
+                  {subscriptionStatus.isExpired ? (
+                    <span className="text-2xl">⚠️</span>
+                  ) : (
+                    <span className="text-2xl">⏰</span>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h3 className={`font-semibold mb-1 ${
+                    subscriptionStatus.isExpired 
+                      ? 'text-red-900 dark:text-red-200' 
+                      : 'text-yellow-900 dark:text-yellow-200'
+                  }`}>
+                    {subscriptionStatus.isExpired ? 'Subscription Expired' : 'Subscription Expiring Soon'}
+                  </h3>
+                  <p className={`text-sm ${
+                    subscriptionStatus.isExpired 
+                      ? 'text-red-700 dark:text-red-300' 
+                      : 'text-yellow-700 dark:text-yellow-300'
+                  }`}>
+                    {subscriptionStatus.isExpired 
+                      ? `Your ${subscriptionStatus.planTier.toUpperCase()} plan has expired. Please renew to continue using premium features.`
+                      : `Your ${subscriptionStatus.planTier.toUpperCase()} plan expires in ${subscriptionStatus.daysUntilExpiry} day${subscriptionStatus.daysUntilExpiry !== 1 ? 's' : ''}. ${
+                          subscriptionStatus.expiresAt 
+                            ? `(${subscriptionStatus.expiresAt.toLocaleDateString()})` 
+                            : ''
+                        }`
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="text-center">
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-3">
               Simple, transparent pricing
-          </h1>
+            </h1>
             <p className="text-lg text-gray-600 dark:text-gray-400 mb-6 max-w-2xl mx-auto">
               Choose the perfect plan to track your content and grow your reach
-          </p>
+            </p>
 
           {/* Billing Toggle */}
             <div className="inline-flex items-center bg-white dark:bg-[#161616] rounded-full p-1.5 border border-gray-200 dark:border-gray-800 shadow-sm">
