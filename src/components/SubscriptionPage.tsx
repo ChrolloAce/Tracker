@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, X, Zap, Crown, Rocket, ChevronDown } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { SUBSCRIPTION_PLANS, PlanTier } from '../types/subscription';
 import { useAuth } from '../contexts/AuthContext';
 import StripeService from '../services/StripeService';
@@ -10,7 +10,6 @@ const SubscriptionPage: React.FC = () => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [currentPlan, setCurrentPlan] = useState<PlanTier>('basic');
   const [loading, setLoading] = useState(false);
-  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
   useEffect(() => {
     loadCurrentPlan();
@@ -95,7 +94,7 @@ const SubscriptionPage: React.FC = () => {
       </div>
 
       {/* Pricing Cards */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 pt-12">
         <div className="flex flex-col lg:flex-row gap-4 items-center lg:items-stretch justify-center">
           {mainPlans.map((plan) => {
             const price = billingCycle === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice;
@@ -129,21 +128,10 @@ const SubscriptionPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Icon & Title */}
-                <div className="flex items-center gap-3 mb-4">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    plan.id === 'basic' ? 'bg-gray-100 dark:bg-gray-800' :
-                    plan.id === 'pro' ? 'bg-blue-50 dark:bg-blue-900/20' :
-                    'bg-purple-50 dark:bg-purple-900/20'
-                  }`}>
-                    {plan.id === 'basic' && <Zap className="w-5 h-5 text-gray-600 dark:text-gray-400" />}
-                    {plan.id === 'pro' && <Crown className="w-5 h-5 text-blue-600 dark:text-blue-400" />}
-                    {plan.id === 'ultra' && <Rocket className="w-5 h-5 text-purple-600 dark:text-purple-400" />}
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                    {plan.displayName}
-                  </h3>
-                </div>
+                {/* Plan Title */}
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                  {plan.displayName}
+                </h3>
 
                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
                   {plan.description}
@@ -243,7 +231,7 @@ const SubscriptionPage: React.FC = () => {
       </div>
 
       {/* Comparison Table */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
             Compare all features
@@ -332,57 +320,6 @@ const SubscriptionPage: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* FAQ Section */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            Frequently asked questions
-          </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Everything you need to know about the product and billing
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          <FAQItem
-            question="Can I change plans later?"
-            answer="Yes! You can upgrade or downgrade your plan at any time. Changes will be reflected in your next billing cycle."
-            isExpanded={expandedFaq === 0}
-            onToggle={() => setExpandedFaq(expandedFaq === 0 ? null : 0)}
-          />
-          <FAQItem
-            question="What payment methods do you accept?"
-            answer="We accept all major credit cards (Visa, MasterCard, American Express) through our secure payment processor Stripe."
-            isExpanded={expandedFaq === 1}
-            onToggle={() => setExpandedFaq(expandedFaq === 1 ? null : 1)}
-          />
-          <FAQItem
-            question="Is there a free trial?"
-            answer="Yes! All plans come with a 7-day free trial. No credit card required to start."
-            isExpanded={expandedFaq === 2}
-            onToggle={() => setExpandedFaq(expandedFaq === 2 ? null : 2)}
-          />
-          <FAQItem
-            question="Can I cancel anytime?"
-            answer="Absolutely. You can cancel your subscription at any time. Your account will remain active until the end of your current billing period."
-            isExpanded={expandedFaq === 3}
-            onToggle={() => setExpandedFaq(expandedFaq === 3 ? null : 3)}
-          />
-          <FAQItem
-            question="Do you offer refunds?"
-            answer="Yes, we offer a 7-day money-back guarantee. If you're not satisfied with our service, contact us within 7 days for a full refund."
-            isExpanded={expandedFaq === 4}
-            onToggle={() => setExpandedFaq(expandedFaq === 4 ? null : 4)}
-          />
-          <FAQItem
-            question="What happens to my data if I cancel?"
-            answer="Your data is safely stored for 30 days after cancellation. You can reactivate your account anytime within this period to restore everything."
-            isExpanded={expandedFaq === 5}
-            onToggle={() => setExpandedFaq(expandedFaq === 5 ? null : 5)}
-          />
-        </div>
-      </div>
     </div>
   );
 };
@@ -421,40 +358,6 @@ const ComparisonRow: React.FC<ComparisonRowProps> = ({ feature, basic, pro, ultr
         {renderCell(ultra)}
       </td>
     </tr>
-  );
-};
-
-interface FAQItemProps {
-  question: string;
-  answer: string;
-  isExpanded: boolean;
-  onToggle: () => void;
-}
-
-const FAQItem: React.FC<FAQItemProps> = ({ question, answer, isExpanded, onToggle }) => {
-  return (
-    <div className="bg-white dark:bg-[#161616] rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
-      <button
-        onClick={onToggle}
-        className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
-      >
-        <span className="text-sm font-semibold text-gray-900 dark:text-white pr-6">
-          {question}
-        </span>
-        <ChevronDown
-          className={`w-4 h-4 text-gray-500 flex-shrink-0 transition-transform ${
-            isExpanded ? 'transform rotate-180' : ''
-          }`}
-        />
-      </button>
-      {isExpanded && (
-        <div className="px-5 pb-4">
-          <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-            {answer}
-          </p>
-        </div>
-      )}
-    </div>
   );
 };
 
