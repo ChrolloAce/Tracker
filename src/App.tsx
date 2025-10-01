@@ -20,7 +20,6 @@ import VideoApiService from './services/VideoApiService';
 import DateFilterService from './services/DateFilterService';
 import ThemeService from './services/ThemeService';
 import FirestoreDataService from './services/FirestoreDataService';
-import DataMigrationService from './services/DataMigrationService';
 import LinkClicksService, { LinkClick } from './services/LinkClicksService';
 import { cssVariables } from './theme';
 import { useAuth } from './contexts/AuthContext';
@@ -68,17 +67,8 @@ function App() {
         // Initialize theme
         ThemeService.initializeTheme();
         
-        // Run project migration if needed
-        const needsMigration = await DataMigrationService.needsMigration(currentOrgId);
-        if (needsMigration) {
-          console.log('🔄 Migrating data to projects structure...');
-          try {
-            await DataMigrationService.migrateOrgToProjects(currentOrgId, user.uid);
-            console.log('✅ Data migration to projects completed!');
-          } catch (error) {
-            console.error('❌ Migration failed:', error);
-          }
-        }
+        // No migration needed - all new data goes directly to projects!
+        console.log('📁 Projects-first architecture enabled');
         
         // Load videos from Firestore
         const firestoreVideos = await FirestoreDataService.getVideos(currentOrgId, { limitCount: 1000 });
