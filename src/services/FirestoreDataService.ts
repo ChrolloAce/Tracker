@@ -66,18 +66,18 @@ class FirestoreDataService {
   }
 
   /**
-   * Get all tracked accounts for an organization
+   * Get all tracked accounts for a project
    */
-  static async getTrackedAccounts(orgId: string, platform?: string): Promise<TrackedAccount[]> {
+  static async getTrackedAccounts(orgId: string, projectId: string, platform?: string): Promise<TrackedAccount[]> {
     let q = query(
-      collection(db, 'organizations', orgId, 'trackedAccounts'),
+      collection(db, 'organizations', orgId, 'projects', projectId, 'trackedAccounts'),
       where('isActive', '==', true),
       orderBy('dateAdded', 'desc')
     );
     
     if (platform) {
       q = query(
-        collection(db, 'organizations', orgId, 'trackedAccounts'),
+        collection(db, 'organizations', orgId, 'projects', projectId, 'trackedAccounts'),
         where('platform', '==', platform),
         where('isActive', '==', true),
         orderBy('dateAdded', 'desc')
