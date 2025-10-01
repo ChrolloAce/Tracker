@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, FolderOpen, Plus, Check } from 'lucide-react';
+import { ChevronDown, FolderOpen, Plus, Check, Edit3 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ProjectService from '../services/ProjectService';
 import { ProjectWithStats } from '../types/projects';
 import { clsx } from 'clsx';
+import EditProjectModal from './EditProjectModal';
 
 interface ProjectSwitcherProps {
   onCreateProject?: () => void;
@@ -14,6 +15,7 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
   const [projects, setProjects] = useState<ProjectWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<ProjectWithStats | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -139,13 +141,26 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
                       {project.name}
                     </h4>
-                    {project.id === currentProjectId && (
-                      <Check className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                    )}
+                    <div className="flex items-center gap-1">
+                      {project.id === currentProjectId && (
+                        <Check className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingProject(project);
+                          setIsOpen(false);
+                        }}
+                        className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                        title="Edit project"
+                      >
+                        <Edit3 className="w-3.5 h-3.5 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400" />
+                      </button>
+                    </div>
                   </div>
                   {project.description && (
                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
@@ -178,6 +193,16 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
             </div>
           )}
         </div>
+      )}
+
+      {/* Edit Project Modal */}
+      {editingProject && (
+        <EditProjectModal
+          isOpen={!!editingProject}
+          onClose={() => setEditingProject(null)}
+          project={editingProject}
+          onSuccess={loadProjects}
+        />
       )}
     </div>
   );
