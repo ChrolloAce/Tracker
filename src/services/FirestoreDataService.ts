@@ -400,8 +400,17 @@ class FirestoreDataService {
     
     // Create link
     const linkRef = doc(collection(db, 'organizations', orgId, 'links'));
+    
+    // Remove undefined fields (Firestore doesn't accept undefined)
+    const cleanLinkData: any = { ...linkData };
+    Object.keys(cleanLinkData).forEach(key => {
+      if (cleanLinkData[key] === undefined) {
+        delete cleanLinkData[key];
+      }
+    });
+    
     const fullLinkData: TrackedLink = {
-      ...linkData,
+      ...cleanLinkData,
       id: linkRef.id,
       orgId,
       createdAt: Timestamp.now(),
