@@ -18,6 +18,7 @@ import {
   UserAccount,
   Role
 } from '../types/firestore';
+import SubscriptionService from './SubscriptionService';
 
 /**
  * OrganizationService - Manages organizations and memberships
@@ -107,6 +108,15 @@ class OrganizationService {
     batch.update(userRef, { defaultOrgId: orgRef.id });
     
     await batch.commit();
+    
+    // Create default subscription with 7-day trial
+    try {
+      await SubscriptionService.createDefaultSubscription(orgRef.id);
+      console.log(`✅ Created default subscription for org ${orgRef.id}`);
+    } catch (error) {
+      console.error('Failed to create default subscription:', error);
+      // Don't fail org creation if subscription fails
+    }
     
     console.log(`✅ Created organization "${name}" with ID: ${orgRef.id}`);
     return orgRef.id;

@@ -106,6 +106,16 @@ service cloud.firestore {
         allow write: if canManageOrg(orgId);
       }
       
+      // ==================== BILLING & SUBSCRIPTION ====================
+      
+      match /billing/{document=**} {
+        // Members can read subscription info
+        allow read: if canReadOrg(orgId);
+        
+        // Only admins can update subscription (or server via Admin SDK)
+        allow write: if canManageOrg(orgId);
+      }
+      
       // ==================== TRACKED ACCOUNTS ====================
       
       match /trackedAccounts/{accountId} {
