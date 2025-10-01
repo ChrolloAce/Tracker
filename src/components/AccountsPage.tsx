@@ -1198,7 +1198,7 @@ const AccountsPage: React.FC = () => {
                             </td>
                             <td className="px-6 py-5">
                               <div className="flex items-center space-x-2">
-                                <Eye className="w-4 h-4 text-blue-500" />
+                                <Eye className="w-4 h-4 text-white" />
                                 <span className="text-sm font-medium text-white">
                                   {formatNumber(views)}
                                 </span>
@@ -1206,7 +1206,7 @@ const AccountsPage: React.FC = () => {
                             </td>
                             <td className="px-6 py-5">
                               <div className="flex items-center space-x-2">
-                                <Heart className="w-4 h-4 text-red-500" />
+                                <Heart className="w-4 h-4 text-white" />
                                 <span className="text-sm font-medium text-white">
                                   {formatNumber(likes)}
                                 </span>
@@ -1214,7 +1214,7 @@ const AccountsPage: React.FC = () => {
                             </td>
                             <td className="px-6 py-5">
                               <div className="flex items-center space-x-2">
-                                <MessageCircle className="w-4 h-4 text-green-500" />
+                                <MessageCircle className="w-4 h-4 text-white" />
                                 <span className="text-sm font-medium text-white">
                                   {formatNumber(comments)}
                                 </span>
@@ -1222,7 +1222,7 @@ const AccountsPage: React.FC = () => {
                             </td>
                             <td className="px-6 py-5">
                               <div className="flex items-center space-x-2">
-                                <Share2 className="w-4 h-4 text-orange-500" />
+                                <Share2 className="w-4 h-4 text-white" />
                                 <span className="text-sm font-medium text-white">
                                   {formatNumber(shares)}
                                 </span>

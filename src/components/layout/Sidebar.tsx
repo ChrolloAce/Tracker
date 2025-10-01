@@ -3,12 +3,9 @@ import {
   Video, 
   Users, 
   Settings, 
-  Bell, 
   Plus,
   ChevronLeft,
   ChevronRight,
-  FileText,
-  HelpCircle,
   FileSignature,
   Eye,
   Link,
@@ -104,28 +101,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const bottomItems: NavItem[] = [
-    {
-      id: 'reports',
-      label: 'Reports',
-      icon: FileText,
-      isActive: activeTab === 'reports',
-      onClick: () => onTabChange?.('reports'),
-    },
-    {
-      id: 'notifications',
-      label: 'Notifications',
-      icon: Bell,
-      badge: 3,
-      isActive: activeTab === 'notifications',
-      onClick: () => onTabChange?.('notifications'),
-    },
-    {
-      id: 'help',
-      label: 'Help & Support',
-      icon: HelpCircle,
-      isActive: activeTab === 'help',
-      onClick: () => onTabChange?.('help'),
-    },
     {
       id: 'settings',
       label: 'Settings',

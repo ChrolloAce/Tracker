@@ -477,6 +477,30 @@ function App() {
         isOpen={isAnalyticsModalOpen}
         onClose={handleCloseAnalyticsModal}
       />
+
+      {/* Floating Add Video Button */}
+      <button
+        onClick={() => setIsModalOpen(true)}
+        className="fixed bottom-8 right-8 z-50 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-2xl transition-all duration-200 hover:scale-110 group"
+        aria-label="Add Video"
+      >
+        <svg 
+          className="w-6 h-6" 
+          fill="none" 
+          stroke="currentColor" 
+          viewBox="0 0 24 24"
+        >
+          <path 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+            strokeWidth={2} 
+            d="M12 4v16m8-8H4" 
+          />
+        </svg>
+        <span className="absolute -top-12 right-0 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm px-3 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+          Add Video
+        </span>
+      </button>
     </div>
   );
 }

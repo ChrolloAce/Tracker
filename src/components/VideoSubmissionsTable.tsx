@@ -454,7 +454,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   </td>
                   <td className="px-6 py-5">
                     <div className="flex items-center space-x-2">
-                      <Eye className="w-4 h-4 text-blue-500" />
+                      <Eye className="w-4 h-4 text-gray-900 dark:text-white" />
                       <span className="text-sm font-medium text-gray-900 dark:text-white">
                         {formatNumber(submission.views)}
                       </span>
@@ -462,7 +462,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   </td>
                   <td className="px-6 py-5">
                     <div className="flex items-center space-x-2">
-                      <Heart className="w-4 h-4 text-red-500" />
+                      <Heart className="w-4 h-4 text-gray-900 dark:text-white" />
                       <span className="text-sm font-medium text-gray-900 dark:text-white">
                         {formatNumber(submission.likes)}
                       </span>
@@ -470,7 +470,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   </td>
                   <td className="px-6 py-5">
                     <div className="flex items-center space-x-2">
-                      <MessageCircle className="w-4 h-4 text-green-500" />
+                      <MessageCircle className="w-4 h-4 text-gray-900 dark:text-white" />
                       <span className="text-sm font-medium text-gray-900 dark:text-white">
                         {formatNumber(submission.comments)}
                       </span>
@@ -478,7 +478,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   </td>
                   <td className="px-6 py-5">
                     <div className="flex items-center space-x-2">
-                      <Share2 className="w-4 h-4 text-purple-500" />
+                      <Share2 className="w-4 h-4 text-gray-900 dark:text-white" />
                       <span className="text-sm font-medium text-gray-900 dark:text-white">
                         {formatNumber(submission.shares || 0)}
                       </span>
