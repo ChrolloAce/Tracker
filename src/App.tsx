@@ -68,12 +68,13 @@ function App() {
         // Initialize theme
         ThemeService.initializeTheme();
         
-        // Run migration if needed (only runs once)
-        if (!DataMigrationService.isMigrationCompleted()) {
-          console.log('🔄 Running data migration from localStorage to Firestore...');
+        // Run project migration if needed
+        const needsMigration = await DataMigrationService.needsMigration(currentOrgId);
+        if (needsMigration) {
+          console.log('🔄 Migrating data to projects structure...');
           try {
-            await DataMigrationService.migrateAllData(currentOrgId, user.uid);
-            console.log('✅ Data migration completed!');
+            await DataMigrationService.migrateOrgToProjects(currentOrgId, user.uid);
+            console.log('✅ Data migration to projects completed!');
           } catch (error) {
             console.error('❌ Migration failed:', error);
           }
