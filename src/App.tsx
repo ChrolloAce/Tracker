@@ -15,6 +15,7 @@ import SubscriptionPage from './components/SubscriptionPage';
 import TrackedLinksPage from './components/TrackedLinksPage';
 import LinkRedirect from './components/LinkRedirect';
 import LoginPage from './components/LoginPage';
+import { PageLoadingSkeleton } from './components/ui/LoadingSkeleton';
 import { VideoSubmission, InstagramVideoData } from './types';
 import VideoApiService from './services/VideoApiService';
 import DateFilterService from './services/DateFilterService';
@@ -50,14 +51,17 @@ function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [timePeriod, setTimePeriod] = useState<TimePeriodType>('weeks');
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   // Load data from Firestore on app initialization and when project changes
   useEffect(() => {
     if (!user || !currentOrgId || !currentProjectId) {
+      setIsLoadingData(false);
       return;
     }
 
     const loadData = async () => {
+      setIsLoadingData(true);
       try {
         console.log('🎯 ViewTrack Dashboard initialized');
         console.log('🔥 Loading data from Firestore...');
@@ -116,6 +120,8 @@ function App() {
         console.log('🔍 Open browser console to see API logs when adding videos');
       } catch (error) {
         console.error('❌ Failed to load data from Firestore:', error);
+      } finally {
+        setIsLoadingData(false);
       }
     };
 
@@ -415,23 +421,29 @@ function App() {
         <div className="max-w-7xl mx-auto px-6 py-8">
           {/* Dashboard Tab */}
           <div className={activeTab === 'dashboard' ? '' : 'hidden'}>
-            {/* KPI Cards with Working Sparklines */}
-            <KPICards 
-              submissions={filteredSubmissions}
-              linkClicks={filteredLinkClicks}
-              dateFilter={dateFilter}
-              timePeriod={timePeriod}
-            />
-            
-            {/* Video Submissions Table */}
-            <div className="mt-6">
-              <VideoSubmissionsTable
-                submissions={filteredSubmissions}
-                onStatusUpdate={handleStatusUpdate}
-                onDelete={handleDelete}
-                onVideoClick={handleVideoClick}
-              />
-            </div>
+            {isLoadingData ? (
+              <PageLoadingSkeleton type="dashboard" />
+            ) : (
+              <>
+                {/* KPI Cards with Working Sparklines */}
+                <KPICards 
+                  submissions={filteredSubmissions}
+                  linkClicks={filteredLinkClicks}
+                  dateFilter={dateFilter}
+                  timePeriod={timePeriod}
+                />
+                
+                {/* Video Submissions Table */}
+                <div className="mt-6">
+                  <VideoSubmissionsTable
+                    submissions={filteredSubmissions}
+                    onStatusUpdate={handleStatusUpdate}
+                    onDelete={handleDelete}
+                    onVideoClick={handleVideoClick}
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           {/* Accounts Tab */}

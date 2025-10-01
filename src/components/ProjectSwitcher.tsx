@@ -100,7 +100,7 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-72 bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
+        <div className="absolute top-full left-0 right-0 mt-2 w-full bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
           {/* Header */}
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">

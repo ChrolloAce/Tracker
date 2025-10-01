@@ -25,6 +25,7 @@ import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServi
 import { PlatformIcon } from './ui/PlatformIcon';
 import { clsx } from 'clsx';
 import { useAuth } from '../contexts/AuthContext';
+import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 
 const AccountsPage: React.FC = () => {
   const { user, currentOrgId, currentProjectId } = useAuth();
@@ -235,14 +236,7 @@ const AccountsPage: React.FC = () => {
 
   // Show loading state
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-500" />
-          <p className="text-gray-600 dark:text-gray-400">Loading accounts from Firebase...</p>
-        </div>
-      </div>
-    );
+    return <PageLoadingSkeleton type="accounts" />;
   }
 
   // Show auth required state

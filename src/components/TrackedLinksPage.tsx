@@ -6,6 +6,7 @@ import CreateLinkModal from './CreateLinkModal';
 import LinkAnalyticsModal from './LinkAnalyticsModal';
 import { useAuth } from '../contexts/AuthContext';
 import { clsx } from 'clsx';
+import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 
 const TrackedLinksPage: React.FC = () => {
   const { currentOrgId, currentProjectId, user } = useAuth();
@@ -17,6 +18,7 @@ const TrackedLinksPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadLinks();
@@ -42,7 +44,10 @@ const TrackedLinksPage: React.FC = () => {
   };
 
   const loadLinks = async (showRefreshIndicator = false) => {
-    if (!currentOrgId || !currentProjectId) return;
+    if (!currentOrgId || !currentProjectId) {
+      setLoading(false);
+      return;
+    }
     try {
       if (showRefreshIndicator) setIsRefreshing(true);
       console.log('🔗 Loading tracked links...');
@@ -55,6 +60,7 @@ const TrackedLinksPage: React.FC = () => {
       console.error('❌ Failed to load links:', error);
     } finally {
       if (showRefreshIndicator) setIsRefreshing(false);
+      setLoading(false);
     }
   };
 
@@ -133,6 +139,10 @@ const TrackedLinksPage: React.FC = () => {
     }
     return num.toString();
   };
+
+  if (loading) {
+    return <PageLoadingSkeleton type="links" />;
+  }
 
   return (
     <div className="space-y-6">
