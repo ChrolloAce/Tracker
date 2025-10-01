@@ -458,60 +458,75 @@ const AccountsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-4">
           {viewMode === 'details' && selectedAccount && (
             <button
               onClick={handleBackToTable}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
+              <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
             </button>
           )}
-        <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {viewMode === 'details' && selectedAccount 
-                ? `@${selectedAccount.username}` 
-                : 'Accounts'
-              }
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Tracked Accounts
             </h1>
-            <p className="text-gray-600 mt-1">
-              {viewMode === 'details' && selectedAccount
-                ? `${accountVideos.length} videos • ${formatNumber(selectedAccount.totalViews)} total views • ${selectedAccount.platform}`
-                : 'View and analyze performance metrics for your tracked social media accounts'
-              }
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
+              Monitor entire Instagram and TikTok accounts
             </p>
           </div>
         </div>
-        <div className="flex items-center space-x-3">
-          {viewMode === 'details' && selectedAccount && (
-            <>
+        {viewMode === 'details' && selectedAccount && (
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-1">
               <button
-                onClick={() => handleRefreshProfile(selectedAccount.id)}
-                disabled={isRefreshingProfile === selectedAccount.id}
-                className="flex items-center space-x-2 px-4 py-2 bg-white text-gray-900 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 border border-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 dark:border-gray-700"
+                onClick={() => setTimePeriod('daily')}
+                className={clsx(
+                  'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                  timePeriod === 'daily'
+                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                )}
               >
-                <User className={clsx('w-4 h-4', { 'animate-spin': isRefreshingProfile === selectedAccount.id })} />
-                <span>{isRefreshingProfile === selectedAccount.id ? 'Refreshing...' : 'Refresh Profile'}</span>
+                Daily
               </button>
               <button
-                onClick={() => handleSyncAccount(selectedAccount.id)}
-                disabled={isSyncing === selectedAccount.id}
-                className="flex items-center space-x-2 px-4 py-2 bg-white text-gray-900 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 border border-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 dark:border-gray-700"
+                onClick={() => setTimePeriod('weekly')}
+                className={clsx(
+                  'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                  timePeriod === 'weekly'
+                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                )}
               >
-                <RefreshCw className={clsx('w-4 h-4', { 'animate-spin': isSyncing === selectedAccount.id })} />
-                <span>{isSyncing === selectedAccount.id ? 'Syncing...' : 'Sync Videos'}</span>
+                Weekly
               </button>
-            </>
-          )}
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center space-x-2 px-4 py-2 bg-white text-gray-900 rounded-lg hover:bg-gray-100 transition-all duration-200 border border-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 dark:border-gray-700"
-        >
-          <Plus className="w-4 h-4" />
-            <span className="font-medium">Track Account</span>
-          </button>
-        </div>
+              <button
+                onClick={() => setTimePeriod('monthly')}
+                className={clsx(
+                  'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                  timePeriod === 'monthly'
+                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                )}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setTimePeriod('all')}
+                className={clsx(
+                  'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                  timePeriod === 'all'
+                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                )}
+              >
+                All Time
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Error Display */}
@@ -797,7 +812,7 @@ const AccountsPage: React.FC = () => {
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                     {selectedAccount.displayName || `@${selectedAccount.username}`}
                   </h2>
-                  <div className="flex items-center space-x-6 text-sm text-gray-600">
+                  <div className="flex items-center space-x-6 text-sm text-gray-600 dark:text-gray-400">
                     <div className="flex items-center space-x-2">
                       <Calendar className="w-4 h-4" />
                       <span>Joined {formatDate(selectedAccount.dateAdded)}</span>
@@ -807,16 +822,6 @@ const AccountsPage: React.FC = () => {
                         <span className="font-semibold">{formatNumber(selectedAccount.followerCount)}</span> followers
                       </div>
                     )}
-                    <div className={clsx(
-                      'flex items-center space-x-2',
-                      selectedAccount.isActive ? 'text-green-600' : 'text-red-600'
-                    )}>
-                      <div className={clsx(
-                        'w-2 h-2 rounded-full',
-                        selectedAccount.isActive ? 'bg-green-500' : 'bg-red-500'
-                      )}></div>
-                      <span>{selectedAccount.isActive ? 'Active' : 'Paused'}</span>
-                    </div>
                   </div>
                 </div>
               </div>
