@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { X, ExternalLink, TrendingUp, TrendingDown, Calendar, Eye, Heart, MessageCircle } from 'lucide-react';
 import { VideoSubmission } from '../types';
-import { ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, Tooltip } from 'recharts';
 import { PlatformIcon } from './ui/PlatformIcon';
 
 interface VideoAnalyticsModalProps {
@@ -203,12 +203,27 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                         <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-xl text-sm">
+                              <p className="font-semibold">Views: {payload[0].value?.toLocaleString()}</p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                      cursor={{ stroke: '#3B82F6', strokeWidth: 1, strokeDasharray: '3 3' }}
+                    />
                     <Area 
                       type="monotone" 
                       dataKey="views" 
                       stroke="#3B82F6" 
                       strokeWidth={2}
-                      fill="url(#viewsGradient)" 
+                      fill="url(#viewsGradient)"
+                      dot={false}
+                      activeDot={{ r: 4, fill: '#3B82F6', strokeWidth: 2, stroke: '#fff' }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>

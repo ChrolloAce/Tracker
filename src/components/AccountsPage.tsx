@@ -19,7 +19,7 @@ import {
   Share2,
   Activity
   } from 'lucide-react';
-import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import { TrackedAccount, AccountVideo } from '../types/accounts';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -1048,6 +1048,19 @@ const AccountsPage: React.FC = () => {
                             </defs>
                             <XAxis dataKey="date" hide />
                             <YAxis hide />
+                            <Tooltip
+                              content={({ active, payload }) => {
+                                if (active && payload && payload.length) {
+                                  return (
+                                    <div className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-xl text-sm">
+                                      <p className="font-semibold">Comments: {payload[0].value?.toLocaleString()}</p>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                              cursor={{ stroke: '#8B5CF6', strokeWidth: 1, strokeDasharray: '3 3' }}
+                            />
                             <Area
                               type="monotone"
                               dataKey="comments"
@@ -1055,6 +1068,7 @@ const AccountsPage: React.FC = () => {
                               strokeWidth={2}
                               fill="url(#commentsGradient)"
                               dot={false}
+                              activeDot={{ r: 4, fill: '#8B5CF6', strokeWidth: 2, stroke: '#fff' }}
                             />
                           </AreaChart>
                         </ResponsiveContainer>

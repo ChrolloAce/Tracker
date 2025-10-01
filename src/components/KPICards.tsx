@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { LinkClick } from '../services/LinkClicksService';
-import { AreaChart, Area, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
 import { DateFilterType } from './DateRangeFilter';
 import { TimePeriodType } from './TimePeriodSelector';
 import MetricComparisonModal from './MetricComparisonModal';
@@ -312,6 +312,19 @@ const KPISparkline: React.FC<{
             <stop offset="100%" stopColor={gradient[1]} stopOpacity={0} />
           </linearGradient>
         </defs>
+        <Tooltip
+          content={({ active, payload }) => {
+            if (active && payload && payload.length) {
+              return (
+                <div className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-xl text-sm">
+                  <p className="font-semibold">{payload[0].value?.toLocaleString()}</p>
+                </div>
+              );
+            }
+            return null;
+          }}
+          cursor={{ stroke: stroke, strokeWidth: 1, strokeDasharray: '3 3' }}
+        />
         <Area
           type="monotone"
           dataKey="value"
@@ -319,6 +332,8 @@ const KPISparkline: React.FC<{
           strokeWidth={2}
           fill={`url(#gradient-${id})`}
           isAnimationActive={false}
+          dot={false}
+          activeDot={{ r: 4, fill: stroke, strokeWidth: 2, stroke: '#fff' }}
         />
       </AreaChart>
     </ResponsiveContainer>
