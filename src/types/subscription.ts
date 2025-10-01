@@ -2,7 +2,7 @@
  * Subscription and billing types
  */
 
-export type PlanTier = 'basic' | 'pro' | 'ultra' | 'enterprise';
+export type PlanTier = 'free' | 'basic' | 'pro' | 'ultra' | 'enterprise';
 
 export interface SubscriptionPlan {
   id: PlanTier;
@@ -101,6 +101,32 @@ export interface PlanLimits {
  * Plan configurations
  */
 export const SUBSCRIPTION_PLANS: Record<PlanTier, SubscriptionPlan> = {
+  free: {
+    id: 'free',
+    name: 'Free',
+    displayName: 'Free',
+    description: 'Get started for free',
+    monthlyPrice: 0,
+    yearlyPrice: 0,
+    stripePriceIdMonthly: 'free',
+    stripePriceIdYearly: 'free',
+    features: {
+      teamSeats: 1,
+      flexibleSeats: false,
+      maxAccounts: 1,
+      maxVideos: 5,
+      dataRefreshHours: 48,
+      refreshOnDemand: false,
+      mcpCallsPerMonth: 10,
+      appStoreIntegration: false,
+      manageCreators: false,
+      customBranding: false,
+      prioritySupport: false,
+      apiAccess: false,
+      maxLinks: 1,
+      customDomain: false,
+    },
+  },
   basic: {
     id: 'basic',
     name: 'Basic',

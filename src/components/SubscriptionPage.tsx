@@ -43,8 +43,9 @@ const SubscriptionPage: React.FC = () => {
     }
   };
 
-  // Only show Basic, Pro, Ultra for main cards
+  // Show Free, Basic, Pro, Ultra for main cards
   const mainPlans = [
+    SUBSCRIPTION_PLANS.free,
     SUBSCRIPTION_PLANS.basic,
     SUBSCRIPTION_PLANS.pro,
     SUBSCRIPTION_PLANS.ultra,
@@ -94,8 +95,8 @@ const SubscriptionPage: React.FC = () => {
         </div>
 
         {/* Pricing Cards */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 pt-12">
-        <div className="flex flex-col lg:flex-row gap-4 items-center lg:items-stretch justify-center">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 pt-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
           {mainPlans.map((plan) => {
             const price = billingCycle === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice;
             const isCurrentPlan = currentPlan === plan.id;
@@ -104,9 +105,9 @@ const SubscriptionPage: React.FC = () => {
             return (
               <div
                 key={plan.id}
-                className={`relative flex flex-col w-full max-w-xs bg-white dark:bg-[#161616] rounded-xl p-6 border transition-all ${
+                className={`relative flex flex-col w-full bg-white dark:bg-[#161616] rounded-xl p-6 border transition-all ${
                   isRecommended
-                    ? 'border-blue-500 shadow-xl lg:scale-105'
+                    ? 'border-blue-500 shadow-xl'
                     : 'border-gray-200 dark:border-gray-800'
                 }`}
               >
@@ -139,32 +140,44 @@ const SubscriptionPage: React.FC = () => {
 
                 {/* Price */}
                 <div className="mb-5">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-gray-900 dark:text-white">
-                      ${price}
-                    </span>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">/mo</span>
-                  </div>
-                    {billingCycle === 'yearly' && (
-                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                      ${(price * 12).toFixed(0)}/year
-                      </p>
-                    )}
-                  </div>
+                  {plan.id === 'free' ? (
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-4xl font-bold text-gray-900 dark:text-white">
+                        Free
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-4xl font-bold text-gray-900 dark:text-white">
+                          ${price}
+                        </span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">/mo</span>
+                      </div>
+                      {billingCycle === 'yearly' && (
+                        <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                          ${(price * 12).toFixed(0)}/year
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
 
                 {/* CTA Button */}
                 <button
                   onClick={() => handleSelectPlan(plan.id)}
-                  disabled={loading || isCurrentPlan}
+                  disabled={loading || isCurrentPlan || plan.id === 'free'}
                   className={`w-full py-2.5 px-4 rounded-lg font-semibold text-sm transition-all mb-5 ${
                     isCurrentPlan
+                      ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-500 cursor-not-allowed'
+                      : plan.id === 'free'
                       ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-500 cursor-not-allowed'
                       : isRecommended
                       ? 'bg-blue-600 text-white hover:bg-blue-700'
                       : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
                   }`}
                 >
-                  {isCurrentPlan ? 'Current Plan' : loading ? 'Loading...' : 'Get Started'}
+                  {plan.id === 'free' ? 'Current Plan' : isCurrentPlan ? 'Current Plan' : loading ? 'Loading...' : 'Get Started'}
                 </button>
 
                 {/* Features */}

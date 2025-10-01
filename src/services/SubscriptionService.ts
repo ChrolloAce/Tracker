@@ -47,7 +47,7 @@ class SubscriptionService {
    */
   static async getPlanTier(orgId: string): Promise<PlanTier> {
     const subscription = await this.getSubscription(orgId);
-    return subscription?.planTier || 'basic'; // Default to basic
+    return subscription?.planTier || 'free'; // Default to free
   }
 
   /**
