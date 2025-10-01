@@ -7,6 +7,7 @@ import LinkAnalyticsModal from './LinkAnalyticsModal';
 import { useAuth } from '../contexts/AuthContext';
 import { clsx } from 'clsx';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
+import Pagination from './ui/Pagination';
 
 const TrackedLinksPage: React.FC = () => {
   const { currentOrgId, currentProjectId, user } = useAuth();
@@ -19,6 +20,18 @@ const TrackedLinksPage: React.FC = () => {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(() => {
+    const saved = localStorage.getItem('trackedLinks_itemsPerPage');
+    return saved ? Number(saved) : 10;
+  });
+
+  // Save items per page preference
+  useEffect(() => {
+    localStorage.setItem('trackedLinks_itemsPerPage', String(itemsPerPage));
+  }, [itemsPerPage]);
 
   useEffect(() => {
     if (currentOrgId && currentProjectId) {
@@ -138,6 +151,27 @@ const TrackedLinksPage: React.FC = () => {
     link.originalUrl.toLowerCase().includes(searchQuery.toLowerCase()) ||
     link.shortCode.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredLinks.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedLinks = filteredLinks.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
 
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
@@ -271,8 +305,8 @@ const TrackedLinksPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-              {filteredLinks.length > 0 ? (
-                filteredLinks.map((link) => {
+              {paginatedLinks.length > 0 ? (
+                paginatedLinks.map((link) => {
                   const linkedAccount = link.linkedAccountId ? accounts.get(link.linkedAccountId) : null;
                   
                   return (
@@ -414,6 +448,18 @@ const TrackedLinksPage: React.FC = () => {
             </tbody>
           </table>
         </div>
+        
+        {/* Pagination */}
+        {filteredLinks.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            itemsPerPage={itemsPerPage}
+            totalItems={filteredLinks.length}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
+        )}
       </div>
 
       {/* Modals */}

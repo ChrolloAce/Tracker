@@ -31,6 +31,8 @@ import { TrendCalculationService } from '../services/TrendCalculationService';
 import { VideoSubmission } from '../types';
 import VideoPlayerModal from './VideoPlayerModal';
 import { DateFilterType } from './DateRangeFilter';
+import Pagination from './ui/Pagination';
+import ColumnPreferencesService from '../services/ColumnPreferencesService';
 
 export interface AccountsPageProps {
   dateFilter: DateFilterType;
@@ -76,18 +78,40 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [syncError, setSyncError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showColumnToggle, setShowColumnToggle] = useState(false);
-  const [visibleColumns, setVisibleColumns] = useState({
-    video: true,
-    platform: true,
-    preview: true,
-    trend: true,
-    views: true,
-    likes: true,
-    comments: true,
-    shares: true,
-    engagement: true,
-    uploadDate: true
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(() => {
+    const saved = localStorage.getItem('accountVideos_itemsPerPage');
+    return saved ? Number(saved) : 10;
   });
+  
+  // Load column preferences from localStorage
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    const saved = ColumnPreferencesService.getPreferences('accountVideos');
+    return saved || {
+      video: true,
+      platform: true,
+      preview: true,
+      trend: true,
+      views: true,
+      likes: true,
+      comments: true,
+      shares: true,
+      engagement: true,
+      uploadDate: true
+    };
+  });
+
+  // Save column preferences when they change
+  useEffect(() => {
+    ColumnPreferencesService.savePreferences('accountVideos', visibleColumns);
+  }, [visibleColumns]);
+
+  // Save items per page preference
+  useEffect(() => {
+    localStorage.setItem('accountVideos_itemsPerPage', String(itemsPerPage));
+  }, [itemsPerPage]);
 
   // Handle back to table navigation
   const handleBackToTable = useCallback(() => {
@@ -144,6 +168,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         setAccountVideos(videos);
         setViewMode('details');
         onViewModeChange('details');
+        
+        // Reset pagination when loading new account
+        setCurrentPage(1);
         
         // Save selected account ID to localStorage for persistence
         localStorage.setItem('selectedAccountId', selectedAccount.id);
@@ -1174,7 +1201,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-semibold text-white">Recent Videos</h2>
                   <div className="flex items-center space-x-4">
-                    <p className="text-sm text-gray-400">{accountVideos.length} videos</p>
+                    <p className="text-sm text-gray-400">{accountVideos.length} total videos</p>
                     
                     {/* Column Visibility Toggle */}
                     <div className="relative">
@@ -1221,6 +1248,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
               </div>
               
               {accountVideos.length > 0 ? (
+                <>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-max">
                     <thead>
@@ -1279,7 +1307,14 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                       </tr>
                     </thead>
                     <tbody className="bg-zinc-900/60 divide-y divide-white/5">
-                      {accountVideos.map((video) => {
+                      {(() => {
+                        // Pagination calculations
+                        const totalPages = Math.ceil(accountVideos.length / itemsPerPage);
+                        const startIndex = (currentPage - 1) * itemsPerPage;
+                        const endIndex = startIndex + itemsPerPage;
+                        const paginatedVideos = accountVideos.slice(startIndex, endIndex);
+                        
+                        return paginatedVideos.map((video) => {
                         const views = video.viewsCount || video.views || 0;
                         const likes = video.likesCount || video.likes || 0;
                         const comments = video.commentsCount || video.comments || 0;
@@ -1474,10 +1509,28 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                             </td>
                           </tr>
                         );
-                      })}
+                      })()}
                     </tbody>
                   </table>
                 </div>
+                
+                {/* Pagination */}
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={Math.ceil(accountVideos.length / itemsPerPage)}
+                  itemsPerPage={itemsPerPage}
+                  totalItems={accountVideos.length}
+                  onPageChange={(page) => {
+                    setCurrentPage(page);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  onItemsPerPageChange={(newItemsPerPage) => {
+                    setItemsPerPage(newItemsPerPage);
+                    setCurrentPage(1);
+                  }}
+                />
+                </>
+              
               ) : (
                 <div className="text-center py-12">
                   <div className="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">

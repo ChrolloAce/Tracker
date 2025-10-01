@@ -7,6 +7,8 @@ import { TrendCalculationService } from '../services/TrendCalculationService';
 import { clsx } from 'clsx';
 import InstagramApiService from '../services/InstagramApiService';
 import VideoPlayerModal from './VideoPlayerModal';
+import Pagination from './ui/Pagination';
+import ColumnPreferencesService from '../services/ColumnPreferencesService';
 
 interface VideoSubmissionsTableProps {
   submissions: VideoSubmission[];
@@ -163,24 +165,47 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
 }) => {
   console.log('🎬 VideoSubmissionsTable rendered with', submissions.length, 'videos');
   console.log('📅 Sample submission uploadDate check:', submissions[0]?.uploadDate);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(() => {
+    const saved = localStorage.getItem('videoSubmissions_itemsPerPage');
+    return saved ? Number(saved) : 10;
+  });
+  
   const [sortBy, setSortBy] = useState<'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'uploadDate' | 'dateSubmitted'>('views');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
   const [selectedVideoForPlayer, setSelectedVideoForPlayer] = useState<VideoSubmission | null>(null);
   const [showColumnToggle, setShowColumnToggle] = useState(false);
-  const [visibleColumns, setVisibleColumns] = useState({
-    video: true,
-    preview: true,
-    trend: true,
-    views: true,
-    likes: true,
-    comments: true,
-    shares: true,
-    engagement: true,
-    uploadDate: true,
-    dateAdded: true,
-    lastRefresh: true
+  
+  // Load column preferences from localStorage
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    const saved = ColumnPreferencesService.getPreferences('videoSubmissions');
+    return saved || {
+      video: true,
+      preview: true,
+      trend: true,
+      views: true,
+      likes: true,
+      comments: true,
+      shares: true,
+      engagement: true,
+      uploadDate: true,
+      dateAdded: true,
+      lastRefresh: true
+    };
   });
+
+  // Save column preferences when they change
+  useEffect(() => {
+    ColumnPreferencesService.savePreferences('videoSubmissions', visibleColumns);
+  }, [visibleColumns]);
+
+  // Save items per page preference
+  useEffect(() => {
+    localStorage.setItem('videoSubmissions_itemsPerPage', String(itemsPerPage));
+  }, [itemsPerPage]);
 
   // Handle sorting
   const handleSort = (column: 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'uploadDate' | 'dateSubmitted') => {
@@ -241,6 +266,28 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   };
 
   const filteredAndSortedSubmissions = getFilteredAndSortedSubmissions();
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredAndSortedSubmissions.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedSubmissions = filteredAndSortedSubmissions.slice(startIndex, endIndex);
+
+  // Reset to page 1 when submissions change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [submissions.length]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to first page when changing items per page
+  };
 
   // Sortable header component
   const SortableHeader: React.FC<{
@@ -431,7 +478,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
             </tr>
           </thead>
           <tbody className="bg-zinc-900/60 divide-y divide-white/5">
-            {filteredAndSortedSubmissions.map((submission) => {
+            {paginatedSubmissions.map((submission) => {
               const engagementRate = calculateEngagementRate(submission);
               
               return (
@@ -623,6 +670,18 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {filteredAndSortedSubmissions.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          itemsPerPage={itemsPerPage}
+          totalItems={filteredAndSortedSubmissions.length}
+          onPageChange={handlePageChange}
+          onItemsPerPageChange={handleItemsPerPageChange}
+        />
+      )}
 
       {/* Empty State */}
       {submissions.length === 0 && (

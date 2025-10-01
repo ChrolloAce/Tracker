@@ -65,6 +65,9 @@ function App() {
   const [accountsPlatformFilter, setAccountsPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'youtube'>('all');
   const accountsPageRef = useRef<AccountsPageRef | null>(null);
 
+  // Dashboard platform filter state
+  const [dashboardPlatformFilter, setDashboardPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'youtube'>('all');
+
   // Load data from Firestore on app initialization and when project changes
   useEffect(() => {
     if (!user || !currentOrgId || !currentProjectId) {
@@ -153,14 +156,21 @@ function App() {
     }
   }, []);
 
-  // Filter submissions based on date range (memoized to prevent infinite loops)
+  // Filter submissions based on date range and platform (memoized to prevent infinite loops)
   const filteredSubmissions = useMemo(() => {
-    return DateFilterService.filterVideosByDateRange(
+    let filtered = DateFilterService.filterVideosByDateRange(
       submissions, 
       dateFilter, 
       customDateRange
     );
-  }, [submissions, dateFilter, customDateRange]);
+    
+    // Apply platform filter
+    if (dashboardPlatformFilter !== 'all') {
+      filtered = filtered.filter(video => video.platform === dashboardPlatformFilter);
+    }
+    
+    return filtered;
+  }, [submissions, dateFilter, customDateRange, dashboardPlatformFilter]);
 
   // Apply date filter to link clicks
   const filteredLinkClicks = useMemo(() => {
@@ -421,6 +431,21 @@ function App() {
           </div>
           {activeTab === 'dashboard' && (
             <div className="flex items-center space-x-4">
+              {/* Platform Filter Dropdown */}
+              <div className="relative">
+                <select
+                  value={dashboardPlatformFilter}
+                  onChange={(e) => setDashboardPlatformFilter(e.target.value as 'all' | 'instagram' | 'tiktok' | 'youtube')}
+                  className="appearance-none pl-4 pr-10 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                >
+                  <option value="all">All Platforms</option>
+                  <option value="instagram">Instagram</option>
+                  <option value="tiktok">TikTok</option>
+                  <option value="youtube">YouTube</option>
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
+              
               <DateRangeFilter
                 selectedFilter={dateFilter}
                 customRange={customDateRange}
