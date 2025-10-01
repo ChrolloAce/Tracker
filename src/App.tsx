@@ -21,6 +21,7 @@ import DateFilterService from './services/DateFilterService';
 import ThemeService from './services/ThemeService';
 import FirestoreDataService from './services/FirestoreDataService';
 import DataMigrationService from './services/DataMigrationService';
+import LinkClicksService, { LinkClick } from './services/LinkClicksService';
 import { cssVariables } from './theme';
 import { useAuth } from './contexts/AuthContext';
 import { Timestamp } from 'firebase/firestore';
@@ -40,6 +41,7 @@ function App() {
 
   // State
   const [submissions, setSubmissions] = useState<VideoSubmission[]>([]);
+  const [linkClicks, setLinkClicks] = useState<LinkClick[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilterType>('all');
@@ -83,6 +85,11 @@ function App() {
         // Load tracked accounts to get uploader info
         const accounts = await FirestoreDataService.getTrackedAccounts(currentOrgId);
         const accountsMap = new Map(accounts.map(acc => [acc.id, acc]));
+        
+        // Load link clicks
+        const clicks = await LinkClicksService.getOrgLinkClicks(currentOrgId);
+        setLinkClicks(clicks);
+        console.log(`📊 Loaded ${clicks.length} link clicks`);
         
         // Convert Firestore videos to VideoSubmission format
         const allSubmissions: VideoSubmission[] = firestoreVideos.map(video => {
@@ -143,6 +150,22 @@ function App() {
       customDateRange
     );
   }, [submissions, dateFilter, customDateRange]);
+
+  // Apply date filter to link clicks
+  const filteredLinkClicks = useMemo(() => {
+    if (dateFilter === 'all') {
+      return linkClicks;
+    }
+    
+    const range = DateFilterService.getDateRange(dateFilter, customDateRange);
+    if (!range) return linkClicks;
+    
+    return LinkClicksService.filterClicksByDateRange(
+      linkClicks,
+      range.startDate,
+      range.endDate
+    );
+  }, [linkClicks, dateFilter, customDateRange]);
 
   // Handle date filter changes
   const handleDateFilterChange = useCallback((filter: DateFilterType, customRange?: DateRange) => {
@@ -402,6 +425,7 @@ function App() {
             {/* KPI Cards with Working Sparklines */}
             <KPICards 
               submissions={filteredSubmissions}
+              linkClicks={filteredLinkClicks}
               dateFilter={dateFilter}
               timePeriod={timePeriod}
             />

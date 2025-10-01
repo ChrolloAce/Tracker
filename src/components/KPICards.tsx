@@ -6,19 +6,21 @@ import {
   Activity, 
   AtSign, 
   Video, 
-  DollarSign,
   Share2,
   TrendingUp,
   TrendingDown,
-  ChevronRight
+  ChevronRight,
+  Link as LinkIcon
 } from 'lucide-react';
 import { VideoSubmission } from '../types';
+import { LinkClick } from '../services/LinkClicksService';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { DateFilterType } from './DateRangeFilter';
 import { TimePeriodType } from './TimePeriodSelector';
 
 interface KPICardsProps {
   submissions: VideoSubmission[];
+  linkClicks?: LinkClick[];
   dateFilter?: DateFilterType;
   timePeriod?: TimePeriodType;
 }
@@ -36,7 +38,7 @@ interface KPICardData {
   ctaText?: string;
 }
 
-const KPICards: React.FC<KPICardsProps> = ({ submissions, dateFilter = 'all', timePeriod = 'weeks' }) => {
+const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateFilter = 'all', timePeriod = 'weeks' }) => {
   const kpiData = useMemo(() => {
     // For filtered date ranges, calculate growth during that period using snapshots
     // For "all time", show total current metrics
@@ -254,17 +256,16 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, dateFilter = 'all', ti
       {
         id: 'link-clicks',
         label: 'Link Clicks',
-        value: '0',
-        icon: DollarSign,
-        accent: 'emerald',
-        isEmpty: true,
-        ctaText: 'Set up +',
-        period: 'Track link performance'
+        value: formatNumber(linkClicks.length),
+        icon: LinkIcon,
+        accent: 'slate',
+        period: linkClicks.length > 0 ? 'Total clicks' : 'No clicks yet',
+        sparklineData: generateSparklineData('views') // Use views as base pattern
       }
     ];
 
     return cards;
-  }, [submissions, dateFilter, timePeriod]);
+  }, [submissions, linkClicks, dateFilter, timePeriod]);
 
   return (
     <div className="grid gap-4 md:gap-5 xl:gap-6 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
