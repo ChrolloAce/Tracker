@@ -144,13 +144,11 @@ service cloud.firestore {
         
         match /trackedAccounts/{accountId} {
           allow read: if canReadOrg(orgId);
-          allow create: if canWriteOrg(orgId);
-          allow update, delete: if canWriteOrg(orgId);
+          allow write: if canWriteOrg(orgId); // Allow all writes for migration
           
           match /videos/{videoId} {
             allow read: if canReadOrg(orgId);
-            allow create: if canWriteOrg(orgId);
-            allow update, delete: if canWriteOrg(orgId);
+            allow write: if canWriteOrg(orgId); // Allow all writes for migration
           }
         }
         
@@ -158,13 +156,12 @@ service cloud.firestore {
         
         match /links/{linkId} {
           allow read: if canReadOrg(orgId);
-          allow create: if canWriteOrg(orgId);
-          allow update, delete: if canWriteOrg(orgId);
+          allow write: if canWriteOrg(orgId); // Allow all writes for migration
           
           match /clicks/{clickId} {
             allow read: if canReadOrg(orgId);
             allow create: if true; // Public can create click events
-            allow update, delete: if false; // Immutable
+            allow write: if canWriteOrg(orgId); // Allow migration
           }
         }
         
@@ -172,8 +169,7 @@ service cloud.firestore {
         
         match /videos/{videoId} {
           allow read: if canReadOrg(orgId);
-          allow create: if canWriteOrg(orgId);
-          allow update, delete: if canWriteOrg(orgId);
+          allow write: if canWriteOrg(orgId); // Allow all writes for migration
         }
       }
       
