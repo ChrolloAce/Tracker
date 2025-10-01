@@ -1,0 +1,175 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronDown, FolderOpen, Plus, Check } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import ProjectService from '../services/ProjectService';
+import { ProjectWithStats } from '../types/projects';
+import { clsx } from 'clsx';
+
+interface ProjectSwitcherProps {
+  onCreateProject?: () => void;
+}
+
+const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) => {
+  const { currentOrgId, currentProjectId, switchProject } = useAuth();
+  const [projects, setProjects] = useState<ProjectWithStats[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    loadProjects();
+  }, [currentOrgId]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const loadProjects = async () => {
+    if (!currentOrgId) return;
+
+    try {
+      setLoading(true);
+      const projectsData = await ProjectService.getProjectsWithStats(currentOrgId, false);
+      setProjects(projectsData);
+    } catch (error) {
+      console.error('Failed to load projects:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleProjectSelect = async (projectId: string) => {
+    try {
+      await switchProject(projectId);
+      setIsOpen(false);
+      // Reload the page to refresh all data
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to switch project:', error);
+      alert('Failed to switch project. Please try again.');
+    }
+  };
+
+  const currentProject = projects.find(p => p.id === currentProjectId);
+
+  if (loading || !currentProject) {
+    return (
+      <div className="flex items-center space-x-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse">
+        <FolderOpen className="w-4 h-4 text-gray-400" />
+        <div className="w-24 h-4 bg-gray-200 dark:bg-gray-700 rounded" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={clsx(
+          'flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors',
+          'hover:bg-gray-100 dark:hover:bg-gray-800',
+          'border border-gray-200 dark:border-gray-700',
+          isOpen && 'bg-gray-100 dark:bg-gray-800'
+        )}
+      >
+        <span
+          className="w-2 h-2 rounded-full"
+          style={{ backgroundColor: currentProject.color }}
+        />
+        <span className="text-sm font-medium text-gray-900 dark:text-white">
+          {currentProject.icon} {currentProject.name}
+        </span>
+        <ChevronDown className={clsx(
+          'w-4 h-4 text-gray-500 transition-transform',
+          isOpen && 'rotate-180'
+        )} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-2 w-72 bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
+          {/* Header */}
+          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+              Switch Project
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              {projects.length} project{projects.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+
+          {/* Project List */}
+          <div className="max-h-80 overflow-y-auto">
+            {projects.map((project) => (
+              <button
+                key={project.id}
+                onClick={() => handleProjectSelect(project.id)}
+                className={clsx(
+                  'w-full px-4 py-3 flex items-start space-x-3 transition-colors text-left',
+                  project.id === currentProjectId
+                    ? 'bg-blue-50 dark:bg-blue-900/20'
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                )}
+              >
+                <div className="flex-shrink-0 mt-0.5">
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-semibold"
+                    style={{ backgroundColor: project.color }}
+                  >
+                    {project.icon}
+                  </div>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      {project.name}
+                    </h4>
+                    {project.id === currentProjectId && (
+                      <Check className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                    )}
+                  </div>
+                  {project.description && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                      {project.description}
+                    </p>
+                  )}
+                  <div className="flex items-center space-x-3 mt-2 text-xs text-gray-400">
+                    <span>{project.stats.trackedAccountCount} accounts</span>
+                    <span>•</span>
+                    <span>{project.stats.linkCount} links</span>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Create New Project Button */}
+          {onCreateProject && (
+            <div className="border-t border-gray-200 dark:border-gray-800 p-2">
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  onCreateProject();
+                }}
+                className="w-full px-3 py-2 flex items-center space-x-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create New Project</span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ProjectSwitcher;
+
