@@ -22,7 +22,7 @@ const ContractsPage: React.FC = () => {
               Manage your brand deals and sponsorship contracts
             </p>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200">
+          <button className="flex items-center gap-2 px-4 py-2.5 bg-white text-gray-900 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors duration-200 border border-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 dark:border-gray-700">
             <Plus className="w-4 h-4" />
             New Contract
           </button>
@@ -48,8 +48,8 @@ const ContractsPage: React.FC = () => {
       {/* Empty State */}
       <div className="bg-white dark:bg-[#161616] rounded-xl border border-gray-200 dark:border-gray-800 p-12">
         <div className="text-center max-w-md mx-auto">
-          <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <FileText className="w-8 h-8 text-blue-600" />
+          <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+            <FileText className="w-8 h-8 text-gray-900 dark:text-white" />
           </div>
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
             No Contracts Yet
@@ -57,7 +57,7 @@ const ContractsPage: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400 mb-6">
             Start by creating your first contract to track brand deals, sponsorships, and collaboration agreements.
           </p>
-          <button className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200">
+          <button className="inline-flex items-center gap-2 px-6 py-3 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-100 transition-colors duration-200 border border-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 dark:border-gray-700">
             <Plus className="w-5 h-5" />
             Create Your First Contract
           </button>

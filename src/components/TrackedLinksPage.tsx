@@ -288,8 +288,8 @@ const TrackedLinksPage: React.FC = () => {
                                   className="w-8 h-8 rounded-full object-cover ring-2 ring-white dark:ring-gray-800"
                                 />
                               ) : (
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center ring-2 ring-white dark:ring-gray-800">
-                                  <span className="text-xs font-bold text-white">
+                                <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center ring-2 ring-white dark:ring-gray-800">
+                                  <span className="text-xs font-bold text-gray-900 dark:text-white">
                                     {linkedAccount.username.charAt(0).toUpperCase()}
                                   </span>
                                 </div>
@@ -400,9 +400,9 @@ const TrackedLinksPage: React.FC = () => {
                         {searchQuery ? 'No links found matching your search' : 'No tracked links yet'}
                       </p>
                       {!searchQuery && (
-                        <button
+                          <button
                           onClick={() => setIsCreateModalOpen(true)}
-                          className="mt-4 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
+                          className="mt-4 px-4 py-2 bg-white text-gray-900 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 dark:border-gray-700"
                         >
                           Create Your First Link
                         </button>
