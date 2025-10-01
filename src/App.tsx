@@ -50,11 +50,10 @@ function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [timePeriod, setTimePeriod] = useState<TimePeriodType>('weeks');
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
-  // Load data from Firestore on app initialization
+  // Load data from Firestore on app initialization and when project changes
   useEffect(() => {
-    if (!user || !currentOrgId || !currentProjectId || isDataLoaded) {
+    if (!user || !currentOrgId || !currentProjectId) {
       return;
     }
 
@@ -111,18 +110,17 @@ function App() {
         });
         
         console.log(`✅ Loaded ${allSubmissions.length} videos from Firestore`);
+        console.log(`📁 Current Project ID: ${currentProjectId}`);
         
         setSubmissions(allSubmissions);
-        setIsDataLoaded(true);
         console.log('🔍 Open browser console to see API logs when adding videos');
       } catch (error) {
         console.error('❌ Failed to load data from Firestore:', error);
-        setIsDataLoaded(true); // Set to true even on error to prevent infinite retries
       }
     };
 
     loadData();
-  }, [user, currentOrgId, isDataLoaded]);
+  }, [user, currentOrgId, currentProjectId]); // Reload when project changes!
 
   // Apply CSS variables to the root and expose fix function
   useEffect(() => {

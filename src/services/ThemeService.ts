@@ -15,7 +15,7 @@ class ThemeService {
   private static readonly DARK_CLASS = 'dark';
 
   /**
-   * Get the current theme from localStorage or system preference
+   * Get the current theme from localStorage or default to dark mode
    */
   static getCurrentTheme(): ThemeMode {
     const savedTheme = localStorage.getItem(this.STORAGE_KEY) as ThemeMode;
@@ -24,12 +24,8 @@ class ThemeService {
       return savedTheme;
     }
 
-    // Check system preference
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark';
-    }
-
-    return 'light';
+    // Default to dark mode (best for video/media apps)
+    return 'dark';
   }
 
   /**
