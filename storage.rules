@@ -68,6 +68,22 @@ service firebase.storage {
         // Only org members can delete profile pictures
         allow delete: if isOrgPath(orgId);
       }
+      
+      // ==================== PROJECT IMAGES ====================
+      
+      // Project images: organizations/{orgId}/projects/{imageName}
+      match /projects/{imageName} {
+        // Public read for project images
+        allow read: if true;
+        
+        // Only org members can upload project images
+        allow write: if isOrgPath(orgId) 
+          && isImage() 
+          && isReasonableSize();
+        
+        // Only org members can delete project images
+        allow delete: if isOrgPath(orgId);
+      }
     }
     
     // ==================== DEFAULT DENY ====================
