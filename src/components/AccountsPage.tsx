@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { 
   Plus, 
   Users, 
@@ -40,7 +40,7 @@ export interface AccountsPageRef {
   handleBackToTable: () => void;
 }
 
-const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ timePeriod, onTimePeriodChange, onViewModeChange }, ref) => {
+const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ timePeriod, onViewModeChange }, ref) => {
   const { user, currentOrgId, currentProjectId } = useAuth();
   const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<TrackedAccount | null>(null);
