@@ -116,7 +116,68 @@ service cloud.firestore {
         allow write: if canManageOrg(orgId);
       }
       
-      // ==================== TRACKED ACCOUNTS ====================
+      // ==================== PROJECTS ====================
+      
+      match /projects/{projectId} {
+        // Members can read their org's projects
+        allow read: if canReadOrg(orgId);
+        
+        // Members can create projects
+        allow create: if canWriteOrg(orgId) 
+          && request.resource.data.orgId == orgId
+          && request.resource.data.createdBy == request.auth.uid;
+        
+        // Admins can update projects
+        allow update: if canManageOrg(orgId);
+        
+        // Only owner can delete projects
+        allow delete: if hasOrgRole(orgId, 'owner');
+        
+        // ==================== PROJECT STATS ====================
+        
+        match /stats/{statId} {
+          allow read: if canReadOrg(orgId);
+          allow write: if canManageOrg(orgId);
+        }
+        
+        // ==================== PROJECT TRACKED ACCOUNTS ====================
+        
+        match /trackedAccounts/{accountId} {
+          allow read: if canReadOrg(orgId);
+          allow create: if canWriteOrg(orgId);
+          allow update, delete: if canWriteOrg(orgId);
+          
+          match /videos/{videoId} {
+            allow read: if canReadOrg(orgId);
+            allow create: if canWriteOrg(orgId);
+            allow update, delete: if canWriteOrg(orgId);
+          }
+        }
+        
+        // ==================== PROJECT LINKS ====================
+        
+        match /links/{linkId} {
+          allow read: if canReadOrg(orgId);
+          allow create: if canWriteOrg(orgId);
+          allow update, delete: if canWriteOrg(orgId);
+          
+          match /clicks/{clickId} {
+            allow read: if canReadOrg(orgId);
+            allow create: if true; // Public can create click events
+            allow update, delete: if false; // Immutable
+          }
+        }
+        
+        // ==================== PROJECT VIDEOS ====================
+        
+        match /videos/{videoId} {
+          allow read: if canReadOrg(orgId);
+          allow create: if canWriteOrg(orgId);
+          allow update, delete: if canWriteOrg(orgId);
+        }
+      }
+      
+      // ==================== TRACKED ACCOUNTS (Legacy - for migration) ====================
       
       match /trackedAccounts/{accountId} {
         // Members can read
