@@ -1315,200 +1315,201 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                         const paginatedVideos = accountVideos.slice(startIndex, endIndex);
                         
                         return paginatedVideos.map((video) => {
-                        const views = video.viewsCount || video.views || 0;
-                        const likes = video.likesCount || video.likes || 0;
-                        const comments = video.commentsCount || video.comments || 0;
-                        const shares = video.sharesCount || video.shares || 0;
-                        const engagementRate = views > 0 ? ((likes + comments) / views) * 100 : 0;
+                          const views = video.viewsCount || video.views || 0;
+                          const likes = video.likesCount || video.likes || 0;
+                          const comments = video.commentsCount || video.comments || 0;
+                          const shares = video.sharesCount || video.shares || 0;
+                          const engagementRate = views > 0 ? ((likes + comments) / views) * 100 : 0;
                         
-                        // Convert AccountVideo to VideoSubmission for TrendCalculationService
-                        const videoSubmission: VideoSubmission = {
-                          id: video.id || video.videoId || '',
-                          url: video.url || '',
-                          platform: selectedAccount.platform,
-                          thumbnail: video.thumbnail || '',
-                          title: video.caption || 'No caption',
-                          uploader: selectedAccount.displayName || selectedAccount.username,
-                          uploaderHandle: selectedAccount.username,
-                          status: 'approved' as const,
-                          views: views,
-                          likes: likes,
-                          comments: comments,
-                          shares: shares,
-                          dateSubmitted: new Date(),
-                          uploadDate: video.uploadDate || new Date(),
-                          snapshots: []
-                        };
+                          // Convert AccountVideo to VideoSubmission for TrendCalculationService
+                          const videoSubmission: VideoSubmission = {
+                            id: video.id || video.videoId || '',
+                            url: video.url || '',
+                            platform: selectedAccount.platform,
+                            thumbnail: video.thumbnail || '',
+                            title: video.caption || 'No caption',
+                            uploader: selectedAccount.displayName || selectedAccount.username,
+                            uploaderHandle: selectedAccount.username,
+                            status: 'approved' as const,
+                            views: views,
+                            likes: likes,
+                            comments: comments,
+                            shares: shares,
+                            dateSubmitted: new Date(),
+                            uploadDate: video.uploadDate || new Date(),
+                            snapshots: []
+                          };
 
-                        return (
-                          <tr 
-                            key={video.id}
-                            className="hover:bg-white/5 transition-colors cursor-pointer group"
-                          >
-                            {visibleColumns.video && (
-                            <td className="px-6 py-5 sticky left-0 bg-zinc-900/60 backdrop-blur z-10 group-hover:bg-white/5">
-                              <div className="flex items-center space-x-4">
-                                <div className="relative">
-                                  <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 ring-2 ring-white shadow-sm">
-                                    {video.thumbnail ? (
-                                      <img 
-                                        src={video.thumbnail} 
-                                        alt="Thumbnail"
-                                        className="w-full h-full object-cover"
-                                      />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center bg-gray-700">
-                                        <Play className="w-4 h-4 text-gray-400" />
+                          return (
+                            <tr 
+                              key={video.id}
+                              className="hover:bg-white/5 transition-colors cursor-pointer group"
+                            >
+                              {visibleColumns.video && (
+                                <td className="px-6 py-5 sticky left-0 bg-zinc-900/60 backdrop-blur z-10 group-hover:bg-white/5">
+                                  <div className="flex items-center space-x-4">
+                                    <div className="relative">
+                                      <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 ring-2 ring-white shadow-sm">
+                                        {video.thumbnail ? (
+                                          <img 
+                                            src={video.thumbnail} 
+                                            alt="Thumbnail"
+                                            className="w-full h-full object-cover"
+                                          />
+                                        ) : (
+                                          <div className="w-full h-full flex items-center justify-center bg-gray-700">
+                                            <Play className="w-4 h-4 text-gray-400" />
+                                          </div>
+                                        )}
                                       </div>
-                                    )}
-                                  </div>
-                                  <div className="absolute -bottom-1 -right-1">
-                                    <PlatformIcon platform={selectedAccount.platform} size="sm" />
-                                  </div>
-                                </div>
-                                <div className="min-w-0 flex-1 max-w-[200px]">
-                                  <p className="text-sm font-medium text-white truncate" title={video.caption || 'No caption'}>
-                                    {video.caption || 'No caption'}
-                                  </p>
-                                  <p className="text-xs text-gray-400 mt-1 truncate">
-                                    @{selectedAccount.username}
-                                  </p>
-                                </div>
-                              </div>
-                            </td>
-                            )}
-                            {visibleColumns.platform && (
-                            <td className="px-6 py-5">
-                              <PlatformIcon platform={selectedAccount.platform} size="md" />
-                            </td>
-                            )}
-                            {visibleColumns.preview && (
-                            <td className="px-6 py-5">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedVideoForPlayer({
-                                    url: video.url || '',
-                                    title: video.caption || 'No caption',
-                                    platform: selectedAccount.platform
-                                  });
-                                  setVideoPlayerOpen(true);
-                                }}
-                                className="block hover:opacity-80 transition-opacity group/video cursor-pointer"
-                              >
-                                <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-sm hover:shadow-md transition-all relative">
-                                  {video.thumbnail ? (
-                                    <img 
-                                      src={video.thumbnail} 
-                                      alt="Thumbnail"
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-gray-700">
-                                      <Play className="w-6 h-6 text-gray-400" />
+                                      <div className="absolute -bottom-1 -right-1">
+                                        <PlatformIcon platform={selectedAccount.platform} size="sm" />
+                                      </div>
                                     </div>
-                                  )}
-                                  <div className="absolute inset-0 bg-black/0 group-hover/video:bg-black/40 transition-colors flex items-center justify-center">
-                                    <svg className="w-8 h-8 text-white opacity-0 group-hover/video:opacity-100 transition-opacity" fill="currentColor" viewBox="0 0 20 20">
-                                      <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                                    </svg>
+                                    <div className="min-w-0 flex-1 max-w-[200px]">
+                                      <p className="text-sm font-medium text-white truncate" title={video.caption || 'No caption'}>
+                                        {video.caption || 'No caption'}
+                                      </p>
+                                      <p className="text-xs text-gray-400 mt-1 truncate">
+                                        @{selectedAccount.username}
+                                      </p>
+                                    </div>
                                   </div>
-                                </div>
-                              </button>
-                            </td>
-                            )}
-                            {visibleColumns.trend && (
-                            <td className="px-6 py-5">
-                              <MiniTrendChart 
-                                data={TrendCalculationService.getViewsTrend(videoSubmission)}
-                                className="flex items-center justify-center"
-                              />
-                            </td>
-                            )}
-                            {visibleColumns.views && (
-                            <td className="px-6 py-5">
-                              <div className="flex items-center space-x-2">
-                                <Eye className="w-4 h-4 text-white" />
-                                <span className="text-sm font-medium text-white">
-                                  {formatNumber(views)}
-                                </span>
-                              </div>
-                            </td>
-                            )}
-                            {visibleColumns.likes && (
-                            <td className="px-6 py-5">
-                              <div className="flex items-center space-x-2">
-                                <Heart className="w-4 h-4 text-white" />
-                                <span className="text-sm font-medium text-white">
-                                  {formatNumber(likes)}
-                                </span>
-                              </div>
-                            </td>
-                            )}
-                            {visibleColumns.comments && (
-                            <td className="px-6 py-5">
-                              <div className="flex items-center space-x-2">
-                                <MessageCircle className="w-4 h-4 text-white" />
-                                <span className="text-sm font-medium text-white">
-                                  {formatNumber(comments)}
-                                </span>
-                              </div>
-                            </td>
-                            )}
-                            {visibleColumns.shares && (
-                            <td className="px-6 py-5">
-                              <div className="flex items-center space-x-2">
-                                <Share2 className="w-4 h-4 text-white" />
-                                <span className="text-sm font-medium text-white">
-                                  {formatNumber(shares)}
-                                </span>
-                              </div>
-                            </td>
-                            )}
-                            {visibleColumns.engagement && (
-                            <td className="px-6 py-5">
-                              <div className="flex items-center space-x-2">
-                                <Activity className="w-4 h-4 text-purple-500" />
-                                <span className="text-sm font-medium text-white">
-                                  {engagementRate.toFixed(2)}%
-                                </span>
-                              </div>
-                            </td>
-                            )}
-                            {visibleColumns.uploadDate && (
-                            <td className="px-6 py-5">
-                              <div className="text-sm text-zinc-300">
-                                {video.uploadDate ? 
-                                  new Date(video.uploadDate).toLocaleDateString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    year: 'numeric'
-                                  }) : 
-                                  (video.timestamp ? 
-                                    new Date(video.timestamp).toLocaleDateString('en-US', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                      year: 'numeric'
-                                    }) : 
-                                    'Unknown'
-                                  )
-                                }
-                              </div>
-                            </td>
-                            )}
-                            <td className="px-6 py-5">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  window.open(video.url, '_blank');
-                                }}
-                                className="text-gray-400 hover:text-blue-400 transition-colors"
-                              >
-                                <ExternalLink className="w-4 h-4" />
-                              </button>
-                            </td>
-                          </tr>
-                        );
+                                </td>
+                              )}
+                              {visibleColumns.platform && (
+                                <td className="px-6 py-5">
+                                  <PlatformIcon platform={selectedAccount.platform} size="md" />
+                                </td>
+                              )}
+                              {visibleColumns.preview && (
+                                <td className="px-6 py-5">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedVideoForPlayer({
+                                        url: video.url || '',
+                                        title: video.caption || 'No caption',
+                                        platform: selectedAccount.platform
+                                      });
+                                      setVideoPlayerOpen(true);
+                                    }}
+                                    className="block hover:opacity-80 transition-opacity group/video cursor-pointer"
+                                  >
+                                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-sm hover:shadow-md transition-all relative">
+                                      {video.thumbnail ? (
+                                        <img 
+                                          src={video.thumbnail} 
+                                          alt="Thumbnail"
+                                          className="w-full h-full object-cover"
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full flex items-center justify-center bg-gray-700">
+                                          <Play className="w-6 h-6 text-gray-400" />
+                                        </div>
+                                      )}
+                                      <div className="absolute inset-0 bg-black/0 group-hover/video:bg-black/40 transition-colors flex items-center justify-center">
+                                        <svg className="w-8 h-8 text-white opacity-0 group-hover/video:opacity-100 transition-opacity" fill="currentColor" viewBox="0 0 20 20">
+                                          <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                                        </svg>
+                                      </div>
+                                    </div>
+                                  </button>
+                                </td>
+                              )}
+                              {visibleColumns.trend && (
+                                <td className="px-6 py-5">
+                                  <MiniTrendChart 
+                                    data={TrendCalculationService.getViewsTrend(videoSubmission)}
+                                    className="flex items-center justify-center"
+                                  />
+                                </td>
+                              )}
+                              {visibleColumns.views && (
+                                <td className="px-6 py-5">
+                                  <div className="flex items-center space-x-2">
+                                    <Eye className="w-4 h-4 text-white" />
+                                    <span className="text-sm font-medium text-white">
+                                      {formatNumber(views)}
+                                    </span>
+                                  </div>
+                                </td>
+                              )}
+                              {visibleColumns.likes && (
+                                <td className="px-6 py-5">
+                                  <div className="flex items-center space-x-2">
+                                    <Heart className="w-4 h-4 text-white" />
+                                    <span className="text-sm font-medium text-white">
+                                      {formatNumber(likes)}
+                                    </span>
+                                  </div>
+                                </td>
+                              )}
+                              {visibleColumns.comments && (
+                                <td className="px-6 py-5">
+                                  <div className="flex items-center space-x-2">
+                                    <MessageCircle className="w-4 h-4 text-white" />
+                                    <span className="text-sm font-medium text-white">
+                                      {formatNumber(comments)}
+                                    </span>
+                                  </div>
+                                </td>
+                              )}
+                              {visibleColumns.shares && (
+                                <td className="px-6 py-5">
+                                  <div className="flex items-center space-x-2">
+                                    <Share2 className="w-4 h-4 text-white" />
+                                    <span className="text-sm font-medium text-white">
+                                      {formatNumber(shares)}
+                                    </span>
+                                  </div>
+                                </td>
+                              )}
+                              {visibleColumns.engagement && (
+                                <td className="px-6 py-5">
+                                  <div className="flex items-center space-x-2">
+                                    <Activity className="w-4 h-4 text-purple-500" />
+                                    <span className="text-sm font-medium text-white">
+                                      {engagementRate.toFixed(2)}%
+                                    </span>
+                                  </div>
+                                </td>
+                              )}
+                              {visibleColumns.uploadDate && (
+                                <td className="px-6 py-5">
+                                  <div className="text-sm text-zinc-300">
+                                    {video.uploadDate ? 
+                                      new Date(video.uploadDate).toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        year: 'numeric'
+                                      }) : 
+                                      (video.timestamp ? 
+                                        new Date(video.timestamp).toLocaleDateString('en-US', {
+                                          month: 'short',
+                                          day: 'numeric',
+                                          year: 'numeric'
+                                        }) : 
+                                        'Unknown'
+                                      )
+                                    }
+                                  </div>
+                                </td>
+                              )}
+                              <td className="px-6 py-5">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    window.open(video.url, '_blank');
+                                  }}
+                                  className="text-gray-400 hover:text-blue-400 transition-colors"
+                                >
+                                  <ExternalLink className="w-4 h-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        });
                       })()}
                     </tbody>
                   </table>
