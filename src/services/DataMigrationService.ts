@@ -135,19 +135,26 @@ class DataMigrationService {
           }
         }
         
-        const accountData: Omit<TrackedAccount, 'id' | 'orgId' | 'dateAdded' | 'addedBy' | 'totalVideos' | 'totalViews' | 'totalLikes' | 'totalComments' | 'totalShares'> = {
+        // Build account data without undefined fields
+        const accountData: any = {
           platform: localAccount.platform,
           username: localAccount.username,
           displayName: localAccount.displayName,
-          profilePicture: profilePictureUrl,
           accountType: localAccount.accountType || 'my',
           followerCount: localAccount.followerCount,
           followingCount: localAccount.followingCount,
           bio: localAccount.bio,
           isVerified: localAccount.isVerified,
-          lastSynced: localAccount.lastSynced ? this.toTimestamp(localAccount.lastSynced) : undefined,
           isActive: true
         };
+        
+        // Only add optional fields if they exist
+        if (profilePictureUrl) {
+          accountData.profilePicture = profilePictureUrl;
+        }
+        if (localAccount.lastSynced) {
+          accountData.lastSynced = this.toTimestamp(localAccount.lastSynced);
+        }
         
         await FirestoreDataService.addTrackedAccount(orgId, userId, accountData);
         console.log(`  ✓ Migrated account: @${localAccount.username}`);
@@ -174,17 +181,30 @@ class DataMigrationService {
     
     for (const localLink of localLinks) {
       try {
-        const linkData: Omit<TrackedLink, 'id' | 'orgId' | 'createdAt' | 'createdBy' | 'totalClicks' | 'uniqueClicks' | 'last7DaysClicks'> = {
+        // Build link data without undefined fields
+        const linkData: any = {
           shortCode: localLink.shortCode,
           originalUrl: localLink.originalUrl,
           title: localLink.title,
-          description: localLink.description,
-          tags: localLink.tags,
-          linkedVideoId: localLink.linkedVideoId,
-          linkedAccountId: localLink.linkedAccountId,
-          lastClickedAt: localLink.lastClickedAt ? this.toTimestamp(localLink.lastClickedAt) : undefined,
           isActive: true
         };
+        
+        // Only add optional fields if they exist
+        if (localLink.description) {
+          linkData.description = localLink.description;
+        }
+        if (localLink.tags) {
+          linkData.tags = localLink.tags;
+        }
+        if (localLink.linkedVideoId) {
+          linkData.linkedVideoId = localLink.linkedVideoId;
+        }
+        if (localLink.linkedAccountId) {
+          linkData.linkedAccountId = localLink.linkedAccountId;
+        }
+        if (localLink.lastClickedAt) {
+          linkData.lastClickedAt = this.toTimestamp(localLink.lastClickedAt);
+        }
         
         await FirestoreDataService.createLink(orgId, userId, linkData);
         console.log(`  ✓ Migrated link: ${localLink.shortCode}`);

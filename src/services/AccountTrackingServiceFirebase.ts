@@ -75,20 +75,25 @@ export class AccountTrackingServiceFirebase {
             isVerified: false
           };
       
-      // Add to Firestore
-      const accountId = await FirestoreDataService.addTrackedAccount(orgId, userId, {
+      // Add to Firestore (omit undefined fields)
+      const accountData: any = {
         username,
         platform,
         accountType,
         displayName: profileData.displayName,
-        profilePicture: profileData.profilePicture,
         followerCount: profileData.followerCount,
         followingCount: profileData.followingCount,
         bio: profileData.bio,
         isVerified: profileData.isVerified,
-        isActive: true,
-        lastSynced: undefined
-      });
+        isActive: true
+      };
+      
+      // Only add profilePicture if it exists
+      if (profileData.profilePicture) {
+        accountData.profilePicture = profileData.profilePicture;
+      }
+      
+      const accountId = await FirestoreDataService.addTrackedAccount(orgId, userId, accountData);
 
       console.log(`✅ Added ${accountType} account @${username}`);
       return accountId;

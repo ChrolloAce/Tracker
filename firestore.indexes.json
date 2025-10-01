@@ -62,6 +62,14 @@
       ]
     },
     {
+      "collectionGroup": "trackedAccounts",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "dateAdded", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "links",
       "queryScope": "COLLECTION",
       "fields": [
