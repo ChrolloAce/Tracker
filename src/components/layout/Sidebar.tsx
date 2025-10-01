@@ -234,33 +234,14 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Quick Actions */}
       {!isCollapsed && (
-        <div className="p-4 border-b border-gray-100">
-          <div className="space-y-2">
-            <button
-              onClick={onAddVideo}
-              className="w-full flex items-center justify-center px-4 py-2.5 bg-blue-600 dark:bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors duration-200"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Video
-            </button>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={onTikTokSearch}
-                className="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors duration-200"
-              >
-                <Search className="w-4 h-4 mr-1" />
-                Search
-              </button>
-              <button
-                onClick={onRefreshAll}
-                disabled={isRefreshing}
-                className="flex items-center justify-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors duration-200 disabled:opacity-50"
-              >
-                <RefreshCw className={clsx('w-4 h-4 mr-1', { 'animate-spin': isRefreshing })} />
-                Refresh
-              </button>
-            </div>
-          </div>
+        <div className="p-4 border-b border-gray-100 dark:border-gray-800">
+          <button
+            onClick={onAddVideo}
+            className="w-full flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 backdrop-blur-md bg-white/10 dark:bg-white/5 border border-gray-200/20 dark:border-white/10 text-gray-900 dark:text-white hover:bg-white/20 dark:hover:bg-white/10 hover:border-gray-300/30 dark:hover:border-white/20 shadow-lg"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Video
+          </button>
         </div>
       )}
 
