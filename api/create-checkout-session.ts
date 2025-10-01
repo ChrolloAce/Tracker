@@ -31,6 +31,21 @@ export default async function handler(
   }
 
   try {
+    console.log('Creating checkout for:', { orgId, planTier, billingCycle });
+
+    // Get price ID based on plan and billing cycle
+    const priceId = getPriceId(planTier, billingCycle);
+    console.log('Price ID:', priceId);
+
+    if (!priceId) {
+      console.error('No price ID found for:', planTier, billingCycle);
+      console.error('Available env vars:', Object.keys(process.env).filter(k => k.includes('STRIPE')));
+      return res.status(400).json({ 
+        error: 'Invalid plan or billing cycle',
+        debug: { planTier, billingCycle, envVarNeeded: `STRIPE_${planTier.toUpperCase()}_${billingCycle.toUpperCase()}` }
+      });
+    }
+
     // Initialize Firebase Admin
     const { initializeApp, cert, getApps } = await import('firebase-admin/app');
     const { getFirestore } = await import('firebase-admin/firestore');
@@ -49,21 +64,22 @@ export default async function handler(
 
     const db = getFirestore();
 
-    // Get subscription doc
-    const subDoc = await db
+    // Get or create subscription doc
+    const subRef = db
       .collection('organizations')
       .doc(orgId)
       .collection('billing')
-      .doc('subscription')
-      .get();
-
-    let customerId = subDoc.data()?.stripeCustomerId;
+      .doc('subscription');
+    
+    const subDoc = await subRef.get();
+    let customerId = subDoc.exists ? subDoc.data()?.stripeCustomerId : null;
 
     // Create Stripe customer if doesn't exist
     if (!customerId) {
       const orgDoc = await db.collection('organizations').doc(orgId).get();
       const orgData = orgDoc.data();
 
+      console.log('Creating Stripe customer for org:', orgId);
       const customer = await stripe.customers.create({
         email: orgData?.ownerEmail,
         metadata: {
@@ -72,18 +88,14 @@ export default async function handler(
       });
 
       customerId = customer.id;
+      console.log('Created customer:', customerId);
 
-      // Save customer ID
-      await subDoc.ref.update({
-        stripeCustomerId: customerId,
-      });
-    }
-
-    // Get price ID based on plan and billing cycle
-    const priceId = getPriceId(planTier, billingCycle);
-
-    if (!priceId) {
-      return res.status(400).json({ error: 'Invalid plan or billing cycle' });
+      // Save customer ID (create or update)
+      if (subDoc.exists) {
+        await subRef.update({ stripeCustomerId: customerId });
+      } else {
+        await subRef.set({ stripeCustomerId: customerId }, { merge: true });
+      }
     }
 
     // Create Checkout Session
@@ -116,7 +128,10 @@ export default async function handler(
  * Get Stripe price ID based on plan and billing cycle
  */
 function getPriceId(planTier: string, billingCycle: string): string | null {
-  const key = `VITE_STRIPE_${planTier.toUpperCase()}_${billingCycle.toUpperCase()}`;
-  return process.env[key] || null;
+  // Try both with and without VITE_ prefix
+  const viteKey = `VITE_STRIPE_${planTier.toUpperCase()}_${billingCycle.toUpperCase()}`;
+  const regularKey = `STRIPE_${planTier.toUpperCase()}_${billingCycle.toUpperCase()}`;
+  
+  return process.env[viteKey] || process.env[regularKey] || null;
 }
 
