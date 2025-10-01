@@ -17,6 +17,7 @@ import LinkRedirect from './components/LinkRedirect';
 import LoginPage from './components/LoginPage';
 import { PageLoadingSkeleton } from './components/ui/LoadingSkeleton';
 import OrganizationOnboarding from './components/OrganizationOnboarding';
+import ProjectCreationFlow from './components/ProjectCreationFlow';
 import { VideoSubmission, InstagramVideoData } from './types';
 import VideoApiService from './services/VideoApiService';
 import DateFilterService from './services/DateFilterService';
@@ -39,6 +40,9 @@ function App() {
 
   // Check if this is a link redirect URL
   const isLinkRedirect = window.location.pathname.startsWith('/l/');
+  
+  // Check if this is project creation page
+  const isProjectCreation = window.location.pathname === '/create-project';
 
   // State
   const [submissions, setSubmissions] = useState<VideoSubmission[]>([]);
@@ -346,6 +350,16 @@ function App() {
   // Show organization onboarding if user has no organization
   if (user && !loading && !currentOrgId) {
     return <OrganizationOnboarding />;
+  }
+
+  // Show project creation flow as full page
+  if (user && isProjectCreation && currentOrgId) {
+    return (
+      <ProjectCreationFlow
+        onClose={() => window.location.href = '/'}
+        onSuccess={() => {}}
+      />
+    );
   }
 
   return (

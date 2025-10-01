@@ -15,7 +15,6 @@ import {
 import { clsx } from 'clsx';
 import { useAuth } from '../../contexts/AuthContext';
 import ProjectSwitcher from '../ProjectSwitcher';
-import ProjectCreationFlow from '../ProjectCreationFlow';
 import blackLogo from '../blacklogo.png';
 import whiteLogo from '../whitelogo.png';
 
@@ -46,7 +45,6 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { user, logout } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
-  const [showCreateProject, setShowCreateProject] = useState(false);
 
   const handleLogout = async () => {
     if (window.confirm('Are you sure you want to sign out?')) {
@@ -213,7 +211,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Project Switcher */}
       {!isCollapsed && (
         <div className="p-4 border-b border-gray-100 dark:border-gray-800">
-          <ProjectSwitcher onCreateProject={() => setShowCreateProject(true)} />
+          <ProjectSwitcher onCreateProject={() => window.location.href = '/create-project'} />
         </div>
       )}
 
@@ -295,15 +293,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       )}
 
-      {/* Create Project Flow */}
-      {showCreateProject && (
-        <ProjectCreationFlow
-          onClose={() => setShowCreateProject(false)}
-          onSuccess={() => {
-            setShowCreateProject(false);
-          }}
-        />
-      )}
     </div>
   );
 };
