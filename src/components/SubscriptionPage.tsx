@@ -37,7 +37,7 @@ const SubscriptionPage: React.FC = () => {
       await StripeService.createCheckoutSession(currentOrgId, planTier, billingCycle);
     } catch (error: any) {
       console.error('Failed to create checkout session:', error);
-      alert('Failed to start checkout. Please try again or contact support.');
+        alert('Failed to start checkout. Please try again or contact support.');
     } finally {
       setLoading(false);
     }
@@ -58,27 +58,27 @@ const SubscriptionPage: React.FC = () => {
           <div className="text-center">
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-3">
               Simple, transparent pricing
-            </h1>
+          </h1>
             <p className="text-lg text-gray-600 dark:text-gray-400 mb-6 max-w-2xl mx-auto">
               Choose the perfect plan to track your content and grow your reach
-            </p>
+          </p>
 
-            {/* Billing Toggle */}
+          {/* Billing Toggle */}
             <div className="inline-flex items-center bg-white dark:bg-[#161616] rounded-full p-1.5 border border-gray-200 dark:border-gray-800 shadow-sm">
-              <button
-                onClick={() => setBillingCycle('monthly')}
+            <button
+              onClick={() => setBillingCycle('monthly')}
                 className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all ${
-                  billingCycle === 'monthly'
+                billingCycle === 'monthly'
                     ? 'bg-blue-600 text-white shadow-sm'
                     : 'text-gray-600 dark:text-gray-400'
-                }`}
-              >
+              }`}
+            >
                 Monthly
-              </button>
-              <button
-                onClick={() => setBillingCycle('yearly')}
+            </button>
+            <button
+              onClick={() => setBillingCycle('yearly')}
                 className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
-                  billingCycle === 'yearly'
+                billingCycle === 'yearly'
                     ? 'bg-blue-600 text-white shadow-sm'
                     : 'text-gray-600 dark:text-gray-400'
                 }`}
@@ -86,14 +86,14 @@ const SubscriptionPage: React.FC = () => {
                 Yearly
                 <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full font-semibold">
                   Save 25%
-                </span>
-              </button>
+              </span>
+            </button>
             </div>
           </div>
+          </div>
         </div>
-      </div>
 
-      {/* Pricing Cards */}
+        {/* Pricing Cards */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 pt-12">
         <div className="flex flex-col lg:flex-row gap-4 items-center lg:items-stretch justify-center">
           {mainPlans.map((plan) => {
@@ -145,12 +145,12 @@ const SubscriptionPage: React.FC = () => {
                     </span>
                     <span className="text-sm text-gray-600 dark:text-gray-400">/mo</span>
                   </div>
-                  {billingCycle === 'yearly' && (
+                    {billingCycle === 'yearly' && (
                     <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                       ${(price * 12).toFixed(0)}/year
-                    </p>
-                  )}
-                </div>
+                      </p>
+                    )}
+                  </div>
 
                 {/* CTA Button */}
                 <button
@@ -221,42 +221,45 @@ const SubscriptionPage: React.FC = () => {
                       <span className="text-xs text-gray-700 dark:text-gray-300">
                         Priority support
                       </span>
-                    </div>
+                </div>
                   )}
                 </div>
               </div>
             );
           })}
         </div>
-      </div>
+        </div>
 
       {/* Comparison Table */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            Compare all features
-          </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Choose the plan that's right for you
-          </p>
-        </div>
-
-        <div className="bg-white dark:bg-[#161616] rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+        <div className="bg-white dark:bg-[#161616] rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-lg">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-800">
-                  <th className="text-left py-4 px-4 text-sm font-semibold text-gray-900 dark:text-white">
+                <tr className="bg-gray-50 dark:bg-[#1A1A1A]">
+                  <th className="text-left py-5 px-6 text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide">
                     Features
                   </th>
-                  <th className="text-center py-4 px-4 text-sm font-semibold text-gray-900 dark:text-white">
-                    Basic
+                  <th className="text-center py-5 px-6">
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-base font-bold text-gray-900 dark:text-white">Basic</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">For Starters</span>
+                    </div>
                   </th>
-                  <th className="text-center py-4 px-4 text-sm font-semibold text-gray-900 dark:text-white bg-blue-50 dark:bg-blue-900/10">
-                    Pro
+                  <th className="text-center py-5 px-6 bg-blue-50 dark:bg-blue-900/10 border-x-2 border-blue-500">
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-bold text-blue-600 dark:text-blue-400">Pro</span>
+                        <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full font-semibold">Popular</span>
+                      </div>
+                      <span className="text-xs text-gray-600 dark:text-gray-400">Best Value</span>
+                    </div>
                   </th>
-                  <th className="text-center py-4 px-4 text-sm font-semibold text-gray-900 dark:text-white">
-                    Ultra
+                  <th className="text-center py-5 px-6">
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-base font-bold text-gray-900 dark:text-white">Ultra</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Maximum Power</span>
+                    </div>
                   </th>
                 </tr>
               </thead>
@@ -332,29 +335,32 @@ interface ComparisonRowProps {
 }
 
 const ComparisonRow: React.FC<ComparisonRowProps> = ({ feature, basic, pro, ultra }) => {
-  const renderCell = (value: string | boolean) => {
+  const renderCell = (value: string | boolean, isProColumn: boolean = false) => {
     if (typeof value === 'boolean') {
       return value ? (
-        <Check className="w-5 h-5 text-green-500 mx-auto" />
+        <div className={`flex items-center justify-center gap-2 ${isProColumn ? 'text-blue-600 dark:text-blue-400' : ''}`}>
+          <Check className={`w-5 h-5 ${isProColumn ? 'text-blue-600 dark:text-blue-400' : 'text-green-500'}`} />
+          {isProColumn && <span className="text-xs font-medium">Included</span>}
+        </div>
       ) : (
         <X className="w-5 h-5 text-gray-300 dark:text-gray-700 mx-auto" />
       );
     }
-    return <span className="text-sm text-gray-700 dark:text-gray-300">{value}</span>;
+    return <span className={`text-sm font-medium ${isProColumn ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}`}>{value}</span>;
   };
 
   return (
-    <tr>
-      <td className="py-3 px-4 text-xs font-medium text-gray-900 dark:text-white">
+    <tr className="hover:bg-gray-50 dark:hover:bg-gray-900/30 transition-colors">
+      <td className="py-4 px-6 text-sm font-semibold text-gray-900 dark:text-white">
         {feature}
       </td>
-      <td className="py-3 px-4 text-center">
+      <td className="py-4 px-6 text-center">
         {renderCell(basic)}
       </td>
-      <td className="py-3 px-4 text-center bg-blue-50 dark:bg-blue-900/10">
-        {renderCell(pro)}
+      <td className="py-4 px-6 text-center bg-blue-50 dark:bg-blue-900/10">
+        {renderCell(pro, true)}
       </td>
-      <td className="py-3 px-4 text-center">
+      <td className="py-4 px-6 text-center">
         {renderCell(ultra)}
       </td>
     </tr>
