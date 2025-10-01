@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, X, Zap, Crown, Rocket, Building2 } from 'lucide-react';
+import { Check, X, Zap, Crown, Rocket, ChevronDown } from 'lucide-react';
 import { SUBSCRIPTION_PLANS, PlanTier } from '../types/subscription';
 import { useAuth } from '../contexts/AuthContext';
 import StripeService from '../services/StripeService';
@@ -10,6 +10,7 @@ const SubscriptionPage: React.FC = () => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [currentPlan, setCurrentPlan] = useState<PlanTier>('basic');
   const [loading, setLoading] = useState(false);
+  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
   useEffect(() => {
     loadCurrentPlan();
@@ -28,7 +29,7 @@ const SubscriptionPage: React.FC = () => {
   const handleSelectPlan = async (planTier: PlanTier) => {
     if (!currentOrgId) return;
     if (planTier === 'enterprise') {
-      window.location.href = 'mailto:support@yourapp.com?subject=Enterprise Plan Inquiry';
+      window.location.href = 'mailto:support@viewtrack.com?subject=Enterprise Plan Inquiry';
       return;
     }
 
@@ -37,76 +38,66 @@ const SubscriptionPage: React.FC = () => {
       await StripeService.createCheckoutSession(currentOrgId, planTier, billingCycle);
     } catch (error: any) {
       console.error('Failed to create checkout session:', error);
-      
-      // Show helpful message if Stripe isn't configured
-      if (error.message?.includes('Stripe not configured') || error.message?.includes('503')) {
-        alert('💳 Payments are not configured yet!\n\nTo enable subscriptions:\n1. Create a Stripe account\n2. Add Stripe keys to environment variables\n3. See STRIPE_SETUP_GUIDE.md for details');
-      } else {
-        alert('Failed to start checkout. Please try again or contact support.');
-      }
+      alert('Failed to start checkout. Please try again or contact support.');
     } finally {
       setLoading(false);
     }
   };
 
-  const getPlanIcon = (tier: PlanTier) => {
-    switch (tier) {
-      case 'basic': return Zap;
-      case 'pro': return Crown;
-      case 'ultra': return Rocket;
-      case 'enterprise': return Building2;
-    }
-  };
+  // Only show Basic, Pro, Ultra for main cards
+  const mainPlans = [
+    SUBSCRIPTION_PLANS.basic,
+    SUBSCRIPTION_PLANS.pro,
+    SUBSCRIPTION_PLANS.ultra,
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A] py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            Choose the perfect plan for you to go viral.
-          </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
-            Upgrade anytime. Cancel anytime.
-          </p>
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
+      {/* Hero Section */}
+      <div className="relative pt-16 pb-12 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-4">
+              Simple, transparent pricing
+            </h1>
+            <p className="text-xl text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
+              Choose the perfect plan to track your content and grow your reach
+            </p>
 
-          {/* Billing Toggle */}
-          <div className="inline-flex items-center space-x-4 bg-white dark:bg-[#161616] rounded-full p-1 shadow-lg border border-gray-200 dark:border-gray-800">
-            <button
-              onClick={() => setBillingCycle('monthly')}
-              className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
-                billingCycle === 'monthly'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              Billed Monthly
-            </button>
-            <button
-              onClick={() => setBillingCycle('yearly')}
-              className={`px-6 py-2 rounded-full text-sm font-medium transition-all relative ${
-                billingCycle === 'yearly'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              Billed Yearly
-              <span className="absolute -top-2 -right-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
-                -25%
-              </span>
-            </button>
-            <button
-              className="px-6 py-2 rounded-full text-sm font-medium text-gray-600 dark:text-gray-400 cursor-not-allowed"
-            >
-              Free Demo 🎉
-            </button>
+            {/* Billing Toggle */}
+            <div className="inline-flex items-center bg-white dark:bg-[#161616] rounded-full p-1.5 border border-gray-200 dark:border-gray-800 shadow-sm">
+              <button
+                onClick={() => setBillingCycle('monthly')}
+                className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all ${
+                  billingCycle === 'monthly'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400'
+                }`}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setBillingCycle('yearly')}
+                className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
+                  billingCycle === 'yearly'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400'
+                }`}
+              >
+                Yearly
+                <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full font-semibold">
+                  Save 25%
+                </span>
+              </button>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {Object.values(SUBSCRIPTION_PLANS).map((plan) => {
-            const Icon = getPlanIcon(plan.id);
+      {/* Pricing Cards */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+        <div className="flex flex-col lg:flex-row gap-6 items-center lg:items-stretch justify-center">
+          {mainPlans.map((plan) => {
             const price = billingCycle === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice;
             const isCurrentPlan = currentPlan === plan.id;
             const isRecommended = plan.recommended;
@@ -114,188 +105,356 @@ const SubscriptionPage: React.FC = () => {
             return (
               <div
                 key={plan.id}
-                className={`relative bg-white dark:bg-[#161616] rounded-2xl p-8 border-2 transition-all ${
+                className={`relative flex flex-col w-full max-w-sm bg-white dark:bg-[#161616] rounded-2xl p-8 border transition-all ${
                   isRecommended
-                    ? 'border-blue-500 shadow-2xl scale-105'
-                    : 'border-gray-200 dark:border-gray-800 hover:border-blue-400 dark:hover:border-blue-600'
-                } ${isCurrentPlan ? 'ring-2 ring-green-500' : ''}`}
+                    ? 'border-blue-500 shadow-xl lg:scale-105 lg:-mt-4 lg:mb-4'
+                    : 'border-gray-200 dark:border-gray-800'
+                }`}
               >
-                {/* Best Deal Badge */}
+                {/* Recommended Badge */}
                 {isRecommended && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-1 rounded-full text-sm font-semibold shadow-lg">
-                      Best Deal
+                    <span className="bg-blue-600 text-white px-4 py-1.5 rounded-full text-sm font-semibold">
+                      Most Popular
                     </span>
                   </div>
                 )}
 
                 {/* Current Plan Badge */}
                 {isCurrentPlan && (
-                  <div className="absolute top-4 right-4">
+                  <div className="absolute top-6 right-6">
                     <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                      Current
+                      Current Plan
                     </span>
                   </div>
                 )}
 
                 {/* Icon */}
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${
+                <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-6 ${
                   plan.id === 'basic' ? 'bg-gray-100 dark:bg-gray-800' :
-                  plan.id === 'pro' ? 'bg-blue-100 dark:bg-blue-900/30' :
-                  plan.id === 'ultra' ? 'bg-purple-100 dark:bg-purple-900/30' :
-                  'bg-orange-100 dark:bg-orange-900/30'
+                  plan.id === 'pro' ? 'bg-blue-50 dark:bg-blue-900/20' :
+                  'bg-purple-50 dark:bg-purple-900/20'
                 }`}>
-                  <Icon className={`w-6 h-6 ${
-                    plan.id === 'basic' ? 'text-gray-600 dark:text-gray-400' :
-                    plan.id === 'pro' ? 'text-blue-600 dark:text-blue-400' :
-                    plan.id === 'ultra' ? 'text-purple-600 dark:text-purple-400' :
-                    'text-orange-600 dark:text-orange-400'
-                  }`} />
+                  {plan.id === 'basic' && <Zap className="w-7 h-7 text-gray-600 dark:text-gray-400" />}
+                  {plan.id === 'pro' && <Crown className="w-7 h-7 text-blue-600 dark:text-blue-400" />}
+                  {plan.id === 'ultra' && <Rocket className="w-7 h-7 text-purple-600 dark:text-purple-400" />}
                 </div>
 
                 {/* Plan Name */}
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                   {plan.displayName}
                 </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 min-h-[40px]">
                   {plan.description}
                 </p>
 
                 {/* Price */}
-                {plan.id === 'enterprise' ? (
-                  <div className="mb-6">
-                    <span className="text-4xl font-bold text-gray-900 dark:text-white">
-                      Custom
-                    </span>
-                  </div>
-                ) : (
-                  <div className="mb-6">
-                    <span className="text-4xl font-bold text-gray-900 dark:text-white">
+                <div className="mb-8">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-5xl font-bold text-gray-900 dark:text-white">
                       ${price}
                     </span>
-                    <span className="text-gray-600 dark:text-gray-400"> /month</span>
-                    {billingCycle === 'yearly' && (
-                      <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-                        Save ${((plan.monthlyPrice - plan.yearlyPrice) * 12).toFixed(0)}/year
-                      </p>
-                    )}
+                    <span className="text-gray-600 dark:text-gray-400">/month</span>
                   </div>
-                )}
+                  {billingCycle === 'yearly' && (
+                    <p className="text-sm text-green-600 dark:text-green-400 mt-2">
+                      ${(price * 12).toFixed(0)} billed annually
+                    </p>
+                  )}
+                </div>
 
                 {/* CTA Button */}
                 <button
                   onClick={() => handleSelectPlan(plan.id)}
                   disabled={loading || isCurrentPlan}
-                  className={`w-full py-3 px-6 rounded-lg font-semibold transition-all mb-6 ${
+                  className={`w-full py-3.5 px-6 rounded-xl font-semibold transition-all mb-8 ${
                     isCurrentPlan
-                      ? 'bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400 cursor-not-allowed'
+                      ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-500 cursor-not-allowed'
                       : isRecommended
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-xl transform hover:-translate-y-0.5'
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
                       : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
                   }`}
                 >
-                  {isCurrentPlan ? 'Current Plan' : loading ? 'Loading...' : 'Select Plan'}
+                  {isCurrentPlan ? 'Current Plan' : loading ? 'Loading...' : 'Get Started'}
                 </button>
 
                 {/* Features */}
-                <div className="space-y-3">
-                  <Feature 
-                    text={`${plan.features.teamSeats === -1 ? 'Unlimited' : plan.features.teamSeats} team seat${plan.features.teamSeats !== 1 ? 's' : ''}`}
-                    included={true}
-                    badge={plan.features.flexibleSeats ? 'Flexible' : ''}
-                  />
-                  <Feature 
-                    text={`Track ${plan.features.maxAccounts === -1 ? 'unlimited' : plan.features.maxAccounts} account${plan.features.maxAccounts !== 1 ? 's' : ''}`}
-                    included={true}
-                  />
-                  <Feature 
-                    text={`Track up to ${plan.features.maxVideos === -1 ? 'unlimited' : plan.features.maxVideos.toLocaleString()} videos`}
-                    included={true}
-                  />
-                  <Feature 
-                    text={`Data refreshes every ${plan.features.dataRefreshHours} hours`}
-                    included={true}
-                  />
-                  <Feature 
-                    text={`${plan.features.mcpCallsPerMonth === -1 ? 'Unlimited' : plan.features.mcpCallsPerMonth.toLocaleString()} MCP calls per month`}
-                    included={true}
-                  />
-                  <Feature 
-                    text="App Store integration"
-                    included={plan.features.appStoreIntegration}
-                  />
-                  <Feature 
-                    text="Refresh data on-demand"
-                    included={plan.features.refreshOnDemand}
-                  />
-                  <Feature 
-                    text="Manage creators"
-                    included={plan.features.manageCreators}
-                    badge={plan.features.manageCreators ? 'Coming Soon' : ''}
-                  />
-                </div>
-
-                {/* 7-Day Money-Back Guarantee */}
-                <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-800">
-                  <p className="text-xs text-center text-gray-500 dark:text-gray-500">
-                    7-Day Money-Back Guarantee 🛡️
-                  </p>
+                <div className="flex-1 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                      <strong>{plan.features.teamSeats}</strong> team {plan.features.teamSeats === 1 ? 'seat' : 'seats'}
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                      Track <strong>{plan.features.maxAccounts === -1 ? 'unlimited' : plan.features.maxAccounts}</strong> accounts
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                      Up to <strong>{plan.features.maxVideos.toLocaleString()}</strong> videos
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                      Refresh every <strong>{plan.features.dataRefreshHours}h</strong>
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                      <strong>{plan.features.mcpCallsPerMonth.toLocaleString()}</strong> API calls/month
+                    </span>
+                  </div>
+                  {plan.features.refreshOnDemand && (
+                    <div className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        On-demand refresh
+                      </span>
+                    </div>
+                  )}
+                  {plan.features.apiAccess && (
+                    <div className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        API access
+                      </span>
+                    </div>
+                  )}
+                  {plan.features.prioritySupport && (
+                    <div className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Priority support
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
+      </div>
 
-        {/* Enterprise Section */}
-        <div className="mt-16 text-center">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            Enterprise
+      {/* Comparison Table */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+            Compare all features
           </h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            App Studios & Agencies
+          <p className="text-gray-600 dark:text-gray-400">
+            Choose the plan that's right for you
           </p>
-          <button
-            onClick={() => window.location.href = 'mailto:support@yourapp.com?subject=Enterprise Plan'}
-            className="inline-flex items-center space-x-2 text-blue-600 dark:text-blue-400 hover:underline"
-          >
-            <Building2 className="w-5 h-5" />
-            <span>Contact us for custom pricing</span>
-          </button>
+        </div>
+
+        <div className="bg-white dark:bg-[#161616] rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-800">
+                  <th className="text-left py-6 px-6 text-sm font-semibold text-gray-900 dark:text-white">
+                    Features
+                  </th>
+                  <th className="text-center py-6 px-6 text-sm font-semibold text-gray-900 dark:text-white">
+                    Basic
+                  </th>
+                  <th className="text-center py-6 px-6 text-sm font-semibold text-gray-900 dark:text-white bg-blue-50 dark:bg-blue-900/10">
+                    Pro
+                  </th>
+                  <th className="text-center py-6 px-6 text-sm font-semibold text-gray-900 dark:text-white">
+                    Ultra
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                <ComparisonRow 
+                  feature="Team Seats"
+                  basic={SUBSCRIPTION_PLANS.basic.features.teamSeats.toString()}
+                  pro={SUBSCRIPTION_PLANS.pro.features.teamSeats.toString()}
+                  ultra={SUBSCRIPTION_PLANS.ultra.features.teamSeats.toString()}
+                />
+                <ComparisonRow 
+                  feature="Tracked Accounts"
+                  basic={SUBSCRIPTION_PLANS.basic.features.maxAccounts.toString()}
+                  pro={SUBSCRIPTION_PLANS.pro.features.maxAccounts === -1 ? 'Unlimited' : SUBSCRIPTION_PLANS.pro.features.maxAccounts.toString()}
+                  ultra={SUBSCRIPTION_PLANS.ultra.features.maxAccounts === -1 ? 'Unlimited' : SUBSCRIPTION_PLANS.ultra.features.maxAccounts.toString()}
+                />
+                <ComparisonRow 
+                  feature="Video Tracking"
+                  basic={SUBSCRIPTION_PLANS.basic.features.maxVideos.toLocaleString()}
+                  pro={SUBSCRIPTION_PLANS.pro.features.maxVideos.toLocaleString()}
+                  ultra={SUBSCRIPTION_PLANS.ultra.features.maxVideos.toLocaleString()}
+                />
+                <ComparisonRow 
+                  feature="Data Refresh"
+                  basic={`Every ${SUBSCRIPTION_PLANS.basic.features.dataRefreshHours}h`}
+                  pro={`Every ${SUBSCRIPTION_PLANS.pro.features.dataRefreshHours}h`}
+                  ultra={`Every ${SUBSCRIPTION_PLANS.ultra.features.dataRefreshHours}h`}
+                />
+                <ComparisonRow 
+                  feature="API Calls/Month"
+                  basic={SUBSCRIPTION_PLANS.basic.features.mcpCallsPerMonth.toLocaleString()}
+                  pro={SUBSCRIPTION_PLANS.pro.features.mcpCallsPerMonth.toLocaleString()}
+                  ultra={SUBSCRIPTION_PLANS.ultra.features.mcpCallsPerMonth.toLocaleString()}
+                />
+                <ComparisonRow 
+                  feature="On-Demand Refresh"
+                  basic={SUBSCRIPTION_PLANS.basic.features.refreshOnDemand}
+                  pro={SUBSCRIPTION_PLANS.pro.features.refreshOnDemand}
+                  ultra={SUBSCRIPTION_PLANS.ultra.features.refreshOnDemand}
+                />
+                <ComparisonRow 
+                  feature="API Access"
+                  basic={SUBSCRIPTION_PLANS.basic.features.apiAccess}
+                  pro={SUBSCRIPTION_PLANS.pro.features.apiAccess}
+                  ultra={SUBSCRIPTION_PLANS.ultra.features.apiAccess}
+                />
+                <ComparisonRow 
+                  feature="Priority Support"
+                  basic={SUBSCRIPTION_PLANS.basic.features.prioritySupport}
+                  pro={SUBSCRIPTION_PLANS.pro.features.prioritySupport}
+                  ultra={SUBSCRIPTION_PLANS.ultra.features.prioritySupport}
+                />
+                <ComparisonRow 
+                  feature="Custom Branding"
+                  basic={SUBSCRIPTION_PLANS.basic.features.customBranding}
+                  pro={SUBSCRIPTION_PLANS.pro.features.customBranding}
+                  ultra={SUBSCRIPTION_PLANS.ultra.features.customBranding}
+                />
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* FAQ Section */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+            Frequently asked questions
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            Everything you need to know about the product and billing
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          <FAQItem
+            question="Can I change plans later?"
+            answer="Yes! You can upgrade or downgrade your plan at any time. Changes will be reflected in your next billing cycle."
+            isExpanded={expandedFaq === 0}
+            onToggle={() => setExpandedFaq(expandedFaq === 0 ? null : 0)}
+          />
+          <FAQItem
+            question="What payment methods do you accept?"
+            answer="We accept all major credit cards (Visa, MasterCard, American Express) through our secure payment processor Stripe."
+            isExpanded={expandedFaq === 1}
+            onToggle={() => setExpandedFaq(expandedFaq === 1 ? null : 1)}
+          />
+          <FAQItem
+            question="Is there a free trial?"
+            answer="Yes! All plans come with a 7-day free trial. No credit card required to start."
+            isExpanded={expandedFaq === 2}
+            onToggle={() => setExpandedFaq(expandedFaq === 2 ? null : 2)}
+          />
+          <FAQItem
+            question="Can I cancel anytime?"
+            answer="Absolutely. You can cancel your subscription at any time. Your account will remain active until the end of your current billing period."
+            isExpanded={expandedFaq === 3}
+            onToggle={() => setExpandedFaq(expandedFaq === 3 ? null : 3)}
+          />
+          <FAQItem
+            question="Do you offer refunds?"
+            answer="Yes, we offer a 7-day money-back guarantee. If you're not satisfied with our service, contact us within 7 days for a full refund."
+            isExpanded={expandedFaq === 4}
+            onToggle={() => setExpandedFaq(expandedFaq === 4 ? null : 4)}
+          />
+          <FAQItem
+            question="What happens to my data if I cancel?"
+            answer="Your data is safely stored for 30 days after cancellation. You can reactivate your account anytime within this period to restore everything."
+            isExpanded={expandedFaq === 5}
+            onToggle={() => setExpandedFaq(expandedFaq === 5 ? null : 5)}
+          />
         </div>
       </div>
     </div>
   );
 };
 
-interface FeatureProps {
-  text: string;
-  included: boolean;
-  badge?: string;
+interface ComparisonRowProps {
+  feature: string;
+  basic: string | boolean;
+  pro: string | boolean;
+  ultra: string | boolean;
 }
 
-const Feature: React.FC<FeatureProps> = ({ text, included, badge }) => {
-  return (
-    <div className="flex items-center space-x-2">
-      {included ? (
-        <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
+const ComparisonRow: React.FC<ComparisonRowProps> = ({ feature, basic, pro, ultra }) => {
+  const renderCell = (value: string | boolean) => {
+    if (typeof value === 'boolean') {
+      return value ? (
+        <Check className="w-5 h-5 text-green-500 mx-auto" />
       ) : (
-        <X className="w-5 h-5 text-gray-300 dark:text-gray-700 flex-shrink-0" />
-      )}
-      <span className={`text-sm ${
-        included 
-          ? 'text-gray-700 dark:text-gray-300' 
-          : 'text-gray-400 dark:text-gray-600 line-through'
-      }`}>
-        {text}
-      </span>
-      {badge && (
-        <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded">
-          {badge}
+        <X className="w-5 h-5 text-gray-300 dark:text-gray-700 mx-auto" />
+      );
+    }
+    return <span className="text-sm text-gray-700 dark:text-gray-300">{value}</span>;
+  };
+
+  return (
+    <tr>
+      <td className="py-4 px-6 text-sm font-medium text-gray-900 dark:text-white">
+        {feature}
+      </td>
+      <td className="py-4 px-6 text-center">
+        {renderCell(basic)}
+      </td>
+      <td className="py-4 px-6 text-center bg-blue-50 dark:bg-blue-900/10">
+        {renderCell(pro)}
+      </td>
+      <td className="py-4 px-6 text-center">
+        {renderCell(ultra)}
+      </td>
+    </tr>
+  );
+};
+
+interface FAQItemProps {
+  question: string;
+  answer: string;
+  isExpanded: boolean;
+  onToggle: () => void;
+}
+
+const FAQItem: React.FC<FAQItemProps> = ({ question, answer, isExpanded, onToggle }) => {
+  return (
+    <div className="bg-white dark:bg-[#161616] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+      <button
+        onClick={onToggle}
+        className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+      >
+        <span className="text-base font-semibold text-gray-900 dark:text-white pr-8">
+          {question}
         </span>
+        <ChevronDown
+          className={`w-5 h-5 text-gray-500 flex-shrink-0 transition-transform ${
+            isExpanded ? 'transform rotate-180' : ''
+          }`}
+        />
+      </button>
+      {isExpanded && (
+        <div className="px-6 pb-5">
+          <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+            {answer}
+          </p>
+        </div>
       )}
     </div>
   );
 };
 
 export default SubscriptionPage;
-
