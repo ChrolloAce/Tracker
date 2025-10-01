@@ -70,12 +70,40 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
     // Group submissions by date
     const dataByDate: { [key: string]: { primary: number; secondary: number } } = {};
 
-    // Get date range for last 30 days
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - 30);
+    // Find actual date range from data
+    let minDate: Date | null = null;
+    let maxDate: Date | null = null;
 
-    // Initialize all dates with 0
+    // Get date range from submissions
+    submissions.forEach((video) => {
+      const videoDate = video.uploadDate || video.dateSubmitted;
+      if (!videoDate) return;
+      const date = new Date(videoDate);
+      if (!minDate || date < minDate) minDate = date;
+      if (!maxDate || date > maxDate) maxDate = date;
+    });
+
+    // Get date range from link clicks
+    linkClicks.forEach((click) => {
+      const date = new Date(click.timestamp);
+      if (!minDate || date < minDate) minDate = date;
+      if (!maxDate || date > maxDate) maxDate = date;
+    });
+
+    // If no data, use last 30 days
+    if (!minDate || !maxDate) {
+      maxDate = new Date();
+      minDate = new Date();
+      minDate.setDate(minDate.getDate() - 30);
+    }
+
+    // Extend range slightly for padding
+    const startDate = new Date(minDate);
+    startDate.setDate(startDate.getDate() - 1);
+    const endDate = new Date(maxDate);
+    endDate.setDate(endDate.getDate() + 1);
+
+    // Initialize all dates in range with 0
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
       const dateKey = d.toISOString().split('T')[0];
       dataByDate[dateKey] = { primary: 0, secondary: 0 };
@@ -214,50 +242,115 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
           <div className="bg-black rounded-2xl p-8 relative" style={{ minHeight: '500px' }}>
             {/* Y-axis labels */}
             <div className="absolute left-0 top-0 bottom-0 w-16 flex flex-col justify-between text-sm text-gray-500 py-12">
-              <span>{formatNumber(maxPrimary)}</span>
-              <span>{formatNumber(maxPrimary * 0.75)}</span>
-              <span>{formatNumber(maxPrimary * 0.5)}</span>
-              <span>{formatNumber(maxPrimary * 0.25)}</span>
-              <span>0</span>
+              <span className="text-right pr-2">{formatNumber(Math.max(maxPrimary, maxSecondary))}</span>
+              <span className="text-right pr-2">{formatNumber(Math.max(maxPrimary, maxSecondary) * 0.75)}</span>
+              <span className="text-right pr-2">{formatNumber(Math.max(maxPrimary, maxSecondary) * 0.5)}</span>
+              <span className="text-right pr-2">{formatNumber(Math.max(maxPrimary, maxSecondary) * 0.25)}</span>
+              <span className="text-right pr-2">0</span>
             </div>
 
-            {/* Chart area */}
-            <div className="ml-16 mr-4 h-full relative">
-              <div className="flex items-end justify-between h-96 space-x-1">
-                {chartData.map((data, index) => {
-                  const primaryHeight = (data.primary / maxPrimary) * 100;
-                  const secondaryHeight = (data.secondary / maxSecondary) * 100;
+            {/* Chart area with grid */}
+            <div className="ml-16 mr-8 h-full relative">
+              {/* Grid lines */}
+              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <div key={i} className="w-full border-t border-gray-800/50" />
+                ))}
+              </div>
 
+              {/* SVG Chart */}
+              <svg viewBox="0 0 1000 400" className="w-full h-96" preserveAspectRatio="none">
+                {/* Primary line */}
+                <polyline
+                  fill="none"
+                  stroke={primaryColor}
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  points={chartData.map((d, i) => {
+                    const x = (i / (chartData.length - 1)) * 1000;
+                    const y = 400 - (d.primary / Math.max(maxPrimary, maxSecondary, 1)) * 400;
+                    return `${x},${y}`;
+                  }).join(' ')}
+                />
+                
+                {/* Primary area fill */}
+                <polygon
+                  fill={`${primaryColor}40`}
+                  points={`0,400 ${chartData.map((d, i) => {
+                    const x = (i / (chartData.length - 1)) * 1000;
+                    const y = 400 - (d.primary / Math.max(maxPrimary, maxSecondary, 1)) * 400;
+                    return `${x},${y}`;
+                  }).join(' ')} 1000,400`}
+                />
+
+                {/* Secondary line */}
+                <polyline
+                  fill="none"
+                  stroke={secondaryColor}
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  points={chartData.map((d, i) => {
+                    const x = (i / (chartData.length - 1)) * 1000;
+                    const y = 400 - (d.secondary / Math.max(maxPrimary, maxSecondary, 1)) * 400;
+                    return `${x},${y}`;
+                  }).join(' ')}
+                />
+
+                {/* Secondary area fill */}
+                <polygon
+                  fill={`${secondaryColor}40`}
+                  points={`0,400 ${chartData.map((d, i) => {
+                    const x = (i / (chartData.length - 1)) * 1000;
+                    const y = 400 - (d.secondary / Math.max(maxPrimary, maxSecondary, 1)) * 400;
+                    return `${x},${y}`;
+                  }).join(' ')} 1000,400`}
+                />
+
+                {/* Data points for primary */}
+                {chartData.map((d, i) => {
+                  const x = (i / (chartData.length - 1)) * 1000;
+                  const y = 400 - (d.primary / Math.max(maxPrimary, maxSecondary, 1)) * 400;
                   return (
-                    <div key={index} className="flex-1 flex items-end justify-center space-x-0.5 group">
-                      {/* Primary bar */}
-                      <div
-                        className="w-full rounded-t transition-all duration-300 hover:opacity-80"
-                        style={{
-                          height: `${primaryHeight}%`,
-                          backgroundColor: primaryColor,
-                          minHeight: data.primary > 0 ? '2px' : '0px',
-                        }}
-                        title={`${metricOptions.find(m => m.id === primaryMetric)?.label}: ${formatNumber(data.primary)}`}
-                      />
-                      {/* Secondary bar */}
-                      <div
-                        className="w-full rounded-t transition-all duration-300 hover:opacity-80"
-                        style={{
-                          height: `${secondaryHeight}%`,
-                          backgroundColor: secondaryColor,
-                          minHeight: data.secondary > 0 ? '2px' : '0px',
-                        }}
-                        title={`${metricOptions.find(m => m.id === secondaryMetric)?.label}: ${formatNumber(data.secondary)}`}
-                      />
-                    </div>
+                    <circle
+                      key={`primary-${i}`}
+                      cx={x}
+                      cy={y}
+                      r="4"
+                      fill={primaryColor}
+                      className="hover:r-6 transition-all"
+                    >
+                      <title>{`${metricOptions.find(m => m.id === primaryMetric)?.label}: ${formatNumber(d.primary)} (${formatDate(d.date)})`}</title>
+                    </circle>
                   );
                 })}
-              </div>
+
+                {/* Data points for secondary */}
+                {chartData.map((d, i) => {
+                  const x = (i / (chartData.length - 1)) * 1000;
+                  const y = 400 - (d.secondary / Math.max(maxPrimary, maxSecondary, 1)) * 400;
+                  return (
+                    <circle
+                      key={`secondary-${i}`}
+                      cx={x}
+                      cy={y}
+                      r="4"
+                      fill={secondaryColor}
+                      className="hover:r-6 transition-all"
+                    >
+                      <title>{`${metricOptions.find(m => m.id === secondaryMetric)?.label}: ${formatNumber(d.secondary)} (${formatDate(d.date)})`}</title>
+                    </circle>
+                  );
+                })}
+              </svg>
 
               {/* X-axis labels */}
               <div className="flex justify-between mt-4 text-xs text-gray-500">
-                {chartData.filter((_, i) => i % 5 === 0).map((data, index) => (
+                {chartData.filter((_, i) => {
+                  const step = Math.ceil(chartData.length / 8);
+                  return i % step === 0 || i === chartData.length - 1;
+                }).map((data, index) => (
                   <span key={index}>{formatDate(data.date)}</span>
                 ))}
               </div>
