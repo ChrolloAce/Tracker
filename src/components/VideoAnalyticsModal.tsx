@@ -433,22 +433,6 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
           </div>
         )}
 
-        {/* Initial State Info */}
-        {(!video.snapshots || video.snapshots.length === 0) && (
-          <div className="p-6 border-t border-gray-200 dark:border-gray-800">
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <div className="flex items-start space-x-3">
-                <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-                <div>
-                  <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-1">Initial Snapshot Captured</h4>
-                  <p className="text-sm text-blue-800 dark:text-blue-400">
-                    This is the first snapshot for this video. Click "Refresh All" to track performance changes over time.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
   );
 };
