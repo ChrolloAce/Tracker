@@ -123,6 +123,8 @@ export default async function handler(
  */
 async function recordClickAnalytics(db: any, linkData: any, req: VercelRequest) {
   try {
+    const { FieldValue } = await import('firebase-admin/firestore');
+    
     const userAgent = req.headers['user-agent'] || 'Unknown';
     const userAgentLower = userAgent.toLowerCase();
 
@@ -152,6 +154,14 @@ async function recordClickAnalytics(db: any, linkData: any, req: VercelRequest) 
     // Get referrer
     const referrer = req.headers['referer'] || req.headers['referrer'] || 'Direct';
 
+    // Get IP for unique click tracking
+    const ip = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.socket?.remoteAddress || '';
+    const ipString = Array.isArray(ip) ? ip[0] : ip;
+    
+    // Create IP hash for privacy
+    const crypto = await import('crypto');
+    const ipHash = crypto.createHash('sha256').update(ipString + linkData.linkId).digest('hex');
+
     // Create click document
     const clickRef = db
       .collection('organizations')
@@ -164,33 +174,36 @@ async function recordClickAnalytics(db: any, linkData: any, req: VercelRequest) 
     const clickData = {
       id: clickRef.id,
       linkId: linkData.linkId,
-      timestamp: new Date(),
+      timestamp: FieldValue.serverTimestamp(),
       userAgent,
       deviceType,
       browser,
       os,
       referrer,
+      ipHash,
     };
 
-    // Batch write for analytics
-    const batch = db.batch();
-    batch.set(clickRef, clickData);
+    console.log(`📊 Recording click for link ${linkData.linkId}`);
 
-    // Update link stats
+    // Write click document
+    await clickRef.set(clickData);
+
+    // Update link stats using atomic increment
     const linkRef = db
       .collection('organizations')
       .doc(linkData.orgId)
       .collection('links')
       .doc(linkData.linkId);
 
-    batch.update(linkRef, {
-      totalClicks: (linkData.totalClicks || 0) + 1,
-      lastClickedAt: new Date(),
+    await linkRef.update({
+      totalClicks: FieldValue.increment(1),
+      lastClickedAt: FieldValue.serverTimestamp(),
     });
 
-    await batch.commit();
+    console.log(`✅ Click recorded successfully for link ${linkData.linkId}`);
   } catch (error) {
-    console.error('Failed to record analytics:', error);
+    console.error('❌ Failed to record analytics:', error);
+    throw error; // Re-throw to see in logs
   }
 }
 
