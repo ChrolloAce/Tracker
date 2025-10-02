@@ -19,6 +19,7 @@ import LoginPage from './components/LoginPage';
 import { PageLoadingSkeleton } from './components/ui/LoadingSkeleton';
 import OrganizationOnboarding from './components/OrganizationOnboarding';
 import ProjectCreationFlow from './components/ProjectCreationFlow';
+import MultiSelectDropdown from './components/ui/MultiSelectDropdown';
 import { VideoSubmission, InstagramVideoData } from './types';
 import VideoApiService from './services/VideoApiService';
 import DateFilterService from './services/DateFilterService';
@@ -29,6 +30,7 @@ import { cssVariables } from './theme';
 import { useAuth } from './contexts/AuthContext';
 import { Timestamp } from 'firebase/firestore';
 import { fixVideoPlatforms } from './services/FixVideoPlatform';
+import { TrackedAccount } from './types/firestore';
 
 interface DateRange {
   startDate: Date;
@@ -48,6 +50,7 @@ function App() {
   // State
   const [submissions, setSubmissions] = useState<VideoSubmission[]>([]);
   const [linkClicks, setLinkClicks] = useState<LinkClick[]>([]);
+  const [trackedAccounts, setTrackedAccounts] = useState<TrackedAccount[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilterType>('all');
@@ -67,6 +70,9 @@ function App() {
 
   // Dashboard platform filter state
   const [dashboardPlatformFilter, setDashboardPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'youtube'>('all');
+  
+  // Dashboard accounts filter state
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
 
   // Load data from Firestore on app initialization and when project changes
   useEffect(() => {
@@ -97,6 +103,7 @@ function App() {
           ? await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId)
           : [];
         const accountsMap = new Map(accounts.map(acc => [acc.id, acc]));
+        setTrackedAccounts(accounts); // Store for account filter
         
         // Load link clicks
         const clicks = await LinkClicksService.getOrgLinkClicks(currentOrgId);
@@ -156,7 +163,7 @@ function App() {
     }
   }, []);
 
-  // Filter submissions based on date range and platform (memoized to prevent infinite loops)
+  // Filter submissions based on date range, platform, and accounts (memoized to prevent infinite loops)
   const filteredSubmissions = useMemo(() => {
     let filtered = DateFilterService.filterVideosByDateRange(
       submissions, 
@@ -169,8 +176,22 @@ function App() {
       filtered = filtered.filter(video => video.platform === dashboardPlatformFilter);
     }
     
+    // Apply accounts filter
+    if (selectedAccountIds.length > 0) {
+      // Create a set of usernames from selected accounts
+      const selectedUsernames = new Set(
+        trackedAccounts
+          .filter(account => selectedAccountIds.includes(account.id))
+          .map(account => account.username.toLowerCase())
+      );
+      
+      filtered = filtered.filter(video => 
+        video.uploaderHandle && selectedUsernames.has(video.uploaderHandle.toLowerCase())
+      );
+    }
+    
     return filtered;
-  }, [submissions, dateFilter, customDateRange, dashboardPlatformFilter]);
+  }, [submissions, dateFilter, customDateRange, dashboardPlatformFilter, selectedAccountIds, trackedAccounts]);
 
   // Apply date filter to link clicks
   const filteredLinkClicks = useMemo(() => {
@@ -431,6 +452,18 @@ function App() {
           </div>
           {activeTab === 'dashboard' && (
             <div className="flex items-center space-x-4">
+              {/* Accounts Filter */}
+              <MultiSelectDropdown
+                options={trackedAccounts.map(account => ({
+                  id: account.id,
+                  label: account.displayName || `@${account.username}`,
+                  avatar: account.profilePicture
+                }))}
+                selectedIds={selectedAccountIds}
+                onChange={setSelectedAccountIds}
+                placeholder="All Accounts"
+              />
+              
               {/* Platform Filter Dropdown */}
               <div className="relative">
                 <select
