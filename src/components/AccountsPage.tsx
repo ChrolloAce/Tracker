@@ -640,6 +640,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                   src={account.profilePicture}
                                   alt={`@${account.username}`}
                                   className="w-10 h-10 rounded-full object-cover"
+                                  crossOrigin="anonymous"
+                                  referrerPolicy="no-referrer"
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
                                     target.style.display = 'none';
@@ -761,6 +763,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                       src={selectedAccount.profilePicture}
                       alt={`@${selectedAccount.username}`}
                       className="w-24 h-24 rounded-2xl object-cover border-4 border-gray-100"
+                      crossOrigin="anonymous"
+                      referrerPolicy="no-referrer"
                     />
                   ) : (
                     <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center border-4 border-gray-100">
