@@ -58,7 +58,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [isRefreshingProfile, setIsRefreshingProfile] = useState<string | null>(null);
   const [newAccountUsername, setNewAccountUsername] = useState('');
   const [newAccountPlatform, setNewAccountPlatform] = useState<'instagram' | 'tiktok' | 'youtube'>('instagram');
-  const [newAccountType, setNewAccountType] = useState<'my' | 'competitor'>('my');
   const [searchQuery, setSearchQuery] = useState('');
   const [syncError, setSyncError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -218,7 +217,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         user.uid,
         newAccountUsername.trim(),
         newAccountPlatform,
-        newAccountType
+        'my' // Default to 'my' account type
       );
       
       // Reload accounts
@@ -226,10 +225,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       setAccounts(updatedAccounts);
       
       setNewAccountUsername('');
-      setNewAccountType('my');
       setIsAddModalOpen(false);
       
-      console.log(`✅ Added ${newAccountType} account @${newAccountUsername}`);
+      console.log(`✅ Added account @${newAccountUsername}`);
       
       // Automatically sync videos for the newly added account
       console.log(`🔄 Auto-syncing videos...`);
@@ -238,7 +236,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       console.error('Failed to add account:', error);
       alert('Failed to add account. Please check the username and try again.');
     }
-  }, [newAccountUsername, newAccountPlatform, newAccountType, currentOrgId, user, handleSyncAccount]);
+  }, [newAccountUsername, newAccountPlatform, currentOrgId, currentProjectId, user, handleSyncAccount]);
 
   const handleRemoveAccount = useCallback(async (accountId: string) => {
     if (!currentOrgId || !currentProjectId || !window.confirm('Are you sure you want to remove this account?')) return;
@@ -1047,40 +1045,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                         : 'border-gray-700 dark:border-gray-700 hover:border-gray-600 dark:hover:border-gray-600 hover:bg-gray-800 dark:hover:bg-gray-800 text-gray-300'
                     )}
                   >
-                    <PlatformIcon platform="youtube" size="md" />
+                    <Play className="w-6 h-6" />
                     <span className="font-medium text-xs">YouTube</span>
-                  </button>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
-                  Account Type
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => setNewAccountType('my')}
-                    className={clsx(
-                      'flex items-center justify-center space-x-2 py-3 px-4 rounded-xl border-2 transition-all duration-200',
-                      newAccountType === 'my'
-                        ? 'border-blue-500 bg-blue-600 text-white shadow-md'
-                        : 'border-gray-700 dark:border-gray-700 hover:border-gray-600 dark:hover:border-gray-600 hover:bg-gray-800 dark:hover:bg-gray-800 text-gray-300'
-                    )}
-                  >
-                    <User className="w-4 h-4" />
-                    <span className="font-medium">My Account</span>
-                  </button>
-                  <button
-                    onClick={() => setNewAccountType('competitor')}
-                    className={clsx(
-                      'flex items-center justify-center space-x-2 py-3 px-4 rounded-xl border-2 transition-all duration-200',
-                      newAccountType === 'competitor'
-                        ? 'border-purple-500 bg-purple-600 text-white shadow-md'
-                        : 'border-gray-700 dark:border-gray-700 hover:border-gray-600 dark:hover:border-gray-600 hover:bg-gray-800 dark:hover:bg-gray-800 text-gray-300'
-                    )}
-                  >
-                    <Users className="w-4 h-4" />
-                    <span className="font-medium">Competitor</span>
                   </button>
                 </div>
               </div>

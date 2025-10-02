@@ -7,7 +7,6 @@ import { VideoSubmissionModal } from './components/VideoSubmissionModal';
 import { TikTokSearchModal } from './components/TikTokSearchModal';
 import KPICards from './components/KPICards';
 import DateRangeFilter, { DateFilterType } from './components/DateRangeFilter';
-import TimePeriodSelector, { TimePeriodType } from './components/TimePeriodSelector';
 import VideoAnalyticsModal from './components/VideoAnalyticsModal';
 import AccountsPage, { AccountsPageRef } from './components/AccountsPage';
 import ContractsPage from './components/ContractsPage';
@@ -59,7 +58,6 @@ function App() {
   const [selectedVideoForAnalytics, setSelectedVideoForAnalytics] = useState<VideoSubmission | null>(null);
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [timePeriod, setTimePeriod] = useState<TimePeriodType>('days');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isLoadingData, setIsLoadingData] = useState(true);
   
@@ -532,10 +530,6 @@ function App() {
                 customRange={customDateRange}
                 onFilterChange={handleDateFilterChange}
               />
-              <TimePeriodSelector
-                selectedPeriod={timePeriod}
-                onPeriodChange={setTimePeriod}
-              />
             </div>
           )}
           {activeTab === 'accounts' && (
@@ -584,7 +578,7 @@ function App() {
                   submissions={filteredSubmissions}
                   linkClicks={filteredLinkClicks}
                   dateFilter={dateFilter}
-                  timePeriod={timePeriod}
+                  timePeriod="days"
                 />
                 
                 {/* Video Submissions Table */}
