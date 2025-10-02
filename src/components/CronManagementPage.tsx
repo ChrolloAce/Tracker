@@ -1,27 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Play, RefreshCw, CheckCircle, XCircle, AlertCircle, Settings } from 'lucide-react';
 
-interface CronStatus {
-  timestamp: string;
-  totalOrganizations: number;
-  organizations: Array<{
-    orgId: string;
-    orgName: string;
-    projects: Array<{
-      projectId: string;
-      projectName: string;
-      accounts: Array<{
-        accountId: string;
-        username: string;
-        platform: string;
-        totalVideos: number;
-        lastSynced: string;
-        timeSinceSync: string;
-      }>;
-    }>;
-  }>;
-}
-
 const CronManagementPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
