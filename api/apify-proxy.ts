@@ -4,7 +4,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Apify-Token');
 
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
@@ -46,31 +46,73 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('🔑 Using token:', APIFY_TOKEN ? 'Token found' : 'No token found');
 
     if (action === 'run') {
-      // Start actor run - using the correct endpoint format
-      const runResponse = await fetch(`https://api.apify.com/v2/acts/${normalizedActorId}/run-sync-get-dataset-items?token=${APIFY_TOKEN}`, {
+      // Prefer run-sync-get-dataset-items (returns array of items)
+      const syncItemsUrl = `https://api.apify.com/v2/acts/${normalizedActorId}/run-sync-get-dataset-items?token=${APIFY_TOKEN}`;
+      console.log('🔗 Using run-sync-get-dataset-items URL:', syncItemsUrl);
+
+      let runResponse = await fetch(syncItemsUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(input),
       });
 
       if (!runResponse.ok) {
         const errorText = await runResponse.text();
-        console.error('❌ Apify run failed:', runResponse.status, errorText);
-        return res.status(runResponse.status).json({ 
-          error: `Failed to start actor run: ${runResponse.status}`,
-          details: errorText 
+        console.warn('⚠️ run-sync-get-dataset-items failed:', runResponse.status, errorText);
+
+        // Fallback: use /runs then wait for completion and fetch dataset items
+        const runsUrl = `https://api.apify.com/v2/acts/${normalizedActorId}/runs?token=${APIFY_TOKEN}`;
+        console.log('↩️ Falling back to /runs URL:', runsUrl);
+
+        const startRunRes = await fetch(runsUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(input),
+        });
+
+        if (!startRunRes.ok) {
+          const startErr = await startRunRes.text();
+          console.error('❌ Failed to start run via /runs:', startRunRes.status, startErr);
+          return res.status(startRunRes.status).json({
+            error: `Failed to start actor run: ${startRunRes.status}`,
+            details: startErr,
+            actorId: normalizedActorId
+          });
+        }
+
+        const runStartData = await startRunRes.json();
+        const runId = runStartData?.data?.id;
+        console.log('🏁 Run started:', runId);
+
+        const runData = await waitForRunCompletion(runId, APIFY_TOKEN).catch((e) => {
+          console.error('❌ Error while waiting for run:', e);
+          return null;
+        });
+
+        if (!runData || runData.status !== 'SUCCEEDED') {
+          return res.status(500).json({
+            error: 'Actor run did not succeed',
+            details: runData || 'Unknown run data',
+            actorId: normalizedActorId
+          });
+        }
+
+        const datasetId = runData.defaultDatasetId;
+        console.log('🗂️ Fetching dataset items for dataset:', datasetId);
+        const { items } = await getDatasetItems(datasetId, APIFY_TOKEN);
+
+        return res.status(200).json({
+          run: { id: runId, status: 'SUCCEEDED', defaultDatasetId: datasetId },
+          items,
         });
       }
 
       const items = await runResponse.json();
-      console.log('🎯 Synchronous run completed, got items directly:', items.length);
+      console.log('🎯 Synchronous run completed, got items directly:', Array.isArray(items) ? items.length : 'unknown');
 
-      // run-sync-get-dataset-items returns items directly
       return res.status(200).json({
         run: { id: 'sync-run', status: 'SUCCEEDED', defaultDatasetId: 'sync' },
-        items: items
+        items: Array.isArray(items) ? items : [],
       });
 
     } else if (action === 'dataset') {
