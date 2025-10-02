@@ -32,7 +32,6 @@ import { DateFilterType } from './DateRangeFilter';
 import Pagination from './ui/Pagination';
 import ColumnPreferencesService from '../services/ColumnPreferencesService';
 import KPICards from './KPICards';
-import DateFilterService from '../services/DateFilterService';
 
 export interface AccountsPageProps {
   dateFilter: DateFilterType;
