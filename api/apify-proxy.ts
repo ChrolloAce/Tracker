@@ -18,7 +18,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { actorId, input, action = 'run' } = req.body;
     
-    // Normalize actorId to Apify API path format: owner~actor
+    // Normalize actorId to Apify API path format: owner~actor and map known aliases
     const normalizeActorId = (id: unknown): string => {
       if (typeof id !== 'string' || !id.trim()) {
         throw new Error('Missing or invalid actorId');
@@ -26,7 +26,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Support both "owner/actor" and "owner~actor" inputs
       if (id.includes('/')) {
         const [owner, actor] = id.split('/');
-        return `${owner}~${actor}`;
+        id = `${owner}~${actor}`;
+      }
+      
+      // Map known aliases to canonical owners
+      const ACTOR_ALIASES: Record<string, string> = {
+        'apify~tiktok-scraper': 'clockworks~tiktok-scraper',
+      };
+      if (ACTOR_ALIASES[id]) {
+        return ACTOR_ALIASES[id];
       }
       return id;
     };
