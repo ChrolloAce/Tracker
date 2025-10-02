@@ -2,6 +2,7 @@ import { TrackedAccount, AccountVideo } from '../types/accounts';
 import FirestoreDataService from './FirestoreDataService';
 import FirebaseStorageService from './FirebaseStorageService';
 import OutlierDetectionService from './OutlierDetectionService';
+import YoutubeAccountService from './YoutubeAccountService';
 import { Timestamp } from 'firebase/firestore';
 
 /**
@@ -66,17 +67,12 @@ export class AccountTrackingServiceFirebase {
       console.log(`➕ Adding ${accountType} account @${username} on ${platform} to project ${projectId}`);
       
       // Fetch account profile data
-      const profileData = platform !== 'youtube' 
-        ? await this.fetchAccountProfile(orgId, username, platform)
-        : {
-            displayName: username,
-            profilePicture: undefined,
-            followerCount: 0,
-            followingCount: 0,
-            postCount: 0,
-            bio: '',
-            isVerified: false
-          };
+      let profileData;
+      if (platform === 'youtube') {
+        profileData = await this.fetchYoutubeProfile(orgId, username);
+      } else {
+        profileData = await this.fetchAccountProfile(orgId, username, platform);
+      }
       
       // Add to Firestore (omit undefined fields)
       const accountData: any = {
@@ -103,6 +99,51 @@ export class AccountTrackingServiceFirebase {
     } catch (error) {
       console.error('❌ Failed to add account:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Fetch YouTube profile data
+   */
+  private static async fetchYoutubeProfile(orgId: string, usernameOrHandle: string) {
+    try {
+      console.log(`🔄 Fetching YouTube channel for @${usernameOrHandle}...`);
+      
+      const profile = await YoutubeAccountService.fetchChannelProfile(usernameOrHandle);
+      
+      // Download and upload avatar to Firebase Storage if present
+      let profilePicture = '';
+      if (profile.profilePicture) {
+        profilePicture = await FirebaseStorageService.downloadAndUpload(
+          orgId,
+          profile.profilePicture,
+          `youtube_${usernameOrHandle}`,
+          'profile'
+        );
+      }
+      
+      return {
+        displayName: profile.displayName,
+        profilePicture,
+        followerCount: profile.followerCount,
+        followingCount: profile.followingCount,
+        postCount: profile.postCount,
+        bio: profile.bio,
+        isVerified: profile.isVerified,
+        channelId: profile.channelId, // Store for later video sync
+      };
+    } catch (error) {
+      console.error('❌ Failed to fetch YouTube channel:', error);
+      return {
+        displayName: usernameOrHandle,
+        profilePicture: '',
+        followerCount: 0,
+        followingCount: 0,
+        postCount: 0,
+        bio: '',
+        isVerified: false,
+        channelId: undefined,
+      };
     }
   }
 
@@ -240,25 +281,25 @@ export class AccountTrackingServiceFirebase {
       console.log(`🔄 Fetching TikTok profile for @${username}...`);
       
       const proxyUrl = `${window.location.origin}/api/apify-proxy`;
-      const cleanUsername = username.replace('@', '');
       
       const response = await fetch(proxyUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          actorId: 'apify/tiktok-scraper',
+          actorId: 'clockworks~tiktok-scraper',
           input: {
-            profiles: [cleanUsername],
-            resultsPerPage: 20
+            profiles: [username],
+            resultsPerPage: 30,
+            shouldDownloadCovers: false,
+            shouldDownloadVideos: false,
+            shouldDownloadSubtitles: false
           },
           action: 'run'
         }),
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`❌ TikTok profile fetch failed:`, response.status, errorText);
-        throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
       const result = await response.json();
@@ -276,24 +317,25 @@ export class AccountTrackingServiceFirebase {
         };
       }
 
-      // Extract profile info from first item (all items have same author)
-      const firstItem = result.items[0];
-      const author = firstItem.authorMeta || firstItem.author;
-      
-      if (!author) {
-        return {
-          displayName: username,
-          profilePicture: '',
-          followerCount: 0,
-          followingCount: 0,
-          postCount: 0,
-          bio: '',
-          isVerified: false,
-        };
+      // Extract profile info
+      let profileInfo = null;
+      let videoCount = 0;
+      let profilePicture = '';
+
+      for (const item of result.items) {
+        if (item.webVideoUrl || item.id) videoCount++;
+        
+        if (item.authorMeta || item.author) {
+          const author = item.authorMeta || item.author;
+          if (!profileInfo && author.name === username) {
+            profileInfo = author;
+            profilePicture = author.avatar || author.profilePicture || '';
+            break;
+          }
+        }
       }
 
-      // Get profile picture and upload to Firebase Storage
-      let profilePicture = author.avatar || author.originalAvatarUrl || '';
+      // Download and upload to Firebase Storage
       if (profilePicture) {
         profilePicture = await FirebaseStorageService.downloadAndUpload(
           orgId,
@@ -304,13 +346,13 @@ export class AccountTrackingServiceFirebase {
       }
 
       return {
-        displayName: author.nickName || author.name || username,
+        displayName: profileInfo?.displayName || profileInfo?.nickname || username,
         profilePicture,
-        followerCount: author.fans || 0,
-        followingCount: author.following || 0,
-        postCount: author.video || result.items.length,
-        bio: author.signature || '',
-        isVerified: author.verified || false,
+        followerCount: profileInfo?.fans || 0,
+        followingCount: profileInfo?.following || 0,
+        postCount: videoCount,
+        bio: profileInfo?.signature || '',
+        isVerified: profileInfo?.verified || false,
       };
     } catch (error) {
       console.error('❌ Failed to fetch TikTok profile:', error);
@@ -342,9 +384,15 @@ export class AccountTrackingServiceFirebase {
       console.log(`🔄 Syncing videos for @${account.username} (${account.platform})`);
 
       // Fetch videos from platform
-      const videos = account.platform === 'instagram'
-        ? await this.syncInstagramVideos(orgId, account)
-        : await this.syncTikTokVideos(orgId, account);
+      let videos: AccountVideo[];
+      if (account.platform === 'instagram') {
+        videos = await this.syncInstagramVideos(orgId, account);
+      } else if (account.platform === 'tiktok') {
+        videos = await this.syncTikTokVideos(orgId, account);
+      } else {
+        // YouTube
+        videos = await this.syncYoutubeShorts(orgId, account);
+      }
 
       // Sync to Firestore
       await FirestoreDataService.syncAccountVideos(
@@ -493,25 +541,25 @@ export class AccountTrackingServiceFirebase {
     console.log(`🔄 Fetching TikTok videos for @${account.username}...`);
     
     const proxyUrl = `${window.location.origin}/api/apify-proxy`;
-    const cleanUsername = account.username.replace('@', '');
     
     const response = await fetch(proxyUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        actorId: 'apify/tiktok-scraper',
+        actorId: 'clockworks~tiktok-scraper',
         input: {
-          profiles: [cleanUsername],
-          resultsPerPage: 100
+          profiles: [account.username],
+          resultsPerPage: 100,
+          shouldDownloadCovers: false,
+          shouldDownloadVideos: false,
+          shouldDownloadSubtitles: false
         },
         action: 'run'
       }),
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ TikTok video sync failed:`, response.status, errorText);
-      throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
     const result = await response.json();
@@ -526,7 +574,7 @@ export class AccountTrackingServiceFirebase {
       if (!item.webVideoUrl && !item.id) continue;
 
       // Upload thumbnail to Firebase Storage
-      const thumbnailUrl = item.videoMeta?.coverUrl || item.coverUrl || '';
+      const thumbnailUrl = item['videoMeta.coverUrl'] || item.videoMeta?.coverUrl || item.coverUrl || '';
       let uploadedThumbnail = thumbnailUrl;
       if (thumbnailUrl) {
         uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
@@ -543,13 +591,13 @@ export class AccountTrackingServiceFirebase {
         videoId: item.id || '',
         url: item.webVideoUrl || `https://www.tiktok.com/@${account.username}/video/${item.id}`,
         thumbnail: uploadedThumbnail,
-        caption: item.text || '',
-        uploadDate: new Date(item.createTimeISO || Date.now()),
+        caption: item.text || item.description || '',
+        uploadDate: new Date(item.createTimeISO || item.createTime || Date.now()),
         views: item.playCount || 0,
         likes: item.diggCount || 0,
         comments: item.commentCount || 0,
         shares: item.shareCount || 0,
-        duration: item.videoMeta?.duration || 0,
+        duration: item['videoMeta.duration'] || item.videoMeta?.duration || 0,
         isSponsored: false,
         hashtags: item.hashtags || [],
         mentions: item.mentions || []
@@ -558,6 +606,51 @@ export class AccountTrackingServiceFirebase {
 
     console.log(`✅ Fetched ${videos.length} TikTok videos`);
     return videos;
+  }
+
+  /**
+   * Sync YouTube Shorts videos
+   */
+  private static async syncYoutubeShorts(orgId: string, account: TrackedAccount): Promise<AccountVideo[]> {
+    console.log(`🔄 Fetching YouTube Shorts for @${account.username}...`);
+    
+    try {
+      // We need the channel ID to fetch Shorts
+      // Fetch profile again to get channelId if not stored
+      const profile = await YoutubeAccountService.fetchChannelProfile(account.username);
+      if (!profile.channelId) {
+        throw new Error('Could not resolve YouTube channel ID');
+      }
+
+      const shorts = await YoutubeAccountService.syncChannelShorts(profile.channelId!, account.displayName || account.username);
+
+      // Upload thumbnails to Firebase Storage
+      const videos: AccountVideo[] = [];
+      for (const short of shorts) {
+        let uploadedThumbnail = short.thumbnail;
+        if (short.thumbnail) {
+          uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
+            orgId,
+            short.thumbnail,
+            `yt_${short.videoId}`,
+            'thumbnail'
+          );
+        }
+
+        videos.push({
+          ...short,
+          id: `${account.id}_${short.videoId}`,
+          accountId: account.id,
+          thumbnail: uploadedThumbnail,
+        });
+      }
+
+      console.log(`✅ Fetched ${videos.length} YouTube Shorts`);
+      return videos;
+    } catch (error) {
+      console.error('❌ Failed to sync YouTube Shorts:', error);
+      throw error;
+    }
   }
 
   /**

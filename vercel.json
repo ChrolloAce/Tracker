@@ -6,6 +6,9 @@
     "api/youtube-video.ts": {
       "maxDuration": 10
     },
+    "api/youtube-channel.ts": {
+      "maxDuration": 30
+    },
     "api/redirect.ts": {
       "maxDuration": 10
     },
