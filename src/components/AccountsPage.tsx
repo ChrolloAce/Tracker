@@ -32,6 +32,7 @@ import { DateFilterType } from './DateRangeFilter';
 import Pagination from './ui/Pagination';
 import ColumnPreferencesService from '../services/ColumnPreferencesService';
 import KPICards from './KPICards';
+import DateFilterService from '../services/DateFilterService';
 
 export interface AccountsPageProps {
   dateFilter: DateFilterType;
@@ -596,8 +597,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
 
             {/* KPI Cards */}
               {(() => {
-              // Convert AccountVideo[] to VideoSubmission[] for KPICards
-              const videoSubmissions: VideoSubmission[] = accountVideos.map(video => ({
+              // First convert AccountVideo[] to VideoSubmission[]
+              const allVideoSubmissions: VideoSubmission[] = accountVideos.map(video => ({
                 id: video.id || video.videoId || '',
                 url: video.url || '',
                 platform: selectedAccount.platform,
@@ -610,20 +611,27 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                 likes: video.likesCount || video.likes || 0,
                 comments: video.commentsCount || video.comments || 0,
                 shares: video.sharesCount || video.shares || 0,
-                dateSubmitted: new Date(),
+                dateSubmitted: video.uploadDate || new Date(),
                 uploadDate: video.uploadDate || new Date(),
                 snapshots: []
               }));
-                
-                return (
+
+              // Then filter by date
+              const filteredVideoSubmissions = DateFilterService.filterVideosByDateRange(
+                allVideoSubmissions,
+                dateFilter,
+                null
+              );
+
+                                  return (
                 <div className="mb-6">
                   <KPICards 
-                    submissions={videoSubmissions}
+                    submissions={filteredVideoSubmissions}
                     linkClicks={[]}
                     dateFilter={dateFilter}
                     timePeriod="days"
                   />
-                                    </div>
+                      </div>
                 );
               })()}
 
