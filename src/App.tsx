@@ -13,6 +13,7 @@ import AccountsPage, { AccountsPageRef } from './components/AccountsPage';
 import ContractsPage from './components/ContractsPage';
 import SettingsPage from './components/SettingsPage';
 import SubscriptionPage from './components/SubscriptionPage';
+import CronManagementPage from './components/CronManagementPage';
 import TrackedLinksPage from './components/TrackedLinksPage';
 import LinkRedirect from './components/LinkRedirect';
 import LoginPage from './components/LoginPage';
@@ -437,6 +438,7 @@ function App() {
                 {activeTab === 'subscription' && 'Subscription Plans'}
                 {activeTab === 'analytics' && 'Tracked Links'}
                 {activeTab === 'creators' && 'Creators'}
+                {activeTab === 'cron' && 'Cron Jobs'}
                 {activeTab === 'settings' && 'Settings'}
               </h1>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -446,6 +448,7 @@ function App() {
                 {activeTab === 'subscription' && 'Choose the perfect plan to scale your tracking'}
                 {activeTab === 'analytics' && 'Track and analyze your shared links'}
                 {activeTab === 'creators' && 'Manage and discover content creators'}
+                {activeTab === 'cron' && 'Manage automated video refreshes'}
                 {activeTab === 'settings' && 'Configure your preferences'}
               </p>
             </div>
@@ -570,6 +573,9 @@ function App() {
 
           {/* Settings Tab */}
           {activeTab === 'settings' && <SettingsPage />}
+
+          {/* Cron Management Tab */}
+          {activeTab === 'cron' && <CronManagementPage />}
 
           {/* Tracked Links Tab */}
           {activeTab === 'analytics' && <TrackedLinksPage />}

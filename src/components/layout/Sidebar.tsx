@@ -7,7 +7,8 @@ import {
   ChevronRight,
   FileSignature,
   Eye,
-  Link
+  Link,
+  Clock
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '../../contexts/AuthContext';
@@ -80,6 +81,13 @@ const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const bottomItems: NavItem[] = [
+    {
+      id: 'cron',
+      label: 'Cron Jobs',
+      icon: Clock,
+      isActive: activeTab === 'cron',
+      onClick: () => onTabChange?.('cron'),
+    },
     {
       id: 'settings',
       label: 'Settings',
