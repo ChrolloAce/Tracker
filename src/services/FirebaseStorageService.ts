@@ -179,7 +179,13 @@ class FirebaseStorageService {
       return uploadedUrl;
     } catch (error) {
       console.warn(`⚠️ Failed to download and upload ${type} ${identifier}:`, error);
-      // Return original URL as fallback
+      // For Instagram profile pictures, don't return the original URL as it expires
+      // Return empty string instead
+      if (type === 'profile' && imageUrl.includes('instagram')) {
+        console.log(`⚠️ Instagram ${type} download failed for ${identifier}, returning empty (URL expires)`);
+        return '';
+      }
+      // For other images, return original URL as fallback
       console.log(`📷 Using original URL as fallback: ${identifier}`);
       return imageUrl;
     }

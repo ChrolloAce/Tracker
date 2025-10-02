@@ -177,17 +177,35 @@ export class AccountTrackingServiceFirebase {
 
       const firstItem = result.items[0];
       
-      // Try to get profile picture
-      let profilePicture = firstItem.ownerProfilePicUrl || '';
+      // Try multiple fields for profile picture (Instagram API varies)
+      let profilePictureUrl = firstItem.ownerProfilePicUrl || 
+                              firstItem.ownerProfilePicture ||
+                              firstItem.profilePicUrl ||
+                              firstItem.profilePicture ||
+                              (firstItem.owner && firstItem.owner.profilePicUrl) ||
+                              '';
+      
+      console.log(`📸 Found Instagram profile picture URL:`, profilePictureUrl);
+      
+      let profilePicture = '';
       
       // Download and upload to Firebase Storage
-      if (profilePicture) {
-        profilePicture = await FirebaseStorageService.downloadAndUpload(
-          orgId,
-          profilePicture,
-          `instagram_${username}`,
-          'profile'
-        );
+      if (profilePictureUrl) {
+        try {
+          profilePicture = await FirebaseStorageService.downloadAndUpload(
+            orgId,
+            profilePictureUrl,
+            `instagram_${username}`,
+            'profile'
+          );
+          console.log(`✅ Successfully uploaded Instagram profile picture for @${username}`);
+        } catch (error) {
+          console.error(`❌ Failed to upload Instagram profile picture for @${username}:`, error);
+          // Use a placeholder or keep empty
+          profilePicture = '';
+        }
+      } else {
+        console.warn(`⚠️ No profile picture URL found in Instagram response for @${username}`);
       }
 
       return {
