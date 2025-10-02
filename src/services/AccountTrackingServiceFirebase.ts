@@ -276,25 +276,24 @@ export class AccountTrackingServiceFirebase {
         };
       }
 
-      // Extract profile info
-      let profileInfo = null;
-      let videoCount = 0;
-      let profilePicture = '';
-
-      for (const item of result.items) {
-        if (item.webVideoUrl || item.id) videoCount++;
-        
-        if (item.authorMeta || item.author) {
-          const author = item.authorMeta || item.author;
-          if (!profileInfo && author.name === username) {
-            profileInfo = author;
-            profilePicture = author.avatar || author.profilePicture || '';
-            break;
-          }
-        }
+      // Extract profile info from first item (all items have same author)
+      const firstItem = result.items[0];
+      const author = firstItem.authorMeta || firstItem.author;
+      
+      if (!author) {
+        return {
+          displayName: username,
+          profilePicture: '',
+          followerCount: 0,
+          followingCount: 0,
+          postCount: 0,
+          bio: '',
+          isVerified: false,
+        };
       }
 
-      // Download and upload to Firebase Storage
+      // Get profile picture and upload to Firebase Storage
+      let profilePicture = author.avatar || author.originalAvatarUrl || '';
       if (profilePicture) {
         profilePicture = await FirebaseStorageService.downloadAndUpload(
           orgId,
@@ -305,13 +304,13 @@ export class AccountTrackingServiceFirebase {
       }
 
       return {
-        displayName: profileInfo?.displayName || profileInfo?.nickname || username,
+        displayName: author.nickName || author.name || username,
         profilePicture,
-        followerCount: profileInfo?.fans || 0,
-        followingCount: profileInfo?.following || 0,
-        postCount: videoCount,
-        bio: profileInfo?.signature || '',
-        isVerified: profileInfo?.verified || false,
+        followerCount: author.fans || 0,
+        followingCount: author.following || 0,
+        postCount: author.video || result.items.length,
+        bio: author.signature || '',
+        isVerified: author.verified || false,
       };
     } catch (error) {
       console.error('❌ Failed to fetch TikTok profile:', error);
@@ -527,7 +526,7 @@ export class AccountTrackingServiceFirebase {
       if (!item.webVideoUrl && !item.id) continue;
 
       // Upload thumbnail to Firebase Storage
-      const thumbnailUrl = item['videoMeta.coverUrl'] || item.videoMeta?.coverUrl || item.coverUrl || '';
+      const thumbnailUrl = item.videoMeta?.coverUrl || item.coverUrl || '';
       let uploadedThumbnail = thumbnailUrl;
       if (thumbnailUrl) {
         uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
@@ -544,13 +543,13 @@ export class AccountTrackingServiceFirebase {
         videoId: item.id || '',
         url: item.webVideoUrl || `https://www.tiktok.com/@${account.username}/video/${item.id}`,
         thumbnail: uploadedThumbnail,
-        caption: item.text || item.description || '',
-        uploadDate: new Date(item.createTimeISO || item.createTime || Date.now()),
+        caption: item.text || '',
+        uploadDate: new Date(item.createTimeISO || Date.now()),
         views: item.playCount || 0,
         likes: item.diggCount || 0,
         comments: item.commentCount || 0,
         shares: item.shareCount || 0,
-        duration: item['videoMeta.duration'] || item.videoMeta?.duration || 0,
+        duration: item.videoMeta?.duration || 0,
         isSponsored: false,
         hashtags: item.hashtags || [],
         mentions: item.mentions || []

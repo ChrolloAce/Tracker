@@ -106,21 +106,12 @@ class TikTokApiService {
     const id = urlMatch ? urlMatch[1] : tiktokData.id || 'unknown';
 
     // Try multiple possible thumbnail field names
-    const thumbnailUrl = tiktokData['videoMeta.coverUrl'] || 
-                         tiktokData.videoMeta?.coverUrl || 
+    const thumbnailUrl = tiktokData.videoMeta?.coverUrl || 
                          tiktokData.coverUrl || 
                          tiktokData.thumbnail || 
-                         tiktokData.cover || 
                          '';
     
     console.log('🖼️ TikTok thumbnail URL found:', thumbnailUrl);
-    console.log('🔍 Checking thumbnail fields:', {
-      'videoMeta.coverUrl': tiktokData['videoMeta.coverUrl'],
-      'videoMeta': tiktokData.videoMeta,
-      'coverUrl': tiktokData.coverUrl,
-      'thumbnail': tiktokData.thumbnail,
-      'cover': tiktokData.cover
-    });
 
     // Download and save thumbnail locally
     let localThumbnailUrl = '';
@@ -130,21 +121,12 @@ class TikTokApiService {
     }
 
     // Try multiple possible username field names
-    const username = tiktokData['authorMeta.name'] || 
-                    tiktokData.authorMeta?.name || 
+    const username = tiktokData.authorMeta?.name || 
                     tiktokData.author?.name || 
                     tiktokData.username || 
-                    tiktokData.authorName || 
                     'unknown_user';
 
     console.log('👤 TikTok username found:', username);
-    console.log('🔍 Checking username fields:', {
-      'authorMeta.name': tiktokData['authorMeta.name'],
-      'authorMeta': tiktokData.authorMeta,
-      'author': tiktokData.author,
-      'username': tiktokData.username,
-      'authorName': tiktokData.authorName
-    });
 
     const transformedData: InstagramVideoData = {
       id: id,
@@ -167,7 +149,7 @@ class TikTokApiService {
       comments: transformedData.comment_count,
       views: transformedData.view_count,
       shares: tiktokData.shareCount || 0,
-      duration: tiktokData['videoMeta.duration'] || 0,
+      duration: tiktokData.videoMeta?.duration || 0,
       uploadDate: new Date(transformedData.timestamp).toLocaleDateString(),
       thumbnail: transformedData.thumbnail_url ? 'Downloaded locally' : 'Using original URL'
     });
