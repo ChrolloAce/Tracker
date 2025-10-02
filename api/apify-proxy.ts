@@ -17,21 +17,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { actorId, input, action = 'run' } = req.body;
+    
+    // Normalize actorId to Apify API path format: owner~actor
+    const normalizeActorId = (id: unknown): string => {
+      if (typeof id !== 'string' || !id.trim()) {
+        throw new Error('Missing or invalid actorId');
+      }
+      // Support both "owner/actor" and "owner~actor" inputs
+      if (id.includes('/')) {
+        const [owner, actor] = id.split('/');
+        return `${owner}~${actor}`;
+      }
+      return id;
+    };
+    
+    const normalizedActorId = normalizeActorId(actorId);
     const APIFY_TOKEN = process.env.APIFY_TOKEN || 'apify_api_7wvIrJjtEH6dTZktJZAtcIGAylH7cX2jRweu';
 
     console.log('🔄 Apify proxy request:', { actorId, action, inputKeys: Object.keys(input || {}) });
     console.log('🔑 Using token:', APIFY_TOKEN ? 'Token found' : 'No token found');
-    console.log('📋 Full input:', JSON.stringify(input, null, 2));
 
     if (action === 'run') {
       // Start actor run - using the correct endpoint format
-      // DO NOT encode the forward slash - it's part of the path structure
-      const apiUrl = `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${APIFY_TOKEN}`;
-      console.log('🌐 Calling Apify API:', apiUrl);
-      console.log('📦 Actor ID:', actorId);
-      console.log('🔍 Full URL being called:', apiUrl.replace(APIFY_TOKEN, '***'));
-      
-      const runResponse = await fetch(apiUrl, {
+      const runResponse = await fetch(`https://api.apify.com/v2/acts/${normalizedActorId}/run-sync-get-dataset-items?token=${APIFY_TOKEN}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -42,21 +50,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!runResponse.ok) {
         const errorText = await runResponse.text();
         console.error('❌ Apify run failed:', runResponse.status, errorText);
-        
-        // Try to parse error as JSON for better error messages
-        let errorDetails = errorText;
-        try {
-          const errorJson = JSON.parse(errorText);
-          errorDetails = errorJson.error?.message || errorJson.message || errorText;
-        } catch {
-          // Keep original error text if not JSON
-        }
-        
         return res.status(runResponse.status).json({ 
           error: `Failed to start actor run: ${runResponse.status}`,
-          details: errorDetails,
-          actorId,
-          input
+          details: errorText 
         });
       }
 
