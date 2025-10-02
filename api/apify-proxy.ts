@@ -25,8 +25,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (action === 'run') {
       // Start actor run - using the correct endpoint format
+      // DO NOT encode the forward slash - it's part of the path structure
       const apiUrl = `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${APIFY_TOKEN}`;
       console.log('🌐 Calling Apify API:', apiUrl);
+      console.log('📦 Actor ID:', actorId);
+      console.log('🔍 Full URL being called:', apiUrl.replace(APIFY_TOKEN, '***'));
       
       const runResponse = await fetch(apiUrl, {
         method: 'POST',

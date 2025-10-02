@@ -246,7 +246,7 @@ export class AccountTrackingServiceFirebase {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          actorId: 'clockworks/tiktok-scraper',
+          actorId: 'apify/tiktok-scraper',
           input: {
             profiles: [cleanUsername],
             resultsPerPage: 20
@@ -499,7 +499,7 @@ export class AccountTrackingServiceFirebase {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        actorId: 'clockworks/tiktok-scraper',
+        actorId: 'apify/tiktok-scraper',
         input: {
           profiles: [cleanUsername],
           resultsPerPage: 100
