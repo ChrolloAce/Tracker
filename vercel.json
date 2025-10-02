@@ -5,8 +5,17 @@
     },
     "api/redirect.ts": {
       "maxDuration": 10
+    },
+    "api/cron-refresh-videos.ts": {
+      "maxDuration": 300
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron-refresh-videos",
+      "schedule": "0 */12 * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/l/:shortCode",
