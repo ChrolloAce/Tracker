@@ -68,9 +68,15 @@ class YoutubeAccountService {
     try {
       console.log(`🔄 Fetching YouTube channel for: ${usernameOrHandle}`);
 
-      const body = usernameOrHandle.startsWith('@') 
-        ? { action: 'getChannelInfo', channelHandle: usernameOrHandle }
-        : { action: 'getChannelInfo', channelId: usernameOrHandle };
+      // Normalize: strip @ if present, then decide if it's a handle or channel ID
+      const normalized = usernameOrHandle.startsWith('@') ? usernameOrHandle.substring(1) : usernameOrHandle;
+      
+      // If it looks like a channel ID (starts with UC and 22+ chars), use channelId; otherwise use handle
+      const isChannelId = normalized.startsWith('UC') && normalized.length >= 22;
+      
+      const body = isChannelId
+        ? { action: 'getChannelInfo', channelId: normalized }
+        : { action: 'getChannelInfo', channelHandle: `@${normalized}` };
 
       const res = await fetch(this.endpoint, {
         method: 'POST',
