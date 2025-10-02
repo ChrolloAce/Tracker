@@ -132,7 +132,7 @@ export class AccountTrackingServiceFirebase {
   /**
    * Fetch Instagram profile data
    */
-  private static async fetchInstagramProfile(orgId: string, username: string) {
+  private static async fetchInstagramProfile(_orgId: string, username: string) {
     try {
       console.log(`🔄 Fetching Instagram profile for @${username}...`);
       
