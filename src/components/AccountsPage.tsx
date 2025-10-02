@@ -20,6 +20,7 @@ import {
   } from 'lucide-react';
 import { TrackedAccount, AccountVideo } from '../types/accounts';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
+import RulesService from '../services/RulesService';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { clsx } from 'clsx';
 import { useAuth } from '../contexts/AuthContext';
@@ -50,6 +51,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<TrackedAccount | null>(null);
   const [accountVideos, setAccountVideos] = useState<AccountVideo[]>([]);
+  const [activeRulesCount, setActiveRulesCount] = useState(0);
   const [viewMode, setViewMode] = useState<'table' | 'details'>('table');
   const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
   const [selectedVideoForPlayer, setSelectedVideoForPlayer] = useState<{url: string; title: string; platform: 'instagram' | 'tiktok' | 'youtube' } | null>(null);
@@ -150,7 +152,29 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         console.log('📱 Loading videos for account:', selectedAccount.username);
         const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, currentProjectId, selectedAccount.id);
         console.log('📹 Loaded videos from Firestore:', videos.length);
-        setAccountVideos(videos);
+        
+        // Apply rules to filter videos in real-time
+        console.log('📋 Applying rules to filter videos...');
+        
+        // Get active rules for this account
+        const accountRules = await RulesService.getRulesForAccount(
+          currentOrgId,
+          currentProjectId,
+          selectedAccount.id,
+          selectedAccount.platform
+        );
+        setActiveRulesCount(accountRules.length);
+        
+        const filteredVideos = await RulesService.filterVideosByRules(
+          currentOrgId,
+          currentProjectId,
+          selectedAccount.id,
+          selectedAccount.platform,
+          videos
+        );
+        
+        console.log(`✅ Filtered: ${filteredVideos.length}/${videos.length} videos match rules (${accountRules.length} rules active)`);
+        setAccountVideos(filteredVideos);
         setViewMode('details');
         onViewModeChange('details');
         
@@ -189,7 +213,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       if (selectedAccount?.id === accountId) {
         const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, currentProjectId, accountId);
         console.log('🔄 Updating displayed videos after sync:', videos.length);
-        setAccountVideos(videos);
+        
+        // Apply rules to filter
+        const filteredVideos = await RulesService.filterVideosByRules(
+          currentOrgId,
+          currentProjectId,
+          accountId,
+          selectedAccount.platform,
+          videos
+        );
+        console.log(`✅ After sync filter: ${filteredVideos.length}/${videos.length} videos match rules`);
+        setAccountVideos(filteredVideos);
       }
       
       console.log(`✅ Successfully synced ${videoCount} videos to Firestore`);
@@ -574,9 +608,19 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                   </div>
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                    {selectedAccount.displayName || `@${selectedAccount.username}`}
-                  </h2>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {selectedAccount.displayName || `@${selectedAccount.username}`}
+                    </h2>
+                    {activeRulesCount > 0 && (
+                      <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-full">
+                        <Filter className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                        <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+                          {activeRulesCount} {activeRulesCount === 1 ? 'Rule' : 'Rules'} Active
+                        </span>
+                      </div>
+                    )}
+                  </div>
                   <div className="flex items-center space-x-6 text-sm text-gray-600 dark:text-gray-400">
                     <div className="flex items-center space-x-2">
                       <span className="text-gray-500 dark:text-gray-500">@{selectedAccount.username}</span>
