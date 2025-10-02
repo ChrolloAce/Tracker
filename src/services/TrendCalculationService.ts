@@ -115,11 +115,10 @@ export class TrendCalculationService {
       direction = 'flat';
       arrow = '→';
     } else if (previousValue === 0 && currentValue > 0) {
-      // Previous period had nothing, now we have data
-      // This could mean: new content, or missing historical data
-      // Show as "new" with a large but capped percentage for display
-      // Note: We don't cap the calculation, just show it reasonably
-      percentChange = 999; // Indicates "new" or "no historical data"
+      // Previous period had zero, current has value
+      // Without snapshots, we can't tell if this is growth or just missing data
+      // Show it as significant growth
+      percentChange = 100;
       direction = 'up';
       arrow = '↑';
     } else if (previousValue === 0) {
@@ -321,11 +320,6 @@ export class TrendCalculationService {
    * Format percent change for display
    */
   private static formatPercent(percent: number): string {
-    // Handle special case for new content (no historical data)
-    if (percent >= 999) {
-      return 'NEW';
-    }
-    
     const rounded = Math.round(percent * 10) / 10;
     const sign = rounded > 0 ? '+' : '';
     return `${sign}${rounded.toFixed(1)}%`;

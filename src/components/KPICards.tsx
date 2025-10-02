@@ -493,9 +493,7 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
               {data.trend && (
                 <span 
                   className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium ${
-                    data.trend.formattedPercent === 'NEW'
-                      ? 'bg-blue-400/10 text-blue-300'
-                      : data.trend.direction === 'up' 
+                    data.trend.direction === 'up' 
                       ? 'bg-emerald-400/10 text-emerald-300' 
                       : data.trend.direction === 'down'
                       ? 'bg-rose-400/10 text-rose-300'
@@ -503,9 +501,7 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
                   }`}
                   title={data.trend.tooltip}
                 >
-                  {data.trend.formattedPercent === 'NEW' ? (
-                    '✨'
-                  ) : data.trend.direction === 'up' ? (
+                  {data.trend.direction === 'up' ? (
                     <TrendingUp className="w-3 h-3" />
                   ) : data.trend.direction === 'down' ? (
                     <TrendingDown className="w-3 h-3" />

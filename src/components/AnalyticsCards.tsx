@@ -122,9 +122,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
         </div>
         <div 
           className={`flex items-center text-sm font-medium ${
-            trend.formattedPercent === 'NEW'
-              ? 'text-blue-600 dark:text-blue-400'
-              : trend.direction === 'up' 
+            trend.direction === 'up' 
               ? 'text-green-600' 
               : trend.direction === 'down'
               ? 'text-red-600'
@@ -132,21 +130,14 @@ const MetricCard: React.FC<MetricCardProps> = ({
           }`}
           title={trend.tooltip}
         >
-          {trend.formattedPercent === 'NEW' ? (
-            <span className="mr-1">✨</span>
-          ) : trend.direction === 'up' ? (
+          {trend.direction === 'up' ? (
             <TrendingUp className="w-4 h-4 mr-1" />
           ) : trend.direction === 'down' ? (
             <TrendingDown className="w-4 h-4 mr-1" />
           ) : (
             <Minus className="w-4 h-4 mr-1" />
           )}
-          <span>
-            {trend.formattedPercent === 'NEW' 
-              ? 'New content' 
-              : `${trend.formattedPercent} from last period`
-            }
-          </span>
+          <span>{trend.formattedPercent} from last period</span>
         </div>
       </div>
 
