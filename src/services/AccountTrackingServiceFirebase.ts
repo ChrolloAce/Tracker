@@ -187,25 +187,15 @@ export class AccountTrackingServiceFirebase {
       
       console.log(`📸 Found Instagram profile picture URL:`, profilePictureUrl);
       
-      let profilePicture = '';
+      // Instagram CDN URLs are heavily protected and expire quickly
+      // Don't try to download them - just use the URL directly or leave empty
+      // The frontend will show a placeholder icon if no profile picture
+      const profilePicture = profilePictureUrl || '';
       
-      // Download and upload to Firebase Storage
-      if (profilePictureUrl) {
-        try {
-          profilePicture = await FirebaseStorageService.downloadAndUpload(
-            orgId,
-            profilePictureUrl,
-            `instagram_${username}`,
-            'profile'
-          );
-          console.log(`✅ Successfully uploaded Instagram profile picture for @${username}`);
-        } catch (error) {
-          console.error(`❌ Failed to upload Instagram profile picture for @${username}:`, error);
-          // Use a placeholder or keep empty
-          profilePicture = '';
-        }
+      if (profilePicture) {
+        console.log(`✅ Using Instagram profile picture URL directly for @${username}`);
       } else {
-        console.warn(`⚠️ No profile picture URL found in Instagram response for @${username}`);
+        console.warn(`⚠️ No profile picture URL found for @${username} - will use placeholder`);
       }
 
       return {
