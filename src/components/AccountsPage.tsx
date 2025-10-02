@@ -640,8 +640,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                   src={account.profilePicture}
                                   alt={`@${account.username}`}
                                   className="w-10 h-10 rounded-full object-cover"
-                                  crossOrigin="anonymous"
-                                  referrerPolicy="no-referrer"
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
                                     target.style.display = 'none';
@@ -758,19 +756,26 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
             <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 p-8">
               <div className="flex items-center space-x-6">
                 <div className="relative">
-                  {selectedAccount.profilePicture ? (
+                  {selectedAccount.profilePicture && (
                     <img
                       src={selectedAccount.profilePicture}
                       alt={`@${selectedAccount.username}`}
                       className="w-24 h-24 rounded-2xl object-cover border-4 border-gray-100"
                       crossOrigin="anonymous"
                       referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        // Fallback to placeholder if image fails to load
+                        e.currentTarget.style.display = 'none';
+                        const placeholder = e.currentTarget.parentElement?.querySelector('.placeholder-icon');
+                        if (placeholder) {
+                          placeholder.classList.remove('hidden');
+                        }
+                      }}
                     />
-                  ) : (
-                    <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center border-4 border-gray-100">
-                      <Users className="w-12 h-12 text-gray-500" />
-                    </div>
                   )}
+                  <div className={`placeholder-icon w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center border-4 border-gray-100 ${selectedAccount.profilePicture ? 'hidden' : ''}`}>
+                    <Users className="w-12 h-12 text-gray-500" />
+                  </div>
                   <div className="absolute -bottom-2 -right-2">
                     <PlatformIcon platform={selectedAccount.platform} size="lg" />
                   </div>
