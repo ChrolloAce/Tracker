@@ -1047,7 +1047,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                         : 'border-gray-700 dark:border-gray-700 hover:border-gray-600 dark:hover:border-gray-600 hover:bg-gray-800 dark:hover:bg-gray-800 text-gray-300'
                     )}
                   >
-                    <Play className="w-6 h-6" />
+                    <PlatformIcon platform="youtube" size="md" />
                     <span className="font-medium text-xs">YouTube</span>
                   </button>
                 </div>
