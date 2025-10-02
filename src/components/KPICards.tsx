@@ -122,28 +122,54 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
       ? ((last7DaysViews - previous7DaysViews) / previous7DaysViews) * 100 
       : 0;
 
-    // Generate sparkline data based on time period
+    // Generate sparkline data based on time period and date filter
     // For filtered periods: shows growth over time
     // For "all": shows cumulative metrics over time
     const generateSparklineData = (metric: 'views' | 'likes' | 'comments') => {
       const data = [];
       
-      // Determine number of data points and interval based on timePeriod
+      // Determine number of data points and interval based on dateFilter and timePeriod
       let numPoints = 30;
       let intervalMs = 24 * 60 * 60 * 1000; // 1 day
       
-      if (timePeriod === 'hours') {
+      // Adjust based on date filter to show accurate time range
+      if (dateFilter === 'today') {
         numPoints = 24; // Last 24 hours
         intervalMs = 60 * 60 * 1000; // 1 hour
-      } else if (timePeriod === 'days') {
+      } else if (dateFilter === 'last7days') {
+        numPoints = 7; // Last 7 days
+        intervalMs = 24 * 60 * 60 * 1000; // 1 day
+      } else if (dateFilter === 'last30days') {
         numPoints = 30; // Last 30 days
         intervalMs = 24 * 60 * 60 * 1000; // 1 day
-      } else if (timePeriod === 'weeks') {
-        numPoints = 12; // Last 12 weeks
+      } else if (dateFilter === 'last90days') {
+        numPoints = 13; // ~13 weeks
         intervalMs = 7 * 24 * 60 * 60 * 1000; // 1 week
-      } else if (timePeriod === 'months') {
-        numPoints = 12; // Last 12 months
-        intervalMs = 30 * 24 * 60 * 60 * 1000; // ~1 month
+      } else if (dateFilter === 'mtd') {
+        const now = new Date();
+        numPoints = now.getDate(); // Days in current month so far
+        intervalMs = 24 * 60 * 60 * 1000; // 1 day
+      } else if (dateFilter === 'ytd') {
+        const now = new Date();
+        const startOfYear = new Date(now.getFullYear(), 0, 1);
+        const daysPassed = Math.floor((now.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000));
+        numPoints = Math.ceil(daysPassed / 7); // Weekly data points for YTD
+        intervalMs = 7 * 24 * 60 * 60 * 1000; // 1 week
+      } else {
+        // Fallback to timePeriod for 'all' or 'custom'
+        if (timePeriod === 'hours') {
+          numPoints = 24; // Last 24 hours
+          intervalMs = 60 * 60 * 1000; // 1 hour
+        } else if (timePeriod === 'days') {
+          numPoints = 30; // Last 30 days
+          intervalMs = 24 * 60 * 60 * 1000; // 1 day
+        } else if (timePeriod === 'weeks') {
+          numPoints = 12; // Last 12 weeks
+          intervalMs = 7 * 24 * 60 * 60 * 1000; // 1 week
+        } else if (timePeriod === 'months') {
+          numPoints = 12; // Last 12 months
+          intervalMs = 30 * 24 * 60 * 60 * 1000; // ~1 month
+        }
       }
       
       // Generate trend showing growth over time
@@ -387,7 +413,7 @@ const KPISparkline: React.FC<{
         <Tooltip
           position={{ y: 70 }}
           allowEscapeViewBox={{ x: false, y: true }}
-          wrapperStyle={{ zIndex: 9999 }}
+          wrapperStyle={{ zIndex: 99999, position: 'relative' }}
           content={({ active, payload }) => {
             if (active && payload && payload.length) {
               const data = payload[0].payload;
@@ -408,7 +434,7 @@ const KPISparkline: React.FC<{
               }
               
               return (
-                <div className="bg-gray-900/80 backdrop-blur-md text-white px-4 py-2.5 rounded-lg shadow-xl text-sm space-y-1 min-w-[200px] border border-white/10 z-[9999] relative">
+                <div className="bg-gray-900/80 backdrop-blur-md text-white px-4 py-2.5 rounded-lg shadow-xl text-sm space-y-1 min-w-[200px] border border-white/10 z-[99999] relative pointer-events-none">
                   {dateStr && <p className="text-xs text-gray-400 font-medium">{dateStr}</p>}
                   <p className="font-semibold text-lg">{value?.toLocaleString()}</p>
                   {showComparison && trendText && (
@@ -497,7 +523,7 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
   return (
     <div 
       onClick={onClick}
-      className="group relative min-h-[8rem] rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 p-4 lg:p-5 cursor-pointer">
+      className="group relative min-h-[8rem] rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 p-4 lg:p-5 cursor-pointer overflow-visible hover:z-50">
       <div className="flex items-start justify-between h-full">
         {/* Left: Text Stack */}
         <div className="flex-1 flex flex-col justify-between min-h-full">
