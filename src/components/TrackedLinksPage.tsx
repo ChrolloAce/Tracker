@@ -492,6 +492,6 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, {}>((props, ref) => {
       )}
     </div>
   );
-};
+});
 
 export default TrackedLinksPage;
