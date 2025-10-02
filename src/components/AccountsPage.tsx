@@ -612,7 +612,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                 shares: video.sharesCount || video.shares || 0,
                 dateSubmitted: new Date(),
                 uploadDate: video.uploadDate || new Date(),
-                snapshots: video.snapshots || []
+                snapshots: []
               }));
                 
                 return (
