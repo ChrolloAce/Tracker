@@ -242,18 +242,20 @@ export class TrendCalculationService {
       return null;
     }
 
-    // If no snapshots, use current metrics only if target time is very recent
+    // If target time is very recent (within last 24 hours), use current metrics
+    // This handles the case where snapshots haven't been captured yet for "yesterday"
+    const timeSinceTarget = now.getTime() - targetTime.getTime();
+    if (timeSinceTarget < (24 * 60 * 60 * 1000)) {
+      return {
+        views: video.views || 0,
+        likes: video.likes || 0,
+        comments: video.comments || 0,
+        shares: video.shares || 0
+      };
+    }
+
+    // If no snapshots and target is old, we have no data
     if (!video.snapshots || video.snapshots.length === 0) {
-      // Only use current metrics if within last hour
-      if (now.getTime() - targetTime.getTime() < (60 * 60 * 1000)) {
-        return {
-          views: video.views || 0,
-          likes: video.likes || 0,
-          comments: video.comments || 0,
-          shares: video.shares || 0
-        };
-      }
-      // Otherwise return null - we have no historical data
       return null;
     }
 
