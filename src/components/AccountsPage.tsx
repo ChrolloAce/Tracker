@@ -635,11 +635,13 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center space-x-3">
                             <div className="relative">
-                              {account.profilePicture ? (
+                              {account.profilePicture && (
                                 <img
                                   src={account.profilePicture}
                                   alt={`@${account.username}`}
                                   className="w-10 h-10 rounded-full object-cover"
+                                  crossOrigin="anonymous"
+                                  referrerPolicy="no-referrer"
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
                                     target.style.display = 'none';
@@ -647,7 +649,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                     if (fallback) fallback.classList.remove('hidden');
                                   }}
                                 />
-                              ) : null}
+                              )}
                               <div className={`w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center ${account.profilePicture ? 'hidden' : ''}`}>
                                 <Users className="w-5 h-5 text-gray-500" />
                               </div>
