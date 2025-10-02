@@ -3,6 +3,9 @@
     "api/apify-proxy.ts": {
       "maxDuration": 300
     },
+    "api/youtube-video.ts": {
+      "maxDuration": 10
+    },
     "api/redirect.ts": {
       "maxDuration": 10
     },

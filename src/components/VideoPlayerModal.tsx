@@ -46,12 +46,17 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
         return embedUrl;
       }
       
-      // YouTube Shorts
-      if (url.includes('youtube.com/shorts') || url.includes('youtu.be') || platform === 'youtube') {
-        const videoIdMatch = url.match(/shorts\/([a-zA-Z0-9_-]+)/) || url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
-        if (videoIdMatch) {
-          return `https://www.youtube.com/embed/${videoIdMatch[1]}`;
-        }
+      // YouTube Shorts or watch URLs
+      if (url.includes('youtube.com') || url.includes('youtu.be') || platform === 'youtube') {
+        const shortsMatch = url.match(/shorts\/([a-zA-Z0-9_-]+)/);
+        if (shortsMatch) return `https://www.youtube.com/embed/${shortsMatch[1]}`;
+        const youtuMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
+        if (youtuMatch) return `https://www.youtube.com/embed/${youtuMatch[1]}`;
+        try {
+          const u = new URL(url);
+          const v = u.searchParams.get('v');
+          if (v) return `https://www.youtube.com/embed/${v}`;
+        } catch {}
       }
       
       return url;

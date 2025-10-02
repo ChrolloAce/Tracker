@@ -1,6 +1,7 @@
 import InstagramApiService from './InstagramApiService';
 import TikTokApiService from './TikTokApiService';
 import { InstagramVideoData } from '../types';
+import YoutubeApiService from './YoutubeApiService';
 
 class VideoApiService {
   
@@ -23,8 +24,9 @@ class VideoApiService {
       const data = await TikTokApiService.fetchVideoData(url);
       return { data, platform: 'tiktok' };
     } else if (platform === 'youtube') {
-      console.log('▶️ YouTube support coming soon...');
-      throw new Error('YouTube support is not yet implemented. Please provide an Instagram or TikTok URL.');
+      console.log('▶️ Using YouTube API service...');
+      const data = await YoutubeApiService.fetchVideoData(url);
+      return { data, platform: 'youtube' };
     } else {
       throw new Error('Unsupported platform. Please provide an Instagram, TikTok, or YouTube URL.');
     }
