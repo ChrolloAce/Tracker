@@ -581,7 +581,7 @@ function App() {
               <>
                 {/* KPI Cards with Working Sparklines */}
                 <KPICards 
-                  submissions={submissions}
+                  submissions={filteredSubmissions}
                   linkClicks={filteredLinkClicks}
                   dateFilter={dateFilter}
                   timePeriod={timePeriod}

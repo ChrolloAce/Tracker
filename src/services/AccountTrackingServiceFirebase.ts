@@ -245,17 +245,19 @@ export class AccountTrackingServiceFirebase {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          actorId: 'apify/tiktok-scraper',
+          actorId: 'clockworks~tiktok-scraper',
           input: {
-            profiles: [`@${username.startsWith('@') ? username.slice(1) : username}`],
-            resultsPerPage: 30
+            profileURLs: [`https://www.tiktok.com/@${username.replace('@', '')}`],
+            resultsPerPage: 10
           },
           action: 'run'
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error(`❌ TikTok profile fetch failed:`, response.status, errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
       }
 
       const result = await response.json();
@@ -496,9 +498,9 @@ export class AccountTrackingServiceFirebase {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        actorId: 'apify/tiktok-scraper',
+        actorId: 'clockworks~tiktok-scraper',
         input: {
-          profiles: [`@${account.username.startsWith('@') ? account.username.slice(1) : account.username}`],
+          profileURLs: [`https://www.tiktok.com/@${account.username.replace('@', '')}`],
           resultsPerPage: 100
         },
         action: 'run'
@@ -506,7 +508,9 @@ export class AccountTrackingServiceFirebase {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`❌ TikTok video sync failed:`, response.status, errorText);
+      throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
     }
 
     const result = await response.json();

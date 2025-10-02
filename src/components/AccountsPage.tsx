@@ -32,6 +32,7 @@ import { DateFilterType } from './DateRangeFilter';
 import Pagination from './ui/Pagination';
 import ColumnPreferencesService from '../services/ColumnPreferencesService';
 import KPICards from './KPICards';
+import DateFilterService from '../services/DateFilterService';
 
 export interface AccountsPageProps {
   dateFilter: DateFilterType;
@@ -615,12 +616,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                 snapshots: []
               }));
 
-              // Don't filter by date for KPICards - it needs ALL videos to calculate trends
-              // The TrendCalculationService uses snapshot data for the selected period
-              return (
+              // Then filter by date
+              const filteredVideoSubmissions = DateFilterService.filterVideosByDateRange(
+                allVideoSubmissions,
+                dateFilter,
+                undefined
+              );
+
+                                  return (
                 <div className="mb-6">
                   <KPICards 
-                    submissions={allVideoSubmissions}
+                    submissions={filteredVideoSubmissions}
                     linkClicks={[]}
                     dateFilter={dateFilter}
                     timePeriod="days"

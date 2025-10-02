@@ -10,8 +10,7 @@ import {
   TrendingUp,
   TrendingDown,
   ChevronRight,
-  Link as LinkIcon,
-  Minus
+  Link as LinkIcon
 } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { LinkClick } from '../services/LinkClicksService';
@@ -19,7 +18,6 @@ import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
 import { DateFilterType } from './DateRangeFilter';
 import { TimePeriodType } from './TimePeriodSelector';
 import MetricComparisonModal from './MetricComparisonModal';
-import { TrendCalculationService, TrendIndicator } from '../services/TrendCalculationService';
 
 interface KPICardsProps {
   submissions: VideoSubmission[];
@@ -34,7 +32,7 @@ interface KPICardData {
   value: string | number;
   icon: React.ComponentType<{ className?: string }>;
   accent: 'emerald' | 'pink' | 'blue' | 'violet' | 'teal' | 'orange' | 'slate';
-  trend?: TrendIndicator;
+  delta?: { value: number; isPositive: boolean };
   period?: string;
   sparklineData?: Array<{ value: number; timestamp?: number; previousValue?: number }>;
   isEmpty?: boolean;
@@ -51,25 +49,78 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
   };
 
   const kpiData = useMemo(() => {
-    // Calculate all trends using the new TrendCalculationService
-    const trends = TrendCalculationService.calculateAllTrends(
-      submissions,
-      dateFilter,
-      undefined, // customRange - would be passed if needed
-      'America/Los_Angeles' // TODO: Get from user settings
-    );
-
-    // Calculate totals for display (using current period metrics from trends)
-    const totalViews = trends.views.currentValue;
-    const totalLikes = trends.likes.currentValue;
-    const totalComments = trends.comments.currentValue;
-    const totalShares = trends.shares.currentValue;
-    const activeAccounts = trends.accounts.currentValue;
-    const publishedVideos = trends.videos.currentValue;
-    const engagementRate = trends.engagement.currentValue;
-
-    // For sparkline data generation
+    // For filtered date ranges, calculate growth during that period using snapshots
+    // For "all time", show total current metrics
     const isFilteredPeriod = dateFilter !== 'all';
+    
+    let totalViews = 0;
+    let totalLikes = 0;
+    let totalComments = 0;
+    let totalShares = 0;
+    
+    if (isFilteredPeriod) {
+      // Calculate delta (growth) for the filtered period using snapshots
+      submissions.forEach(video => {
+        if (!video.snapshots || video.snapshots.length === 0) {
+          // No snapshots: count full current metrics (newly added video)
+          totalViews += video.views || 0;
+          totalLikes += video.likes || 0;
+          totalComments += video.comments || 0;
+          totalShares += video.shares || 0;
+        } else {
+          // Has snapshots: find the earliest snapshot in the period and calculate delta
+          const sortedSnapshots = [...video.snapshots].sort((a, b) => 
+            new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+          );
+          
+          // Find the first snapshot at or before the period start
+          const periodStartSnapshot = sortedSnapshots[0];
+          
+          // Calculate growth since that snapshot
+          const viewsDelta = Math.max(0, (video.views || 0) - (periodStartSnapshot?.views || 0));
+          const likesDelta = Math.max(0, (video.likes || 0) - (periodStartSnapshot?.likes || 0));
+          const commentsDelta = Math.max(0, (video.comments || 0) - (periodStartSnapshot?.comments || 0));
+          const sharesDelta = Math.max(0, (video.shares || 0) - (periodStartSnapshot?.shares || 0));
+          
+          totalViews += viewsDelta;
+          totalLikes += likesDelta;
+          totalComments += commentsDelta;
+          totalShares += sharesDelta;
+        }
+      });
+    } else {
+      // "All time": show total current metrics
+      totalViews = submissions.reduce((sum, v) => sum + (v.views || 0), 0);
+      totalLikes = submissions.reduce((sum, v) => sum + (v.likes || 0), 0);
+      totalComments = submissions.reduce((sum, v) => sum + (v.comments || 0), 0);
+      totalShares = submissions.reduce((sum, v) => sum + (v.shares || 0), 0);
+    }
+    
+    const activeAccounts = new Set(submissions.map(v => v.uploaderHandle)).size;
+    const publishedVideos = submissions.length;
+    
+    const totalEngagement = totalLikes + totalComments;
+    const engagementRate = totalViews > 0 ? (totalEngagement / totalViews) * 100 : 0;
+
+    // Calculate growth (last 7 days vs previous 7 days)
+    const now = new Date();
+    const last7Days = submissions.filter(v => {
+      const uploadDate = new Date(v.uploadDate);
+      const daysDiff = (now.getTime() - uploadDate.getTime()) / (1000 * 60 * 60 * 24);
+      return daysDiff <= 7;
+    });
+    
+    const previous7Days = submissions.filter(v => {
+      const uploadDate = new Date(v.uploadDate);
+      const daysDiff = (now.getTime() - uploadDate.getTime()) / (1000 * 60 * 60 * 24);
+      return daysDiff > 7 && daysDiff <= 14;
+    });
+
+    const last7DaysViews = last7Days.reduce((sum, v) => sum + (v.views || 0), 0);
+    const previous7DaysViews = previous7Days.reduce((sum, v) => sum + (v.views || 0), 0);
+    const viewsGrowth = previous7DaysViews > 0 
+      ? ((last7DaysViews - previous7DaysViews) / previous7DaysViews) * 100 
+      : 0;
 
     // Generate sparkline data based on date filter and metric type
     const generateSparklineData = (metric: 'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts') => {
@@ -219,7 +270,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         value: formatNumber(totalViews),
         icon: Play,
         accent: 'emerald',
-        trend: trends.views,
+        delta: { value: Math.abs(viewsGrowth), isPositive: viewsGrowth >= 0 },
         period: periodText,
         sparklineData: generateSparklineData('views')
       },
@@ -229,8 +280,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         value: formatNumber(totalLikes),
         icon: Heart,
         accent: 'pink',
-        trend: trends.likes,
-        period: totalViews > 0 ? `${((totalLikes / totalViews) * 100).toFixed(1)}% of views` : periodText,
+        period: `${((totalLikes / totalViews) * 100).toFixed(1)}% of views`,
         sparklineData: generateSparklineData('likes')
       },
       {
@@ -239,8 +289,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         value: formatNumber(totalComments),
         icon: MessageCircle,
         accent: 'blue',
-        trend: trends.comments,
-        period: periodText,
+        period: 'Total engagement',
         sparklineData: generateSparklineData('comments')
       },
       {
@@ -249,8 +298,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         value: formatNumber(totalShares),
         icon: Share2,
         accent: 'orange',
-        trend: trends.shares,
-        period: periodText,
+        period: 'Total shares',
         sparklineData: generateSparklineData('shares')
       },
       {
@@ -259,8 +307,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         value: publishedVideos,
         icon: Video,
         accent: 'violet',
-        trend: trends.videos,
-        period: periodText,
+        period: 'All time',
         sparklineData: generateSparklineData('videos')
       },
       {
@@ -269,8 +316,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         value: activeAccounts,
         icon: AtSign,
         accent: 'teal',
-        trend: trends.accounts,
-        period: periodText,
+        period: 'Total tracked',
         sparklineData: generateSparklineData('accounts')
       },
       {
@@ -279,7 +325,6 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         value: `${engagementRate.toFixed(1)}%`,
         icon: Activity,
         accent: 'violet',
-        trend: trends.engagement,
         period: periodText,
         sparklineData: generateSparklineData('likes')
       },
@@ -485,30 +530,23 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
               <span className="text-sm font-medium text-zinc-300">{data.label}</span>
             </div>
 
-            {/* Value + Trend */}
+            {/* Value + Delta */}
             <div className="flex items-baseline gap-2 mb-1">
               <span className={`text-3xl font-bold ${data.isEmpty ? 'text-zinc-500' : 'text-white'}`}>
                 {data.value}
               </span>
-              {data.trend && (
-                <span 
-                  className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium ${
-                    data.trend.direction === 'up' 
-                      ? 'bg-emerald-400/10 text-emerald-300' 
-                      : data.trend.direction === 'down'
-                      ? 'bg-rose-400/10 text-rose-300'
-                      : 'bg-slate-400/10 text-slate-300'
-                  }`}
-                  title={data.trend.tooltip}
-                >
-                  {data.trend.direction === 'up' ? (
+              {data.delta && (
+                <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium ${
+                  data.delta.isPositive 
+                    ? 'bg-emerald-400/10 text-emerald-300' 
+                    : 'bg-rose-400/10 text-rose-300'
+                }`}>
+                  {data.delta.isPositive ? (
                     <TrendingUp className="w-3 h-3" />
-                  ) : data.trend.direction === 'down' ? (
-                    <TrendingDown className="w-3 h-3" />
                   ) : (
-                    <Minus className="w-3 h-3" />
+                    <TrendingDown className="w-3 h-3" />
                   )}
-                  {data.trend.formattedPercent}
+                  {data.delta.value.toFixed(1)}%
                 </span>
               )}
             </div>

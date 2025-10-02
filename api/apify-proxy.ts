@@ -21,10 +21,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log('🔄 Apify proxy request:', { actorId, action, inputKeys: Object.keys(input || {}) });
     console.log('🔑 Using token:', APIFY_TOKEN ? 'Token found' : 'No token found');
+    console.log('📋 Full input:', JSON.stringify(input, null, 2));
 
     if (action === 'run') {
       // Start actor run - using the correct endpoint format
-      const runResponse = await fetch(`https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${APIFY_TOKEN}`, {
+      const apiUrl = `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${APIFY_TOKEN}`;
+      console.log('🌐 Calling Apify API:', apiUrl);
+      
+      const runResponse = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -35,9 +39,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!runResponse.ok) {
         const errorText = await runResponse.text();
         console.error('❌ Apify run failed:', runResponse.status, errorText);
+        
+        // Try to parse error as JSON for better error messages
+        let errorDetails = errorText;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorDetails = errorJson.error?.message || errorJson.message || errorText;
+        } catch {
+          // Keep original error text if not JSON
+        }
+        
         return res.status(runResponse.status).json({ 
           error: `Failed to start actor run: ${runResponse.status}`,
-          details: errorText 
+          details: errorDetails,
+          actorId,
+          input
         });
       }
 
