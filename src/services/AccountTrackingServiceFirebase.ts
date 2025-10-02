@@ -3,6 +3,7 @@ import FirestoreDataService from './FirestoreDataService';
 import FirebaseStorageService from './FirebaseStorageService';
 import OutlierDetectionService from './OutlierDetectionService';
 import YoutubeAccountService from './YoutubeAccountService';
+import RulesService from './RulesService';
 import { Timestamp } from 'firebase/firestore';
 
 /**
@@ -394,13 +395,25 @@ export class AccountTrackingServiceFirebase {
         videos = await this.syncYoutubeShorts(orgId, account);
       }
 
+      // Apply tracking rules to filter videos
+      console.log(`📋 Checking for tracking rules...`);
+      const filteredVideos = await RulesService.filterVideosByRules(
+        orgId,
+        projectId,
+        accountId,
+        account.platform,
+        videos
+      );
+
+      console.log(`✅ After rules: ${filteredVideos.length}/${videos.length} videos will be tracked`);
+
       // Sync to Firestore
       await FirestoreDataService.syncAccountVideos(
         orgId,
         projectId,
         accountId,
         userId,
-        videos.map(v => ({
+        filteredVideos.map(v => ({
           videoId: v.videoId || '',
           url: v.url || '',
           thumbnail: v.thumbnail || '',
@@ -449,8 +462,8 @@ export class AccountTrackingServiceFirebase {
         }
       });
 
-      console.log(`✅ Synced ${videos.length} videos for @${account.username}`);
-      return videos.length;
+      console.log(`✅ Synced ${filteredVideos.length} videos for @${account.username}`);
+      return filteredVideos.length;
     } catch (error) {
       console.error('❌ Failed to sync account videos:', error);
       throw error;

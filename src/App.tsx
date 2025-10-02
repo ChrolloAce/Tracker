@@ -10,6 +10,7 @@ import DateRangeFilter, { DateFilterType } from './components/DateRangeFilter';
 import VideoAnalyticsModal from './components/VideoAnalyticsModal';
 import AccountsPage, { AccountsPageRef } from './components/AccountsPage';
 import ContractsPage from './components/ContractsPage';
+import RulesPage from './components/RulesPage';
 import SettingsPage from './components/SettingsPage';
 import SubscriptionPage from './components/SubscriptionPage';
 import CronManagementPage from './components/CronManagementPage';
@@ -606,6 +607,9 @@ function App() {
 
           {/* Contracts Tab */}
           {activeTab === 'contracts' && <ContractsPage />}
+
+          {/* Rules Tab */}
+          {activeTab === 'rules' && <RulesPage />}
 
           {/* Subscription Tab */}
           {activeTab === 'subscription' && <SubscriptionPage />}

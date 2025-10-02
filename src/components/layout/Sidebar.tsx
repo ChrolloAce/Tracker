@@ -8,7 +8,8 @@ import {
   FileSignature,
   Eye,
   Link,
-  Clock
+  Clock,
+  Filter
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '../../contexts/AuthContext';
@@ -63,6 +64,13 @@ const Sidebar: React.FC<SidebarProps> = ({
       icon: Link,
       isActive: activeTab === 'analytics',
       onClick: () => onTabChange?.('analytics'),
+    },
+    {
+      id: 'rules',
+      label: 'Rules',
+      icon: Filter,
+      isActive: activeTab === 'rules',
+      onClick: () => onTabChange?.('rules'),
     },
     {
       id: 'creators',
