@@ -218,6 +218,31 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
       return num.toString();
     };
 
+    // Get period text based on date filter
+    const getPeriodText = (): string => {
+      switch (dateFilter) {
+        case 'today':
+          return 'Last 24 hours';
+        case 'last7days':
+          return 'Last 7 days';
+        case 'last30days':
+          return 'Last 30 days';
+        case 'last90days':
+          return 'Last 90 days';
+        case 'mtd':
+          return 'Month to date';
+        case 'ytd':
+          return 'Year to date';
+        case 'custom':
+          return 'Custom range';
+        case 'all':
+        default:
+          return 'All time';
+      }
+    };
+
+    const periodText = getPeriodText();
+
     const cards: KPICardData[] = [
       {
         id: 'views',
@@ -226,7 +251,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         icon: Play,
         accent: 'emerald',
         delta: { value: Math.abs(viewsGrowth), isPositive: viewsGrowth >= 0 },
-        period: 'Last 7 days',
+        period: periodText,
         sparklineData: generateSparklineData('views')
       },
       {
@@ -280,7 +305,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         value: `${engagementRate.toFixed(1)}%`,
         icon: Activity,
         accent: 'violet',
-        period: 'Last 28 days',
+        period: periodText,
         sparklineData: generateSparklineData('likes')
       },
       {
@@ -360,6 +385,8 @@ const KPISparkline: React.FC<{
           </linearGradient>
         </defs>
         <Tooltip
+          position={{ y: 70 }}
+          allowEscapeViewBox={{ x: false, y: true }}
           content={({ active, payload }) => {
             if (active && payload && payload.length) {
               const data = payload[0].payload;
@@ -380,11 +407,11 @@ const KPISparkline: React.FC<{
               }
               
               return (
-                <div className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-xl text-sm space-y-1">
-                  {dateStr && <p className="text-xs text-gray-400">{dateStr}</p>}
-                  <p className="font-semibold text-base">{value?.toLocaleString()}</p>
+                <div className="bg-gray-900/80 backdrop-blur-md text-white px-4 py-2.5 rounded-lg shadow-xl text-sm space-y-1 min-w-[200px] border border-white/10">
+                  {dateStr && <p className="text-xs text-gray-400 font-medium">{dateStr}</p>}
+                  <p className="font-semibold text-lg">{value?.toLocaleString()}</p>
                   {showComparison && trendText && (
-                    <p className={`text-xs ${diff >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    <p className={`text-xs font-medium ${diff >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {trendText}
                     </p>
                   )}
