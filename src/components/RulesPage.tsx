@@ -181,6 +181,24 @@ const RulesPage = () => {
         </button>
       </div>
 
+      {/* Info Banner */}
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+        <div className="flex gap-3">
+          <Filter className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">
+              How Rules Work
+            </h3>
+            <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+              <p>• Rules filter videos <strong>when you sync an account</strong> (click the sync button on Tracked Accounts page)</p>
+              <p>• Only videos matching your rule conditions will be saved to your dashboard</p>
+              <p>• <strong>To apply rules to existing videos:</strong> Go to Tracked Accounts → Click sync button on each account</p>
+              <p>• Example: Create a rule "Description contains @snapout.co" → Only posts mentioning @snapout.co will be tracked</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Rules List */}
       {rules.length === 0 ? (
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">

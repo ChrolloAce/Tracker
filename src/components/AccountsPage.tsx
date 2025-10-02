@@ -196,7 +196,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       
       // Show success message briefly
       if (videoCount === 0) {
-        setSyncError('No videos found. This might be a private account or the username may be incorrect.');
+        setSyncError('No videos found or filtered by rules. Check if rules are too restrictive, or this might be a private account.');
+      } else {
+        // Clear any previous errors on success
+        setSyncError(null);
       }
     } catch (error) {
       console.error('❌ Sync failed:', error);
