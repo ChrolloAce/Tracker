@@ -620,7 +620,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
               const filteredVideoSubmissions = DateFilterService.filterVideosByDateRange(
                 allVideoSubmissions,
                 dateFilter,
-                null
+                undefined
               );
 
                                   return (
