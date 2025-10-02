@@ -24,7 +24,6 @@ interface CronStatus {
 
 const CronManagementPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<CronStatus | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [triggerResult, setTriggerResult] = useState<any>(null);
 
@@ -60,19 +59,9 @@ const CronManagementPage: React.FC = () => {
   const loadStatus = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/cron-status');
-      const html = await response.text();
-      
-      // Parse the status from the page or just show it loaded
+      await fetch('/api/cron-status');
+      // Just refresh the timestamp to show we checked
       setLastRefresh(new Date());
-      
-      // For demo, we'll show a simplified version
-      // In production, you'd parse the HTML or create a JSON endpoint
-      setStatus({
-        timestamp: new Date().toISOString(),
-        totalOrganizations: 0,
-        organizations: []
-      });
     } catch (error) {
       console.error('Failed to load status:', error);
     } finally {
