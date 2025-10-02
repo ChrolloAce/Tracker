@@ -122,54 +122,33 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
       ? ((last7DaysViews - previous7DaysViews) / previous7DaysViews) * 100 
       : 0;
 
-    // Generate sparkline data based on time period and date filter
-    // For filtered periods: shows growth over time
-    // For "all": shows cumulative metrics over time
-    const generateSparklineData = (metric: 'views' | 'likes' | 'comments') => {
+    // Generate sparkline data based on date filter and metric type
+    const generateSparklineData = (metric: 'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts') => {
       const data = [];
       
-      // Determine number of data points and interval based on dateFilter and timePeriod
+      // Determine number of data points based on dateFilter
       let numPoints = 30;
       let intervalMs = 24 * 60 * 60 * 1000; // 1 day
       
-      // Adjust based on date filter to show accurate time range
+      // Match the number of points to the actual filtered range
       if (dateFilter === 'today') {
-        numPoints = 24; // Last 24 hours
+        numPoints = 24;
         intervalMs = 60 * 60 * 1000; // 1 hour
       } else if (dateFilter === 'last7days') {
-        numPoints = 7; // Last 7 days
+        numPoints = 7;
         intervalMs = 24 * 60 * 60 * 1000; // 1 day
       } else if (dateFilter === 'last30days') {
-        numPoints = 30; // Last 30 days
+        numPoints = 30;
         intervalMs = 24 * 60 * 60 * 1000; // 1 day
       } else if (dateFilter === 'last90days') {
-        numPoints = 13; // ~13 weeks
-        intervalMs = 7 * 24 * 60 * 60 * 1000; // 1 week
-      } else if (dateFilter === 'mtd') {
-        const now = new Date();
-        numPoints = now.getDate(); // Days in current month so far
+        numPoints = 90;
         intervalMs = 24 * 60 * 60 * 1000; // 1 day
-      } else if (dateFilter === 'ytd') {
-        const now = new Date();
-        const startOfYear = new Date(now.getFullYear(), 0, 1);
-        const daysPassed = Math.floor((now.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000));
-        numPoints = Math.ceil(daysPassed / 7); // Weekly data points for YTD
+      } else if (timePeriod === 'weeks') {
+        numPoints = 12;
         intervalMs = 7 * 24 * 60 * 60 * 1000; // 1 week
-      } else {
-        // Fallback to timePeriod for 'all' or 'custom'
-        if (timePeriod === 'hours') {
-          numPoints = 24; // Last 24 hours
-          intervalMs = 60 * 60 * 1000; // 1 hour
-        } else if (timePeriod === 'days') {
-          numPoints = 30; // Last 30 days
-          intervalMs = 24 * 60 * 60 * 1000; // 1 day
-        } else if (timePeriod === 'weeks') {
-          numPoints = 12; // Last 12 weeks
-          intervalMs = 7 * 24 * 60 * 60 * 1000; // 1 week
-        } else if (timePeriod === 'months') {
-          numPoints = 12; // Last 12 months
-          intervalMs = 30 * 24 * 60 * 60 * 1000; // ~1 month
-        }
+      } else if (timePeriod === 'months') {
+        numPoints = 12;
+        intervalMs = 30 * 24 * 60 * 60 * 1000; // ~1 month
       }
       
       // Generate trend showing growth over time
@@ -179,7 +158,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         
         // For hourly data, calculate previous day's same hour value for comparison
         let previousValue: number | undefined;
-        if (timePeriod === 'hours') {
+        if (timePeriod === 'hours' && metric !== 'videos' && metric !== 'accounts') {
           const previousDayDate = new Date(timestamp - (24 * 60 * 60 * 1000));
           let prevDayValue = 0;
           
@@ -189,15 +168,30 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
                 .filter(s => new Date(s.capturedAt) <= previousDayDate)
                 .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
               
-              if (snapshotAtPrevDay) {
-                prevDayValue += snapshotAtPrevDay[metric] || 0;
+              if (snapshotAtPrevDay && metric in snapshotAtPrevDay) {
+                prevDayValue += (snapshotAtPrevDay as any)[metric] || 0;
               }
             }
           });
           previousValue = prevDayValue;
         }
         
-        if (isFilteredPeriod) {
+        if (metric === 'videos') {
+          // For published videos: count how many videos existed at this point
+          const videosAtThisTime = submissions.filter(v => {
+            const uploadDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
+            return uploadDate <= pointDate;
+          });
+          data.push({ value: videosAtThisTime.length, timestamp, previousValue });
+        } else if (metric === 'accounts') {
+          // For active accounts: count unique uploaders at this point
+          const videosAtThisTime = submissions.filter(v => {
+            const uploadDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
+            return uploadDate <= pointDate;
+          });
+          const uniqueAccounts = new Set(videosAtThisTime.map(v => v.uploaderHandle)).size;
+          data.push({ value: uniqueAccounts, timestamp, previousValue });
+        } else if (isFilteredPeriod) {
           // For filtered periods: show cumulative growth within the period
           let pointValue = 0;
           
@@ -305,7 +299,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         icon: Share2,
         accent: 'orange',
         period: 'Total shares',
-        sparklineData: generateSparklineData('comments')
+        sparklineData: generateSparklineData('shares')
       },
       {
         id: 'videos',
@@ -314,7 +308,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         icon: Video,
         accent: 'violet',
         period: 'All time',
-        sparklineData: generateSparklineData('views')
+        sparklineData: generateSparklineData('videos')
       },
       {
         id: 'accounts',
@@ -323,7 +317,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         icon: AtSign,
         accent: 'teal',
         period: 'Total tracked',
-        sparklineData: generateSparklineData('views')
+        sparklineData: generateSparklineData('accounts')
       },
       {
         id: 'engagement',
@@ -413,7 +407,7 @@ const KPISparkline: React.FC<{
         <Tooltip
           position={{ y: 70 }}
           allowEscapeViewBox={{ x: false, y: true }}
-          wrapperStyle={{ zIndex: 99999, position: 'relative' }}
+          wrapperStyle={{ zIndex: 99999 }}
           content={({ active, payload }) => {
             if (active && payload && payload.length) {
               const data = payload[0].payload;
@@ -434,7 +428,7 @@ const KPISparkline: React.FC<{
               }
               
               return (
-                <div className="bg-gray-900/80 backdrop-blur-md text-white px-4 py-2.5 rounded-lg shadow-xl text-sm space-y-1 min-w-[200px] border border-white/10 z-[99999] relative pointer-events-none">
+                <div className="bg-gray-900/80 backdrop-blur-md text-white px-4 py-2.5 rounded-lg shadow-xl text-sm space-y-1 min-w-[200px] border border-white/10 z-[99999] relative">
                   {dateStr && <p className="text-xs text-gray-400 font-medium">{dateStr}</p>}
                   <p className="font-semibold text-lg">{value?.toLocaleString()}</p>
                   {showComparison && trendText && (
