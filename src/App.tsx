@@ -165,6 +165,50 @@ function App() {
     }
   }, []);
 
+  // Keyboard shortcut: Spacebar to trigger + button action
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only trigger on spacebar
+      if (e.code !== 'Space' && e.key !== ' ') return;
+      
+      // Don't trigger if user is typing in an input, textarea, or contenteditable element
+      const target = e.target as HTMLElement;
+      const isTyping = target.tagName === 'INPUT' || 
+                      target.tagName === 'TEXTAREA' || 
+                      target.isContentEditable ||
+                      target.closest('[contenteditable="true"]');
+      
+      if (isTyping) return;
+      
+      // Don't trigger if any modal is already open
+      if (isModalOpen || isTikTokSearchOpen || isAnalyticsModalOpen) return;
+      
+      // Only trigger on tabs where + button is visible
+      if (activeTab === 'settings' || activeTab === 'subscription' || 
+          activeTab === 'contracts' || activeTab === 'creators' || activeTab === 'cron') {
+        return;
+      }
+      
+      // Prevent default spacebar behavior (page scroll)
+      e.preventDefault();
+      
+      // Trigger the appropriate action based on active tab
+      if (activeTab === 'dashboard') {
+        setIsModalOpen(true);
+      } else if (activeTab === 'accounts') {
+        accountsPageRef.current?.openAddModal();
+      } else if (activeTab === 'analytics') {
+        trackedLinksPageRef.current?.openCreateModal();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activeTab, isModalOpen, isTikTokSearchOpen, isAnalyticsModalOpen]);
+
   // Filter submissions based on date range, platform, and accounts (memoized to prevent infinite loops)
   const filteredSubmissions = useMemo(() => {
     let filtered = DateFilterService.filterVideosByDateRange(
