@@ -14,7 +14,7 @@ import ContractsPage from './components/ContractsPage';
 import SettingsPage from './components/SettingsPage';
 import SubscriptionPage from './components/SubscriptionPage';
 import CronManagementPage from './components/CronManagementPage';
-import TrackedLinksPage from './components/TrackedLinksPage';
+import TrackedLinksPage, { TrackedLinksPageRef } from './components/TrackedLinksPage';
 import LinkRedirect from './components/LinkRedirect';
 import LoginPage from './components/LoginPage';
 import { PageLoadingSkeleton } from './components/ui/LoadingSkeleton';
@@ -68,6 +68,7 @@ function App() {
   const [accountsViewMode, setAccountsViewMode] = useState<'table' | 'details'>('table');
   const [accountsPlatformFilter, setAccountsPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'youtube'>('all');
   const accountsPageRef = useRef<AccountsPageRef | null>(null);
+  const trackedLinksPageRef = useRef<TrackedLinksPageRef | null>(null);
 
   // Dashboard platform filter state
   const [dashboardPlatformFilter, setDashboardPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'youtube'>('all');
@@ -578,7 +579,7 @@ function App() {
           {activeTab === 'cron' && <CronManagementPage />}
 
           {/* Tracked Links Tab */}
-          {activeTab === 'analytics' && <TrackedLinksPage />}
+          {activeTab === 'analytics' && <TrackedLinksPage ref={trackedLinksPageRef} />}
 
           {/* Creators Tab - Placeholder */}
           {activeTab === 'creators' && (
@@ -626,29 +627,46 @@ function App() {
         onClose={handleCloseAnalyticsModal}
       />
 
-      {/* Floating Add Video Button */}
-      <button
-        onClick={() => setIsModalOpen(true)}
-        className="fixed bottom-8 right-8 z-50 bg-gray-900 dark:bg-white hover:bg-black dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-full p-4 shadow-2xl transition-all duration-200 hover:scale-110 group"
-        aria-label="Add Video"
-      >
-        <svg 
-          className="w-6 h-6" 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
+      {/* Context-Aware Floating Action Button */}
+      {activeTab !== 'settings' && activeTab !== 'subscription' && activeTab !== 'contracts' && activeTab !== 'creators' && activeTab !== 'cron' && (
+        <button
+          onClick={() => {
+            if (activeTab === 'dashboard') {
+              setIsModalOpen(true);
+            } else if (activeTab === 'accounts') {
+              accountsPageRef.current?.openAddModal();
+            } else if (activeTab === 'analytics') {
+              trackedLinksPageRef.current?.openCreateModal();
+            }
+          }}
+          className="fixed bottom-8 right-8 z-50 bg-gray-900 dark:bg-white hover:bg-black dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-full p-4 shadow-2xl transition-all duration-200 hover:scale-110 group"
+          aria-label={
+            activeTab === 'dashboard' ? 'Add Video' :
+            activeTab === 'accounts' ? 'Track Account' :
+            activeTab === 'analytics' ? 'Create Link' :
+            'Add'
+          }
         >
-          <path 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
-            strokeWidth={2} 
-            d="M12 4v16m8-8H4" 
-          />
-        </svg>
-        <span className="absolute -top-12 right-0 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm px-3 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-          Add Video
-        </span>
-      </button>
+          <svg 
+            className="w-6 h-6" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth={2} 
+              d="M12 4v16m8-8H4" 
+            />
+          </svg>
+          <span className="absolute -top-12 right-0 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm px-3 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            {activeTab === 'dashboard' && 'Add Video'}
+            {activeTab === 'accounts' && 'Track Account'}
+            {activeTab === 'analytics' && 'Create Link'}
+          </span>
+        </button>
+      )}
     </div>
   );
 }

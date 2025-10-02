@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Link as LinkIcon, Plus, Copy, ExternalLink, Trash2, BarChart, QrCode, Search, RefreshCw } from 'lucide-react';
 import { TrackedLink, TrackedAccount } from '../types/firestore';
 import FirestoreDataService from '../services/FirestoreDataService';
@@ -9,7 +9,11 @@ import { clsx } from 'clsx';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import Pagination from './ui/Pagination';
 
-const TrackedLinksPage: React.FC = () => {
+export interface TrackedLinksPageRef {
+  openCreateModal: () => void;
+}
+
+const TrackedLinksPage = forwardRef<TrackedLinksPageRef, {}>((props, ref) => {
   const { currentOrgId, currentProjectId, user } = useAuth();
   const [links, setLinks] = useState<TrackedLink[]>([]);
   const [accounts, setAccounts] = useState<Map<string, TrackedAccount>>(new Map());
@@ -20,6 +24,11 @@ const TrackedLinksPage: React.FC = () => {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  
+  // Expose openCreateModal to parent component
+  useImperativeHandle(ref, () => ({
+    openCreateModal: () => setIsCreateModalOpen(true)
+  }), []);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);

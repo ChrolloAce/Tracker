@@ -42,6 +42,7 @@ export interface AccountsPageProps {
 
 export interface AccountsPageRef {
   handleBackToTable: () => void;
+  openAddModal: () => void;
 }
 
 // Map dateFilter to timePeriod for calculations
@@ -121,9 +122,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     onViewModeChange('table');
   }, [onViewModeChange]);
 
-  // Expose handleBackToTable to parent component
+  // Expose handleBackToTable and openAddModal to parent component
   useImperativeHandle(ref, () => ({
-    handleBackToTable
+    handleBackToTable,
+    openAddModal: () => setIsAddModalOpen(true)
   }), [handleBackToTable]);
 
   // Load accounts on mount and restore selected account
