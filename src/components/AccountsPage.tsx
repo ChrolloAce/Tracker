@@ -616,7 +616,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                 snapshots: []
               }));
 
-              // Then filter by date
+              // Don't filter by date for KPICards - it needs ALL videos to calculate trends
+              // The TrendCalculationService uses snapshot data for the selected period
               const filteredVideoSubmissions = DateFilterService.filterVideosByDateRange(
                 allVideoSubmissions,
                 dateFilter,
@@ -626,7 +627,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                   return (
                 <div className="mb-6">
                   <KPICards 
-                    submissions={filteredVideoSubmissions}
+                    submissions={allVideoSubmissions}
                     linkClicks={[]}
                     dateFilter={dateFilter}
                     timePeriod="days"
