@@ -1,4 +1,4 @@
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Link as LinkIcon, Plus, Copy, ExternalLink, Trash2, BarChart, QrCode, Search, RefreshCw } from 'lucide-react';
 import { TrackedLink, TrackedAccount } from '../types/firestore';
 import FirestoreDataService from '../services/FirestoreDataService';
@@ -13,7 +13,7 @@ export interface TrackedLinksPageRef {
   openCreateModal: () => void;
 }
 
-const TrackedLinksPage = forwardRef<TrackedLinksPageRef, {}>((props, ref) => {
+const TrackedLinksPage = forwardRef<TrackedLinksPageRef, {}>((_props, ref) => {
   const { currentOrgId, currentProjectId, user } = useAuth();
   const [links, setLinks] = useState<TrackedLink[]>([]);
   const [accounts, setAccounts] = useState<Map<string, TrackedAccount>>(new Map());
