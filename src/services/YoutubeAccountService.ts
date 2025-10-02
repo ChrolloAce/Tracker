@@ -109,7 +109,7 @@ class YoutubeAccountService {
   /**
    * Sync Shorts videos for a YouTube channel
    */
-  async syncChannelShorts(channelId: string, channelTitle: string): Promise<AccountVideo[]> {
+  async syncChannelShorts(channelId: string, _channelTitle: string): Promise<AccountVideo[]> {
     try {
       console.log(`🔄 Fetching YouTube Shorts for channel: ${channelId}`);
 
