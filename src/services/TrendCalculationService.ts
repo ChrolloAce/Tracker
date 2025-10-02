@@ -6,8 +6,8 @@ export class TrendCalculationService {
    */
   static getViewsTrend(video: VideoSubmission): number[] {
     if (!video.snapshots || video.snapshots.length === 0) {
-      // If no historical data, generate sample trend for demo
-      return this.generateSampleTrend(video.views);
+      // If no historical data, return single point (flat line)
+      return [video.views];
     }
 
     const now = new Date();
@@ -19,6 +19,7 @@ export class TrendCalculationService {
       .sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime());
 
     if (recentSnapshots.length === 0) {
+      // No recent snapshots, return single point (flat line)
       return [video.views];
     }
 
@@ -26,9 +27,15 @@ export class TrendCalculationService {
     const trendData: number[] = [];
     
     if (recentSnapshots.length === 1) {
-      // Only one snapshot, show growth from that point to current
-      trendData.push(recentSnapshots[0].views);
-      trendData.push(video.views);
+      const snapshotValue = recentSnapshots[0].views;
+      // Only show growth if there's actual change
+      if (video.views !== snapshotValue) {
+        trendData.push(snapshotValue);
+        trendData.push(video.views);
+      } else {
+        // No change, return single point (flat line)
+        return [video.views];
+      }
     } else {
       // Use all available snapshots
       recentSnapshots.forEach(snapshot => {
@@ -67,8 +74,14 @@ export class TrendCalculationService {
     const trendData: number[] = [];
     
     if (recentSnapshots.length === 1) {
-      trendData.push(recentSnapshots[0].likes);
-      trendData.push(video.likes);
+      const snapshotValue = recentSnapshots[0].likes;
+      // Only show growth if there's actual change
+      if (video.likes !== snapshotValue) {
+        trendData.push(snapshotValue);
+        trendData.push(video.likes);
+      } else {
+        return [video.likes];
+      }
     } else {
       recentSnapshots.forEach(snapshot => {
         trendData.push(snapshot.likes);
@@ -111,24 +124,4 @@ export class TrendCalculationService {
     return 'flat';
   }
 
-  /**
-   * Generate sample trend data for videos without snapshots (for demo purposes)
-   */
-  static generateSampleTrend(baseValue: number): number[] {
-    const points = 7;
-    const data: number[] = [];
-    
-    // Generate some realistic variation
-    const variation = baseValue * 0.1; // 10% variation
-    const trend = (Math.random() - 0.5) * 2; // Random trend direction
-    
-    for (let i = 0; i < points; i++) {
-      const randomVariation = (Math.random() - 0.5) * variation;
-      const trendValue = (trend * variation * i) / points;
-      const value = Math.max(0, Math.round(baseValue + trendValue + randomVariation));
-      data.push(value);
-    }
-    
-    return data;
-  }
 }

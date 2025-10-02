@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, Edit3, ChevronUp, ChevronDown, Filter } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -9,6 +9,7 @@ import InstagramApiService from '../services/InstagramApiService';
 import VideoPlayerModal from './VideoPlayerModal';
 import Pagination from './ui/Pagination';
 import ColumnPreferencesService from '../services/ColumnPreferencesService';
+import { OutlierBadge, calculateOutlierStatus } from './ui/OutlierBadge';
 
 interface VideoSubmissionsTableProps {
   submissions: VideoSubmission[];
@@ -191,6 +192,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
       comments: true,
       shares: true,
       engagement: true,
+      outlier: true,
       uploadDate: true,
       dateAdded: true,
       lastRefresh: true
@@ -206,6 +208,44 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   useEffect(() => {
     localStorage.setItem('videoSubmissions_itemsPerPage', String(itemsPerPage));
   }, [itemsPerPage]);
+
+  // Calculate outlier statistics per account
+  const accountStats = useMemo(() => {
+    const stats = new Map<string, { median: number; std: number; count: number }>();
+    
+    // Group videos by account
+    const accountVideos = new Map<string, number[]>();
+    submissions.forEach(video => {
+      const accountId = video.uploaderHandle || 'unknown';
+      if (!accountVideos.has(accountId)) {
+        accountVideos.set(accountId, []);
+      }
+      accountVideos.get(accountId)!.push(video.views);
+    });
+    
+    // Calculate stats for each account
+    accountVideos.forEach((views, accountId) => {
+      if (views.length < 2) {
+        stats.set(accountId, { median: views[0] || 0, std: 0, count: views.length });
+        return;
+      }
+      
+      // Calculate median
+      const sorted = [...views].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      const median = sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+      
+      // Calculate standard deviation
+      const mean = views.reduce((sum, v) => sum + v, 0) / views.length;
+      const squareDiffs = views.map(v => Math.pow(v - mean, 2));
+      const avgSquareDiff = squareDiffs.reduce((sum, v) => sum + v, 0) / views.length;
+      const std = Math.sqrt(avgSquareDiff);
+      
+      stats.set(accountId, { median, std, count: views.length });
+    });
+    
+    return stats;
+  }, [submissions]);
 
   // Handle sorting
   const handleSort = (column: 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'uploadDate' | 'dateSubmitted') => {
@@ -392,6 +432,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       comments: 'Comments',
                       shares: 'Shares',
                       engagement: 'Engagement Rate',
+                      outlier: 'Outlier Factor',
                       uploadDate: 'Upload Date',
                       dateAdded: 'Date Added',
                       lastRefresh: 'Last Refresh'
@@ -458,6 +499,11 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                 <SortableHeader column="engagement" className="min-w-[140px]">
                   Engagement
                 </SortableHeader>
+              )}
+              {visibleColumns.outlier && (
+                <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[160px]">
+                  Outlier Factor
+                </th>
               )}
               {visibleColumns.uploadDate && (
                 <SortableHeader column="uploadDate" className="min-w-[120px]">
@@ -623,6 +669,35 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       </div>
                     </td>
                   )}
+                  {visibleColumns.outlier && (() => {
+                    const accountId = submission.uploaderHandle || 'unknown';
+                    const stats = accountStats.get(accountId);
+                    
+                    if (!stats || stats.count < 2) {
+                      return (
+                        <td className="px-6 py-5">
+                          <span className="text-xs text-zinc-500">N/A</span>
+                        </td>
+                      );
+                    }
+                    
+                    const outlierStatus = calculateOutlierStatus(
+                      submission.views,
+                      stats.median,
+                      stats.std
+                    );
+                    
+                    return (
+                      <td className="px-6 py-5">
+                        <OutlierBadge
+                          level={outlierStatus.level}
+                          direction={outlierStatus.direction}
+                          zScore={outlierStatus.zScore}
+                          percentageDiff={outlierStatus.percentageDiff}
+                        />
+                      </td>
+                    );
+                  })()}
                   {visibleColumns.uploadDate && (
                     <td className="px-6 py-5">
                       <div className="text-sm text-zinc-300">

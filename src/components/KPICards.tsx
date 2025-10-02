@@ -34,7 +34,7 @@ interface KPICardData {
   accent: 'emerald' | 'pink' | 'blue' | 'violet' | 'teal' | 'orange' | 'slate';
   delta?: { value: number; isPositive: boolean };
   period?: string;
-  sparklineData?: Array<{ value: number }>;
+  sparklineData?: Array<{ value: number; timestamp?: number; previousValue?: number }>;
   isEmpty?: boolean;
   ctaText?: string;
 }
@@ -149,6 +149,27 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
       // Generate trend showing growth over time
       for (let i = numPoints - 1; i >= 0; i--) {
         const pointDate = new Date(Date.now() - (i * intervalMs));
+        const timestamp = pointDate.getTime();
+        
+        // For hourly data, calculate previous day's same hour value for comparison
+        let previousValue: number | undefined;
+        if (timePeriod === 'hours') {
+          const previousDayDate = new Date(timestamp - (24 * 60 * 60 * 1000));
+          let prevDayValue = 0;
+          
+          submissions.forEach(video => {
+            if (video.snapshots && video.snapshots.length > 0) {
+              const snapshotAtPrevDay = video.snapshots
+                .filter(s => new Date(s.capturedAt) <= previousDayDate)
+                .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
+              
+              if (snapshotAtPrevDay) {
+                prevDayValue += snapshotAtPrevDay[metric] || 0;
+              }
+            }
+          });
+          previousValue = prevDayValue;
+        }
         
         if (isFilteredPeriod) {
           // For filtered periods: show cumulative growth within the period
@@ -176,7 +197,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
             }
           });
           
-          data.push({ value: pointValue });
+          data.push({ value: pointValue, timestamp, previousValue });
         } else {
           // "All time": show cumulative total of all videos that existed at this point
           const videosAtThisTime = submissions.filter(v => {
@@ -185,7 +206,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
           });
           
           const cumulativeValue = videosAtThisTime.reduce((sum, v) => sum + (v[metric] || 0), 0);
-          data.push({ value: cumulativeValue });
+          data.push({ value: cumulativeValue, timestamp, previousValue });
         }
       }
       return data;
@@ -280,7 +301,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
     <>
       <div className="grid gap-4 md:gap-5 xl:gap-6 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {kpiData.map((card) => (
-          <KPICard key={card.id} data={card} onClick={() => handleCardClick(card.id)} />
+          <KPICard key={card.id} data={card} onClick={() => handleCardClick(card.id)} timePeriod={timePeriod} />
         ))}
       </div>
 
@@ -298,11 +319,37 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
 
 // Separate component to handle sparkline rendering consistently
 const KPISparkline: React.FC<{
-  data: Array<{ value: number }>;
+  data: Array<{ value: number; timestamp?: number; previousValue?: number }>;
   id: string;
   gradient: string[];
   stroke: string;
-}> = ({ data, id, gradient, stroke }) => {
+  timePeriod?: TimePeriodType;
+}> = ({ data, id, gradient, stroke, timePeriod = 'days' }) => {
+  
+  const formatTooltipDate = (timestamp?: number) => {
+    if (!timestamp) return '';
+    
+    const date = new Date(timestamp);
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    if (timePeriod === 'hours') {
+      const hour = date.getHours();
+      const nextHour = (hour + 1) % 24;
+      const nextPeriod = nextHour >= 12 ? 'PM' : 'AM';
+      const displayHour = hour % 12 || 12;
+      const displayNextHour = nextHour % 12 || 12;
+      return `${monthNames[date.getMonth()]} ${date.getDate()}, ${displayHour}–${displayNextHour} ${nextPeriod}`;
+    } else if (timePeriod === 'days') {
+      return `${monthNames[date.getMonth()]} ${date.getDate()}`;
+    } else if (timePeriod === 'weeks') {
+      const weekEnd = new Date(timestamp + (6 * 24 * 60 * 60 * 1000));
+      return `${monthNames[date.getMonth()]} ${date.getDate()}–${date.getMonth() === weekEnd.getMonth() ? weekEnd.getDate() : monthNames[weekEnd.getMonth()] + ' ' + weekEnd.getDate()}`;
+    } else if (timePeriod === 'months') {
+      return `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+    }
+    return date.toLocaleDateString();
+  };
+  
   return (
     <ResponsiveContainer width="100%" height={56}>
       <AreaChart data={data}>
@@ -315,9 +362,32 @@ const KPISparkline: React.FC<{
         <Tooltip
           content={({ active, payload }) => {
             if (active && payload && payload.length) {
+              const data = payload[0].payload;
+              const value = data.value;
+              const timestamp = data.timestamp;
+              const previousValue = data.previousValue;
+              
+              const dateStr = formatTooltipDate(timestamp);
+              const showComparison = timePeriod === 'hours' && previousValue !== undefined;
+              
+              const diff = previousValue !== undefined ? value - previousValue : 0;
+              let trendText = '';
+              if (showComparison && previousValue !== undefined) {
+                const percentChange = previousValue > 0 ? ((diff / previousValue) * 100).toFixed(1) : '0';
+                const isPositive = diff >= 0;
+                const trendIcon = isPositive ? '↑' : '↓';
+                trendText = `${trendIcon} ${Math.abs(Number(percentChange))}% vs yesterday`;
+              }
+              
               return (
-                <div className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-xl text-sm">
-                  <p className="font-semibold">{payload[0].value?.toLocaleString()}</p>
+                <div className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-xl text-sm space-y-1">
+                  {dateStr && <p className="text-xs text-gray-400">{dateStr}</p>}
+                  <p className="font-semibold text-base">{value?.toLocaleString()}</p>
+                  {showComparison && trendText && (
+                    <p className={`text-xs ${diff >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {trendText}
+                    </p>
+                  )}
                 </div>
               );
             }
@@ -340,7 +410,7 @@ const KPISparkline: React.FC<{
   );
 };
 
-const KPICard: React.FC<{ data: KPICardData; onClick?: () => void }> = ({ data, onClick }) => {
+const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: TimePeriodType }> = ({ data, onClick, timePeriod = 'days' }) => {
   const accentColors = {
     emerald: {
       icon: 'bg-emerald-500/10 ring-emerald-500/20',
@@ -455,6 +525,7 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void }> = ({ data, 
               id={data.id}
               gradient={colors.gradient}
               stroke={colors.stroke}
+              timePeriod={timePeriod}
             />
           </div>
         )}
