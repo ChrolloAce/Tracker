@@ -245,13 +245,10 @@ export class AccountTrackingServiceFirebase {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          actorId: 'clockworks~tiktok-scraper',
+          actorId: 'apify/tiktok-scraper',
           input: {
-            profiles: [username],
-            resultsPerPage: 30,
-            shouldDownloadCovers: false,
-            shouldDownloadVideos: false,
-            shouldDownloadSubtitles: false
+            profiles: [`@${username.startsWith('@') ? username.slice(1) : username}`],
+            resultsPerPage: 30
           },
           action: 'run'
         }),
@@ -499,13 +496,10 @@ export class AccountTrackingServiceFirebase {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        actorId: 'clockworks~tiktok-scraper',
+        actorId: 'apify/tiktok-scraper',
         input: {
-          profiles: [account.username],
-          resultsPerPage: 100,
-          shouldDownloadCovers: false,
-          shouldDownloadVideos: false,
-          shouldDownloadSubtitles: false
+          profiles: [`@${account.username.startsWith('@') ? account.username.slice(1) : account.username}`],
+          resultsPerPage: 100
         },
         action: 'run'
       }),
