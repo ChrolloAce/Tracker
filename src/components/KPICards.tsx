@@ -10,7 +10,8 @@ import {
   TrendingUp,
   TrendingDown,
   ChevronRight,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Minus
 } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { LinkClick } from '../services/LinkClicksService';
@@ -18,6 +19,7 @@ import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
 import { DateFilterType } from './DateRangeFilter';
 import { TimePeriodType } from './TimePeriodSelector';
 import MetricComparisonModal from './MetricComparisonModal';
+import { TrendCalculationService, TrendIndicator } from '../services/TrendCalculationService';
 
 interface KPICardsProps {
   submissions: VideoSubmission[];
@@ -32,7 +34,7 @@ interface KPICardData {
   value: string | number;
   icon: React.ComponentType<{ className?: string }>;
   accent: 'emerald' | 'pink' | 'blue' | 'violet' | 'teal' | 'orange' | 'slate';
-  delta?: { value: number; isPositive: boolean };
+  trend?: TrendIndicator;
   period?: string;
   sparklineData?: Array<{ value: number; timestamp?: number; previousValue?: number }>;
   isEmpty?: boolean;
@@ -49,184 +51,25 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
   };
 
   const kpiData = useMemo(() => {
-    const now = new Date();
-    
-    // Define Current Period (CP) and Previous Period (PP) based on dateFilter
-    const getPeriods = () => {
-      let cpStart: Date, cpEnd: Date, ppStart: Date, ppEnd: Date;
-      
-      switch (dateFilter) {
-        case 'today': {
-          const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          cpStart = startOfToday;
-          cpEnd = now;
-          const duration = cpEnd.getTime() - cpStart.getTime();
-          ppStart = new Date(cpStart.getTime() - duration);
-          ppEnd = cpStart;
-          break;
-        }
-        case 'last7days': {
-          cpEnd = now;
-          cpStart = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
-          ppEnd = cpStart;
-          ppStart = new Date(cpStart.getTime() - (7 * 24 * 60 * 60 * 1000));
-          break;
-        }
-        case 'last30days': {
-          cpEnd = now;
-          cpStart = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
-          ppEnd = cpStart;
-          ppStart = new Date(cpStart.getTime() - (30 * 24 * 60 * 60 * 1000));
-          break;
-        }
-        case 'last90days': {
-          cpEnd = now;
-          cpStart = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000));
-          ppEnd = cpStart;
-          ppStart = new Date(cpStart.getTime() - (90 * 24 * 60 * 60 * 1000));
-          break;
-        }
-        case 'mtd': {
-          cpStart = new Date(now.getFullYear(), now.getMonth(), 1);
-          cpEnd = now;
-          const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-          ppStart = lastMonth;
-          ppEnd = new Date(now.getFullYear(), now.getMonth(), 0); // Last day of previous month
-          break;
-        }
-        case 'ytd': {
-          cpStart = new Date(now.getFullYear(), 0, 1);
-          cpEnd = now;
-          ppStart = new Date(now.getFullYear() - 1, 0, 1);
-          ppEnd = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
-          break;
-        }
-        default: // 'all'
-          cpStart = new Date(0);
-          cpEnd = now;
-          ppStart = new Date(0);
-          ppEnd = new Date(0);
-      }
-      
-      return { cpStart, cpEnd, ppStart, ppEnd };
-    };
+    // Calculate all trends using the new TrendCalculationService
+    const trends = TrendCalculationService.calculateAllTrends(
+      submissions,
+      dateFilter,
+      undefined, // customRange - would be passed if needed
+      'America/Los_Angeles' // TODO: Get from user settings
+    );
 
-    const { cpStart: _cpStart, cpEnd, ppStart, ppEnd } = getPeriods();
+    // Calculate totals for display (using current period metrics from trends)
+    const totalViews = trends.views.currentValue;
+    const totalLikes = trends.likes.currentValue;
+    const totalComments = trends.comments.currentValue;
+    const totalShares = trends.shares.currentValue;
+    const activeAccounts = trends.accounts.currentValue;
+    const publishedVideos = trends.videos.currentValue;
+    const engagementRate = trends.engagement.currentValue;
+
+    // For sparkline data generation
     const isFilteredPeriod = dateFilter !== 'all';
-
-    // Get videos that existed during each period (uploaded before period end)
-    const cpVideos = submissions.filter(v => {
-      const uploadDate = new Date(v.uploadDate || v.dateSubmitted);
-      return uploadDate < cpEnd;
-    });
-
-    const ppVideos = submissions.filter(v => {
-      const uploadDate = new Date(v.uploadDate || v.dateSubmitted);
-      return uploadDate < ppEnd;
-    });
-
-    // Calculate metrics for Current Period (use current values for videos that existed)
-    let cpViews = 0, cpLikes = 0, cpComments = 0, cpShares = 0;
-    cpVideos.forEach(v => {
-      // Use current metric values
-      cpViews += v.views || 0;
-      cpLikes += v.likes || 0;
-      cpComments += v.comments || 0;
-      cpShares += v.shares || 0;
-    });
-
-    // Calculate metrics for Previous Period
-    // Strategy: Use snapshots if available, otherwise use current values for videos uploaded in PP
-    let ppViews = 0, ppLikes = 0, ppComments = 0, ppShares = 0;
-    ppVideos.forEach(v => {
-      const uploadDate = new Date(v.uploadDate || v.dateSubmitted);
-      
-      // If video was uploaded during PP, use current values
-      if (uploadDate >= ppStart && uploadDate < ppEnd) {
-        ppViews += v.views || 0;
-        ppLikes += v.likes || 0;
-        ppComments += v.comments || 0;
-        ppShares += v.shares || 0;
-      } 
-      // If video existed before PP, try to find snapshot near ppEnd
-      else if (v.snapshots && v.snapshots.length > 0) {
-        const snapshotAtPPEnd = v.snapshots
-          .filter(s => new Date(s.capturedAt) <= ppEnd)
-          .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-        
-        if (snapshotAtPPEnd) {
-          ppViews += snapshotAtPPEnd.views || 0;
-          ppLikes += snapshotAtPPEnd.likes || 0;
-          ppComments += snapshotAtPPEnd.comments || 0;
-          ppShares += snapshotAtPPEnd.shares || 0;
-        } else {
-          // No snapshot before ppEnd - use earliest snapshot as best guess
-          const earliestSnapshot = v.snapshots.sort((a, b) => 
-            new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
-          )[0];
-          ppViews += earliestSnapshot.views || 0;
-          ppLikes += earliestSnapshot.likes || 0;
-          ppComments += earliestSnapshot.comments || 0;
-          ppShares += earliestSnapshot.shares || 0;
-        }
-      } else {
-        // No snapshots and video existed before PP - use current values as fallback
-        ppViews += v.views || 0;
-        ppLikes += v.likes || 0;
-        ppComments += v.comments || 0;
-        ppShares += v.shares || 0;
-      }
-    });
-
-    const cpVideoCount = cpVideos.length;
-    const ppVideoCount = ppVideos.length;
-    const cpAccounts = new Set(cpVideos.map(v => v.uploaderHandle)).size;
-    const ppAccounts = new Set(ppVideos.map(v => v.uploaderHandle)).size;
-
-    // Calculate percentage changes with epsilon threshold (0.5%)
-    const epsilon = 0.5;
-    const calculateTrend = (curr: number, prev: number) => {
-      // If no data in either period, hide trend
-      if (prev === 0 && curr === 0) {
-        return null;
-      }
-      // If no previous data, show as new growth
-      if (prev === 0 && curr > 0) {
-        return { pct: 100, arrow: 'up' as const, absDelta: curr };
-      }
-      
-      const pct = ((curr - prev) / prev) * 100;
-      const absDelta = curr - prev;
-      let arrow: 'up' | 'down' | 'flat' = 'flat';
-      
-      if (pct > epsilon) arrow = 'up';
-      else if (pct < -epsilon) arrow = 'down';
-      
-      return { pct: Math.round(pct * 10) / 10, arrow, absDelta };
-    };
-
-    const viewsTrend = calculateTrend(cpViews, ppViews);
-    const likesTrend = calculateTrend(cpLikes, ppLikes);
-    const commentsTrend = calculateTrend(cpComments, ppComments);
-    const sharesTrend = calculateTrend(cpShares, ppShares);
-    const videosTrend = calculateTrend(cpVideoCount, ppVideoCount);
-    const accountsTrend = calculateTrend(cpAccounts, ppAccounts);
-
-    // Calculate engagement rate for both periods
-    const cpEngagementRate = cpViews > 0 ? ((cpLikes + cpComments) / cpViews) * 100 : 0;
-    const ppEngagementRate = ppViews > 0 ? ((ppLikes + ppComments) / ppViews) * 100 : 0;
-    const engagementTrend = calculateTrend(cpEngagementRate, ppEngagementRate);
-
-    // For "all time", use totals instead of CP values
-    const totalViews = isFilteredPeriod ? cpViews : submissions.reduce((sum, v) => sum + (v.views || 0), 0);
-    const totalLikes = isFilteredPeriod ? cpLikes : submissions.reduce((sum, v) => sum + (v.likes || 0), 0);
-    const totalComments = isFilteredPeriod ? cpComments : submissions.reduce((sum, v) => sum + (v.comments || 0), 0);
-    const totalShares = isFilteredPeriod ? cpShares : submissions.reduce((sum, v) => sum + (v.shares || 0), 0);
-    const publishedVideos = isFilteredPeriod ? cpVideoCount : submissions.length;
-    const activeAccounts = isFilteredPeriod ? cpAccounts : new Set(submissions.map(v => v.uploaderHandle)).size;
-    
-    const totalEngagement = totalLikes + totalComments;
-    const engagementRate = totalViews > 0 ? (totalEngagement / totalViews) * 100 : 0;
 
     // Generate sparkline data based on date filter and metric type
     const generateSparklineData = (metric: 'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts') => {
@@ -376,7 +219,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         value: formatNumber(totalViews),
         icon: Play,
         accent: 'emerald',
-        delta: (isFilteredPeriod && viewsTrend) ? { value: Math.abs(viewsTrend.pct), isPositive: viewsTrend.arrow === 'up' } : undefined,
+        trend: trends.views,
         period: periodText,
         sparklineData: generateSparklineData('views')
       },
@@ -386,8 +229,8 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         value: formatNumber(totalLikes),
         icon: Heart,
         accent: 'pink',
-        delta: (isFilteredPeriod && likesTrend) ? { value: Math.abs(likesTrend.pct), isPositive: likesTrend.arrow === 'up' } : undefined,
-        period: `${((totalLikes / (totalViews || 1)) * 100).toFixed(1)}% of views`,
+        trend: trends.likes,
+        period: totalViews > 0 ? `${((totalLikes / totalViews) * 100).toFixed(1)}% of views` : periodText,
         sparklineData: generateSparklineData('likes')
       },
       {
@@ -396,8 +239,8 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         value: formatNumber(totalComments),
         icon: MessageCircle,
         accent: 'blue',
-        delta: (isFilteredPeriod && commentsTrend) ? { value: Math.abs(commentsTrend.pct), isPositive: commentsTrend.arrow === 'up' } : undefined,
-        period: 'Total engagement',
+        trend: trends.comments,
+        period: periodText,
         sparklineData: generateSparklineData('comments')
       },
       {
@@ -406,8 +249,8 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         value: formatNumber(totalShares),
         icon: Share2,
         accent: 'orange',
-        delta: (isFilteredPeriod && sharesTrend) ? { value: Math.abs(sharesTrend.pct), isPositive: sharesTrend.arrow === 'up' } : undefined,
-        period: 'Total shares',
+        trend: trends.shares,
+        period: periodText,
         sparklineData: generateSparklineData('shares')
       },
       {
@@ -416,7 +259,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         value: publishedVideos,
         icon: Video,
         accent: 'violet',
-        delta: (isFilteredPeriod && videosTrend) ? { value: Math.abs(videosTrend.pct), isPositive: videosTrend.arrow === 'up' } : undefined,
+        trend: trends.videos,
         period: periodText,
         sparklineData: generateSparklineData('videos')
       },
@@ -426,8 +269,8 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         value: activeAccounts,
         icon: AtSign,
         accent: 'teal',
-        delta: (isFilteredPeriod && accountsTrend) ? { value: Math.abs(accountsTrend.pct), isPositive: accountsTrend.arrow === 'up' } : undefined,
-        period: 'Total tracked',
+        trend: trends.accounts,
+        period: periodText,
         sparklineData: generateSparklineData('accounts')
       },
       {
@@ -436,7 +279,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         value: `${engagementRate.toFixed(1)}%`,
         icon: Activity,
         accent: 'violet',
-        delta: (isFilteredPeriod && engagementTrend) ? { value: Math.abs(engagementTrend.pct), isPositive: engagementTrend.arrow === 'up' } : undefined,
+        trend: trends.engagement,
         period: periodText,
         sparklineData: generateSparklineData('likes')
       },
@@ -642,23 +485,34 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
               <span className="text-sm font-medium text-zinc-300">{data.label}</span>
             </div>
 
-            {/* Value + Delta */}
+            {/* Value + Trend */}
             <div className="flex items-baseline gap-2 mb-1">
               <span className={`text-3xl font-bold ${data.isEmpty ? 'text-zinc-500' : 'text-white'}`}>
                 {data.value}
               </span>
-              {data.delta && (
-                <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium ${
-                  data.delta.isPositive 
-                    ? 'bg-emerald-400/10 text-emerald-300' 
-                    : 'bg-rose-400/10 text-rose-300'
-                }`}>
-                  {data.delta.isPositive ? (
+              {data.trend && (
+                <span 
+                  className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium ${
+                    data.trend.formattedPercent === 'NEW'
+                      ? 'bg-blue-400/10 text-blue-300'
+                      : data.trend.direction === 'up' 
+                      ? 'bg-emerald-400/10 text-emerald-300' 
+                      : data.trend.direction === 'down'
+                      ? 'bg-rose-400/10 text-rose-300'
+                      : 'bg-slate-400/10 text-slate-300'
+                  }`}
+                  title={data.trend.tooltip}
+                >
+                  {data.trend.formattedPercent === 'NEW' ? (
+                    '✨'
+                  ) : data.trend.direction === 'up' ? (
                     <TrendingUp className="w-3 h-3" />
-                  ) : (
+                  ) : data.trend.direction === 'down' ? (
                     <TrendingDown className="w-3 h-3" />
+                  ) : (
+                    <Minus className="w-3 h-3" />
                   )}
-                  {data.delta.value.toFixed(1)}%
+                  {data.trend.formattedPercent}
                 </span>
               )}
             </div>

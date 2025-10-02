@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { MoreVertical, TrendingUp, TrendingDown, Eye, Heart, MessageCircle } from 'lucide-react';
+import { MoreVertical, TrendingUp, TrendingDown, Eye, Heart, MessageCircle, Minus } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
@@ -7,6 +7,7 @@ import DateFilterService from '../services/DateFilterService';
 import { DateFilterType } from './DateRangeFilter';
 import { TimePeriodType } from './TimePeriodSelector';
 import { TimePeriodService } from '../services/TimePeriodService';
+import { TrendCalculationService, TrendIndicator } from '../services/TrendCalculationService';
 
 interface DateRange {
   startDate: Date;
@@ -24,8 +25,7 @@ interface AnalyticsCardsProps {
 interface MetricCardProps {
   title: string;
   value: number;
-  change: number;
-  changeType: 'increase' | 'decrease';
+  trend: TrendIndicator;
   chartData: { period: string; value: number }[];
   icon: React.ComponentType<{ className?: string }>;
   color: 'blue' | 'green' | 'purple';
@@ -34,8 +34,7 @@ interface MetricCardProps {
 const MetricCard: React.FC<MetricCardProps> = ({ 
   title, 
   value, 
-  change, 
-  changeType, 
+  trend, 
   chartData,
   icon: Icon,
   color
@@ -121,15 +120,33 @@ const MetricCard: React.FC<MetricCardProps> = ({
         <div className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
           {formatNumber(value)}
         </div>
-        <div className={`flex items-center text-sm font-medium ${
-          changeType === 'increase' ? 'text-green-600' : 'text-red-600'
-        }`}>
-          {changeType === 'increase' ? (
+        <div 
+          className={`flex items-center text-sm font-medium ${
+            trend.formattedPercent === 'NEW'
+              ? 'text-blue-600 dark:text-blue-400'
+              : trend.direction === 'up' 
+              ? 'text-green-600' 
+              : trend.direction === 'down'
+              ? 'text-red-600'
+              : 'text-gray-500'
+          }`}
+          title={trend.tooltip}
+        >
+          {trend.formattedPercent === 'NEW' ? (
+            <span className="mr-1">✨</span>
+          ) : trend.direction === 'up' ? (
             <TrendingUp className="w-4 h-4 mr-1" />
-          ) : (
+          ) : trend.direction === 'down' ? (
             <TrendingDown className="w-4 h-4 mr-1" />
+          ) : (
+            <Minus className="w-4 h-4 mr-1" />
           )}
-          <span>{Math.abs(change).toFixed(1)}% from last period</span>
+          <span>
+            {trend.formattedPercent === 'NEW' 
+              ? 'New content' 
+              : `${trend.formattedPercent} from last period`
+            }
+          </span>
         </div>
       </div>
 
@@ -184,8 +201,15 @@ export const AnalyticsCards: React.FC<AnalyticsCardsProps> = ({
   customDateRange,
   timePeriod = 'weeks'
 }) => {
-  // We don't use analytics totals anymore - we calculate from graph data instead
-  // This was kept for potential future use but is currently unused
+  // Calculate trends using TrendCalculationService
+  const trends = useMemo(() => {
+    return TrendCalculationService.calculateAllTrends(
+      submissions,
+      dateFilter,
+      customDateRange,
+      'America/Los_Angeles' // TODO: Get from user settings
+    );
+  }, [submissions, dateFilter, customDateRange]);
 
   // Generate time series data based on actual submissions and selected time period
   // Use the date filter range to constrain the graph timeline
@@ -222,40 +246,14 @@ export const AnalyticsCards: React.FC<AnalyticsCardsProps> = ({
     };
   }, [submissions, timePeriod, dateFilter, customDateRange]);
 
-  // Calculate totals from graph data - this ensures the numbers match what's shown in graphs
-  const totalViews = useMemo(() => {
-    return chartData.views.reduce((sum, period) => sum + period.value, 0);
-  }, [chartData.views]);
-
-  const totalLikes = useMemo(() => {
-    return chartData.likes.reduce((sum, period) => sum + period.value, 0);
-  }, [chartData.likes]);
-
-  const totalComments = useMemo(() => {
-    return chartData.comments.reduce((sum, period) => sum + period.value, 0);
-  }, [chartData.comments]);
-
-  // Calculate period-over-period changes
-  const calculateChange = (data: { period: string; value: number }[]): number => {
-    if (data.length < 2) return 0;
-    const current = data[data.length - 1].value;
-    const previous = data[data.length - 2].value;
-    return previous > 0 ? ((current - previous) / previous) * 100 : 0;
-  };
-
-  const likesChange = calculateChange(chartData.likes);
-  const commentsChange = calculateChange(chartData.comments);
-  const viewsChange = calculateChange(chartData.views);
-
   return (
     <div className="mb-8">
       {/* Analytics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <MetricCard
           title="Total Views"
-          value={totalViews}
-          change={viewsChange}
-          changeType={viewsChange >= 0 ? "increase" : "decrease"}
+          value={trends.views.currentValue}
+          trend={trends.views}
           chartData={chartData.views}
           icon={Eye}
           color="blue"
@@ -263,9 +261,8 @@ export const AnalyticsCards: React.FC<AnalyticsCardsProps> = ({
         
         <MetricCard
           title="Total Likes"
-          value={totalLikes}
-          change={likesChange}
-          changeType={likesChange >= 0 ? "increase" : "decrease"}
+          value={trends.likes.currentValue}
+          trend={trends.likes}
           chartData={chartData.likes}
           icon={Heart}
           color="green"
@@ -273,9 +270,8 @@ export const AnalyticsCards: React.FC<AnalyticsCardsProps> = ({
         
         <MetricCard
           title="Total Comments"
-          value={totalComments}
-          change={commentsChange}
-          changeType={commentsChange >= 0 ? "increase" : "decrease"}
+          value={trends.comments.currentValue}
+          trend={trends.comments}
           chartData={chartData.comments}
           icon={MessageCircle}
           color="purple"
