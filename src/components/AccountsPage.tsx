@@ -565,17 +565,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       {/* Main Content */}
       {viewMode === 'table' ? (
         <div className="space-y-6">
-          {/* Add Account Button */}
-          <div className="flex justify-end">
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl"
-            >
-              <Plus className="w-4 h-4" />
-              <span className="font-medium">Track Account</span>
-            </button>
-          </div>
-          
           {/* Accounts Table */}
           <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 overflow-hidden">
           {accounts.length === 0 ? (
@@ -584,16 +573,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                 <Users className="w-8 h-8 text-gray-400" />
               </div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-white dark:text-white mb-2">No accounts tracked yet</h3>
-              <p className="text-gray-500 dark:text-gray-400 mb-6">
+              <p className="text-gray-500 dark:text-gray-400">
                 Start tracking Instagram or TikTok accounts to monitor their content performance
               </p>
-              <button
-                onClick={() => setIsAddModalOpen(true)}
-                className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl"
-              >
-                <Plus className="w-4 h-4" />
-                <span className="font-medium">Track Account</span>
-              </button>
             </div>
           ) : (
             <div className="overflow-x-auto">

@@ -53,12 +53,12 @@ function App() {
   const [trackedAccounts, setTrackedAccounts] = useState<TrackedAccount[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
-  const [dateFilter, setDateFilter] = useState<DateFilterType>('all');
+  const [dateFilter, setDateFilter] = useState<DateFilterType>('last30days');
   const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>();
   const [selectedVideoForAnalytics, setSelectedVideoForAnalytics] = useState<VideoSubmission | null>(null);
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [timePeriod, setTimePeriod] = useState<TimePeriodType>('weeks');
+  const [timePeriod, setTimePeriod] = useState<TimePeriodType>('days');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isLoadingData, setIsLoadingData] = useState(true);
   
