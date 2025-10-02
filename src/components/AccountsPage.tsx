@@ -16,10 +16,8 @@ import {
   ExternalLink,
   Calendar,
   Share2,
-  Activity,
-  Video
+  Activity
   } from 'lucide-react';
-import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import { TrackedAccount, AccountVideo } from '../types/accounts';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -45,23 +43,7 @@ export interface AccountsPageRef {
   openAddModal: () => void;
 }
 
-// Map dateFilter to timePeriod for calculations
-const mapDateFilterToTimePeriod = (filter: DateFilterType): 'all' | 'weekly' | 'monthly' | 'daily' => {
-  switch (filter) {
-    case 'today': return 'daily';
-    case 'last7days': return 'weekly';
-    case 'last30days': return 'monthly';
-    case 'last90days': return 'monthly';
-    case 'mtd': return 'monthly';
-    case 'ytd': return 'all';
-    case 'custom': return 'all';
-    default: return 'all';
-  }
-};
-
-const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilter, platformFilter: _platformFilter, onViewModeChange }, ref) => {
-  // Convert dateFilter to timePeriod for existing calculation functions
-  const timePeriod = mapDateFilterToTimePeriod(dateFilter);
+const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilter: _dateFilter, platformFilter: _platformFilter, onViewModeChange }, ref) => {
   const { user, currentOrgId, currentProjectId } = useAuth();
   const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<TrackedAccount | null>(null);
@@ -340,196 +322,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   }
 
   // Generate chart data based on time period and historical tracking
-  const generateChartData = (videos: AccountVideo[], period: 'all' | 'weekly' | 'monthly' | 'daily') => {
-    if (videos.length === 0) {
-      // Return sample data points for empty state
-      const now = new Date();
-      const points = period === 'daily' ? 7 : period === 'weekly' ? 4 : 12;
-      const interval = period === 'daily' ? 24 * 60 * 60 * 1000 : 
-                     period === 'weekly' ? 7 * 24 * 60 * 60 * 1000 : 
-                     30 * 24 * 60 * 60 * 1000;
-      
-      return Array.from({ length: points }, (_, i) => ({
-        date: new Date(now.getTime() - (points - 1 - i) * interval).toLocaleDateString('en-US', { 
-          month: 'short', 
-          day: period === 'monthly' ? undefined : 'numeric',
-          year: period === 'monthly' ? 'numeric' : undefined
-        }),
-        views: 0,
-        likes: 0,
-        comments: 0,
-        shares: 0
-      }));
-    }
-
-    // Get time range based on period
-    const now = new Date();
-    let startDate: Date;
-    let interval: number;
-    let points: number;
-    
-    switch (period) {
-      case 'daily':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        interval = 24 * 60 * 60 * 1000;
-        points = 7;
-        break;
-      case 'weekly':
-        startDate = new Date(now.getTime() - 4 * 7 * 24 * 60 * 60 * 1000);
-        interval = 7 * 24 * 60 * 60 * 1000;
-        points = 4;
-        break;
-      case 'monthly':
-        startDate = new Date(now.getTime() - 12 * 30 * 24 * 60 * 60 * 1000);
-        interval = 30 * 24 * 60 * 60 * 1000;
-        points = 12;
-        break;
-      default: // 'all'
-        if (videos.length === 0) {
-          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          interval = 7 * 24 * 60 * 60 * 1000;
-          points = 5;
-        } else {
-          // Filter out videos without uploadDate and find oldest
-          const videosWithDates = videos.filter(v => v.uploadDate || v.timestamp);
-          if (videosWithDates.length === 0) {
-            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-            interval = 7 * 24 * 60 * 60 * 1000;
-            points = 5;
-          } else {
-            const oldestVideo = videosWithDates.reduce((oldest, video) => {
-              const oldestDate = oldest.uploadDate || (oldest.timestamp ? new Date(oldest.timestamp) : new Date());
-              const videoDate = video.uploadDate || (video.timestamp ? new Date(video.timestamp) : new Date());
-              return videoDate < oldestDate ? video : oldest;
-            });
-            startDate = oldestVideo.uploadDate || (oldestVideo.timestamp ? new Date(oldestVideo.timestamp) : new Date());
-            const totalTime = now.getTime() - startDate.getTime();
-            points = Math.min(10, Math.max(5, Math.ceil(totalTime / (7 * 24 * 60 * 60 * 1000))));
-            interval = totalTime / (points - 1);
-          }
-        }
-    }
-
-    // Create time buckets
-    const buckets = Array.from({ length: points }, (_, i) => {
-      const bucketDate = new Date(startDate.getTime() + i * interval);
-      return {
-        date: bucketDate.toLocaleDateString('en-US', { 
-          month: 'short', 
-          day: period === 'monthly' ? undefined : 'numeric',
-          year: period === 'monthly' ? 'numeric' : undefined
-        }),
-        timestamp: bucketDate.getTime(),
-        views: 0,
-        likes: 0,
-        comments: 0,
-        shares: 0
-      };
-    });
-
-    // Fill buckets with video data
-    // For each video, add its metrics to all buckets after its upload date
-    videos.forEach(video => {
-      // Get video date (uploadDate or timestamp)
-      const videoDate = video.uploadDate || (video.timestamp ? new Date(video.timestamp) : null);
-      if (!videoDate) return; // Skip videos without dates
-      
-      const videoTime = videoDate.getTime();
-      buckets.forEach(bucket => {
-        if (bucket.timestamp >= videoTime) {
-          bucket.views += video.viewsCount || video.views || 0;
-          bucket.likes += video.likesCount || video.likes || 0;
-          bucket.comments += video.commentsCount || video.comments || 0;
-          bucket.shares += video.sharesCount || video.shares || 0;
-        }
-      });
-    });
-
-    return buckets.map(({ timestamp, ...bucket }) => bucket);
-  };
-
-  // Calculate percentage change from previous period
-  const calculatePercentageChange = (current: number, previous: number): string => {
-    if (previous === 0) return current > 0 ? '↗ +∞%' : '0.0%';
-    const change = ((current - previous) / previous) * 100;
-    const sign = change > 0 ? '↗' : change < 0 ? '↘' : '';
-    return `${sign} ${Math.abs(change).toFixed(1)}%`;
-  };
-
-  // Get period label for percentage display
-  const getPeriodLabel = (period: 'all' | 'weekly' | 'monthly' | 'daily'): string => {
-    switch (period) {
-      case 'daily': return 'from yesterday';
-      case 'weekly': return 'from last week';
-      case 'monthly': return 'from last month';
-      default: return 'from last period';
-    }
-  };
-
-  // Calculate metrics for current and previous periods
-  const getMetricsComparison = (videos: AccountVideo[], period: 'all' | 'weekly' | 'monthly' | 'daily') => {
-    if (videos.length === 0) {
-      return {
-        current: { views: 0, likes: 0, comments: 0 },
-        previous: { views: 0, likes: 0, comments: 0 },
-        periodLabel: getPeriodLabel(period)
-      };
-    }
-
-    const now = new Date();
-    let currentStart: Date, previousStart: Date, previousEnd: Date;
-
-    switch (period) {
-      case 'daily':
-        currentStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        previousStart = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
-        previousEnd = currentStart;
-        break;
-      case 'weekly':
-        currentStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        previousStart = new Date(now.getTime() - 2 * 7 * 24 * 60 * 60 * 1000);
-        previousEnd = currentStart;
-        break;
-      case 'monthly':
-        currentStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        previousStart = new Date(now.getTime() - 2 * 30 * 24 * 60 * 60 * 1000);
-        previousEnd = currentStart;
-        break;
-      default: // 'all'
-        // For "all time", compare current total vs total from 30 days ago
-        currentStart = new Date(0); // Beginning of time
-        previousStart = new Date(0);
-        previousEnd = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    }
-
-    const currentVideos = videos.filter(v => {
-      const videoDate = v.uploadDate || (v.timestamp ? new Date(v.timestamp) : null);
-      return videoDate && videoDate >= currentStart;
-    });
-    const previousVideos = videos.filter(v => {
-      const videoDate = v.uploadDate || (v.timestamp ? new Date(v.timestamp) : null);
-      return videoDate && videoDate >= previousStart && videoDate < previousEnd;
-    });
-
-    const current = {
-      views: currentVideos.reduce((sum, v) => sum + (v.viewsCount || v.views || 0), 0),
-      likes: currentVideos.reduce((sum, v) => sum + (v.likesCount || v.likes || 0), 0),
-      comments: currentVideos.reduce((sum, v) => sum + (v.commentsCount || v.comments || 0), 0)
-    };
-
-    const previous = {
-      views: previousVideos.reduce((sum, v) => sum + (v.viewsCount || v.views || 0), 0),
-      likes: previousVideos.reduce((sum, v) => sum + (v.likesCount || v.likes || 0), 0),
-      comments: previousVideos.reduce((sum, v) => sum + (v.commentsCount || v.comments || 0), 0)
-    };
-
-    return {
-      current,
-      previous,
-      periodLabel: getPeriodLabel(period)
-    };
-  };
-
   return (
     <div className="space-y-6">
       {/* Error Display */}
