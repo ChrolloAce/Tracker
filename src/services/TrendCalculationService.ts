@@ -260,7 +260,6 @@ export class TrendCalculationService {
     }
 
     // Find the snapshot closest to (but not after) the target time
-    // This matches the sparkline logic exactly
     const snapshotAtTime = video.snapshots
       .filter(s => new Date(s.capturedAt) <= targetTime)
       .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
@@ -274,13 +273,17 @@ export class TrendCalculationService {
       };
     }
 
-    // If no snapshot before target time but video existed, it just launched - return 0
-    if (uploadDate <= targetTime) {
+    // No snapshot before target time - use the OLDEST snapshot as baseline
+    // This handles cases where video tracking started after the target date
+    const oldestSnapshot = video.snapshots
+      .sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime())[0];
+    
+    if (oldestSnapshot && uploadDate <= targetTime) {
       return {
-        views: 0,
-        likes: 0,
-        comments: 0,
-        shares: 0
+        views: oldestSnapshot.views || 0,
+        likes: oldestSnapshot.likes || 0,
+        comments: oldestSnapshot.comments || 0,
+        shares: oldestSnapshot.shares || 0
       };
     }
 
