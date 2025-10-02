@@ -197,16 +197,18 @@ export class TrendCalculationService {
         return; // Video didn't exist yet
       }
 
-      // Get metrics at the end of this period
+      // Get metrics at the end of this period using snapshot data
       const metricsAtPeriodEnd = this.getVideoMetricsAtTime(video, period.end);
       
+      // Only count videos where we have actual snapshot data
+      // This prevents false +100% from videos without historical tracking
       if (metricsAtPeriodEnd) {
         metrics.views += metricsAtPeriodEnd.views;
         metrics.likes += metricsAtPeriodEnd.likes;
         metrics.comments += metricsAtPeriodEnd.comments;
         metrics.shares += metricsAtPeriodEnd.shares;
         
-        // Count video if it existed in this period
+        // Count video if we have data for it
         metrics.videoCount++;
         uniqueAccounts.add(video.uploaderHandle);
       }
@@ -219,7 +221,7 @@ export class TrendCalculationService {
 
   /**
    * Get video metrics at a specific point in time
-   * Uses snapshots to find the closest data, or current metrics if recent
+   * Uses the SAME logic as sparklines for consistency
    */
   private static getVideoMetricsAtTime(
     video: VideoSubmission,
@@ -233,36 +235,24 @@ export class TrendCalculationService {
       return null;
     }
 
-    // If target time is in the future or very recent (within 1 hour), use current metrics
-    if (targetTime >= now || (now.getTime() - targetTime.getTime()) < (60 * 60 * 1000)) {
-      return {
-        views: video.views || 0,
-        likes: video.likes || 0,
-        comments: video.comments || 0,
-        shares: video.shares || 0
-      };
-    }
-
-    // If no snapshots, we have to use current metrics (best guess)
+    // If no snapshots, use current metrics only if target time is very recent
     if (!video.snapshots || video.snapshots.length === 0) {
-      // For videos without snapshots, use a fallback approach:
-      // If video is older than target time, assume it had current metrics
-      // This is imperfect but better than showing 100% always
-      return {
-        views: video.views || 0,
-        likes: video.likes || 0,
-        comments: video.comments || 0,
-        shares: video.shares || 0
-      };
+      // Only use current metrics if within last hour
+      if (now.getTime() - targetTime.getTime() < (60 * 60 * 1000)) {
+        return {
+          views: video.views || 0,
+          likes: video.likes || 0,
+          comments: video.comments || 0,
+          shares: video.shares || 0
+        };
+      }
+      // Otherwise return null - we have no historical data
+      return null;
     }
 
     // Find the snapshot closest to (but not after) the target time
-    const sortedSnapshots = [...video.snapshots].sort((a, b) => 
-      new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
-    );
-
-    // Find the last snapshot at or before target time
-    const snapshotAtTime = sortedSnapshots
+    // This matches the sparkline logic exactly
+    const snapshotAtTime = video.snapshots
       .filter(s => new Date(s.capturedAt) <= targetTime)
       .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
 
@@ -275,14 +265,17 @@ export class TrendCalculationService {
       };
     }
 
-    // If no snapshot before target time, but video existed, assume it had 0 metrics
-    // (it was just uploaded, metrics hadn't grown yet)
-    return {
-      views: 0,
-      likes: 0,
-      comments: 0,
-      shares: 0
-    };
+    // If no snapshot before target time but video existed, it just launched - return 0
+    if (uploadDate <= targetTime) {
+      return {
+        views: 0,
+        likes: 0,
+        comments: 0,
+        shares: 0
+      };
+    }
+
+    return null;
   }
 
 
