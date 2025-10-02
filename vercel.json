@@ -13,7 +13,8 @@
   "crons": [
     {
       "path": "/api/cron-refresh-videos",
-      "schedule": "0 */12 * * *"
+      "schedule": "0 */12 * * *",
+      "comment": "Production: Every 12 hours"
     }
   ],
   "rewrites": [
