@@ -686,6 +686,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       stats.median,
                       stats.std
                     );
+                    const factor = stats.median > 0 ? submission.views / stats.median : 1;
+                    const factorLabel = `${factor.toFixed(2)}x`;
                     
                     return (
                       <td className="px-6 py-5">
@@ -694,6 +696,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                           direction={outlierStatus.direction}
                           zScore={outlierStatus.zScore}
                           percentageDiff={outlierStatus.percentageDiff}
+                          labelText={factorLabel}
                         />
                       </td>
                     );

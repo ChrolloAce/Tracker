@@ -11,6 +11,7 @@ interface OutlierBadgeProps {
   zScore?: number;
   percentageDiff?: number;
   showTooltip?: boolean;
+  labelText?: string;
 }
 
 /**
@@ -28,6 +29,7 @@ export const OutlierBadge: React.FC<OutlierBadgeProps> = ({
   zScore,
   percentageDiff,
   showTooltip = true,
+  labelText,
 }) => {
   const getStyles = () => {
     if (level === 'normal') {
@@ -85,7 +87,7 @@ export const OutlierBadge: React.FC<OutlierBadgeProps> = ({
         )}
       >
         <Icon className="w-3.5 h-3.5" />
-        <span>{styles.label}</span>
+        <span>{labelText ?? styles.label}</span>
       </div>
       
       {tooltip && (
