@@ -171,6 +171,18 @@ service cloud.firestore {
           allow read: if canReadOrg(orgId);
           allow write: if canWriteOrg(orgId); // Allow all writes for migration
         }
+        
+        // ==================== PROJECT TRACKING RULES ====================
+        
+        match /trackingRules/{ruleId} {
+          allow read: if canReadOrg(orgId);
+          allow create: if canWriteOrg(orgId) 
+            && request.resource.data.organizationId == orgId
+            && request.resource.data.projectId == projectId
+            && request.resource.data.createdBy == request.auth.uid;
+          allow update: if canWriteOrg(orgId);
+          allow delete: if canWriteOrg(orgId);
+        }
       }
       
       // ==================== TRACKED ACCOUNTS (Legacy - for migration) ====================

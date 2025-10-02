@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Filter, Trash2, Edit2, CheckCircle, XCircle } from 'lucide-react';
 import { TrackingRule, RuleCondition, RuleConditionType } from '../types/rules';
+import { TrackedAccount } from '../types/accounts';
 import RulesService from '../services/RulesService';
+import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import { useAuth } from '../contexts/AuthContext';
 import { clsx } from 'clsx';
 import { Modal } from './ui/Modal';
@@ -10,6 +12,7 @@ import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 const RulesPage = () => {
   const { currentOrgId, currentProjectId, user } = useAuth();
   const [rules, setRules] = useState<TrackingRule[]>([]);
+  const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<TrackingRule | null>(null);
@@ -19,25 +22,30 @@ const RulesPage = () => {
   const [ruleDescription, setRuleDescription] = useState('');
   const [conditions, setConditions] = useState<RuleCondition[]>([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState<('instagram' | 'tiktok' | 'youtube')[]>([]);
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [isActive, setIsActive] = useState(true);
 
-  // Load rules
+  // Load rules and accounts
   useEffect(() => {
-    const loadRules = async () => {
+    const loadData = async () => {
       if (!currentOrgId || !currentProjectId) return;
       
       setLoading(true);
       try {
-        const loadedRules = await RulesService.getRules(currentOrgId, currentProjectId);
+        const [loadedRules, loadedAccounts] = await Promise.all([
+          RulesService.getRules(currentOrgId, currentProjectId),
+          AccountTrackingServiceFirebase.getTrackedAccounts(currentOrgId, currentProjectId)
+        ]);
         setRules(loadedRules);
+        setAccounts(loadedAccounts);
       } catch (error) {
-        console.error('Failed to load rules:', error);
+        console.error('Failed to load data:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    loadRules();
+    loadData();
   }, [currentOrgId, currentProjectId]);
 
   const handleOpenCreate = useCallback(() => {
@@ -51,6 +59,7 @@ const RulesPage = () => {
       operator: 'AND'
     }]);
     setSelectedPlatforms([]);
+    setSelectedAccounts([]);
     setIsActive(true);
     setIsCreateModalOpen(true);
   }, []);
@@ -66,6 +75,7 @@ const RulesPage = () => {
       operator: 'AND'
     }]);
     setSelectedPlatforms(rule.appliesTo.platforms || []);
+    setSelectedAccounts(rule.appliesTo.accountIds || []);
     setIsActive(rule.isActive);
     setIsCreateModalOpen(true);
   }, []);
@@ -85,6 +95,7 @@ const RulesPage = () => {
         isActive,
         appliesTo: {
           platforms: selectedPlatforms.length > 0 ? selectedPlatforms : undefined,
+          accountIds: selectedAccounts.length > 0 ? selectedAccounts : undefined,
         },
       };
 
@@ -102,7 +113,7 @@ const RulesPage = () => {
       console.error('Failed to save rule:', error);
       alert('Failed to save rule. Please try again.');
     }
-  }, [currentOrgId, currentProjectId, user, ruleName, ruleDescription, conditions, isActive, selectedPlatforms, editingRule]);
+  }, [currentOrgId, currentProjectId, user, ruleName, ruleDescription, conditions, isActive, selectedPlatforms, selectedAccounts, editingRule]);
 
   const handleDeleteRule = useCallback(async (ruleId: string) => {
     if (!currentOrgId || !currentProjectId) return;
@@ -254,6 +265,26 @@ const RulesPage = () => {
                       ))}
                     </div>
                   )}
+
+                  {/* Accounts */}
+                  {rule.appliesTo.accountIds && rule.appliesTo.accountIds.length > 0 && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Accounts:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {rule.appliesTo.accountIds.map(accountId => {
+                          const account = accounts.find(a => a.id === accountId);
+                          return account ? (
+                            <span
+                              key={accountId}
+                              className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded text-xs font-medium"
+                            >
+                              @{account.username}
+                            </span>
+                          ) : null;
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions */}
@@ -283,7 +314,7 @@ const RulesPage = () => {
         onClose={() => setIsCreateModalOpen(false)}
         title={editingRule ? 'Edit Rule' : 'Create Tracking Rule'}
       >
-        <div className="space-y-6">
+        <div className="space-y-6 max-h-[70vh] overflow-y-auto px-1">
           {/* Rule Name */}
           <div>
             <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
@@ -339,6 +370,47 @@ const RulesPage = () => {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Specific Accounts */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+              Apply to Specific Accounts (leave empty for all)
+            </label>
+            <div className="max-h-40 overflow-y-auto border border-gray-300 dark:border-gray-700 rounded-lg p-2 space-y-1">
+              {accounts.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400 p-2">No tracked accounts yet</p>
+              ) : (
+                accounts.map(account => (
+                  <label
+                    key={account.id}
+                    className="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedAccounts.includes(account.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedAccounts(prev => [...prev, account.id]);
+                        } else {
+                          setSelectedAccounts(prev => prev.filter(id => id !== account.id));
+                        }
+                      }}
+                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                    />
+                    <span className="text-sm text-gray-900 dark:text-white">
+                      @{account.username}
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                      ({account.platform})
+                    </span>
+                  </label>
+                ))
+              )}
+            </div>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Rule will only apply to selected accounts. Leave empty to apply to all accounts.
+            </p>
           </div>
 
           {/* Conditions */}
