@@ -7,7 +7,7 @@ import ApifyBrowserClient from './ApifyBrowserClient';
 class TikTokApiService {
   private apifyClient: ApifyBrowserClient;
   private readonly APIFY_TOKEN = import.meta.env.VITE_APIFY_TOKEN || 'apify_api_7wvIrJjtEH6dTZktJZAtcIGAylH7cX2jRweu';
-  private readonly TIKTOK_SCRAPER_ACTOR = 'apify/tiktok-scraper'; // Official Apify TikTok scraper
+  private readonly TIKTOK_SCRAPER_ACTOR = 'clockworks/tiktok-scraper'; // Clockworks TikTok scraper
   
   constructor() {
     console.log('🔧 Initializing browser-compatible TikTok client with token:', this.APIFY_TOKEN ? '***' + this.APIFY_TOKEN.slice(-4) : 'No token');
