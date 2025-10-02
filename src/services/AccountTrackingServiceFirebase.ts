@@ -240,15 +240,16 @@ export class AccountTrackingServiceFirebase {
       console.log(`🔄 Fetching TikTok profile for @${username}...`);
       
       const proxyUrl = `${window.location.origin}/api/apify-proxy`;
+      const cleanUsername = username.replace('@', '');
       
       const response = await fetch(proxyUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          actorId: 'clockworks~tiktok-scraper',
+          actorId: 'apify/tiktok-scraper',
           input: {
-            profileURLs: [`https://www.tiktok.com/@${username.replace('@', '')}`],
-            resultsPerPage: 10
+            profiles: [cleanUsername],
+            resultsPerPage: 20
           },
           action: 'run'
         }),
@@ -493,14 +494,15 @@ export class AccountTrackingServiceFirebase {
     console.log(`🔄 Fetching TikTok videos for @${account.username}...`);
     
     const proxyUrl = `${window.location.origin}/api/apify-proxy`;
+    const cleanUsername = account.username.replace('@', '');
     
     const response = await fetch(proxyUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        actorId: 'clockworks~tiktok-scraper',
+        actorId: 'apify/tiktok-scraper',
         input: {
-          profileURLs: [`https://www.tiktok.com/@${account.username.replace('@', '')}`],
+          profiles: [cleanUsername],
           resultsPerPage: 100
         },
         action: 'run'
