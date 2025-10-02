@@ -386,4 +386,120 @@ export class TrendCalculationService {
 
     return trends as Record<MetricType, TrendIndicator>;
   }
+
+  /**
+   * Get 7-day trend data for a video's views (for mini sparkline charts)
+   * Legacy method kept for individual video trend visualization
+   */
+  static getViewsTrend(video: VideoSubmission): number[] {
+    if (!video.snapshots || video.snapshots.length === 0) {
+      return [video.views];
+    }
+
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+
+    const recentSnapshots = video.snapshots
+      .filter(snapshot => new Date(snapshot.capturedAt) >= sevenDaysAgo)
+      .sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime());
+
+    if (recentSnapshots.length === 0) {
+      return [video.views];
+    }
+
+    const trendData: number[] = [];
+    
+    if (recentSnapshots.length === 1) {
+      const snapshotValue = recentSnapshots[0].views;
+      if (video.views !== snapshotValue) {
+        trendData.push(snapshotValue);
+        trendData.push(video.views);
+      } else {
+        return [video.views];
+      }
+    } else {
+      recentSnapshots.forEach(snapshot => {
+        trendData.push(snapshot.views);
+      });
+      
+      const lastSnapshot = recentSnapshots[recentSnapshots.length - 1];
+      if (lastSnapshot.views !== video.views) {
+        trendData.push(video.views);
+      }
+    }
+
+    return trendData;
+  }
+
+  /**
+   * Get 7-day trend data for a video's likes (for mini sparkline charts)
+   * Legacy method kept for individual video trend visualization
+   */
+  static getLikesTrend(video: VideoSubmission): number[] {
+    if (!video.snapshots || video.snapshots.length === 0) {
+      return [video.likes];
+    }
+
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+
+    const recentSnapshots = video.snapshots
+      .filter(snapshot => new Date(snapshot.capturedAt) >= sevenDaysAgo)
+      .sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime());
+
+    if (recentSnapshots.length === 0) {
+      return [video.likes];
+    }
+
+    const trendData: number[] = [];
+    
+    if (recentSnapshots.length === 1) {
+      const snapshotValue = recentSnapshots[0].likes;
+      if (video.likes !== snapshotValue) {
+        trendData.push(snapshotValue);
+        trendData.push(video.likes);
+      } else {
+        return [video.likes];
+      }
+    } else {
+      recentSnapshots.forEach(snapshot => {
+        trendData.push(snapshot.likes);
+      });
+      
+      const lastSnapshot = recentSnapshots[recentSnapshots.length - 1];
+      if (lastSnapshot.likes !== video.likes) {
+        trendData.push(video.likes);
+      }
+    }
+
+    return trendData;
+  }
+
+  /**
+   * Get trend percentage change for legacy compatibility
+   */
+  static getTrendPercentage(trendData: number[]): number {
+    if (trendData.length < 2) return 0;
+    
+    const firstValue = trendData[0];
+    const lastValue = trendData[trendData.length - 1];
+    
+    if (firstValue === 0) return lastValue > 0 ? 100 : 0;
+    
+    return ((lastValue - firstValue) / firstValue) * 100;
+  }
+
+  /**
+   * Get trend direction for legacy compatibility
+   */
+  static getTrendDirection(trendData: number[]): 'up' | 'down' | 'flat' {
+    if (trendData.length < 2) return 'flat';
+    
+    const firstValue = trendData[0];
+    const lastValue = trendData[trendData.length - 1];
+    
+    if (lastValue > firstValue) return 'up';
+    if (lastValue < firstValue) return 'down';
+    return 'flat';
+  }
 }
