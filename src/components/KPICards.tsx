@@ -49,78 +49,140 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
   };
 
   const kpiData = useMemo(() => {
-    // For filtered date ranges, calculate growth during that period using snapshots
-    // For "all time", show total current metrics
-    const isFilteredPeriod = dateFilter !== 'all';
+    const now = new Date();
     
-    let totalViews = 0;
-    let totalLikes = 0;
-    let totalComments = 0;
-    let totalShares = 0;
-    
-    if (isFilteredPeriod) {
-      // Calculate delta (growth) for the filtered period using snapshots
-      submissions.forEach(video => {
-        if (!video.snapshots || video.snapshots.length === 0) {
-          // No snapshots: count full current metrics (newly added video)
-          totalViews += video.views || 0;
-          totalLikes += video.likes || 0;
-          totalComments += video.comments || 0;
-          totalShares += video.shares || 0;
-        } else {
-          // Has snapshots: find the earliest snapshot in the period and calculate delta
-          const sortedSnapshots = [...video.snapshots].sort((a, b) => 
-            new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
-          );
-          
-          // Find the first snapshot at or before the period start
-          const periodStartSnapshot = sortedSnapshots[0];
-          
-          // Calculate growth since that snapshot
-          const viewsDelta = Math.max(0, (video.views || 0) - (periodStartSnapshot?.views || 0));
-          const likesDelta = Math.max(0, (video.likes || 0) - (periodStartSnapshot?.likes || 0));
-          const commentsDelta = Math.max(0, (video.comments || 0) - (periodStartSnapshot?.comments || 0));
-          const sharesDelta = Math.max(0, (video.shares || 0) - (periodStartSnapshot?.shares || 0));
-          
-          totalViews += viewsDelta;
-          totalLikes += likesDelta;
-          totalComments += commentsDelta;
-          totalShares += sharesDelta;
+    // Define Current Period (CP) and Previous Period (PP) based on dateFilter
+    const getPeriods = () => {
+      let cpStart: Date, cpEnd: Date, ppStart: Date, ppEnd: Date;
+      
+      switch (dateFilter) {
+        case 'today': {
+          const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          cpStart = startOfToday;
+          cpEnd = now;
+          const duration = cpEnd.getTime() - cpStart.getTime();
+          ppStart = new Date(cpStart.getTime() - duration);
+          ppEnd = cpStart;
+          break;
         }
-      });
-    } else {
-      // "All time": show total current metrics
-      totalViews = submissions.reduce((sum, v) => sum + (v.views || 0), 0);
-      totalLikes = submissions.reduce((sum, v) => sum + (v.likes || 0), 0);
-      totalComments = submissions.reduce((sum, v) => sum + (v.comments || 0), 0);
-      totalShares = submissions.reduce((sum, v) => sum + (v.shares || 0), 0);
-    }
-    
-    const activeAccounts = new Set(submissions.map(v => v.uploaderHandle)).size;
-    const publishedVideos = submissions.length;
+        case 'last7days': {
+          cpEnd = now;
+          cpStart = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+          ppEnd = cpStart;
+          ppStart = new Date(cpStart.getTime() - (7 * 24 * 60 * 60 * 1000));
+          break;
+        }
+        case 'last30days': {
+          cpEnd = now;
+          cpStart = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+          ppEnd = cpStart;
+          ppStart = new Date(cpStart.getTime() - (30 * 24 * 60 * 60 * 1000));
+          break;
+        }
+        case 'last90days': {
+          cpEnd = now;
+          cpStart = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000));
+          ppEnd = cpStart;
+          ppStart = new Date(cpStart.getTime() - (90 * 24 * 60 * 60 * 1000));
+          break;
+        }
+        case 'mtd': {
+          cpStart = new Date(now.getFullYear(), now.getMonth(), 1);
+          cpEnd = now;
+          const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          ppStart = lastMonth;
+          ppEnd = new Date(now.getFullYear(), now.getMonth(), 0); // Last day of previous month
+          break;
+        }
+        case 'ytd': {
+          cpStart = new Date(now.getFullYear(), 0, 1);
+          cpEnd = now;
+          ppStart = new Date(now.getFullYear() - 1, 0, 1);
+          ppEnd = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+          break;
+        }
+        default: // 'all'
+          cpStart = new Date(0);
+          cpEnd = now;
+          ppStart = new Date(0);
+          ppEnd = new Date(0);
+      }
+      
+      return { cpStart, cpEnd, ppStart, ppEnd };
+    };
+
+    const { cpStart, cpEnd, ppStart, ppEnd } = getPeriods();
+    const isFilteredPeriod = dateFilter !== 'all';
+
+    // Filter submissions for CP and PP
+    const cpSubmissions = submissions.filter(v => {
+      const date = new Date(v.uploadDate || v.dateSubmitted);
+      return date >= cpStart && date < cpEnd;
+    });
+
+    const ppSubmissions = submissions.filter(v => {
+      const date = new Date(v.uploadDate || v.dateSubmitted);
+      return date >= ppStart && date < ppEnd;
+    });
+
+    // Calculate metrics for Current Period
+    const cpViews = cpSubmissions.reduce((sum, v) => sum + (v.views || 0), 0);
+    const cpLikes = cpSubmissions.reduce((sum, v) => sum + (v.likes || 0), 0);
+    const cpComments = cpSubmissions.reduce((sum, v) => sum + (v.comments || 0), 0);
+    const cpShares = cpSubmissions.reduce((sum, v) => sum + (v.shares || 0), 0);
+    const cpVideos = cpSubmissions.length;
+    const cpAccounts = new Set(cpSubmissions.map(v => v.uploaderHandle)).size;
+
+    // Calculate metrics for Previous Period
+    const ppViews = ppSubmissions.reduce((sum, v) => sum + (v.views || 0), 0);
+    const ppLikes = ppSubmissions.reduce((sum, v) => sum + (v.likes || 0), 0);
+    const ppComments = ppSubmissions.reduce((sum, v) => sum + (v.comments || 0), 0);
+    const ppShares = ppSubmissions.reduce((sum, v) => sum + (v.shares || 0), 0);
+    const ppVideos = ppSubmissions.length;
+    const ppAccounts = new Set(ppSubmissions.map(v => v.uploaderHandle)).size;
+
+    // Calculate percentage changes with epsilon threshold (0.5%)
+    const epsilon = 0.5;
+    const calculateTrend = (curr: number, prev: number) => {
+      if (prev === 0 && curr === 0) {
+        return { pct: 0, arrow: 'flat' as const, absDelta: 0 };
+      }
+      if (prev === 0 && curr > 0) {
+        return { pct: 100, arrow: 'up' as const, absDelta: curr };
+      }
+      
+      const pct = ((curr - prev) / prev) * 100;
+      const absDelta = curr - prev;
+      let arrow: 'up' | 'down' | 'flat' = 'flat';
+      
+      if (pct > epsilon) arrow = 'up';
+      else if (pct < -epsilon) arrow = 'down';
+      
+      return { pct: Math.round(pct * 10) / 10, arrow, absDelta };
+    };
+
+    const viewsTrend = calculateTrend(cpViews, ppViews);
+    const likesTrend = calculateTrend(cpLikes, ppLikes);
+    const commentsTrend = calculateTrend(cpComments, ppComments);
+    const sharesTrend = calculateTrend(cpShares, ppShares);
+    const videosTrend = calculateTrend(cpVideos, ppVideos);
+    const accountsTrend = calculateTrend(cpAccounts, ppAccounts);
+
+    // Calculate engagement rate for both periods
+    const cpEngagementRate = cpViews > 0 ? ((cpLikes + cpComments) / cpViews) * 100 : 0;
+    const ppEngagementRate = ppViews > 0 ? ((ppLikes + ppComments) / ppViews) * 100 : 0;
+    const engagementTrend = calculateTrend(cpEngagementRate, ppEngagementRate);
+
+    // For "all time", use totals instead of CP values
+    const totalViews = isFilteredPeriod ? cpViews : submissions.reduce((sum, v) => sum + (v.views || 0), 0);
+    const totalLikes = isFilteredPeriod ? cpLikes : submissions.reduce((sum, v) => sum + (v.likes || 0), 0);
+    const totalComments = isFilteredPeriod ? cpComments : submissions.reduce((sum, v) => sum + (v.comments || 0), 0);
+    const totalShares = isFilteredPeriod ? cpShares : submissions.reduce((sum, v) => sum + (v.shares || 0), 0);
+    const publishedVideos = isFilteredPeriod ? cpVideos : submissions.length;
+    const activeAccounts = isFilteredPeriod ? cpAccounts : new Set(submissions.map(v => v.uploaderHandle)).size;
     
     const totalEngagement = totalLikes + totalComments;
     const engagementRate = totalViews > 0 ? (totalEngagement / totalViews) * 100 : 0;
-
-    // Calculate growth (last 7 days vs previous 7 days)
-    const now = new Date();
-    const last7Days = submissions.filter(v => {
-      const uploadDate = new Date(v.uploadDate);
-      const daysDiff = (now.getTime() - uploadDate.getTime()) / (1000 * 60 * 60 * 24);
-      return daysDiff <= 7;
-    });
-    
-    const previous7Days = submissions.filter(v => {
-      const uploadDate = new Date(v.uploadDate);
-      const daysDiff = (now.getTime() - uploadDate.getTime()) / (1000 * 60 * 60 * 24);
-      return daysDiff > 7 && daysDiff <= 14;
-    });
-
-    const last7DaysViews = last7Days.reduce((sum, v) => sum + (v.views || 0), 0);
-    const previous7DaysViews = previous7Days.reduce((sum, v) => sum + (v.views || 0), 0);
-    const viewsGrowth = previous7DaysViews > 0 
-      ? ((last7DaysViews - previous7DaysViews) / previous7DaysViews) * 100 
-      : 0;
 
     // Generate sparkline data based on date filter and metric type
     const generateSparklineData = (metric: 'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts') => {
@@ -270,7 +332,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         value: formatNumber(totalViews),
         icon: Play,
         accent: 'emerald',
-        delta: { value: Math.abs(viewsGrowth), isPositive: viewsGrowth >= 0 },
+        delta: isFilteredPeriod ? { value: Math.abs(viewsTrend.pct), isPositive: viewsTrend.arrow === 'up' } : undefined,
         period: periodText,
         sparklineData: generateSparklineData('views')
       },
@@ -280,7 +342,8 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         value: formatNumber(totalLikes),
         icon: Heart,
         accent: 'pink',
-        period: `${((totalLikes / totalViews) * 100).toFixed(1)}% of views`,
+        delta: isFilteredPeriod ? { value: Math.abs(likesTrend.pct), isPositive: likesTrend.arrow === 'up' } : undefined,
+        period: `${((totalLikes / (totalViews || 1)) * 100).toFixed(1)}% of views`,
         sparklineData: generateSparklineData('likes')
       },
       {
@@ -289,6 +352,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         value: formatNumber(totalComments),
         icon: MessageCircle,
         accent: 'blue',
+        delta: isFilteredPeriod ? { value: Math.abs(commentsTrend.pct), isPositive: commentsTrend.arrow === 'up' } : undefined,
         period: 'Total engagement',
         sparklineData: generateSparklineData('comments')
       },
@@ -298,6 +362,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         value: formatNumber(totalShares),
         icon: Share2,
         accent: 'orange',
+        delta: isFilteredPeriod ? { value: Math.abs(sharesTrend.pct), isPositive: sharesTrend.arrow === 'up' } : undefined,
         period: 'Total shares',
         sparklineData: generateSparklineData('shares')
       },
@@ -307,7 +372,8 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         value: publishedVideos,
         icon: Video,
         accent: 'violet',
-        period: 'All time',
+        delta: isFilteredPeriod ? { value: Math.abs(videosTrend.pct), isPositive: videosTrend.arrow === 'up' } : undefined,
+        period: periodText,
         sparklineData: generateSparklineData('videos')
       },
       {
@@ -316,6 +382,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         value: activeAccounts,
         icon: AtSign,
         accent: 'teal',
+        delta: isFilteredPeriod ? { value: Math.abs(accountsTrend.pct), isPositive: accountsTrend.arrow === 'up' } : undefined,
         period: 'Total tracked',
         sparklineData: generateSparklineData('accounts')
       },
@@ -325,6 +392,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         value: `${engagementRate.toFixed(1)}%`,
         icon: Activity,
         accent: 'violet',
+        delta: isFilteredPeriod ? { value: Math.abs(engagementTrend.pct), isPositive: engagementTrend.arrow === 'up' } : undefined,
         period: periodText,
         sparklineData: generateSparklineData('likes')
       },
