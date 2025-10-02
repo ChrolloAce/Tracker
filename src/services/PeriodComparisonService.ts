@@ -101,8 +101,17 @@ export class PeriodComparisonService {
         
       case 'all':
       default:
-        // For "all time", use last 30 days for comparison
-        currentPeriod = this.getLast30DaysPeriod(nowInTimezone, timezone);
+        // For "all time", compare last 30 days vs previous 30 days
+        const last30End = nowInTimezone;
+        const last30Start = new Date(last30End);
+        last30Start.setDate(last30Start.getDate() - 30);
+        last30Start.setHours(0, 0, 0, 0);
+        
+        currentPeriod = {
+          start: last30Start,
+          end: last30End,
+          label: this.formatPeriodLabel(last30Start, last30End, timezone)
+        };
         bucket = 'days';
         break;
     }

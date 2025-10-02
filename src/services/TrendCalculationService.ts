@@ -65,15 +65,22 @@ export class TrendCalculationService {
     if (metric === 'views') {
       console.log('📊 Trend Calculation Debug:', {
         metric,
-        currentPeriod: periodPair.current.label,
-        previousPeriod: periodPair.previous.label,
+        filterType,
+        currentPeriod: `${periodPair.current.start.toLocaleDateString()} - ${periodPair.current.end.toLocaleDateString()}`,
+        previousPeriod: `${periodPair.previous.start.toLocaleDateString()} - ${periodPair.previous.end.toLocaleDateString()}`,
         currentViews: currentMetrics.views,
         previousViews: previousMetrics.views,
-        submissionsCount: submissions.length,
-        snapshotCounts: submissions.map(v => ({
+        submissionsReceived: submissions.length,
+        videosInCurrentPeriod: submissions.filter(v => {
+          const upload = new Date(v.uploadDate || v.dateSubmitted);
+          return upload <= periodPair.current.end;
+        }).length,
+        snapshotSample: submissions.slice(0, 3).map(v => ({
           title: v.title.substring(0, 30),
           snapshots: v.snapshots?.length || 0,
-          uploadDate: new Date(v.uploadDate || v.dateSubmitted).toLocaleDateString()
+          uploadDate: new Date(v.uploadDate || v.dateSubmitted).toLocaleDateString(),
+          hasSnapshotInCP: v.snapshots?.some(s => new Date(s.capturedAt) <= periodPair.current.end) || false,
+          hasSnapshotInPP: v.snapshots?.some(s => new Date(s.capturedAt) <= periodPair.previous.start) || false
         }))
       });
     }
