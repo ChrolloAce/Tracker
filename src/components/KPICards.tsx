@@ -135,11 +135,21 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
       cpShares += v.shares || 0;
     });
 
-    // Calculate metrics for Previous Period (use snapshot values at end of PP)
+    // Calculate metrics for Previous Period
+    // Strategy: Use snapshots if available, otherwise use current values for videos uploaded in PP
     let ppViews = 0, ppLikes = 0, ppComments = 0, ppShares = 0;
     ppVideos.forEach(v => {
-      if (v.snapshots && v.snapshots.length > 0) {
-        // Find snapshot closest to ppEnd
+      const uploadDate = new Date(v.uploadDate || v.dateSubmitted);
+      
+      // If video was uploaded during PP, use current values
+      if (uploadDate >= ppStart && uploadDate < ppEnd) {
+        ppViews += v.views || 0;
+        ppLikes += v.likes || 0;
+        ppComments += v.comments || 0;
+        ppShares += v.shares || 0;
+      } 
+      // If video existed before PP, try to find snapshot near ppEnd
+      else if (v.snapshots && v.snapshots.length > 0) {
         const snapshotAtPPEnd = v.snapshots
           .filter(s => new Date(s.capturedAt) <= ppEnd)
           .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
@@ -150,18 +160,21 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
           ppComments += snapshotAtPPEnd.comments || 0;
           ppShares += snapshotAtPPEnd.shares || 0;
         } else {
-          // No snapshot in PP, use zeros (video didn't exist yet in PP)
-          // This is correct - don't count videos that didn't exist
+          // No snapshot before ppEnd - use earliest snapshot as best guess
+          const earliestSnapshot = v.snapshots.sort((a, b) => 
+            new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+          )[0];
+          ppViews += earliestSnapshot.views || 0;
+          ppLikes += earliestSnapshot.likes || 0;
+          ppComments += earliestSnapshot.comments || 0;
+          ppShares += earliestSnapshot.shares || 0;
         }
       } else {
-        // No snapshots - if video was uploaded during PP, count current values
-        const uploadDate = new Date(v.uploadDate || v.dateSubmitted);
-        if (uploadDate >= ppStart && uploadDate < ppEnd) {
-          ppViews += v.views || 0;
-          ppLikes += v.likes || 0;
-          ppComments += v.comments || 0;
-          ppShares += v.shares || 0;
-        }
+        // No snapshots and video existed before PP - use current values as fallback
+        ppViews += v.views || 0;
+        ppLikes += v.likes || 0;
+        ppComments += v.comments || 0;
+        ppShares += v.shares || 0;
       }
     });
 
@@ -173,13 +186,13 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
     // Calculate percentage changes with epsilon threshold (0.5%)
     const epsilon = 0.5;
     const calculateTrend = (curr: number, prev: number) => {
-      // If no data in either period, return null (don't show trend)
+      // If no data in either period, hide trend
       if (prev === 0 && curr === 0) {
         return null;
       }
-      // If no previous data but current data exists, don't show misleading +100%
+      // If no previous data, show as new growth
       if (prev === 0 && curr > 0) {
-        return null; // Not enough data for comparison
+        return { pct: 100, arrow: 'up' as const, absDelta: curr };
       }
       
       const pct = ((curr - prev) / prev) * 100;
