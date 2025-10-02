@@ -18,6 +18,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
       "source": "/l/:shortCode",
       "destination": "/api/redirect?shortCode=:shortCode"
     },
