@@ -19,9 +19,7 @@ const RulesPage = () => {
 
   // Form state
   const [ruleName, setRuleName] = useState('');
-  const [ruleDescription, setRuleDescription] = useState('');
   const [conditions, setConditions] = useState<RuleCondition[]>([]);
-  const [selectedPlatforms, setSelectedPlatforms] = useState<('instagram' | 'tiktok' | 'youtube')[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [isActive, setIsActive] = useState(true);
 
@@ -51,14 +49,12 @@ const RulesPage = () => {
   const handleOpenCreate = useCallback(() => {
     setEditingRule(null);
     setRuleName('');
-    setRuleDescription('');
     setConditions([{
       id: crypto.randomUUID(),
       type: 'description_contains',
       value: '',
       operator: 'AND'
     }]);
-    setSelectedPlatforms([]);
     setSelectedAccounts([]);
     setIsActive(true);
     setIsCreateModalOpen(true);
@@ -67,14 +63,12 @@ const RulesPage = () => {
   const handleOpenEdit = useCallback((rule: TrackingRule) => {
     setEditingRule(rule);
     setRuleName(rule.name);
-    setRuleDescription(rule.description || '');
     setConditions(rule.conditions.length > 0 ? rule.conditions : [{
       id: crypto.randomUUID(),
       type: 'description_contains',
       value: '',
       operator: 'AND'
     }]);
-    setSelectedPlatforms(rule.appliesTo.platforms || []);
     setSelectedAccounts(rule.appliesTo.accountIds || []);
     setIsActive(rule.isActive);
     setIsCreateModalOpen(true);
@@ -90,11 +84,10 @@ const RulesPage = () => {
     try {
       const ruleData = {
         name: ruleName.trim(),
-        description: ruleDescription.trim(),
+        description: '',
         conditions: conditions.filter(c => c.value !== ''),
         isActive,
         appliesTo: {
-          platforms: selectedPlatforms.length > 0 ? selectedPlatforms : undefined,
           accountIds: selectedAccounts.length > 0 ? selectedAccounts : undefined,
         },
       };
@@ -113,7 +106,7 @@ const RulesPage = () => {
       console.error('Failed to save rule:', error);
       alert('Failed to save rule. Please try again.');
     }
-  }, [currentOrgId, currentProjectId, user, ruleName, ruleDescription, conditions, isActive, selectedPlatforms, selectedAccounts, editingRule]);
+  }, [currentOrgId, currentProjectId, user, ruleName, conditions, isActive, selectedAccounts, editingRule]);
 
   const handleDeleteRule = useCallback(async (ruleId: string) => {
     if (!currentOrgId || !currentProjectId) return;
@@ -169,7 +162,7 @@ const RulesPage = () => {
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Tracking Rules</h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Define rules to filter which videos are tracked from your accounts
+            Filter videos automatically based on conditions
           </p>
         </div>
         <button
@@ -181,31 +174,13 @@ const RulesPage = () => {
         </button>
       </div>
 
-      {/* Info Banner */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-        <div className="flex gap-3">
-          <Filter className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">
-              How Rules Work
-            </h3>
-            <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-              <p>• Rules filter videos <strong>when you sync an account</strong> (click the sync button on Tracked Accounts page)</p>
-              <p>• Only videos matching your rule conditions will be saved to your dashboard</p>
-              <p>• <strong>To apply rules to existing videos:</strong> Go to Tracked Accounts → Click sync button on each account</p>
-              <p>• Example: Create a rule "Description contains @snapout.co" → Only posts mentioning @snapout.co will be tracked</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Rules List */}
+      {/* Rules Table - Matching Accounts Style */}
       {rules.length === 0 ? (
-        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+        <div className="text-center py-12 bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl border border-white/10">
           <Filter className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No Rules Yet</h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Create your first tracking rule to filter videos based on tags, views, engagement, and more
+          <h3 className="text-lg font-semibold text-white mb-2">No Rules Yet</h3>
+          <p className="text-gray-400 mb-4">
+            Create your first tracking rule to filter videos
           </p>
           <button
             onClick={handleOpenCreate}
@@ -216,23 +191,86 @@ const RulesPage = () => {
           </button>
         </div>
       ) : (
-        <div className="grid gap-4">
-          {rules.map(rule => (
-            <div
-              key={rule.id}
-              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{rule.name}</h3>
+        <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl border border-white/10 overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-white/10">
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Rule Name
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Conditions
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Applies To
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/10">
+              {rules.map((rule) => (
+                <tr key={rule.id} className="hover:bg-white/5 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="font-medium text-white">{rule.name}</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="space-y-1">
+                      {rule.conditions.map((condition, index) => (
+                        <div key={condition.id} className="flex items-center gap-2 text-sm">
+                          {index > 0 && (
+                            <span className="text-xs font-semibold text-blue-400">
+                              {rule.conditions[index - 1].operator || 'AND'}
+                            </span>
+                          )}
+                          <div className="flex items-center gap-2 px-2 py-1 bg-gray-800/50 rounded text-xs">
+                            <span className="text-gray-400">
+                              {RulesService.getConditionTypeLabel(condition.type)}:
+                            </span>
+                            <span className="font-mono text-white">
+                              {String(condition.value)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    {rule.appliesTo.accountIds && rule.appliesTo.accountIds.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {rule.appliesTo.accountIds.slice(0, 3).map(accountId => {
+                          const account = accounts.find(a => a.id === accountId);
+                          return account ? (
+                            <span
+                              key={accountId}
+                              className="px-2 py-1 bg-blue-900/30 text-blue-400 rounded text-xs"
+                            >
+                              @{account.username}
+                            </span>
+                          ) : null;
+                        })}
+                        {rule.appliesTo.accountIds.length > 3 && (
+                          <span className="px-2 py-1 bg-gray-800 text-gray-400 rounded text-xs">
+                            +{rule.appliesTo.accountIds.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 text-sm">All accounts</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
                     <button
                       onClick={() => handleToggleActive(rule.id, rule.isActive)}
                       className={clsx(
                         'flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors',
                         rule.isActive
-                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                          ? 'bg-green-900/30 text-green-400'
+                          : 'bg-gray-800 text-gray-400'
                       )}
                     >
                       {rule.isActive ? (
@@ -241,92 +279,33 @@ const RulesPage = () => {
                         <><XCircle className="w-3 h-3" /> Inactive</>
                       )}
                     </button>
-                  </div>
-                  {rule.description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{rule.description}</p>
-                  )}
-                  
-                  {/* Conditions */}
-                  <div className="space-y-2">
-                    {rule.conditions.map((condition, index) => (
-                      <div key={condition.id} className="flex items-center gap-2 text-sm">
-                        {index > 0 && (
-                          <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
-                            {rule.conditions[index - 1].operator || 'AND'}
-                          </span>
-                        )}
-                        <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                          <Filter className="w-3 h-3 text-gray-400" />
-                          <span className="font-medium text-gray-700 dark:text-gray-300">
-                            {RulesService.getConditionTypeLabel(condition.type)}
-                          </span>
-                          <span className="text-gray-500 dark:text-gray-400">:</span>
-                          <span className="font-mono text-gray-900 dark:text-white">
-                            {String(condition.value)}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Platforms */}
-                  {rule.appliesTo.platforms && rule.appliesTo.platforms.length > 0 && (
-                    <div className="mt-3 flex items-center gap-2">
-                      <span className="text-xs text-gray-500 dark:text-gray-400">Platforms:</span>
-                      {rule.appliesTo.platforms.map(platform => (
-                        <span
-                          key={platform}
-                          className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded text-xs font-medium capitalize"
-                        >
-                          {platform}
-                        </span>
-                      ))}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => handleOpenEdit(rule)}
+                        className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-900/30 rounded-lg transition-colors"
+                        title="Edit rule"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteRule(rule.id)}
+                        className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-900/30 rounded-lg transition-colors"
+                        title="Delete rule"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
-                  )}
-
-                  {/* Accounts */}
-                  {rule.appliesTo.accountIds && rule.appliesTo.accountIds.length > 0 && (
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="text-xs text-gray-500 dark:text-gray-400">Accounts:</span>
-                      <div className="flex flex-wrap gap-1">
-                        {rule.appliesTo.accountIds.map(accountId => {
-                          const account = accounts.find(a => a.id === accountId);
-                          return account ? (
-                            <span
-                              key={accountId}
-                              className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded text-xs font-medium"
-                            >
-                              @{account.username}
-                            </span>
-                          ) : null;
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-2 ml-4">
-                  <button
-                    onClick={() => handleOpenEdit(rule)}
-                    className="p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteRule(rule.id)}
-                    className="p-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
-      {/* Create/Edit Modal */}
+      {/* Create/Edit Modal - Dark Theme */}
       <Modal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
@@ -335,7 +314,7 @@ const RulesPage = () => {
         <div className="space-y-6 max-h-[70vh] overflow-y-auto px-1">
           {/* Rule Name */}
           <div>
-            <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+            <label className="block text-sm font-semibold text-white mb-2">
               Rule Name
             </label>
             <input
@@ -343,103 +322,19 @@ const RulesPage = () => {
               value={ruleName}
               onChange={(e) => setRuleName(e.target.value)}
               placeholder="e.g., Track Snapout.co tagged posts"
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-700 rounded-lg bg-gray-800 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-              Description (optional)
-            </label>
-            <textarea
-              value={ruleDescription}
-              onChange={(e) => setRuleDescription(e.target.value)}
-              placeholder="Describe when this rule should apply..."
-              rows={2}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Platforms */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-              Apply to Platforms (leave empty for all)
-            </label>
-            <div className="flex gap-2">
-              {(['instagram', 'tiktok', 'youtube'] as const).map(platform => (
-                <button
-                  key={platform}
-                  onClick={() => {
-                    setSelectedPlatforms(prev => 
-                      prev.includes(platform) 
-                        ? prev.filter(p => p !== platform)
-                        : [...prev, platform]
-                    );
-                  }}
-                  className={clsx(
-                    'px-4 py-2 rounded-lg border-2 transition-colors capitalize',
-                    selectedPlatforms.includes(platform)
-                      ? 'border-blue-500 bg-blue-600 text-white'
-                      : 'border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-400'
-                  )}
-                >
-                  {platform}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Specific Accounts */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
-              Apply to Specific Accounts (leave empty for all)
-            </label>
-            <div className="max-h-40 overflow-y-auto border border-gray-300 dark:border-gray-700 rounded-lg p-2 space-y-1">
-              {accounts.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400 p-2">No tracked accounts yet</p>
-              ) : (
-                accounts.map(account => (
-                  <label
-                    key={account.id}
-                    className="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedAccounts.includes(account.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedAccounts(prev => [...prev, account.id]);
-                        } else {
-                          setSelectedAccounts(prev => prev.filter(id => id !== account.id));
-                        }
-                      }}
-                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                    />
-                    <span className="text-sm text-gray-900 dark:text-white">
-                      @{account.username}
-                    </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                      ({account.platform})
-                    </span>
-                  </label>
-                ))
-              )}
-            </div>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Rule will only apply to selected accounts. Leave empty to apply to all accounts.
-            </p>
           </div>
 
           {/* Conditions */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+              <label className="block text-sm font-semibold text-white">
                 Conditions
               </label>
               <button
                 onClick={addCondition}
-                className="flex items-center gap-1 px-3 py-1 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+                className="flex items-center gap-1 px-3 py-1 text-sm text-blue-400 hover:bg-blue-900/30 rounded-lg transition-colors"
               >
                 <Plus className="w-3 h-3" />
                 Add Condition
@@ -454,7 +349,7 @@ const RulesPage = () => {
                       <select
                         value={conditions[index - 1].operator || 'AND'}
                         onChange={(e) => updateCondition(conditions[index - 1].id, 'operator', e.target.value as 'AND' | 'OR')}
-                        className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="px-3 py-1 text-sm border border-gray-700 rounded-lg bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="AND">AND</option>
                         <option value="OR">OR</option>
@@ -462,11 +357,11 @@ const RulesPage = () => {
                     </div>
                   )}
                   
-                  <div className="flex gap-2 items-start p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900/50">
+                  <div className="flex gap-2 items-start p-3 border border-gray-700 rounded-lg bg-gray-800/50">
                     <select
                       value={condition.type}
                       onChange={(e) => updateCondition(condition.id, 'type', e.target.value as RuleConditionType)}
-                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      className="flex-1 px-3 py-2 border border-gray-700 rounded-lg bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     >
                       <option value="description_contains">Description contains</option>
                       <option value="description_not_contains">Description does not contain</option>
@@ -494,13 +389,13 @@ const RulesPage = () => {
                         condition.type.includes('views') ? 'e.g., 10000' :
                         'Value'
                       }
-                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      className="flex-1 px-3 py-2 border border-gray-700 rounded-lg bg-gray-800 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     />
 
                     {conditions.length > 1 && (
                       <button
                         onClick={() => removeCondition(condition.id)}
-                        className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                        className="p-2 text-red-400 hover:bg-red-900/30 rounded-lg transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -511,25 +406,11 @@ const RulesPage = () => {
             </div>
           </div>
 
-          {/* Active Toggle */}
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="rule-active"
-              checked={isActive}
-              onChange={(e) => setIsActive(e.target.checked)}
-              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-            />
-            <label htmlFor="rule-active" className="text-sm text-gray-700 dark:text-gray-300">
-              Activate this rule immediately
-            </label>
-          </div>
-
           {/* Actions */}
-          <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex gap-3 pt-4 border-t border-gray-700">
             <button
               onClick={() => setIsCreateModalOpen(false)}
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              className="flex-1 px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 transition-colors"
             >
               Cancel
             </button>
@@ -548,4 +429,3 @@ const RulesPage = () => {
 };
 
 export default RulesPage;
-
