@@ -72,7 +72,11 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [syncError, setSyncError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showColumnToggle, setShowColumnToggle] = useState(false);
-  const [processingAccounts, setProcessingAccounts] = useState<Array<{username: string; platform: string}>>([]);
+  const [processingAccounts, setProcessingAccounts] = useState<Array<{username: string; platform: string}>>(() => {
+    // Restore from localStorage
+    const saved = localStorage.getItem('processingAccounts');
+    return saved ? JSON.parse(saved) : [];
+  });
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -107,6 +111,11 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   useEffect(() => {
     localStorage.setItem('accountVideos_itemsPerPage', String(itemsPerPage));
   }, [itemsPerPage]);
+
+  // Save processing accounts to localStorage
+  useEffect(() => {
+    localStorage.setItem('processingAccounts', JSON.stringify(processingAccounts));
+  }, [processingAccounts]);
 
   // Handle back to table navigation
   const handleBackToTable = useCallback(() => {
@@ -553,16 +562,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     return <PageLoadingSkeleton type="accounts" />;
   }
 
-  // Show auth required state
+  // Show loading if not authenticated (don't show sign in message)
   if (!user || !currentOrgId) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <AlertCircle className="w-12 h-12 mx-auto mb-4 text-yellow-500" />
-          <p className="text-gray-600 dark:text-gray-400">Please sign in to manage accounts</p>
-        </div>
-      </div>
-    );
+    return <PageLoadingSkeleton type="accounts" />;
   }
 
   // Generate chart data based on time period and historical tracking
@@ -654,13 +656,13 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                   {processingAccounts.map((procAccount, index) => (
                     <tr 
                       key={`processing-${index}`}
-                      className="bg-blue-50/50 dark:bg-blue-900/20 animate-pulse"
+                      className="bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-blue-500/10 dark:from-blue-500/20 dark:via-purple-500/20 dark:to-blue-500/20 border-l-4 border-blue-500 dark:border-blue-400"
                     >
                       {/* Username Column */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center space-x-3">
                           <div className="relative w-10 h-10">
-                            <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center animate-spin">
+                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center animate-spin">
                               <RefreshCw className="w-5 h-5 text-white" />
                             </div>
                           </div>
@@ -668,7 +670,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                             <div className="text-sm font-medium text-gray-900 dark:text-white">
                               @{procAccount.username}
                             </div>
-                            <div className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                            <div className="text-sm text-blue-600 dark:text-blue-400 font-medium animate-pulse">
                               ⏳ Account processing...
                             </div>
                           </div>
@@ -685,28 +687,28 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
 
                       {/* Other columns with loading placeholders */}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 dark:text-gray-500">
-                        <div className="w-16 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                        <div className="w-16 h-4 bg-gray-300 dark:bg-white/10 rounded animate-pulse"></div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 dark:text-gray-500">
-                        <div className="w-12 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                        <div className="w-12 h-4 bg-gray-300 dark:bg-white/10 rounded animate-pulse"></div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 dark:text-gray-500">
-                        <div className="w-12 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                        <div className="w-12 h-4 bg-gray-300 dark:bg-white/10 rounded animate-pulse"></div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 dark:text-gray-500">
-                        <div className="w-16 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                        <div className="w-16 h-4 bg-gray-300 dark:bg-white/10 rounded animate-pulse"></div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 dark:text-gray-500">
-                        <div className="w-12 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                        <div className="w-12 h-4 bg-gray-300 dark:bg-white/10 rounded animate-pulse"></div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 dark:text-gray-500">
-                        <div className="w-12 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                        <div className="w-12 h-4 bg-gray-300 dark:bg-white/10 rounded animate-pulse"></div>
                       </td>
 
                       {/* Actions Column */}
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end space-x-2">
-                          <span className="text-xs text-gray-400 dark:text-gray-500">Processing...</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 animate-pulse">Processing...</span>
                         </div>
                       </td>
                     </tr>

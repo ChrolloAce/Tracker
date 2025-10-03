@@ -28,6 +28,7 @@ import DateFilterService from './services/DateFilterService';
 import ThemeService from './services/ThemeService';
 import FirestoreDataService from './services/FirestoreDataService';
 import LinkClicksService, { LinkClick } from './services/LinkClicksService';
+import RulesService from './services/RulesService';
 import { cssVariables } from './theme';
 import { useAuth } from './contexts/AuthContext';
 import { Timestamp } from 'firebase/firestore';
@@ -56,6 +57,7 @@ function App() {
   const [submissions, setSubmissions] = useState<VideoSubmission[]>([]);
   const [linkClicks, setLinkClicks] = useState<LinkClick[]>([]);
   const [trackedAccounts, setTrackedAccounts] = useState<TrackedAccount[]>([]);
+  const [allRules, setAllRules] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilterType>('last30days');
@@ -124,6 +126,13 @@ function App() {
           : [];
         const accountsMap = new Map(accounts.map(acc => [acc.id, acc]));
         setTrackedAccounts(accounts); // Store for account filter
+        
+        // Load all rules for filtering
+        const rules = currentProjectId
+          ? await RulesService.getRules(currentOrgId, currentProjectId)
+          : [];
+        setAllRules(rules);
+        console.log(`📋 Loaded ${rules.length} tracking rules`);
         
         // Load link clicks
         const clicks = await LinkClicksService.getOrgLinkClicks(currentOrgId);
@@ -254,8 +263,44 @@ function App() {
       );
     }
     
+    // Apply rules filtering for tracked accounts
+    if (allRules.length > 0) {
+      filtered = filtered.filter(video => {
+        if (!video.uploaderHandle) return true; // Keep videos without uploader handle
+        
+        // Find the account for this video
+        const account = trackedAccounts.find(
+          acc => acc.username.toLowerCase() === video.uploaderHandle?.toLowerCase()
+        );
+        
+        if (!account) return true; // Keep videos without matching account
+        
+        // Get rules that apply to this account
+        const accountRules = allRules.filter(rule => {
+          if (!rule.isActive) return false;
+          
+          const { platforms, accountIds } = rule.appliesTo;
+          
+          // Check platform match
+          const platformMatch = !platforms || platforms.length === 0 || platforms.includes(account.platform);
+          
+          // Check account match
+          const accountMatch = !accountIds || accountIds.length === 0 || accountIds.includes(account.id);
+          
+          return platformMatch && accountMatch;
+        });
+        
+        if (accountRules.length === 0) return true; // No rules = show all videos
+        
+        // Check if video matches any of the account's rules
+        return accountRules.some((rule: any) => 
+          RulesService.checkVideoMatchesRule(video as any, rule).matches
+        );
+      });
+    }
+    
     return filtered;
-  }, [submissions, dateFilter, customDateRange, dashboardPlatformFilter, selectedAccountIds, trackedAccounts]);
+  }, [submissions, dateFilter, customDateRange, dashboardPlatformFilter, selectedAccountIds, trackedAccounts, allRules]);
 
   // Apply date filter to link clicks
   const filteredLinkClicks = useMemo(() => {
