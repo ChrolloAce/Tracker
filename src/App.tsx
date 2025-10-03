@@ -664,7 +664,7 @@ function App() {
           {activeTab === 'cron' && <CronManagementPage />}
 
           {/* Tracked Links Tab */}
-          {activeTab === 'analytics' && <TrackedLinksPage ref={trackedLinksPageRef} searchQuery={linksSearchQuery} />}
+          {activeTab === 'analytics' && <TrackedLinksPage ref={trackedLinksPageRef} searchQuery={linksSearchQuery} linkClicks={linkClicks} />}
 
           {/* Creators Tab - Placeholder */}
           {activeTab === 'creators' && (

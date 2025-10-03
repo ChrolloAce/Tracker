@@ -1,13 +1,16 @@
-import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useState, useEffect, forwardRef, useImperativeHandle, useMemo } from 'react';
 import { Link as LinkIcon, Plus, Copy, ExternalLink, Trash2, BarChart, QrCode } from 'lucide-react';
 import { TrackedLink, TrackedAccount } from '../types/firestore';
 import FirestoreDataService from '../services/FirestoreDataService';
 import CreateLinkModal from './CreateLinkModal';
 import LinkAnalyticsModal from './LinkAnalyticsModal';
+import DateRangeFilter, { DateFilterType } from './DateRangeFilter';
 import { useAuth } from '../contexts/AuthContext';
 import { clsx } from 'clsx';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import Pagination from './ui/Pagination';
+import { AreaChart, Area, ResponsiveContainer } from 'recharts';
+import { LinkClick } from '../services/LinkClicksService';
 
 export interface TrackedLinksPageRef {
   openCreateModal: () => void;
@@ -15,9 +18,10 @@ export interface TrackedLinksPageRef {
 
 interface TrackedLinksPageProps {
   searchQuery: string;
+  linkClicks?: LinkClick[];
 }
 
-const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(({ searchQuery }, ref) => {
+const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(({ searchQuery, linkClicks = [] }, ref) => {
   const { currentOrgId, currentProjectId, user } = useAuth();
   const [links, setLinks] = useState<TrackedLink[]>([]);
   const [accounts, setAccounts] = useState<Map<string, TrackedAccount>>(new Map());
@@ -26,6 +30,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dateFilter, setDateFilter] = useState<DateFilterType>('last30days');
+  const [customDateRange, setCustomDateRange] = useState<{ startDate: Date; endDate: Date } | undefined>();
   
   // Expose openCreateModal to parent component
   useImperativeHandle(ref, () => ({
@@ -181,6 +187,106 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     setCurrentPage(1);
   };
 
+  // Filter clicks by date range
+  const filteredClicks = useMemo(() => {
+    const now = new Date();
+    let startDate: Date;
+    
+    switch (dateFilter) {
+      case 'today':
+        startDate = new Date(now.setHours(0, 0, 0, 0));
+        break;
+      case 'last7days':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'last30days':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case 'last90days':
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      case 'custom':
+        startDate = customDateRange?.startDate || new Date(0);
+        break;
+      case 'all':
+      default:
+        return linkClicks;
+    }
+    
+    const endDate = dateFilter === 'custom' && customDateRange?.endDate 
+      ? customDateRange.endDate 
+      : new Date();
+    
+    return linkClicks.filter(click => {
+      const clickDate = click.timestamp;
+      return clickDate >= startDate && clickDate <= endDate;
+    });
+  }, [linkClicks, dateFilter, customDateRange]);
+
+  // Generate sparkline data for the cards
+  const sparklineData = useMemo(() => {
+    const generateData = (metric: 'total' | 'unique' | 'ctr') => {
+      let numPoints = 30;
+      let intervalMs = 24 * 60 * 60 * 1000; // 1 day
+      
+      if (dateFilter === 'today') {
+        numPoints = 24;
+        intervalMs = 60 * 60 * 1000; // 1 hour
+      } else if (dateFilter === 'last7days') {
+        numPoints = 7;
+      } else if (dateFilter === 'last30days') {
+        numPoints = 30;
+      } else if (dateFilter === 'last90days') {
+        numPoints = 90;
+      }
+      
+      const data = [];
+      const now = new Date();
+      
+      for (let i = numPoints - 1; i >= 0; i--) {
+        const pointDate = new Date(now.getTime() - i * intervalMs);
+        const nextPointDate = new Date(pointDate.getTime() + intervalMs);
+        
+        const clicksInPeriod = filteredClicks.filter(click => 
+          click.timestamp >= pointDate && click.timestamp < nextPointDate
+        );
+        
+        let value = 0;
+        if (metric === 'total') {
+          value = clicksInPeriod.length;
+        } else if (metric === 'unique') {
+          value = new Set(clicksInPeriod.map(c => `${c.userAgent}-${c.deviceType}`)).size;
+        } else if (metric === 'ctr') {
+          const uniqueClicks = new Set(clicksInPeriod.map(c => `${c.userAgent}-${c.deviceType}`)).size;
+          value = uniqueClicks;
+        }
+        
+        data.push({ value, timestamp: pointDate.getTime() });
+      }
+      
+      return data;
+    };
+    
+    return {
+      total: generateData('total'),
+      unique: generateData('unique'),
+      ctr: generateData('ctr')
+    };
+  }, [filteredClicks, dateFilter]);
+
+  // Calculate stats from filtered clicks
+  const stats = useMemo(() => {
+    const totalClicks = filteredClicks.length;
+    const uniqueClicks = new Set(
+      filteredClicks.map(c => `${c.userAgent}-${c.deviceType}`)
+    ).size;
+    const avgCTR = links.length > 0 
+      ? ((uniqueClicks / links.length) * 0.1).toFixed(1) 
+      : '0.0';
+    
+    return { totalClicks, uniqueClicks, avgCTR };
+  }, [filteredClicks, links]);
+
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
       return `${(num / 1000000).toFixed(1)}M`;
@@ -196,6 +302,16 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
 
   return (
     <div className="space-y-6">
+
+      {/* Date Filter */}
+      <div className="flex justify-end">
+        <DateRangeFilter
+          dateFilter={dateFilter}
+          onDateFilterChange={setDateFilter}
+          customDateRange={customDateRange}
+          onCustomDateRangeChange={setCustomDateRange}
+        />
+      </div>
 
       {/* Stats Overview - Dashboard Style */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -215,10 +331,37 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           <div>
             <p className="text-sm font-medium text-gray-400 mb-1">Total Clicks</p>
             <p className="text-3xl font-bold text-white mb-2">
-              {formatNumber(links.reduce((sum, link) => sum + (link.totalClicks || 0), 0))}
+              {formatNumber(stats.totalClicks)}
             </p>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-gray-500">All time clicks</span>
+            <div className="flex items-center gap-2 text-xs mb-3">
+              <span className="text-gray-500">
+                {dateFilter === 'all' ? 'All time clicks' : 
+                 dateFilter === 'today' ? 'Today' :
+                 dateFilter === 'last7days' ? 'Last 7 days' :
+                 dateFilter === 'last30days' ? 'Last 30 days' :
+                 dateFilter === 'last90days' ? 'Last 90 days' : 'Selected period'}
+              </span>
+            </div>
+            {/* Sparkline */}
+            <div className="h-12 -mx-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={sparklineData.total}>
+                  <defs>
+                    <linearGradient id="totalGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#3B82F6"
+                    strokeWidth={2}
+                    fill="url(#totalGradient)"
+                    animationDuration={300}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </div>
@@ -239,10 +382,31 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           <div>
             <p className="text-sm font-medium text-gray-400 mb-1">Unique Clicks</p>
             <p className="text-3xl font-bold text-white mb-2">
-              {formatNumber(links.reduce((sum, link) => sum + (link.uniqueClicks || 0), 0))}
+              {formatNumber(stats.uniqueClicks)}
             </p>
-            <div className="flex items-center gap-2 text-xs">
+            <div className="flex items-center gap-2 text-xs mb-3">
               <span className="text-gray-500">Unique visitors</span>
+            </div>
+            {/* Sparkline */}
+            <div className="h-12 -mx-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={sparklineData.unique}>
+                  <defs>
+                    <linearGradient id="uniqueGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#A855F7" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#A855F7" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#A855F7"
+                    strokeWidth={2}
+                    fill="url(#uniqueGradient)"
+                    animationDuration={300}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </div>
@@ -263,13 +427,31 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           <div>
             <p className="text-sm font-medium text-gray-400 mb-1">Avg CTR</p>
             <p className="text-3xl font-bold text-white mb-2">
-              {links.length > 0 
-                ? `${((links.reduce((sum, link) => sum + link.uniqueClicks, 0) / links.length) * 0.1).toFixed(1)}%`
-                : '0.0%'
-              }
+              {stats.avgCTR}%
             </p>
-            <div className="flex items-center gap-2 text-xs">
+            <div className="flex items-center gap-2 text-xs mb-3">
               <span className="text-gray-500">Click-through rate</span>
+            </div>
+            {/* Sparkline */}
+            <div className="h-12 -mx-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={sparklineData.ctr}>
+                  <defs>
+                    <linearGradient id="ctrGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#F97316" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#F97316" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#F97316"
+                    strokeWidth={2}
+                    fill="url(#ctrGradient)"
+                    animationDuration={300}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </div>
