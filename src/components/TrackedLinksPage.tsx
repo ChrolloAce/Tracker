@@ -9,7 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { clsx } from 'clsx';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import Pagination from './ui/Pagination';
-import { AreaChart, Area, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
 import { LinkClick } from '../services/LinkClicksService';
 
 export interface TrackedLinksPageRef {
@@ -388,6 +388,40 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                       <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
                     </linearGradient>
                   </defs>
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        const value = data.value;
+                        const timestamp = data.timestamp;
+                        
+                        const formatDate = (ts: number) => {
+                          const date = new Date(ts);
+                          const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+                          return `${months[date.getMonth()]} ${date.getDate()}`;
+                        };
+                        
+                        const formatNumber = (num: number): string => {
+                          if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+                          if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+                          return num.toLocaleString();
+                        };
+                        
+                        return (
+                          <div className="bg-gray-900/80 backdrop-blur-md text-white px-4 py-2.5 rounded-lg shadow-xl text-sm space-y-1.5 min-w-[220px] border border-white/10">
+                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">
+                              total: {stats.totalClicks.toLocaleString()} CLICKS
+                            </p>
+                            <p className="text-sm text-gray-200 font-medium">
+                              {formatDate(timestamp)}: <span className="text-white font-semibold">{formatNumber(value)} clicks</span>
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                    cursor={{ stroke: '#3B82F6', strokeWidth: 1, strokeDasharray: '3 3' }}
+                  />
                   <Area
                     type="monotone"
                     dataKey="value"
@@ -433,6 +467,40 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                       <stop offset="95%" stopColor="#A855F7" stopOpacity={0} />
                     </linearGradient>
                   </defs>
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        const value = data.value;
+                        const timestamp = data.timestamp;
+                        
+                        const formatDate = (ts: number) => {
+                          const date = new Date(ts);
+                          const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+                          return `${months[date.getMonth()]} ${date.getDate()}`;
+                        };
+                        
+                        const formatNumber = (num: number): string => {
+                          if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+                          if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+                          return num.toLocaleString();
+                        };
+                        
+                        return (
+                          <div className="bg-gray-900/80 backdrop-blur-md text-white px-4 py-2.5 rounded-lg shadow-xl text-sm space-y-1.5 min-w-[220px] border border-white/10">
+                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">
+                              total: {stats.uniqueClicks.toLocaleString()} UNIQUE CLICKS
+                            </p>
+                            <p className="text-sm text-gray-200 font-medium">
+                              {formatDate(timestamp)}: <span className="text-white font-semibold">{formatNumber(value)} unique</span>
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                    cursor={{ stroke: '#A855F7', strokeWidth: 1, strokeDasharray: '3 3' }}
+                  />
                   <Area
                     type="monotone"
                     dataKey="value"
@@ -478,6 +546,40 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                       <stop offset="95%" stopColor="#F97316" stopOpacity={0} />
                     </linearGradient>
                   </defs>
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        const value = data.value;
+                        const timestamp = data.timestamp;
+                        
+                        const formatDate = (ts: number) => {
+                          const date = new Date(ts);
+                          const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+                          return `${months[date.getMonth()]} ${date.getDate()}`;
+                        };
+                        
+                        const formatNumber = (num: number): string => {
+                          if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+                          if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+                          return num.toLocaleString();
+                        };
+                        
+                        return (
+                          <div className="bg-gray-900/80 backdrop-blur-md text-white px-4 py-2.5 rounded-lg shadow-xl text-sm space-y-1.5 min-w-[220px] border border-white/10">
+                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">
+                              avg: {stats.avgCTR}% CTR
+                            </p>
+                            <p className="text-sm text-gray-200 font-medium">
+                              {formatDate(timestamp)}: <span className="text-white font-semibold">{formatNumber(value)} unique</span>
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                    cursor={{ stroke: '#F97316', strokeWidth: 1, strokeDasharray: '3 3' }}
+                  />
                   <Area
                     type="monotone"
                     dataKey="value"

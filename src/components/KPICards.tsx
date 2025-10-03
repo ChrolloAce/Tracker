@@ -499,7 +499,7 @@ const KPISparkline: React.FC<{
     if (!timestamp) return '';
     
     const date = new Date(timestamp);
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
     
     if (timePeriod === 'hours') {
       const hour = date.getHours();
@@ -508,15 +508,15 @@ const KPISparkline: React.FC<{
       const displayHour = hour % 12 || 12;
       const displayNextHour = nextHour % 12 || 12;
       return `${monthNames[date.getMonth()]} ${date.getDate()}, ${displayHour}–${displayNextHour} ${nextPeriod}`;
-    } else if (timePeriod === 'days') {
-      return `${monthNames[date.getMonth()]} ${date.getDate()}`;
     } else if (timePeriod === 'weeks') {
       const weekEnd = new Date(timestamp + (6 * 24 * 60 * 60 * 1000));
       return `${monthNames[date.getMonth()]} ${date.getDate()}–${date.getMonth() === weekEnd.getMonth() ? weekEnd.getDate() : monthNames[weekEnd.getMonth()] + ' ' + weekEnd.getDate()}`;
     } else if (timePeriod === 'months') {
       return `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+    } else {
+      // Default to days format (for 'days' or any other case)
+      return `${monthNames[date.getMonth()]} ${date.getDate()}`;
     }
-    return date.toLocaleDateString();
   };
   
   return (
@@ -571,10 +571,22 @@ const KPISparkline: React.FC<{
                 : null;
               
               return (
-                <div className="bg-gray-900/80 backdrop-blur-md text-white px-4 py-2.5 rounded-lg shadow-xl text-sm space-y-1.5 min-w-[200px] border border-white/10 z-[99999] relative">
-                  {totalDisplay && <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{totalDisplay}</p>}
-                  {dateStr && <p className="text-xs text-gray-300 font-medium">{dateStr.toLowerCase()}: <span className="text-white font-semibold">{displayValue} {metricLabel?.toLowerCase()}</span></p>}
-                  {!dateStr && <p className="font-semibold text-lg">{displayValue}</p>}
+                <div className="bg-gray-900/80 backdrop-blur-md text-white px-4 py-2.5 rounded-lg shadow-xl text-sm space-y-1.5 min-w-[220px] border border-white/10 z-[99999] relative">
+                  {/* Always show total if available */}
+                  {totalDisplay && (
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">
+                      {totalDisplay}
+                    </p>
+                  )}
+                  {/* Show date and per-day value */}
+                  {dateStr ? (
+                    <p className="text-sm text-gray-200 font-medium">
+                      {dateStr}: <span className="text-white font-semibold">{displayValue} {metricLabel?.toLowerCase()}</span>
+                    </p>
+                  ) : (
+                    <p className="font-semibold text-lg">{displayValue}</p>
+                  )}
+                  {/* Show trend comparison if available */}
                   {showComparison && trendText && (
                     <p className={`text-xs font-medium ${diff >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {trendText}
