@@ -26,14 +26,14 @@
     {
       "source": "/api/(.*)",
       "destination": "/api/$1"
-    },
-    {
-      "source": "/l/:shortCode",
-      "destination": "/api/redirect?shortCode=:shortCode"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/dist/index.html"
     }
-  ]
+  ],
+  "routes": [
+    {
+      "src": "/l/([^/]+)",
+      "dest": "/api/redirect?shortCode=$1"
+    }
+  ],
+  "cleanUrls": true,
+  "trailingSlash": false
 }
