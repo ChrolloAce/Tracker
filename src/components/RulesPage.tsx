@@ -406,6 +406,63 @@ const RulesPage = () => {
             </div>
           </div>
 
+          {/* Apply to Accounts */}
+          <div>
+            <label className="block text-sm font-semibold text-white mb-3">
+              Apply to Accounts
+            </label>
+            <div className="space-y-2 max-h-60 overflow-y-auto p-3 border border-gray-700 rounded-lg bg-gray-800/50">
+              <div className="flex items-center gap-2 mb-3 pb-3 border-b border-gray-700">
+                <input
+                  type="checkbox"
+                  id="all-accounts"
+                  checked={selectedAccounts.length === 0}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedAccounts([]);
+                    }
+                  }}
+                  className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+                />
+                <label htmlFor="all-accounts" className="text-sm font-medium text-white">
+                  All Accounts (Default)
+                </label>
+              </div>
+              
+              {accounts.length === 0 ? (
+                <p className="text-sm text-gray-400 italic">No accounts available. Add accounts first.</p>
+              ) : (
+                accounts.map((account) => (
+                  <div key={account.id} className="flex items-center gap-2 p-2 hover:bg-gray-700/50 rounded">
+                    <input
+                      type="checkbox"
+                      id={`account-${account.id}`}
+                      checked={selectedAccounts.includes(account.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedAccounts(prev => [...prev, account.id]);
+                        } else {
+                          setSelectedAccounts(prev => prev.filter(id => id !== account.id));
+                        }
+                      }}
+                      className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+                    />
+                    <label htmlFor={`account-${account.id}`} className="flex items-center gap-2 text-sm text-white cursor-pointer flex-1">
+                      <span className="font-medium">@{account.username}</span>
+                      <span className="text-xs text-gray-400 capitalize">({account.platform})</span>
+                    </label>
+                  </div>
+                ))
+              )}
+            </div>
+            <p className="mt-2 text-xs text-gray-400">
+              {selectedAccounts.length === 0 
+                ? 'This rule will apply to all accounts in this project'
+                : `This rule will apply to ${selectedAccounts.length} selected account${selectedAccounts.length > 1 ? 's' : ''}`
+              }
+            </p>
+          </div>
+
           {/* Actions */}
           <div className="flex gap-3 pt-4 border-t border-gray-700">
             <button

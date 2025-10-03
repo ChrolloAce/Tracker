@@ -637,7 +637,7 @@ function App() {
           )}
 
           {/* Other Tabs - Placeholder */}
-          {!['dashboard', 'accounts', 'contracts', 'subscription', 'settings', 'analytics', 'creators'].includes(activeTab) && (
+          {!['dashboard', 'accounts', 'contracts', 'subscription', 'settings', 'analytics', 'creators', 'rules', 'cron'].includes(activeTab) && (
             <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">🚧</span>

@@ -7,7 +7,7 @@ import ApifyBrowserClient from './ApifyBrowserClient';
 class TikTokApiService {
   private apifyClient: ApifyBrowserClient;
   private readonly APIFY_TOKEN = import.meta.env.VITE_APIFY_TOKEN || 'apify_api_7wvIrJjtEH6dTZktJZAtcIGAylH7cX2jRweu';
-  private readonly TIKTOK_SCRAPER_ACTOR = 'apify/tiktok-scraper'; // Official Apify TikTok scraper
+  private readonly TIKTOK_SCRAPER_ACTOR = 'clockworks~tiktok-scraper'; // User's TikTok scraper
   
   constructor() {
     console.log('🔧 Initializing browser-compatible TikTok client with token:', this.APIFY_TOKEN ? '***' + this.APIFY_TOKEN.slice(-4) : 'No token');
@@ -34,8 +34,12 @@ class TikTokApiService {
       });
       
       const run = await this.apifyClient.runActor(this.TIKTOK_SCRAPER_ACTOR, {
-        postURLs: [tiktokUrl],
-        resultsPerPage: 1
+        postURLs: [tiktokUrl], // FIXED: postURLs with capital URL
+        maxItems: 1,
+        // Try additional parameters that might be required
+        proxy: {
+          useApifyProxy: true,
+        },
       });
 
       console.log('🎯 TikTok Apify actor run completed:', run.id);
@@ -106,12 +110,21 @@ class TikTokApiService {
     const id = urlMatch ? urlMatch[1] : tiktokData.id || 'unknown';
 
     // Try multiple possible thumbnail field names
-    const thumbnailUrl = tiktokData.videoMeta?.coverUrl || 
+    const thumbnailUrl = tiktokData['videoMeta.coverUrl'] || 
+                         tiktokData.videoMeta?.coverUrl || 
                          tiktokData.coverUrl || 
                          tiktokData.thumbnail || 
+                         tiktokData.cover || 
                          '';
     
     console.log('🖼️ TikTok thumbnail URL found:', thumbnailUrl);
+    console.log('🔍 Checking thumbnail fields:', {
+      'videoMeta.coverUrl': tiktokData['videoMeta.coverUrl'],
+      'videoMeta': tiktokData.videoMeta,
+      'coverUrl': tiktokData.coverUrl,
+      'thumbnail': tiktokData.thumbnail,
+      'cover': tiktokData.cover
+    });
 
     // Download and save thumbnail locally
     let localThumbnailUrl = '';
@@ -121,12 +134,21 @@ class TikTokApiService {
     }
 
     // Try multiple possible username field names
-    const username = tiktokData.authorMeta?.name || 
+    const username = tiktokData['authorMeta.name'] || 
+                    tiktokData.authorMeta?.name || 
                     tiktokData.author?.name || 
                     tiktokData.username || 
+                    tiktokData.authorName || 
                     'unknown_user';
 
     console.log('👤 TikTok username found:', username);
+    console.log('🔍 Checking username fields:', {
+      'authorMeta.name': tiktokData['authorMeta.name'],
+      'authorMeta': tiktokData.authorMeta,
+      'author': tiktokData.author,
+      'username': tiktokData.username,
+      'authorName': tiktokData.authorName
+    });
 
     const transformedData: InstagramVideoData = {
       id: id,
@@ -149,7 +171,7 @@ class TikTokApiService {
       comments: transformedData.comment_count,
       views: transformedData.view_count,
       shares: tiktokData.shareCount || 0,
-      duration: tiktokData.videoMeta?.duration || 0,
+      duration: tiktokData['videoMeta.duration'] || 0,
       uploadDate: new Date(transformedData.timestamp).toLocaleDateString(),
       thumbnail: transformedData.thumbnail_url ? 'Downloaded locally' : 'Using original URL'
     });
@@ -210,8 +232,8 @@ class TikTokApiService {
     try {
       // Run the TikTok scraper actor with search query
       const run = await this.apifyClient.runActor(this.TIKTOK_SCRAPER_ACTOR, {
-        searchQueries: [searchQuery],
-        resultsPerPage: maxVideos
+        searchQueries: [searchQuery], // FIXED: searchQueries for keyword search
+        maxItems: maxVideos,
       });
 
       console.log('🎯 TikTok search run completed:', run.id);
@@ -269,8 +291,8 @@ class TikTokApiService {
     try {
       // Run the TikTok scraper actor with hashtag
       const run = await this.apifyClient.runActor(this.TIKTOK_SCRAPER_ACTOR, {
-        hashtags: [cleanHashtag],
-        resultsPerPage: maxVideos
+        hashtags: [cleanHashtag], // FIXED: hashtags array for hashtag search
+        maxItems: maxVideos,
       });
 
       console.log('🎯 TikTok hashtag search run completed:', run.id);
@@ -324,8 +346,8 @@ class TikTokApiService {
       console.log('🔄 Running TikTok test with URL:', testUrl);
       
       const run = await this.apifyClient.runActor(this.TIKTOK_SCRAPER_ACTOR, {
-        postURLs: [testUrl],
-        resultsPerPage: 1
+        postURLs: [testUrl], // FIXED: postURLs with capital URL
+        maxItems: 1,
       }, { timeout: 60000 }); // 1 minute timeout
 
       console.log('✅ TikTok test run completed:', run.id, 'Status:', run.status);

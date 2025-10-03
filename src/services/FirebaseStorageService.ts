@@ -166,14 +166,8 @@ class FirebaseStorageService {
 
       const result = await response.json();
       
-      // Check if proxy returned a fallback image (indicates failure)
-      if (!result.success) {
-        console.warn(`⚠️ Proxy returned fallback for ${identifier}:`, result.error);
+      if (!result.success || !result.dataUrl) {
         throw new Error(result.error || 'Proxy download failed');
-      }
-      
-      if (!result.dataUrl) {
-        throw new Error('No image data returned from proxy');
       }
 
       // Upload to Firebase Storage
