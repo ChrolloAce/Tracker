@@ -186,9 +186,9 @@ class TrackedLinksService {
   /**
    * Get analytics for a link from Firestore
    */
-  async getLinkAnalyticsFromFirestore(orgId: string, linkId: string, days: number = 30): Promise<LinkAnalytics> {
+  async getLinkAnalyticsFromFirestore(orgId: string, projectId: string, linkId: string, days: number = 30): Promise<LinkAnalytics> {
     // Get all clicks from Firestore
-    const allClicks = await LinkClicksService.getOrgLinkClicks(orgId);
+    const allClicks = await LinkClicksService.getProjectLinkClicks(orgId, projectId);
     
     // Filter clicks for this specific link
     const linkClicks = allClicks.filter(click => click.linkId === linkId);

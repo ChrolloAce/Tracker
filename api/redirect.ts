@@ -162,10 +162,12 @@ async function recordClickAnalytics(db: any, linkData: any, req: VercelRequest) 
     const crypto = await import('crypto');
     const ipHash = crypto.createHash('sha256').update(ipString + linkData.linkId).digest('hex');
 
-    // Create click document
+    // Create click document (correct path with projects)
     const clickRef = db
       .collection('organizations')
       .doc(linkData.orgId)
+      .collection('projects')
+      .doc(linkData.projectId)
       .collection('links')
       .doc(linkData.linkId)
       .collection('clicks')
@@ -183,15 +185,17 @@ async function recordClickAnalytics(db: any, linkData: any, req: VercelRequest) 
       ipHash,
     };
 
-    console.log(`📊 Recording click for link ${linkData.linkId}`);
+    console.log(`📊 Recording click for link ${linkData.linkId} in project ${linkData.projectId}`);
 
     // Write click document
     await clickRef.set(clickData);
 
-    // Update link stats using atomic increment
+    // Update link stats using atomic increment (correct path with projects)
     const linkRef = db
       .collection('organizations')
       .doc(linkData.orgId)
+      .collection('projects')
+      .doc(linkData.projectId)
       .collection('links')
       .doc(linkData.linkId);
 
@@ -200,7 +204,7 @@ async function recordClickAnalytics(db: any, linkData: any, req: VercelRequest) 
       lastClickedAt: FieldValue.serverTimestamp(),
     });
 
-    console.log(`✅ Click recorded successfully for link ${linkData.linkId}`);
+    console.log(`✅ Click recorded successfully for link ${linkData.linkId} in project ${linkData.projectId}`);
   } catch (error) {
     console.error('❌ Failed to record analytics:', error);
     throw error; // Re-throw to see in logs

@@ -122,7 +122,7 @@ function DashboardPage() {
         console.log(`📋 Loaded ${rules.length} tracking rules`);
         
         // Load link clicks
-        const clicks = await LinkClicksService.getOrgLinkClicks(currentOrgId);
+        const clicks = await LinkClicksService.getProjectLinkClicks(currentOrgId, currentProjectId);
         setLinkClicks(clicks);
         console.log(`📊 Loaded ${clicks.length} link clicks`);
         

@@ -13,17 +13,17 @@ interface LinkAnalyticsModalProps {
 }
 
 const LinkAnalyticsModal: React.FC<LinkAnalyticsModalProps> = ({ isOpen, onClose, link }) => {
-  const { currentOrgId } = useAuth();
+  const { currentOrgId, currentProjectId } = useAuth();
   const [analytics, setAnalytics] = useState<LinkAnalytics | null>(null);
   const [period, setPeriod] = useState(30);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const loadAnalytics = async () => {
-      if (isOpen && link && currentOrgId) {
+      if (isOpen && link && currentOrgId && currentProjectId) {
         setLoading(true);
         try {
-          const data = await TrackedLinksService.getLinkAnalyticsFromFirestore(currentOrgId, link.id, period);
+          const data = await TrackedLinksService.getLinkAnalyticsFromFirestore(currentOrgId, currentProjectId, link.id, period);
           setAnalytics(data);
         } catch (error) {
           console.error('Failed to load analytics:', error);
@@ -34,7 +34,7 @@ const LinkAnalyticsModal: React.FC<LinkAnalyticsModalProps> = ({ isOpen, onClose
     };
     
     loadAnalytics();
-  }, [isOpen, link, period, currentOrgId]);
+  }, [isOpen, link, period, currentOrgId, currentProjectId]);
 
   if (!isOpen) return null;
 

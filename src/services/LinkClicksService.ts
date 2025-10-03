@@ -26,15 +26,15 @@ export interface LinkClick {
 class LinkClicksService {
   
   /**
-   * Get all link clicks for an organization
+   * Get all link clicks for a project
    */
-  static async getOrgLinkClicks(orgId: string): Promise<LinkClick[]> {
+  static async getProjectLinkClicks(orgId: string, projectId: string): Promise<LinkClick[]> {
     try {
       const clicks: LinkClick[] = [];
       
-      // Get all links for the organization
+      // Get all links for the project (correct path)
       const linksSnapshot = await getDocs(
-        collection(db, 'organizations', orgId, 'links')
+        collection(db, 'organizations', orgId, 'projects', projectId, 'links')
       );
       
       // For each link, get its clicks
@@ -43,7 +43,7 @@ class LinkClicksService {
         
         const clicksSnapshot = await getDocs(
           query(
-            collection(db, 'organizations', orgId, 'links', linkDoc.id, 'clicks'),
+            collection(db, 'organizations', orgId, 'projects', projectId, 'links', linkDoc.id, 'clicks'),
             orderBy('timestamp', 'desc')
           )
         );
@@ -74,6 +74,17 @@ class LinkClicksService {
       console.error('Failed to fetch link clicks:', error);
       return [];
     }
+  }
+  
+  /**
+   * Get all link clicks for an organization (legacy - searches all projects)
+   * @deprecated Use getProjectLinkClicks instead
+   */
+  static async getOrgLinkClicks(_orgId: string): Promise<LinkClick[]> {
+    // For backward compatibility, this now returns empty array
+    // Use getProjectLinkClicks instead
+    console.warn('getOrgLinkClicks is deprecated, use getProjectLinkClicks instead');
+    return [];
   }
   
   /**
