@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, BookOpen, Play, Users, Star, BarChart3, Link as LinkIcon, Filter, Eye } from 'lucide-react';
+import { TrendingUp, BookOpen, Users, Star, BarChart3, Link as LinkIcon, Filter, Eye } from 'lucide-react';
 
 interface LandingPageProps {
   onGetStarted: () => void;
