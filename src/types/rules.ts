@@ -29,7 +29,7 @@ export interface TrackingRule {
   conditions: RuleCondition[];
   isActive: boolean;
   appliesTo: {
-    platforms?: ('instagram' | 'tiktok' | 'youtube')[];
+    platforms?: ('instagram' | 'tiktok' | 'youtube' | 'twitter')[];
     accountIds?: string[]; // Specific accounts, or empty for "available to all"
   };
   createdAt: Date;

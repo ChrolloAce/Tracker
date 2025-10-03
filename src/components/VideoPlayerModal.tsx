@@ -6,7 +6,7 @@ interface VideoPlayerModalProps {
   onClose: () => void;
   videoUrl: string;
   title?: string;
-  platform?: 'instagram' | 'tiktok' | 'youtube';
+  platform?: 'instagram' | 'tiktok' | 'youtube' | 'twitter';
 }
 
 /**
@@ -57,6 +57,12 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
           const v = u.searchParams.get('v');
           if (v) return `https://www.youtube.com/embed/${v}`;
         } catch {}
+      }
+      
+      // Twitter/X
+      if (url.includes('twitter.com') || url.includes('x.com') || platform === 'twitter') {
+        // Twitter videos are opened externally, no embed
+        return url;
       }
       
       return url;
