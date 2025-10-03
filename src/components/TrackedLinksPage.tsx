@@ -306,10 +306,14 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       {/* Date Filter */}
       <div className="flex justify-end">
         <DateRangeFilter
-          dateFilter={dateFilter}
-          onDateFilterChange={setDateFilter}
-          customDateRange={customDateRange}
-          onCustomDateRangeChange={setCustomDateRange}
+          selectedFilter={dateFilter}
+          customRange={customDateRange}
+          onFilterChange={(filter, range) => {
+            setDateFilter(filter);
+            if (range) {
+              setCustomDateRange(range);
+            }
+          }}
         />
       </div>
 
