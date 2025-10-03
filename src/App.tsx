@@ -1,13 +1,13 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from './contexts/AuthContext';
-import LandingPage from './components/LandingPage';
-import LoginPage from './components/LoginPage';
-import UserOnboarding from './components/UserOnboarding';
-import OrganizationOnboarding from './components/OrganizationOnboarding';
-import ProjectCreationFlow from './components/ProjectCreationFlow';
+import LandingPage from './pages/LandingPage';
+import LoginPage from './pages/LoginPage';
+import OnboardingPage from './pages/OnboardingPage';
+import CreateOrganizationPage from './pages/CreateOrganizationPage';
+import CreateProjectPage from './pages/CreateProjectPage';
+import DashboardPage from './pages/DashboardPage';
 import LinkRedirect from './components/LinkRedirect';
-import Dashboard from './Dashboard';
 
 function App() {
   const { user, loading, currentOrgId, currentProjectId } = useAuth();
@@ -42,7 +42,7 @@ function App() {
       <Route 
         path="/onboarding" 
         element={
-          user && !currentOrgId ? <UserOnboarding /> : 
+          user && !currentOrgId ? <OnboardingPage /> : 
           user && currentOrgId ? <Navigate to="/dashboard" replace /> : 
           <Navigate to="/login" replace />
         } 
@@ -50,14 +50,14 @@ function App() {
 
       <Route 
         path="/create-organization" 
-        element={user ? <OrganizationOnboarding /> : <Navigate to="/login" replace />} 
+        element={user ? <CreateOrganizationPage /> : <Navigate to="/login" replace />} 
       />
 
       <Route 
         path="/create-project" 
         element={
           user && currentOrgId ? (
-            <ProjectCreationFlow
+            <CreateProjectPage
               onClose={() => window.location.href = '/dashboard'}
               onSuccess={() => window.location.href = '/dashboard'}
             />
@@ -72,7 +72,7 @@ function App() {
       <Route 
         path="/dashboard" 
         element={
-          user && currentOrgId && currentProjectId ? <Dashboard /> :
+          user && currentOrgId && currentProjectId ? <DashboardPage /> :
           user && currentOrgId && !currentProjectId ? <Navigate to="/create-project" replace /> :
           user && !currentOrgId ? <Navigate to="/onboarding" replace /> :
           <Navigate to="/login" replace />

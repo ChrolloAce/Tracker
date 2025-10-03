@@ -1,57 +1,44 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { clsx } from 'clsx';
 import { ArrowLeft, ChevronDown, Search } from 'lucide-react';
-import Sidebar from './components/layout/Sidebar';
-import { VideoSubmissionsTable } from './components/VideoSubmissionsTable';
-import { VideoSubmissionModal } from './components/VideoSubmissionModal';
-import { TikTokSearchModal } from './components/TikTokSearchModal';
-import KPICards from './components/KPICards';
-import DateRangeFilter, { DateFilterType } from './components/DateRangeFilter';
-import VideoAnalyticsModal from './components/VideoAnalyticsModal';
-import AccountsPage, { AccountsPageRef } from './components/AccountsPage';
-import ContractsPage from './components/ContractsPage';
-import RulesPage, { RulesPageRef } from './components/RulesPage';
-import SettingsPage from './components/SettingsPage';
-import SubscriptionPage from './components/SubscriptionPage';
-import CronManagementPage from './components/CronManagementPage';
-import TrackedLinksPage, { TrackedLinksPageRef } from './components/TrackedLinksPage';
-import LinkRedirect from './components/LinkRedirect';
-import LoginPage from './components/LoginPage';
-import LandingPage from './components/LandingPage';
-import { PageLoadingSkeleton } from './components/ui/LoadingSkeleton';
-import UserOnboarding from './components/UserOnboarding';
-import ProjectCreationFlow from './components/ProjectCreationFlow';
-import MultiSelectDropdown from './components/ui/MultiSelectDropdown';
-import { VideoSubmission, InstagramVideoData } from './types';
-import VideoApiService from './services/VideoApiService';
-import DateFilterService from './services/DateFilterService';
-import ThemeService from './services/ThemeService';
-import FirestoreDataService from './services/FirestoreDataService';
-import LinkClicksService, { LinkClick } from './services/LinkClicksService';
-import RulesService from './services/RulesService';
-import { cssVariables } from './theme';
-import { useAuth } from './contexts/AuthContext';
+import Sidebar from '../components/layout/Sidebar';
+import { VideoSubmissionsTable } from '../components/VideoSubmissionsTable';
+import { VideoSubmissionModal } from '../components/VideoSubmissionModal';
+import { TikTokSearchModal } from '../components/TikTokSearchModal';
+import KPICards from '../components/KPICards';
+import DateRangeFilter, { DateFilterType } from '../components/DateRangeFilter';
+import VideoAnalyticsModal from '../components/VideoAnalyticsModal';
+import AccountsPage, { AccountsPageRef } from '../components/AccountsPage';
+import ContractsPage from '../components/ContractsPage';
+import RulesPage, { RulesPageRef } from '../components/RulesPage';
+import SettingsPage from '../components/SettingsPage';
+import SubscriptionPage from '../components/SubscriptionPage';
+import CronManagementPage from '../components/CronManagementPage';
+import TrackedLinksPage, { TrackedLinksPageRef } from '../components/TrackedLinksPage';
+import { PageLoadingSkeleton } from '../components/ui/LoadingSkeleton';
+import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
+import { VideoSubmission, InstagramVideoData } from '../types';
+import VideoApiService from '../services/VideoApiService';
+import DateFilterService from '../services/DateFilterService';
+import ThemeService from '../services/ThemeService';
+import FirestoreDataService from '../services/FirestoreDataService';
+import LinkClicksService, { LinkClick } from '../services/LinkClicksService';
+import RulesService from '../services/RulesService';
+import { cssVariables } from '../theme';
+import { useAuth } from '../contexts/AuthContext';
 import { Timestamp } from 'firebase/firestore';
-import { fixVideoPlatforms } from './services/FixVideoPlatform';
-import { TrackedAccount } from './types/firestore';
+import { fixVideoPlatforms } from '../services/FixVideoPlatform';
+import { TrackedAccount } from '../types/firestore';
 
 interface DateRange {
   startDate: Date;
   endDate: Date;
 }
 
-function App() {
+function DashboardPage() {
   // Get authentication state, current organization, and current project
   const { user, loading, currentOrgId, currentProjectId } = useAuth();
 
-  // Check if this is a link redirect URL
-  const isLinkRedirect = window.location.pathname.startsWith('/l/');
-  
-  // Check if this is project creation page
-  const isProjectCreation = window.location.pathname === '/create-project';
-
-  // Landing page state
-  const [showLoginPage, setShowLoginPage] = useState(false);
 
   // State
   const [submissions, setSubmissions] = useState<VideoSubmission[]>([]);
@@ -485,35 +472,6 @@ function App() {
     console.log('✅ TikTok search results added and saved locally!');
   }, []);
 
-  // Show landing page or login page if not authenticated
-  if (!user && !isLinkRedirect) {
-    if (loading) return null;
-    if (!showLoginPage) {
-      return <LandingPage onGetStarted={() => setShowLoginPage(true)} />;
-    }
-    return <LoginPage />;
-  }
-
-  // If this is a link redirect, show redirect component instead
-  if (isLinkRedirect) {
-    return <LinkRedirect />;
-  }
-
-  // Show organization onboarding if user has no organization
-  if (user && !loading && !currentOrgId) {
-    return <UserOnboarding />;
-  }
-
-  // Show project creation flow as full page
-  if (user && isProjectCreation && currentOrgId) {
-    return (
-      <ProjectCreationFlow
-        onClose={() => window.location.href = '/'}
-        onSuccess={() => {}}
-      />
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
       {/* Fixed Sidebar */}
@@ -834,4 +792,4 @@ function App() {
   );
 }
 
-export default App;
+export default DashboardPage;
