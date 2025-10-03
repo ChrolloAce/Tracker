@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { TrendingUp, Trophy, Target } from 'lucide-react';
 import BarChartRace from './BarChartRace';
 import { VideoSubmission } from '../types';
-import { TrackedAccount } from '../types/accounts';
+import { TrackedAccount, AccountVideo } from '../types/accounts';
 import { useAuth } from '../contexts/AuthContext';
-import AccountTrackingServiceFirebase from '../services/AccountTrackingServiceFirebase';
+import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import { clsx } from 'clsx';
 
@@ -40,7 +40,7 @@ const RaceChartsPage: React.FC = () => {
           );
           
           // Convert AccountVideo to VideoSubmission format
-          videos.forEach(video => {
+          videos.forEach((video: AccountVideo) => {
             allVideos.push({
               id: video.id,
               url: video.url,
@@ -73,11 +73,11 @@ const RaceChartsPage: React.FC = () => {
   }, [currentOrgId, currentProjectId]);
 
   if (loading) {
-    return <PageLoadingSkeleton type="analytics" />;
+    return <PageLoadingSkeleton type="dashboard" />;
   }
 
   if (!user || !currentOrgId) {
-    return <PageLoadingSkeleton type="analytics" />;
+    return <PageLoadingSkeleton type="dashboard" />;
   }
 
   return (

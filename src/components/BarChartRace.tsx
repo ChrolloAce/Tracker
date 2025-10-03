@@ -11,14 +11,23 @@ interface BarChartRaceProps {
   metric: 'views' | 'engagement' | 'videos';
 }
 
-interface RaceEntry {
+interface PlatformEntry {
   id: string;
   name: string;
   value: number;
   color: string;
-  icon?: string;
+  icon: string;
+}
+
+interface AccountEntry {
+  id: string;
+  name: string;
+  value: number;
+  color: string;
   profilePicture?: string;
 }
+
+type RaceEntry = PlatformEntry | AccountEntry;
 
 const PLATFORM_COLORS = {
   instagram: '#E4405F',
@@ -54,7 +63,7 @@ const BarChartRace: React.FC<BarChartRaceProps> = ({
 
   // Calculate data for each time period
   const raceData = useMemo(() => {
-    return timePeriods.map((period, periodIndex) => {
+    return timePeriods.map((period) => {
       const periodEnd = new Date(period.date);
       periodEnd.setMonth(periodEnd.getMonth() + 1);
 
@@ -265,7 +274,7 @@ const BarChartRace: React.FC<BarChartRaceProps> = ({
                 <div className="absolute inset-0 flex items-center justify-between px-4 z-10">
                   <div className="flex items-center gap-3">
                     {/* Profile Picture or Icon */}
-                    {mode === 'accounts' && entry.profilePicture ? (
+                    {mode === 'accounts' && 'profilePicture' in entry && entry.profilePicture ? (
                       <img
                         src={entry.profilePicture}
                         alt={entry.name}
