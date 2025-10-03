@@ -16,11 +16,15 @@ import {
   ExternalLink,
   Calendar,
   Share2,
-  Activity
+  Activity,
+  Edit2,
+  CheckCircle2,
+  Circle
   } from 'lucide-react';
 import { TrackedAccount, AccountVideo } from '../types/accounts';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import RulesService from '../services/RulesService';
+import { Rule } from '../types/rules';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { clsx } from 'clsx';
 import { useAuth } from '../contexts/AuthContext';
@@ -30,6 +34,7 @@ import { TrendCalculationService } from '../services/TrendCalculationService';
 import { VideoSubmission } from '../types';
 import VideoPlayerModal from './VideoPlayerModal';
 import { DateFilterType } from './DateRangeFilter';
+import { Modal } from './ui/Modal';
 import Pagination from './ui/Pagination';
 import ColumnPreferencesService from '../services/ColumnPreferencesService';
 import KPICards from './KPICards';
@@ -77,6 +82,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     const saved = localStorage.getItem('processingAccounts');
     return saved ? JSON.parse(saved) : [];
   });
+  const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
+  const [allRules, setAllRules] = useState<Rule[]>([]);
+  const [accountRules, setAccountRules] = useState<string[]>([]); // Rule IDs applied to the account
+  const [loadingRules, setLoadingRules] = useState(false);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -540,6 +549,90 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     }
   }, [selectedAccount, currentOrgId, currentProjectId, user, dateFilter]);
 
+  // Rule management functions
+  const handleOpenRuleModal = useCallback(async () => {
+    if (!currentOrgId || !currentProjectId || !selectedAccount) return;
+    
+    setLoadingRules(true);
+    setIsRuleModalOpen(true);
+    
+    try {
+      // Load all rules for the project
+      const rules = await RulesService.getRules(currentOrgId, currentProjectId);
+      setAllRules(rules);
+      
+      // Get rules currently applied to this account
+      const appliedRules = await RulesService.getRulesForAccount(
+        currentOrgId,
+        currentProjectId,
+        selectedAccount.id,
+        selectedAccount.platform
+      );
+      setAccountRules(appliedRules.map(r => r.id));
+    } catch (error) {
+      console.error('Failed to load rules:', error);
+    } finally {
+      setLoadingRules(false);
+    }
+  }, [currentOrgId, currentProjectId, selectedAccount]);
+
+  const handleToggleRule = useCallback(async (ruleId: string) => {
+    if (!currentOrgId || !currentProjectId || !selectedAccount) return;
+    
+    const rule = allRules.find(r => r.id === ruleId);
+    if (!rule) return;
+    
+    try {
+      const isCurrentlyApplied = accountRules.includes(ruleId);
+      let updatedAccountIds: string[] = [];
+      
+      if (isCurrentlyApplied) {
+        // Remove account from rule
+        updatedAccountIds = (rule.appliesTo.accountIds || []).filter(id => id !== selectedAccount.id);
+      } else {
+        // Add account to rule
+        updatedAccountIds = [...(rule.appliesTo.accountIds || []), selectedAccount.id];
+      }
+      
+      // Update rule in Firestore
+      await RulesService.updateRule(currentOrgId, currentProjectId, ruleId, {
+        ...rule,
+        appliesTo: {
+          ...rule.appliesTo,
+          accountIds: updatedAccountIds.length > 0 ? updatedAccountIds : undefined
+        }
+      });
+      
+      // Update local state
+      if (isCurrentlyApplied) {
+        setAccountRules(prev => prev.filter(id => id !== ruleId));
+      } else {
+        setAccountRules(prev => [...prev, ruleId]);
+      }
+      
+      // Reload all rules to stay in sync
+      const updatedRules = await RulesService.getRules(currentOrgId, currentProjectId);
+      setAllRules(updatedRules);
+      
+      // Recalculate active rules count
+      const appliedRules = await RulesService.getRulesForAccount(
+        currentOrgId,
+        currentProjectId,
+        selectedAccount.id,
+        selectedAccount.platform
+      );
+      setActiveRulesCount(appliedRules.length);
+      
+      // Reload videos with updated rules
+      loadAccountVideos(selectedAccount.id);
+      
+      console.log(`✅ Toggled rule "${rule.name}" for @${selectedAccount.username}`);
+    } catch (error) {
+      console.error('Failed to toggle rule:', error);
+      alert('Failed to update rule. Please try again.');
+    }
+  }, [currentOrgId, currentProjectId, selectedAccount, allRules, accountRules]);
+
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
       return `${(num / 1000000).toFixed(1)}M`;
@@ -886,19 +979,23 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                       {selectedAccount.displayName || `@${selectedAccount.username}`}
                     </h2>
                     {activeRulesCount > 0 && (
-                      <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-full">
+                      <button
+                        onClick={handleOpenRuleModal}
+                        className="flex items-center gap-1.5 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-full hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors group"
+                      >
                         <Filter className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                         <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
                           {activeRulesCount} {activeRulesCount === 1 ? 'Rule' : 'Rules'} Active
                         </span>
-                      </div>
+                        <Edit2 className="w-3 h-3 text-blue-600 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </button>
                     )}
                     <button
-                      onClick={() => window.location.href = '#/rules'}
+                      onClick={handleOpenRuleModal}
                       className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
                     >
                       <Plus className="w-3 h-3" />
-                      Add Rule
+                      {activeRulesCount > 0 ? 'Manage Rules' : 'Add Rule'}
                     </button>
                   </div>
                   <div className="flex items-center space-x-6 text-sm text-gray-600 dark:text-gray-400">
@@ -1424,6 +1521,131 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
           platform={selectedVideoForPlayer.platform}
         />
       )}
+
+      {/* Rule Management Modal */}
+      <Modal
+        isOpen={isRuleModalOpen}
+        onClose={() => setIsRuleModalOpen(false)}
+        title={`Manage Rules for @${selectedAccount?.username || ''}`}
+      >
+        {loadingRules ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-700 border-t-blue-500"></div>
+          </div>
+        ) : allRules.length === 0 ? (
+          <div className="text-center py-12">
+            <Filter className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+            <p className="text-gray-400 mb-4">No rules created yet</p>
+            <button
+              onClick={() => {
+                setIsRuleModalOpen(false);
+                window.location.href = '#/rules';
+              }}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            >
+              Create Your First Rule
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-gray-400 mb-4">
+              Select which rules to apply to this account. Videos will be filtered based on active rules.
+            </p>
+            <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+              {allRules.map((rule) => {
+                const isApplied = accountRules.includes(rule.id);
+                const appliesToAll = !rule.appliesTo.accountIds || rule.appliesTo.accountIds.length === 0;
+                
+                return (
+                  <div
+                    key={rule.id}
+                    className={clsx(
+                      'p-4 rounded-lg border transition-all cursor-pointer group',
+                      isApplied || appliesToAll
+                        ? 'bg-blue-900/20 border-blue-500/50'
+                        : 'bg-gray-800/50 border-gray-700 hover:border-gray-600'
+                    )}
+                    onClick={() => !appliesToAll && handleToggleRule(rule.id)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5">
+                        {appliesToAll ? (
+                          <CheckCircle2 className="w-5 h-5 text-blue-400" />
+                        ) : isApplied ? (
+                          <CheckCircle2 className="w-5 h-5 text-blue-400" />
+                        ) : (
+                          <Circle className="w-5 h-5 text-gray-500 group-hover:text-gray-400" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-semibold text-white">{rule.name}</h4>
+                          {!rule.isActive && (
+                            <span className="px-2 py-0.5 text-xs bg-gray-700 text-gray-400 rounded">
+                              Inactive
+                            </span>
+                          )}
+                          {appliesToAll && (
+                            <span className="px-2 py-0.5 text-xs bg-blue-900/50 text-blue-400 rounded">
+                              All Accounts
+                            </span>
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          {rule.conditions.slice(0, 2).map((condition, index) => (
+                            <div key={condition.id} className="flex items-center gap-2 text-xs">
+                              {index > 0 && (
+                                <span className="text-blue-400 font-semibold">
+                                  {rule.conditions[index - 1].operator || 'AND'}
+                                </span>
+                              )}
+                              <div className="flex items-center gap-2 px-2 py-1 bg-gray-800 rounded">
+                                <span className="text-gray-400">
+                                  {RulesService.getConditionTypeLabel(condition.type)}:
+                                </span>
+                                <span className="font-mono text-white">
+                                  {String(condition.value)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                          {rule.conditions.length > 2 && (
+                            <p className="text-xs text-gray-500">
+                              +{rule.conditions.length - 2} more condition{rule.conditions.length - 2 > 1 ? 's' : ''}
+                            </p>
+                          )}
+                        </div>
+                        {appliesToAll && (
+                          <p className="text-xs text-gray-500 mt-2">
+                            This rule applies to all accounts by default
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="pt-4 border-t border-gray-700 flex items-center justify-between">
+              <button
+                onClick={() => {
+                  setIsRuleModalOpen(false);
+                  window.location.href = '#/rules';
+                }}
+                className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                Create New Rule →
+              </button>
+              <button
+                onClick={() => setIsRuleModalOpen(false)}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 });
