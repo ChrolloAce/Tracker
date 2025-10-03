@@ -19,7 +19,7 @@ import LinkRedirect from './components/LinkRedirect';
 import LoginPage from './components/LoginPage';
 import LandingPage from './components/LandingPage';
 import { PageLoadingSkeleton } from './components/ui/LoadingSkeleton';
-import OrganizationOnboarding from './components/OrganizationOnboarding';
+import UserOnboarding from './components/UserOnboarding';
 import ProjectCreationFlow from './components/ProjectCreationFlow';
 import MultiSelectDropdown from './components/ui/MultiSelectDropdown';
 import { VideoSubmission, InstagramVideoData } from './types';
@@ -456,7 +456,7 @@ function App() {
 
   // Show organization onboarding if user has no organization
   if (user && !loading && !currentOrgId) {
-    return <OrganizationOnboarding />;
+    return <UserOnboarding />;
   }
 
   // Show project creation flow as full page

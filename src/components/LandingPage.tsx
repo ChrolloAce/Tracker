@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, BookOpen, Users, Star, BarChart3, Link as LinkIcon, Filter, Eye } from 'lucide-react';
+import { TrendingUp, BookOpen, Users, Star, BarChart3, Eye } from 'lucide-react';
 import blackLogo from './blacklogo.png';
 import dashboardImg from '/dashboard.png';
 
@@ -114,25 +114,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                     alt="ViewTrack Dashboard" 
                     className="w-full h-auto"
                   />
-                </div>
-
-                {/* Floating Feature Cards */}
-                <div className="grid grid-cols-2 gap-4 mt-6">
-                  <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-4 hover:shadow-xl transition-shadow">
-                    <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mb-3">
-                      <LinkIcon className="w-4 h-4 text-orange-600" />
-                    </div>
-                    <h4 className="font-semibold text-gray-900 text-sm mb-1">Link Tracking</h4>
-                    <p className="text-xs text-gray-500">Monitor every click</p>
-                  </div>
-                  
-                  <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-4 hover:shadow-xl transition-shadow">
-                    <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mb-3">
-                      <Filter className="w-4 h-4 text-green-600" />
-                    </div>
-                    <h4 className="font-semibold text-gray-900 text-sm mb-1">Smart Rules</h4>
-                    <p className="text-xs text-gray-500">Auto-filter content</p>
-                  </div>
                 </div>
               </div>
 
