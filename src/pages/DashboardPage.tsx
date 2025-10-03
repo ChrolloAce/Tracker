@@ -15,7 +15,6 @@ import SettingsPage from '../components/SettingsPage';
 import SubscriptionPage from '../components/SubscriptionPage';
 import CronManagementPage from '../components/CronManagementPage';
 import TrackedLinksPage, { TrackedLinksPageRef } from '../components/TrackedLinksPage';
-import RaceChartsPage from '../components/RaceChartsPage';
 import { PageLoadingSkeleton } from '../components/ui/LoadingSkeleton';
 import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
 import { VideoSubmission, InstagramVideoData } from '../types';
@@ -510,12 +509,11 @@ function DashboardPage() {
                 {activeTab === 'subscription' && 'Subscription Plans'}
                 {activeTab === 'analytics' && 'Tracked Links'}
                 {activeTab === 'rules' && 'Tracking Rules'}
-                {activeTab === 'competition' && 'Competition'}
                 {activeTab === 'creators' && 'Creators'}
                 {activeTab === 'cron' && 'Cron Jobs'}
                 {activeTab === 'settings' && 'Settings'}
               </h1>
-              {activeTab !== 'analytics' && activeTab !== 'competition' && (
+              {activeTab !== 'analytics' && (
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                   {activeTab === 'dashboard' && 'Track and analyze your video performance'}
                   {activeTab === 'accounts' && 'Monitor entire Instagram and TikTok accounts'}
@@ -701,9 +699,6 @@ function DashboardPage() {
             />
           )}
 
-          {/* Competition Tab */}
-          {activeTab === 'competition' && <RaceChartsPage />}
-
           {/* Creators Tab - Placeholder */}
           {activeTab === 'creators' && (
             <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
@@ -751,7 +746,7 @@ function DashboardPage() {
       />
 
       {/* Context-Aware Floating Action Button */}
-      {activeTab !== 'settings' && activeTab !== 'subscription' && activeTab !== 'contracts' && activeTab !== 'creators' && activeTab !== 'cron' && activeTab !== 'competition' && (
+      {activeTab !== 'settings' && activeTab !== 'subscription' && activeTab !== 'contracts' && activeTab !== 'creators' && activeTab !== 'cron' && (
         <button
           onClick={() => {
             if (activeTab === 'dashboard') {

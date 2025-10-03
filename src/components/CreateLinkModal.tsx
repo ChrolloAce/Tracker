@@ -48,9 +48,15 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
     e.preventDefault();
     setError('');
 
+    // Auto-add https:// if protocol is missing
+    let formattedUrl = originalUrl.trim();
+    if (formattedUrl && !formattedUrl.match(/^[a-zA-Z]+:\/\//)) {
+      formattedUrl = 'https://' + formattedUrl;
+    }
+
     // Validate URL
     try {
-      new URL(originalUrl);
+      new URL(formattedUrl);
     } catch {
       setError('Please enter a valid URL');
       return;
@@ -62,7 +68,7 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
     }
 
     onCreate(
-      originalUrl,
+      formattedUrl,
       title.trim(),
       undefined, // description removed
       undefined, // tags removed
@@ -104,10 +110,10 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
             <div className="relative">
               <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
-                type="url"
+                type="text"
                 value={originalUrl}
                 onChange={(e) => setOriginalUrl(e.target.value)}
-                placeholder="https://example.com/page"
+                placeholder="example.com/page or apps.apple.com/..."
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
