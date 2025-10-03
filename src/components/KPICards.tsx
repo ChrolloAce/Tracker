@@ -326,7 +326,39 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         icon: Activity,
         accent: 'violet',
         period: periodText,
-        sparklineData: generateSparklineData('likes')
+        sparklineData: (() => {
+          // Generate engagement rate sparkline data
+          let numPoints = 30;
+          let intervalMs = 24 * 60 * 60 * 1000; // 1 day
+          
+          if (dateFilter === 'today') {
+            numPoints = 24;
+            intervalMs = 60 * 60 * 1000;
+          } else if (dateFilter === 'last7days') {
+            numPoints = 7;
+          } else if (dateFilter === 'last90days') {
+            numPoints = 90;
+          }
+          
+          const data = [];
+          for (let i = numPoints - 1; i >= 0; i--) {
+            const pointDate = new Date(Date.now() - (i * intervalMs));
+            
+            // Calculate engagement rate for this time period
+            const videosInPeriod = submissions.filter(v => new Date(v.uploadDate) <= pointDate);
+            const totalViews = videosInPeriod.reduce((sum, v) => sum + (v.views || 0), 0);
+            const totalEngagement = videosInPeriod.reduce((sum, v) => 
+              sum + (v.likes || 0) + (v.comments || 0) + (v.shares || 0), 0
+            );
+            const rate = totalViews > 0 ? ((totalEngagement / totalViews) * 100) : 0;
+            
+            data.push({
+              value: Number(rate.toFixed(1)),
+              timestamp: pointDate.getTime()
+            });
+          }
+          return data;
+        })()
       },
       {
         id: 'link-clicks',
@@ -335,7 +367,38 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         icon: LinkIcon,
         accent: 'slate',
         period: linkClicks.length > 0 ? 'Total clicks' : 'No clicks yet',
-        sparklineData: generateSparklineData('views') // Use views as base pattern
+        sparklineData: (() => {
+          // Generate link clicks sparkline data
+          let numPoints = 30;
+          let intervalMs = 24 * 60 * 60 * 1000; // 1 day
+          
+          if (dateFilter === 'today') {
+            numPoints = 24;
+            intervalMs = 60 * 60 * 1000;
+          } else if (dateFilter === 'last7days') {
+            numPoints = 7;
+          } else if (dateFilter === 'last90days') {
+            numPoints = 90;
+          }
+          
+          const data = [];
+          for (let i = numPoints - 1; i >= 0; i--) {
+            const pointDate = new Date(Date.now() - (i * intervalMs));
+            const nextPointDate = new Date(Date.now() - ((i - 1) * intervalMs));
+            
+            // Count clicks in this time period
+            const clicksInPeriod = linkClicks.filter(click => {
+              const clickDate = new Date(click.timestamp);
+              return clickDate >= pointDate && clickDate < nextPointDate;
+            });
+            
+            data.push({
+              value: clicksInPeriod.length,
+              timestamp: pointDate.getTime()
+            });
+          }
+          return data;
+        })()
       }
     ];
 
@@ -427,10 +490,16 @@ const KPISparkline: React.FC<{
                 trendText = `${trendIcon} ${Math.abs(Number(percentChange))}% vs yesterday`;
               }
               
+              // Format value based on metric type
+              const isEngagementRate = id === 'engagement';
+              const displayValue = isEngagementRate 
+                ? `${value?.toLocaleString()}%` 
+                : value?.toLocaleString();
+              
               return (
                 <div className="bg-gray-900/80 backdrop-blur-md text-white px-4 py-2.5 rounded-lg shadow-xl text-sm space-y-1 min-w-[200px] border border-white/10 z-[99999] relative">
                   {dateStr && <p className="text-xs text-gray-400 font-medium">{dateStr}</p>}
-                  <p className="font-semibold text-lg">{value?.toLocaleString()}</p>
+                  <p className="font-semibold text-lg">{displayValue}</p>
                   {showComparison && trendText && (
                     <p className={`text-xs font-medium ${diff >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {trendText}
