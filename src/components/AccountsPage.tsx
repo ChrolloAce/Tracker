@@ -308,8 +308,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
             commentsCount: sub.comments,
             sharesCount: sub.shares,
             uploadDate: sub.uploadDate,
-            timestamp: sub.uploadDate
-          } as AccountVideo;
+            timestamp: sub.uploadDate.toISOString()
+          };
         });
         
         console.log(`✅ Date + Rules filtered: ${finalFilteredVideos.length}/${videos.length} videos (${accountRules.length} rules, ${dateFilter} date range)`);
@@ -649,22 +649,22 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
 
                         {/* Posts Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatNumber('filteredTotalVideos' in account ? account.filteredTotalVideos : account.totalVideos)}
+                          {formatNumber('filteredTotalVideos' in account ? (account as AccountWithFilteredStats).filteredTotalVideos : account.totalVideos)}
                         </td>
 
                         {/* Views Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white dark:text-white">
-                          {formatNumber('filteredTotalViews' in account ? account.filteredTotalViews : account.totalViews)}
+                          {formatNumber('filteredTotalViews' in account ? (account as AccountWithFilteredStats).filteredTotalViews : account.totalViews)}
                         </td>
 
                         {/* Likes Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatNumber('filteredTotalLikes' in account ? account.filteredTotalLikes : account.totalLikes)}
+                          {formatNumber('filteredTotalLikes' in account ? (account as AccountWithFilteredStats).filteredTotalLikes : account.totalLikes)}
                         </td>
 
                         {/* Comments Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatNumber('filteredTotalComments' in account ? account.filteredTotalComments : account.totalComments)}
+                          {formatNumber('filteredTotalComments' in account ? (account as AccountWithFilteredStats).filteredTotalComments : account.totalComments)}
                         </td>
 
                         {/* Actions Column */}
