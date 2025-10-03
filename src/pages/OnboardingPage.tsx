@@ -146,14 +146,17 @@ const UserOnboarding: React.FC = () => {
       const orgName = data.userName ? `${data.userName}'s Workspace` : 'My Workspace';
       const orgSlug = orgName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       
-      const orgId = await OrganizationService.createOrganization(
-        user.uid,
-        {
-          name: orgName,
-          slug: orgSlug,
-          website: data.companyWebsite || undefined
-        }
-      );
+      const orgData: any = {
+        name: orgName,
+        slug: orgSlug
+      };
+      
+      // Only add website if it exists
+      if (data.companyWebsite && data.companyWebsite.trim()) {
+        orgData.website = data.companyWebsite;
+      }
+      
+      const orgId = await OrganizationService.createOrganization(user.uid, orgData);
 
       // Create default project
       const projectId = await ProjectService.createProject(orgId, user.uid, {

@@ -160,18 +160,37 @@ const OrganizationOnboarding: React.FC = () => {
         logoUrl = await FirebaseStorageService.uploadOrganizationLogo(user.uid, data.logoFile);
       }
 
-      // Create organization
-      const orgId = await OrganizationService.createOrganization(user.uid, {
+      // Build organization data (only include defined fields)
+      const orgData: any = {
         name: data.name,
-        slug: data.slug,
-        website: data.website || undefined,
-        logoUrl: logoUrl,
-        metadata: {
-          businessType: data.businessType || undefined,
-          referralSource: data.referralSource || undefined,
-          onboardingCompletedAt: new Date().toISOString()
-        }
-      });
+        slug: data.slug
+      };
+      
+      if (data.website && data.website.trim()) {
+        orgData.website = data.website;
+      }
+      
+      if (logoUrl) {
+        orgData.logoUrl = logoUrl;
+      }
+      
+      // Build metadata (only include defined fields)
+      const metadata: any = {
+        onboardingCompletedAt: new Date().toISOString()
+      };
+      
+      if (data.businessType && data.businessType.trim()) {
+        metadata.businessType = data.businessType;
+      }
+      
+      if (data.referralSource && data.referralSource.trim()) {
+        metadata.referralSource = data.referralSource;
+      }
+      
+      orgData.metadata = metadata;
+
+      // Create organization
+      const orgId = await OrganizationService.createOrganization(user.uid, orgData);
 
       console.log('✅ Organization created:', orgId);
 
