@@ -1,35 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { TrendingUp, BookOpen, Users, Star, BarChart3, Link as LinkIcon, Filter, Eye, Heart, MessageCircle } from 'lucide-react';
+import React from 'react';
+import { TrendingUp, BookOpen, Users, Star, BarChart3, Link as LinkIcon, Filter, Eye } from 'lucide-react';
 import blackLogo from './blacklogo.png';
+import dashboardImg from '/dashboard.png';
 
 interface LandingPageProps {
   onGetStarted: () => void;
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
-  const [animatedViews, setAnimatedViews] = useState(124500);
-  const [animatedEngagement, setAnimatedEngagement] = useState(18.2);
-  const [animatedVideo1, setAnimatedVideo1] = useState(45200);
-  const [animatedVideo2, setAnimatedVideo2] = useState(32800);
-  const [animatedVideo3, setAnimatedVideo3] = useState(28100);
-
-  // Animate numbers
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setAnimatedViews(prev => prev + Math.floor(Math.random() * 100) - 20);
-      setAnimatedEngagement(prev => Math.min(100, Math.max(0, prev + (Math.random() - 0.5) * 0.3)));
-      setAnimatedVideo1(prev => prev + Math.floor(Math.random() * 50) - 10);
-      setAnimatedVideo2(prev => prev + Math.floor(Math.random() * 40) - 10);
-      setAnimatedVideo3(prev => prev + Math.floor(Math.random() * 30) - 5);
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const formatNumber = (num: number) => {
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-    return num.toString();
-  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -126,96 +104,20 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
               </div>
             </div>
 
-            {/* Right Column - Animated Dashboard Preview */}
+            {/* Right Column - Dashboard Screenshot */}
             <div className="relative">
-              <div className="space-y-4">
-                {/* Dashboard Card - Looks like real app */}
-                <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl shadow-2xl border border-gray-700 p-6 space-y-6">
-                  {/* Header */}
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-bold text-white">Recent Activity</h3>
-                    <span className="text-xs text-gray-400">Last 24 hours</span>
-                  </div>
-
-                  {/* Animated Metric Cards */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-gradient-to-br from-blue-500/10 via-purple-500/5 to-transparent backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Eye className="w-4 h-4 text-blue-400" />
-                        <span className="text-xs font-medium text-blue-300">Views</span>
-                      </div>
-                      <p className="text-2xl font-bold text-white transition-all duration-500">
-                        {formatNumber(animatedViews)}
-                      </p>
-                      <p className="text-xs text-green-400 mt-1">↑ 23% today</p>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-purple-500/10 via-pink-500/5 to-transparent backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <TrendingUp className="w-4 h-4 text-purple-400" />
-                        <span className="text-xs font-medium text-purple-300">Engagement</span>
-                      </div>
-                      <p className="text-2xl font-bold text-white transition-all duration-500">
-                        {animatedEngagement.toFixed(1)}%
-                      </p>
-                      <p className="text-xs text-green-400 mt-1">↑ 5% today</p>
-                    </div>
-                  </div>
-
-                  {/* Animated Video List */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all duration-300 border border-white/5">
-                      <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-rose-600 rounded-lg flex items-center justify-center">
-                        <Heart className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-white truncate">Summer Vibes 2024</p>
-                        <p className="text-xs text-gray-400 transition-all duration-500">
-                          {formatNumber(animatedVideo1)} views
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                        <span className="text-xs text-gray-400">Live</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all duration-300 border border-white/5">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-lg flex items-center justify-center">
-                        <MessageCircle className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-white truncate">Behind the Scenes</p>
-                        <p className="text-xs text-gray-400 transition-all duration-500">
-                          {formatNumber(animatedVideo2)} views
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                        <span className="text-xs text-gray-400">Live</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all duration-300 border border-white/5">
-                      <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-600 rounded-lg flex items-center justify-center">
-                        <Eye className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-white truncate">Tutorial: Quick Tips</p>
-                        <p className="text-xs text-gray-400 transition-all duration-500">
-                          {formatNumber(animatedVideo3)} views
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                        <span className="text-xs text-gray-400">Live</span>
-                      </div>
-                    </div>
-                  </div>
+              <div className="relative">
+                {/* Dashboard Image */}
+                <div className="rounded-2xl shadow-2xl overflow-hidden border border-gray-200">
+                  <img 
+                    src={dashboardImg} 
+                    alt="ViewTrack Dashboard" 
+                    className="w-full h-auto"
+                  />
                 </div>
 
                 {/* Floating Feature Cards */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 mt-6">
                   <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-4 hover:shadow-xl transition-shadow">
                     <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mb-3">
                       <LinkIcon className="w-4 h-4 text-orange-600" />
