@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { Plus, Filter, Trash2, Edit2, CheckCircle, XCircle } from 'lucide-react';
 import { TrackingRule, RuleCondition, RuleConditionType } from '../types/rules';
-import { TrackedAccount } from '../types/accounts';
 import RulesService from '../services/RulesService';
-import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import { useAuth } from '../contexts/AuthContext';
 import { clsx } from 'clsx';
 import { Modal } from './ui/Modal';
@@ -16,7 +14,6 @@ export interface RulesPageRef {
 const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
   const { currentOrgId, currentProjectId, user } = useAuth();
   const [rules, setRules] = useState<TrackingRule[]>([]);
-  const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<TrackingRule | null>(null);
@@ -24,24 +21,19 @@ const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
   // Form state
   const [ruleName, setRuleName] = useState('');
   const [conditions, setConditions] = useState<RuleCondition[]>([]);
-  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [isActive, setIsActive] = useState(true);
 
-  // Load rules and accounts
+  // Load rules
   useEffect(() => {
     const loadData = async () => {
       if (!currentOrgId || !currentProjectId) return;
       
       setLoading(true);
       try {
-        const [loadedRules, loadedAccounts] = await Promise.all([
-          RulesService.getRules(currentOrgId, currentProjectId),
-          AccountTrackingServiceFirebase.getTrackedAccounts(currentOrgId, currentProjectId)
-        ]);
+        const loadedRules = await RulesService.getRules(currentOrgId, currentProjectId);
         setRules(loadedRules);
-        setAccounts(loadedAccounts);
       } catch (error) {
-        console.error('Failed to load data:', error);
+        console.error('Failed to load rules:', error);
       } finally {
         setLoading(false);
       }
@@ -59,7 +51,6 @@ const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
       value: '',
       operator: 'AND'
     }]);
-    setSelectedAccounts([]);
     setIsActive(true);
     setIsCreateModalOpen(true);
   }, []);
@@ -78,7 +69,6 @@ const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
       value: '',
       operator: 'AND'
     }]);
-    setSelectedAccounts(rule.appliesTo.accountIds || []);
     setIsActive(rule.isActive);
     setIsCreateModalOpen(true);
   }, []);
@@ -97,7 +87,7 @@ const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
         conditions: conditions.filter(c => c.value !== ''),
         isActive,
         appliesTo: {
-          accountIds: selectedAccounts.length > 0 ? selectedAccounts : undefined,
+          accountIds: undefined, // Rules are now applied manually per account
         },
       };
 
@@ -115,7 +105,7 @@ const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
       console.error('Failed to save rule:', error);
       alert('Failed to save rule. Please try again.');
     }
-  }, [currentOrgId, currentProjectId, user, ruleName, conditions, isActive, selectedAccounts, editingRule]);
+  }, [currentOrgId, currentProjectId, user, ruleName, conditions, isActive, editingRule]);
 
   const handleDeleteRule = useCallback(async (ruleId: string) => {
     if (!currentOrgId || !currentProjectId) return;
@@ -233,26 +223,11 @@ const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
                   </td>
                   <td className="px-6 py-4">
                     {rule.appliesTo.accountIds && rule.appliesTo.accountIds.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {rule.appliesTo.accountIds.slice(0, 3).map(accountId => {
-                          const account = accounts.find(a => a.id === accountId);
-                          return account ? (
-                            <span
-                              key={accountId}
-                              className="px-2 py-1 bg-blue-900/30 text-blue-400 rounded text-xs"
-                            >
-                              @{account.username}
-                            </span>
-                          ) : null;
-                        })}
-                        {rule.appliesTo.accountIds.length > 3 && (
-                          <span className="px-2 py-1 bg-gray-800 text-gray-400 rounded text-xs">
-                            +{rule.appliesTo.accountIds.length - 3}
-                          </span>
-                        )}
-                      </div>
+                      <span className="px-2 py-1 bg-blue-900/30 text-blue-400 rounded text-xs">
+                        {rule.appliesTo.accountIds.length} account{rule.appliesTo.accountIds.length > 1 ? 's' : ''}
+                      </span>
                     ) : (
-                      <span className="text-gray-400 text-sm">All accounts</span>
+                      <span className="text-gray-400 text-sm">Manage per account</span>
                     )}
                   </td>
                   <td className="px-6 py-4">
@@ -398,61 +373,23 @@ const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
             </div>
           </div>
 
-          {/* Apply to Accounts */}
-          <div>
-            <label className="block text-sm font-semibold text-white mb-3">
-              Apply to Accounts
-            </label>
-            <div className="space-y-2 max-h-60 overflow-y-auto p-3 border border-gray-700 rounded-lg bg-gray-800/50">
-              <div className="flex items-center gap-2 mb-3 pb-3 border-b border-gray-700">
-                <input
-                  type="checkbox"
-                  id="all-accounts"
-                  checked={selectedAccounts.length === 0}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedAccounts([]);
-                    }
-                  }}
-                  className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
-                />
-                <label htmlFor="all-accounts" className="text-sm font-medium text-white">
-                  All Accounts (Default)
-                </label>
+          {/* Info message about manual rule assignment */}
+          <div className="p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 mt-0.5">
+                <svg className="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
               </div>
-              
-              {accounts.length === 0 ? (
-                <p className="text-sm text-gray-400 italic">No accounts available. Add accounts first.</p>
-              ) : (
-                accounts.map((account) => (
-                  <div key={account.id} className="flex items-center gap-2 p-2 hover:bg-gray-700/50 rounded">
-                    <input
-                      type="checkbox"
-                      id={`account-${account.id}`}
-                      checked={selectedAccounts.includes(account.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedAccounts(prev => [...prev, account.id]);
-                        } else {
-                          setSelectedAccounts(prev => prev.filter(id => id !== account.id));
-                        }
-                      }}
-                      className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
-                    />
-                    <label htmlFor={`account-${account.id}`} className="flex items-center gap-2 text-sm text-white cursor-pointer flex-1">
-                      <span className="font-medium">@{account.username}</span>
-                      <span className="text-xs text-gray-400 capitalize">({account.platform})</span>
-                    </label>
-                  </div>
-                ))
-              )}
+              <div>
+                <h4 className="text-sm font-semibold text-blue-300 mb-1">
+                  Apply Rules Manually
+                </h4>
+                <p className="text-xs text-blue-200/80">
+                  After creating this rule, go to any tracked account and use the "Manage Rules" button to apply or remove rules for that specific account.
+                </p>
+              </div>
             </div>
-            <p className="mt-2 text-xs text-gray-400">
-              {selectedAccounts.length === 0 
-                ? 'This rule will apply to all accounts in this project'
-                : `This rule will apply to ${selectedAccounts.length} selected account${selectedAccounts.length > 1 ? 's' : ''}`
-              }
-            </p>
           </div>
 
           {/* Actions */}
