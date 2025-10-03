@@ -15,6 +15,7 @@ export interface VideoSubmission {
   platform: 'instagram' | 'tiktok' | 'youtube';
   thumbnail: string;
   title: string;
+  caption?: string; // Video description/caption for rules filtering
   uploader: string;
   uploaderHandle: string;
   uploaderProfilePicture?: string; // Account profile picture

@@ -136,6 +136,7 @@ function DashboardPage() {
             platform: video.platform as 'instagram' | 'tiktok' | 'youtube',
             thumbnail: video.thumbnail || '',
             title: video.title || '',
+            caption: video.description || '', // Include caption for rules filtering
             uploader: account?.displayName || account?.username || '',
             uploaderHandle: account?.username || '',
             uploaderProfilePicture: account?.profilePicture,
