@@ -17,6 +17,7 @@ import CronManagementPage from './components/CronManagementPage';
 import TrackedLinksPage, { TrackedLinksPageRef } from './components/TrackedLinksPage';
 import LinkRedirect from './components/LinkRedirect';
 import LoginPage from './components/LoginPage';
+import LandingPage from './components/LandingPage';
 import { PageLoadingSkeleton } from './components/ui/LoadingSkeleton';
 import OrganizationOnboarding from './components/OrganizationOnboarding';
 import ProjectCreationFlow from './components/ProjectCreationFlow';
@@ -47,6 +48,9 @@ function App() {
   
   // Check if this is project creation page
   const isProjectCreation = window.location.pathname === '/create-project';
+
+  // Landing page state
+  const [showLoginPage, setShowLoginPage] = useState(false);
 
   // State
   const [submissions, setSubmissions] = useState<VideoSubmission[]>([]);
@@ -436,9 +440,13 @@ function App() {
     console.log('✅ TikTok search results added and saved locally!');
   }, []);
 
-  // Show login page if not authenticated
+  // Show landing page or login page if not authenticated
   if (!user && !isLinkRedirect) {
-    return loading ? null : <LoginPage />;
+    if (loading) return null;
+    if (!showLoginPage) {
+      return <LandingPage onGetStarted={() => setShowLoginPage(true)} />;
+    }
+    return <LoginPage />;
   }
 
   // If this is a link redirect, show redirect component instead
