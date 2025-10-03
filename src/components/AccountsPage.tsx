@@ -46,9 +46,17 @@ export interface AccountsPageRef {
   openAddModal: () => void;
 }
 
+interface AccountWithFilteredStats extends TrackedAccount {
+  filteredTotalVideos: number;
+  filteredTotalViews: number;
+  filteredTotalLikes: number;
+  filteredTotalComments: number;
+}
+
 const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilter, platformFilter: _platformFilter, onViewModeChange }, ref) => {
   const { user, currentOrgId, currentProjectId } = useAuth();
   const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
+  const [filteredAccounts, setFilteredAccounts] = useState<AccountWithFilteredStats[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<TrackedAccount | null>(null);
   const [accountVideos, setAccountVideos] = useState<AccountVideo[]>([]);
   const [activeRulesCount, setActiveRulesCount] = useState(0);
@@ -145,7 +153,93 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     loadAccounts();
   }, [currentOrgId, currentProjectId]);
 
-  // Load videos when account is selected
+  // Calculate filtered stats for all accounts (for table view)
+  useEffect(() => {
+    const calculateFilteredStats = async () => {
+      if (!currentOrgId || !currentProjectId || accounts.length === 0 || viewMode !== 'table') {
+        return;
+      }
+
+      console.log('📊 Calculating filtered stats for table view...');
+      const accountsWithStats: AccountWithFilteredStats[] = [];
+
+      for (const account of accounts) {
+        try {
+          // Load videos for this account
+          const videos = await AccountTrackingServiceFirebase.getAccountVideos(
+            currentOrgId,
+            currentProjectId,
+            account.id
+          );
+
+          // Apply rules filtering
+          const rulesFilteredVideos = await RulesService.filterVideosByRules(
+            currentOrgId,
+            currentProjectId,
+            account.id,
+            account.platform,
+            videos
+          );
+
+          // Apply date filtering
+          const videoSubmissions: VideoSubmission[] = rulesFilteredVideos.map(video => ({
+            id: video.id || video.videoId || '',
+            url: video.url || '',
+            platform: account.platform,
+            thumbnail: video.thumbnail || '',
+            title: video.caption || 'No caption',
+            uploader: account.displayName || account.username,
+            uploaderHandle: account.username,
+            status: 'approved' as const,
+            views: video.viewsCount || video.views || 0,
+            likes: video.likesCount || video.likes || 0,
+            comments: video.commentsCount || video.comments || 0,
+            shares: video.sharesCount || video.shares || 0,
+            dateSubmitted: video.uploadDate || new Date(),
+            uploadDate: video.uploadDate || new Date(),
+            snapshots: []
+          }));
+
+          const dateAndRulesFiltered = DateFilterService.filterVideosByDateRange(
+            videoSubmissions,
+            dateFilter,
+            undefined
+          );
+
+          // Calculate stats from filtered videos
+          const filteredTotalVideos = dateAndRulesFiltered.length;
+          const filteredTotalViews = dateAndRulesFiltered.reduce((sum, v) => sum + v.views, 0);
+          const filteredTotalLikes = dateAndRulesFiltered.reduce((sum, v) => sum + v.likes, 0);
+          const filteredTotalComments = dateAndRulesFiltered.reduce((sum, v) => sum + v.comments, 0);
+
+          accountsWithStats.push({
+            ...account,
+            filteredTotalVideos,
+            filteredTotalViews,
+            filteredTotalLikes,
+            filteredTotalComments
+          });
+        } catch (error) {
+          console.error(`Failed to calculate stats for ${account.username}:`, error);
+          // Fallback to original stats
+          accountsWithStats.push({
+            ...account,
+            filteredTotalVideos: account.totalVideos,
+            filteredTotalViews: account.totalViews,
+            filteredTotalLikes: account.totalLikes,
+            filteredTotalComments: account.totalComments
+          });
+        }
+      }
+
+      console.log(`✅ Calculated filtered stats for ${accountsWithStats.length} accounts`);
+      setFilteredAccounts(accountsWithStats);
+    };
+
+    calculateFilteredStats();
+  }, [accounts, currentOrgId, currentProjectId, dateFilter, viewMode]);
+
+  // Load videos when account is selected or date filter changes
   useEffect(() => {
     const loadVideos = async () => {
       if (selectedAccount && currentOrgId && currentProjectId) {
@@ -165,7 +259,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         );
         setActiveRulesCount(accountRules.length);
         
-        const filteredVideos = await RulesService.filterVideosByRules(
+        const rulesFilteredVideos = await RulesService.filterVideosByRules(
           currentOrgId,
           currentProjectId,
           selectedAccount.id,
@@ -173,12 +267,57 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
           videos
         );
         
-        console.log(`✅ Filtered: ${filteredVideos.length}/${videos.length} videos match rules (${accountRules.length} rules active)`);
-        setAccountVideos(filteredVideos);
+        console.log(`✅ Rules filtered: ${rulesFilteredVideos.length}/${videos.length} videos match rules (${accountRules.length} rules active)`);
+        
+        // Apply date filtering on top of rules filtering
+        const videoSubmissions: VideoSubmission[] = rulesFilteredVideos.map(video => ({
+          id: video.id || video.videoId || '',
+          url: video.url || '',
+          platform: selectedAccount.platform,
+          thumbnail: video.thumbnail || '',
+          title: video.caption || 'No caption',
+          uploader: selectedAccount.displayName || selectedAccount.username,
+          uploaderHandle: selectedAccount.username,
+          status: 'approved' as const,
+          views: video.viewsCount || video.views || 0,
+          likes: video.likesCount || video.likes || 0,
+          comments: video.commentsCount || video.comments || 0,
+          shares: video.sharesCount || video.shares || 0,
+          dateSubmitted: video.uploadDate || new Date(),
+          uploadDate: video.uploadDate || new Date(),
+          snapshots: []
+        }));
+        
+        const dateFilteredSubmissions = DateFilterService.filterVideosByDateRange(
+          videoSubmissions,
+          dateFilter,
+          undefined
+        );
+        
+        // Convert back to AccountVideo
+        const finalFilteredVideos: AccountVideo[] = dateFilteredSubmissions.map(sub => {
+          const originalVideo = rulesFilteredVideos.find(v => (v.id || v.videoId) === sub.id);
+          return originalVideo || {
+            id: sub.id,
+            videoId: sub.id,
+            url: sub.url,
+            thumbnail: sub.thumbnail,
+            caption: sub.title,
+            viewsCount: sub.views,
+            likesCount: sub.likes,
+            commentsCount: sub.comments,
+            sharesCount: sub.shares,
+            uploadDate: sub.uploadDate,
+            timestamp: sub.uploadDate
+          } as AccountVideo;
+        });
+        
+        console.log(`✅ Date + Rules filtered: ${finalFilteredVideos.length}/${videos.length} videos (${accountRules.length} rules, ${dateFilter} date range)`);
+        setAccountVideos(finalFilteredVideos);
         setViewMode('details');
         onViewModeChange('details');
         
-        // Reset pagination when loading new account
+        // Reset pagination when loading new account or filter changes
         setCurrentPage(1);
         
         // Save selected account ID to localStorage for persistence
@@ -194,7 +333,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     };
 
     loadVideos();
-  }, [selectedAccount, currentOrgId, currentProjectId, onViewModeChange]);
+  }, [selectedAccount, currentOrgId, currentProjectId, onViewModeChange, dateFilter]);
 
   const handleSyncAccount = useCallback(async (accountId: string) => {
     if (!currentOrgId || !currentProjectId || !user) return;
@@ -443,7 +582,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-zinc-900/60 divide-y divide-gray-200 dark:divide-white/5">
-                  {accounts
+                  {(filteredAccounts.length > 0 ? filteredAccounts : accounts)
                     .filter(account => 
                       searchQuery === '' || 
                       account.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -510,22 +649,22 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
 
                         {/* Posts Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatNumber(account.totalVideos)}
+                          {formatNumber('filteredTotalVideos' in account ? account.filteredTotalVideos : account.totalVideos)}
                         </td>
 
                         {/* Views Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white dark:text-white">
-                          {formatNumber(account.totalViews)}
+                          {formatNumber('filteredTotalViews' in account ? account.filteredTotalViews : account.totalViews)}
                         </td>
 
                         {/* Likes Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatNumber(account.totalLikes)}
+                          {formatNumber('filteredTotalLikes' in account ? account.filteredTotalLikes : account.totalLikes)}
                         </td>
 
                         {/* Comments Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatNumber(account.totalComments)}
+                          {formatNumber('filteredTotalComments' in account ? account.filteredTotalComments : account.totalComments)}
                         </td>
 
                         {/* Actions Column */}
@@ -649,8 +788,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
 
             {/* KPI Cards */}
               {(() => {
-              // First convert AccountVideo[] to VideoSubmission[]
-              const allVideoSubmissions: VideoSubmission[] = accountVideos.map(video => ({
+              // Convert AccountVideo[] to VideoSubmission[]
+              // accountVideos is already filtered by both rules AND date
+              const filteredVideoSubmissions: VideoSubmission[] = accountVideos.map(video => ({
                 id: video.id || video.videoId || '',
                 url: video.url || '',
                 platform: selectedAccount.platform,
@@ -668,14 +808,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                 snapshots: []
               }));
 
-              // Then filter by date
-              const filteredVideoSubmissions = DateFilterService.filterVideosByDateRange(
-                allVideoSubmissions,
-                dateFilter,
-                undefined
-              );
-
-                                  return (
+              return (
                 <div className="mb-6">
                   <KPICards 
                     submissions={filteredVideoSubmissions}
@@ -683,8 +816,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                     dateFilter={dateFilter}
                     timePeriod="days"
                   />
-                      </div>
-                );
+                </div>
+              );
               })()}
 
             {/* Videos Table */}
