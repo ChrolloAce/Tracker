@@ -56,7 +56,7 @@ const RaceChartsPage: React.FC = () => {
               shares: video.shares || 0,
               dateSubmitted: new Date(),
               uploadDate: video.uploadDate || new Date(),
-              snapshots: video.snapshots || []
+              snapshots: [] // AccountVideo doesn't have snapshots
             });
           });
         }

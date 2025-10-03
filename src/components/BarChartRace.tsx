@@ -11,6 +11,8 @@ interface BarChartRaceProps {
   metric: 'views' | 'engagement' | 'videos';
 }
 
+type RaceEntry = PlatformEntry | AccountEntry;
+
 interface PlatformEntry {
   id: string;
   name: string;
@@ -26,8 +28,6 @@ interface AccountEntry {
   color: string;
   profilePicture?: string;
 }
-
-type RaceEntry = PlatformEntry | AccountEntry;
 
 const PLATFORM_COLORS = {
   instagram: '#E4405F',
