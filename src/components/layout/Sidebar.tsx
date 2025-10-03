@@ -9,7 +9,8 @@ import {
   Eye,
   Link,
   Clock,
-  Filter
+  Filter,
+  Trophy
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '../../contexts/AuthContext';
@@ -71,6 +72,13 @@ const Sidebar: React.FC<SidebarProps> = ({
       icon: Filter,
       isActive: activeTab === 'rules',
       onClick: () => onTabChange?.('rules'),
+    },
+    {
+      id: 'competition',
+      label: 'Competition',
+      icon: Trophy,
+      isActive: activeTab === 'competition',
+      onClick: () => onTabChange?.('competition'),
     },
     {
       id: 'creators',
