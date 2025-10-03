@@ -6,7 +6,6 @@ import ProjectService from '../services/ProjectService';
 import FirestoreDataService from '../services/FirestoreDataService';
 import blackLogo from './blacklogo.png';
 import { clsx } from 'clsx';
-import { Project } from '../types/projects';
 
 interface OnboardingData {
   userName: string;
