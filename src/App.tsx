@@ -59,7 +59,11 @@ function App() {
   const [selectedVideoForAnalytics, setSelectedVideoForAnalytics] = useState<VideoSubmission | null>(null);
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    // Restore active tab from localStorage on mount
+    const savedTab = localStorage.getItem('activeTab');
+    return savedTab || 'dashboard';
+  });
   const [isLoadingData, setIsLoadingData] = useState(true);
   
   // Accounts page state
@@ -78,6 +82,11 @@ function App() {
   
   // Tracked Links search state
   const [linksSearchQuery, setLinksSearchQuery] = useState('');
+
+  // Save active tab to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('activeTab', activeTab);
+  }, [activeTab]);
 
   // Load data from Firestore on app initialization and when project changes
   useEffect(() => {

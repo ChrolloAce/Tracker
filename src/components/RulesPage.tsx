@@ -13,7 +13,7 @@ export interface RulesPageRef {
   openCreateModal: () => void;
 }
 
-const RulesPage = forwardRef<RulesPageRef, {}>((props, ref) => {
+const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
   const { currentOrgId, currentProjectId, user } = useAuth();
   const [rules, setRules] = useState<TrackingRule[]>([]);
   const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
@@ -26,11 +26,6 @@ const RulesPage = forwardRef<RulesPageRef, {}>((props, ref) => {
   const [conditions, setConditions] = useState<RuleCondition[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [isActive, setIsActive] = useState(true);
-
-  // Expose openCreateModal to parent component
-  useImperativeHandle(ref, () => ({
-    openCreateModal: handleOpenCreate
-  }), [handleOpenCreate]);
 
   // Load rules and accounts
   useEffect(() => {
@@ -68,6 +63,11 @@ const RulesPage = forwardRef<RulesPageRef, {}>((props, ref) => {
     setIsActive(true);
     setIsCreateModalOpen(true);
   }, []);
+
+  // Expose openCreateModal to parent component
+  useImperativeHandle(ref, () => ({
+    openCreateModal: handleOpenCreate
+  }), [handleOpenCreate]);
 
   const handleOpenEdit = useCallback((rule: TrackingRule) => {
     setEditingRule(rule);
