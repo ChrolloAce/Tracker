@@ -37,7 +37,7 @@ interface DateRange {
 
 function DashboardPage() {
   // Get authentication state, current organization, and current project
-  const { user, loading, currentOrgId, currentProjectId } = useAuth();
+  const { user, currentOrgId, currentProjectId } = useAuth();
 
 
   // State

@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import OrganizationService from '../services/OrganizationService';
 import ProjectService from '../services/ProjectService';
 import FirestoreDataService from '../services/FirestoreDataService';
-import blackLogo from './blacklogo.png';
+import blackLogo from '../components/blacklogo.png';
 import { clsx } from 'clsx';
 
 interface OnboardingData {

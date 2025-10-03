@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Mail, Lock, Eye, EyeOff, Link2, Slack, Chrome } from 'lucide-react';
-import blackLogo from './blacklogo.png';
+import blackLogo from '../components/blacklogo.png';
 
 const LoginPage: React.FC = () => {
   const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TrendingUp, BookOpen, Users, Star, BarChart3, Eye } from 'lucide-react';
-import blackLogo from './blacklogo.png';
+import blackLogo from '../components/blacklogo.png';
 import dashboardImg from '/dashboard.png';
 
 const LandingPage: React.FC = () => {
