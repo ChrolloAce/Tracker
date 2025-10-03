@@ -12,7 +12,7 @@ export interface VideoSnapshot {
 export interface VideoSubmission {
   id: string;
   url: string; // Renamed from instagramUrl to support both platforms
-  platform: 'instagram' | 'tiktok' | 'youtube';
+  platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter';
   thumbnail: string;
   title: string;
   caption?: string; // Video description/caption for rules filtering

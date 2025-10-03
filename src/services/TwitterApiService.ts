@@ -1,31 +1,5 @@
 import { AccountVideo } from '../types/accounts';
 
-interface ApifyTweetData {
-  id?: string;
-  url?: string;
-  text?: string;
-  author?: {
-    userName?: string;
-    name?: string;
-    profilePicUrl?: string;
-    followers?: number;
-    following?: number;
-    isVerified?: boolean;
-  };
-  createdAt?: string;
-  retweets?: number;
-  likes?: number;
-  replies?: number;
-  views?: number;
-  media?: Array<{
-    type?: string;
-    url?: string;
-    thumbnailUrl?: string;
-  }>;
-  hashtags?: string[];
-  mentions?: string[];
-}
-
 interface ApifyRunResponse {
   data: {
     id: string;

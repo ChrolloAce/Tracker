@@ -2,7 +2,7 @@ import { Timestamp } from 'firebase/firestore';
 
 // ==================== ENUMS & TYPES ====================
 
-export type Platform = 'instagram' | 'tiktok' | 'youtube';
+export type Platform = 'instagram' | 'tiktok' | 'youtube' | 'twitter';
 export type Role = 'owner' | 'admin' | 'member';
 export type MemberStatus = 'active' | 'invited' | 'removed';
 export type VideoPlatform = Platform | 'file' | 'other';
