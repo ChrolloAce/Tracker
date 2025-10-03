@@ -1,10 +1,10 @@
 import { useState, useEffect, forwardRef, useImperativeHandle, useMemo } from 'react';
-import { Link as LinkIcon, Plus, Copy, ExternalLink, Trash2, BarChart, QrCode } from 'lucide-react';
+import { Link as LinkIcon, Plus, Copy, ExternalLink, Trash2, BarChart, QrCode, ArrowUp, ArrowDown } from 'lucide-react';
 import { TrackedLink, TrackedAccount } from '../types/firestore';
 import FirestoreDataService from '../services/FirestoreDataService';
 import CreateLinkModal from './CreateLinkModal';
 import LinkAnalyticsModal from './LinkAnalyticsModal';
-import DateRangeFilter, { DateFilterType } from './DateRangeFilter';
+import { DateFilterType } from './DateRangeFilter';
 import { useAuth } from '../contexts/AuthContext';
 import { clsx } from 'clsx';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
@@ -19,9 +19,11 @@ export interface TrackedLinksPageRef {
 interface TrackedLinksPageProps {
   searchQuery: string;
   linkClicks?: LinkClick[];
+  dateFilter: DateFilterType;
+  customDateRange?: { startDate: Date; endDate: Date };
 }
 
-const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(({ searchQuery, linkClicks = [] }, ref) => {
+const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(({ searchQuery, linkClicks = [], dateFilter, customDateRange }, ref) => {
   const { currentOrgId, currentProjectId, user } = useAuth();
   const [links, setLinks] = useState<TrackedLink[]>([]);
   const [accounts, setAccounts] = useState<Map<string, TrackedAccount>>(new Map());
@@ -30,8 +32,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [dateFilter, setDateFilter] = useState<DateFilterType>('last30days');
-  const [customDateRange, setCustomDateRange] = useState<{ startDate: Date; endDate: Date } | undefined>();
+  const [sortField, setSortField] = useState<'createdAt' | 'totalClicks' | 'uniqueClicks' | 'title'>('createdAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   
   // Expose openCreateModal to parent component
   useImperativeHandle(ref, () => ({
@@ -55,10 +57,10 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       loadLinks();
       loadAccounts();
       
-      // Set up auto-refresh every 10 seconds to update click counts
+      // Set up auto-refresh every 60 seconds to update click counts (less aggressive)
       const interval = setInterval(() => {
         loadLinks();
-      }, 10000);
+      }, 60000);
       
       return () => clearInterval(interval);
     }
@@ -166,11 +168,44 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     link.shortCode.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Sorted links
+  const sortedLinks = [...filteredLinks].sort((a, b) => {
+    let aValue: any;
+    let bValue: any;
+    
+    switch (sortField) {
+      case 'createdAt':
+        aValue = a.createdAt?.toDate?.()?.getTime() || 0;
+        bValue = b.createdAt?.toDate?.()?.getTime() || 0;
+        break;
+      case 'totalClicks':
+        aValue = a.totalClicks || 0;
+        bValue = b.totalClicks || 0;
+        break;
+      case 'uniqueClicks':
+        aValue = a.uniqueClicks || 0;
+        bValue = b.uniqueClicks || 0;
+        break;
+      case 'title':
+        aValue = a.title.toLowerCase();
+        bValue = b.title.toLowerCase();
+        break;
+      default:
+        return 0;
+    }
+    
+    if (sortDirection === 'asc') {
+      return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+    } else {
+      return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+    }
+  });
+
   // Pagination calculations
-  const totalPages = Math.ceil(filteredLinks.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedLinks.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedLinks = filteredLinks.slice(startIndex, endIndex);
+  const paginatedLinks = sortedLinks.slice(startIndex, endIndex);
 
   // Reset to page 1 when search changes
   useEffect(() => {
@@ -185,6 +220,17 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
   const handleItemsPerPageChange = (newItemsPerPage: number) => {
     setItemsPerPage(newItemsPerPage);
     setCurrentPage(1);
+  };
+
+  const handleSort = (field: 'createdAt' | 'totalClicks' | 'uniqueClicks' | 'title') => {
+    if (sortField === field) {
+      // Toggle direction if same field
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New field, default to desc for numbers, asc for text
+      setSortField(field);
+      setSortDirection(field === 'title' ? 'asc' : 'desc');
+    }
   };
 
   // Filter clicks by date range
@@ -302,20 +348,6 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
 
   return (
     <div className="space-y-6">
-
-      {/* Date Filter */}
-      <div className="flex justify-end">
-        <DateRangeFilter
-          selectedFilter={dateFilter}
-          customRange={customDateRange}
-          onFilterChange={(filter, range) => {
-            setDateFilter(filter);
-            if (range) {
-              setCustomDateRange(range);
-            }
-          }}
-        />
-      </div>
 
       {/* Stats Overview - Dashboard Style */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -488,17 +520,41 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-zinc-900/40 border-b border-gray-200 dark:border-white/5">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
-                      Link Details
+                    <th 
+                      className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-zinc-300 transition-colors"
+                      onClick={() => handleSort('title')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Link Details
+                        {sortField === 'title' && (
+                          sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                        )}
+                      </div>
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
                       Short URL
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
-                      Clicks
+                    <th 
+                      className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-zinc-300 transition-colors"
+                      onClick={() => handleSort('totalClicks')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Clicks
+                        {sortField === 'totalClicks' && (
+                          sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                        )}
+                      </div>
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
-                      Created
+                    <th 
+                      className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-zinc-300 transition-colors"
+                      onClick={() => handleSort('createdAt')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Created
+                        {sortField === 'createdAt' && (
+                          sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                        )}
+                      </div>
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
                       Actions

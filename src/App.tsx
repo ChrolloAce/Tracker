@@ -82,6 +82,8 @@ function App() {
   
   // Tracked Links search state
   const [linksSearchQuery, setLinksSearchQuery] = useState('');
+  const [linksDateFilter, setLinksDateFilter] = useState<DateFilterType>('last30days');
+  const [linksCustomDateRange, setLinksCustomDateRange] = useState<DateRange | undefined>();
 
   // Save active tab to localStorage whenever it changes
   useEffect(() => {
@@ -584,6 +586,17 @@ function App() {
                   className="pl-10 pr-4 py-2 w-80 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white"
                 />
               </div>
+              
+              <DateRangeFilter
+                selectedFilter={linksDateFilter}
+                customRange={linksCustomDateRange}
+                onFilterChange={(filter, range) => {
+                  setLinksDateFilter(filter);
+                  if (range) {
+                    setLinksCustomDateRange(range);
+                  }
+                }}
+              />
             </div>
           )}
           {activeTab === 'rules' && (
@@ -664,7 +677,15 @@ function App() {
           {activeTab === 'cron' && <CronManagementPage />}
 
           {/* Tracked Links Tab */}
-          {activeTab === 'analytics' && <TrackedLinksPage ref={trackedLinksPageRef} searchQuery={linksSearchQuery} linkClicks={linkClicks} />}
+          {activeTab === 'analytics' && (
+            <TrackedLinksPage 
+              ref={trackedLinksPageRef} 
+              searchQuery={linksSearchQuery} 
+              linkClicks={linkClicks}
+              dateFilter={linksDateFilter}
+              customDateRange={linksCustomDateRange}
+            />
+          )}
 
           {/* Creators Tab - Placeholder */}
           {activeTab === 'creators' && (
