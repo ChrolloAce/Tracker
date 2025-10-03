@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { ChevronLeft, Globe, Smartphone, Package, X, ShoppingBag, Plus, Instagram } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import OrganizationService from '../services/OrganizationService';
-import AccountTrackingServiceFirebase from '../services/AccountTrackingServiceFirebase';
+import ProjectService from '../services/ProjectService';
+import FirestoreDataService from '../services/FirestoreDataService';
 import blackLogo from './blacklogo.png';
 import { clsx } from 'clsx';
+import { Project } from '../types/projects';
 
 interface OnboardingData {
   userName: string;
@@ -145,43 +147,47 @@ const UserOnboarding: React.FC = () => {
       
       const orgId = await OrganizationService.createOrganization(
         user.uid,
-        orgName,
-        orgSlug,
-        null,
-        data.companyWebsite || undefined
+        {
+          name: orgName,
+          slug: orgSlug,
+          website: data.companyWebsite || undefined
+        }
       );
 
-      // Get the default project ID (created automatically with org)
-      const projects = await OrganizationService.getOrganizationProjects(orgId);
-      const defaultProject = projects.find(p => p.name === 'Default Project');
-      
-      if (!defaultProject) {
-        throw new Error('Default project not found');
-      }
+      // Create default project
+      const projectId = await ProjectService.createProject(orgId, user.uid, {
+        name: 'Default Project',
+        description: 'Your first project',
+        color: '#3B82F6'
+      });
 
       // Add social accounts to track
       for (const account of data.socialAccounts) {
         const username = extractUsernameFromUrl(account.url);
         if (username) {
-          await AccountTrackingServiceFirebase.addTrackedAccount(
+          await FirestoreDataService.addTrackedAccount(
             orgId,
-            defaultProject.id,
-            username,
-            account.platform,
-            account.url
+            projectId,
+            user.uid,
+            {
+              username,
+              platform: account.platform,
+              accountType: 'my',
+              isActive: true,
+              displayName: username,
+              profilePicture: '',
+              followerCount: 0,
+              followingCount: 0,
+              postCount: 0,
+              bio: '',
+              isVerified: false
+            }
           );
         }
       }
 
-      // Invite team members (if any)
-      for (const email of data.teamEmails) {
-        await OrganizationService.inviteTeamMember(
-          orgId,
-          email,
-          'member',
-          user.email || ''
-        );
-      }
+      // Note: Team invitations would require email sending functionality
+      // For now, we'll skip this feature
 
       // Force reload to update context
       window.location.reload();

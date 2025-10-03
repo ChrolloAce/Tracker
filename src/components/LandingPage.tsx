@@ -144,19 +144,19 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                 color: 'blue',
               },
               {
-                icon: LinkIcon,
+                icon: BarChart3,
                 title: 'Link Analytics',
                 description: 'Create branded short links and track every click with detailed analytics.',
                 color: 'purple',
               },
               {
-                icon: Filter,
+                icon: TrendingUp,
                 title: 'Smart Rules',
                 description: 'Set up automated filters to organize and prioritize your content.',
                 color: 'orange',
               },
               {
-                icon: TrendingUp,
+                icon: BookOpen,
                 title: 'Real-Time Insights',
                 description: 'Get instant updates on your content performance across all platforms.',
                 color: 'green',
