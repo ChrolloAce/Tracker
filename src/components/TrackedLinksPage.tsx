@@ -1,5 +1,5 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { Link as LinkIcon, Plus, Copy, ExternalLink, Trash2, BarChart, QrCode, Search, RefreshCw } from 'lucide-react';
+import { Link as LinkIcon, Plus, Copy, ExternalLink, Trash2, BarChart, QrCode } from 'lucide-react';
 import { TrackedLink, TrackedAccount } from '../types/firestore';
 import FirestoreDataService from '../services/FirestoreDataService';
 import CreateLinkModal from './CreateLinkModal';
@@ -13,16 +13,18 @@ export interface TrackedLinksPageRef {
   openCreateModal: () => void;
 }
 
-const TrackedLinksPage = forwardRef<TrackedLinksPageRef, {}>((_props, ref) => {
+interface TrackedLinksPageProps {
+  searchQuery: string;
+}
+
+const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(({ searchQuery }, ref) => {
   const { currentOrgId, currentProjectId, user } = useAuth();
   const [links, setLinks] = useState<TrackedLink[]>([]);
   const [accounts, setAccounts] = useState<Map<string, TrackedAccount>>(new Map());
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedLink, setSelectedLink] = useState<TrackedLink | null>(null);
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   
   // Expose openCreateModal to parent component
@@ -49,7 +51,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, {}>((_props, ref) => {
       
       // Set up auto-refresh every 10 seconds to update click counts
       const interval = setInterval(() => {
-        loadLinks(false); // Don't show loading on auto-refresh
+        loadLinks();
       }, 10000);
       
       return () => clearInterval(interval);
@@ -67,16 +69,14 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, {}>((_props, ref) => {
     }
   };
 
-  const loadLinks = async (showRefreshIndicator = true) => {
+  const loadLinks = async () => {
     if (!currentOrgId || !currentProjectId) {
       return;
     }
     
     // Only show loading skeleton on initial load
-    if (showRefreshIndicator && links.length === 0) {
+    if (links.length === 0) {
       setLoading(true);
-    } else if (showRefreshIndicator) {
-      setIsRefreshing(true);
     }
     
     try {
@@ -89,7 +89,6 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, {}>((_props, ref) => {
     } catch (error) {
       console.error('❌ Failed to load links:', error);
     } finally {
-      if (showRefreshIndicator) setIsRefreshing(false);
       setLoading(false);
     }
   };
@@ -197,46 +196,6 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, {}>((_props, ref) => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Tracked Links</h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Create short links and track their performance
-          </p>
-        </div>
-      </div>
-
-      {/* Controls Bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search links..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 w-80 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white"
-            />
-          </div>
-          <button
-            onClick={() => loadLinks(true)}
-            disabled={isRefreshing}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
-          </button>
-        </div>
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Create Link
-        </button>
-      </div>
 
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

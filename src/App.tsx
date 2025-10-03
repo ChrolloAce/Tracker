@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { clsx } from 'clsx';
-import { ArrowLeft, ChevronDown } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Search } from 'lucide-react';
 import Sidebar from './components/layout/Sidebar';
 import { VideoSubmissionsTable } from './components/VideoSubmissionsTable';
 import { VideoSubmissionModal } from './components/VideoSubmissionModal';
@@ -74,6 +74,9 @@ function App() {
   
   // Dashboard accounts filter state
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
+  
+  // Tracked Links search state
+  const [linksSearchQuery, setLinksSearchQuery] = useState('');
 
   // Load data from Firestore on app initialization and when project changes
   useEffect(() => {
@@ -485,16 +488,17 @@ function App() {
                 {activeTab === 'cron' && 'Cron Jobs'}
                 {activeTab === 'settings' && 'Settings'}
               </h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {activeTab === 'dashboard' && 'Track and analyze your video performance'}
-                {activeTab === 'accounts' && 'Monitor entire Instagram and TikTok accounts'}
-                {activeTab === 'contracts' && 'Manage brand deals and sponsorships'}
-                {activeTab === 'subscription' && 'Choose the perfect plan to scale your tracking'}
-                {activeTab === 'analytics' && 'Track and analyze your shared links'}
-                {activeTab === 'creators' && 'Manage and discover content creators'}
-                {activeTab === 'cron' && 'Manage automated video refreshes'}
-                {activeTab === 'settings' && 'Configure your preferences'}
-              </p>
+              {activeTab !== 'analytics' && (
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  {activeTab === 'dashboard' && 'Track and analyze your video performance'}
+                  {activeTab === 'accounts' && 'Monitor entire Instagram and TikTok accounts'}
+                  {activeTab === 'contracts' && 'Manage brand deals and sponsorships'}
+                  {activeTab === 'subscription' && 'Choose the perfect plan to scale your tracking'}
+                  {activeTab === 'creators' && 'Manage and discover content creators'}
+                  {activeTab === 'cron' && 'Manage automated video refreshes'}
+                  {activeTab === 'settings' && 'Configure your preferences'}
+                </p>
+              )}
             </div>
           </div>
           {activeTab === 'dashboard' && (
@@ -554,6 +558,20 @@ function App() {
                 selectedFilter={accountsDateFilter}
                 onFilterChange={(filter) => setAccountsDateFilter(filter)}
               />
+            </div>
+          )}
+          {activeTab === 'analytics' && (
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Search links..."
+                  value={linksSearchQuery}
+                  onChange={(e) => setLinksSearchQuery(e.target.value)}
+                  className="pl-10 pr-4 py-2 w-80 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white"
+                />
+              </div>
             </div>
           )}
         </div>
@@ -621,7 +639,7 @@ function App() {
           {activeTab === 'cron' && <CronManagementPage />}
 
           {/* Tracked Links Tab */}
-          {activeTab === 'analytics' && <TrackedLinksPage ref={trackedLinksPageRef} />}
+          {activeTab === 'analytics' && <TrackedLinksPage ref={trackedLinksPageRef} searchQuery={linksSearchQuery} />}
 
           {/* Creators Tab - Placeholder */}
           {activeTab === 'creators' && (
