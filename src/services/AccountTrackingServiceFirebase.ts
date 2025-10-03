@@ -3,6 +3,7 @@ import FirestoreDataService from './FirestoreDataService';
 import FirebaseStorageService from './FirebaseStorageService';
 import OutlierDetectionService from './OutlierDetectionService';
 import YoutubeAccountService from './YoutubeAccountService';
+import TwitterApiService from './TwitterApiService';
 import RulesService from './RulesService';
 import { Timestamp } from 'firebase/firestore';
 
@@ -21,7 +22,7 @@ export class AccountTrackingServiceFirebase {
   /**
    * Get all tracked accounts for a project
    */
-  static async getTrackedAccounts(orgId: string, projectId: string, platform?: 'instagram' | 'tiktok' | 'youtube'): Promise<TrackedAccount[]> {
+  static async getTrackedAccounts(orgId: string, projectId: string, platform?: 'instagram' | 'tiktok' | 'youtube' | 'twitter'): Promise<TrackedAccount[]> {
     try {
       const firestoreAccounts = await FirestoreDataService.getTrackedAccounts(orgId, projectId, platform);
       
@@ -29,7 +30,7 @@ export class AccountTrackingServiceFirebase {
       return firestoreAccounts.map(acc => ({
         id: acc.id,
         username: acc.username,
-        platform: acc.platform as 'instagram' | 'tiktok' | 'youtube',
+        platform: acc.platform as 'instagram' | 'tiktok' | 'youtube' | 'twitter',
         accountType: acc.accountType as 'my' | 'competitor',
         displayName: acc.displayName || acc.username,
         profilePicture: acc.profilePicture || '',
@@ -61,7 +62,7 @@ export class AccountTrackingServiceFirebase {
     projectId: string,
     userId: string,
     username: string,
-    platform: 'instagram' | 'tiktok' | 'youtube',
+    platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter',
     accountType: 'my' | 'competitor' = 'my'
   ): Promise<string> {
     try {
@@ -71,6 +72,8 @@ export class AccountTrackingServiceFirebase {
       let profileData;
       if (platform === 'youtube') {
         profileData = await this.fetchYoutubeProfile(orgId, username);
+      } else if (platform === 'twitter') {
+        profileData = await this.fetchTwitterProfile(orgId, username);
       } else {
         profileData = await this.fetchAccountProfile(orgId, username, platform);
       }
@@ -144,6 +147,49 @@ export class AccountTrackingServiceFirebase {
         bio: '',
         isVerified: false,
         channelId: undefined,
+      };
+    }
+  }
+
+  /**
+   * Fetch Twitter profile data
+   */
+  private static async fetchTwitterProfile(orgId: string, username: string) {
+    try {
+      console.log(`🔄 Fetching Twitter profile for @${username}...`);
+      
+      const profile = await TwitterApiService.getProfileInfo(username);
+      
+      // Download and upload avatar to Firebase Storage if present
+      let profilePicture = '';
+      if (profile.profilePicture) {
+        profilePicture = await FirebaseStorageService.downloadAndUpload(
+          orgId,
+          profile.profilePicture,
+          `twitter_${username}`,
+          'profile'
+        );
+      }
+      
+      return {
+        displayName: profile.displayName,
+        profilePicture,
+        followerCount: profile.followerCount,
+        followingCount: profile.followingCount,
+        postCount: 0, // Twitter doesn't provide post count easily
+        bio: '', // Not available from scraper
+        isVerified: profile.isVerified,
+      };
+    } catch (error) {
+      console.error('❌ Failed to fetch Twitter profile:', error);
+      return {
+        displayName: username,
+        profilePicture: '',
+        followerCount: 0,
+        followingCount: 0,
+        postCount: 0,
+        bio: '',
+        isVerified: false,
       };
     }
   }
@@ -390,6 +436,8 @@ export class AccountTrackingServiceFirebase {
         videos = await this.syncInstagramVideos(orgId, account);
       } else if (account.platform === 'tiktok') {
         videos = await this.syncTikTokVideos(orgId, account);
+      } else if (account.platform === 'twitter') {
+        videos = await this.syncTwitterTweets(orgId, account);
       } else {
         // YouTube
         videos = await this.syncYoutubeShorts(orgId, account);
@@ -662,6 +710,49 @@ export class AccountTrackingServiceFirebase {
       return videos;
     } catch (error) {
       console.error('❌ Failed to sync YouTube Shorts:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync Twitter tweets for an account
+   */
+  private static async syncTwitterTweets(orgId: string, account: TrackedAccount): Promise<AccountVideo[]> {
+    console.log(`🔄 Fetching tweets for @${account.username}...`);
+    
+    try {
+      const tweets = await TwitterApiService.fetchTweets(account.username, 100);
+
+      // Upload thumbnails to Firebase Storage if they exist
+      const videos: AccountVideo[] = [];
+      for (const tweet of tweets) {
+        let uploadedThumbnail = tweet.thumbnail;
+        if (tweet.thumbnail) {
+          try {
+            uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
+              orgId,
+              tweet.thumbnail,
+              `twitter_${tweet.videoId}`,
+              'thumbnail'
+            );
+          } catch (error) {
+            console.warn(`⚠️ Failed to upload thumbnail for tweet ${tweet.videoId}, using original URL`);
+            // Keep original URL if upload fails
+          }
+        }
+
+        videos.push({
+          ...tweet,
+          id: `${account.id}_${tweet.videoId}`,
+          accountId: account.id,
+          thumbnail: uploadedThumbnail,
+        });
+      }
+
+      console.log(`✅ Fetched ${videos.length} tweets`);
+      return videos;
+    } catch (error) {
+      console.error('❌ Failed to sync Twitter tweets:', error);
       throw error;
     }
   }

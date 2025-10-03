@@ -85,7 +85,7 @@ class RulesService {
     orgId: string,
     projectId: string,
     accountId: string,
-    platform: 'instagram' | 'tiktok' | 'youtube'
+    platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter'
   ): Promise<TrackingRule[]> {
     const allRules = await this.getRules(orgId, projectId);
     
@@ -251,7 +251,7 @@ class RulesService {
     orgId: string,
     projectId: string,
     accountId: string,
-    platform: 'instagram' | 'tiktok' | 'youtube',
+    platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter',
     videos: AccountVideo[]
   ): Promise<AccountVideo[]> {
     const rules = await this.getRulesForAccount(orgId, projectId, accountId, platform);

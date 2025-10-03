@@ -227,7 +227,7 @@ class FirestoreDataService {
       hashtags?: string[];
       mentions?: string[];
     }>,
-    platform?: 'instagram' | 'tiktok' | 'youtube'
+    platform?: 'instagram' | 'tiktok' | 'youtube' | 'twitter'
   ): Promise<void> {
     try {
       console.log(`💾 Syncing ${videos.length} videos to project ${projectId} for account ${accountId}`);

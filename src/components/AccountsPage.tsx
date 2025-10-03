@@ -42,7 +42,7 @@ import DateFilterService from '../services/DateFilterService';
 
 export interface AccountsPageProps {
   dateFilter: DateFilterType;
-  platformFilter: 'all' | 'instagram' | 'tiktok' | 'youtube';
+  platformFilter: 'all' | 'instagram' | 'tiktok' | 'youtube' | 'twitter';
   onViewModeChange: (mode: 'table' | 'details') => void;
 }
 
@@ -67,12 +67,12 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [activeRulesCount, setActiveRulesCount] = useState(0);
   const [viewMode, setViewMode] = useState<'table' | 'details'>('table');
   const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
-  const [selectedVideoForPlayer, setSelectedVideoForPlayer] = useState<{url: string; title: string; platform: 'instagram' | 'tiktok' | 'youtube' } | null>(null);
+  const [selectedVideoForPlayer, setSelectedVideoForPlayer] = useState<{url: string; title: string; platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter' } | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState<string | null>(null);
   const [isRefreshingProfile, setIsRefreshingProfile] = useState<string | null>(null);
   const [newAccountUsername, setNewAccountUsername] = useState('');
-  const [newAccountPlatform, setNewAccountPlatform] = useState<'instagram' | 'tiktok' | 'youtube'>('instagram');
+  const [newAccountPlatform, setNewAccountPlatform] = useState<'instagram' | 'tiktok' | 'youtube' | 'twitter'>('instagram');
   const [searchQuery, setSearchQuery] = useState('');
   const [syncError, setSyncError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1465,6 +1465,20 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                   >
                     <Play className="w-6 h-6" />
                     <span className="font-medium text-xs">YouTube</span>
+                  </button>
+                  <button
+                    onClick={() => setNewAccountPlatform('twitter')}
+                    className={clsx(
+                      'flex flex-col items-center justify-center space-y-2 py-4 px-3 rounded-xl border-2 transition-all duration-200',
+                      newAccountPlatform === 'twitter'
+                        ? 'border-blue-500 bg-blue-600 text-white shadow-md'
+                        : 'border-gray-700 dark:border-gray-700 hover:border-gray-600 dark:hover:border-gray-600 hover:bg-gray-800 dark:hover:bg-gray-800 text-gray-300'
+                    )}
+                  >
+                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                    <span className="font-medium text-xs">Twitter</span>
                   </button>
                 </div>
               </div>
