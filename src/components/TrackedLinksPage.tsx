@@ -197,54 +197,80 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
   return (
     <div className="space-y-6">
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-[#161616] rounded-lg p-4 border border-gray-100 dark:border-gray-800">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Total Links</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{links.length}</p>
+      {/* Stats Overview - Dashboard Style */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Total Clicks Card */}
+        <div className="bg-gradient-to-br from-blue-500/10 via-purple-500/5 to-transparent backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all duration-300 group">
+          <div className="flex items-start justify-between mb-4">
+            <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
+              <BarChart className="w-6 h-6 text-white" />
             </div>
-            <LinkIcon className="w-8 h-8 text-blue-500 opacity-20" />
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                <span className="text-xs text-gray-400">Live</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-400 mb-1">Total Clicks</p>
+            <p className="text-3xl font-bold text-white mb-2">
+              {formatNumber(links.reduce((sum, link) => sum + (link.totalClicks || 0), 0))}
+            </p>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-gray-500">All time clicks</span>
+            </div>
           </div>
         </div>
-        
-        <div className="bg-white dark:bg-[#161616] rounded-lg p-4 border border-gray-100 dark:border-gray-800">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Total Clicks</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {formatNumber(links.reduce((sum, link) => sum + (link.totalClicks || 0), 0))}
-              </p>
+
+        {/* Unique Clicks Card */}
+        <div className="bg-gradient-to-br from-purple-500/10 via-pink-500/5 to-transparent backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all duration-300 group">
+          <div className="flex items-start justify-between mb-4">
+            <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
+              <BarChart className="w-6 h-6 text-white" />
             </div>
-            <BarChart className="w-8 h-8 text-green-500 opacity-20" />
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                <span className="text-xs text-gray-400">Live</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-400 mb-1">Unique Clicks</p>
+            <p className="text-3xl font-bold text-white mb-2">
+              {formatNumber(links.reduce((sum, link) => sum + (link.uniqueClicks || 0), 0))}
+            </p>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-gray-500">Unique visitors</span>
+            </div>
           </div>
         </div>
-        
-        <div className="bg-white dark:bg-[#161616] rounded-lg p-4 border border-gray-100 dark:border-gray-800">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Unique Clicks</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {formatNumber(links.reduce((sum, link) => sum + (link.uniqueClicks || 0), 0))}
-              </p>
+
+        {/* Avg CTR Card */}
+        <div className="bg-gradient-to-br from-orange-500/10 via-yellow-500/5 to-transparent backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all duration-300 group">
+          <div className="flex items-start justify-between mb-4">
+            <div className="p-3 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
+              <BarChart className="w-6 h-6 text-white" />
             </div>
-            <BarChart className="w-8 h-8 text-purple-500 opacity-20" />
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                <span className="text-xs text-gray-400">Live</span>
+              </div>
+            </div>
           </div>
-        </div>
-        
-        <div className="bg-white dark:bg-[#161616] rounded-lg p-4 border border-gray-100 dark:border-gray-800">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Avg CTR</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {links.length > 0 
-                  ? `${((links.reduce((sum, link) => sum + link.uniqueClicks, 0) / links.length) * 0.1).toFixed(1)}%`
-                  : '0%'
-                }
-              </p>
+          <div>
+            <p className="text-sm font-medium text-gray-400 mb-1">Avg CTR</p>
+            <p className="text-3xl font-bold text-white mb-2">
+              {links.length > 0 
+                ? `${((links.reduce((sum, link) => sum + link.uniqueClicks, 0) / links.length) * 0.1).toFixed(1)}%`
+                : '0.0%'
+              }
+            </p>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-gray-500">Click-through rate</span>
             </div>
-            <BarChart className="w-8 h-8 text-orange-500 opacity-20" />
           </div>
         </div>
       </div>
