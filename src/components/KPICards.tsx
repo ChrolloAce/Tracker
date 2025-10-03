@@ -219,14 +219,40 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
           
           data.push({ value: pointValue, timestamp, previousValue });
         } else {
-          // "All time": show cumulative total of all videos that existed at this point
-          const videosAtThisTime = submissions.filter(v => {
-            const uploadDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
-            return uploadDate <= pointDate;
+          // Show per-day/per-hour values (NOT cumulative)
+          const nextPointDate = new Date(Date.now() - ((i - 1) * intervalMs));
+          
+          // Calculate metrics for videos in this specific time interval
+          let intervalValue = 0;
+          
+          submissions.forEach(video => {
+            const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
+            
+            if (video.snapshots && video.snapshots.length > 0) {
+              // Get snapshot at the start and end of this interval
+              const snapshotAtStart = video.snapshots
+                .filter(s => new Date(s.capturedAt) <= pointDate)
+                .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
+              
+              const snapshotAtEnd = video.snapshots
+                .filter(s => new Date(s.capturedAt) <= nextPointDate)
+                .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
+              
+              if (snapshotAtStart && snapshotAtEnd) {
+                // Calculate the delta for this interval
+                const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - (snapshotAtStart[metric] || 0));
+                intervalValue += delta;
+              } else if (snapshotAtEnd && uploadDate > pointDate && uploadDate <= nextPointDate) {
+                // Video was uploaded in this interval
+                intervalValue += snapshotAtEnd[metric] || 0;
+              }
+            } else if (uploadDate > pointDate && uploadDate <= nextPointDate) {
+              // Video was uploaded in this interval, no snapshots
+              intervalValue += video[metric] || 0;
+            }
           });
           
-          const cumulativeValue = videosAtThisTime.reduce((sum, v) => sum + (v[metric] || 0), 0);
-          data.push({ value: cumulativeValue, timestamp, previousValue });
+          data.push({ value: intervalValue, timestamp, previousValue });
         }
       }
       return data;
@@ -327,7 +353,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         accent: 'violet',
         period: periodText,
         sparklineData: (() => {
-          // Generate engagement rate sparkline data
+          // Generate engagement rate sparkline data (per-day, not cumulative)
           let numPoints = 30;
           let intervalMs = 24 * 60 * 60 * 1000; // 1 day
           
@@ -343,14 +369,47 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
           const data = [];
           for (let i = numPoints - 1; i >= 0; i--) {
             const pointDate = new Date(Date.now() - (i * intervalMs));
+            const nextPointDate = new Date(Date.now() - ((i - 1) * intervalMs));
             
-            // Calculate engagement rate for this time period
-            const videosInPeriod = submissions.filter(v => new Date(v.uploadDate) <= pointDate);
-            const totalViews = videosInPeriod.reduce((sum, v) => sum + (v.views || 0), 0);
-            const totalEngagement = videosInPeriod.reduce((sum, v) => 
-              sum + (v.likes || 0) + (v.comments || 0) + (v.shares || 0), 0
-            );
-            const rate = totalViews > 0 ? ((totalEngagement / totalViews) * 100) : 0;
+            // Calculate engagement rate for ONLY this specific day/period
+            let periodViews = 0;
+            let periodEngagement = 0;
+            
+            submissions.forEach(video => {
+              const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
+              
+              if (video.snapshots && video.snapshots.length > 0) {
+                // Get snapshots at start and end of interval
+                const snapshotAtStart = video.snapshots
+                  .filter(s => new Date(s.capturedAt) <= pointDate)
+                  .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
+                
+                const snapshotAtEnd = video.snapshots
+                  .filter(s => new Date(s.capturedAt) <= nextPointDate)
+                  .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
+                
+                if (snapshotAtStart && snapshotAtEnd) {
+                  // Calculate delta for this interval
+                  const viewsDelta = Math.max(0, (snapshotAtEnd.views || 0) - (snapshotAtStart.views || 0));
+                  const likesDelta = Math.max(0, (snapshotAtEnd.likes || 0) - (snapshotAtStart.likes || 0));
+                  const commentsDelta = Math.max(0, (snapshotAtEnd.comments || 0) - (snapshotAtStart.comments || 0));
+                  const sharesDelta = Math.max(0, (snapshotAtEnd.shares || 0) - (snapshotAtStart.shares || 0));
+                  
+                  periodViews += viewsDelta;
+                  periodEngagement += likesDelta + commentsDelta + sharesDelta;
+                } else if (snapshotAtEnd && uploadDate > pointDate && uploadDate <= nextPointDate) {
+                  // Video uploaded in this interval
+                  periodViews += snapshotAtEnd.views || 0;
+                  periodEngagement += (snapshotAtEnd.likes || 0) + (snapshotAtEnd.comments || 0) + (snapshotAtEnd.shares || 0);
+                }
+              } else if (uploadDate > pointDate && uploadDate <= nextPointDate) {
+                // Video uploaded in this interval, no snapshots
+                periodViews += video.views || 0;
+                periodEngagement += (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
+              }
+            });
+            
+            const rate = periodViews > 0 ? ((periodEngagement / periodViews) * 100) : 0;
             
             data.push({
               value: Number(rate.toFixed(1)),
