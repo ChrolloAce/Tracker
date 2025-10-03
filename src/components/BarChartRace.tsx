@@ -62,7 +62,7 @@ const BarChartRace: React.FC<BarChartRaceProps> = ({
   }, []);
 
   // Calculate data for each time period
-  const raceData = useMemo(() => {
+  const raceData = useMemo((): RaceEntry[][] => {
     return timePeriods.map((period) => {
       const periodEnd = new Date(period.date);
       periodEnd.setMonth(periodEnd.getMonth() + 1);
