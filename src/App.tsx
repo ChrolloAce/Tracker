@@ -20,10 +20,25 @@ function CreateProjectPageWrapper() {
   );
 }
 
+// Loading skeleton component
+function LoadingSkeleton() {
+  return (
+    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-16 h-16 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-white/60 text-sm">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const { user, loading, currentOrgId, currentProjectId } = useAuth();
 
-  if (loading) return null;
+  // Show loading skeleton while checking authentication
+  if (loading) {
+    return <LoadingSkeleton />;
+  }
 
   return (
     <Routes>
@@ -32,10 +47,6 @@ function App() {
         element={
           !user ? (
             <LandingPage />
-          ) : !currentOrgId ? (
-            <Navigate to="/onboarding" replace />
-          ) : !currentProjectId ? (
-            <Navigate to="/create-project" replace />
           ) : (
             <Navigate to="/dashboard" replace />
           )
@@ -44,7 +55,15 @@ function App() {
       
       <Route 
         path="/login" 
-        element={!user ? <LoginPage /> : <Navigate to="/dashboard" replace />} 
+        element={
+          loading ? (
+            <LoadingSkeleton />
+          ) : !user ? (
+            <LoginPage />
+          ) : (
+            <Navigate to="/dashboard" replace />
+          )
+        } 
       />
 
       <Route path="/l/:shortId" element={<LinkRedirect />} />
@@ -52,26 +71,40 @@ function App() {
       <Route 
         path="/onboarding" 
         element={
-          user && !currentOrgId ? <OnboardingPage /> : 
-          user && currentOrgId ? <Navigate to="/dashboard" replace /> : 
-          <Navigate to="/login" replace />
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : currentOrgId ? (
+            <Navigate to="/dashboard" replace />
+          ) : (
+            <OnboardingPage />
+          )
         } 
       />
 
       <Route 
         path="/create-organization" 
-        element={user ? <CreateOrganizationPage /> : <Navigate to="/login" replace />} 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : currentOrgId ? (
+            <Navigate to="/dashboard" replace />
+          ) : (
+            <CreateOrganizationPage />
+          )
+        } 
       />
 
       <Route 
         path="/create-project" 
         element={
-          user && currentOrgId ? (
-            <CreateProjectPageWrapper />
-          ) : user && !currentOrgId ? (
-            <Navigate to="/onboarding" replace />
-          ) : (
+          !user ? (
             <Navigate to="/login" replace />
+          ) : !currentOrgId ? (
+            <LoadingSkeleton />
+          ) : currentProjectId ? (
+            <Navigate to="/dashboard" replace />
+          ) : (
+            <CreateProjectPageWrapper />
           )
         } 
       />
@@ -79,10 +112,14 @@ function App() {
       <Route 
         path="/dashboard" 
         element={
-          user && currentOrgId && currentProjectId ? <DashboardPage /> :
-          user && currentOrgId && !currentProjectId ? <Navigate to="/create-project" replace /> :
-          user && !currentOrgId ? <Navigate to="/onboarding" replace /> :
-          <Navigate to="/login" replace />
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : currentOrgId && currentProjectId ? (
+            <DashboardPage />
+          ) : (
+            // Show loading while org/project are being created/loaded
+            <LoadingSkeleton />
+          )
         } 
       />
 
