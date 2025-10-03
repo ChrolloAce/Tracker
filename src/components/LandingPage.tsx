@@ -1,22 +1,44 @@
-import React from 'react';
-import { TrendingUp, BookOpen, Users, Star, BarChart3, Link as LinkIcon, Filter, Eye } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { TrendingUp, BookOpen, Users, Star, BarChart3, Link as LinkIcon, Filter, Eye, Heart, MessageCircle } from 'lucide-react';
+import blackLogo from './blacklogo.png';
 
 interface LandingPageProps {
   onGetStarted: () => void;
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
+  const [animatedViews, setAnimatedViews] = useState(124500);
+  const [animatedEngagement, setAnimatedEngagement] = useState(18.2);
+  const [animatedVideo1, setAnimatedVideo1] = useState(45200);
+  const [animatedVideo2, setAnimatedVideo2] = useState(32800);
+  const [animatedVideo3, setAnimatedVideo3] = useState(28100);
+
+  // Animate numbers
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAnimatedViews(prev => prev + Math.floor(Math.random() * 100) - 20);
+      setAnimatedEngagement(prev => Math.min(100, Math.max(0, prev + (Math.random() - 0.5) * 0.3)));
+      setAnimatedVideo1(prev => prev + Math.floor(Math.random() * 50) - 10);
+      setAnimatedVideo2(prev => prev + Math.floor(Math.random() * 40) - 10);
+      setAnimatedVideo3(prev => prev + Math.floor(Math.random() * 30) - 5);
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatNumber = (num: number) => {
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+    return num.toString();
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
-                <BarChart3 className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-2xl font-bold text-gray-900">ViewTrack</span>
+            <div className="flex items-center space-x-3">
+              <img src={blackLogo} alt="ViewTrack" className="h-10 w-auto" />
             </div>
             <button
               onClick={onGetStarted}
@@ -54,8 +76,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                   with every click.
                 </h1>
                 <p className="text-xl text-gray-600 leading-relaxed max-w-xl">
-                  From Instagram to TikTok to YouTube, we track every view, like, and share across your content. 
-                  Grow your social presence on autopilot.
+                  Track your views, conversions and creators to drive more revenue.
                 </p>
               </div>
 
@@ -105,63 +126,97 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
               </div>
             </div>
 
-            {/* Right Column - Dashboard Preview */}
+            {/* Right Column - Animated Dashboard Preview */}
             <div className="relative">
               <div className="space-y-4">
-                {/* Dashboard Card */}
-                <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-6 space-y-6">
+                {/* Dashboard Card - Looks like real app */}
+                <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl shadow-2xl border border-gray-700 p-6 space-y-6">
                   {/* Header */}
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-bold text-gray-900">Recent Activity</h3>
-                    <span className="text-xs text-gray-500">Last 24 hours</span>
+                    <h3 className="text-lg font-bold text-white">Recent Activity</h3>
+                    <span className="text-xs text-gray-400">Last 24 hours</span>
                   </div>
 
-                  {/* Metric Cards */}
+                  {/* Animated Metric Cards */}
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-xl p-4">
+                    <div className="bg-gradient-to-br from-blue-500/10 via-purple-500/5 to-transparent backdrop-blur-sm border border-white/10 rounded-xl p-4">
                       <div className="flex items-center gap-2 mb-2">
-                        <Eye className="w-4 h-4 text-blue-600" />
-                        <span className="text-xs font-medium text-blue-700">Views</span>
+                        <Eye className="w-4 h-4 text-blue-400" />
+                        <span className="text-xs font-medium text-blue-300">Views</span>
                       </div>
-                      <p className="text-2xl font-bold text-blue-900">124.5K</p>
-                      <p className="text-xs text-blue-600 mt-1">↑ 23% today</p>
+                      <p className="text-2xl font-bold text-white transition-all duration-500">
+                        {formatNumber(animatedViews)}
+                      </p>
+                      <p className="text-xs text-green-400 mt-1">↑ 23% today</p>
                     </div>
 
-                    <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-xl p-4">
+                    <div className="bg-gradient-to-br from-purple-500/10 via-pink-500/5 to-transparent backdrop-blur-sm border border-white/10 rounded-xl p-4">
                       <div className="flex items-center gap-2 mb-2">
-                        <TrendingUp className="w-4 h-4 text-purple-600" />
-                        <span className="text-xs font-medium text-purple-700">Engagement</span>
+                        <TrendingUp className="w-4 h-4 text-purple-400" />
+                        <span className="text-xs font-medium text-purple-300">Engagement</span>
                       </div>
-                      <p className="text-2xl font-bold text-purple-900">18.2%</p>
-                      <p className="text-xs text-purple-600 mt-1">↑ 5% today</p>
+                      <p className="text-2xl font-bold text-white transition-all duration-500">
+                        {animatedEngagement.toFixed(1)}%
+                      </p>
+                      <p className="text-xs text-green-400 mt-1">↑ 5% today</p>
                     </div>
                   </div>
 
-                  {/* Video List */}
+                  {/* Animated Video List */}
                   <div className="space-y-3">
-                    {[
-                      { title: 'Summer Vibes 2024', views: '45.2K', platform: 'instagram', color: 'pink' },
-                      { title: 'Behind the Scenes', views: '32.8K', platform: 'tiktok', color: 'blue' },
-                      { title: 'Tutorial: Quick Tips', views: '28.1K', platform: 'youtube', color: 'red' },
-                    ].map((video, index) => (
-                      <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                        <div className={`w-10 h-10 bg-gradient-to-br from-${video.color}-400 to-${video.color}-600 rounded-lg`}></div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 truncate">{video.title}</p>
-                          <p className="text-xs text-gray-500">{video.views} views</p>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                          <span className="text-xs text-gray-500">Live</span>
-                        </div>
+                    <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all duration-300 border border-white/5">
+                      <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-rose-600 rounded-lg flex items-center justify-center">
+                        <Heart className="w-5 h-5 text-white" />
                       </div>
-                    ))}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-white truncate">Summer Vibes 2024</p>
+                        <p className="text-xs text-gray-400 transition-all duration-500">
+                          {formatNumber(animatedVideo1)} views
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                        <span className="text-xs text-gray-400">Live</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all duration-300 border border-white/5">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-lg flex items-center justify-center">
+                        <MessageCircle className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-white truncate">Behind the Scenes</p>
+                        <p className="text-xs text-gray-400 transition-all duration-500">
+                          {formatNumber(animatedVideo2)} views
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                        <span className="text-xs text-gray-400">Live</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all duration-300 border border-white/5">
+                      <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-600 rounded-lg flex items-center justify-center">
+                        <Eye className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-white truncate">Tutorial: Quick Tips</p>
+                        <p className="text-xs text-gray-400 transition-all duration-500">
+                          {formatNumber(animatedVideo3)} views
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                        <span className="text-xs text-gray-400">Live</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
                 {/* Floating Feature Cards */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-4">
+                  <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-4 hover:shadow-xl transition-shadow">
                     <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mb-3">
                       <LinkIcon className="w-4 h-4 text-orange-600" />
                     </div>
@@ -169,7 +224,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                     <p className="text-xs text-gray-500">Monitor every click</p>
                   </div>
                   
-                  <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-4">
+                  <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-4 hover:shadow-xl transition-shadow">
                     <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mb-3">
                       <Filter className="w-4 h-4 text-green-600" />
                     </div>
@@ -276,11 +331,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
       <footer className="py-12 px-6 border-t border-gray-100">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <BarChart3 className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-lg font-bold text-gray-900">ViewTrack</span>
+            <div className="flex items-center space-x-3">
+              <img src={blackLogo} alt="ViewTrack" className="h-8 w-auto" />
             </div>
             <p className="text-sm text-gray-500">
               © 2025 ViewTrack. Track smarter, grow faster.
