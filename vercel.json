@@ -22,18 +22,15 @@
       "schedule": "0 */12 * * *"
     }
   ],
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
-    }
-  ],
   "routes": [
     {
       "src": "/l/([^/]+)",
       "dest": "/api/redirect?shortCode=$1"
+    },
+    { "handle": "filesystem" },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
-  ],
-  "cleanUrls": true,
-  "trailingSlash": false
+  ]
 }
