@@ -1,13 +1,15 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TrendingUp, BookOpen, Users, Star, BarChart3, Eye } from 'lucide-react';
 import blackLogo from './blacklogo.png';
 import dashboardImg from '/dashboard.png';
 
-interface LandingPageProps {
-  onGetStarted: () => void;
-}
+const LandingPage: React.FC = () => {
+  const navigate = useNavigate();
 
-const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
+  const handleGetStarted = () => {
+    navigate('/login');
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -19,7 +21,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
               <img src={blackLogo} alt="ViewTrack" className="h-10 w-auto" />
             </div>
             <button
-              onClick={onGetStarted}
+              onClick={handleGetStarted}
               className="px-6 py-2.5 text-sm font-semibold text-gray-900 hover:text-gray-700 transition-colors"
             >
               Sign In
@@ -61,7 +63,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
               {/* CTA Buttons */}
               <div className="flex items-center gap-4">
                 <button
-                  onClick={onGetStarted}
+                  onClick={handleGetStarted}
                   className="px-8 py-4 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
                 >
                   Start tracking now
@@ -200,7 +202,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
               Join creators who are scaling their social presence with ViewTrack.
             </p>
             <button
-              onClick={onGetStarted}
+              onClick={handleGetStarted}
               className="px-10 py-4 bg-white hover:bg-gray-100 text-gray-900 font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
             >
               Get Started for Free

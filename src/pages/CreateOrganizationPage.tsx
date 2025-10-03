@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Building2, Users, Upload, X, Check } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import OrganizationService from '../services/OrganizationService';
@@ -18,6 +19,7 @@ interface OnboardingData {
 
 const OrganizationOnboarding: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -179,8 +181,8 @@ const OrganizationOnboarding: React.FC = () => {
         // Implement team invite logic here
       }
 
-      // Reload the page to trigger auth context update
-      window.location.reload();
+      // Navigate to create project page (context will update via Firebase listeners)
+      navigate('/create-project');
     } catch (error: any) {
       console.error('Failed to create organization:', error);
       setError(error.message || 'Failed to create organization');

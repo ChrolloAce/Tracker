@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Globe, Smartphone, Package, X, ShoppingBag, Plus, Instagram } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import OrganizationService from '../services/OrganizationService';
@@ -17,6 +18,7 @@ interface OnboardingData {
 
 const UserOnboarding: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -188,8 +190,8 @@ const UserOnboarding: React.FC = () => {
       // Note: Team invitations would require email sending functionality
       // For now, we'll skip this feature
 
-      // Force reload to update context
-      window.location.reload();
+      // Navigate to dashboard (context will update via Firebase listeners)
+      navigate('/dashboard');
     } catch (err: any) {
       console.error('Onboarding error:', err);
       setError(err.message || 'Something went wrong. Please try again.');
