@@ -3,6 +3,7 @@ import { X, Globe, Monitor, Smartphone, Tablet, ExternalLink } from 'lucide-reac
 import { TrackedLink } from '../types/firestore';
 import { LinkAnalytics } from '../types/trackedLinks';
 import TrackedLinksService from '../services/TrackedLinksService';
+import { useAuth } from '../contexts/AuthContext';
 import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 interface LinkAnalyticsModalProps {
@@ -12,31 +13,44 @@ interface LinkAnalyticsModalProps {
 }
 
 const LinkAnalyticsModal: React.FC<LinkAnalyticsModalProps> = ({ isOpen, onClose, link }) => {
+  const { currentOrgId } = useAuth();
   const [analytics, setAnalytics] = useState<LinkAnalytics | null>(null);
   const [period, setPeriod] = useState(30);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (isOpen && link) {
-      const data = TrackedLinksService.getLinkAnalytics(link.id, period);
-      setAnalytics(data);
-    }
-  }, [isOpen, link, period]);
+    const loadAnalytics = async () => {
+      if (isOpen && link && currentOrgId) {
+        setLoading(true);
+        try {
+          const data = await TrackedLinksService.getLinkAnalyticsFromFirestore(currentOrgId, link.id, period);
+          setAnalytics(data);
+        } catch (error) {
+          console.error('Failed to load analytics:', error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    
+    loadAnalytics();
+  }, [isOpen, link, period, currentOrgId]);
 
-  if (!isOpen || !analytics) return null;
+  if (!isOpen) return null;
 
-  const deviceData = [
+  const deviceData = analytics ? [
     { name: 'Desktop', value: analytics.deviceBreakdown.desktop, icon: Monitor, color: '#3B82F6' },
     { name: 'Mobile', value: analytics.deviceBreakdown.mobile, icon: Smartphone, color: '#10B981' },
     { name: 'Tablet', value: analytics.deviceBreakdown.tablet, icon: Tablet, color: '#F59E0B' },
-  ].filter(d => d.value > 0);
+  ].filter(d => d.value > 0) : [];
 
-  const topCountries = Object.entries(analytics.countryBreakdown)
+  const topCountries = analytics ? Object.entries(analytics.countryBreakdown)
     .sort(([, a], [, b]) => b - a)
-    .slice(0, 5);
+    .slice(0, 5) : [];
 
-  const topReferrers = Object.entries(analytics.referrerBreakdown)
+  const topReferrers = analytics ? Object.entries(analytics.referrerBreakdown)
     .sort(([, a], [, b]) => b - a)
-    .slice(0, 5);
+    .slice(0, 5) : [];
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -64,43 +78,54 @@ const LinkAnalyticsModal: React.FC<LinkAnalyticsModalProps> = ({ isOpen, onClose
               <button
                 key={days}
                 onClick={() => setPeriod(days)}
+                disabled={loading}
                 className={`px-3 py-1 text-sm rounded-lg transition-colors ${
                   period === days
                     ? 'bg-blue-600 dark:bg-blue-500 text-white'
                     : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                }`}
+                } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {days} days
               </button>
             ))}
           </div>
 
-          {/* Stats Overview */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Total Clicks</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{analytics.clicks}</p>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 dark:border-gray-700 border-t-blue-600 dark:border-t-blue-500"></div>
             </div>
-            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Unique Clicks</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{analytics.uniqueClicks}</p>
+          ) : !analytics ? (
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+              No analytics data available
             </div>
-            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Click Rate</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {analytics.uniqueClicks > 0 
-                  ? `${((analytics.uniqueClicks / analytics.clicks) * 100).toFixed(1)}%`
-                  : '0%'
-                }
-              </p>
-            </div>
-            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Avg Daily</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {Math.round(analytics.clicks / period)}
-              </p>
-            </div>
-          </div>
+          ) : (
+            <>
+              {/* Stats Overview */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Total Clicks</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{analytics.clicks}</p>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Unique Clicks</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{analytics.uniqueClicks}</p>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Click Rate</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {analytics.uniqueClicks > 0 
+                      ? `${((analytics.uniqueClicks / analytics.clicks) * 100).toFixed(1)}%`
+                      : '0%'
+                    }
+                  </p>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Avg Daily</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {Math.round(analytics.clicks / period)}
+                  </p>
+                </div>
+              </div>
 
           {/* Click Trend Chart */}
           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
@@ -214,9 +239,9 @@ const LinkAnalyticsModal: React.FC<LinkAnalyticsModalProps> = ({ isOpen, onClose
             )}
           </div>
 
-          {/* Link Details */}
-          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Link Details</h3>
+              {/* Link Details */}
+              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Link Details</h3>
             <div className="space-y-2">
               <div className="flex items-start space-x-2">
                 <span className="text-sm text-gray-500 dark:text-gray-400">Short URL:</span>
@@ -236,7 +261,9 @@ const LinkAnalyticsModal: React.FC<LinkAnalyticsModalProps> = ({ isOpen, onClose
                 </a>
               </div>
             </div>
-          </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

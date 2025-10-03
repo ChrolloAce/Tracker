@@ -1,4 +1,5 @@
 import { TrackedLink, LinkClick, LinkAnalytics } from '../types/trackedLinks';
+import LinkClicksService from './LinkClicksService';
 
 class TrackedLinksService {
   private readonly LINKS_KEY = 'tracked_links';
@@ -183,7 +184,91 @@ class TrackedLinksService {
   }
 
   /**
-   * Get analytics for a link
+   * Get analytics for a link from Firestore
+   */
+  async getLinkAnalyticsFromFirestore(orgId: string, linkId: string, days: number = 30): Promise<LinkAnalytics> {
+    // Get all clicks from Firestore
+    const allClicks = await LinkClicksService.getOrgLinkClicks(orgId);
+    
+    // Filter clicks for this specific link
+    const linkClicks = allClicks.filter(click => click.linkId === linkId);
+    
+    const now = new Date();
+    const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    
+    // Filter clicks within the period
+    const periodClicks = linkClicks.filter(click => 
+      new Date(click.timestamp) >= startDate
+    );
+
+    // Calculate device breakdown
+    const deviceBreakdown = {
+      mobile: 0,
+      tablet: 0,
+      desktop: 0
+    };
+    
+    periodClicks.forEach(click => {
+      if (click.deviceType) {
+        deviceBreakdown[click.deviceType]++;
+      }
+    });
+
+    // Calculate country breakdown (not available yet, so empty)
+    const countryBreakdown: Record<string, number> = {};
+
+    // Calculate referrer breakdown - THIS IS THE KEY FEATURE!
+    const referrerBreakdown: Record<string, number> = {};
+    periodClicks.forEach(click => {
+      let referrer = click.referrer || 'Direct';
+      
+      // Clean up referrer URLs for better display
+      if (referrer !== 'Direct') {
+        try {
+          const url = new URL(referrer);
+          referrer = url.hostname.replace('www.', '');
+        } catch {
+          // Keep as is if not a valid URL
+        }
+      }
+      
+      referrerBreakdown[referrer] = (referrerBreakdown[referrer] || 0) + 1;
+    });
+
+    // Calculate clicks by day
+    const clicksByDay: Array<{ date: string; clicks: number }> = [];
+    for (let i = 0; i < days; i++) {
+      const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+      date.setHours(0, 0, 0, 0);
+      
+      const dayClicks = periodClicks.filter(click => {
+        const clickDate = new Date(click.timestamp);
+        clickDate.setHours(0, 0, 0, 0);
+        return clickDate.getTime() === date.getTime();
+      });
+      
+      clicksByDay.unshift({ date: date.toISOString(), clicks: dayClicks.length });
+    }
+
+    // Calculate unique clicks (simplified based on userAgent + deviceType combo)
+    const uniqueIdentifiers = new Set(
+      periodClicks.map(c => `${c.userAgent}-${c.deviceType}`)
+    );
+
+    return {
+      linkId,
+      period: `Last ${days} days`,
+      clicks: periodClicks.length,
+      uniqueClicks: uniqueIdentifiers.size || periodClicks.length,
+      deviceBreakdown,
+      countryBreakdown,
+      referrerBreakdown,
+      clicksByDay
+    };
+  }
+
+  /**
+   * Get analytics for a link (legacy localStorage version)
    */
   getLinkAnalytics(linkId: string, days: number = 30): LinkAnalytics {
     const clicks = this.getClicksForLink(linkId);
