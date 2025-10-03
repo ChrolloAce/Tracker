@@ -324,48 +324,63 @@ const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
                     </div>
                   )}
                   
-                  <div className="flex gap-2 items-start p-3 border border-gray-700 rounded-lg bg-gray-800/50">
-                    <select
-                      value={condition.type}
-                      onChange={(e) => updateCondition(condition.id, 'type', e.target.value as RuleConditionType)}
-                      className="flex-1 px-3 py-2 border border-gray-700 rounded-lg bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                    >
-                      <option value="description_contains">Description contains</option>
-                      <option value="description_not_contains">Description does not contain</option>
-                      <option value="hashtag_includes">Hashtag includes</option>
-                      <option value="hashtag_not_includes">Hashtag does not include</option>
-                      <option value="views_greater_than">Views greater than</option>
-                      <option value="views_less_than">Views less than</option>
-                      <option value="likes_greater_than">Likes greater than</option>
-                      <option value="engagement_rate_greater_than">Engagement rate &gt;</option>
-                      <option value="posted_after_date">Posted after date</option>
-                      <option value="posted_before_date">Posted before date</option>
-                    </select>
-
-                    <input
-                      type={
-                        condition.type.includes('date') ? 'date' :
-                        condition.type.includes('greater') || condition.type.includes('less') ? 'number' :
-                        'text'
-                      }
-                      value={condition.value}
-                      onChange={(e) => updateCondition(condition.id, 'value', e.target.value)}
-                      placeholder={
-                        condition.type.includes('description') ? 'e.g., @snapout.co' :
-                        condition.type.includes('hashtag') ? 'e.g., ad or #ad' :
-                        condition.type.includes('views') ? 'e.g., 10000' :
-                        'Value'
-                      }
-                      className="flex-1 px-3 py-2 border border-gray-700 rounded-lg bg-gray-800 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                    />
-
-                    {conditions.length > 1 && (
-                      <button
-                        onClick={() => removeCondition(condition.id)}
-                        className="p-2 text-red-400 hover:bg-red-900/30 rounded-lg transition-colors"
+                  <div className="space-y-2">
+                    <div className="flex gap-2 items-start p-3 border border-gray-700 rounded-lg bg-gray-800/50">
+                      <select
+                        value={condition.type}
+                        onChange={(e) => updateCondition(condition.id, 'type', e.target.value as RuleConditionType)}
+                        className="flex-1 px-3 py-2 border border-gray-700 rounded-lg bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                       >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                        <option value="description_contains">Description contains</option>
+                        <option value="description_not_contains">Description does not contain</option>
+                        <option value="hashtag_includes">Hashtag includes</option>
+                        <option value="hashtag_not_includes">Hashtag does not include</option>
+                        <option value="views_greater_than">Views greater than</option>
+                        <option value="views_less_than">Views less than</option>
+                        <option value="likes_greater_than">Likes greater than</option>
+                        <option value="engagement_rate_greater_than">Engagement rate &gt;</option>
+                        <option value="posted_after_date">Posted after date</option>
+                        <option value="posted_before_date">Posted before date</option>
+                      </select>
+
+                      <input
+                        type={
+                          condition.type.includes('date') ? 'date' :
+                          condition.type.includes('greater') || condition.type.includes('less') ? 'number' :
+                          'text'
+                        }
+                        value={condition.value}
+                        onChange={(e) => updateCondition(condition.id, 'value', e.target.value)}
+                        placeholder={
+                          condition.type.includes('description') ? 'e.g., @snapout.co' :
+                          condition.type.includes('hashtag') ? 'e.g., ad or #ad' :
+                          condition.type.includes('views') ? 'e.g., 10000' :
+                          'Value'
+                        }
+                        className="flex-1 px-3 py-2 border border-gray-700 rounded-lg bg-gray-800 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      />
+
+                      {conditions.length > 1 && (
+                        <button
+                          onClick={() => removeCondition(condition.id)}
+                          className="p-2 text-red-400 hover:bg-red-900/30 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    
+                    {/* Case-sensitive toggle for text-based conditions */}
+                    {(condition.type.includes('description') || condition.type.includes('hashtag')) && (
+                      <label className="flex items-center gap-2 px-3 text-sm text-gray-400 cursor-pointer hover:text-gray-300">
+                        <input
+                          type="checkbox"
+                          checked={condition.caseSensitive || false}
+                          onChange={(e) => updateCondition(condition.id, 'caseSensitive', e.target.checked)}
+                          className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0"
+                        />
+                        <span>Case sensitive</span>
+                      </label>
                     )}
                   </div>
                 </div>

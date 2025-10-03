@@ -28,8 +28,21 @@ class RulesService {
     try {
       const rulesRef = collection(db, 'organizations', orgId, 'projects', projectId, 'trackingRules');
       
-      const docRef = await addDoc(rulesRef, {
+      // Clean undefined values from appliesTo to prevent Firestore errors
+      const cleanedData = {
         ...ruleData,
+        appliesTo: {
+          ...(ruleData.appliesTo.platforms && ruleData.appliesTo.platforms.length > 0 
+            ? { platforms: ruleData.appliesTo.platforms } 
+            : {}),
+          ...(ruleData.appliesTo.accountIds && ruleData.appliesTo.accountIds.length > 0 
+            ? { accountIds: ruleData.appliesTo.accountIds } 
+            : {}),
+        }
+      };
+      
+      const docRef = await addDoc(rulesRef, {
+        ...cleanedData,
         createdBy: userId,
         organizationId: orgId,
         projectId: projectId,
@@ -186,25 +199,42 @@ class RulesService {
    * Evaluate a single condition against a video
    */
   private static evaluateCondition(video: AccountVideo, condition: RuleCondition): boolean {
-    const description = (video.caption || '')?.toLowerCase();
+    const originalDescription = video.caption || '';
+    const description = condition.caseSensitive ? originalDescription : originalDescription.toLowerCase();
     
     switch (condition.type) {
-      case 'description_contains':
-        return description.includes(String(condition.value).toLowerCase());
+      case 'description_contains': {
+        const searchValue = condition.caseSensitive 
+          ? String(condition.value) 
+          : String(condition.value).toLowerCase();
+        return description.includes(searchValue);
+      }
       
-      case 'description_not_contains':
-        return !description.includes(String(condition.value).toLowerCase());
+      case 'description_not_contains': {
+        const searchValue = condition.caseSensitive 
+          ? String(condition.value) 
+          : String(condition.value).toLowerCase();
+        return !description.includes(searchValue);
+      }
       
       case 'hashtag_includes': {
-        const targetTag = String(condition.value).toLowerCase().replace(/^#/, '');
-        const videoTags = description.match(/#[\w]+/g) || [];
-        return videoTags.some((tag: string) => tag.toLowerCase().includes(targetTag));
+        const searchValue = String(condition.value).replace(/^#/, '');
+        const targetTag = condition.caseSensitive ? searchValue : searchValue.toLowerCase();
+        const videoTags = originalDescription.match(/#[\w]+/g) || [];
+        return videoTags.some((tag: string) => {
+          const compareTag = condition.caseSensitive ? tag : tag.toLowerCase();
+          return compareTag.includes(targetTag);
+        });
       }
       
       case 'hashtag_not_includes': {
-        const targetTag = String(condition.value).toLowerCase().replace(/^#/, '');
-        const videoTags = description.match(/#[\w]+/g) || [];
-        return !videoTags.some((tag: string) => tag.toLowerCase().includes(targetTag));
+        const searchValue = String(condition.value).replace(/^#/, '');
+        const targetTag = condition.caseSensitive ? searchValue : searchValue.toLowerCase();
+        const videoTags = originalDescription.match(/#[\w]+/g) || [];
+        return !videoTags.some((tag: string) => {
+          const compareTag = condition.caseSensitive ? tag : tag.toLowerCase();
+          return compareTag.includes(targetTag);
+        });
       }
       
       case 'views_greater_than':

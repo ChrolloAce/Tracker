@@ -20,6 +20,7 @@ export interface RuleCondition {
   type: RuleConditionType;
   value: string | number;
   operator?: 'AND' | 'OR'; // How to combine with next condition
+  caseSensitive?: boolean; // For text-based conditions (description_contains, etc.)
 }
 
 export interface TrackingRule {
