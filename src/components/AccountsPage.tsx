@@ -447,65 +447,66 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         const updatedAccount = updatedAccounts.find(a => a.id === accountId);
         if (updatedAccount) {
           setSelectedAccount(updatedAccount);
+          
+          // Also refresh videos from Firestore with rules and date filtering
+          const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, currentProjectId, accountId);
+          console.log('🔄 Refreshed videos after profile update:', videos.length);
+          
+          // Apply rules filtering
+          const rulesFilteredVideos = await RulesService.filterVideosByRules(
+            currentOrgId,
+            currentProjectId,
+            accountId,
+            updatedAccount.platform,
+            videos
+          );
+          
+          // Apply date filtering
+          const videoSubmissions: VideoSubmission[] = rulesFilteredVideos.map(video => ({
+            id: video.id || video.videoId || '',
+            url: video.url || '',
+            platform: updatedAccount.platform,
+            thumbnail: video.thumbnail || '',
+            title: video.caption || 'No caption',
+            uploader: updatedAccount.displayName || updatedAccount.username,
+            uploaderHandle: updatedAccount.username,
+            status: 'approved' as const,
+            views: video.viewsCount || video.views || 0,
+            likes: video.likesCount || video.likes || 0,
+            comments: video.commentsCount || video.comments || 0,
+            shares: video.sharesCount || video.shares || 0,
+            dateSubmitted: video.uploadDate || new Date(),
+            uploadDate: video.uploadDate || new Date(),
+            snapshots: []
+          }));
+          
+          const dateFilteredSubmissions = DateFilterService.filterVideosByDateRange(
+            videoSubmissions,
+            dateFilter,
+            undefined
+          );
+          
+          // Convert back to AccountVideo
+          const finalFilteredVideos: AccountVideo[] = dateFilteredSubmissions.map(sub => {
+            const originalVideo = rulesFilteredVideos.find(v => (v.id || v.videoId) === sub.id);
+            return originalVideo || {
+              id: sub.id,
+              videoId: sub.id,
+              url: sub.url,
+              thumbnail: sub.thumbnail,
+              caption: sub.title,
+              viewsCount: sub.views,
+              likesCount: sub.likes,
+              commentsCount: sub.comments,
+              sharesCount: sub.shares,
+              uploadDate: sub.uploadDate,
+              timestamp: sub.uploadDate.toISOString()
+            };
+          });
+          
+          console.log(`🔄 Filtered refreshed videos: ${finalFilteredVideos.length}/${videos.length}`);
+          setAccountVideos(finalFilteredVideos);
         }
-        // Also refresh videos from Firestore with rules and date filtering
-        const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, currentProjectId, accountId);
-        console.log('🔄 Refreshed videos after profile update:', videos.length);
-        
-        // Apply rules filtering
-        const rulesFilteredVideos = await RulesService.filterVideosByRules(
-          currentOrgId,
-          currentProjectId,
-          accountId,
-          updatedAccount.platform,
-          videos
-        );
-        
-        // Apply date filtering
-        const videoSubmissions: VideoSubmission[] = rulesFilteredVideos.map(video => ({
-          id: video.id || video.videoId || '',
-          url: video.url || '',
-          platform: updatedAccount.platform,
-          thumbnail: video.thumbnail || '',
-          title: video.caption || 'No caption',
-          uploader: updatedAccount.displayName || updatedAccount.username,
-          uploaderHandle: updatedAccount.username,
-          status: 'approved' as const,
-          views: video.viewsCount || video.views || 0,
-          likes: video.likesCount || video.likes || 0,
-          comments: video.commentsCount || video.comments || 0,
-          shares: video.sharesCount || video.shares || 0,
-          dateSubmitted: video.uploadDate || new Date(),
-          uploadDate: video.uploadDate || new Date(),
-          snapshots: []
-        }));
-        
-        const dateFilteredSubmissions = DateFilterService.filterVideosByDateRange(
-          videoSubmissions,
-          dateFilter,
-          undefined
-        );
-        
-        // Convert back to AccountVideo
-        const finalFilteredVideos: AccountVideo[] = dateFilteredSubmissions.map(sub => {
-          const originalVideo = rulesFilteredVideos.find(v => (v.id || v.videoId) === sub.id);
-          return originalVideo || {
-            id: sub.id,
-            videoId: sub.id,
-            url: sub.url,
-            thumbnail: sub.thumbnail,
-            caption: sub.title,
-            viewsCount: sub.views,
-            likesCount: sub.likes,
-            commentsCount: sub.comments,
-            sharesCount: sub.shares,
-            uploadDate: sub.uploadDate,
-            timestamp: sub.uploadDate.toISOString()
-          };
-        });
-        
-        console.log(`🔄 Filtered refreshed videos: ${finalFilteredVideos.length}/${videos.length}`);
-        setAccountVideos(finalFilteredVideos);
       }
       
       console.log(`✅ Refreshed profile for account`);
