@@ -236,7 +236,7 @@ class TrackedLinksService {
     });
 
     // Calculate clicks by day
-    const clicksByDay: Array<{ date: string; clicks: number }> = [];
+    const clicksByDay: Array<{ date: Date; clicks: number }> = [];
     for (let i = 0; i < days; i++) {
       const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
       date.setHours(0, 0, 0, 0);
@@ -247,7 +247,7 @@ class TrackedLinksService {
         return clickDate.getTime() === date.getTime();
       });
       
-      clicksByDay.unshift({ date: date.toISOString(), clicks: dayClicks.length });
+      clicksByDay.unshift({ date: date, clicks: dayClicks.length });
     }
 
     // Calculate unique clicks (simplified based on userAgent + deviceType combo)
