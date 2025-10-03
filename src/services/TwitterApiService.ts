@@ -21,6 +21,7 @@ interface ApifyDatasetResponse {
   quoteCount?: number;
   viewCount?: number;
   bookmarkCount?: number;
+  isRetweet?: boolean; // Flag to identify retweets
   media?: string[]; // Array of media URLs
   extendedEntities?: {
     media?: Array<{
@@ -62,10 +63,14 @@ class TwitterApiService {
       }
 
       const data = await response.json();
-      console.log('✅ Apify proxy response received, items:', data.items?.length || 0);
+      const allItems = data.items || [];
       
-      // The proxy returns { run: {...}, items: [...] }
-      return data.items || [];
+      // Filter out retweets
+      const filteredItems = allItems.filter((item: ApifyDatasetResponse) => !item.isRetweet);
+      
+      console.log(`✅ Apify proxy response: ${allItems.length} total tweets, ${filteredItems.length} after filtering retweets`);
+      
+      return filteredItems;
       
     } catch (error) {
       console.error('❌ Twitter API error:', error);
@@ -92,7 +97,7 @@ class TwitterApiService {
         includeSearchTerms: false,
       });
 
-      console.log(`✅ Fetched ${tweets.length} tweets`);
+      console.log(`✅ Fetched ${tweets.length} tweets (retweets excluded)`);
 
       // Transform to AccountVideo format
       return this.transformTweetsToVideos(tweets);

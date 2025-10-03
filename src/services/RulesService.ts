@@ -107,11 +107,12 @@ class RulesService {
       
       const { platforms, accountIds } = rule.appliesTo;
       
-      // Check platform match
+      // Check platform match (optional filter)
       const platformMatch = !platforms || platforms.length === 0 || platforms.includes(platform);
       
-      // Check account match (empty accountIds means applies to all)
-      const accountMatch = !accountIds || accountIds.length === 0 || accountIds.includes(accountId);
+      // Check account match - MUST have accountIds with this account explicitly listed
+      // Rules are NOT applied automatically - they must be manually assigned to accounts
+      const accountMatch = accountIds && accountIds.length > 0 && accountIds.includes(accountId);
       
       return platformMatch && accountMatch;
     });
@@ -128,8 +129,24 @@ class RulesService {
   ): Promise<void> {
     try {
       const ruleRef = doc(db, 'organizations', orgId, 'projects', projectId, 'trackingRules', ruleId);
+      
+      // Clean undefined values from updates to prevent Firestore errors
+      const cleanedUpdates: any = { ...updates };
+      
+      // Special handling for appliesTo to remove undefined values (but keep empty arrays)
+      if (cleanedUpdates.appliesTo) {
+        cleanedUpdates.appliesTo = {
+          ...(cleanedUpdates.appliesTo.platforms !== undefined 
+            ? { platforms: cleanedUpdates.appliesTo.platforms } 
+            : {}),
+          ...(cleanedUpdates.appliesTo.accountIds !== undefined 
+            ? { accountIds: cleanedUpdates.appliesTo.accountIds } 
+            : {}),
+        };
+      }
+      
       await updateDoc(ruleRef, {
-        ...updates,
+        ...cleanedUpdates,
         updatedAt: serverTimestamp(),
       });
 

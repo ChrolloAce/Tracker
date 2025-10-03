@@ -599,7 +599,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         ...rule,
         appliesTo: {
           ...rule.appliesTo,
-          accountIds: updatedAccountIds.length > 0 ? updatedAccountIds : undefined
+          accountIds: updatedAccountIds // Keep as array even if empty (empty = not applied to any account)
         }
       });
       
@@ -1568,24 +1568,21 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
             <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
               {allRules.map((rule) => {
                 const isApplied = accountRules.includes(rule.id);
-                const appliesToAll = !rule.appliesTo.accountIds || rule.appliesTo.accountIds.length === 0;
                 
                 return (
                   <div
                     key={rule.id}
                     className={clsx(
                       'p-4 rounded-lg border transition-all cursor-pointer group',
-                      isApplied || appliesToAll
+                      isApplied
                         ? 'bg-blue-900/20 border-blue-500/50'
                         : 'bg-gray-800/50 border-gray-700 hover:border-gray-600'
                     )}
-                    onClick={() => !appliesToAll && handleToggleRule(rule.id)}
+                    onClick={() => handleToggleRule(rule.id)}
                   >
                     <div className="flex items-start gap-3">
                       <div className="mt-0.5">
-                        {appliesToAll ? (
-                          <CheckCircle2 className="w-5 h-5 text-blue-400" />
-                        ) : isApplied ? (
+                        {isApplied ? (
                           <CheckCircle2 className="w-5 h-5 text-blue-400" />
                         ) : (
                           <Circle className="w-5 h-5 text-gray-500 group-hover:text-gray-400" />
@@ -1597,11 +1594,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                           {!rule.isActive && (
                             <span className="px-2 py-0.5 text-xs bg-gray-700 text-gray-400 rounded">
                               Inactive
-                            </span>
-                          )}
-                          {appliesToAll && (
-                            <span className="px-2 py-0.5 text-xs bg-blue-900/50 text-blue-400 rounded">
-                              All Accounts
                             </span>
                           )}
                         </div>
@@ -1629,11 +1621,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                             </p>
                           )}
                         </div>
-                        {appliesToAll && (
-                          <p className="text-xs text-gray-500 mt-2">
-                            This rule applies to all accounts by default
-                          </p>
-                        )}
                       </div>
                     </div>
                   </div>
