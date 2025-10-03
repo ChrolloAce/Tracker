@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { 
   Plus, 
   Users, 
@@ -93,6 +93,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     const saved = localStorage.getItem('accountVideos_itemsPerPage');
     return saved ? Number(saved) : 10;
   });
+  
+  // Sorting state
+  const [sortColumn, setSortColumn] = useState<'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'uploadDate' | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   
   // Load column preferences from localStorage
   const [visibleColumns, setVisibleColumns] = useState(() => {
@@ -650,6 +654,70 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     }).format(date);
   };
 
+  // Sorting handler
+  const handleSort = (column: 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'uploadDate') => {
+    if (sortColumn === column) {
+      // Toggle direction if clicking the same column
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new column and default to descending
+      setSortColumn(column);
+      setSortDirection('desc');
+    }
+  };
+
+  // Sort videos based on current sort state
+  const sortedVideos = useMemo(() => {
+    if (!sortColumn) return accountVideos;
+
+    return [...accountVideos].sort((a, b) => {
+      let aValue: number | Date;
+      let bValue: number | Date;
+
+      switch (sortColumn) {
+        case 'views':
+          aValue = a.viewsCount || a.views || 0;
+          bValue = b.viewsCount || b.views || 0;
+          break;
+        case 'likes':
+          aValue = a.likesCount || a.likes || 0;
+          bValue = b.likesCount || b.likes || 0;
+          break;
+        case 'comments':
+          aValue = a.commentsCount || a.comments || 0;
+          bValue = b.commentsCount || b.comments || 0;
+          break;
+        case 'shares':
+          aValue = a.sharesCount || a.shares || 0;
+          bValue = b.sharesCount || b.shares || 0;
+          break;
+        case 'engagement': {
+          const aViews = a.viewsCount || a.views || 0;
+          const bViews = b.viewsCount || b.views || 0;
+          const aLikes = a.likesCount || a.likes || 0;
+          const bLikes = b.likesCount || b.likes || 0;
+          const aComments = a.commentsCount || a.comments || 0;
+          const bComments = b.commentsCount || b.comments || 0;
+          aValue = aViews > 0 ? ((aLikes + aComments) / aViews) * 100 : 0;
+          bValue = bViews > 0 ? ((bLikes + bComments) / bViews) * 100 : 0;
+          break;
+        }
+        case 'uploadDate':
+          aValue = new Date(a.uploadDate || 0);
+          bValue = new Date(b.uploadDate || 0);
+          break;
+        default:
+          return 0;
+      }
+
+      if (sortDirection === 'asc') {
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      } else {
+        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+      }
+    });
+  }, [accountVideos, sortColumn, sortDirection]);
+
   // Show loading state
   if (loading) {
     return <PageLoadingSkeleton type="accounts" />;
@@ -1130,33 +1198,93 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                           </th>
                         )}
                         {visibleColumns.views && (
-                          <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
-                            Views
+                          <th 
+                            className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px] cursor-pointer hover:text-white transition-colors select-none"
+                            onClick={() => handleSort('views')}
+                          >
+                            <div className="flex items-center gap-1">
+                              Views
+                              {sortColumn === 'views' && (
+                                <span className="text-blue-400">
+                                  {sortDirection === 'asc' ? '↑' : '↓'}
+                                </span>
+                              )}
+                            </div>
                           </th>
                         )}
                         {visibleColumns.likes && (
-                          <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
-                            Likes
+                          <th 
+                            className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px] cursor-pointer hover:text-white transition-colors select-none"
+                            onClick={() => handleSort('likes')}
+                          >
+                            <div className="flex items-center gap-1">
+                              Likes
+                              {sortColumn === 'likes' && (
+                                <span className="text-blue-400">
+                                  {sortDirection === 'asc' ? '↑' : '↓'}
+                                </span>
+                              )}
+                            </div>
                           </th>
                         )}
                         {visibleColumns.comments && (
-                          <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
-                            Comments
+                          <th 
+                            className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px] cursor-pointer hover:text-white transition-colors select-none"
+                            onClick={() => handleSort('comments')}
+                          >
+                            <div className="flex items-center gap-1">
+                              Comments
+                              {sortColumn === 'comments' && (
+                                <span className="text-blue-400">
+                                  {sortDirection === 'asc' ? '↑' : '↓'}
+                                </span>
+                              )}
+                            </div>
                           </th>
                         )}
                         {visibleColumns.shares && (
-                          <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
-                            Shares
+                          <th 
+                            className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px] cursor-pointer hover:text-white transition-colors select-none"
+                            onClick={() => handleSort('shares')}
+                          >
+                            <div className="flex items-center gap-1">
+                              Shares
+                              {sortColumn === 'shares' && (
+                                <span className="text-blue-400">
+                                  {sortDirection === 'asc' ? '↑' : '↓'}
+                                </span>
+                              )}
+                            </div>
                           </th>
                         )}
                         {visibleColumns.engagement && (
-                          <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[140px]">
-                            Engagement
+                          <th 
+                            className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[140px] cursor-pointer hover:text-white transition-colors select-none"
+                            onClick={() => handleSort('engagement')}
+                          >
+                            <div className="flex items-center gap-1">
+                              Engagement
+                              {sortColumn === 'engagement' && (
+                                <span className="text-blue-400">
+                                  {sortDirection === 'asc' ? '↑' : '↓'}
+                                </span>
+                              )}
+                            </div>
                           </th>
                         )}
                         {visibleColumns.uploadDate && (
-                          <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
-                            Upload Date
+                          <th 
+                            className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px] cursor-pointer hover:text-white transition-colors select-none"
+                            onClick={() => handleSort('uploadDate')}
+                          >
+                            <div className="flex items-center gap-1">
+                              Upload Date
+                              {sortColumn === 'uploadDate' && (
+                                <span className="text-blue-400">
+                                  {sortDirection === 'asc' ? '↑' : '↓'}
+                                </span>
+                              )}
+                            </div>
                           </th>
                         )}
                         <th className="w-12 px-6 py-4 text-left"></th>
@@ -1164,10 +1292,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                     </thead>
                     <tbody className="bg-zinc-900/60 divide-y divide-white/5">
                       {(() => {
-                        // Pagination calculations
+                        // Pagination calculations (use sortedVideos)
                         const startIndex = (currentPage - 1) * itemsPerPage;
                         const endIndex = startIndex + itemsPerPage;
-                        const paginatedVideos = accountVideos.slice(startIndex, endIndex);
+                        const paginatedVideos = sortedVideos.slice(startIndex, endIndex);
                         
                         return paginatedVideos.map((video) => {
                         const views = video.viewsCount || video.views || 0;
@@ -1373,9 +1501,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                 {/* Pagination */}
                 <Pagination
                   currentPage={currentPage}
-                  totalPages={Math.ceil(accountVideos.length / itemsPerPage)}
+                  totalPages={Math.ceil(sortedVideos.length / itemsPerPage)}
                   itemsPerPage={itemsPerPage}
-                  totalItems={accountVideos.length}
+                  totalItems={sortedVideos.length}
                   onPageChange={(page) => {
                     setCurrentPage(page);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
