@@ -156,19 +156,28 @@ export class AccountTrackingServiceFirebase {
    */
   private static async fetchTwitterProfile(orgId: string, username: string) {
     try {
-      console.log(`🔄 Fetching Twitter profile for @${username}...`);
+      console.log(`🐦 Fetching Twitter profile for @${username}...`);
       
       const profile = await TwitterApiService.getProfileInfo(username);
+      console.log(`📊 Twitter profile data:`, profile);
       
       // Download and upload avatar to Firebase Storage if present
       let profilePicture = '';
       if (profile.profilePicture) {
-        profilePicture = await FirebaseStorageService.downloadAndUpload(
-          orgId,
-          profile.profilePicture,
-          `twitter_${username}`,
-          'profile'
-        );
+        try {
+          console.log(`🖼️ Uploading profile picture for @${username}...`);
+          profilePicture = await FirebaseStorageService.downloadAndUpload(
+            orgId,
+            profile.profilePicture,
+            `twitter_${username}`,
+            'profile'
+          );
+          console.log(`✅ Profile picture uploaded successfully`);
+        } catch (uploadError) {
+          console.warn(`⚠️ Failed to upload profile picture, using original URL:`, uploadError);
+          // Use original URL if upload fails
+          profilePicture = profile.profilePicture;
+        }
       }
       
       return {
@@ -182,6 +191,7 @@ export class AccountTrackingServiceFirebase {
       };
     } catch (error) {
       console.error('❌ Failed to fetch Twitter profile:', error);
+      // Return defaults but don't throw - allow account creation to continue
       return {
         displayName: username,
         profilePicture: '',
@@ -718,15 +728,32 @@ export class AccountTrackingServiceFirebase {
    * Sync Twitter tweets for an account
    */
   private static async syncTwitterTweets(orgId: string, account: TrackedAccount): Promise<AccountVideo[]> {
-    console.log(`🔄 Fetching tweets for @${account.username}...`);
+    console.log(`🐦 Fetching tweets for @${account.username}...`);
     
     try {
       const tweets = await TwitterApiService.fetchTweets(account.username, 100);
+      console.log(`📊 Fetched ${tweets.length} raw tweets from Twitter`);
+
+      if (tweets.length === 0) {
+        console.warn(`⚠️ No tweets found for @${account.username}`);
+        return [];
+      }
 
       // Upload thumbnails to Firebase Storage if they exist
       const videos: AccountVideo[] = [];
       for (const tweet of tweets) {
-        let uploadedThumbnail = tweet.thumbnail;
+        let uploadedThumbnail = tweet.thumbnail || '';
+        
+        // Log tweet data for debugging
+        console.log(`📝 Processing tweet ${tweet.videoId}:`, {
+          url: tweet.url,
+          views: tweet.views,
+          likes: tweet.likes,
+          comments: tweet.comments,
+          shares: tweet.shares,
+          hasThumbnail: !!tweet.thumbnail
+        });
+        
         if (tweet.thumbnail) {
           try {
             uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
@@ -735,9 +762,11 @@ export class AccountTrackingServiceFirebase {
               `twitter_${tweet.videoId}`,
               'thumbnail'
             );
+            console.log(`✅ Thumbnail uploaded for tweet ${tweet.videoId}`);
           } catch (error) {
-            console.warn(`⚠️ Failed to upload thumbnail for tweet ${tweet.videoId}, using original URL`);
+            console.warn(`⚠️ Failed to upload thumbnail for tweet ${tweet.videoId}, using original URL:`, error);
             // Keep original URL if upload fails
+            uploadedThumbnail = tweet.thumbnail;
           }
         }
 
@@ -746,10 +775,13 @@ export class AccountTrackingServiceFirebase {
           id: `${account.id}_${tweet.videoId}`,
           accountId: account.id,
           thumbnail: uploadedThumbnail,
+          platform: 'twitter', // Ensure platform is set
         });
       }
 
-      console.log(`✅ Fetched ${videos.length} tweets`);
+      console.log(`✅ Processed ${videos.length} tweets for @${account.username}`);
+      console.log(`📊 Sample tweet data:`, videos[0] || 'No tweets');
+      
       return videos;
     } catch (error) {
       console.error('❌ Failed to sync Twitter tweets:', error);

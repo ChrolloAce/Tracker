@@ -98,7 +98,7 @@ class TwitterApiService {
    * Transform Apify tweet data to AccountVideo format
    */
   private static transformTweetsToVideos(tweets: ApifyDatasetResponse[]): AccountVideo[] {
-    return tweets.map(tweet => {
+    return tweets.map((tweet, index) => {
       // Get thumbnail from media if available
       let thumbnail = '';
       if (tweet.media && tweet.media.length > 0) {
@@ -106,21 +106,39 @@ class TwitterApiService {
         thumbnail = mediaItem.thumbnailUrl || mediaItem.url || '';
       }
 
+      // Generate a unique ID for the tweet
+      const tweetId = tweet.id || `tweet_${Date.now()}_${index}`;
+      const tweetUrl = tweet.url || `https://twitter.com/i/status/${tweetId}`;
+      const tweetText = tweet.text || '';
+
+      // Log for debugging
+      if (index === 0) {
+        console.log(`📝 Sample tweet transformation:`, {
+          original: tweet,
+          tweetId,
+          views: tweet.views,
+          likes: tweet.likes,
+          replies: tweet.replies,
+          retweets: tweet.retweets
+        });
+      }
+
       return {
-        id: tweet.id || `tweet_${Date.now()}_${Math.random()}`,
-        videoId: tweet.id || '',
-        url: tweet.url || '',
+        id: tweetId,
+        videoId: tweetId,
+        url: tweetUrl,
         platform: 'twitter',
         thumbnail: thumbnail,
-        caption: tweet.text || '',
-        title: tweet.text ? tweet.text.substring(0, 100) + (tweet.text.length > 100 ? '...' : '') : 'Untitled Tweet',
-        uploader: tweet.author?.name || '',
+        caption: tweetText,
+        title: tweetText ? tweetText.substring(0, 100) + (tweetText.length > 100 ? '...' : '') : 'Untitled Tweet',
+        uploader: tweet.author?.name || 'Unknown',
         uploaderHandle: tweet.author?.userName || '',
         uploadDate: tweet.createdAt ? new Date(tweet.createdAt) : new Date(),
         views: tweet.views || 0,
         likes: tweet.likes || 0,
-        comments: tweet.replies || 0,
-        shares: tweet.retweets || 0,
+        comments: tweet.replies || 0, // Twitter calls these "replies"
+        shares: tweet.retweets || 0, // Twitter calls these "retweets"
+        duration: 0, // Twitter doesn't have video duration in basic data
         hashtags: tweet.hashtags || [],
         mentions: tweet.mentions || [],
         rawData: tweet,

@@ -31,8 +31,12 @@ export interface AccountVideo {
   accountId?: string;
   videoId?: string;
   url: string;
+  platform?: 'instagram' | 'tiktok' | 'youtube' | 'twitter'; // Platform the video is from
   thumbnail?: string;
   caption?: string;
+  title?: string; // Video/post title
+  uploader?: string; // Display name of uploader
+  uploaderHandle?: string; // Handle/username of uploader
   uploadDate?: Date;
   timestamp?: string; // Fallback date string
   // Support both naming conventions from API
