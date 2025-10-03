@@ -24,7 +24,7 @@ import {
 import { TrackedAccount, AccountVideo } from '../types/accounts';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import RulesService from '../services/RulesService';
-import { Rule } from '../types/rules';
+import { TrackingRule, RuleCondition } from '../types/rules';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { clsx } from 'clsx';
 import { useAuth } from '../contexts/AuthContext';
@@ -83,7 +83,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     return saved ? JSON.parse(saved) : [];
   });
   const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
-  const [allRules, setAllRules] = useState<Rule[]>([]);
+  const [allRules, setAllRules] = useState<TrackingRule[]>([]);
   const [accountRules, setAccountRules] = useState<string[]>([]); // Rule IDs applied to the account
   const [loadingRules, setLoadingRules] = useState(false);
   
@@ -588,7 +588,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       
       if (isCurrentlyApplied) {
         // Remove account from rule
-        updatedAccountIds = (rule.appliesTo.accountIds || []).filter(id => id !== selectedAccount.id);
+        updatedAccountIds = (rule.appliesTo.accountIds || []).filter((id: string) => id !== selectedAccount.id);
       } else {
         // Add account to rule
         updatedAccountIds = [...(rule.appliesTo.accountIds || []), selectedAccount.id];
@@ -623,8 +623,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       );
       setActiveRulesCount(appliedRules.length);
       
-      // Reload videos with updated rules
-      loadAccountVideos(selectedAccount.id);
+      // Reload videos with updated rules by triggering the useEffect
+      setSelectedAccount({ ...selectedAccount });
       
       console.log(`✅ Toggled rule "${rule.name}" for @${selectedAccount.username}`);
     } catch (error) {
@@ -1592,7 +1592,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                           )}
                         </div>
                         <div className="space-y-1">
-                          {rule.conditions.slice(0, 2).map((condition, index) => (
+                          {rule.conditions.slice(0, 2).map((condition: RuleCondition, index: number) => (
                             <div key={condition.id} className="flex items-center gap-2 text-xs">
                               {index > 0 && (
                                 <span className="text-blue-400 font-semibold">
