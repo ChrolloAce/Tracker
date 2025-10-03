@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { X, Link as LinkIcon, Tag, User } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Link as LinkIcon, ChevronDown, Check } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import FirestoreDataService from '../services/FirestoreDataService';
 import { TrackedAccount } from '../types/firestore';
+import { PlatformIcon } from './ui/PlatformIcon';
 
 interface CreateLinkModalProps {
   isOpen: boolean;
@@ -14,11 +15,11 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
   const { currentOrgId, currentProjectId } = useAuth();
   const [originalUrl, setOriginalUrl] = useState('');
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [tags, setTags] = useState('');
   const [linkedAccountId, setLinkedAccountId] = useState<string>('');
   const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
   const [error, setError] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Load accounts when modal opens
   useEffect(() => {
@@ -28,6 +29,20 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
         .catch(err => console.error('Failed to load accounts:', err));
     }
   }, [isOpen, currentOrgId, currentProjectId]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isDropdownOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,26 +61,22 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
       return;
     }
 
-    const tagArray = tags
-      .split(',')
-      .map(tag => tag.trim())
-      .filter(tag => tag.length > 0);
-
     onCreate(
       originalUrl,
       title.trim(),
-      description.trim() || undefined,
-      tagArray.length > 0 ? tagArray : undefined,
+      undefined, // description removed
+      undefined, // tags removed
       linkedAccountId || undefined
     );
 
     // Reset form
     setOriginalUrl('');
     setTitle('');
-    setDescription('');
-    setTags('');
     setLinkedAccountId('');
+    setIsDropdownOpen(false);
   };
+
+  const selectedAccount = accounts.find(acc => acc.id === linkedAccountId);
 
   if (!isOpen) return null;
 
@@ -118,60 +129,94 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
             />
           </div>
 
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Description (optional)
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief description of this link..."
-              rows={3}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-            />
-          </div>
-
-          {/* Linked Account */}
+          {/* Linked Account - Custom Dropdown with Profile Pictures */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Link to Account (optional)
             </label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <select
-                value={linkedAccountId}
-                onChange={(e) => setLinkedAccountId(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer"
+            <div className="relative" ref={dropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="w-full flex items-center justify-between px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">None</option>
-                {accounts.map(account => (
-                  <option key={account.id} value={account.id}>
-                    @{account.username} ({account.platform})
-                  </option>
-                ))}
-              </select>
+                {selectedAccount ? (
+                  <div className="flex items-center gap-3">
+                    {selectedAccount.profilePicture ? (
+                      <img
+                        src={selectedAccount.profilePicture}
+                        alt={selectedAccount.username}
+                        className="w-6 h-6 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                        <span className="text-xs font-bold text-gray-900 dark:text-white">
+                          {selectedAccount.username.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">@{selectedAccount.username}</span>
+                      <PlatformIcon platform={selectedAccount.platform} size="sm" />
+                    </div>
+                  </div>
+                ) : (
+                  <span className="text-gray-500 dark:text-gray-400">None</span>
+                )}
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isDropdownOpen && (
+                <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLinkedAccountId('');
+                      setIsDropdownOpen(false);
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <span className="text-gray-500 dark:text-gray-400">None</span>
+                    {!linkedAccountId && <Check className="w-4 h-4 text-blue-500" />}
+                  </button>
+                  {accounts.map(account => (
+                    <button
+                      key={account.id}
+                      type="button"
+                      onClick={() => {
+                        setLinkedAccountId(account.id);
+                        setIsDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        {account.profilePicture ? (
+                          <img
+                            src={account.profilePicture}
+                            alt={account.username}
+                            className="w-6 h-6 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                            <span className="text-xs font-bold text-gray-900 dark:text-white">
+                              {account.username.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-900 dark:text-white">@{account.username}</span>
+                          <PlatformIcon platform={account.platform} size="sm" />
+                        </div>
+                      </div>
+                      {linkedAccountId === account.id && <Check className="w-4 h-4 text-blue-500" />}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               Attribute link clicks to a tracked account
             </p>
-          </div>
-
-          {/* Tags */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Tags (optional)
-            </label>
-            <div className="relative">
-              <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-                placeholder="campaign, social, instagram (comma separated)"
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
           </div>
 
           {/* Error Message */}
