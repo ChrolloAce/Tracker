@@ -72,6 +72,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [syncError, setSyncError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showColumnToggle, setShowColumnToggle] = useState(false);
+  const [processingAccounts, setProcessingAccounts] = useState<Array<{username: string; platform: string}>>([]);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -386,13 +387,23 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const handleAddAccount = useCallback(async () => {
     if (!newAccountUsername.trim() || !currentOrgId || !currentProjectId || !user) return;
 
+    const username = newAccountUsername.trim();
+    const platform = newAccountPlatform;
+
+    // Add to processing accounts immediately
+    setProcessingAccounts(prev => [...prev, { username, platform }]);
+    
+    // Close modal and reset form immediately
+    setNewAccountUsername('');
+    setIsAddModalOpen(false);
+
     try {
       const accountId = await AccountTrackingServiceFirebase.addAccount(
         currentOrgId,
         currentProjectId,
         user.uid,
-        newAccountUsername.trim(),
-        newAccountPlatform,
+        username,
+        platform,
         'my' // Default to 'my' account type
       );
       
@@ -400,17 +411,19 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       const updatedAccounts = await AccountTrackingServiceFirebase.getTrackedAccounts(currentOrgId, currentProjectId);
       setAccounts(updatedAccounts);
       
-      setNewAccountUsername('');
-      setIsAddModalOpen(false);
-      
-      console.log(`✅ Added account @${newAccountUsername}`);
+      console.log(`✅ Added account @${username}`);
       
       // Automatically sync videos for the newly added account
       console.log(`🔄 Auto-syncing videos...`);
-      handleSyncAccount(accountId);
+      await handleSyncAccount(accountId);
+      
+      // Remove from processing accounts
+      setProcessingAccounts(prev => prev.filter(acc => acc.username !== username));
     } catch (error) {
       console.error('Failed to add account:', error);
       alert('Failed to add account. Please check the username and try again.');
+      // Remove from processing accounts on error
+      setProcessingAccounts(prev => prev.filter(acc => acc.username !== username));
     }
   }, [newAccountUsername, newAccountPlatform, currentOrgId, currentProjectId, user, handleSyncAccount]);
 
@@ -637,6 +650,69 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-zinc-900/60 divide-y divide-gray-200 dark:divide-white/5">
+                  {/* Processing Accounts */}
+                  {processingAccounts.map((procAccount, index) => (
+                    <tr 
+                      key={`processing-${index}`}
+                      className="bg-blue-50/50 dark:bg-blue-900/20 animate-pulse"
+                    >
+                      {/* Username Column */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center space-x-3">
+                          <div className="relative w-10 h-10">
+                            <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center animate-spin">
+                              <RefreshCw className="w-5 h-5 text-white" />
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">
+                              @{procAccount.username}
+                            </div>
+                            <div className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                              ⏳ Account processing...
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Platform Column */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center space-x-2">
+                          <PlatformIcon platform={procAccount.platform as any} size="sm" />
+                          <span className="text-sm text-gray-900 dark:text-white capitalize">{procAccount.platform}</span>
+                        </div>
+                      </td>
+
+                      {/* Other columns with loading placeholders */}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 dark:text-gray-500">
+                        <div className="w-16 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 dark:text-gray-500">
+                        <div className="w-12 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 dark:text-gray-500">
+                        <div className="w-12 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 dark:text-gray-500">
+                        <div className="w-16 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 dark:text-gray-500">
+                        <div className="w-12 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 dark:text-gray-500">
+                        <div className="w-12 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                      </td>
+
+                      {/* Actions Column */}
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center justify-end space-x-2">
+                          <span className="text-xs text-gray-400 dark:text-gray-500">Processing...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+
+                  {/* Regular Accounts */}
                   {(filteredAccounts.length > 0 ? filteredAccounts : accounts)
                     .filter(account => 
                       searchQuery === '' || 
