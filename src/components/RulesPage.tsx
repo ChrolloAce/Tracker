@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { Plus, Filter, Trash2, Edit2, CheckCircle, XCircle } from 'lucide-react';
 import { TrackingRule, RuleCondition, RuleConditionType } from '../types/rules';
 import { TrackedAccount } from '../types/accounts';
@@ -9,7 +9,11 @@ import { clsx } from 'clsx';
 import { Modal } from './ui/Modal';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 
-const RulesPage = () => {
+export interface RulesPageRef {
+  openCreateModal: () => void;
+}
+
+const RulesPage = forwardRef<RulesPageRef, {}>((props, ref) => {
   const { currentOrgId, currentProjectId, user } = useAuth();
   const [rules, setRules] = useState<TrackingRule[]>([]);
   const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
@@ -22,6 +26,11 @@ const RulesPage = () => {
   const [conditions, setConditions] = useState<RuleCondition[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [isActive, setIsActive] = useState(true);
+
+  // Expose openCreateModal to parent component
+  useImperativeHandle(ref, () => ({
+    openCreateModal: handleOpenCreate
+  }), [handleOpenCreate]);
 
   // Load rules and accounts
   useEffect(() => {
@@ -157,23 +166,6 @@ const RulesPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Tracking Rules</h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Filter videos automatically based on conditions
-          </p>
-        </div>
-        <button
-          onClick={handleOpenCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Create Rule
-        </button>
-      </div>
-
       {/* Rules Table - Matching Accounts Style */}
       {rules.length === 0 ? (
         <div className="text-center py-12 bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl border border-white/10">
@@ -483,6 +475,8 @@ const RulesPage = () => {
       </Modal>
     </div>
   );
-};
+});
+
+RulesPage.displayName = 'RulesPage';
 
 export default RulesPage;
