@@ -491,7 +491,9 @@ const KPISparkline: React.FC<{
   gradient: string[];
   stroke: string;
   timePeriod?: TimePeriodType;
-}> = ({ data, id, gradient, stroke, timePeriod = 'days' }) => {
+  totalValue?: string | number;
+  metricLabel?: string;
+}> = ({ data, id, gradient, stroke, timePeriod = 'days', totalValue, metricLabel }) => {
   
   const formatTooltipDate = (timestamp?: number) => {
     if (!timestamp) return '';
@@ -551,14 +553,28 @@ const KPISparkline: React.FC<{
               
               // Format value based on metric type
               const isEngagementRate = id === 'engagement';
+              
+              // Helper function to format numbers (1M, 200K, etc.)
+              const formatDisplayNumber = (num: number): string => {
+                if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+                if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+                return num.toLocaleString();
+              };
+              
               const displayValue = isEngagementRate 
                 ? `${value?.toLocaleString()}%` 
-                : value?.toLocaleString();
+                : formatDisplayNumber(value);
+              
+              // Format the total value with metric label (uppercase)
+              const totalDisplay = totalValue && metricLabel 
+                ? `total: ${totalValue} ${metricLabel.toUpperCase()}` 
+                : null;
               
               return (
-                <div className="bg-gray-900/80 backdrop-blur-md text-white px-4 py-2.5 rounded-lg shadow-xl text-sm space-y-1 min-w-[200px] border border-white/10 z-[99999] relative">
-                  {dateStr && <p className="text-xs text-gray-400 font-medium">{dateStr}</p>}
-                  <p className="font-semibold text-lg">{displayValue}</p>
+                <div className="bg-gray-900/80 backdrop-blur-md text-white px-4 py-2.5 rounded-lg shadow-xl text-sm space-y-1.5 min-w-[200px] border border-white/10 z-[99999] relative">
+                  {totalDisplay && <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{totalDisplay}</p>}
+                  {dateStr && <p className="text-xs text-gray-300 font-medium">{dateStr.toLowerCase()}: <span className="text-white font-semibold">{displayValue} {metricLabel?.toLowerCase()}</span></p>}
+                  {!dateStr && <p className="font-semibold text-lg">{displayValue}</p>}
                   {showComparison && trendText && (
                     <p className={`text-xs font-medium ${diff >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {trendText}
@@ -702,6 +718,8 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
               gradient={colors.gradient}
               stroke={colors.stroke}
               timePeriod={timePeriod}
+              totalValue={data.value}
+              metricLabel={data.label}
             />
           </div>
         )}
