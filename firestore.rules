@@ -67,6 +67,16 @@ service cloud.firestore {
       ]);
     }
     
+    // Check if creator is linked to an account
+    function isCreatorLinkedToAccount(orgId, accountId) {
+      return exists(/databases/$(database)/documents/organizations/$(orgId)/creatorLinks/$(request.auth.uid + '_' + accountId));
+    }
+    
+    // Get user's role in organization
+    function getUserRole(orgId) {
+      return getOrgMember(orgId).role;
+    }
+    
     // ==================== USER ACCOUNTS ====================
     
     // Check if the requesting user is in any shared organization with the target user
@@ -198,22 +208,31 @@ service cloud.firestore {
         // ==================== PROJECT TRACKED ACCOUNTS ====================
         
         match /trackedAccounts/{accountId} {
-          // All members can read
-          allow read: if canReadOrg(orgId);
+          // Admins/members can read all accounts
+          // Creators can only read accounts linked to them
+          allow read: if canReadOrg(orgId) && (
+            getUserRole(orgId) in ['owner', 'admin', 'member'] ||
+            (getUserRole(orgId) == 'creator' && isCreatorLinkedToAccount(orgId, accountId))
+          );
           
-          // All members can create accounts
+          // All members can create accounts (but not creators)
           allow create: if canWriteOrg(orgId) 
-            && request.resource.data.addedBy == request.auth.uid;
+            && request.resource.data.addedBy == request.auth.uid
+            && getUserRole(orgId) != 'creator';
           
           // Only admins can update/delete accounts
           allow update, delete: if canManageOrg(orgId);
           
           match /videos/{videoId} {
-            // All members can read
-            allow read: if canReadOrg(orgId);
+            // Admins/members can read all videos
+            // Creators can read videos from their linked accounts
+            allow read: if canReadOrg(orgId) && (
+              getUserRole(orgId) in ['owner', 'admin', 'member'] ||
+              (getUserRole(orgId) == 'creator' && isCreatorLinkedToAccount(orgId, accountId))
+            );
             
-            // All members can create videos
-            allow create: if canWriteOrg(orgId);
+            // All members can create videos (but not creators)
+            allow create: if canWriteOrg(orgId) && getUserRole(orgId) != 'creator';
             
             // Only admins can update/delete videos
             allow update, delete: if canManageOrg(orgId);
@@ -275,16 +294,53 @@ service cloud.firestore {
         }
       }
       
+      // ==================== CREATOR LINKS ====================
+      
+      match /creatorLinks/{linkId} {
+        // All members can read creator links
+        allow read: if canReadOrg(orgId);
+        
+        // Only admins can create/manage creator links
+        allow create, update, delete: if canManageOrg(orgId);
+      }
+      
+      // ==================== CREATOR PROFILES ====================
+      
+      match /creators/{creatorId} {
+        // Admins can read all creator profiles
+        // Creators can read their own profile
+        allow read: if canManageOrg(orgId) || (isOrgMember(orgId) && request.auth.uid == creatorId);
+        
+        // Only admins can write creator profiles
+        allow write: if canManageOrg(orgId);
+        
+        // ==================== CREATOR PAYOUTS ====================
+        
+        match /payouts/{payoutId} {
+          // Admins can read all payouts
+          // Creators can read their own payouts
+          allow read: if canManageOrg(orgId) || (isOrgMember(orgId) && request.auth.uid == creatorId);
+          
+          // Only admins can write payouts
+          allow write: if canManageOrg(orgId);
+        }
+      }
+      
       // ==================== TRACKED ACCOUNTS (Legacy - for migration) ====================
       
       match /trackedAccounts/{accountId} {
-        // All members can read
-        allow read: if canReadOrg(orgId);
+        // Admins/members can read all accounts
+        // Creators can only read accounts linked to them
+        allow read: if canReadOrg(orgId) && (
+          getUserRole(orgId) in ['owner', 'admin', 'member'] ||
+          (getUserRole(orgId) == 'creator' && isCreatorLinkedToAccount(orgId, accountId))
+        );
         
-        // All members can create accounts
+        // All members can create accounts (but not creators)
         allow create: if canWriteOrg(orgId) 
           && request.resource.data.orgId == orgId
-          && request.resource.data.addedBy == request.auth.uid;
+          && request.resource.data.addedBy == request.auth.uid
+          && getUserRole(orgId) != 'creator';
         
         // Only admins can update/delete accounts
         allow update, delete: if canManageOrg(orgId);
@@ -293,13 +349,18 @@ service cloud.firestore {
       // ==================== VIDEOS ====================
       
       match /videos/{videoId} {
-        // All members can read
-        allow read: if canReadOrg(orgId);
+        // Admins/members can read all videos
+        // Creators can read videos from their linked accounts
+        allow read: if canReadOrg(orgId) && (
+          getUserRole(orgId) in ['owner', 'admin', 'member'] ||
+          (getUserRole(orgId) == 'creator' && resource.data.trackedAccountId != null && isCreatorLinkedToAccount(orgId, resource.data.trackedAccountId))
+        );
         
-        // All members can create videos
+        // All members can create videos (but not creators)
         allow create: if canWriteOrg(orgId) 
           && request.resource.data.orgId == orgId
-          && request.resource.data.addedBy == request.auth.uid;
+          && request.resource.data.addedBy == request.auth.uid
+          && getUserRole(orgId) != 'creator';
         
         // Only admins can update/delete videos
         allow update, delete: if canManageOrg(orgId);

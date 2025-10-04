@@ -3,10 +3,11 @@ import { Timestamp } from 'firebase/firestore';
 // ==================== ENUMS & TYPES ====================
 
 export type Platform = 'instagram' | 'tiktok' | 'youtube' | 'twitter';
-export type Role = 'owner' | 'admin' | 'member';
+export type Role = 'owner' | 'admin' | 'member' | 'creator';
 export type MemberStatus = 'active' | 'invited' | 'removed';
 export type VideoPlatform = Platform | 'file' | 'other';
 export type AccountType = 'my' | 'competitor';
+export type PayoutStatus = 'pending' | 'processing' | 'paid' | 'failed';
 
 // ==================== USER ACCOUNT ====================
 
@@ -307,5 +308,77 @@ export interface OrganizationSettings {
     slack?: { webhookUrl: string };
     discord?: { webhookUrl: string };
   };
+}
+
+// ==================== CREATORS & PAYOUTS ====================
+
+/**
+ * Creator-Account Link (mapping)
+ * Path: /organizations/{orgId}/creatorLinks/{linkId}
+ */
+export interface CreatorLink {
+  id: string;
+  orgId: string;
+  creatorId: string; // userId of the creator
+  accountId: string; // trackedAccountId
+  createdAt: Timestamp;
+  createdBy: string; // userId of admin who created link
+}
+
+/**
+ * Creator profile (denormalized for quick lookups)
+ * Path: /organizations/{orgId}/creators/{creatorId}
+ */
+export interface Creator {
+  id: string; // userId
+  orgId: string;
+  displayName: string;
+  email: string;
+  photoURL?: string;
+  linkedAccountsCount: number;
+  totalEarnings: number;
+  payoutsEnabled: boolean;
+  createdAt: Timestamp;
+  lastPayoutAt?: Timestamp;
+}
+
+/**
+ * Payout record
+ * Path: /organizations/{orgId}/creators/{creatorId}/payouts/{payoutId}
+ */
+export interface Payout {
+  id: string;
+  orgId: string;
+  creatorId: string;
+  
+  // Period
+  periodStart: Timestamp;
+  periodEnd: Timestamp;
+  
+  // Metrics
+  accountIds: string[]; // Accounts included in this payout
+  totalViews: number;
+  totalLikes: number;
+  totalComments: number;
+  totalShares?: number;
+  eligibleMetric: number; // The metric used for calculation (e.g., views)
+  
+  // Payment
+  amount: number; // Amount in dollars
+  currency: string; // e.g., 'USD'
+  status: PayoutStatus;
+  
+  // Payment details
+  paymentMethod?: string; // e.g., 'PayPal', 'Bank Transfer'
+  reference?: string; // Payment reference number
+  notes?: string; // Admin notes
+  
+  // Timestamps
+  createdAt: Timestamp;
+  createdBy: string; // Admin who created the payout
+  paidAt?: Timestamp;
+  
+  // Rate info (for transparency)
+  rateDescription?: string; // e.g., '$10 per 1,000 views'
 }
 

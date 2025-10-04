@@ -17,6 +17,7 @@ import CronManagementPage from '../components/CronManagementPage';
 import TrackedLinksPage, { TrackedLinksPageRef } from '../components/TrackedLinksPage';
 import TeamManagementPage from '../components/TeamManagementPage';
 import PendingInvitationsPage from '../components/PendingInvitationsPage';
+import CreatorPortalPage from '../components/CreatorPortalPage';
 import { PageLoadingSkeleton } from '../components/ui/LoadingSkeleton';
 import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
 import { VideoSubmission, InstagramVideoData } from '../types';
@@ -712,18 +713,8 @@ function DashboardPage() {
             />
           )}
 
-          {/* Creators Tab - Placeholder */}
-          {activeTab === 'creators' && (
-            <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
-              <div className="w-16 h-16 bg-purple-50 dark:bg-purple-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">👥</span>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Creators</h3>
-              <p className="text-gray-500 dark:text-gray-400">
-                Discover and manage content creators. Coming soon!
-              </p>
-            </div>
-          )}
+          {/* Creators Tab - Creator Portal */}
+          {activeTab === 'creators' && <CreatorPortalPage />}
 
           {/* Other Tabs - Placeholder */}
           {!['dashboard', 'accounts', 'contracts', 'subscription', 'settings', 'analytics', 'creators', 'rules', 'cron', 'team', 'invitations'].includes(activeTab) && (

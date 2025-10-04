@@ -87,7 +87,7 @@ export interface TeamMemberPermissions {
 /**
  * Default permissions for different roles
  */
-export const DEFAULT_PERMISSIONS: Record<'owner' | 'admin' | 'member', TeamMemberPermissions> = {
+export const DEFAULT_PERMISSIONS: Record<'owner' | 'admin' | 'member' | 'creator', TeamMemberPermissions> = {
   owner: {
     analytics: {
       views: true,
@@ -261,6 +261,65 @@ export const DEFAULT_PERMISSIONS: Record<'owner' | 'admin' | 'member', TeamMembe
     links: {
       view: true,
       create: true,
+      edit: false,
+      delete: false,
+    },
+  },
+  creator: {
+    analytics: {
+      views: true,
+      likes: true,
+      comments: true,
+      shares: true,
+      engagement: true,
+      linkClicks: false,
+      revenue: true, // Can see their own revenue/earnings
+    },
+    tabs: {
+      dashboard: false, // Creators have their own specific views
+      trackedAccounts: false,
+      trackedLinks: false,
+      rules: false,
+      contracts: false,
+      team: false,
+      creators: true, // Access to creator portal
+      settings: true,
+    },
+    projects: {
+      view: true,
+      create: false,
+      edit: false,
+      delete: false,
+    },
+    accounts: {
+      view: true, // Can view their linked accounts only
+      add: false,
+      edit: false,
+      delete: false,
+      sync: false,
+    },
+    team: {
+      view: false,
+      invite: false,
+      editRoles: false,
+      editPermissions: false,
+      remove: false,
+    },
+    contracts: {
+      view: false,
+      create: false,
+      edit: false,
+      delete: false,
+    },
+    rules: {
+      view: false,
+      create: false,
+      edit: false,
+      delete: false,
+    },
+    links: {
+      view: false,
+      create: false,
       edit: false,
       delete: false,
     },

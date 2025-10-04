@@ -1,22 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { OrgMember, TeamInvitation, Role } from '../types/firestore';
+import { OrgMember, TeamInvitation, Role, Creator } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
 import TeamInvitationService from '../services/TeamInvitationService';
-import { UserPlus, Shield, Crown, User, Mail, Clock, X, Settings } from 'lucide-react';
+import CreatorLinksService from '../services/CreatorLinksService';
+import { UserPlus, Shield, Crown, User, Mail, Clock, X, Settings, Link as LinkIcon, Video } from 'lucide-react';
+import { Button } from './ui/Button';
 import InviteTeamMemberModal from './InviteTeamMemberModal';
 import EditMemberPermissionsModal from './EditMemberPermissionsModal';
+import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
 import { TeamMemberPermissions } from '../types/permissions';
 
 const TeamManagementPage: React.FC = () => {
   const { user, currentOrgId } = useAuth();
   const [members, setMembers] = useState<OrgMember[]>([]);
+  const [creatorProfiles, setCreatorProfiles] = useState<Map<string, Creator>>(new Map());
   const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
   const [receivedInvitations, setReceivedInvitations] = useState<TeamInvitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [editingMember, setEditingMember] = useState<OrgMember | null>(null);
+  const [linkingCreator, setLinkingCreator] = useState<OrgMember | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,6 +40,18 @@ const TeamManagementPage: React.FC = () => {
       // Load members
       const membersData = await OrganizationService.getOrgMembers(currentOrgId);
       setMembers(membersData);
+
+      // Load creator profiles for members with creator role
+      const creators = membersData.filter(m => m.role === 'creator');
+      const creatorProfilesMap = new Map<string, Creator>();
+      
+      for (const creator of creators) {
+        const profile = await CreatorLinksService.getCreatorProfile(currentOrgId, creator.userId);
+        if (profile) {
+          creatorProfilesMap.set(creator.userId, profile);
+        }
+      }
+      setCreatorProfiles(creatorProfilesMap);
 
       // Load pending invitations sent from this org (only for admins)
       if (role === 'owner' || role === 'admin') {
@@ -169,17 +186,21 @@ const TeamManagementPage: React.FC = () => {
         return <Shield className="w-4 h-4 text-blue-500" />;
       case 'member':
         return <User className="w-4 h-4 text-gray-500" />;
+      case 'creator':
+        return <Video className="w-4 h-4 text-purple-500" />;
     }
   };
 
   const getRoleBadgeColor = (role: Role) => {
     switch (role) {
       case 'owner':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400';
       case 'admin':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400';
       case 'member':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+      case 'creator':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400';
     }
   };
 
@@ -195,49 +216,33 @@ const TeamManagementPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6">
-        {/* Skeleton for button */}
-        <div className="flex justify-end">
-          <div className="h-10 w-32 bg-gray-800/50 rounded-lg animate-pulse" />
-        </div>
-        
-        {/* Skeleton for table */}
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-700">
-            <div className="h-7 w-48 bg-gray-700/50 rounded animate-pulse" />
-          </div>
-          <div className="p-6 space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-gray-700/50 rounded-full animate-pulse" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 w-32 bg-gray-700/50 rounded animate-pulse" />
-                  <div className="h-3 w-48 bg-gray-700/30 rounded animate-pulse" />
-                </div>
-                <div className="h-8 w-20 bg-gray-700/50 rounded animate-pulse" />
-                <div className="h-4 w-24 bg-gray-700/50 rounded animate-pulse" />
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-400">Loading team members...</div>
       </div>
     );
   }
 
   return (
     <div className="p-6 space-y-6">
-      {/* Add Team Button */}
-      {isAdmin && (
-        <div className="flex justify-end">
-          <button
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Team & Access</h1>
+          <p className="text-gray-400 mt-1">
+            Manage teammates, creators, and what they can see or do.
+          </p>
+        </div>
+        {isAdmin && (
+          <Button
             onClick={() => setShowInviteModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200"
+            className="flex items-center gap-2"
+            title="Invite by email, set a role (Owner, Admin, Member, Creator), and link accounts."
           >
             <UserPlus className="w-4 h-4" />
-            Add Team
-          </button>
-        </div>
-      )}
+            Add Team Member
+          </Button>
+        )}
+      </div>
 
       {/* Team Members */}
       <div className="bg-gray-800/50 rounded-lg border border-gray-700 overflow-hidden">
@@ -257,6 +262,9 @@ const TeamManagementPage: React.FC = () => {
                   Role
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Details
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Joined
                 </th>
                 {isAdmin && (
@@ -267,89 +275,126 @@ const TeamManagementPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
-              {members.map((member) => (
-                <tr key={member.userId} className="hover:bg-gray-800/30">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-3">
-                      <div className="relative w-10 h-10">
-                        {member.photoURL ? (
-                          <img
-                            src={member.photoURL}
-                            alt={member.displayName || 'User'}
-                            className="w-10 h-10 rounded-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                              const placeholder = e.currentTarget.parentElement?.querySelector('.placeholder-icon');
-                              if (placeholder) {
-                                (placeholder as HTMLElement).classList.remove('hidden');
-                              }
-                            }}
-                          />
-                        ) : null}
-                        <div className={`placeholder-icon w-10 h-10 bg-gray-700 dark:bg-gray-800 rounded-full flex items-center justify-center ${member.photoURL ? 'hidden' : ''}`}>
-                          <User className="w-5 h-5 text-gray-400" />
+              {members.map((member) => {
+                const creatorProfile = member.role === 'creator' ? creatorProfiles.get(member.userId) : null;
+                
+                return (
+                  <tr key={member.userId} className="hover:bg-gray-800/30">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-3">
+                        <div className="relative w-10 h-10">
+                          {member.photoURL ? (
+                            <img
+                              src={member.photoURL}
+                              alt={member.displayName || 'User'}
+                              className="w-10 h-10 rounded-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                const placeholder = e.currentTarget.parentElement?.querySelector('.placeholder-icon');
+                                if (placeholder) {
+                                  (placeholder as HTMLElement).classList.remove('hidden');
+                                }
+                              }}
+                            />
+                          ) : null}
+                          <div className={`placeholder-icon w-10 h-10 bg-gray-700 dark:bg-gray-800 rounded-full flex items-center justify-center ${member.photoURL ? 'hidden' : ''}`}>
+                            <User className="w-5 h-5 text-gray-400" />
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-white">
-                          {member.displayName || 'Unknown User'}
-                          {member.userId === user?.uid && (
-                            <span className="ml-2 text-xs text-gray-400">(You)</span>
-                          )}
+                        <div>
+                          <div className="text-sm font-medium text-white">
+                            {member.displayName || 'Unknown User'}
+                            {member.userId === user?.uid && (
+                              <span className="ml-2 text-xs text-gray-400">(You)</span>
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-400">{member.email}</div>
                         </div>
-                        <div className="text-sm text-gray-400">{member.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {isAdmin && member.role !== 'owner' && member.userId !== user?.uid ? (
-                      <select
-                        value={member.role}
-                        onChange={(e) => handleUpdateRole(member.userId, e.target.value as Role)}
-                        disabled={actionLoading === member.userId}
-                        className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg px-3 py-1.5 focus:ring-purple-500 focus:border-purple-500"
-                      >
-                        <option value="member">Member</option>
-                        <option value="admin">Admin</option>
-                      </select>
-                    ) : (
-                      <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(member.role)}`}>
-                        {getRoleIcon(member.role)}
-                        {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                    {formatDate(member.joinedAt)}
-                  </td>
-                  {isAdmin && (
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end gap-2">
-                        {member.role !== 'owner' && (
-                          <button
-                            onClick={() => setEditingMember(member)}
-                            disabled={actionLoading === member.userId}
-                            className="p-2 rounded-lg text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Edit Permissions"
-                          >
-                            <Settings className="w-4 h-4" />
-                          </button>
-                        )}
-                        {member.role !== 'owner' && member.userId !== user?.uid && (
-                          <button
-                            onClick={() => handleRemoveMember(member.userId)}
-                            disabled={actionLoading === member.userId}
-                            className="p-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Remove Member"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        )}
                       </div>
                     </td>
-                  )}
-                </tr>
-              ))}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {isAdmin && member.role !== 'owner' && member.role !== 'creator' && member.userId !== user?.uid ? (
+                        <select
+                          value={member.role}
+                          onChange={(e) => handleUpdateRole(member.userId, e.target.value as Role)}
+                          disabled={actionLoading === member.userId}
+                          className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg px-3 py-1.5 focus:ring-purple-500 focus:border-purple-500"
+                        >
+                          <option value="member">Member</option>
+                          <option value="admin">Admin</option>
+                          <option value="creator">Creator</option>
+                        </select>
+                      ) : (
+                        <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(member.role)}`}>
+                          {getRoleIcon(member.role)}
+                          {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      {member.role === 'creator' && creatorProfile ? (
+                        <div className="text-xs">
+                          <div className="text-gray-300">
+                            Linked accounts: <span className="font-medium text-white">{creatorProfile.linkedAccountsCount}</span>
+                          </div>
+                          {creatorProfile.payoutsEnabled && (
+                            <div className="text-purple-400 mt-0.5">
+                              Payouts enabled
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-gray-500">—</div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                      {formatDate(member.joinedAt)}
+                    </td>
+                    {isAdmin && (
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center justify-end gap-2">
+                          {member.role === 'creator' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setLinkingCreator(member)}
+                              disabled={actionLoading === member.userId}
+                              className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                              title="Link Accounts"
+                            >
+                              <LinkIcon className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {member.role !== 'owner' && member.role !== 'creator' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEditingMember(member)}
+                              disabled={actionLoading === member.userId}
+                              className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
+                              title="Manage Permissions"
+                            >
+                              <Settings className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {member.role !== 'owner' && member.userId !== user?.uid && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveMember(member.userId)}
+                              disabled={actionLoading === member.userId}
+                              className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                              title="Remove"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -409,13 +454,15 @@ const TeamManagementPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => handleCancelInvitation(invitation.id)}
                         disabled={actionLoading === invitation.id}
-                        className="px-3 py-1.5 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
                       >
                         Cancel
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -488,20 +535,21 @@ const TeamManagementPage: React.FC = () => {
 
                     {/* Action Buttons */}
                     <div className="flex gap-3 flex-shrink-0">
-                      <button
+                      <Button
                         onClick={() => handleAcceptInvitation(invitation)}
                         disabled={actionLoading === invitation.id}
-                        className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="bg-purple-600 hover:bg-purple-700 text-white px-6"
                       >
                         {actionLoading === invitation.id ? 'Accepting...' : 'Accept'}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="secondary"
                         onClick={() => handleDeclineInvitation(invitation)}
                         disabled={actionLoading === invitation.id}
-                        className="px-6 py-2.5 rounded-lg bg-gray-800 hover:bg-red-500/10 text-gray-300 hover:text-red-400 font-medium border border-gray-700 hover:border-red-500/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="hover:bg-red-500/10 hover:text-red-400"
                       >
                         Decline
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -529,6 +577,18 @@ const TeamManagementPage: React.FC = () => {
           onClose={() => setEditingMember(null)}
           onSave={handleSavePermissions}
           onResetToDefault={handleResetPermissions}
+        />
+      )}
+
+      {/* Link Creator Accounts Modal */}
+      {linkingCreator && (
+        <LinkCreatorAccountsModal
+          creator={linkingCreator}
+          onClose={() => setLinkingCreator(null)}
+          onSuccess={() => {
+            setLinkingCreator(null);
+            loadData();
+          }}
         />
       )}
     </div>

@@ -118,6 +118,7 @@ const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({ onClose, 
             >
               <option value="member">Member</option>
               <option value="admin">Admin</option>
+              <option value="creator">Creator</option>
             </select>
             <div className="mt-3 space-y-2">
               <div className="text-xs text-gray-400">
@@ -125,6 +126,9 @@ const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({ onClose, 
               </div>
               <div className="text-xs text-gray-400">
                 <span className="font-medium text-gray-300">Admin:</span> Can manage content and team members
+              </div>
+              <div className="text-xs text-gray-400">
+                <span className="font-medium text-gray-300">Creator:</span> Can view their linked accounts and earnings
               </div>
             </div>
           </div>
