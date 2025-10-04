@@ -124,8 +124,8 @@ service cloud.firestore {
       // ==================== ORG MEMBERS ====================
       
       match /members/{userId} {
-        // Members can read member list
-        allow read: if canReadOrg(orgId);
+        // Members can read member list, OR users can read their own member doc
+        allow read: if canReadOrg(orgId) || (isSignedIn() && isOwner(userId));
         
         // Admins can manage members, OR user can create themselves
         // Note: Application logic validates invitations before member creation
