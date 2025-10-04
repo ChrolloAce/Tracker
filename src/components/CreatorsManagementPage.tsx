@@ -3,10 +3,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { OrgMember, Creator } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
 import CreatorLinksService from '../services/CreatorLinksService';
-import { UserPlus, Video, Link as LinkIcon, DollarSign, User, X } from 'lucide-react';
+import { UserPlus, Video, Link as LinkIcon, DollarSign, User, X, Edit3 } from 'lucide-react';
 import { Button } from './ui/Button';
 import InviteTeamMemberModal from './InviteTeamMemberModal';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
+import CreatorDetailsPage from './CreatorDetailsPage';
 
 /**
  * CreatorsManagementPage
@@ -19,6 +20,7 @@ const CreatorsManagementPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [linkingCreator, setLinkingCreator] = useState<OrgMember | null>(null);
+  const [editingCreator, setEditingCreator] = useState<OrgMember | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
@@ -83,6 +85,17 @@ const CreatorsManagementPage: React.FC = () => {
       year: 'numeric' 
     });
   };
+
+  // Show creator details page if editing
+  if (editingCreator) {
+    return (
+      <CreatorDetailsPage
+        creator={editingCreator}
+        onBack={() => setEditingCreator(null)}
+        onUpdate={() => loadData()}
+      />
+    );
+  }
 
   if (loading) {
     return (
@@ -254,6 +267,16 @@ const CreatorsManagementPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingCreator(creator)}
+                            disabled={actionLoading === creator.userId}
+                            className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
+                            title="Edit Details"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="sm"

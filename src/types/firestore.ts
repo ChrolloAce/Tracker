@@ -9,6 +9,41 @@ export type VideoPlatform = Platform | 'file' | 'other';
 export type AccountType = 'my' | 'competitor';
 export type PayoutStatus = 'pending' | 'processing' | 'paid' | 'failed';
 
+/**
+ * Payment term types for creator compensation
+ */
+export type PaymentTermType = 
+  | 'flat_fee'
+  | 'base_cpm'
+  | 'base_guaranteed_views'
+  | 'cpc'
+  | 'cpa_cps'
+  | 'revenue_share'
+  | 'tiered_performance'
+  | 'retainer';
+
+/**
+ * Payment term preset
+ */
+export interface PaymentTermPreset {
+  id: string;
+  name: string;
+  type: PaymentTermType;
+  description: string;
+  baseAmount?: number;
+  cpmRate?: number; // Cost per 1000 views
+  guaranteedViews?: number;
+  cpcRate?: number; // Cost per click
+  cpaRate?: number; // Cost per acquisition
+  revenueSharePercentage?: number;
+  tierRates?: { views: number; bonus: number }[]; // For tiered performance
+  retainerAmount?: number; // Monthly retainer
+  currency: string;
+  isActive: boolean;
+  createdAt: Timestamp;
+  updatedAt?: Timestamp;
+}
+
 // ==================== USER ACCOUNT ====================
 
 /**
@@ -344,6 +379,13 @@ export interface Creator {
   payoutsEnabled: boolean;
   createdAt: Timestamp;
   lastPayoutAt?: Timestamp;
+  
+  // Payment terms
+  paymentTermPresetId?: string; // Reference to selected preset
+  customPaymentTerms?: Partial<PaymentTermPreset>; // Custom overrides
+  contractNotes?: string;
+  contractStartDate?: Timestamp;
+  contractEndDate?: Timestamp;
 }
 
 /**
