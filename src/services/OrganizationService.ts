@@ -9,7 +9,8 @@ import {
   orderBy,
   Timestamp,
   writeBatch,
-  increment
+  increment,
+  collectionGroup
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { 
@@ -141,17 +142,27 @@ class OrganizationService {
    */
   static async getUserOrganizations(userId: string): Promise<Organization[]> {
     try {
-      // Query all orgs where user is a member
-      const orgsSnapshot = await getDocs(collection(db, 'organizations'));
+      // Query all members subcollections where this user is a member
+      const membersQuery = query(
+        collectionGroup(db, 'members'),
+        where('userId', '==', userId),
+        where('status', '==', 'active')
+      );
+      
+      const membersSnapshot = await getDocs(membersQuery);
       const userOrgs: Organization[] = [];
       
-      for (const orgDoc of orgsSnapshot.docs) {
-        const memberDoc = await getDoc(
-          doc(db, 'organizations', orgDoc.id, 'members', userId)
-        );
+      // Get each organization that the user is a member of
+      for (const memberDoc of membersSnapshot.docs) {
+        // Extract orgId from the member document path
+        // Path format: organizations/{orgId}/members/{userId}
+        const orgId = memberDoc.ref.parent.parent?.id;
         
-        if (memberDoc.exists() && memberDoc.data().status === 'active') {
-          userOrgs.push({ id: orgDoc.id, ...orgDoc.data() } as Organization);
+        if (orgId) {
+          const orgDoc = await getDoc(doc(db, 'organizations', orgId));
+          if (orgDoc.exists()) {
+            userOrgs.push({ id: orgDoc.id, ...orgDoc.data() } as Organization);
+          }
         }
       }
       

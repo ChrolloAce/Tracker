@@ -291,6 +291,13 @@ service cloud.firestore {
       allow create: if isSignedIn(); // Authenticated users can create
       allow update, delete: if false; // Immutable after creation
     }
+    
+    // ==================== COLLECTION GROUP QUERIES ====================
+    
+    // Allow users to query their own memberships across all organizations
+    match /{path=**}/members/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+    }
   }
 }
 
