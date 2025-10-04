@@ -296,9 +296,9 @@ service cloud.firestore {
         // ==================== PROJECT CREATOR LINKS ====================
         
         match /creatorLinks/{linkId} {
-          // Admins can read all creator links in this project
-          // Creators can read their own links in this project
-          allow read: if canManageOrg(orgId) || (isOrgMember(orgId) && resource.data.creatorId == request.auth.uid);
+          // All org members can read creator links (for viewing who's linked to accounts)
+          // Note: resource.data check only works for get, not list queries
+          allow read: if canReadOrg(orgId);
           
           // Only admins can create/manage creator links
           allow create, update, delete: if canManageOrg(orgId);
@@ -308,8 +308,9 @@ service cloud.firestore {
         
         match /creators/{creatorId} {
           // Admins can read all creator profiles in this project
+          // All org members can read creator profiles (for viewing creator info)
           // Creators can read their own profile in this project
-          allow read: if canManageOrg(orgId) || (isOrgMember(orgId) && request.auth.uid == creatorId);
+          allow read: if canReadOrg(orgId);
           
           // Admins can write any creator profile
           // Users can create their own creator profile (during invitation acceptance)
@@ -321,9 +322,12 @@ service cloud.firestore {
           // ==================== PROJECT CREATOR PAYOUTS ====================
           
           match /payouts/{payoutId} {
-            // Admins can read all payouts in this project
-            // Creators can read their own payouts in this project
-            allow read: if canManageOrg(orgId) || (isOrgMember(orgId) && request.auth.uid == creatorId);
+            // Admins can read all payouts
+            // Creators can read their own payouts (using resource.data for individual reads)
+            allow read: if canManageOrg(orgId) || (isOrgMember(orgId) && resource != null && resource.data.creatorId == request.auth.uid);
+            
+            // Allow list operations for all org members (filtered by app logic)
+            allow list: if canReadOrg(orgId);
             
             // Only admins can write payouts
             allow write: if canManageOrg(orgId);
