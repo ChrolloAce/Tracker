@@ -88,135 +88,113 @@ const OrganizationSwitcher: React.FC = () => {
 
   if (loading || !currentOrg) {
     return (
-      <div className="flex items-center space-x-2 px-3 py-2 bg-gray-800 rounded-lg animate-pulse">
-        <Building2 className="w-4 h-4 text-gray-400" />
-        <div className="w-32 h-4 bg-gray-700 rounded" />
-      </div>
-    );
-  }
-
-  // If user only has one organization, show it without dropdown
-  if (organizations.length === 1) {
-    return (
-      <div className="flex items-center space-x-2 px-3 py-2 bg-gray-800 rounded-lg border border-gray-700">
-        {currentOrg.logoUrl ? (
-          <img
-            src={currentOrg.logoUrl}
-            alt={currentOrg.name}
-            className="w-5 h-5 rounded object-cover"
-          />
-        ) : (
-          <Building2 className="w-5 h-5 text-gray-400" />
-        )}
-        <span className="text-sm font-medium text-white truncate">
-          {currentOrg.name}
-        </span>
+      <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+        <div className="flex items-center justify-between px-3 py-2 bg-gray-800 rounded-lg animate-pulse">
+          <div className="w-32 h-4 bg-gray-700 rounded" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="relative w-full" ref={dropdownRef}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={clsx(
-          'w-full flex items-center justify-between space-x-2 px-3 py-2 rounded-lg transition-colors',
-          'hover:bg-gray-800',
-          'border border-gray-700',
-          isOpen && 'bg-gray-800'
-        )}
-      >
-        <div className="flex items-center space-x-2 min-w-0">
-          {currentOrg.logoUrl ? (
-            <img
-              src={currentOrg.logoUrl}
-              alt={currentOrg.name}
-              className="w-5 h-5 rounded object-cover flex-shrink-0"
-            />
-          ) : (
-            <Building2 className="w-5 h-5 text-gray-400 flex-shrink-0" />
+    <>
+      {/* Organization Button at Bottom */}
+      <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className={clsx(
+            'w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors',
+            'hover:bg-gray-100 dark:hover:bg-gray-800',
+            'border border-gray-200 dark:border-gray-700'
           )}
-          <span className="text-sm font-medium text-white truncate">
+        >
+          <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
             {currentOrg.name}
           </span>
-        </div>
-        <ChevronDown className={clsx(
-          'w-4 h-4 text-gray-500 transition-transform flex-shrink-0',
-          isOpen && 'rotate-180'
-        )} />
-      </button>
+          <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+        </button>
+      </div>
 
+      {/* Modal for Switching Organizations */}
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-2 w-full bg-gray-900 rounded-xl shadow-xl border border-gray-700 z-50 overflow-hidden">
-          {/* Header */}
-          <div className="px-4 py-3 border-b border-gray-800">
-            <h3 className="text-sm font-semibold text-white">
-              Switch Organization
-            </h3>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {organizations.length} organization{organizations.length !== 1 ? 's' : ''}
-            </p>
-          </div>
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setIsOpen(false)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Switch Organization
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                {organizations.length} organization{organizations.length !== 1 ? 's' : ''}
+              </p>
+            </div>
 
-          {/* Organization List */}
-          <div className="max-h-80 overflow-y-auto">
-            {organizations.map((org) => {
-              const role = userRoles.get(org.id);
-              return (
-                <button
-                  key={org.id}
-                  onClick={() => handleOrgSelect(org.id)}
-                  className={clsx(
-                    'w-full px-4 py-3 flex items-start space-x-3 transition-colors text-left',
-                    org.id === currentOrgId
-                      ? 'bg-purple-900/20'
-                      : 'hover:bg-gray-800'
-                  )}
-                >
-                  <div className="flex-shrink-0 mt-0.5">
-                    {org.logoUrl ? (
-                      <img
-                        src={org.logoUrl}
-                        alt={org.name}
-                        className="w-8 h-8 rounded-lg object-cover"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
-                        <Building2 className="w-5 h-5 text-white" />
-                      </div>
+            {/* Organization List */}
+            <div className="max-h-96 overflow-y-auto p-2">
+              {organizations.map((org) => {
+                const role = userRoles.get(org.id);
+                return (
+                  <button
+                    key={org.id}
+                    onClick={() => handleOrgSelect(org.id)}
+                    className={clsx(
+                      'w-full px-4 py-3 flex items-start space-x-3 rounded-lg transition-colors text-left mb-1',
+                      org.id === currentOrgId
+                        ? 'bg-purple-50 dark:bg-purple-900/20'
+                        : 'hover:bg-gray-50 dark:hover:bg-gray-800'
                     )}
-                  </div>
+                  >
+                    <div className="flex-shrink-0 mt-0.5">
+                      {org.logoUrl ? (
+                        <img
+                          src={org.logoUrl}
+                          alt={org.name}
+                          className="w-10 h-10 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
+                          <Building2 className="w-6 h-6 text-white" />
+                        </div>
+                      )}
+                    </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <h4 className="text-sm font-medium text-white truncate">
-                        {org.name}
-                      </h4>
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        {getRoleIcon(role)}
-                        {org.id === currentOrgId && (
-                          <Check className="w-4 h-4 text-purple-400" />
-                        )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {org.name}
+                        </h4>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {getRoleIcon(role)}
+                          {org.id === currentOrgId && (
+                            <Check className="w-4 h-4 text-purple-500" />
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {role && (
+                            <span className="capitalize">{role}</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">
+                          {org.memberCount} {org.memberCount === 1 ? 'member' : 'members'}
+                        </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 mt-1">
-                      <p className="text-xs text-gray-400">
-                        {role && (
-                          <span className="capitalize">{role}</span>
-                        )}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {org.memberCount} {org.memberCount === 1 ? 'member' : 'members'}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 

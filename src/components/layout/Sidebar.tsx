@@ -12,7 +12,6 @@ import {
   UserPlus
 } from 'lucide-react';
 import { clsx } from 'clsx';
-import { useAuth } from '../../contexts/AuthContext';
 import ProjectSwitcher from '../ProjectSwitcher';
 import OrganizationSwitcher from '../OrganizationSwitcher';
 import blackLogo from '../blacklogo.png';
@@ -41,7 +40,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   activeTab = 'dashboard',
   onTabChange
 }) => {
-  const { user } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
 
   const navigationItems: NavItem[] = [
@@ -202,15 +200,9 @@ const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
 
-      {/* Organization & Project Switchers */}
+      {/* Project Switcher */}
       {!isCollapsed && (
-        <div className="px-4 py-4 border-b border-gray-100 dark:border-gray-800 space-y-3">
-          <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">
-              Organization
-            </label>
-            <OrganizationSwitcher />
-          </div>
+        <div className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
           <div>
             <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">
               Project
@@ -234,54 +226,9 @@ const Sidebar: React.FC<SidebarProps> = ({
         ))}
       </div>
 
-      {/* User Profile */}
-      {!isCollapsed && user && (
-        <div className="p-4 border-t border-gray-200 dark:border-gray-800">
-          <div className="flex items-center space-x-3">
-            {user.photoURL ? (
-              <img 
-                src={user.photoURL} 
-                alt={user.displayName || 'User'} 
-                className="w-10 h-10 rounded-full object-cover ring-2 ring-white dark:ring-gray-800"
-              />
-            ) : (
-              <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center ring-2 ring-white dark:ring-gray-800">
-                <span className="text-sm font-bold text-gray-900 dark:text-white">
-                  {user.displayName?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || 'U'}
-                </span>
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                {user.displayName || 'User Account'}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                {user.email}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Collapsed User Profile */}
-      {isCollapsed && user && (
-        <div className="p-4 border-t border-gray-200 dark:border-gray-800">
-          <div className="w-full flex items-center justify-center">
-            {user.photoURL ? (
-              <img 
-                src={user.photoURL} 
-                alt={user.displayName || 'User'} 
-                className="w-8 h-8 rounded-full object-cover ring-2 ring-white dark:ring-gray-800"
-              />
-            ) : (
-              <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center ring-2 ring-white dark:ring-gray-800">
-                <span className="text-xs font-bold text-gray-900 dark:text-white">
-                  {user.displayName?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || 'U'}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
+      {/* Organization Switcher at Bottom */}
+      {!isCollapsed && (
+        <OrganizationSwitcher />
       )}
 
     </div>
