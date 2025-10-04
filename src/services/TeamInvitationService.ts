@@ -142,55 +142,103 @@ class TeamInvitationService {
     email: string,
     displayName?: string
   ): Promise<void> {
-    const batch = writeBatch(db);
+    console.log(`🔍 Attempting to accept invitation:`, { invitationId, orgId, userId, email });
     
-    // Get invitation
-    const inviteRef = doc(db, 'organizations', orgId, 'invitations', invitationId);
-    const inviteDoc = await getDoc(inviteRef);
-    
-    if (!inviteDoc.exists()) {
-      throw new Error('Invitation not found');
-    }
-    
-    const invite = inviteDoc.data() as TeamInvitation;
-    
-    if (invite.status !== 'pending') {
-      throw new Error('This invitation is no longer valid');
-    }
-    
-    // Check if expired
-    const now = new Date();
-    if (invite.expiresAt.toDate() < now) {
-      batch.update(inviteRef, { status: 'expired' });
+    try {
+      // Get invitation
+      const inviteRef = doc(db, 'organizations', orgId, 'invitations', invitationId);
+      const inviteDoc = await getDoc(inviteRef);
+      
+      console.log(`📧 Invitation doc exists:`, inviteDoc.exists());
+      
+      if (!inviteDoc.exists()) {
+        throw new Error('Invitation not found. It may have already been accepted or deleted.');
+      }
+      
+      const invite = inviteDoc.data() as TeamInvitation;
+      console.log(`📋 Invitation status:`, invite.status);
+      console.log(`📋 Invitation email:`, invite.email);
+      console.log(`📋 Your email:`, email);
+      
+      if (invite.status !== 'pending') {
+        throw new Error(`This invitation is ${invite.status}. Only pending invitations can be accepted.`);
+      }
+      
+      // Verify email matches (case-insensitive)
+      if (invite.email.toLowerCase() !== email.toLowerCase()) {
+        throw new Error(`This invitation is for ${invite.email}, but you are signed in as ${email}`);
+      }
+      
+      // Check if expired
+      const now = new Date();
+      if (invite.expiresAt.toDate() < now) {
+        const batch = writeBatch(db);
+        batch.update(inviteRef, { status: 'expired' });
+        await batch.commit();
+        throw new Error('This invitation has expired');
+      }
+      
+      // Check if user is already a member
+      const existingMemberRef = doc(db, 'organizations', orgId, 'members', userId);
+      const existingMemberDoc = await getDoc(existingMemberRef);
+      
+      if (existingMemberDoc.exists()) {
+        const memberData = existingMemberDoc.data();
+        if (memberData.status === 'active') {
+          console.log(`⚠️ User is already a member of this organization`);
+          // Mark invitation as accepted anyway
+          await updateDoc(inviteRef, { 
+            status: 'accepted',
+            acceptedAt: Timestamp.now()
+          });
+          // Set as default org
+          const userRef = doc(db, 'users', userId);
+          await setDoc(userRef, { defaultOrgId: orgId }, { merge: true });
+          return; // Already a member, just return
+        }
+      }
+      
+      // Proceed with accepting invitation
+      const batch = writeBatch(db);
+      
+      // Update invitation status
+      batch.update(inviteRef, { 
+        status: 'accepted',
+        acceptedAt: Timestamp.now()
+      });
+      
+      // Add user as member with email and displayName
+      const memberRef = doc(db, 'organizations', orgId, 'members', userId);
+      batch.set(memberRef, {
+        userId,
+        role: invite.role,
+        joinedAt: Timestamp.now(),
+        status: 'active',
+        invitedBy: invite.invitedBy,
+        email: email,
+        displayName: displayName || email.split('@')[0]
+      });
+      
+      // Set this as the user's default organization
+      const userRef = doc(db, 'users', userId);
+      batch.set(userRef, { defaultOrgId: orgId }, { merge: true });
+      
       await batch.commit();
-      throw new Error('This invitation has expired');
+      console.log(`✅ User ${userId} accepted invitation to org ${orgId}`);
+      console.log(`✅ Set org ${orgId} as default for user ${userId}`);
+      
+    } catch (error: any) {
+      console.error(`❌ Error accepting invitation:`, error);
+      console.error(`Error code:`, error?.code);
+      console.error(`Error message:`, error?.message);
+      
+      // Re-throw with better error message
+      if (error?.code === 'permission-denied') {
+        throw new Error('Permission denied. The invitation may have expired or been deleted. Please ask for a new invitation.');
+      }
+      
+      throw error;
     }
-    
-    // Update invitation status
-    batch.update(inviteRef, { 
-      status: 'accepted',
-      acceptedAt: Timestamp.now()
-    });
-    
-    // Add user as member with email and displayName
-    const memberRef = doc(db, 'organizations', orgId, 'members', userId);
-    batch.set(memberRef, {
-      userId,
-      role: invite.role,
-      joinedAt: Timestamp.now(),
-      status: 'active',
-      invitedBy: invite.invitedBy,
-      email: email,
-      displayName: displayName || email.split('@')[0]
-    });
-    
-    // Set this as the user's default organization
-    const userRef = doc(db, 'users', userId);
-    batch.set(userRef, { defaultOrgId: orgId }, { merge: true });
-    
-    await batch.commit();
-    console.log(`✅ User ${userId} accepted invitation to org ${orgId}`);
-    console.log(`✅ Set org ${orgId} as default for user ${userId}`);
   }
   
   /**
