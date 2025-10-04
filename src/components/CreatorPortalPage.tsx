@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { TrackedAccount, VideoDoc, Creator } from '../types/firestore';
+import { TrackedAccount } from '../types/firestore';
 import CreatorLinksService from '../services/CreatorLinksService';
 import FirestoreDataService from '../services/FirestoreDataService';
 import PayoutsService from '../services/PayoutsService';
-import { Video, DollarSign, Link as LinkIcon, TrendingUp, Calendar } from 'lucide-react';
+import { Video, DollarSign, Link as LinkIcon, TrendingUp } from 'lucide-react';
 import { PlatformIcon } from './ui/PlatformIcon';
-import LoadingSkeleton from './ui/LoadingSkeleton';
+import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 
 interface CreatorStats {
   totalAccounts: number;
@@ -32,7 +32,6 @@ const CreatorPortalPage: React.FC = () => {
     pendingPayouts: 0,
   });
   const [linkedAccounts, setLinkedAccounts] = useState<TrackedAccount[]>([]);
-  const [creatorProfile, setCreatorProfile] = useState<Creator | null>(null);
 
   useEffect(() => {
     loadData();
@@ -43,21 +42,15 @@ const CreatorPortalPage: React.FC = () => {
 
     setLoading(true);
     try {
-      // Load creator profile
-      const profile = await CreatorLinksService.getCreatorProfile(currentOrgId, user.uid);
-      setCreatorProfile(profile);
-
       // Load linked accounts
       const links = await CreatorLinksService.getCreatorLinkedAccounts(currentOrgId, user.uid);
       const accountIds = links.map(link => link.accountId);
       
-      const accounts: TrackedAccount[] = [];
-      for (const accountId of accountIds) {
-        const account = await FirestoreDataService.getTrackedAccountById(currentOrgId, accountId);
-        if (account) {
-          accounts.push(account);
-        }
-      }
+      // Load all accounts from the org (use currentOrgId as projectId to get org-level accounts)
+      const allAccounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentOrgId);
+      
+      // Filter to only linked accounts
+      const accounts = allAccounts.filter(acc => accountIds.includes(acc.id));
       setLinkedAccounts(accounts);
 
       // Calculate stats
@@ -82,7 +75,11 @@ const CreatorPortalPage: React.FC = () => {
   };
 
   if (loading) {
-    return <LoadingSkeleton />;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-400">Loading...</div>
+      </div>
+    );
   }
 
   return (
@@ -183,7 +180,7 @@ const CreatorPortalPage: React.FC = () => {
       {/* Tab Content */}
       <div>
         {activeTab === 'content' && (
-          <ContentTab linkedAccounts={linkedAccounts} orgId={currentOrgId!} />
+          <ContentTab linkedAccounts={linkedAccounts} />
         )}
         {activeTab === 'accounts' && (
           <AccountsTab linkedAccounts={linkedAccounts} />
@@ -197,9 +194,8 @@ const CreatorPortalPage: React.FC = () => {
 };
 
 // Content Tab Component
-const ContentTab: React.FC<{ linkedAccounts: TrackedAccount[]; orgId: string }> = ({
+const ContentTab: React.FC<{ linkedAccounts: TrackedAccount[] }> = ({
   linkedAccounts,
-  orgId,
 }) => {
   if (linkedAccounts.length === 0) {
     return (
@@ -271,7 +267,7 @@ const AccountsTab: React.FC<{ linkedAccounts: TrackedAccount[] }> = ({ linkedAcc
           className="bg-gray-800/50 rounded-lg border border-gray-700 p-5"
         >
           <div className="flex items-start gap-4">
-            <PlatformIcon platform={account.platform} size="xl" />
+            <PlatformIcon platform={account.platform} size="lg" />
             <div className="flex-1 min-w-0">
               <div className="text-lg font-medium text-white truncate">
                 @{account.username}
@@ -324,7 +320,7 @@ const PayoutsTab: React.FC<{ orgId: string; creatorId: string }> = ({ orgId, cre
   };
 
   if (loading) {
-    return <LoadingSkeleton />;
+    return <PageLoadingSkeleton type="dashboard" />;
   }
 
   if (payouts.length === 0) {

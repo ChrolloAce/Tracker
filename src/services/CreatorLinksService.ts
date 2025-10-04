@@ -1,8 +1,6 @@
 import { 
   collection, 
   doc, 
-  addDoc, 
-  deleteDoc, 
   getDocs, 
   query, 
   where, 

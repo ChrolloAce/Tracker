@@ -40,8 +40,8 @@ const LinkCreatorAccountsModal: React.FC<LinkCreatorAccountsModalProps> = ({
 
     setLoading(true);
     try {
-      // Load all organization accounts
-      const accountsData = await FirestoreDataService.getTrackedAccounts(currentOrgId);
+      // Load all organization accounts (pass empty string for projectId since we want org-level accounts)
+      const accountsData = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentOrgId);
       setAccounts(accountsData);
 
       // Load currently linked accounts

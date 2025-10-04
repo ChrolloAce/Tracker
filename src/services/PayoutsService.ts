@@ -7,7 +7,6 @@ import {
   where, 
   orderBy, 
   Timestamp,
-  writeBatch,
   getDoc,
   updateDoc,
   limit as firestoreLimit
