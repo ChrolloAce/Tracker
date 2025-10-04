@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { OrgMember, TeamInvitation, Role } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
 import TeamInvitationService from '../services/TeamInvitationService';
-import { Users, UserPlus, Shield, Crown, User, Mail, Clock, X, AlertCircle } from 'lucide-react';
+import { UserPlus, Shield, Crown, User, Mail, Clock, X } from 'lucide-react';
 import { Button } from './ui/Button';
 import InviteTeamMemberModal from './InviteTeamMemberModal';
 
@@ -187,18 +187,9 @@ const TeamManagementPage: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Users className="w-8 h-8 text-purple-500" />
-          <div>
-            <h1 className="text-3xl font-bold text-white">Team Management</h1>
-            <p className="text-gray-400 mt-1">
-              Manage your team members and their access levels
-            </p>
-          </div>
-        </div>
-        {isAdmin && (
+      {/* Invite Button */}
+      {isAdmin && (
+        <div className="flex justify-end">
           <Button
             onClick={() => setShowInviteModal(true)}
             className="flex items-center gap-2"
@@ -206,17 +197,6 @@ const TeamManagementPage: React.FC = () => {
             <UserPlus className="w-4 h-4" />
             Invite Member
           </Button>
-        )}
-      </div>
-
-      {/* Info Banner */}
-      {!isAdmin && (
-        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
-          <div className="text-sm text-gray-300">
-            <p className="font-medium text-white mb-1">View-only access</p>
-            <p>You can view team members but only admins can manage the team.</p>
-          </div>
         </div>
       )}
 
