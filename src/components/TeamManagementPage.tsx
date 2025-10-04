@@ -252,8 +252,24 @@ const TeamManagementPage: React.FC = () => {
                 <tr key={member.userId} className="hover:bg-gray-800/30">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold">
-                        {(member.displayName || member.email || 'U')[0].toUpperCase()}
+                      <div className="relative w-10 h-10">
+                        {user?.photoURL && member.userId === user?.uid ? (
+                          <img
+                            src={user.photoURL}
+                            alt={member.displayName || 'User'}
+                            className="w-10 h-10 rounded-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              const placeholder = e.currentTarget.parentElement?.querySelector('.placeholder-icon');
+                              if (placeholder) {
+                                (placeholder as HTMLElement).classList.remove('hidden');
+                              }
+                            }}
+                          />
+                        ) : null}
+                        <div className={`placeholder-icon w-10 h-10 bg-gray-700 dark:bg-gray-800 rounded-full flex items-center justify-center ${user?.photoURL && member.userId === user?.uid ? 'hidden' : ''}`}>
+                          <User className="w-5 h-5 text-gray-400" />
+                        </div>
                       </div>
                       <div>
                         <div className="text-sm font-medium text-white">
@@ -412,8 +428,8 @@ const TeamManagementPage: React.FC = () => {
                     {/* Invitation Details */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-3">
-                        <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
-                          <Users className="w-6 h-6 text-white" />
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gray-700 dark:bg-gray-800">
+                          <User className="w-6 h-6 text-gray-400" />
                         </div>
                         <div>
                           <h3 className="text-lg font-semibold text-white">
