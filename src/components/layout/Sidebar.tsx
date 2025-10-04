@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Video, 
   Users, 
@@ -14,6 +14,7 @@ import {
 import { clsx } from 'clsx';
 import ProjectSwitcher from '../ProjectSwitcher';
 import OrganizationSwitcher from '../OrganizationSwitcher';
+import { usePermissions } from '../../hooks/usePermissions';
 import blackLogo from '../blacklogo.png';
 import whiteLogo from '../whitelogo.png';
 
@@ -41,68 +42,100 @@ const Sidebar: React.FC<SidebarProps> = ({
   onTabChange
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
+  const { can } = usePermissions();
 
-  const navigationItems: NavItem[] = [
-    {
-      id: 'dashboard',
-      label: 'Dashboard',
-      icon: Eye,
-      isActive: activeTab === 'dashboard',
-      onClick: () => onTabChange?.('dashboard'),
-    },
-    {
-      id: 'accounts',
-      label: 'Tracked Accounts',
-      icon: Users,
-      isActive: activeTab === 'accounts',
-      onClick: () => onTabChange?.('accounts'),
-    },
-    {
-      id: 'analytics',
-      label: 'Tracked Links',
-      icon: Link,
-      isActive: activeTab === 'analytics',
-      onClick: () => onTabChange?.('analytics'),
-    },
-    {
-      id: 'rules',
-      label: 'Rules',
-      icon: Filter,
-      isActive: activeTab === 'rules',
-      onClick: () => onTabChange?.('rules'),
-    },
-    {
-      id: 'contracts',
-      label: 'Contracts',
-      icon: FileSignature,
-      isActive: activeTab === 'contracts',
-      onClick: () => onTabChange?.('contracts'),
-    },
-  ];
+  // Filter navigation items based on permissions
+  const navigationItems: NavItem[] = useMemo(() => {
+    const items: NavItem[] = [];
 
-  const bottomItems: NavItem[] = [
-    {
-      id: 'team',
-      label: 'Team',
-      icon: UserPlus,
-      isActive: activeTab === 'team',
-      onClick: () => onTabChange?.('team'),
-    },
-    {
-      id: 'creators',
-      label: 'Creators',
-      icon: Video,
-      isActive: activeTab === 'creators',
-      onClick: () => onTabChange?.('creators'),
-    },
-    {
-      id: 'settings',
-      label: 'Settings',
-      icon: Settings,
-      isActive: activeTab === 'settings',
-      onClick: () => onTabChange?.('settings'),
-    },
-  ];
+    if (can.accessTab('dashboard')) {
+      items.push({
+        id: 'dashboard',
+        label: 'Dashboard',
+        icon: Eye,
+        isActive: activeTab === 'dashboard',
+        onClick: () => onTabChange?.('dashboard'),
+      });
+    }
+
+    if (can.accessTab('trackedAccounts')) {
+      items.push({
+        id: 'accounts',
+        label: 'Tracked Accounts',
+        icon: Users,
+        isActive: activeTab === 'accounts',
+        onClick: () => onTabChange?.('accounts'),
+      });
+    }
+
+    if (can.accessTab('trackedLinks')) {
+      items.push({
+        id: 'analytics',
+        label: 'Tracked Links',
+        icon: Link,
+        isActive: activeTab === 'analytics',
+        onClick: () => onTabChange?.('analytics'),
+      });
+    }
+
+    if (can.accessTab('rules')) {
+      items.push({
+        id: 'rules',
+        label: 'Rules',
+        icon: Filter,
+        isActive: activeTab === 'rules',
+        onClick: () => onTabChange?.('rules'),
+      });
+    }
+
+    if (can.accessTab('contracts')) {
+      items.push({
+        id: 'contracts',
+        label: 'Contracts',
+        icon: FileSignature,
+        isActive: activeTab === 'contracts',
+        onClick: () => onTabChange?.('contracts'),
+      });
+    }
+
+    return items;
+  }, [activeTab, can, onTabChange]);
+
+  const bottomItems: NavItem[] = useMemo(() => {
+    const items: NavItem[] = [];
+
+    if (can.accessTab('team')) {
+      items.push({
+        id: 'team',
+        label: 'Team',
+        icon: UserPlus,
+        isActive: activeTab === 'team',
+        onClick: () => onTabChange?.('team'),
+      });
+    }
+
+    if (can.accessTab('creators')) {
+      items.push({
+        id: 'creators',
+        label: 'Creators',
+        icon: Video,
+        isActive: activeTab === 'creators',
+        onClick: () => onTabChange?.('creators'),
+      });
+    }
+
+    if (can.accessTab('settings')) {
+      items.push({
+        id: 'settings',
+        label: 'Settings',
+        icon: Settings,
+        isActive: activeTab === 'settings',
+        onClick: () => onTabChange?.('settings'),
+      });
+    }
+
+    return items;
+  }, [activeTab, can, onTabChange]);
 
   const NavItemComponent: React.FC<{ item: NavItem }> = ({ item }) => {
     const Icon = item.icon;
