@@ -20,7 +20,9 @@ const PendingInvitationsPage: React.FC = () => {
 
     setLoading(true);
     try {
+      console.log('🔍 Loading invitations for email:', user.email);
       const invites = await TeamInvitationService.getUserInvitations(user.email);
+      console.log('📨 Found invitations:', invites.length, invites);
       setInvitations(invites);
     } catch (error) {
       console.error('Failed to load invitations:', error);
