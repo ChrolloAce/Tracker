@@ -68,6 +68,7 @@ export interface OrgMember {
   invitedBy?: string; // userId
   email?: string; // Added for display purposes
   displayName?: string; // Added for display purposes
+  photoURL?: string; // Profile photo URL
   permissions?: any; // Custom permissions (TeamMemberPermissions from permissions.ts)
   lastActiveProjectId?: string; // Last active project
 }

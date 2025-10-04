@@ -250,9 +250,9 @@ const TeamManagementPage: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-3">
                       <div className="relative w-10 h-10">
-                        {user?.photoURL && member.userId === user?.uid ? (
+                        {member.photoURL ? (
                           <img
-                            src={user.photoURL}
+                            src={member.photoURL}
                             alt={member.displayName || 'User'}
                             className="w-10 h-10 rounded-full object-cover"
                             onError={(e) => {
@@ -264,7 +264,7 @@ const TeamManagementPage: React.FC = () => {
                             }}
                           />
                         ) : null}
-                        <div className={`placeholder-icon w-10 h-10 bg-gray-700 dark:bg-gray-800 rounded-full flex items-center justify-center ${user?.photoURL && member.userId === user?.uid ? 'hidden' : ''}`}>
+                        <div className={`placeholder-icon w-10 h-10 bg-gray-700 dark:bg-gray-800 rounded-full flex items-center justify-center ${member.photoURL ? 'hidden' : ''}`}>
                           <User className="w-5 h-5 text-gray-400" />
                         </div>
                       </div>

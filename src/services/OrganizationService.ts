@@ -215,7 +215,7 @@ class OrganizationService {
   /**
    * Get organization members
    */
-  static async getOrgMembers(orgId: string): Promise<Array<OrgMember & { email?: string; displayName?: string }>> {
+  static async getOrgMembers(orgId: string): Promise<Array<OrgMember & { email?: string; displayName?: string; photoURL?: string }>> {
     const membersSnapshot = await getDocs(
       query(
         collection(db, 'organizations', orgId, 'members'),
@@ -224,30 +224,31 @@ class OrganizationService {
       )
     );
     
-    const members: Array<OrgMember & { email?: string; displayName?: string }> = [];
+    const members: Array<OrgMember & { email?: string; displayName?: string; photoURL?: string }> = [];
     
     for (const memberDoc of membersSnapshot.docs) {
       const memberData = memberDoc.data() as OrgMember;
       
-      // If email/displayName not in member doc, try to fetch from user account
+      // Try to fetch full user profile from user account
       let email = memberData.email;
       let displayName = memberData.displayName;
+      let photoURL: string | undefined = undefined;
       
-      if (!email || !displayName) {
-        try {
-          const userAccount = await this.getUserAccount(memberData.userId);
-          email = email || userAccount?.email;
-          displayName = displayName || userAccount?.displayName;
-        } catch (error) {
-          // If user account fetch fails, use fallbacks
-          console.warn(`Could not fetch user account for ${memberData.userId}`, error);
-        }
+      try {
+        const userAccount = await this.getUserAccount(memberData.userId);
+        email = email || userAccount?.email;
+        displayName = displayName || userAccount?.displayName;
+        photoURL = userAccount?.photoURL; // Get profile photo
+      } catch (error) {
+        // If user account fetch fails, use fallbacks from member doc
+        console.warn(`Could not fetch user account for ${memberData.userId}`, error);
       }
       
       members.push({
         ...memberData,
         email,
-        displayName
+        displayName,
+        photoURL
       });
     }
     
