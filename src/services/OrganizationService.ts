@@ -51,10 +51,13 @@ class OrganizationService {
       await setDoc(userRef, userData);
       console.log(`✅ Created user account for ${email}`);
     } else {
-      // Update last login
+      // Update last login and refresh profile data (displayName, photoURL) on every login
       await setDoc(userRef, {
-        lastLoginAt: Timestamp.now()
+        lastLoginAt: Timestamp.now(),
+        displayName: displayName || userDoc.data()?.displayName,
+        photoURL: photoURL || userDoc.data()?.photoURL
       }, { merge: true });
+      console.log(`✅ Updated user profile for ${email}`);
     }
   }
 
@@ -239,9 +242,16 @@ class OrganizationService {
         email = email || userAccount?.email;
         displayName = displayName || userAccount?.displayName;
         photoURL = userAccount?.photoURL; // Get profile photo
+        
+        console.log(`👤 Loaded user profile:`, {
+          userId: memberData.userId,
+          email,
+          displayName,
+          hasPhoto: !!photoURL
+        });
       } catch (error) {
         // If user account fetch fails, use fallbacks from member doc
-        console.warn(`Could not fetch user account for ${memberData.userId}`, error);
+        console.warn(`⚠️ Could not fetch user account for ${memberData.userId}`, error);
       }
       
       members.push({
