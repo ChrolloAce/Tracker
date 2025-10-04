@@ -311,8 +311,12 @@ service cloud.firestore {
           // Creators can read their own profile in this project
           allow read: if canManageOrg(orgId) || (isOrgMember(orgId) && request.auth.uid == creatorId);
           
-          // Only admins can write creator profiles
-          allow write: if canManageOrg(orgId);
+          // Admins can write any creator profile
+          // Users can create their own creator profile (during invitation acceptance)
+          allow create: if canManageOrg(orgId) || (isSignedIn() && request.auth.uid == creatorId);
+          
+          // Only admins can update/delete creator profiles
+          allow update, delete: if canManageOrg(orgId);
           
           // ==================== PROJECT CREATOR PAYOUTS ====================
           
