@@ -177,47 +177,22 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         }
         
         if (metric === 'videos') {
-          // For published videos: count how many videos existed at this point
-          const videosAtThisTime = submissions.filter(v => {
+          // For published videos: count how many videos were published IN THIS INTERVAL
+          const nextPointDate = new Date(Date.now() - ((i - 1) * intervalMs));
+          const videosPublishedInInterval = submissions.filter(v => {
             const uploadDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
-            return uploadDate <= pointDate;
+            return uploadDate > pointDate && uploadDate <= nextPointDate;
           });
-          data.push({ value: videosAtThisTime.length, timestamp, previousValue });
+          data.push({ value: videosPublishedInInterval.length, timestamp, previousValue });
         } else if (metric === 'accounts') {
-          // For active accounts: count unique uploaders at this point
-          const videosAtThisTime = submissions.filter(v => {
+          // For active accounts: count unique accounts that were active IN THIS INTERVAL
+          const nextPointDate = new Date(Date.now() - ((i - 1) * intervalMs));
+          const videosInInterval = submissions.filter(v => {
             const uploadDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
-            return uploadDate <= pointDate;
+            return uploadDate > pointDate && uploadDate <= nextPointDate;
           });
-          const uniqueAccounts = new Set(videosAtThisTime.map(v => v.uploaderHandle)).size;
-          data.push({ value: uniqueAccounts, timestamp, previousValue });
-        } else if (isFilteredPeriod) {
-          // For filtered periods: show cumulative growth within the period
-          let pointValue = 0;
-          
-          submissions.forEach(video => {
-            // Find the snapshot closest to this point in time
-            if (video.snapshots && video.snapshots.length > 0) {
-              const snapshotAtPoint = video.snapshots
-                .filter(s => new Date(s.capturedAt) <= pointDate)
-                .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-              
-              if (snapshotAtPoint) {
-                // Get the baseline (earliest snapshot in period)
-                const baseline = video.snapshots
-                  .sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime())[0];
-                
-                // Calculate delta from baseline to this point
-                const delta = Math.max(0, (snapshotAtPoint[metric] || 0) - (baseline[metric] || 0));
-                pointValue += delta;
-              }
-            } else if (new Date(video.uploadDate || video.dateSubmitted) <= pointDate) {
-              // No snapshots but video exists: count its current value
-              pointValue += video[metric] || 0;
-            }
-          });
-          
-          data.push({ value: pointValue, timestamp, previousValue });
+          const uniqueAccountsInInterval = new Set(videosInInterval.map(v => v.uploaderHandle)).size;
+          data.push({ value: uniqueAccountsInInterval, timestamp, previousValue });
         } else {
           // Show per-day/per-hour values (NOT cumulative)
           const nextPointDate = new Date(Date.now() - ((i - 1) * intervalMs));
