@@ -77,6 +77,11 @@ service cloud.firestore {
       return getOrgMember(orgId).role;
     }
     
+    // Check if user has a valid pending invitation for the org
+    function hasValidInvitation(orgId, email) {
+      return exists(/databases/$(database)/documents/organizations/$(orgId)/invitations/$(email));
+    }
+    
     // ==================== USER ACCOUNTS ====================
     
     // Check if the requesting user is in any shared organization with the target user
@@ -131,7 +136,8 @@ service cloud.firestore {
         // OR user accepting an invitation can create their own member doc
         allow create: if canManageOrg(orgId) 
           || (isOwner(userId) && request.resource.data.role == 'owner')
-          || (isOwner(userId) && request.resource.data.status == 'active');
+          || (isOwner(userId) && request.resource.data.status == 'active')
+          || (isSignedIn() && isOwner(userId) && hasValidInvitation(orgId, request.auth.token.email));
         
         // Admins can update members, OR user can update their own lastActiveProjectId
         allow update: if canManageOrg(orgId) 
@@ -145,6 +151,7 @@ service cloud.firestore {
       
       match /invitations/{invitationId} {
         // Members can read invitations (to see pending invites)
+        // Invited users can read their own invitations by email
         allow read: if canReadOrg(orgId) 
           || (isSignedIn() && request.auth.token.email == resource.data.email);
         
@@ -154,9 +161,9 @@ service cloud.firestore {
           && request.resource.data.invitedBy == request.auth.uid;
         
         // Admins can update/cancel invitations
-        // Invited users can update to accept/decline
+        // Invited users can update to accept/decline their own invitation
         allow update: if canManageOrg(orgId)
-          || (isSignedIn() && request.auth.token.email == resource.data.email);
+          || (isSignedIn() && request.auth.token.email == resource.data.email && resource.data.status == 'pending');
         
         // Only admins can delete invitations
         allow delete: if canManageOrg(orgId);
