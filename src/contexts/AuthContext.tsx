@@ -115,9 +115,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
           if (attempt < maxRetries) {
             console.log(`⏳ Waiting before retry (member document may still be propagating)...`);
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise(resolve => setTimeout(resolve, 3000)); // Increased to 3s
             continue;
           }
+          
+          // On last attempt with permission error, sign user out to reset state
+          console.error('❌ Still getting permission errors after retries. Signing out to reset state...');
+          alert('There was an issue loading your organization. Please sign in again.');
+          await logout();
+          return ''; // Return empty to prevent further execution
         }
         
         // For other errors or last attempt, throw
