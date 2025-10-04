@@ -77,11 +77,6 @@ service cloud.firestore {
       return getOrgMember(orgId).role;
     }
     
-    // Check if user has a valid pending invitation for the org
-    function hasValidInvitation(orgId, email) {
-      return exists(/databases/$(database)/documents/organizations/$(orgId)/invitations/$(email));
-    }
-    
     // ==================== USER ACCOUNTS ====================
     
     // Check if the requesting user is in any shared organization with the target user
@@ -132,12 +127,10 @@ service cloud.firestore {
         // Members can read member list
         allow read: if canReadOrg(orgId);
         
-        // Admins can manage members, OR user can create themselves as first member
-        // OR user accepting an invitation can create their own member doc
+        // Admins can manage members, OR user can create themselves
+        // Note: Application logic validates invitations before member creation
         allow create: if canManageOrg(orgId) 
-          || (isOwner(userId) && request.resource.data.role == 'owner')
-          || (isOwner(userId) && request.resource.data.status == 'active')
-          || (isSignedIn() && isOwner(userId) && hasValidInvitation(orgId, request.auth.token.email));
+          || (isSignedIn() && isOwner(userId));
         
         // Admins can update members, OR user can update their own lastActiveProjectId
         allow update: if canManageOrg(orgId) 
