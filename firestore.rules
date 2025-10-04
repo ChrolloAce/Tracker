@@ -295,8 +295,10 @@ service cloud.firestore {
     // ==================== COLLECTION GROUP QUERIES ====================
     
     // Allow users to query their own memberships across all organizations
-    match /{path=**}/members/{userId} {
-      allow read: if isSignedIn() && request.auth.uid == userId;
+    match /{path=**}/members/{memberId} {
+      allow read: if isSignedIn() && 
+        (request.auth.uid == memberId || 
+         resource.data.userId == request.auth.uid);
     }
   }
 }
