@@ -506,7 +506,10 @@ const KPISparkline: React.FC<{
         <Tooltip
           position={{ y: 70 }}
           allowEscapeViewBox={{ x: false, y: true }}
-          wrapperStyle={{ zIndex: 99999 }}
+          wrapperStyle={{ 
+            zIndex: 99999,
+            position: 'fixed'
+          }}
           content={({ active, payload }) => {
             if (active && payload && payload.length) {
               const data = payload[0].payload;
@@ -546,7 +549,7 @@ const KPISparkline: React.FC<{
                 : null;
               
               return (
-                <div className="bg-gray-900/80 backdrop-blur-md text-white px-4 py-2.5 rounded-lg shadow-xl text-sm space-y-1.5 min-w-[220px] border border-white/10 z-[99999] relative">
+                <div className="bg-gray-900/95 backdrop-blur-md text-white px-4 py-2.5 rounded-lg shadow-2xl text-sm space-y-1.5 min-w-[220px] border border-white/20 pointer-events-none" style={{ zIndex: 999999, position: 'relative' }}>
                   {/* Always show total if available */}
                   {totalDisplay && (
                     <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">
