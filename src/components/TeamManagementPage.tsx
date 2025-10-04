@@ -1,27 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { OrgMember, TeamInvitation, Role, Creator } from '../types/firestore';
+import { OrgMember, TeamInvitation, Role } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
 import TeamInvitationService from '../services/TeamInvitationService';
-import CreatorLinksService from '../services/CreatorLinksService';
-import { UserPlus, Shield, Crown, User, Mail, Clock, X, Settings, Link as LinkIcon, Video } from 'lucide-react';
+import { UserPlus, Shield, Crown, User, Mail, Clock, X, Settings } from 'lucide-react';
 import { Button } from './ui/Button';
 import InviteTeamMemberModal from './InviteTeamMemberModal';
 import EditMemberPermissionsModal from './EditMemberPermissionsModal';
-import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
 import { TeamMemberPermissions } from '../types/permissions';
 
 const TeamManagementPage: React.FC = () => {
   const { user, currentOrgId } = useAuth();
   const [members, setMembers] = useState<OrgMember[]>([]);
-  const [creatorProfiles, setCreatorProfiles] = useState<Map<string, Creator>>(new Map());
   const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
   const [receivedInvitations, setReceivedInvitations] = useState<TeamInvitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [editingMember, setEditingMember] = useState<OrgMember | null>(null);
-  const [linkingCreator, setLinkingCreator] = useState<OrgMember | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
@@ -37,21 +33,10 @@ const TeamManagementPage: React.FC = () => {
       const role = await OrganizationService.getUserRole(currentOrgId, user.uid);
       setIsAdmin(role === 'owner' || role === 'admin');
 
-      // Load members
+      // Load members (exclude creators - they're managed separately)
       const membersData = await OrganizationService.getOrgMembers(currentOrgId);
-      setMembers(membersData);
-
-      // Load creator profiles for members with creator role
-      const creators = membersData.filter(m => m.role === 'creator');
-      const creatorProfilesMap = new Map<string, Creator>();
-      
-      for (const creator of creators) {
-        const profile = await CreatorLinksService.getCreatorProfile(currentOrgId, creator.userId);
-        if (profile) {
-          creatorProfilesMap.set(creator.userId, profile);
-        }
-      }
-      setCreatorProfiles(creatorProfilesMap);
+      const teamMembers = membersData.filter(m => m.role !== 'creator');
+      setMembers(teamMembers);
 
       // Load pending invitations sent from this org (only for admins)
       if (role === 'owner' || role === 'admin') {
@@ -186,8 +171,8 @@ const TeamManagementPage: React.FC = () => {
         return <Shield className="w-4 h-4 text-blue-500" />;
       case 'member':
         return <User className="w-4 h-4 text-gray-500" />;
-      case 'creator':
-        return <Video className="w-4 h-4 text-purple-500" />;
+      default:
+        return <User className="w-4 h-4 text-gray-500" />;
     }
   };
 
@@ -199,8 +184,8 @@ const TeamManagementPage: React.FC = () => {
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400';
       case 'member':
         return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-      case 'creator':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
     }
   };
 
@@ -229,14 +214,14 @@ const TeamManagementPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-white">Team & Access</h1>
           <p className="text-gray-400 mt-1">
-            Manage teammates, creators, and what they can see or do.
+            Manage team members and their permissions (Owners, Admins, Members)
           </p>
         </div>
         {isAdmin && (
           <Button
             onClick={() => setShowInviteModal(true)}
             className="flex items-center gap-2"
-            title="Invite by email, set a role (Owner, Admin, Member, Creator), and link accounts."
+            title="Invite team member by email and set their role"
           >
             <UserPlus className="w-4 h-4" />
             Add Team Member
@@ -258,15 +243,12 @@ const TeamManagementPage: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Member
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  Details
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  Joined
-                </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Role
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Joined
+                  </th>
                 {isAdmin && (
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Actions
@@ -275,10 +257,7 @@ const TeamManagementPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
-              {members.map((member) => {
-                const creatorProfile = member.role === 'creator' ? creatorProfiles.get(member.userId) : null;
-                
-                return (
+              {members.map((member) => (
                   <tr key={member.userId} className="hover:bg-gray-800/30">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-3">
@@ -313,7 +292,7 @@ const TeamManagementPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {isAdmin && member.role !== 'owner' && member.role !== 'creator' && member.userId !== user?.uid ? (
+                      {isAdmin && member.role !== 'owner' && member.userId !== user?.uid ? (
                         <select
                           value={member.role}
                           onChange={(e) => handleUpdateRole(member.userId, e.target.value as Role)}
@@ -322,7 +301,6 @@ const TeamManagementPage: React.FC = () => {
                         >
                           <option value="member">Member</option>
                           <option value="admin">Admin</option>
-                          <option value="creator">Creator</option>
                         </select>
                       ) : (
                         <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(member.role)}`}>
@@ -331,41 +309,13 @@ const TeamManagementPage: React.FC = () => {
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4">
-                      {member.role === 'creator' && creatorProfile ? (
-                        <div className="text-xs">
-                          <div className="text-gray-300">
-                            Linked accounts: <span className="font-medium text-white">{creatorProfile.linkedAccountsCount}</span>
-                          </div>
-                          {creatorProfile.payoutsEnabled && (
-                            <div className="text-purple-400 mt-0.5">
-                              Payouts enabled
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="text-xs text-gray-500">—</div>
-                      )}
-                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                       {formatDate(member.joinedAt)}
                     </td>
                     {isAdmin && (
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end gap-2">
-                          {member.role === 'creator' && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setLinkingCreator(member)}
-                              disabled={actionLoading === member.userId}
-                              className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
-                              title="Link Accounts"
-                            >
-                              <LinkIcon className="w-4 h-4" />
-                            </Button>
-                          )}
-                          {member.role !== 'owner' && member.role !== 'creator' && (
+                          {member.role !== 'owner' && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -393,8 +343,7 @@ const TeamManagementPage: React.FC = () => {
                       </td>
                     )}
                   </tr>
-                );
-              })}
+              ))}
             </tbody>
           </table>
         </div>
@@ -577,18 +526,6 @@ const TeamManagementPage: React.FC = () => {
           onClose={() => setEditingMember(null)}
           onSave={handleSavePermissions}
           onResetToDefault={handleResetPermissions}
-        />
-      )}
-
-      {/* Link Creator Accounts Modal */}
-      {linkingCreator && (
-        <LinkCreatorAccountsModal
-          creator={linkingCreator}
-          onClose={() => setLinkingCreator(null)}
-          onSuccess={() => {
-            setLinkingCreator(null);
-            loadData();
-          }}
         />
       )}
     </div>

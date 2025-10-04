@@ -18,7 +18,9 @@ import TrackedLinksPage, { TrackedLinksPageRef } from '../components/TrackedLink
 import TeamManagementPage from '../components/TeamManagementPage';
 import PendingInvitationsPage from '../components/PendingInvitationsPage';
 import CreatorPortalPage from '../components/CreatorPortalPage';
+import CreatorsManagementPage from '../components/CreatorsManagementPage';
 import { PageLoadingSkeleton } from '../components/ui/LoadingSkeleton';
+import OrganizationService from '../services/OrganizationService';
 import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
 import { VideoSubmission, InstagramVideoData } from '../types';
 import VideoApiService from '../services/VideoApiService';
@@ -61,6 +63,7 @@ function DashboardPage() {
     return savedTab || 'dashboard';
   });
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [userRole, setUserRole] = useState<string>('');
   
   // Accounts page state
   const [accountsDateFilter, setAccountsDateFilter] = useState<DateFilterType>('all');
@@ -85,6 +88,23 @@ function DashboardPage() {
   useEffect(() => {
     localStorage.setItem('activeTab', activeTab);
   }, [activeTab]);
+
+  // Load user role
+  useEffect(() => {
+    if (!user || !currentOrgId) return;
+    
+    const loadUserRole = async () => {
+      try {
+        const role = await OrganizationService.getUserRole(currentOrgId, user.uid);
+        setUserRole(role || 'member');
+      } catch (error) {
+        console.error('Failed to load user role:', error);
+        setUserRole('member');
+      }
+    };
+    
+    loadUserRole();
+  }, [user, currentOrgId]);
 
   // Load data from Firestore on app initialization and when project changes
   useEffect(() => {
@@ -713,8 +733,10 @@ function DashboardPage() {
             />
           )}
 
-          {/* Creators Tab - Creator Portal */}
-          {activeTab === 'creators' && <CreatorPortalPage />}
+          {/* Creators Tab - Show appropriate view based on role */}
+          {activeTab === 'creators' && (
+            userRole === 'creator' ? <CreatorPortalPage /> : <CreatorsManagementPage />
+          )}
 
           {/* Other Tabs - Placeholder */}
           {!['dashboard', 'accounts', 'contracts', 'subscription', 'settings', 'analytics', 'creators', 'rules', 'cron', 'team', 'invitations'].includes(activeTab) && (

@@ -9,12 +9,17 @@ import { Button } from './ui/Button';
 interface InviteTeamMemberModalProps {
   onClose: () => void;
   onSuccess: () => void;
+  defaultRole?: Role;
 }
 
-const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({ onClose, onSuccess }) => {
+const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({ 
+  onClose, 
+  onSuccess,
+  defaultRole = 'member'
+}) => {
   const { user, currentOrgId } = useAuth();
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<Role>('member');
+  const [role, setRole] = useState<Role>(defaultRole);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
