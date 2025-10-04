@@ -184,8 +184,13 @@ class TeamInvitationService {
       displayName: displayName || email.split('@')[0]
     });
     
+    // Set this as the user's default organization
+    const userRef = doc(db, 'users', userId);
+    batch.set(userRef, { defaultOrgId: orgId }, { merge: true });
+    
     await batch.commit();
     console.log(`✅ User ${userId} accepted invitation to org ${orgId}`);
+    console.log(`✅ Set org ${orgId} as default for user ${userId}`);
   }
   
   /**
