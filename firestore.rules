@@ -41,14 +41,30 @@ service cloud.firestore {
       return isOrgMember(orgId);
     }
     
-    // Check if user can write org data
+    // Check if user can write org data (all members can write)
     function canWriteOrg(orgId) {
       return hasOrgRole(orgId, 'member');
     }
     
-    // Check if user can manage org (admin actions)
+    // Check if user can manage org (admin actions only)
     function canManageOrg(orgId) {
       return hasOrgRole(orgId, 'admin');
+    }
+    
+    // Check if user is admin or owner
+    function isOrgAdmin(orgId) {
+      return hasOrgRole(orgId, 'admin');
+    }
+    
+    // Check if update is only modifying counter fields
+    function onlyUpdatingCounters() {
+      let affectedKeys = request.resource.data.diff(resource.data).affectedKeys();
+      return affectedKeys.hasOnly([
+        'linkCount', 
+        'videoCount', 
+        'trackedAccountCount',
+        'updatedAt'
+      ]);
     }
     
     // ==================== USER ACCOUNTS ====================
@@ -152,11 +168,13 @@ service cloud.firestore {
           && request.resource.data.orgId == orgId
           && request.resource.data.createdBy == request.auth.uid;
         
-        // Admins can update projects
-        allow update: if canManageOrg(orgId);
+        // Admins can update any project fields
+        // Members can only update stat counters (linkCount, videoCount, etc.) when creating resources
+        allow update: if canManageOrg(orgId)
+          || (canWriteOrg(orgId) && onlyUpdatingCounters());
         
-        // Only owner can delete projects
-        allow delete: if hasOrgRole(orgId, 'owner');
+        // Only admins can delete projects
+        allow delete: if canManageOrg(orgId);
         
         // ==================== PROJECT STATS ====================
         
@@ -168,83 +186,119 @@ service cloud.firestore {
         // ==================== PROJECT TRACKED ACCOUNTS ====================
         
         match /trackedAccounts/{accountId} {
+          // All members can read
           allow read: if canReadOrg(orgId);
-          allow write: if canWriteOrg(orgId); // Allow all writes for migration
+          
+          // All members can create accounts
+          allow create: if canWriteOrg(orgId) 
+            && request.resource.data.addedBy == request.auth.uid;
+          
+          // Only admins can update/delete accounts
+          allow update, delete: if canManageOrg(orgId);
           
           match /videos/{videoId} {
+            // All members can read
             allow read: if canReadOrg(orgId);
-            allow write: if canWriteOrg(orgId); // Allow all writes for migration
+            
+            // All members can create videos
+            allow create: if canWriteOrg(orgId);
+            
+            // Only admins can update/delete videos
+            allow update, delete: if canManageOrg(orgId);
           }
         }
         
         // ==================== PROJECT LINKS ====================
         
         match /links/{linkId} {
+          // All members can read
           allow read: if canReadOrg(orgId);
-          allow write: if canWriteOrg(orgId); // Allow all writes for migration
+          
+          // All members can create links
+          allow create: if canWriteOrg(orgId) 
+            && request.resource.data.createdBy == request.auth.uid;
+          
+          // Only admins can update/delete links
+          allow update, delete: if canManageOrg(orgId);
           
           match /clicks/{clickId} {
+            // All members can read analytics
             allow read: if canReadOrg(orgId);
-            allow create: if true; // Public can create click events
-            allow write: if canWriteOrg(orgId); // Allow migration
+            
+            // Public API can create click events (via redirect handler)
+            allow create: if true;
+            
+            // Clicks are immutable
+            allow update, delete: if false;
           }
         }
         
         // ==================== PROJECT VIDEOS ====================
         
         match /videos/{videoId} {
+          // All members can read
           allow read: if canReadOrg(orgId);
-          allow write: if canWriteOrg(orgId); // Allow all writes for migration
+          
+          // All members can create videos
+          allow create: if canWriteOrg(orgId);
+          
+          // Only admins can update/delete videos
+          allow update, delete: if canManageOrg(orgId);
         }
         
         // ==================== PROJECT TRACKING RULES ====================
         
         match /trackingRules/{ruleId} {
+          // All members can read rules
           allow read: if canReadOrg(orgId);
+          
+          // All members can create rules
           allow create: if canWriteOrg(orgId) 
             && request.resource.data.organizationId == orgId
             && request.resource.data.projectId == projectId
             && request.resource.data.createdBy == request.auth.uid;
-          allow update: if canWriteOrg(orgId);
-          allow delete: if canWriteOrg(orgId);
+          
+          // Only admins can update/delete rules
+          allow update, delete: if canManageOrg(orgId);
         }
       }
       
       // ==================== TRACKED ACCOUNTS (Legacy - for migration) ====================
       
       match /trackedAccounts/{accountId} {
-        // Members can read
+        // All members can read
         allow read: if canReadOrg(orgId);
         
-        // Members can create/update/delete
+        // All members can create accounts
         allow create: if canWriteOrg(orgId) 
           && request.resource.data.orgId == orgId
           && request.resource.data.addedBy == request.auth.uid;
         
-        allow update, delete: if canWriteOrg(orgId);
+        // Only admins can update/delete accounts
+        allow update, delete: if canManageOrg(orgId);
       }
       
       // ==================== VIDEOS ====================
       
       match /videos/{videoId} {
-        // Members can read
+        // All members can read
         allow read: if canReadOrg(orgId);
         
-        // Members can create videos
+        // All members can create videos
         allow create: if canWriteOrg(orgId) 
           && request.resource.data.orgId == orgId
           && request.resource.data.addedBy == request.auth.uid;
         
-        // Members can update/delete videos
-        allow update, delete: if canWriteOrg(orgId);
+        // Only admins can update/delete videos
+        allow update, delete: if canManageOrg(orgId);
         
         // ==================== VIDEO SNAPSHOTS ====================
         
         match /snapshots/{snapshotId} {
-          // Members can read snapshots
+          // All members can read snapshots
           allow read: if canReadOrg(orgId);
           
-          // Members can create snapshots (for manual refresh)
+          // All members can create snapshots (for manual refresh)
           // Cloud Functions can also create (via Admin SDK, bypasses rules)
           allow create: if canWriteOrg(orgId) 
             && request.resource.data.capturedBy == request.auth.uid;
@@ -257,25 +311,24 @@ service cloud.firestore {
       // ==================== TRACKED LINKS ====================
       
       match /links/{linkId} {
-        // Members can read
+        // All members can read
         allow read: if canReadOrg(orgId);
         
-        // Members can create links
+        // All members can create links
         allow create: if canWriteOrg(orgId) 
           && request.resource.data.orgId == orgId
           && request.resource.data.createdBy == request.auth.uid;
         
-        // Members can update/delete links
-        allow update, delete: if canWriteOrg(orgId);
+        // Only admins can update/delete links
+        allow update, delete: if canManageOrg(orgId);
         
         // ==================== LINK CLICKS ====================
         
         match /clicks/{clickId} {
-          // Members can read click analytics
+          // All members can read click analytics
           allow read: if canReadOrg(orgId);
           
-          // Public can create click events (via Cloud Function or client)
-          // This is okay because shortCode is public
+          // Public API can create click events (via redirect handler)
           allow create: if true;
           
           // Clicks are immutable
