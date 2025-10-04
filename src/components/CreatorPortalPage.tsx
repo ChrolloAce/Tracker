@@ -4,7 +4,7 @@ import { TrackedAccount, Payout, VideoDoc } from '../types/firestore';
 import CreatorLinksService from '../services/CreatorLinksService';
 import FirestoreDataService from '../services/FirestoreDataService';
 import PayoutsService from '../services/PayoutsService';
-import { Video, DollarSign, TrendingUp, Eye, ThumbsUp, MessageCircle } from 'lucide-react';
+import { Video, DollarSign, TrendingUp, Eye, ThumbsUp, MessageCircle, User, Link as LinkIcon } from 'lucide-react';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 
@@ -22,7 +22,7 @@ interface CreatorStats {
  */
 const CreatorPortalPage: React.FC = () => {
   const { user, currentOrgId, currentProjectId } = useAuth();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'payouts'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'accounts' | 'payouts'>('dashboard');
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<CreatorStats>({
     totalAccounts: 0,
@@ -194,32 +194,137 @@ const CreatorPortalPage: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-700">
-        <div className="flex gap-4">
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`px-4 py-2 border-b-2 transition-colors ${
-              activeTab === 'dashboard'
-                ? 'border-purple-500 text-white'
-                : 'border-transparent text-gray-400 hover:text-white'
-            }`}
-          >
-            Dashboard
-          </button>
-          <button
-            onClick={() => setActiveTab('payouts')}
-            className={`px-4 py-2 border-b-2 transition-colors ${
-              activeTab === 'payouts'
-                ? 'border-purple-500 text-white'
-                : 'border-transparent text-gray-400 hover:text-white'
-            }`}
-          >
-            Payouts
-          </button>
-        </div>
+      <div className="flex gap-1 bg-gray-800/50 rounded-lg p-1">
+        <button
+          onClick={() => setActiveTab('dashboard')}
+          className={`px-4 py-2.5 rounded-md transition-all duration-200 font-medium text-sm ${
+            activeTab === 'dashboard'
+              ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
+              : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+          }`}
+        >
+          Dashboard
+        </button>
+        <button
+          onClick={() => setActiveTab('accounts')}
+          className={`px-4 py-2.5 rounded-md transition-all duration-200 font-medium text-sm ${
+            activeTab === 'accounts'
+              ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
+              : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+          }`}
+        >
+          My Accounts
+        </button>
+        <button
+          onClick={() => setActiveTab('payouts')}
+          className={`px-4 py-2.5 rounded-md transition-all duration-200 font-medium text-sm ${
+            activeTab === 'payouts'
+              ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
+              : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+          }`}
+        >
+          Payouts
+        </button>
       </div>
 
       {/* Tab Content */}
+      {activeTab === 'accounts' && (
+        <div className="bg-gray-800 rounded-xl border border-gray-700/50 shadow-lg">
+          <div className="px-6 py-4 border-b border-gray-700/50 bg-gray-800/50">
+            <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+              <LinkIcon className="w-5 h-5 text-blue-400" />
+              My Linked Accounts
+            </h2>
+            <p className="text-sm text-gray-400 mt-1">
+              Social media accounts you're creating content for
+            </p>
+          </div>
+
+          {linkedAccounts.length === 0 ? (
+            <div className="p-12 text-center">
+              <User className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-white mb-2">No accounts linked yet</h3>
+              <p className="text-gray-400">
+                Your admin will link social media accounts to your profile
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-700/20 border-b border-gray-700/30">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Account
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Platform
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Videos
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Views
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Followers
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-700/30">
+                  {linkedAccounts.map((account) => (
+                    <tr
+                      key={account.id}
+                      className="hover:bg-white/5 transition-colors"
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          {account.profilePicture ? (
+                            <img
+                              src={account.profilePicture}
+                              alt={`@${account.username}`}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center">
+                              <User className="w-5 h-5 text-gray-400" />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-white truncate">
+                              @{account.username}
+                            </div>
+                            {account.displayName && (
+                              <div className="text-xs text-gray-400 truncate">
+                                {account.displayName}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <PlatformIcon platform={account.platform} size="sm" />
+                          <span className="text-sm text-gray-300 capitalize">{account.platform}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-white font-medium">
+                        {(account.totalVideos || 0).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-white font-medium">
+                        {(account.totalViews || 0).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-white font-medium">
+                        {(account.followerCount || 0).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       {activeTab === 'dashboard' && (
         <DashboardTab
           linkedAccounts={linkedAccounts}

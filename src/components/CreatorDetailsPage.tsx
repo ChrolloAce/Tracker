@@ -12,7 +12,8 @@ import {
   Edit3,
   Save,
   X,
-  AlertCircle
+  AlertCircle,
+  User
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -463,43 +464,83 @@ const AccountsTab: React.FC<{
           <span className="text-sm font-normal text-gray-400">({linkedAccounts.length})</span>
         </h2>
         {linkedAccounts.length === 0 ? (
-          <div className="text-center py-8 text-gray-400">
-            No accounts linked yet
+          <div className="text-center py-12 text-gray-400">
+            <User className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-white mb-2">No accounts linked yet</h3>
+            <p className="text-sm">Link social media accounts to start tracking their content</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {linkedAccounts.map((account) => (
-              <div
-                key={account.id}
-                className="bg-gradient-to-br from-gray-700/30 to-gray-800/50 rounded-lg border border-gray-600/50 p-4 hover:border-gray-500/50 transition-all duration-200 hover:shadow-lg"
-              >
-                <div className="flex items-center gap-3">
-                  <PlatformIcon platform={account.platform} size="lg" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-white truncate">
-                      @{account.username}
-                    </div>
-                    {account.displayName && (
-                      <div className="text-xs text-gray-400 truncate">
-                        {account.displayName}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-700/20 border-b border-gray-700/30">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Account
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Platform
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Videos
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Views
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Followers
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-700/30">
+                {linkedAccounts.map((account) => (
+                  <tr
+                    key={account.id}
+                    className="hover:bg-white/5 transition-colors cursor-pointer"
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        {account.profilePicture ? (
+                          <img
+                            src={account.profilePicture}
+                            alt={`@${account.username}`}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center">
+                            <User className="w-5 h-5 text-gray-400" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-white truncate">
+                            @{account.username}
+                          </div>
+                          {account.displayName && (
+                            <div className="text-xs text-gray-400 truncate">
+                              {account.displayName}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
-                  <div>
-                    <div className="text-gray-400">Videos</div>
-                    <div className="text-white font-medium">{account.totalVideos || 0}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-400">Views</div>
-                    <div className="text-white font-medium">
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <PlatformIcon platform={account.platform} size="sm" />
+                        <span className="text-sm text-gray-300 capitalize">{account.platform}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-white font-medium">
+                      {(account.totalVideos || 0).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-white font-medium">
                       {(account.totalViews || 0).toLocaleString()}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-white font-medium">
+                      {(account.followerCount || 0).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
