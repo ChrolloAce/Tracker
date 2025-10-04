@@ -77,10 +77,26 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [syncError, setSyncError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showColumnToggle, setShowColumnToggle] = useState(false);
-  const [processingAccounts, setProcessingAccounts] = useState<Array<{username: string; platform: string}>>(() => {
-    // Restore from localStorage
+  const [processingAccounts, setProcessingAccounts] = useState<Array<{username: string; platform: string; startedAt: number}>>(() => {
+    // Restore from localStorage and clean up old entries (> 5 minutes old)
     const saved = localStorage.getItem('processingAccounts');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    
+    try {
+      const parsed = JSON.parse(saved);
+      const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+      const filtered = parsed.filter((acc: any) => {
+        // Remove accounts that have been processing for more than 5 minutes
+        if (!acc.startedAt || acc.startedAt < fiveMinutesAgo) {
+          console.log(`🧹 Cleaning up stuck account: @${acc.username}`);
+          return false;
+        }
+        return true;
+      });
+      return filtered;
+    } catch {
+      return [];
+    }
   });
   const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
   const [allRules, setAllRules] = useState<TrackingRule[]>([]);
@@ -129,6 +145,25 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   useEffect(() => {
     localStorage.setItem('processingAccounts', JSON.stringify(processingAccounts));
   }, [processingAccounts]);
+
+  // Auto-cleanup stuck processing accounts every minute
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      setProcessingAccounts(prev => {
+        const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+        const filtered = prev.filter(acc => {
+          if (!acc.startedAt || acc.startedAt < fiveMinutesAgo) {
+            console.log(`🧹 Auto-cleanup: Removing stuck account @${acc.username}`);
+            return false;
+          }
+          return true;
+        });
+        return filtered.length !== prev.length ? filtered : prev;
+      });
+    }, 60000); // Check every minute
+
+    return () => clearInterval(cleanupInterval);
+  }, []);
 
   // Handle back to table navigation
   const handleBackToTable = useCallback(() => {
@@ -412,8 +447,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     const username = newAccountUsername.trim();
     const platform = newAccountPlatform;
 
-    // Add to processing accounts immediately
-    setProcessingAccounts(prev => [...prev, { username, platform }]);
+    // Add to processing accounts immediately with timestamp
+    setProcessingAccounts(prev => [...prev, { username, platform, startedAt: Date.now() }]);
     
     // Close modal and reset form immediately
     setNewAccountUsername('');
@@ -869,7 +904,16 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                       {/* Actions Column */}
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end space-x-2">
-                          <span className="text-xs text-gray-500 dark:text-gray-400 animate-pulse">Processing...</span>
+                          <button
+                            onClick={() => {
+                              setProcessingAccounts(prev => prev.filter((_, i) => i !== index));
+                              console.log(`🗑️ Manually removed stuck account: @${procAccount.username}`);
+                            }}
+                            className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                            title="Cancel processing"
+                          >
+                            Cancel
+                          </button>
                         </div>
                       </td>
                     </tr>
