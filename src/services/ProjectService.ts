@@ -301,8 +301,17 @@ class ProjectService {
    * Get user's last active project
    */
   static async getActiveProjectId(orgId: string, userId: string): Promise<string | null> {
-    const memberDoc = await getDoc(doc(db, 'organizations', orgId, 'members', userId));
-    return memberDoc.data()?.lastActiveProjectId || null;
+    try {
+      const memberDoc = await getDoc(doc(db, 'organizations', orgId, 'members', userId));
+      if (!memberDoc.exists()) {
+        console.warn(`⚠️ Member document does not exist for user ${userId} in org ${orgId}`);
+        return null;
+      }
+      return memberDoc.data()?.lastActiveProjectId || null;
+    } catch (error) {
+      console.error(`❌ Failed to get active project ID:`, error);
+      return null;
+    }
   }
 
   /**

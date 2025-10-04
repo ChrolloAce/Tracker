@@ -62,6 +62,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setCurrentOrgId(orgId);
           console.log('✅ Current organization:', orgId);
 
+          // Ensure user has a member document in the organization
+          // This fixes issues with legacy orgs or edge cases where member doc is missing
+          await OrganizationService.ensureMembership(orgId, user.uid, user.email!, user.displayName || undefined);
+          console.log('✅ Verified membership in organization');
+
           // Get or create default project
           const projectId = await loadOrCreateProject(orgId, user.uid);
           setCurrentProjectId(projectId);
