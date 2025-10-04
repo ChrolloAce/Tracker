@@ -43,35 +43,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
-      
-      if (user) {
-        console.log('✅ User signed in:', user.email);
+      try {
+        setUser(user);
         
-        // Create user account in Firestore if doesn't exist
-        await OrganizationService.createUserAccount(
-          user.uid, 
-          user.email!, 
-          user.displayName || undefined,
-          user.photoURL || undefined
-        );
-        
-        // Get or create default organization
-        const orgId = await OrganizationService.getOrCreateDefaultOrg(user.uid, user.email!, user.displayName || undefined);
-        setCurrentOrgId(orgId);
-        console.log('✅ Current organization:', orgId);
+        if (user) {
+          console.log('✅ User signed in:', user.email);
+          
+          // Create user account in Firestore if doesn't exist
+          await OrganizationService.createUserAccount(
+            user.uid, 
+            user.email!, 
+            user.displayName || undefined,
+            user.photoURL || undefined
+          );
+          
+          // Get or create default organization
+          const orgId = await OrganizationService.getOrCreateDefaultOrg(user.uid, user.email!, user.displayName || undefined);
+          setCurrentOrgId(orgId);
+          console.log('✅ Current organization:', orgId);
 
-        // Get or create default project
-        const projectId = await loadOrCreateProject(orgId, user.uid);
-        setCurrentProjectId(projectId);
-        console.log('✅ Current project:', projectId);
-      } else {
-        console.log('❌ User signed out');
-        setCurrentOrgId(null);
-        setCurrentProjectId(null);
+          // Get or create default project
+          const projectId = await loadOrCreateProject(orgId, user.uid);
+          setCurrentProjectId(projectId);
+          console.log('✅ Current project:', projectId);
+        } else {
+          console.log('❌ User signed out');
+          setCurrentOrgId(null);
+          setCurrentProjectId(null);
+        }
+      } catch (error) {
+        console.error('❌ Error during auth initialization:', error);
+        // Set loading to false even on error to prevent infinite loading
+        // User will be redirected to login or shown an error
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     });
 
     return unsubscribe;

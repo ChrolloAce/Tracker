@@ -14,25 +14,27 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
     
-    // Get organization member data
-    function getOrgMember(orgId) {
-      return get(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid)).data;
+    // Get organization member data - safely returns null if doesn't exist
+    function getOrgMemberData(orgId) {
+      let memberPath = /databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid);
+      return exists(memberPath) ? get(memberPath).data : null;
     }
     
     // Check if user is a member of the organization
     function isOrgMember(orgId) {
+      let memberData = getOrgMemberData(orgId);
       return isSignedIn() 
-        && exists(/databases/$(database)/documents/organizations/$(orgId)/members/$(request.auth.uid))
-        && getOrgMember(orgId).status == 'active';
+        && memberData != null
+        && memberData.status == 'active';
     }
     
     // Check if user has specific role or higher
     function hasOrgRole(orgId, role) {
-      let member = getOrgMember(orgId);
-      return isOrgMember(orgId) && (
+      let memberData = getOrgMemberData(orgId);
+      return isOrgMember(orgId) && memberData != null && (
         role == 'member' ||
-        (role == 'admin' && member.role in ['admin', 'owner']) ||
-        (role == 'owner' && member.role == 'owner')
+        (role == 'admin' && memberData.role in ['admin', 'owner']) ||
+        (role == 'owner' && memberData.role == 'owner')
       );
     }
     
