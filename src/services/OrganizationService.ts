@@ -287,6 +287,31 @@ class OrganizationService {
     }
     return null;
   }
+
+  /**
+   * Update member role
+   */
+  static async updateMemberRole(orgId: string, userId: string, newRole: Role): Promise<void> {
+    const memberRef = doc(db, 'organizations', orgId, 'members', userId);
+    await setDoc(memberRef, { role: newRole }, { merge: true });
+    console.log(`✅ Updated role for member ${userId} to ${newRole}`);
+  }
+
+  /**
+   * Check if user is owner or admin
+   */
+  static async isOrgAdmin(orgId: string, userId: string): Promise<boolean> {
+    const role = await this.getUserRole(orgId, userId);
+    return role === 'owner' || role === 'admin';
+  }
+
+  /**
+   * Check if user is owner
+   */
+  static async isOrgOwner(orgId: string, userId: string): Promise<boolean> {
+    const role = await this.getUserRole(orgId, userId);
+    return role === 'owner';
+  }
 }
 
 export default OrganizationService;

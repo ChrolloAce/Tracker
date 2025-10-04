@@ -9,11 +9,14 @@ import {
   Eye,
   Link,
   Clock,
-  Filter
+  Filter,
+  UserPlus,
+  Mail
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '../../contexts/AuthContext';
 import ProjectSwitcher from '../ProjectSwitcher';
+import OrganizationSwitcher from '../OrganizationSwitcher';
 import blackLogo from '../blacklogo.png';
 import whiteLogo from '../whitelogo.png';
 
@@ -89,6 +92,20 @@ const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const bottomItems: NavItem[] = [
+    {
+      id: 'invitations',
+      label: 'Invitations',
+      icon: Mail,
+      isActive: activeTab === 'invitations',
+      onClick: () => onTabChange?.('invitations'),
+    },
+    {
+      id: 'team',
+      label: 'Team',
+      icon: UserPlus,
+      isActive: activeTab === 'team',
+      onClick: () => onTabChange?.('team'),
+    },
     {
       id: 'cron',
       label: 'Cron Jobs',
@@ -201,10 +218,21 @@ const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
 
-      {/* Project Switcher */}
+      {/* Organization & Project Switchers */}
       {!isCollapsed && (
-        <div className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
-          <ProjectSwitcher onCreateProject={() => window.location.href = '/create-project'} />
+        <div className="px-4 py-4 border-b border-gray-100 dark:border-gray-800 space-y-3">
+          <div>
+            <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">
+              Organization
+            </label>
+            <OrganizationSwitcher />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">
+              Project
+            </label>
+            <ProjectSwitcher onCreateProject={() => window.location.href = '/create-project'} />
+          </div>
         </div>
       )}
 

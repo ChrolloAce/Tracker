@@ -66,6 +66,28 @@ export interface OrgMember {
   joinedAt: Timestamp;
   status: MemberStatus;
   invitedBy?: string; // userId
+  email?: string; // Added for display purposes
+  displayName?: string; // Added for display purposes
+}
+
+/**
+ * Team invitation
+ * Path: /organizations/{orgId}/invitations/{invitationId}
+ */
+export interface TeamInvitation {
+  id: string;
+  orgId: string;
+  email: string; // Email of invitee
+  role: Role;
+  status: 'pending' | 'accepted' | 'declined' | 'expired';
+  invitedBy: string; // userId who sent invite
+  invitedByName?: string; // Display name of inviter
+  invitedByEmail?: string; // Email of inviter
+  organizationName: string;
+  createdAt: Timestamp;
+  expiresAt: Timestamp;
+  acceptedAt?: Timestamp;
+  declinedAt?: Timestamp;
 }
 
 // ==================== TRACKED ACCOUNTS ====================

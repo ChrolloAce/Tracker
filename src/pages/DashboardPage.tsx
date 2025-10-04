@@ -15,6 +15,8 @@ import SettingsPage from '../components/SettingsPage';
 import SubscriptionPage from '../components/SubscriptionPage';
 import CronManagementPage from '../components/CronManagementPage';
 import TrackedLinksPage, { TrackedLinksPageRef } from '../components/TrackedLinksPage';
+import TeamManagementPage from '../components/TeamManagementPage';
+import PendingInvitationsPage from '../components/PendingInvitationsPage';
 import { PageLoadingSkeleton } from '../components/ui/LoadingSkeleton';
 import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
 import { VideoSubmission, InstagramVideoData } from '../types';
@@ -200,7 +202,8 @@ function DashboardPage() {
       
       // Only trigger on tabs where + button is visible
       if (activeTab === 'settings' || activeTab === 'subscription' || 
-          activeTab === 'contracts' || activeTab === 'creators' || activeTab === 'cron') {
+          activeTab === 'contracts' || activeTab === 'creators' || activeTab === 'cron' ||
+          activeTab === 'team' || activeTab === 'invitations') {
         return;
       }
       
@@ -511,6 +514,8 @@ function DashboardPage() {
                 {activeTab === 'rules' && 'Tracking Rules'}
                 {activeTab === 'creators' && 'Creators'}
                 {activeTab === 'cron' && 'Cron Jobs'}
+                {activeTab === 'team' && 'Team Management'}
+                {activeTab === 'invitations' && 'Pending Invitations'}
                 {activeTab === 'settings' && 'Settings'}
               </h1>
               {activeTab !== 'analytics' && (
@@ -522,6 +527,8 @@ function DashboardPage() {
                   {activeTab === 'rules' && 'Filter videos automatically based on conditions'}
                   {activeTab === 'creators' && 'Manage and discover content creators'}
                   {activeTab === 'cron' && 'Manage automated video refreshes'}
+                  {activeTab === 'team' && 'Manage team members and their access'}
+                  {activeTab === 'invitations' && 'Review and accept organization invitations'}
                   {activeTab === 'settings' && 'Configure your preferences'}
                 </p>
               )}
@@ -684,6 +691,12 @@ function DashboardPage() {
 
           {/* Settings Tab */}
           {activeTab === 'settings' && <SettingsPage />}
+
+          {/* Team Management Tab */}
+          {activeTab === 'team' && <TeamManagementPage />}
+
+          {/* Pending Invitations Tab */}
+          {activeTab === 'invitations' && <PendingInvitationsPage />}
 
           {/* Cron Management Tab */}
           {activeTab === 'cron' && <CronManagementPage />}
