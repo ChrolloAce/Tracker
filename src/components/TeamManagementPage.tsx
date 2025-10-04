@@ -4,7 +4,6 @@ import { OrgMember, TeamInvitation, Role } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
 import TeamInvitationService from '../services/TeamInvitationService';
 import { UserPlus, Shield, Crown, User, Mail, Clock, X, Settings } from 'lucide-react';
-import { Button } from './ui/Button';
 import InviteTeamMemberModal from './InviteTeamMemberModal';
 import EditMemberPermissionsModal from './EditMemberPermissionsModal';
 import { TeamMemberPermissions } from '../types/permissions';
@@ -196,24 +195,47 @@ const TeamManagementPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-400">Loading team members...</div>
+      <div className="p-6 space-y-6">
+        {/* Skeleton for button */}
+        <div className="flex justify-end">
+          <div className="h-10 w-32 bg-gray-800/50 rounded-lg animate-pulse" />
+        </div>
+        
+        {/* Skeleton for table */}
+        <div className="bg-gray-800/50 rounded-lg border border-gray-700 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-700">
+            <div className="h-7 w-48 bg-gray-700/50 rounded animate-pulse" />
+          </div>
+          <div className="p-6 space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-gray-700/50 rounded-full animate-pulse" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-32 bg-gray-700/50 rounded animate-pulse" />
+                  <div className="h-3 w-48 bg-gray-700/30 rounded animate-pulse" />
+                </div>
+                <div className="h-8 w-20 bg-gray-700/50 rounded animate-pulse" />
+                <div className="h-4 w-24 bg-gray-700/50 rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="p-6 space-y-6">
-      {/* Invite Button */}
+      {/* Add Team Button */}
       {isAdmin && (
         <div className="flex justify-end">
-          <Button
+          <button
             onClick={() => setShowInviteModal(true)}
-            className="flex items-center gap-2"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200"
           >
             <UserPlus className="w-4 h-4" />
-            Invite Member
-          </Button>
+            Add Team
+          </button>
         </div>
       )}
 
@@ -304,28 +326,24 @@ const TeamManagementPage: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
                         {member.role !== 'owner' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                          <button
                             onClick={() => setEditingMember(member)}
                             disabled={actionLoading === member.userId}
-                            className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
+                            className="p-2 rounded-lg text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Edit Permissions"
                           >
                             <Settings className="w-4 h-4" />
-                          </Button>
+                          </button>
                         )}
                         {member.role !== 'owner' && member.userId !== user?.uid && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                          <button
                             onClick={() => handleRemoveMember(member.userId)}
                             disabled={actionLoading === member.userId}
-                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                            className="p-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Remove Member"
                           >
                             <X className="w-4 h-4" />
-                          </Button>
+                          </button>
                         )}
                       </div>
                     </td>
@@ -391,15 +409,13 @@ const TeamManagementPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Button
-                        variant="ghost"
-                        size="sm"
+                      <button
                         onClick={() => handleCancelInvitation(invitation.id)}
                         disabled={actionLoading === invitation.id}
-                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        className="px-3 py-1.5 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Cancel
-                      </Button>
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -472,21 +488,20 @@ const TeamManagementPage: React.FC = () => {
 
                     {/* Action Buttons */}
                     <div className="flex gap-3 flex-shrink-0">
-                      <Button
+                      <button
                         onClick={() => handleAcceptInvitation(invitation)}
                         disabled={actionLoading === invitation.id}
-                        className="bg-purple-600 hover:bg-purple-700 text-white px-6"
+                        className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {actionLoading === invitation.id ? 'Accepting...' : 'Accept'}
-                      </Button>
-                      <Button
-                        variant="secondary"
+                      </button>
+                      <button
                         onClick={() => handleDeclineInvitation(invitation)}
                         disabled={actionLoading === invitation.id}
-                        className="hover:bg-red-500/10 hover:text-red-400"
+                        className="px-6 py-2.5 rounded-lg bg-gray-800 hover:bg-red-500/10 text-gray-300 hover:text-red-400 font-medium border border-gray-700 hover:border-red-500/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Decline
-                      </Button>
+                      </button>
                     </div>
                   </div>
                 </div>
