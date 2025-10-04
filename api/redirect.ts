@@ -102,10 +102,18 @@ export default async function handler(
       return res.status(404).json({ error: 'Destination URL not found' });
     }
 
-    // Record click analytics in background (don't await)
-    recordClickAnalytics(db, linkData, req).catch(err => 
-      console.error('Analytics error:', err)
-    );
+    // Check if request is from a bot/preview service (don't count these as clicks)
+    const userAgent = req.headers['user-agent'] || '';
+    const isBot = isPreviewBot(userAgent);
+
+    if (!isBot) {
+      // Only record analytics for real human clicks
+      recordClickAnalytics(db, linkData, req).catch(err => 
+        console.error('Analytics error:', err)
+      );
+    } else {
+      console.log(`🤖 Bot/preview detected, not recording click: ${userAgent.substring(0, 50)}...`);
+    }
 
     // INSTANT 302 REDIRECT - happens immediately!
     res.setHeader('Location', destinationUrl);
@@ -116,6 +124,65 @@ export default async function handler(
     console.error('Redirect error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
+}
+
+/**
+ * Detect if the request is from a bot or preview service
+ * These shouldn't be counted as real clicks
+ */
+function isPreviewBot(userAgent: string): boolean {
+  const botPatterns = [
+    // Link Preview Bots (these fetch links to generate previews)
+    'whatsapp',
+    'facebookexternalhit',
+    'facebot',
+    'twitterbot',
+    'telegrambot',
+    'slackbot',
+    'discordbot',
+    'linkedinbot',
+    'pinterestbot',
+    'snapchat',
+    'instagram',
+    'skypeuripreview',
+    'imessagebot',
+    
+    // Search Engine Crawlers
+    'googlebot',
+    'bingbot',
+    'baiduspider',
+    'yandexbot',
+    'duckduckbot',
+    'slurp', // Yahoo
+    
+    // SEO & Monitoring Tools
+    'ahrefsbot',
+    'semrushbot',
+    'dotbot',
+    'mj12bot',
+    'rogerbot',
+    'screaming frog',
+    'uptimerobot',
+    'pingdom',
+    'newrelic',
+    
+    // Social Media Preview Bots
+    'tumblr',
+    'reddit',
+    'applebot',
+    'developers.google.com/+/web/snippet',
+    
+    // Other Bots
+    'bot',
+    'crawler',
+    'spider',
+    'scraper',
+    'preview',
+    'headless'
+  ];
+
+  const userAgentLower = userAgent.toLowerCase();
+  return botPatterns.some(pattern => userAgentLower.includes(pattern));
 }
 
 /**
