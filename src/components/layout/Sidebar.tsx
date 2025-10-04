@@ -8,10 +8,8 @@ import {
   FileSignature,
   Eye,
   Link,
-  Clock,
   Filter,
-  UserPlus,
-  Mail
+  UserPlus
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '../../contexts/AuthContext';
