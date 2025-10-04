@@ -3,9 +3,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { OrgMember, TeamInvitation, Role } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
 import TeamInvitationService from '../services/TeamInvitationService';
-import { UserPlus, Shield, Crown, User, Mail, Clock, X } from 'lucide-react';
+import { UserPlus, Shield, Crown, User, Mail, Clock, X, Settings } from 'lucide-react';
 import { Button } from './ui/Button';
 import InviteTeamMemberModal from './InviteTeamMemberModal';
+import EditMemberPermissionsModal from './EditMemberPermissionsModal';
+import { TeamMemberPermissions } from '../types/permissions';
 
 const TeamManagementPage: React.FC = () => {
   const { user, currentOrgId } = useAuth();
@@ -15,6 +17,7 @@ const TeamManagementPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [editingMember, setEditingMember] = useState<OrgMember | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
@@ -84,6 +87,20 @@ const TeamManagementPage: React.FC = () => {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const handleSavePermissions = async (permissions: TeamMemberPermissions) => {
+    if (!currentOrgId || !editingMember) return;
+
+    await OrganizationService.updateMemberPermissions(currentOrgId, editingMember.userId, permissions);
+    await loadData();
+  };
+
+  const handleResetPermissions = async () => {
+    if (!currentOrgId || !editingMember) return;
+
+    await OrganizationService.clearMemberPermissions(currentOrgId, editingMember.userId);
+    await loadData();
   };
 
   const handleCancelInvitation = async (invitationId: string) => {
@@ -285,17 +302,32 @@ const TeamManagementPage: React.FC = () => {
                   </td>
                   {isAdmin && (
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      {member.role !== 'owner' && member.userId !== user?.uid && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveMember(member.userId)}
-                          disabled={actionLoading === member.userId}
-                          className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      )}
+                      <div className="flex items-center justify-end gap-2">
+                        {member.role !== 'owner' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingMember(member)}
+                            disabled={actionLoading === member.userId}
+                            className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
+                            title="Edit Permissions"
+                          >
+                            <Settings className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {member.role !== 'owner' && member.userId !== user?.uid && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveMember(member.userId)}
+                            disabled={actionLoading === member.userId}
+                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                            title="Remove Member"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   )}
                 </tr>
@@ -472,6 +504,16 @@ const TeamManagementPage: React.FC = () => {
             setShowInviteModal(false);
             loadData();
           }}
+        />
+      )}
+
+      {/* Edit Permissions Modal */}
+      {editingMember && (
+        <EditMemberPermissionsModal
+          member={editingMember}
+          onClose={() => setEditingMember(null)}
+          onSave={handleSavePermissions}
+          onResetToDefault={handleResetPermissions}
         />
       )}
     </div>

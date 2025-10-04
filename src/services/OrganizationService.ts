@@ -10,7 +10,9 @@ import {
   Timestamp,
   writeBatch,
   increment,
-  collectionGroup
+  collectionGroup,
+  updateDoc,
+  deleteField
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { 
@@ -328,6 +330,24 @@ class OrganizationService {
     const memberRef = doc(db, 'organizations', orgId, 'members', userId);
     await setDoc(memberRef, { role: newRole }, { merge: true });
     console.log(`✅ Updated role for member ${userId} to ${newRole}`);
+  }
+
+  /**
+   * Update member permissions
+   */
+  static async updateMemberPermissions(orgId: string, userId: string, permissions: any): Promise<void> {
+    const memberRef = doc(db, 'organizations', orgId, 'members', userId);
+    await setDoc(memberRef, { permissions }, { merge: true });
+    console.log(`✅ Updated permissions for member ${userId}`);
+  }
+
+  /**
+   * Clear member permissions (revert to role defaults)
+   */
+  static async clearMemberPermissions(orgId: string, userId: string): Promise<void> {
+    const memberRef = doc(db, 'organizations', orgId, 'members', userId);
+    await updateDoc(memberRef, { permissions: deleteField() });
+    console.log(`✅ Cleared custom permissions for member ${userId}, reverted to role defaults`);
   }
 
   /**
