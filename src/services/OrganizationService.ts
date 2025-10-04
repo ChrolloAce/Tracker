@@ -194,12 +194,36 @@ class OrganizationService {
   static async getOrCreateDefaultOrg(userId: string, email: string, displayName?: string): Promise<string> {
     const userAccount = await this.getUserAccount(userId);
     
+    // Check if user has a default org set and they're actually a member of it
     if (userAccount?.defaultOrgId) {
-      const org = await this.getOrganization(userAccount.defaultOrgId);
-      if (org) return userAccount.defaultOrgId;
+      try {
+        // Check if org exists
+        const org = await this.getOrganization(userAccount.defaultOrgId);
+        if (org) {
+          // Check if user is a member of this org
+          const memberDoc = await getDoc(
+            doc(db, 'organizations', userAccount.defaultOrgId, 'members', userId)
+          );
+          if (memberDoc.exists() && memberDoc.data().status === 'active') {
+            return userAccount.defaultOrgId;
+          }
+          console.warn(`User ${userId} is not a member of their default org ${userAccount.defaultOrgId}`);
+        }
+      } catch (error) {
+        console.error('Error checking default org membership:', error);
+      }
     }
     
-    // Create default organization
+    // If no valid default org, find first org user is a member of
+    const userOrgs = await this.getUserOrganizations(userId);
+    if (userOrgs.length > 0) {
+      // Set the first org as default
+      await this.setDefaultOrg(userId, userOrgs[0].id);
+      console.log(`✅ Set first available org ${userOrgs[0].id} as default for user ${userId}`);
+      return userOrgs[0].id;
+    }
+    
+    // No orgs found, create default organization
     const defaultName = email.split('@')[0] + "'s Workspace";
     return await this.createOrganization(userId, { 
       name: defaultName,
