@@ -95,7 +95,9 @@ service cloud.firestore {
           || (isOwner(userId) && request.resource.data.role == 'owner')
           || (isOwner(userId) && request.resource.data.status == 'active');
         
-        allow update: if canManageOrg(orgId);
+        // Admins can update members, OR user can update their own lastActiveProjectId
+        allow update: if canManageOrg(orgId) 
+          || (isOwner(userId) && isOrgMember(orgId));
         
         // Owner can delete members, members can remove themselves
         allow delete: if hasOrgRole(orgId, 'owner') || isOwner(userId);
