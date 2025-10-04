@@ -76,13 +76,6 @@ const Sidebar: React.FC<SidebarProps> = ({
       onClick: () => onTabChange?.('rules'),
     },
     {
-      id: 'creators',
-      label: 'Creators',
-      icon: Video,
-      isActive: activeTab === 'creators',
-      onClick: () => onTabChange?.('creators'),
-    },
-    {
       id: 'contracts',
       label: 'Contracts',
       icon: FileSignature,
@@ -93,13 +86,6 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const bottomItems: NavItem[] = [
     {
-      id: 'invitations',
-      label: 'Invitations',
-      icon: Mail,
-      isActive: activeTab === 'invitations',
-      onClick: () => onTabChange?.('invitations'),
-    },
-    {
       id: 'team',
       label: 'Team',
       icon: UserPlus,
@@ -107,11 +93,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       onClick: () => onTabChange?.('team'),
     },
     {
-      id: 'cron',
-      label: 'Cron Jobs',
-      icon: Clock,
-      isActive: activeTab === 'cron',
-      onClick: () => onTabChange?.('cron'),
+      id: 'creators',
+      label: 'Creators',
+      icon: Video,
+      isActive: activeTab === 'creators',
+      onClick: () => onTabChange?.('creators'),
     },
     {
       id: 'settings',
