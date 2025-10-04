@@ -300,6 +300,12 @@ service cloud.firestore {
         (request.auth.uid == memberId || 
          resource.data.userId == request.auth.uid);
     }
+    
+    // Allow users to query their own invitations across all organizations
+    match /{path=**}/invitations/{invitationId} {
+      allow read: if isSignedIn() && 
+        request.auth.token.email == resource.data.email;
+    }
   }
 }
 

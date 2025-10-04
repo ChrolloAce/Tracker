@@ -9,7 +9,8 @@ import {
   orderBy,
   Timestamp,
   writeBatch,
-  updateDoc
+  updateDoc,
+  collectionGroup
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { TeamInvitation, Role } from '../types/firestore';
@@ -101,34 +102,30 @@ class TeamInvitationService {
   static async getUserInvitations(email: string): Promise<TeamInvitation[]> {
     const normalizedEmail = email.toLowerCase();
     
-    // Query all organizations for invitations
-    const orgsSnapshot = await getDocs(collection(db, 'organizations'));
+    // Use collection group query to search across all organizations
+    const invitesQuery = query(
+      collectionGroup(db, 'invitations'),
+      where('email', '==', normalizedEmail),
+      where('status', '==', 'pending')
+    );
+    
+    const invitesSnapshot = await getDocs(invitesQuery);
     const userInvitations: TeamInvitation[] = [];
     
-    for (const orgDoc of orgsSnapshot.docs) {
-      const invitesSnapshot = await getDocs(
-        query(
-          collection(db, 'organizations', orgDoc.id, 'invitations'),
-          where('email', '==', normalizedEmail),
-          where('status', '==', 'pending')
-        )
-      );
+    for (const inviteDoc of invitesSnapshot.docs) {
+      const invite = inviteDoc.data() as TeamInvitation;
       
-      for (const inviteDoc of invitesSnapshot.docs) {
-        const invite = inviteDoc.data() as TeamInvitation;
-        
-        // Check if invitation has expired
-        const now = new Date();
-        const expiresAt = invite.expiresAt.toDate();
-        
-        if (expiresAt < now) {
-          // Mark as expired
-          await updateDoc(doc(db, 'organizations', orgDoc.id, 'invitations', invite.id), {
-            status: 'expired'
-          });
-        } else {
-          userInvitations.push(invite);
-        }
+      // Check if invitation has expired
+      const now = new Date();
+      const expiresAt = invite.expiresAt.toDate();
+      
+      if (expiresAt < now) {
+        // Mark as expired
+        await updateDoc(inviteDoc.ref, {
+          status: 'expired'
+        });
+      } else {
+        userInvitations.push(invite);
       }
     }
     
