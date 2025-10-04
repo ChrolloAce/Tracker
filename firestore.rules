@@ -53,9 +53,9 @@ service cloud.firestore {
     
     // ==================== USER ACCOUNTS ====================
     
-    // Users can read their own account, or basic info of users in same organization
+    // Users can only access their own account
     match /users/{userId} {
-      allow read: if isOwner(userId) || isSignedIn();  // Allow reading basic user info
+      allow read: if isOwner(userId);
       allow write: if isOwner(userId);
       
       // User preferences
