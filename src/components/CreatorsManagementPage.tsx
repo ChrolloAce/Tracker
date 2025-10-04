@@ -285,7 +285,7 @@ const CreatorsManagementPage: React.FC = () => {
         </div>
       )}
 
-      {/* Invite Modal - Pre-set to Creator role */}
+      {/* Invite Modal - Pre-set to Creator role with current projectId */}
       {showInviteModal && (
         <InviteTeamMemberModal
           onClose={() => setShowInviteModal(false)}
@@ -294,6 +294,7 @@ const CreatorsManagementPage: React.FC = () => {
             loadData();
           }}
           defaultRole="creator"
+          projectId={currentProjectId || undefined}
         />
       )}
 

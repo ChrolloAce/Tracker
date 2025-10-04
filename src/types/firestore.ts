@@ -93,6 +93,7 @@ export interface TeamInvitation {
   expiresAt: Timestamp;
   acceptedAt?: Timestamp;
   declinedAt?: Timestamp;
+  projectId?: string; // Optional: For adding creators to specific project
 }
 
 // ==================== TRACKED ACCOUNTS ====================

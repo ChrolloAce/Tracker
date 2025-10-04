@@ -13,7 +13,7 @@ import {
   collectionGroup
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { TeamInvitation, Role } from '../types/firestore';
+import { TeamInvitation, Role, Creator } from '../types/firestore';
 
 /**
  * TeamInvitationService - Manages team invitations
@@ -30,7 +30,8 @@ class TeamInvitationService {
     invitedBy: string,
     invitedByName: string,
     invitedByEmail: string,
-    organizationName: string
+    organizationName: string,
+    projectId?: string // Optional: For adding creators to specific project
   ): Promise<string> {
     // Check if user is already a member
     const existingMembers = await getDocs(
@@ -73,7 +74,8 @@ class TeamInvitationService {
       invitedByEmail,
       organizationName,
       createdAt: Timestamp.now(),
-      expiresAt: Timestamp.fromDate(expiresAt)
+      expiresAt: Timestamp.fromDate(expiresAt),
+      ...(projectId && { projectId }) // Include projectId if provided
     };
     
     await setDoc(inviteRef, inviteData);
@@ -209,7 +211,7 @@ class TeamInvitationService {
       
       // Add user as member with email and displayName
       const memberRef = doc(db, 'organizations', orgId, 'members', userId);
-      batch.set(memberRef, {
+      const memberData: any = {
         userId,
         role: invite.role,
         joinedAt: Timestamp.now(),
@@ -217,7 +219,30 @@ class TeamInvitationService {
         invitedBy: invite.invitedBy,
         email: email,
         displayName: displayName || email.split('@')[0]
-      });
+      };
+      
+      // If this is a creator invitation with a projectId, add them to that project
+      if (invite.role === 'creator' && invite.projectId) {
+        memberData.creatorProjectIds = [invite.projectId];
+        console.log(`🎨 Adding creator to project ${invite.projectId}`);
+        
+        // Create creator profile in the project
+        const creatorRef = doc(db, 'organizations', orgId, 'projects', invite.projectId, 'creators', userId);
+        const creatorData: Omit<Creator, 'id'> = {
+          orgId,
+          projectId: invite.projectId,
+          displayName: displayName || email.split('@')[0],
+          email: email,
+          linkedAccountsCount: 0,
+          totalEarnings: 0,
+          payoutsEnabled: true,
+          createdAt: Timestamp.now(),
+        };
+        batch.set(creatorRef, creatorData);
+        console.log(`✅ Created creator profile in project ${invite.projectId}`);
+      }
+      
+      batch.set(memberRef, memberData);
       
       // Set this as the user's default organization
       const userRef = doc(db, 'users', userId);

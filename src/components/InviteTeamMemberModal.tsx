@@ -10,12 +10,14 @@ interface InviteTeamMemberModalProps {
   onClose: () => void;
   onSuccess: () => void;
   defaultRole?: Role;
+  projectId?: string; // Optional: For adding creators to specific project
 }
 
 const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({ 
   onClose, 
   onSuccess,
-  defaultRole = 'member'
+  defaultRole = 'member',
+  projectId
 }) => {
   const { user, currentOrgId } = useAuth();
   const [email, setEmail] = useState('');
@@ -43,7 +45,7 @@ const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({
         throw new Error('Organization not found');
       }
 
-      // Send invitation
+      // Send invitation (with optional projectId for creators)
       await TeamInvitationService.createInvitation(
         currentOrgId,
         email,
@@ -51,7 +53,8 @@ const InviteTeamMemberModal: React.FC<InviteTeamMemberModalProps> = ({
         user.uid,
         user.displayName || 'Unknown',
         user.email || '',
-        org.name
+        org.name,
+        projectId // Pass projectId if inviting a creator to a specific project
       );
 
       onSuccess();
