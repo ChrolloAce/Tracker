@@ -504,7 +504,7 @@ const KPISparkline: React.FC<{
           </linearGradient>
         </defs>
         <Tooltip
-          position={{ y: 70 }}
+          offset={15}
           allowEscapeViewBox={{ x: false, y: true }}
           wrapperStyle={{ 
             zIndex: 99999,
