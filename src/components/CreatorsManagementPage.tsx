@@ -13,7 +13,7 @@ import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
  * Admin interface to manage creators, link accounts, and track payouts
  */
 const CreatorsManagementPage: React.FC = () => {
-  const { user, currentOrgId } = useAuth();
+  const { user, currentOrgId, currentProjectId } = useAuth();
   const [creators, setCreators] = useState<OrgMember[]>([]);
   const [creatorProfiles, setCreatorProfiles] = useState<Map<string, Creator>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -23,26 +23,28 @@ const CreatorsManagementPage: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, [currentOrgId, user]);
+  }, [currentOrgId, currentProjectId, user]);
 
   const loadData = async () => {
-    if (!currentOrgId || !user) return;
+    if (!currentOrgId || !currentProjectId || !user) return;
 
     setLoading(true);
     try {
-      // Load all members and filter creators
+      // Load creators for THIS PROJECT
+      const creatorProfilesList = await CreatorLinksService.getAllCreators(currentOrgId, currentProjectId);
+      
+      // Load member data for each creator
       const membersData = await OrganizationService.getOrgMembers(currentOrgId);
-      const creatorMembers = membersData.filter(m => m.role === 'creator');
+      const creatorMembers = membersData.filter(m => 
+        creatorProfilesList.some(p => p.id === m.userId)
+      );
       setCreators(creatorMembers);
 
-      // Load creator profiles
+      // Store creator profiles
       const creatorProfilesMap = new Map<string, Creator>();
-      for (const creator of creatorMembers) {
-        const profile = await CreatorLinksService.getCreatorProfile(currentOrgId, creator.userId);
-        if (profile) {
-          creatorProfilesMap.set(creator.userId, profile);
-        }
-      }
+      creatorProfilesList.forEach(profile => {
+        creatorProfilesMap.set(profile.id, profile);
+      });
       setCreatorProfiles(creatorProfilesMap);
     } catch (error) {
       console.error('Failed to load creators:', error);
@@ -52,24 +54,21 @@ const CreatorsManagementPage: React.FC = () => {
   };
 
   const handleRemoveCreator = async (userId: string) => {
-    if (!currentOrgId || !user) return;
+    if (!currentOrgId || !currentProjectId || !user) return;
     
-    if (!window.confirm('Are you sure you want to remove this creator? This will unlink all their accounts.')) {
+    if (!window.confirm('Are you sure you want to remove this creator from this project? This will unlink all their accounts in this project.')) {
       return;
     }
 
     setActionLoading(userId);
     try {
-      // Remove all creator links first
-      await CreatorLinksService.removeAllCreatorLinks(currentOrgId, userId);
-      
-      // Then remove from organization
-      await OrganizationService.removeMember(currentOrgId, userId);
+      // Remove all creator links from THIS PROJECT
+      await CreatorLinksService.removeAllCreatorLinks(currentOrgId, currentProjectId, userId);
       
       await loadData();
     } catch (error) {
       console.error('Failed to remove creator:', error);
-      alert('Failed to remove creator');
+      alert('Failed to remove creator from project');
     } finally {
       setActionLoading(null);
     }
@@ -100,7 +99,7 @@ const CreatorsManagementPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-white">Creators</h1>
           <p className="text-gray-400 mt-1">
-            Manage content creators, link accounts, and track earnings
+            Manage content creators in this project, link accounts, and track earnings
           </p>
         </div>
         <Button

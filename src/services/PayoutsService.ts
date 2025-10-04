@@ -15,15 +15,16 @@ import { db } from './firebase';
 import { Payout, PayoutStatus } from '../types/firestore';
 
 /**
- * PayoutsService
- * Manages creator payouts and earnings
+ * PayoutsService - PROJECT SCOPED
+ * Manages creator payouts and earnings within projects
  */
 class PayoutsService {
   /**
-   * Create a new payout record
+   * Create a new payout record for a creator in a project
    */
   static async createPayout(
     orgId: string,
+    projectId: string,
     creatorId: string,
     payoutData: {
       periodStart: Date;
@@ -47,6 +48,8 @@ class PayoutsService {
       db, 
       'organizations', 
       orgId, 
+      'projects', 
+      projectId,
       'creators', 
       creatorId, 
       'payouts'
@@ -54,6 +57,7 @@ class PayoutsService {
 
     const payout: Omit<Payout, 'id'> = {
       orgId,
+      projectId,
       creatorId,
       periodStart: Timestamp.fromDate(payoutData.periodStart),
       periodEnd: Timestamp.fromDate(payoutData.periodEnd),
@@ -75,18 +79,15 @@ class PayoutsService {
     };
 
     const docRef = await addDoc(payoutsRef, payout);
-
-    // Update creator's total earnings (if status is paid)
-    // For now, earnings will be updated when payout is marked as paid
-
     return docRef.id;
   }
 
   /**
-   * Get all payouts for a creator
+   * Get all payouts for a creator in a project
    */
   static async getCreatorPayouts(
     orgId: string,
+    projectId: string,
     creatorId: string,
     limitCount?: number
   ): Promise<Payout[]> {
@@ -94,6 +95,8 @@ class PayoutsService {
       db, 
       'organizations', 
       orgId, 
+      'projects', 
+      projectId,
       'creators', 
       creatorId, 
       'payouts'
@@ -113,10 +116,11 @@ class PayoutsService {
   }
 
   /**
-   * Get payouts by status
+   * Get payouts by status for a creator in a project
    */
   static async getPayoutsByStatus(
     orgId: string,
+    projectId: string,
     creatorId: string,
     status: PayoutStatus
   ): Promise<Payout[]> {
@@ -124,6 +128,8 @@ class PayoutsService {
       db, 
       'organizations', 
       orgId, 
+      'projects', 
+      projectId,
       'creators', 
       creatorId, 
       'payouts'
@@ -147,6 +153,7 @@ class PayoutsService {
    */
   static async updatePayoutStatus(
     orgId: string,
+    projectId: string,
     creatorId: string,
     payoutId: string,
     status: PayoutStatus,
@@ -156,6 +163,8 @@ class PayoutsService {
       db, 
       'organizations', 
       orgId, 
+      'projects', 
+      projectId,
       'creators', 
       creatorId, 
       'payouts', 
@@ -175,7 +184,7 @@ class PayoutsService {
       const payoutDoc = await getDoc(payoutRef);
       if (payoutDoc.exists()) {
         const payoutData = payoutDoc.data() as Payout;
-        const creatorRef = doc(db, 'organizations', orgId, 'creators', creatorId);
+        const creatorRef = doc(db, 'organizations', orgId, 'projects', projectId, 'creators', creatorId);
         const creatorDoc = await getDoc(creatorRef);
         
         if (creatorDoc.exists()) {
@@ -196,6 +205,7 @@ class PayoutsService {
    */
   static async getPayout(
     orgId: string,
+    projectId: string,
     creatorId: string,
     payoutId: string
   ): Promise<Payout | null> {
@@ -203,6 +213,8 @@ class PayoutsService {
       db, 
       'organizations', 
       orgId, 
+      'projects', 
+      projectId,
       'creators', 
       creatorId, 
       'payouts', 
@@ -222,14 +234,10 @@ class PayoutsService {
   }
 
   /**
-   * Get all pending payouts for an organization (admin view)
+   * Get all pending payouts for a project (admin view)
    */
-  static async getAllPendingPayouts(orgId: string): Promise<Array<Payout & { creatorName: string }>> {
-    // This requires a collection group query
-    // For simplicity, we'll need to query each creator's payouts
-    // In production, consider using a collection group query or aggregation
-
-    const creatorsRef = collection(db, 'organizations', orgId, 'creators');
+  static async getAllPendingPayouts(orgId: string, projectId: string): Promise<Array<Payout & { creatorName: string }>> {
+    const creatorsRef = collection(db, 'organizations', orgId, 'projects', projectId, 'creators');
     const creatorsSnapshot = await getDocs(creatorsRef);
     
     const allPayouts: Array<Payout & { creatorName: string }> = [];
@@ -240,6 +248,8 @@ class PayoutsService {
         db, 
         'organizations', 
         orgId, 
+        'projects', 
+        projectId,
         'creators', 
         creatorDoc.id, 
         'payouts'
@@ -268,10 +278,11 @@ class PayoutsService {
   }
 
   /**
-   * Get payout summary for a creator
+   * Get payout summary for a creator in a project
    */
   static async getPayoutSummary(
     orgId: string,
+    projectId: string,
     creatorId: string
   ): Promise<{
     totalPaid: number;
@@ -283,6 +294,8 @@ class PayoutsService {
       db, 
       'organizations', 
       orgId, 
+      'projects', 
+      projectId,
       'creators', 
       creatorId, 
       'payouts'
@@ -317,6 +330,7 @@ class PayoutsService {
    */
   static async updatePayout(
     orgId: string,
+    projectId: string,
     creatorId: string,
     payoutId: string,
     updates: Partial<Pick<Payout, 'amount' | 'notes' | 'reference' | 'paymentMethod' | 'rateDescription'>>
@@ -325,6 +339,8 @@ class PayoutsService {
       db, 
       'organizations', 
       orgId, 
+      'projects', 
+      projectId,
       'creators', 
       creatorId, 
       'payouts', 
@@ -339,6 +355,7 @@ class PayoutsService {
    */
   static async deletePayout(
     orgId: string,
+    projectId: string,
     creatorId: string,
     payoutId: string
   ): Promise<void> {
@@ -346,6 +363,8 @@ class PayoutsService {
       db, 
       'organizations', 
       orgId, 
+      'projects', 
+      projectId,
       'creators', 
       creatorId, 
       'payouts', 
@@ -369,4 +388,3 @@ class PayoutsService {
 }
 
 export default PayoutsService;
-

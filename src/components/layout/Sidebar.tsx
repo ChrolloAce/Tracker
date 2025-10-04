@@ -15,6 +15,7 @@ import { clsx } from 'clsx';
 import ProjectSwitcher from '../ProjectSwitcher';
 import OrganizationSwitcher from '../OrganizationSwitcher';
 import { usePermissions } from '../../hooks/usePermissions';
+import { useAuth } from '../../contexts/AuthContext';
 import blackLogo from '../blacklogo.png';
 import whiteLogo from '../whitelogo.png';
 
@@ -43,6 +44,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
   const { can } = usePermissions();
+  const { userRole } = useAuth();
 
   // Filter navigation items based on permissions
   const navigationItems: NavItem[] = useMemo(() => {
@@ -99,7 +101,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
 
     return items;
-  }, [activeTab, can, onTabChange]);
+  }, [activeTab, can, onTabChange, userRole]);
 
   const bottomItems: NavItem[] = useMemo(() => {
     const items: NavItem[] = [];
@@ -117,7 +119,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     if (can.accessTab('creators')) {
       items.push({
         id: 'creators',
-        label: 'Creators',
+        label: userRole === 'creator' ? 'Payouts' : 'Creators', // Show "Payouts" for creators, "Creators" for admins
         icon: Video,
         isActive: activeTab === 'creators',
         onClick: () => onTabChange?.('creators'),
@@ -135,7 +137,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
 
     return items;
-  }, [activeTab, can, onTabChange]);
+  }, [activeTab, can, onTabChange, userRole]);
 
   const NavItemComponent: React.FC<{ item: NavItem }> = ({ item }) => {
     const Icon = item.icon;

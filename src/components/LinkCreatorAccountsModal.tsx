@@ -22,7 +22,7 @@ const LinkCreatorAccountsModal: React.FC<LinkCreatorAccountsModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const { user, currentOrgId } = useAuth();
+  const { user, currentOrgId, currentProjectId } = useAuth();
   const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
   const [linkedAccountIds, setLinkedAccountIds] = useState<Set<string>>(new Set());
   const [selectedAccountIds, setSelectedAccountIds] = useState<Set<string>>(new Set());
@@ -33,20 +33,21 @@ const LinkCreatorAccountsModal: React.FC<LinkCreatorAccountsModalProps> = ({
 
   useEffect(() => {
     loadData();
-  }, [currentOrgId, creator.userId]);
+  }, [currentOrgId, currentProjectId, creator.userId]);
 
   const loadData = async () => {
-    if (!currentOrgId) return;
+    if (!currentOrgId || !currentProjectId) return;
 
     setLoading(true);
     try {
-      // Load all organization accounts (pass empty string for projectId since we want org-level accounts)
-      const accountsData = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentOrgId);
+      // Load accounts for THIS PROJECT
+      const accountsData = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
       setAccounts(accountsData);
 
-      // Load currently linked accounts
+      // Load currently linked accounts for this creator in THIS PROJECT
       const links = await CreatorLinksService.getCreatorLinkedAccounts(
         currentOrgId,
+        currentProjectId,
         creator.userId
       );
       const linkedIds = new Set(links.map(link => link.accountId));
@@ -73,7 +74,7 @@ const LinkCreatorAccountsModal: React.FC<LinkCreatorAccountsModalProps> = ({
   };
 
   const handleSave = async () => {
-    if (!currentOrgId || !user) return;
+    if (!currentOrgId || !currentProjectId || !user) return;
 
     setSaving(true);
     setError(null);
@@ -87,20 +88,22 @@ const LinkCreatorAccountsModal: React.FC<LinkCreatorAccountsModalProps> = ({
         id => !selectedAccountIds.has(id)
       );
 
-      // Link new accounts
+      // Link new accounts in THIS PROJECT
       if (accountsToLink.length > 0) {
         await CreatorLinksService.linkCreatorToAccounts(
           currentOrgId,
+          currentProjectId,
           creator.userId,
           accountsToLink,
           user.uid
         );
       }
 
-      // Unlink removed accounts
+      // Unlink removed accounts from THIS PROJECT
       for (const accountId of accountsToUnlink) {
         await CreatorLinksService.unlinkCreatorFromAccount(
           currentOrgId,
+          currentProjectId,
           creator.userId,
           accountId
         );
@@ -133,7 +136,7 @@ const LinkCreatorAccountsModal: React.FC<LinkCreatorAccountsModalProps> = ({
             <div>
               <h2 className="text-xl font-semibold text-white">Link Accounts</h2>
               <p className="text-sm text-gray-400 mt-0.5">
-                Select accounts for {creator.displayName || creator.email}
+                Select accounts in this project for {creator.displayName || creator.email}
               </p>
             </div>
           </div>

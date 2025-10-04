@@ -17,6 +17,7 @@ interface AuthContextType {
   loading: boolean;
   currentOrgId: string | null;
   currentProjectId: string | null;
+  userRole: string | null;
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<void>;
@@ -40,6 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -65,6 +67,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const projectId = await loadOrCreateProject(orgId, user.uid);
         setCurrentProjectId(projectId);
         console.log('✅ Current project:', projectId);
+        
+        // Load user role
+        const members = await OrganizationService.getOrgMembers(orgId);
+        const member = members.find(m => m.userId === user.uid);
+        setUserRole(member?.role || null);
+        console.log('✅ User role:', member?.role);
       } else {
         console.log('❌ User signed out');
         setCurrentOrgId(null);
@@ -201,6 +209,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading,
     currentOrgId,
     currentProjectId,
+    userRole,
     signInWithGoogle,
     signInWithEmail,
     signUpWithEmail,

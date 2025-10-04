@@ -6,21 +6,26 @@ import {
   where, 
   Timestamp,
   writeBatch,
-  getDoc
+  getDoc,
+  updateDoc,
+  arrayUnion,
+  arrayRemove
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { CreatorLink, Creator } from '../types/firestore';
 
 /**
- * CreatorLinksService
- * Manages the mapping between creators and their linked accounts
+ * CreatorLinksService - PROJECT SCOPED
+ * Manages the mapping between creators and their linked accounts within projects
+ * Creators are now project-specific and can be in multiple projects
  */
 class CreatorLinksService {
   /**
-   * Link a creator to one or more accounts
+   * Link a creator to one or more accounts within a project
    */
   static async linkCreatorToAccounts(
     orgId: string,
+    projectId: string,
     creatorId: string,
     accountIds: string[],
     linkedBy: string
@@ -28,8 +33,8 @@ class CreatorLinksService {
     const batch = writeBatch(db);
     const now = Timestamp.now();
 
-    // Create creator profile if it doesn't exist
-    const creatorRef = doc(db, 'organizations', orgId, 'creators', creatorId);
+    // Create creator profile if it doesn't exist in this project
+    const creatorRef = doc(db, 'organizations', orgId, 'projects', projectId, 'creators', creatorId);
     const creatorDoc = await getDoc(creatorRef);
     
     if (!creatorDoc.exists()) {
@@ -41,6 +46,7 @@ class CreatorLinksService {
         const memberData = memberDoc.data();
         const creatorData: Omit<Creator, 'id'> = {
           orgId,
+          projectId,
           displayName: memberData.displayName || 'Unknown',
           email: memberData.email || '',
           photoURL: memberData.photoURL,
@@ -50,6 +56,11 @@ class CreatorLinksService {
           createdAt: now,
         };
         batch.set(creatorRef, creatorData);
+        
+        // Add this project to the member's creatorProjectIds
+        batch.update(memberRef, {
+          creatorProjectIds: arrayUnion(projectId)
+        });
       }
     } else {
       // Update linked accounts count
@@ -61,9 +72,10 @@ class CreatorLinksService {
 
     // Create links for each account
     for (const accountId of accountIds) {
-      const linkRef = doc(collection(db, 'organizations', orgId, 'creatorLinks'));
+      const linkRef = doc(collection(db, 'organizations', orgId, 'projects', projectId, 'creatorLinks'));
       const linkData: Omit<CreatorLink, 'id'> = {
         orgId,
+        projectId,
         creatorId,
         accountId,
         createdAt: now,
@@ -76,14 +88,15 @@ class CreatorLinksService {
   }
 
   /**
-   * Unlink a creator from an account
+   * Unlink a creator from an account within a project
    */
   static async unlinkCreatorFromAccount(
     orgId: string,
+    projectId: string,
     creatorId: string,
     accountId: string
   ): Promise<void> {
-    const linksRef = collection(db, 'organizations', orgId, 'creatorLinks');
+    const linksRef = collection(db, 'organizations', orgId, 'projects', projectId, 'creatorLinks');
     const q = query(
       linksRef,
       where('creatorId', '==', creatorId),
@@ -98,7 +111,7 @@ class CreatorLinksService {
     });
 
     // Update creator's linked accounts count
-    const creatorRef = doc(db, 'organizations', orgId, 'creators', creatorId);
+    const creatorRef = doc(db, 'organizations', orgId, 'projects', projectId, 'creators', creatorId);
     const creatorDoc = await getDoc(creatorRef);
     
     if (creatorDoc.exists()) {
@@ -112,13 +125,14 @@ class CreatorLinksService {
   }
 
   /**
-   * Get all accounts linked to a creator
+   * Get all accounts linked to a creator in a project
    */
   static async getCreatorLinkedAccounts(
     orgId: string,
+    projectId: string,
     creatorId: string
   ): Promise<CreatorLink[]> {
-    const linksRef = collection(db, 'organizations', orgId, 'creatorLinks');
+    const linksRef = collection(db, 'organizations', orgId, 'projects', projectId, 'creatorLinks');
     const q = query(linksRef, where('creatorId', '==', creatorId));
     
     const snapshot = await getDocs(q);
@@ -129,13 +143,14 @@ class CreatorLinksService {
   }
 
   /**
-   * Get all creators linked to an account
+   * Get all creators linked to an account in a project
    */
   static async getAccountLinkedCreators(
     orgId: string,
+    projectId: string,
     accountId: string
   ): Promise<CreatorLink[]> {
-    const linksRef = collection(db, 'organizations', orgId, 'creatorLinks');
+    const linksRef = collection(db, 'organizations', orgId, 'projects', projectId, 'creatorLinks');
     const q = query(linksRef, where('accountId', '==', accountId));
     
     const snapshot = await getDocs(q);
@@ -146,10 +161,10 @@ class CreatorLinksService {
   }
 
   /**
-   * Get all creator links for an organization
+   * Get all creator links for a project
    */
-  static async getAllCreatorLinks(orgId: string): Promise<CreatorLink[]> {
-    const linksRef = collection(db, 'organizations', orgId, 'creatorLinks');
+  static async getAllCreatorLinks(orgId: string, projectId: string): Promise<CreatorLink[]> {
+    const linksRef = collection(db, 'organizations', orgId, 'projects', projectId, 'creatorLinks');
     const snapshot = await getDocs(linksRef);
     
     return snapshot.docs.map(doc => ({
@@ -159,14 +174,15 @@ class CreatorLinksService {
   }
 
   /**
-   * Check if a creator is linked to a specific account
+   * Check if a creator is linked to a specific account in a project
    */
   static async isCreatorLinkedToAccount(
     orgId: string,
+    projectId: string,
     creatorId: string,
     accountId: string
   ): Promise<boolean> {
-    const linksRef = collection(db, 'organizations', orgId, 'creatorLinks');
+    const linksRef = collection(db, 'organizations', orgId, 'projects', projectId, 'creatorLinks');
     const q = query(
       linksRef,
       where('creatorId', '==', creatorId),
@@ -178,13 +194,14 @@ class CreatorLinksService {
   }
 
   /**
-   * Get creator profile
+   * Get creator profile in a specific project
    */
   static async getCreatorProfile(
     orgId: string,
+    projectId: string,
     creatorId: string
   ): Promise<Creator | null> {
-    const creatorRef = doc(db, 'organizations', orgId, 'creators', creatorId);
+    const creatorRef = doc(db, 'organizations', orgId, 'projects', projectId, 'creators', creatorId);
     const creatorDoc = await getDoc(creatorRef);
     
     if (!creatorDoc.exists()) {
@@ -198,10 +215,10 @@ class CreatorLinksService {
   }
 
   /**
-   * Get all creators in an organization
+   * Get all creators in a project
    */
-  static async getAllCreators(orgId: string): Promise<Creator[]> {
-    const creatorsRef = collection(db, 'organizations', orgId, 'creators');
+  static async getAllCreators(orgId: string, projectId: string): Promise<Creator[]> {
+    const creatorsRef = collection(db, 'organizations', orgId, 'projects', projectId, 'creators');
     const snapshot = await getDocs(creatorsRef);
     
     return snapshot.docs.map(doc => ({
@@ -211,30 +228,42 @@ class CreatorLinksService {
   }
 
   /**
-   * Update creator profile
+   * Get all projects where a user is a creator
    */
-  static async updateCreatorProfile(
-    orgId: string,
-    creatorId: string,
-    updates: Partial<Omit<Creator, 'id' | 'orgId' | 'createdAt'>>
-  ): Promise<void> {
-    const creatorRef = doc(db, 'organizations', orgId, 'creators', creatorId);
-    await getDoc(creatorRef); // Ensure exists
+  static async getCreatorProjects(orgId: string, userId: string): Promise<string[]> {
+    const memberRef = doc(db, 'organizations', orgId, 'members', userId);
+    const memberDoc = await getDoc(memberRef);
     
-    // Use batch to update
-    const batch = writeBatch(db);
-    batch.update(creatorRef, updates);
-    await batch.commit();
+    if (!memberDoc.exists()) {
+      return [];
+    }
+
+    const memberData = memberDoc.data();
+    return memberData.creatorProjectIds || [];
   }
 
   /**
-   * Remove all links for a creator (when removing from org)
+   * Update creator profile in a project
+   */
+  static async updateCreatorProfile(
+    orgId: string,
+    projectId: string,
+    creatorId: string,
+    updates: Partial<Omit<Creator, 'id' | 'orgId' | 'projectId' | 'createdAt'>>
+  ): Promise<void> {
+    const creatorRef = doc(db, 'organizations', orgId, 'projects', projectId, 'creators', creatorId);
+    await updateDoc(creatorRef, updates);
+  }
+
+  /**
+   * Remove all links for a creator in a project (when removing from project)
    */
   static async removeAllCreatorLinks(
     orgId: string,
+    projectId: string,
     creatorId: string
   ): Promise<void> {
-    const linksRef = collection(db, 'organizations', orgId, 'creatorLinks');
+    const linksRef = collection(db, 'organizations', orgId, 'projects', projectId, 'creatorLinks');
     const q = query(linksRef, where('creatorId', '==', creatorId));
     
     const snapshot = await getDocs(q);
@@ -244,13 +273,18 @@ class CreatorLinksService {
       batch.delete(doc.ref);
     });
 
-    // Delete creator profile
-    const creatorRef = doc(db, 'organizations', orgId, 'creators', creatorId);
+    // Delete creator profile from this project
+    const creatorRef = doc(db, 'organizations', orgId, 'projects', projectId, 'creators', creatorId);
     batch.delete(creatorRef);
+
+    // Remove projectId from member's creatorProjectIds
+    const memberRef = doc(db, 'organizations', orgId, 'members', creatorId);
+    batch.update(memberRef, {
+      creatorProjectIds: arrayRemove(projectId)
+    });
 
     await batch.commit();
   }
 }
 
 export default CreatorLinksService;
-

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, FolderOpen, Plus, Check, Edit3 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ProjectService from '../services/ProjectService';
+import CreatorLinksService from '../services/CreatorLinksService';
 import { ProjectWithStats } from '../types/projects';
 import { clsx } from 'clsx';
 import EditProjectModal from './EditProjectModal';
@@ -11,7 +12,7 @@ interface ProjectSwitcherProps {
 }
 
 const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) => {
-  const { currentOrgId, currentProjectId, switchProject } = useAuth();
+  const { currentOrgId, currentProjectId, switchProject, user, userRole } = useAuth();
   const [projects, setProjects] = useState<ProjectWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
@@ -20,7 +21,7 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
 
   useEffect(() => {
     loadProjects();
-  }, [currentOrgId]);
+  }, [currentOrgId, userRole, user]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -34,12 +35,20 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
   }, []);
 
   const loadProjects = async () => {
-    if (!currentOrgId) return;
+    if (!currentOrgId || !user) return;
 
     try {
       setLoading(true);
       const projectsData = await ProjectService.getProjectsWithStats(currentOrgId, false);
-      setProjects(projectsData);
+      
+      // If user is a creator, filter to only projects they're assigned to
+      if (userRole === 'creator') {
+        const creatorProjectIds = await CreatorLinksService.getCreatorProjects(currentOrgId, user.uid);
+        const filteredProjects = projectsData.filter(p => creatorProjectIds.includes(p.id));
+        setProjects(filteredProjects);
+      } else {
+        setProjects(projectsData);
+      }
     } catch (error) {
       console.error('Failed to load projects:', error);
     } finally {

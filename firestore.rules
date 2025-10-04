@@ -292,37 +292,38 @@ service cloud.firestore {
           // Only admins can update/delete rules
           allow update, delete: if canManageOrg(orgId);
         }
-      }
-      
-      // ==================== CREATOR LINKS ====================
-      
-      match /creatorLinks/{linkId} {
-        // All members can read creator links
-        allow read: if canReadOrg(orgId);
         
-        // Only admins can create/manage creator links
-        allow create, update, delete: if canManageOrg(orgId);
-      }
-      
-      // ==================== CREATOR PROFILES ====================
-      
-      match /creators/{creatorId} {
-        // Admins can read all creator profiles
-        // Creators can read their own profile
-        allow read: if canManageOrg(orgId) || (isOrgMember(orgId) && request.auth.uid == creatorId);
+        // ==================== PROJECT CREATOR LINKS ====================
         
-        // Only admins can write creator profiles
-        allow write: if canManageOrg(orgId);
+        match /creatorLinks/{linkId} {
+          // Admins can read all creator links in this project
+          // Creators can read their own links in this project
+          allow read: if canManageOrg(orgId) || (isOrgMember(orgId) && resource.data.creatorId == request.auth.uid);
+          
+          // Only admins can create/manage creator links
+          allow create, update, delete: if canManageOrg(orgId);
+        }
         
-        // ==================== CREATOR PAYOUTS ====================
+        // ==================== PROJECT CREATOR PROFILES ====================
         
-        match /payouts/{payoutId} {
-          // Admins can read all payouts
-          // Creators can read their own payouts
+        match /creators/{creatorId} {
+          // Admins can read all creator profiles in this project
+          // Creators can read their own profile in this project
           allow read: if canManageOrg(orgId) || (isOrgMember(orgId) && request.auth.uid == creatorId);
           
-          // Only admins can write payouts
+          // Only admins can write creator profiles
           allow write: if canManageOrg(orgId);
+          
+          // ==================== PROJECT CREATOR PAYOUTS ====================
+          
+          match /payouts/{payoutId} {
+            // Admins can read all payouts in this project
+            // Creators can read their own payouts in this project
+            allow read: if canManageOrg(orgId) || (isOrgMember(orgId) && request.auth.uid == creatorId);
+            
+            // Only admins can write payouts
+            allow write: if canManageOrg(orgId);
+          }
         }
       }
       

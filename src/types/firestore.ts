@@ -72,6 +72,7 @@ export interface OrgMember {
   photoURL?: string; // Profile photo URL
   permissions?: any; // Custom permissions (TeamMemberPermissions from permissions.ts)
   lastActiveProjectId?: string; // Last active project
+  creatorProjectIds?: string[]; // Projects where user is a creator (for project filtering)
 }
 
 /**
@@ -313,12 +314,13 @@ export interface OrganizationSettings {
 // ==================== CREATORS & PAYOUTS ====================
 
 /**
- * Creator-Account Link (mapping)
- * Path: /organizations/{orgId}/creatorLinks/{linkId}
+ * Creator-Account Link (mapping) - PROJECT SCOPED
+ * Path: /organizations/{orgId}/projects/{projectId}/creatorLinks/{linkId}
  */
 export interface CreatorLink {
   id: string;
   orgId: string;
+  projectId: string; // NEW: Project-scoped
   creatorId: string; // userId of the creator
   accountId: string; // trackedAccountId
   createdAt: Timestamp;
@@ -326,12 +328,13 @@ export interface CreatorLink {
 }
 
 /**
- * Creator profile (denormalized for quick lookups)
- * Path: /organizations/{orgId}/creators/{creatorId}
+ * Creator profile (denormalized for quick lookups) - PROJECT SCOPED
+ * Path: /organizations/{orgId}/projects/{projectId}/creators/{creatorId}
  */
 export interface Creator {
   id: string; // userId
   orgId: string;
+  projectId: string; // NEW: Project-scoped
   displayName: string;
   email: string;
   photoURL?: string;
@@ -343,12 +346,13 @@ export interface Creator {
 }
 
 /**
- * Payout record
- * Path: /organizations/{orgId}/creators/{creatorId}/payouts/{payoutId}
+ * Payout record - PROJECT SCOPED
+ * Path: /organizations/{orgId}/projects/{projectId}/creators/{creatorId}/payouts/{payoutId}
  */
 export interface Payout {
   id: string;
   orgId: string;
+  projectId: string; // NEW: Project-scoped
   creatorId: string;
   
   // Period
