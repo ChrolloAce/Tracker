@@ -53,9 +53,17 @@ const OrganizationSwitcher: React.FC = () => {
   };
 
   const handleOrgSelect = async (orgId: string) => {
+    if (!user) return;
+    
     try {
+      console.log('🔄 Switching to organization:', orgId);
+      // Save to Firestore as default org
+      await OrganizationService.setDefaultOrg(user.uid, orgId);
+      
+      // Update local state
       switchOrganization(orgId);
       setIsOpen(false);
+      
       // Reload the page to refresh all data for the new organization
       window.location.reload();
     } catch (error) {

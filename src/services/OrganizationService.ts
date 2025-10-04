@@ -323,6 +323,15 @@ class OrganizationService {
     const role = await this.getUserRole(orgId, userId);
     return role === 'owner';
   }
+
+  /**
+   * Set user's default organization
+   */
+  static async setDefaultOrg(userId: string, orgId: string): Promise<void> {
+    const userRef = doc(db, 'users', userId);
+    await setDoc(userRef, { defaultOrgId: orgId }, { merge: true });
+    console.log(`✅ Set default org to ${orgId} for user ${userId}`);
+  }
 }
 
 export default OrganizationService;
