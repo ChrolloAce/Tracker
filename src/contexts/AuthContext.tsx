@@ -43,81 +43,89 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      try {
-        setUser(user);
+      setUser(user);
+      
+      if (user) {
+        console.log('✅ User signed in:', user.email);
         
-        if (user) {
-          console.log('✅ User signed in:', user.email);
-          
-          // Create user account in Firestore if doesn't exist
-          await OrganizationService.createUserAccount(
-            user.uid, 
-            user.email!, 
-            user.displayName || undefined,
-            user.photoURL || undefined
-          );
-          
-          // Get or create default organization
-          const orgId = await OrganizationService.getOrCreateDefaultOrg(user.uid, user.email!, user.displayName || undefined);
-          setCurrentOrgId(orgId);
-          console.log('✅ Current organization:', orgId);
+        // Create user account in Firestore if doesn't exist
+        await OrganizationService.createUserAccount(
+          user.uid, 
+          user.email!, 
+          user.displayName || undefined,
+          user.photoURL || undefined
+        );
+        
+        // Get or create default organization
+        const orgId = await OrganizationService.getOrCreateDefaultOrg(user.uid, user.email!, user.displayName || undefined);
+        setCurrentOrgId(orgId);
+        console.log('✅ Current organization:', orgId);
 
-          // Ensure user has a member document in the organization
-          // This fixes issues with legacy orgs or edge cases where member doc is missing
-          await OrganizationService.ensureMembership(orgId, user.uid, user.email!, user.displayName || undefined);
-          console.log('✅ Verified membership in organization');
-
-          // Get or create default project
-          const projectId = await loadOrCreateProject(orgId, user.uid);
-          setCurrentProjectId(projectId);
-          console.log('✅ Current project:', projectId);
-        } else {
-          console.log('❌ User signed out');
-          setCurrentOrgId(null);
-          setCurrentProjectId(null);
-        }
-      } catch (error) {
-        console.error('❌ Error during auth initialization:', error);
-        // Set loading to false even on error to prevent infinite loading
-        // User will be redirected to login or shown an error
-      } finally {
-        setLoading(false);
+        // Get or create default project
+        const projectId = await loadOrCreateProject(orgId, user.uid);
+        setCurrentProjectId(projectId);
+        console.log('✅ Current project:', projectId);
+      } else {
+        console.log('❌ User signed out');
+        setCurrentOrgId(null);
+        setCurrentProjectId(null);
       }
+      
+      setLoading(false);
     });
 
     return unsubscribe;
   }, []);
 
   const loadOrCreateProject = async (orgId: string, userId: string): Promise<string> => {
-    try {
-      // Check if user has a last active project
-      const lastProjectId = await ProjectService.getActiveProjectId(orgId, userId);
-      if (lastProjectId) {
-        const project = await ProjectService.getProjectWithStats(orgId, lastProjectId);
-        if (project && !project.isArchived) {
-          return lastProjectId;
+    const maxRetries = 3;
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // Check if user has a last active project
+        const lastProjectId = await ProjectService.getActiveProjectId(orgId, userId);
+        if (lastProjectId) {
+          const project = await ProjectService.getProjectWithStats(orgId, lastProjectId);
+          if (project && !project.isArchived) {
+            return lastProjectId;
+          }
         }
-      }
 
-      // Get all projects
-      const projects = await ProjectService.getProjects(orgId, false);
-      
-      if (projects.length > 0) {
-        // Use first non-archived project
-        const projectId = projects[0].id;
+        // Get all projects
+        const projects = await ProjectService.getProjects(orgId, false);
+        
+        if (projects.length > 0) {
+          // Use first non-archived project
+          const projectId = projects[0].id;
+          await ProjectService.setActiveProject(orgId, userId, projectId);
+          return projectId;
+        }
+
+        // No projects exist, create default project
+        console.log('📁 Creating default project for org:', orgId);
+        const projectId = await ProjectService.createDefaultProject(orgId, userId);
         await ProjectService.setActiveProject(orgId, userId, projectId);
         return projectId;
+      } catch (error: any) {
+        lastError = error;
+        console.error(`Failed to load/create project (attempt ${attempt}/${maxRetries}):`, error);
+        
+        // If it's a permission error and not the last attempt, wait and retry
+        if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+          if (attempt < maxRetries) {
+            console.log(`⏳ Waiting before retry (member document may still be propagating)...`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            continue;
+          }
+        }
+        
+        // For other errors or last attempt, throw
+        throw error;
       }
-
-      // No projects exist, create default project
-      console.log('📁 Creating default project for org:', orgId);
-      const projectId = await ProjectService.createDefaultProject(orgId, userId);
-      await ProjectService.setActiveProject(orgId, userId, projectId);
-      return projectId;
-    } catch (error) {
-      console.error('Failed to load/create project:', error);
-      throw error;
     }
+    
+    throw lastError;
   };
 
   const signInWithGoogle = async () => {

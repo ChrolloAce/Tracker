@@ -115,6 +115,10 @@ const TeamManagementPage: React.FC = () => {
       );
       
       alert(`Successfully joined ${invitation.organizationName}!`);
+      
+      // Wait a moment for Firestore to propagate the member document
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       // Reload the page to refresh organizations
       window.location.reload();
     } catch (error: any) {

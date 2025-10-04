@@ -194,36 +194,12 @@ class OrganizationService {
   static async getOrCreateDefaultOrg(userId: string, email: string, displayName?: string): Promise<string> {
     const userAccount = await this.getUserAccount(userId);
     
-    // Check if user has a default org set and they're actually a member of it
     if (userAccount?.defaultOrgId) {
-      try {
-        // Check if org exists
-        const org = await this.getOrganization(userAccount.defaultOrgId);
-        if (org) {
-          // Check if user is a member of this org
-          const memberDoc = await getDoc(
-            doc(db, 'organizations', userAccount.defaultOrgId, 'members', userId)
-          );
-          if (memberDoc.exists() && memberDoc.data().status === 'active') {
-            return userAccount.defaultOrgId;
-          }
-          console.warn(`User ${userId} is not a member of their default org ${userAccount.defaultOrgId}`);
-        }
-      } catch (error) {
-        console.error('Error checking default org membership:', error);
-      }
+      const org = await this.getOrganization(userAccount.defaultOrgId);
+      if (org) return userAccount.defaultOrgId;
     }
     
-    // If no valid default org, find first org user is a member of
-    const userOrgs = await this.getUserOrganizations(userId);
-    if (userOrgs.length > 0) {
-      // Set the first org as default
-      await this.setDefaultOrg(userId, userOrgs[0].id);
-      console.log(`✅ Set first available org ${userOrgs[0].id} as default for user ${userId}`);
-      return userOrgs[0].id;
-    }
-    
-    // No orgs found, create default organization
+    // Create default organization
     const defaultName = email.split('@')[0] + "'s Workspace";
     return await this.createOrganization(userId, { 
       name: defaultName,
@@ -377,41 +353,6 @@ class OrganizationService {
     const userRef = doc(db, 'users', userId);
     await setDoc(userRef, { defaultOrgId: orgId }, { merge: true });
     console.log(`✅ Set default org to ${orgId} for user ${userId}`);
-  }
-
-  /**
-   * Ensure user has a member document in the organization
-   * Creates one if it doesn't exist (for legacy orgs or edge cases)
-   */
-  static async ensureMembership(orgId: string, userId: string, email?: string, displayName?: string): Promise<void> {
-    const memberRef = doc(db, 'organizations', orgId, 'members', userId);
-    const memberDoc = await getDoc(memberRef);
-    
-    if (!memberDoc.exists()) {
-      console.warn(`⚠️ Member document missing for user ${userId} in org ${orgId}. Creating it now...`);
-      
-      // Check if user is the owner of this org
-      const orgDoc = await getDoc(doc(db, 'organizations', orgId));
-      if (!orgDoc.exists()) {
-        throw new Error(`Organization ${orgId} does not exist`);
-      }
-      
-      const orgData = orgDoc.data();
-      const isOwner = orgData.ownerUserId === userId;
-      
-      // Create member document
-      const memberData: OrgMember = {
-        userId,
-        role: isOwner ? 'owner' : 'member',
-        joinedAt: Timestamp.now(),
-        status: 'active',
-        email,
-        displayName
-      };
-      
-      await setDoc(memberRef, memberData);
-      console.log(`✅ Created member document for user ${userId} in org ${orgId}`);
-    }
   }
 }
 
