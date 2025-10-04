@@ -36,7 +36,13 @@ const PendingInvitationsPage: React.FC = () => {
 
     setActionLoading(invitation.id);
     try {
-      await TeamInvitationService.acceptInvitation(invitation.id, invitation.orgId, user.uid);
+      await TeamInvitationService.acceptInvitation(
+        invitation.id, 
+        invitation.orgId, 
+        user.uid,
+        user.email || invitation.email,
+        user.displayName || undefined
+      );
       
       // Reload the page to refresh organizations
       window.location.reload();

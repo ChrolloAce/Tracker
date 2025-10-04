@@ -156,6 +156,9 @@ const UserOnboarding: React.FC = () => {
         orgData.website = data.companyWebsite;
       }
       
+      orgData.email = user.email;
+      orgData.displayName = user.displayName;
+      
       const orgId = await OrganizationService.createOrganization(user.uid, orgData);
 
       // Create default project

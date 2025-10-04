@@ -82,6 +82,8 @@ class OrganizationService {
       website?: string;
       logoUrl?: string;
       metadata?: Record<string, any>;
+      email?: string;
+      displayName?: string;
     }
   ): Promise<string> {
     const batch = writeBatch(db);
@@ -107,13 +109,15 @@ class OrganizationService {
     
     batch.set(orgRef, orgData);
     
-    // Add creator as owner member
+    // Add creator as owner member with email and displayName
     const memberRef = doc(db, 'organizations', orgRef.id, 'members', userId);
     const memberData: OrgMember = {
       userId,
       role: 'owner',
       joinedAt: Timestamp.now(),
-      status: 'active'
+      status: 'active',
+      email: data.email,
+      displayName: data.displayName
     };
     
     batch.set(memberRef, memberData);
@@ -187,7 +191,7 @@ class OrganizationService {
   /**
    * Get user's default organization (or create one)
    */
-  static async getOrCreateDefaultOrg(userId: string, email: string): Promise<string> {
+  static async getOrCreateDefaultOrg(userId: string, email: string, displayName?: string): Promise<string> {
     const userAccount = await this.getUserAccount(userId);
     
     if (userAccount?.defaultOrgId) {
@@ -197,7 +201,11 @@ class OrganizationService {
     
     // Create default organization
     const defaultName = email.split('@')[0] + "'s Workspace";
-    return await this.createOrganization(userId, { name: defaultName });
+    return await this.createOrganization(userId, { 
+      name: defaultName,
+      email,
+      displayName
+    });
   }
 
   // ==================== MEMBERS ====================
@@ -218,12 +226,26 @@ class OrganizationService {
     
     for (const memberDoc of membersSnapshot.docs) {
       const memberData = memberDoc.data() as OrgMember;
-      const userAccount = await this.getUserAccount(memberData.userId);
+      
+      // If email/displayName not in member doc, try to fetch from user account
+      let email = memberData.email;
+      let displayName = memberData.displayName;
+      
+      if (!email || !displayName) {
+        try {
+          const userAccount = await this.getUserAccount(memberData.userId);
+          email = email || userAccount?.email;
+          displayName = displayName || userAccount?.displayName;
+        } catch (error) {
+          // If user account fetch fails, use fallbacks
+          console.warn(`Could not fetch user account for ${memberData.userId}`, error);
+        }
+      }
       
       members.push({
         ...memberData,
-        email: userAccount?.email,
-        displayName: userAccount?.displayName
+        email,
+        displayName
       });
     }
     

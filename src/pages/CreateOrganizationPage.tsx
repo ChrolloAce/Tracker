@@ -188,6 +188,8 @@ const OrganizationOnboarding: React.FC = () => {
       }
       
       orgData.metadata = metadata;
+      orgData.email = user.email;
+      orgData.displayName = user.displayName;
 
       // Create organization
       const orgId = await OrganizationService.createOrganization(user.uid, orgData);

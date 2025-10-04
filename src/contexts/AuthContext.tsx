@@ -57,7 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         );
         
         // Get or create default organization
-        const orgId = await OrganizationService.getOrCreateDefaultOrg(user.uid, user.email!);
+        const orgId = await OrganizationService.getOrCreateDefaultOrg(user.uid, user.email!, user.displayName || undefined);
         setCurrentOrgId(orgId);
         console.log('✅ Current organization:', orgId);
 

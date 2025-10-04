@@ -138,7 +138,9 @@ class TeamInvitationService {
   static async acceptInvitation(
     invitationId: string, 
     orgId: string, 
-    userId: string
+    userId: string,
+    email: string,
+    displayName?: string
   ): Promise<void> {
     const batch = writeBatch(db);
     
@@ -170,14 +172,16 @@ class TeamInvitationService {
       acceptedAt: Timestamp.now()
     });
     
-    // Add user as member
+    // Add user as member with email and displayName
     const memberRef = doc(db, 'organizations', orgId, 'members', userId);
     batch.set(memberRef, {
       userId,
       role: invite.role,
       joinedAt: Timestamp.now(),
       status: 'active',
-      invitedBy: invite.invitedBy
+      invitedBy: invite.invitedBy,
+      email: email,
+      displayName: displayName || email.split('@')[0]
     });
     
     await batch.commit();
