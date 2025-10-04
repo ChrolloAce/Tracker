@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { OrgMember, Creator, TrackedAccount, Payout, PaymentTermPreset, PaymentTermType } from '../types/firestore';
+import { OrgMember, Creator, TrackedAccount, Payout, PaymentTermPreset, PaymentTermType, PaymentDueDateType } from '../types/firestore';
 import CreatorLinksService from '../services/CreatorLinksService';
 import PayoutsService from '../services/PayoutsService';
 import FirestoreDataService from '../services/FirestoreDataService';
@@ -66,6 +66,12 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   const [contractNotes, setContractNotes] = useState<string>('');
   const [contractStartDate, setContractStartDate] = useState<string>('');
   const [contractEndDate, setContractEndDate] = useState<string>('');
+  
+  // Payment due date state
+  const [dueDateType, setDueDateType] = useState<PaymentDueDateType>('none');
+  const [fixedDueDate, setFixedDueDate] = useState<string>('');
+  const [daysAfterPosted, setDaysAfterPosted] = useState<number>(30);
+  const [viewsRequired, setViewsRequired] = useState<number>(100000);
 
   useEffect(() => {
     loadData();
@@ -95,6 +101,12 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
         if (terms.cpaRate !== undefined) setCpaRate(terms.cpaRate);
         if (terms.revenueSharePercentage !== undefined) setRevenueSharePercentage(terms.revenueSharePercentage);
         if (terms.retainerAmount !== undefined) setRetainerAmount(terms.retainerAmount);
+        if (terms.dueDateType) setDueDateType(terms.dueDateType);
+        if (terms.fixedDueDate) {
+          setFixedDueDate(terms.fixedDueDate.toDate().toISOString().split('T')[0]);
+        }
+        if (terms.daysAfterPosted !== undefined) setDaysAfterPosted(terms.daysAfterPosted);
+        if (terms.viewsRequired !== undefined) setViewsRequired(terms.viewsRequired);
       }
       if (profile?.contractNotes) setContractNotes(profile.contractNotes);
       if (profile?.contractStartDate) {
@@ -152,7 +164,14 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
         revenueSharePercentage,
         retainerAmount,
         currency: 'USD',
+        dueDateType,
+        daysAfterPosted,
+        viewsRequired,
       };
+
+      if (fixedDueDate) {
+        customTerms.fixedDueDate = Timestamp.fromDate(new Date(fixedDueDate));
+      }
 
       const updates: any = {
         customPaymentTerms: customTerms,
@@ -194,7 +213,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   return (
     <div className="h-full flex flex-col bg-gray-900">
       {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700 px-6 py-4">
+      <div className="bg-gradient-to-r from-gray-800 to-gray-900 border-b border-gray-700/50 shadow-lg px-6 py-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
@@ -252,7 +271,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
 
         {/* Stats Cards */}
         <div className="grid grid-cols-4 gap-4 mt-6">
-          <div className="bg-gray-700/50 rounded-lg p-4">
+          <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 rounded-xl p-4 hover:border-blue-500/40 transition-all duration-200 shadow-sm hover:shadow-blue-500/10">
             <div className="flex items-center gap-2 mb-1">
               <LinkIcon className="w-4 h-4 text-blue-400" />
               <span className="text-xs text-gray-400">Linked Accounts</span>
@@ -261,7 +280,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
               {linkedAccounts.length}
             </div>
           </div>
-          <div className="bg-gray-700/50 rounded-lg p-4">
+          <div className="bg-gradient-to-br from-green-500/10 to-green-600/5 border border-green-500/20 rounded-xl p-4 hover:border-green-500/40 transition-all duration-200 shadow-sm hover:shadow-green-500/10">
             <div className="flex items-center gap-2 mb-1">
               <DollarSign className="w-4 h-4 text-green-400" />
               <span className="text-xs text-gray-400">Total Earned</span>
@@ -270,7 +289,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
               ${(creatorProfile?.totalEarnings || 0).toFixed(2)}
             </div>
           </div>
-          <div className="bg-gray-700/50 rounded-lg p-4">
+          <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 border border-yellow-500/20 rounded-xl p-4 hover:border-yellow-500/40 transition-all duration-200 shadow-sm hover:shadow-yellow-500/10">
             <div className="flex items-center gap-2 mb-1">
               <AlertCircle className="w-4 h-4 text-yellow-400" />
               <span className="text-xs text-gray-400">Pending</span>
@@ -279,7 +298,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
               ${totalPending.toFixed(2)}
             </div>
           </div>
-          <div className="bg-gray-700/50 rounded-lg p-4">
+          <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 rounded-xl p-4 hover:border-purple-500/40 transition-all duration-200 shadow-sm hover:shadow-purple-500/10">
             <div className="flex items-center gap-2 mb-1">
               <FileText className="w-4 h-4 text-purple-400" />
               <span className="text-xs text-gray-400">Payouts</span>
@@ -291,15 +310,15 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-4 mt-6 border-b border-gray-700">
+        <div className="flex gap-1 mt-6 bg-gray-800/50 rounded-lg p-1">
           {(['overview', 'accounts', 'payment', 'payouts'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 border-b-2 transition-colors capitalize ${
+              className={`px-4 py-2.5 rounded-md transition-all duration-200 capitalize font-medium text-sm ${
                 activeTab === tab
-                  ? 'border-purple-500 text-white'
-                  : 'border-transparent text-gray-400 hover:text-white'
+                  ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
               }`}
             >
               {tab === 'payment' ? 'Payment Terms' : tab}
@@ -345,6 +364,14 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
             onRevenueSharePercentageChange={setRevenueSharePercentage}
             retainerAmount={retainerAmount}
             onRetainerAmountChange={setRetainerAmount}
+            dueDateType={dueDateType}
+            onDueDateTypeChange={setDueDateType}
+            fixedDueDate={fixedDueDate}
+            onFixedDueDateChange={setFixedDueDate}
+            daysAfterPosted={daysAfterPosted}
+            onDaysAfterPostedChange={setDaysAfterPosted}
+            viewsRequired={viewsRequired}
+            onViewsRequiredChange={setViewsRequired}
             contractNotes={contractNotes}
             onContractNotesChange={setContractNotes}
             contractStartDate={contractStartDate}
@@ -368,8 +395,11 @@ const OverviewTab: React.FC<{
 }> = ({ creator, profile }) => {
   return (
     <div className="space-y-6">
-      <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Contract Information</h2>
+      <div className="bg-gray-800 rounded-xl border border-gray-700/50 shadow-lg p-6">
+        <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+          <FileText className="w-5 h-5 text-purple-400" />
+          Contract Information
+        </h2>
         <div className="space-y-3">
           <div>
             <span className="text-sm text-gray-400">Payment Type:</span>
@@ -397,8 +427,11 @@ const OverviewTab: React.FC<{
         </div>
       </div>
 
-      <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Recent Activity</h2>
+      <div className="bg-gray-800 rounded-xl border border-gray-700/50 shadow-lg p-6">
+        <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+          <AlertCircle className="w-5 h-5 text-blue-400" />
+          Recent Activity
+        </h2>
         <div className="space-y-3">
           <div className="text-sm text-gray-400">
             Joined: {creator.joinedAt?.toDate().toLocaleDateString()}
@@ -423,8 +456,12 @@ const AccountsTab: React.FC<{
 }> = ({ linkedAccounts }) => {
   return (
     <div className="space-y-6">
-      <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Linked Accounts ({linkedAccounts.length})</h2>
+      <div className="bg-gray-800 rounded-xl border border-gray-700/50 shadow-lg p-6">
+        <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+          <LinkIcon className="w-5 h-5 text-blue-400" />
+          Linked Accounts 
+          <span className="text-sm font-normal text-gray-400">({linkedAccounts.length})</span>
+        </h2>
         {linkedAccounts.length === 0 ? (
           <div className="text-center py-8 text-gray-400">
             No accounts linked yet
@@ -434,7 +471,7 @@ const AccountsTab: React.FC<{
             {linkedAccounts.map((account) => (
               <div
                 key={account.id}
-                className="bg-gray-700/50 rounded-lg border border-gray-600 p-4"
+                className="bg-gradient-to-br from-gray-700/30 to-gray-800/50 rounded-lg border border-gray-600/50 p-4 hover:border-gray-500/50 transition-all duration-200 hover:shadow-lg"
               >
                 <div className="flex items-center gap-3">
                   <PlatformIcon platform={account.platform} size="lg" />
@@ -489,6 +526,14 @@ const PaymentTermsTab: React.FC<{
   onRevenueSharePercentageChange: (val: number) => void;
   retainerAmount: number;
   onRetainerAmountChange: (val: number) => void;
+  dueDateType: PaymentDueDateType;
+  onDueDateTypeChange: (type: PaymentDueDateType) => void;
+  fixedDueDate: string;
+  onFixedDueDateChange: (val: string) => void;
+  daysAfterPosted: number;
+  onDaysAfterPostedChange: (val: number) => void;
+  viewsRequired: number;
+  onViewsRequiredChange: (val: number) => void;
   contractNotes: string;
   onContractNotesChange: (val: string) => void;
   contractStartDate: string;
@@ -500,8 +545,11 @@ const PaymentTermsTab: React.FC<{
 
   return (
     <div className="space-y-6">
-      <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Payment Structure</h2>
+      <div className="bg-gray-800 rounded-xl border border-gray-700/50 shadow-lg p-6">
+        <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
+          <DollarSign className="w-5 h-5 text-green-400" />
+          Payment Structure
+        </h2>
         
         {/* Payment Type Selector */}
         <div className="mb-6">
@@ -512,7 +560,7 @@ const PaymentTermsTab: React.FC<{
             value={props.selectedType}
             onChange={(e) => props.onTypeChange(e.target.value as PaymentTermType)}
             disabled={!props.editMode}
-            className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+            className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 disabled:opacity-50 transition-all"
           >
             {PAYMENT_TERM_TYPES.map((type) => (
               <option key={type.value} value={type.value}>
@@ -537,7 +585,7 @@ const PaymentTermsTab: React.FC<{
                 value={props.baseAmount}
                 onChange={(e) => props.onBaseAmountChange(parseFloat(e.target.value) || 0)}
                 disabled={!props.editMode}
-                className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 disabled:opacity-50 transition-all"
                 placeholder="1000"
               />
             </div>
@@ -554,7 +602,7 @@ const PaymentTermsTab: React.FC<{
                 value={props.cpmRate}
                 onChange={(e) => props.onCpmRateChange(parseFloat(e.target.value) || 0)}
                 disabled={!props.editMode}
-                className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 disabled:opacity-50 transition-all"
                 placeholder="10.00"
               />
             </div>
@@ -570,7 +618,7 @@ const PaymentTermsTab: React.FC<{
                 value={props.guaranteedViews}
                 onChange={(e) => props.onGuaranteedViewsChange(parseInt(e.target.value) || 0)}
                 disabled={!props.editMode}
-                className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 disabled:opacity-50 transition-all"
                 placeholder="100000"
               />
             </div>
@@ -587,7 +635,7 @@ const PaymentTermsTab: React.FC<{
                 value={props.cpcRate}
                 onChange={(e) => props.onCpcRateChange(parseFloat(e.target.value) || 0)}
                 disabled={!props.editMode}
-                className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 disabled:opacity-50 transition-all"
                 placeholder="0.50"
               />
             </div>
@@ -604,7 +652,7 @@ const PaymentTermsTab: React.FC<{
                 value={props.cpaRate}
                 onChange={(e) => props.onCpaRateChange(parseFloat(e.target.value) || 0)}
                 disabled={!props.editMode}
-                className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 disabled:opacity-50 transition-all"
                 placeholder="50.00"
               />
             </div>
@@ -621,7 +669,7 @@ const PaymentTermsTab: React.FC<{
                 value={props.revenueSharePercentage}
                 onChange={(e) => props.onRevenueSharePercentageChange(parseFloat(e.target.value) || 0)}
                 disabled={!props.editMode}
-                className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 disabled:opacity-50 transition-all"
                 placeholder="20"
               />
             </div>
@@ -637,7 +685,7 @@ const PaymentTermsTab: React.FC<{
                 value={props.retainerAmount}
                 onChange={(e) => props.onRetainerAmountChange(parseFloat(e.target.value) || 0)}
                 disabled={!props.editMode}
-                className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 disabled:opacity-50 transition-all"
                 placeholder="5000"
               />
             </div>
@@ -645,9 +693,95 @@ const PaymentTermsTab: React.FC<{
         </div>
       </div>
 
+      {/* Payment Due Date */}
+      <div className="bg-gray-800 rounded-xl border border-gray-700/50 shadow-lg p-6">
+        <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
+          <FileText className="w-5 h-5 text-yellow-400" />
+          Payment Due Date
+        </h2>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Due Date Type
+            </label>
+            <select
+              value={props.dueDateType}
+              onChange={(e) => props.onDueDateTypeChange(e.target.value as PaymentDueDateType)}
+              disabled={!props.editMode}
+              className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 disabled:opacity-50 transition-all"
+            >
+              <option value="none">None (No due date)</option>
+              <option value="fixed_date">Fixed due date (specific calendar date)</option>
+              <option value="days_after_posted">Due X days after video is posted</option>
+              <option value="after_views_reached">Due after video reaches X views</option>
+            </select>
+          </div>
+
+          {props.dueDateType === 'fixed_date' && (
+            <div className="bg-gray-700/20 rounded-lg p-4 border border-gray-600/30">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Fixed Due Date
+              </label>
+              <input
+                type="date"
+                value={props.fixedDueDate}
+                onChange={(e) => props.onFixedDueDateChange(e.target.value)}
+                disabled={!props.editMode}
+                className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 disabled:opacity-50 transition-all"
+              />
+              <p className="mt-2 text-xs text-gray-400">Payment will be due on this specific date</p>
+            </div>
+          )}
+
+          {props.dueDateType === 'days_after_posted' && (
+            <div className="bg-gray-700/20 rounded-lg p-4 border border-gray-600/30">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Days After Video Posted
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={props.daysAfterPosted}
+                onChange={(e) => props.onDaysAfterPostedChange(parseInt(e.target.value) || 1)}
+                disabled={!props.editMode}
+                className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 disabled:opacity-50 transition-all"
+                placeholder="30"
+              />
+              <p className="mt-2 text-xs text-gray-400">
+                Payment will be due {props.daysAfterPosted} day{props.daysAfterPosted !== 1 ? 's' : ''} after the video is posted
+              </p>
+            </div>
+          )}
+
+          {props.dueDateType === 'after_views_reached' && (
+            <div className="bg-gray-700/20 rounded-lg p-4 border border-gray-600/30">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Required Views
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={props.viewsRequired}
+                onChange={(e) => props.onViewsRequiredChange(parseInt(e.target.value) || 1)}
+                disabled={!props.editMode}
+                className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 disabled:opacity-50 transition-all"
+                placeholder="100000"
+              />
+              <p className="mt-2 text-xs text-gray-400">
+                Payment will be due after the video reaches {props.viewsRequired.toLocaleString()} views
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Contract Details */}
-      <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Contract Details</h2>
+      <div className="bg-gray-800 rounded-xl border border-gray-700/50 shadow-lg p-6">
+        <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
+          <FileText className="w-5 h-5 text-purple-400" />
+          Contract Details
+        </h2>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -659,7 +793,7 @@ const PaymentTermsTab: React.FC<{
                 value={props.contractStartDate}
                 onChange={(e) => props.onContractStartDateChange(e.target.value)}
                 disabled={!props.editMode}
-                className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 disabled:opacity-50 transition-all"
               />
             </div>
             <div>
@@ -671,7 +805,7 @@ const PaymentTermsTab: React.FC<{
                 value={props.contractEndDate}
                 onChange={(e) => props.onContractEndDateChange(e.target.value)}
                 disabled={!props.editMode}
-                className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 disabled:opacity-50 transition-all"
               />
             </div>
           </div>
@@ -685,7 +819,7 @@ const PaymentTermsTab: React.FC<{
               onChange={(e) => props.onContractNotesChange(e.target.value)}
               disabled={!props.editMode}
               rows={4}
-              className="w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+              className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50 disabled:opacity-50 transition-all"
               placeholder="Add any additional contract details, deliverables, or special terms..."
             />
           </div>
@@ -713,9 +847,12 @@ const PayoutsTab: React.FC<{ payouts: Payout[] }> = ({ payouts }) => {
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg border border-gray-700">
-      <div className="px-6 py-4 border-b border-gray-700">
-        <h2 className="text-xl font-semibold text-white">Payment History</h2>
+    <div className="bg-gray-800 rounded-xl border border-gray-700/50 shadow-lg overflow-hidden">
+      <div className="px-6 py-4 border-b border-gray-700/50 bg-gray-800/50">
+        <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+          <DollarSign className="w-5 h-5 text-green-400" />
+          Payment History
+        </h2>
       </div>
 
       {payouts.length === 0 ? (
@@ -729,7 +866,7 @@ const PayoutsTab: React.FC<{ payouts: Payout[] }> = ({ payouts }) => {
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-800/50">
+            <thead className="bg-gray-700/20 border-b border-gray-700/30">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
                   Period
@@ -748,9 +885,9 @@ const PayoutsTab: React.FC<{ payouts: Payout[] }> = ({ payouts }) => {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-700">
+            <tbody className="divide-y divide-gray-700/30">
               {payouts.map((payout) => (
-                <tr key={payout.id} className="hover:bg-gray-800/30">
+                <tr key={payout.id} className="hover:bg-gray-700/20 transition-colors">
                   <td className="px-6 py-4 text-sm text-white">
                     {payout.periodStart.toDate().toLocaleDateString('en-US', {
                       month: 'short',

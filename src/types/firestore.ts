@@ -23,6 +23,15 @@ export type PaymentTermType =
   | 'retainer';
 
 /**
+ * Payment due date types
+ */
+export type PaymentDueDateType = 
+  | 'none'
+  | 'fixed_date'
+  | 'days_after_posted'
+  | 'after_views_reached';
+
+/**
  * Payment term preset
  */
 export interface PaymentTermPreset {
@@ -42,6 +51,12 @@ export interface PaymentTermPreset {
   isActive: boolean;
   createdAt: Timestamp;
   updatedAt?: Timestamp;
+  
+  // Payment due date configuration
+  dueDateType?: PaymentDueDateType;
+  fixedDueDate?: Timestamp; // For 'fixed_date'
+  daysAfterPosted?: number; // For 'days_after_posted'
+  viewsRequired?: number; // For 'after_views_reached'
 }
 
 // ==================== USER ACCOUNT ====================
