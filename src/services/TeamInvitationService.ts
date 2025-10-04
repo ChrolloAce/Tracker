@@ -10,7 +10,8 @@ import {
   Timestamp,
   writeBatch,
   updateDoc,
-  collectionGroup
+  collectionGroup,
+  increment
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { TeamInvitation, Role } from '../types/firestore';
@@ -184,11 +185,18 @@ class TeamInvitationService {
       displayName: displayName || email.split('@')[0]
     });
     
-    // Set this org as the user's default org (switch to it)
-    const userRef = doc(db, 'users', userId);
-    batch.update(userRef, { defaultOrgId: orgId });
+    // Increment org member count
+    const orgRef = doc(db, 'organizations', orgId);
+    batch.update(orgRef, {
+      memberCount: increment(1)
+    });
     
     await batch.commit();
+    
+    // Set this org as the user's default org (switch to it) - separate transaction
+    const userRef = doc(db, 'users', userId);
+    await setDoc(userRef, { defaultOrgId: orgId }, { merge: true });
+    
     console.log(`✅ User ${userId} accepted invitation to org ${orgId} and set as default`);
   }
   
