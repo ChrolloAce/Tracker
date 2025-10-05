@@ -24,7 +24,7 @@ import {
 import { TrackedAccount, AccountVideo } from '../types/accounts';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import RulesService from '../services/RulesService';
-import { TrackingRule, RuleCondition } from '../types/rules';
+import { TrackingRule, RuleCondition, RuleConditionType } from '../types/rules';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { clsx } from 'clsx';
 import { useAuth } from '../contexts/AuthContext';
@@ -102,6 +102,11 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [allRules, setAllRules] = useState<TrackingRule[]>([]);
   const [accountRules, setAccountRules] = useState<string[]>([]); // Rule IDs applied to the account
   const [loadingRules, setLoadingRules] = useState(false);
+  const [showCreateRuleForm, setShowCreateRuleForm] = useState(false);
+  const [ruleName, setRuleName] = useState('');
+  const [conditions, setConditions] = useState<RuleCondition[]>([
+    { id: '1', type: 'description_contains', value: '', operator: 'AND' }
+  ]);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -671,6 +676,88 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       alert('Failed to update rule. Please try again.');
     }
   }, [currentOrgId, currentProjectId, selectedAccount, allRules, accountRules]);
+
+  // Rule creation functions
+  const handleShowCreateForm = useCallback(() => {
+    setShowCreateRuleForm(true);
+    setRuleName('');
+    setConditions([{ id: '1', type: 'description_contains', value: '', operator: 'AND' }]);
+  }, []);
+
+  const addCondition = useCallback(() => {
+    const newId = (Math.max(...conditions.map(c => Number(c.id)), 0) + 1).toString();
+    setConditions(prev => [...prev, { 
+      id: newId, 
+      type: 'description_contains', 
+      value: '', 
+      operator: 'AND' 
+    }]);
+  }, [conditions]);
+
+  const removeCondition = useCallback((id: string) => {
+    setConditions(prev => prev.filter(c => c.id !== id));
+  }, []);
+
+  const updateCondition = useCallback((id: string, field: string, value: any) => {
+    setConditions(prev => prev.map(condition => 
+      condition.id === id 
+        ? { ...condition, [field]: value }
+        : condition
+    ));
+  }, []);
+
+  const handleSaveRule = useCallback(async () => {
+    if (!user || !currentOrgId || !currentProjectId || !selectedAccount) return;
+    if (!ruleName.trim() || conditions.filter(c => c.value !== '').length === 0) return;
+
+    try {
+      const ruleData = {
+        name: ruleName,
+        conditions: conditions.filter(c => c.value !== ''),
+        appliesTo: {
+          platforms: [selectedAccount.platform],
+          accountIds: [selectedAccount.id]
+        },
+        isActive: true
+      };
+
+      await RulesService.createRule(currentOrgId, currentProjectId, user.uid, ruleData);
+      
+      // Reload rules
+      const rules = await RulesService.getRules(currentOrgId, currentProjectId);
+      setAllRules(rules);
+      
+      // Get applied rules for this account
+      const appliedRules = await RulesService.getRulesForAccount(
+        currentOrgId,
+        currentProjectId,
+        selectedAccount.id,
+        selectedAccount.platform
+      );
+      setAccountRules(appliedRules.map(r => r.id));
+      setActiveRulesCount(appliedRules.length);
+      
+      // Reset form and show list
+      setShowCreateRuleForm(false);
+      setRuleName('');
+      setConditions([{ id: '1', type: 'description_contains', value: '', operator: 'AND' }]);
+      
+      // Reload videos with new rule
+      setSelectedAccount({ ...selectedAccount });
+      
+      console.log(`✅ Created rule "${ruleName}" for @${selectedAccount.username}`);
+    } catch (error) {
+      console.error('Failed to create rule:', error);
+      alert('Failed to create rule. Please try again.');
+    }
+  }, [user, currentOrgId, currentProjectId, selectedAccount, ruleName, conditions]);
+
+  const handleCloseRuleModal = useCallback(() => {
+    setIsRuleModalOpen(false);
+    setShowCreateRuleForm(false);
+    setRuleName('');
+    setConditions([{ id: '1', type: 'description_contains', value: '', operator: 'AND' }]);
+  }, []);
 
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
@@ -1711,22 +1798,167 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       {/* Rule Management Modal */}
       <Modal
         isOpen={isRuleModalOpen}
-        onClose={() => setIsRuleModalOpen(false)}
-        title={`Manage Rules for @${selectedAccount?.username || ''}`}
+        onClose={handleCloseRuleModal}
+        title={showCreateRuleForm ? 'Create Tracking Rule' : `Manage Rules for @${selectedAccount?.username || ''}`}
       >
         {loadingRules ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-700 border-t-blue-500"></div>
+          </div>
+        ) : showCreateRuleForm ? (
+          // Create Rule Form
+          <div className="space-y-6 max-h-[70vh] overflow-y-auto px-1">
+            {/* Rule Name */}
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2">
+                Rule Name
+              </label>
+              <input
+                type="text"
+                value={ruleName}
+                onChange={(e) => setRuleName(e.target.value)}
+                placeholder="e.g., Track Snapout.co tagged posts"
+                className="w-full px-4 py-3 border border-gray-700 rounded-lg bg-gray-800 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* Conditions */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-semibold text-white">
+                  Conditions
+                </label>
+                <button
+                  onClick={addCondition}
+                  className="flex items-center gap-1 px-3 py-1 text-sm text-blue-400 hover:bg-blue-900/30 rounded-lg transition-colors"
+                >
+                  <Plus className="w-3 h-3" />
+                  Add Condition
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {conditions.map((condition, index) => (
+                  <div key={condition.id} className="space-y-2">
+                    {index > 0 && (
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={conditions[index - 1].operator || 'AND'}
+                          onChange={(e) => updateCondition(conditions[index - 1].id, 'operator', e.target.value as 'AND' | 'OR')}
+                          className="px-3 py-1 text-sm border border-gray-700 rounded-lg bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="AND">AND</option>
+                          <option value="OR">OR</option>
+                        </select>
+                      </div>
+                    )}
+                    
+                    <div className="space-y-2">
+                      <div className="flex gap-2 items-start p-3 border border-gray-700 rounded-lg bg-gray-800/50">
+                        <select
+                          value={condition.type}
+                          onChange={(e) => updateCondition(condition.id, 'type', e.target.value as RuleConditionType)}
+                          className="flex-1 px-3 py-2 border border-gray-700 rounded-lg bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        >
+                          <option value="description_contains">Description contains</option>
+                          <option value="description_not_contains">Description does not contain</option>
+                          <option value="hashtag_includes">Hashtag includes</option>
+                          <option value="hashtag_not_includes">Hashtag does not include</option>
+                          <option value="views_greater_than">Views greater than</option>
+                          <option value="views_less_than">Views less than</option>
+                          <option value="likes_greater_than">Likes greater than</option>
+                          <option value="engagement_rate_greater_than">Engagement rate &gt;</option>
+                          <option value="posted_after_date">Posted after date</option>
+                          <option value="posted_before_date">Posted before date</option>
+                        </select>
+
+                        <input
+                          type={
+                            condition.type.includes('date') ? 'date' :
+                            condition.type.includes('greater') || condition.type.includes('less') ? 'number' :
+                            'text'
+                          }
+                          value={condition.value}
+                          onChange={(e) => updateCondition(condition.id, 'value', e.target.value)}
+                          placeholder={
+                            condition.type.includes('description') ? 'e.g., @snapout.co' :
+                            condition.type.includes('hashtag') ? 'e.g., ad or #ad' :
+                            condition.type.includes('views') ? 'e.g., 10000' :
+                            'Value'
+                          }
+                          className="flex-1 px-3 py-2 border border-gray-700 rounded-lg bg-gray-800 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+
+                        {conditions.length > 1 && (
+                          <button
+                            onClick={() => removeCondition(condition.id)}
+                            className="p-2 text-red-400 hover:bg-red-900/30 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                      
+                      {/* Case-sensitive toggle for text-based conditions */}
+                      {(condition.type.includes('description') || condition.type.includes('hashtag')) && (
+                        <label className="flex items-center gap-2 px-3 text-sm text-gray-400 cursor-pointer hover:text-gray-300">
+                          <input
+                            type="checkbox"
+                            checked={condition.caseSensitive || false}
+                            onChange={(e) => updateCondition(condition.id, 'caseSensitive', e.target.checked)}
+                            className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0"
+                          />
+                          <span>Case sensitive</span>
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Info message */}
+            <div className="p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 mt-0.5">
+                  <svg className="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-blue-300 mb-1">
+                    Auto-Applied to @{selectedAccount?.username}
+                  </h4>
+                  <p className="text-xs text-blue-200/80">
+                    This rule will automatically be applied to @{selectedAccount?.username} and will filter videos on this account based on the conditions you set.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-4 border-t border-gray-700">
+              <button
+                onClick={() => setShowCreateRuleForm(false)}
+                className="flex-1 px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                Back
+              </button>
+              <button
+                onClick={handleSaveRule}
+                disabled={!ruleName.trim() || conditions.filter(c => c.value !== '').length === 0}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Create Rule
+              </button>
+            </div>
           </div>
         ) : allRules.length === 0 ? (
           <div className="text-center py-12">
             <Filter className="w-12 h-12 text-gray-600 mx-auto mb-3" />
             <p className="text-gray-400 mb-4">No rules created yet</p>
             <button
-              onClick={() => {
-                setIsRuleModalOpen(false);
-                window.location.href = '#/rules';
-              }}
+              onClick={handleShowCreateForm}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
             >
               Create Your First Rule
@@ -1801,16 +2033,13 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
             </div>
             <div className="pt-4 border-t border-gray-700 flex items-center justify-between">
               <button
-                onClick={() => {
-                  setIsRuleModalOpen(false);
-                  window.location.href = '#/rules';
-                }}
+                onClick={handleShowCreateForm}
                 className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
               >
                 Create New Rule →
               </button>
               <button
-                onClick={() => setIsRuleModalOpen(false)}
+                onClick={handleCloseRuleModal}
                 className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
               >
                 Done
