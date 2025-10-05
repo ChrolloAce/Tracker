@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { OrgMember, Creator } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
 import CreatorLinksService from '../services/CreatorLinksService';
-import { UserPlus, Video, Link as LinkIcon, DollarSign, User, X, Edit3 } from 'lucide-react';
+import { UserPlus, Video, Link as LinkIcon, DollarSign, User, X, Edit3, Users as UsersIcon } from 'lucide-react';
 import { Button } from './ui/Button';
 import InviteTeamMemberModal from './InviteTeamMemberModal';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
@@ -100,80 +100,81 @@ const CreatorsManagementPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-400">Loading creators...</div>
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-700 border-t-purple-500"></div>
       </div>
     );
   }
 
+  const totalLinkedAccounts = Array.from(creatorProfiles.values()).reduce((sum, p) => sum + p.linkedAccountsCount, 0);
+  const totalEarnings = Array.from(creatorProfiles.values()).reduce((sum, p) => sum + p.totalEarnings, 0);
+
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Creators</h1>
-          <p className="text-gray-400 mt-1">
-            Manage content creators in this project, link accounts, and track earnings
-          </p>
-        </div>
-        <Button
-          onClick={() => setShowInviteModal(true)}
-          className="flex items-center gap-2"
-          title="Invite a new creator by email"
-        >
-          <UserPlus className="w-4 h-4" />
-          Invite Creator
-        </Button>
-      </div>
-
-      {/* Stats Overview */}
+    <div className="space-y-6">
+      {/* Stats Cards with Gradient Backgrounds */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-500/10 rounded-lg">
-              <User className="w-5 h-5 text-purple-400" />
+        {/* Total Creators */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-purple-500/10 via-purple-600/5 to-transparent rounded-xl border border-purple-500/20 p-6 hover:border-purple-500/40 transition-all duration-300 group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl group-hover:bg-purple-500/20 transition-all duration-300" />
+          <div className="relative">
+            <div className="flex items-center justify-between mb-4">
+              <div className="bg-purple-500/10 rounded-lg p-3 group-hover:bg-purple-500/20 transition-colors">
+                <UsersIcon className="w-6 h-6 text-purple-400" />
+              </div>
+              <Button
+                onClick={() => setShowInviteModal(true)}
+                size="sm"
+                className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border-purple-500/20"
+              >
+                <UserPlus className="w-4 h-4 mr-1" />
+                Invite
+              </Button>
             </div>
-            <div>
-              <div className="text-2xl font-bold text-white">{creators.length}</div>
-              <div className="text-xs text-gray-400">Total Creators</div>
+            <div className="text-3xl font-bold text-white mb-1">
+              {creators.length}
             </div>
+            <div className="text-sm text-gray-400">Total Creators</div>
           </div>
         </div>
 
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/10 rounded-lg">
-              <LinkIcon className="w-5 h-5 text-blue-400" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-white">
-                {Array.from(creatorProfiles.values()).reduce((sum, p) => sum + p.linkedAccountsCount, 0)}
+        {/* Linked Accounts */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-blue-500/10 via-blue-600/5 to-transparent rounded-xl border border-blue-500/20 p-6 hover:border-blue-500/40 transition-all duration-300 group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-500/20 transition-all duration-300" />
+          <div className="relative">
+            <div className="flex items-center justify-between mb-4">
+              <div className="bg-blue-500/10 rounded-lg p-3 group-hover:bg-blue-500/20 transition-colors">
+                <LinkIcon className="w-6 h-6 text-blue-400" />
               </div>
-              <div className="text-xs text-gray-400">Linked Accounts</div>
             </div>
+            <div className="text-3xl font-bold text-white mb-1">
+              {totalLinkedAccounts}
+            </div>
+            <div className="text-sm text-gray-400">Linked Accounts</div>
           </div>
         </div>
 
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-500/10 rounded-lg">
-              <DollarSign className="w-5 h-5 text-green-400" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-white">
-                ${Array.from(creatorProfiles.values()).reduce((sum, p) => sum + p.totalEarnings, 0).toFixed(2)}
+        {/* Total Paid Out */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-green-500/10 via-green-600/5 to-transparent rounded-xl border border-green-500/20 p-6 hover:border-green-500/40 transition-all duration-300 group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full blur-3xl group-hover:bg-green-500/20 transition-all duration-300" />
+          <div className="relative">
+            <div className="flex items-center justify-between mb-4">
+              <div className="bg-green-500/10 rounded-lg p-3 group-hover:bg-green-500/20 transition-colors">
+                <DollarSign className="w-6 h-6 text-green-400" />
               </div>
-              <div className="text-xs text-gray-400">Total Paid Out</div>
             </div>
+            <div className="text-3xl font-bold text-white mb-1">
+              ${totalEarnings.toFixed(2)}
+            </div>
+            <div className="text-sm text-gray-400">Total Paid Out</div>
           </div>
         </div>
       </div>
 
-      {/* Creators List */}
+      {/* Creators List - Dashboard Style */}
       {creators.length === 0 ? (
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-12 text-center">
+        <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-12 text-center">
           <Video className="w-16 h-16 text-gray-600 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-white mb-2">No creators yet</h3>
-          <p className="text-gray-400 mb-4">
+          <p className="text-gray-400 mb-6">
             Invite content creators to track their accounts and manage payouts
           </p>
           <Button
@@ -185,47 +186,56 @@ const CreatorsManagementPage: React.FC = () => {
           </Button>
         </div>
       ) : (
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-700">
-            <h2 className="text-xl font-semibold text-white">
+        <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg overflow-hidden">
+          {/* Table Header */}
+          <div className="px-6 py-5 border-b border-white/5 bg-zinc-900/40">
+            <h2 className="text-lg font-semibold text-white">
               All Creators ({creators.length})
             </h2>
+            <p className="text-sm text-gray-400 mt-1">
+              Manage creators, link accounts, and track performance
+            </p>
           </div>
+
+          {/* Table */}
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-800/50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+              <thead>
+                <tr className="border-b border-white/5">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Creator
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Linked Accounts
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Total Earnings
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Joined
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-right text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-700">
+              <tbody className="divide-y divide-white/5">
                 {creators.map((creator) => {
                   const profile = creatorProfiles.get(creator.userId);
                   
                   return (
-                    <tr key={creator.userId} className="hover:bg-gray-800/30">
-                      <td className="px-6 py-4 whitespace-nowrap">
+                    <tr 
+                      key={creator.userId} 
+                      className="hover:bg-white/5 transition-colors group"
+                    >
+                      <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="relative w-10 h-10">
+                          <div className="relative w-10 h-10 flex-shrink-0">
                             {creator.photoURL ? (
                               <img
                                 src={creator.photoURL}
                                 alt={creator.displayName || 'Creator'}
-                                className="w-10 h-10 rounded-full object-cover"
+                                className="w-10 h-10 rounded-full object-cover ring-2 ring-white/10"
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none';
                                   const placeholder = e.currentTarget.parentElement?.querySelector('.placeholder-icon');
@@ -235,68 +245,68 @@ const CreatorsManagementPage: React.FC = () => {
                                 }}
                               />
                             ) : null}
-                            <div className={`placeholder-icon w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center ${creator.photoURL ? 'hidden' : ''}`}>
-                              <Video className="w-5 h-5 text-gray-400" />
+                            <div className={`placeholder-icon w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center ring-2 ring-white/10 ${creator.photoURL ? 'hidden' : ''}`}>
+                              <User className="w-5 h-5 text-gray-500" />
                             </div>
                           </div>
-                          <div>
-                            <div className="text-sm font-medium text-white">
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold text-white truncate">
                               {creator.displayName || 'Unknown Creator'}
                             </div>
-                            <div className="text-sm text-gray-400">{creator.email}</div>
+                            <div className="text-xs text-gray-400 truncate">{creator.email}</div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4">
                         <div className="text-sm text-white font-medium">
-                          {profile?.linkedAccountsCount || 0} accounts
+                          {profile?.linkedAccountsCount || 0} {profile?.linkedAccountsCount === 1 ? 'account' : 'accounts'}
                         </div>
                         {profile?.payoutsEnabled && (
-                          <div className="text-xs text-green-400 mt-0.5">
+                          <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20 mt-1">
                             Payouts enabled
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-white">
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-semibold text-white">
                           ${(profile?.totalEarnings || 0).toFixed(2)}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        {formatDate(creator.joinedAt)}
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-400">
+                          {formatDate(creator.joinedAt)}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td className="px-6 py-4">
                         <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                          <button
                             onClick={() => setEditingCreator(creator)}
                             disabled={actionLoading === creator.userId}
-                            className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
+                            className="p-2 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 rounded-lg transition-colors disabled:opacity-50"
                             title="Edit Details"
                           >
                             <Edit3 className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                          </button>
+                          <button
                             onClick={() => setLinkingCreator(creator)}
                             disabled={actionLoading === creator.userId}
-                            className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                            className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-colors disabled:opacity-50"
                             title="Link Accounts"
                           >
                             <LinkIcon className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                          </button>
+                          <button
                             onClick={() => handleRemoveCreator(creator.userId)}
                             disabled={actionLoading === creator.userId}
-                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                            className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
                             title="Remove Creator"
                           >
-                            <X className="w-4 h-4" />
-                          </Button>
+                            {actionLoading === creator.userId ? (
+                              <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <X className="w-4 h-4" />
+                            )}
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -337,4 +347,3 @@ const CreatorsManagementPage: React.FC = () => {
 };
 
 export default CreatorsManagementPage;
-

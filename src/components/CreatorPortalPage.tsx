@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { TrackedAccount, Payout, VideoDoc } from '../types/firestore';
 import CreatorLinksService from '../services/CreatorLinksService';
 import FirestoreDataService from '../services/FirestoreDataService';
 import PayoutsService from '../services/PayoutsService';
-import { Video, DollarSign, TrendingUp, Eye, ThumbsUp, MessageCircle, User, Link as LinkIcon } from 'lucide-react';
+import { Video, DollarSign, TrendingUp, Users as UsersIcon } from 'lucide-react';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
+import { VideoSubmissionsTable } from './VideoSubmissionsTable';
+import { VideoSubmission } from '../types';
 
 interface CreatorStats {
   totalAccounts: number;
@@ -50,58 +52,58 @@ const CreatorPortalPage: React.FC = () => {
         currentProjectId,
         user.uid
       );
-      const accountIds = links.map(link => link.accountId);
-      
-      // Load all accounts from the project
+
+      // Load all accounts and filter to linked ones
       const allAccounts = await FirestoreDataService.getTrackedAccounts(
         currentOrgId,
         currentProjectId
       );
-      
-      // Filter to only linked accounts
-      const accounts = allAccounts.filter(acc => accountIds.includes(acc.id));
+
+      const linkedAccountIds = links.map(link => link.accountId);
+      const accounts = allAccounts.filter(acc => linkedAccountIds.includes(acc.id));
+
       setLinkedAccounts(accounts);
 
-      // Load all videos from project
-      let linkedVideos: VideoDoc[] = [];
-      try {
-        const allProjectVideos = await FirestoreDataService.getVideos(
-          currentOrgId,
-          currentProjectId
-        );
-        // Filter to only videos from linked accounts
-        linkedVideos = allProjectVideos.filter((v: VideoDoc) => 
-          accountIds.includes(v.trackedAccountId || '')
-        );
-        setVideos(linkedVideos);
-      } catch (err) {
-        console.warn('Failed to load videos:', err);
-      }
+      // Load videos from linked accounts
+      const allVideos = await FirestoreDataService.getVideos(
+        currentOrgId,
+        currentProjectId,
+        { limitCount: 1000 }
+      );
+
+      // Filter videos to only those from linked accounts
+      const filteredVideos = allVideos.filter((video) =>
+        video.trackedAccountId && linkedAccountIds.includes(video.trackedAccountId)
+      );
+
+      setVideos(filteredVideos);
+
+      // Load payouts for this project
+      const creatorPayouts = await PayoutsService.getCreatorPayouts(
+        currentOrgId,
+        currentProjectId,
+        user.uid
+      );
+
+      setPayouts(creatorPayouts);
 
       // Calculate stats
-      const totalViews = linkedVideos.reduce((sum, video) => sum + (video.views || 0), 0);
+      const totalEarnings = creatorPayouts
+        .filter((p) => p.status === 'paid')
+        .reduce((sum, p) => sum + p.amount, 0);
 
-      // Get payout summary for this project
-      const payoutSummary = await PayoutsService.getPayoutSummary(
-        currentOrgId,
-        currentProjectId,
-        user.uid
-      );
+      const pendingPayouts = creatorPayouts
+        .filter((p) => p.status === 'pending' || p.status === 'processing')
+        .reduce((sum, p) => sum + p.amount, 0);
 
-      // Load payouts
-      const payoutsData = await PayoutsService.getCreatorPayouts(
-        currentOrgId,
-        currentProjectId,
-        user.uid
-      );
-      setPayouts(payoutsData);
+      const totalViews = filteredVideos.reduce((sum, v) => sum + (v.views || 0), 0);
 
       setStats({
-        totalAccounts: accounts.length,
-        totalVideos: linkedVideos.length,
+        totalAccounts: links.length,
+        totalVideos: filteredVideos.length,
         totalViews,
-        totalEarnings: payoutSummary.totalPaid,
-        pendingPayouts: payoutSummary.totalPending,
+        totalEarnings,
+        pendingPayouts,
       });
     } catch (error) {
       console.error('Failed to load creator data:', error);
@@ -110,117 +112,70 @@ const CreatorPortalPage: React.FC = () => {
     }
   };
 
+  // Convert VideoDoc[] to VideoSubmission[] for the VideoSubmissionsTable
+  const videoSubmissions: VideoSubmission[] = useMemo(() => {
+    const accountsMap = new Map(linkedAccounts.map(acc => [acc.id, acc]));
+    
+    return videos.map(video => {
+      const account = video.trackedAccountId ? accountsMap.get(video.trackedAccountId) : null;
+      
+      return {
+        id: video.id,
+        url: video.url || '',
+        platform: video.platform as 'instagram' | 'tiktok' | 'youtube',
+        thumbnail: video.thumbnail || '',
+        title: video.title || '',
+        caption: video.description || '',
+        uploader: account?.displayName || account?.username || '',
+        uploaderHandle: account?.username || '',
+        uploaderProfilePicture: account?.profilePicture,
+        status: video.status === 'archived' ? 'rejected' : 'approved',
+        views: video.views || 0,
+        likes: video.likes || 0,
+        comments: video.comments || 0,
+        shares: video.shares || 0,
+        dateSubmitted: video.dateAdded.toDate(),
+        uploadDate: video.uploadDate.toDate(),
+        lastRefreshed: video.lastRefreshed?.toDate(),
+        snapshots: []
+      };
+    });
+  }, [videos, linkedAccounts]);
+
   if (loading) {
-    return <PageLoadingSkeleton />;
+    return <PageLoadingSkeleton type="dashboard" />;
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white">Creator Dashboard</h1>
-        <p className="text-gray-400 mt-1">
-          View your content performance and earnings for this project
-        </p>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/10 rounded-lg">
-              <TrendingUp className="w-5 h-5 text-blue-400" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-white">{stats.totalAccounts}</div>
-              <div className="text-xs text-gray-400">Linked Accounts</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-500/10 rounded-lg">
-              <Video className="w-5 h-5 text-purple-400" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-white">{stats.totalVideos}</div>
-              <div className="text-xs text-gray-400">Total Videos</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-500/10 rounded-lg">
-              <Eye className="w-5 h-5 text-green-400" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-white">
-                {stats.totalViews.toLocaleString()}
-              </div>
-              <div className="text-xs text-gray-400">Total Views</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-yellow-500/10 rounded-lg">
-              <DollarSign className="w-5 h-5 text-yellow-400" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-white">
-                ${stats.totalEarnings.toFixed(2)}
-              </div>
-              <div className="text-xs text-gray-400">Total Earned</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-500/10 rounded-lg">
-              <DollarSign className="w-5 h-5 text-orange-400" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-white">
-                ${stats.pendingPayouts.toFixed(2)}
-              </div>
-              <div className="text-xs text-gray-400">Pending</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1 bg-gray-800/50 rounded-lg p-1">
+    <div className="space-y-6">
+      {/* Modern Tab Switcher */}
+      <div className="inline-flex items-center gap-1 bg-zinc-900/60 backdrop-blur border border-white/10 rounded-xl p-1">
         <button
           onClick={() => setActiveTab('dashboard')}
-          className={`px-4 py-2.5 rounded-md transition-all duration-200 font-medium text-sm ${
+          className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
             activeTab === 'dashboard'
-              ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
-              : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+              ? 'bg-white/10 text-white shadow-lg'
+              : 'text-gray-400 hover:text-white hover:bg-white/5'
           }`}
         >
           Dashboard
         </button>
         <button
           onClick={() => setActiveTab('accounts')}
-          className={`px-4 py-2.5 rounded-md transition-all duration-200 font-medium text-sm ${
+          className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
             activeTab === 'accounts'
-              ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
-              : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+              ? 'bg-white/10 text-white shadow-lg'
+              : 'text-gray-400 hover:text-white hover:bg-white/5'
           }`}
         >
           My Accounts
         </button>
         <button
           onClick={() => setActiveTab('payouts')}
-          className={`px-4 py-2.5 rounded-md transition-all duration-200 font-medium text-sm ${
+          className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
             activeTab === 'payouts'
-              ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
-              : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+              ? 'bg-white/10 text-white shadow-lg'
+              : 'text-gray-400 hover:text-white hover:bg-white/5'
           }`}
         >
           Payouts
@@ -228,228 +183,207 @@ const CreatorPortalPage: React.FC = () => {
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'accounts' && (
-        <div className="bg-gray-800 rounded-xl border border-gray-700/50 shadow-lg">
-          <div className="px-6 py-4 border-b border-gray-700/50 bg-gray-800/50">
-            <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-              <LinkIcon className="w-5 h-5 text-blue-400" />
-              My Linked Accounts
-            </h2>
-            <p className="text-sm text-gray-400 mt-1">
-              Social media accounts you're creating content for
-            </p>
-          </div>
-
-          {linkedAccounts.length === 0 ? (
-            <div className="p-12 text-center">
-              <User className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-white mb-2">No accounts linked yet</h3>
-              <p className="text-gray-400">
-                Your admin will link social media accounts to your profile
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-700/20 border-b border-gray-700/30">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Account
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Platform
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Videos
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Views
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Followers
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-700/30">
-                  {linkedAccounts.map((account) => (
-                    <tr
-                      key={account.id}
-                      className="hover:bg-white/5 transition-colors"
-                    >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          {account.profilePicture ? (
-                            <img
-                              src={account.profilePicture}
-                              alt={`@${account.username}`}
-                              className="w-10 h-10 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center">
-                              <User className="w-5 h-5 text-gray-400" />
-                            </div>
-                          )}
-                          <div className="min-w-0">
-                            <div className="text-sm font-medium text-white truncate">
-                              @{account.username}
-                            </div>
-                            {account.displayName && (
-                              <div className="text-xs text-gray-400 truncate">
-                                {account.displayName}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <PlatformIcon platform={account.platform} size="sm" />
-                          <span className="text-sm text-gray-300 capitalize">{account.platform}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-white font-medium">
-                        {(account.totalVideos || 0).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-white font-medium">
-                        {(account.totalViews || 0).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-white font-medium">
-                        {(account.followerCount || 0).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
       {activeTab === 'dashboard' && (
         <DashboardTab
           linkedAccounts={linkedAccounts}
-          videos={videos}
+          totalEarnings={stats.totalEarnings}
+          pendingPayouts={stats.pendingPayouts}
+          totalVideos={stats.totalVideos}
+          videoSubmissions={videoSubmissions}
         />
       )}
-      {activeTab === 'payouts' && (
-        <PayoutsTab payouts={payouts} />
-      )}
+
+      {activeTab === 'accounts' && <AccountsTab linkedAccounts={linkedAccounts} />}
+
+      {activeTab === 'payouts' && <PayoutsTab payouts={payouts} />}
     </div>
   );
 };
 
 // Dashboard Tab
-const DashboardTab: React.FC<{ linkedAccounts: TrackedAccount[]; videos: VideoDoc[] }> = ({
-  linkedAccounts,
-  videos,
-}) => {
+const DashboardTab: React.FC<{
+  linkedAccounts: TrackedAccount[];
+  totalEarnings: number;
+  pendingPayouts: number;
+  totalVideos: number;
+  videoSubmissions: VideoSubmission[];
+}> = ({ linkedAccounts, totalEarnings, pendingPayouts, totalVideos, videoSubmissions }) => {
   return (
     <div className="space-y-6">
-      {/* Linked Accounts Section */}
-      <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">My Linked Accounts</h2>
-        {linkedAccounts.length === 0 ? (
-          <div className="text-center py-8 text-gray-400">
-            No accounts linked yet. Contact your admin to link accounts.
+      {/* Stats Cards with Gradient Backgrounds like Dashboard */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Linked Accounts */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-purple-500/10 via-purple-600/5 to-transparent rounded-xl border border-purple-500/20 p-6 hover:border-purple-500/40 transition-all duration-300 group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl group-hover:bg-purple-500/20 transition-all duration-300" />
+          <div className="relative">
+            <div className="flex items-center justify-between mb-4">
+              <div className="bg-purple-500/10 rounded-lg p-3 group-hover:bg-purple-500/20 transition-colors">
+                <UsersIcon className="w-6 h-6 text-purple-400" />
+              </div>
+            </div>
+            <div className="text-3xl font-bold text-white mb-1">
+              {linkedAccounts.length}
+            </div>
+            <div className="text-sm text-gray-400">Linked Accounts</div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {linkedAccounts.map((account) => (
-              <div
-                key={account.id}
-                className="bg-gray-700/50 rounded-lg border border-gray-600 p-4"
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <PlatformIcon platform={account.platform} size="lg" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-white truncate">
-                      @{account.username}
-                    </div>
-                    {account.displayName && (
-                      <div className="text-xs text-gray-400 truncate">
-                        {account.displayName}
+        </div>
+
+        {/* Total Earnings */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-green-500/10 via-green-600/5 to-transparent rounded-xl border border-green-500/20 p-6 hover:border-green-500/40 transition-all duration-300 group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full blur-3xl group-hover:bg-green-500/20 transition-all duration-300" />
+          <div className="relative">
+            <div className="flex items-center justify-between mb-4">
+              <div className="bg-green-500/10 rounded-lg p-3 group-hover:bg-green-500/20 transition-colors">
+                <DollarSign className="w-6 h-6 text-green-400" />
+              </div>
+            </div>
+            <div className="text-3xl font-bold text-white mb-1">
+              ${totalEarnings.toFixed(2)}
+            </div>
+            <div className="text-sm text-gray-400">Total Earned</div>
+          </div>
+        </div>
+
+        {/* Pending Payouts */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-yellow-500/10 via-yellow-600/5 to-transparent rounded-xl border border-yellow-500/20 p-6 hover:border-yellow-500/40 transition-all duration-300 group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl group-hover:bg-yellow-500/20 transition-all duration-300" />
+          <div className="relative">
+            <div className="flex items-center justify-between mb-4">
+              <div className="bg-yellow-500/10 rounded-lg p-3 group-hover:bg-yellow-500/20 transition-colors">
+                <TrendingUp className="w-6 h-6 text-yellow-400" />
+              </div>
+            </div>
+            <div className="text-3xl font-bold text-white mb-1">
+              ${pendingPayouts.toFixed(2)}
+            </div>
+            <div className="text-sm text-gray-400">Pending Payouts</div>
+          </div>
+        </div>
+
+        {/* Total Videos */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-blue-500/10 via-blue-600/5 to-transparent rounded-xl border border-blue-500/20 p-6 hover:border-blue-500/40 transition-all duration-300 group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-500/20 transition-all duration-300" />
+          <div className="relative">
+            <div className="flex items-center justify-between mb-4">
+              <div className="bg-blue-500/10 rounded-lg p-3 group-hover:bg-blue-500/20 transition-colors">
+                <Video className="w-6 h-6 text-blue-400" />
+              </div>
+            </div>
+            <div className="text-3xl font-bold text-white mb-1">
+              {totalVideos}
+            </div>
+            <div className="text-sm text-gray-400">Total Videos</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Videos - Using Dashboard Table */}
+      {videoSubmissions.length > 0 && (
+        <VideoSubmissionsTable
+          submissions={videoSubmissions}
+        />
+      )}
+
+      {videoSubmissions.length === 0 && (
+        <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-12 text-center">
+          <Video className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-white mb-2">No videos yet</h3>
+          <p className="text-gray-400">
+            Videos from your linked accounts will appear here.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Accounts Tab
+const AccountsTab: React.FC<{ linkedAccounts: TrackedAccount[] }> = ({ linkedAccounts }) => {
+  return (
+    <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg overflow-hidden">
+      <div className="px-6 py-5 border-b border-white/5 bg-zinc-900/40">
+        <h2 className="text-lg font-semibold text-white">My Linked Accounts</h2>
+        <p className="text-sm text-gray-400 mt-1">Accounts assigned to you by your team</p>
+      </div>
+      
+      {linkedAccounts.length === 0 ? (
+        <div className="p-12 text-center">
+          <UsersIcon className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-white mb-2">No accounts linked yet</h3>
+          <p className="text-gray-400">
+            Contact your admin to link social media accounts to your profile.
+          </p>
+        </div>
+      ) : (
+        <div className="p-6">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/5">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                    Account
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                    Platform
+                  </th>
+                  <th className="px-6 py-4 text-right text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                    Videos
+                  </th>
+                  <th className="px-6 py-4 text-right text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                    Total Views
+                  </th>
+                  <th className="px-6 py-4 text-right text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                    Followers
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {linkedAccounts.map((account) => (
+                  <tr key={account.id} className="hover:bg-white/5 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        {account.profilePicture && (
+                          <img
+                            src={account.profilePicture}
+                            alt={account.username}
+                            className="w-10 h-10 rounded-full object-cover ring-2 ring-white/10"
+                          />
+                        )}
+                        <div>
+                          <div className="text-sm font-semibold text-white">
+                            {account.displayName || `@${account.username}`}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            @{account.username}
+                          </div>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <div className="text-gray-400">Videos</div>
-                    <div className="text-white font-medium">
-                      {account.totalVideos || 0}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-gray-400">Views</div>
-                    <div className="text-white font-medium">
-                      {(account.totalViews || 0).toLocaleString()}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+                    </td>
+                    <td className="px-6 py-4">
+                      <PlatformIcon platform={account.platform} size="md" />
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="text-sm font-medium text-white">
+                        {(account.totalVideos || 0).toLocaleString()}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="text-sm font-medium text-white">
+                        {(account.totalViews || 0).toLocaleString()}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="text-sm font-medium text-white">
+                        {(account.followerCount || 0).toLocaleString()}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
-
-      {/* Recent Videos Section */}
-      <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Recent Videos</h2>
-        {videos.length === 0 ? (
-          <div className="text-center py-8 text-gray-400">
-            No videos found for your linked accounts.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {videos.slice(0, 10).map((video) => (
-              <div
-                key={video.id}
-                className="bg-gray-700/50 rounded-lg border border-gray-600 p-4 flex items-start gap-4"
-              >
-                {/* Thumbnail */}
-                {video.thumbnail && (
-                  <img
-                    src={video.thumbnail}
-                    alt=""
-                    className="w-32 h-20 object-cover rounded flex-shrink-0"
-                  />
-                )}
-                
-                {/* Video Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-white line-clamp-2 mb-2">
-                    {video.title || 'Untitled Video'}
-                  </div>
-                  
-                  {/* Stats */}
-                  <div className="flex items-center gap-4 text-xs text-gray-400">
-                    <div className="flex items-center gap-1">
-                      <Eye className="w-3.5 h-3.5" />
-                      {(video.views || 0).toLocaleString()}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <ThumbsUp className="w-3.5 h-3.5" />
-                      {(video.likes || 0).toLocaleString()}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      {(video.comments || 0).toLocaleString()}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Date */}
-                <div className="text-xs text-gray-400 flex-shrink-0">
-                  {video.uploadDate?.toDate().toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -472,9 +406,10 @@ const PayoutsTab: React.FC<{ payouts: Payout[] }> = ({ payouts }) => {
   };
 
   return (
-    <div className="bg-gray-800/50 rounded-lg border border-gray-700">
-      <div className="px-6 py-4 border-b border-gray-700">
-        <h2 className="text-xl font-semibold text-white">Payout History</h2>
+    <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg overflow-hidden">
+      <div className="px-6 py-5 border-b border-white/5 bg-zinc-900/40">
+        <h2 className="text-lg font-semibold text-white">Payout History</h2>
+        <p className="text-sm text-gray-400 mt-1">Track your earnings and payment history</p>
       </div>
 
       {payouts.length === 0 ? (
@@ -488,28 +423,28 @@ const PayoutsTab: React.FC<{ payouts: Payout[] }> = ({ payouts }) => {
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-800/50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+            <thead>
+              <tr className="border-b border-white/5">
+                <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                   Period
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                   Amount
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                   Metrics
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                   Date
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-700">
+            <tbody className="divide-y divide-white/5">
               {payouts.map((payout) => (
-                <tr key={payout.id} className="hover:bg-gray-800/30">
+                <tr key={payout.id} className="hover:bg-white/5 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                     {payout.periodStart.toDate().toLocaleDateString('en-US', {
                       month: 'short',
@@ -523,7 +458,7 @@ const PayoutsTab: React.FC<{ payouts: Payout[] }> = ({ payouts }) => {
                     })}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-white">
+                    <div className="text-sm font-semibold text-white">
                       ${payout.amount.toFixed(2)}
                     </div>
                     {payout.rateDescription && (
