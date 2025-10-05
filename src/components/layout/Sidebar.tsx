@@ -5,7 +5,6 @@ import {
   Settings, 
   ChevronLeft,
   ChevronRight,
-  FileSignature,
   Eye,
   Link,
   UserPlus
@@ -79,13 +78,13 @@ const Sidebar: React.FC<SidebarProps> = ({
       });
     }
 
-    if (can.accessTab('contracts')) {
+    if (can.accessTab('creators')) {
       items.push({
-        id: 'contracts',
-        label: 'Contracts',
-        icon: FileSignature,
-        isActive: activeTab === 'contracts',
-        onClick: () => onTabChange?.('contracts'),
+        id: 'creators',
+        label: userRole === 'creator' ? 'Payouts' : 'Creators', // Show "Payouts" for creators, "Creators" for admins
+        icon: Video,
+        isActive: activeTab === 'creators',
+        onClick: () => onTabChange?.('creators'),
       });
     }
 
@@ -102,16 +101,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         icon: UserPlus,
         isActive: activeTab === 'team',
         onClick: () => onTabChange?.('team'),
-      });
-    }
-
-    if (can.accessTab('creators')) {
-      items.push({
-        id: 'creators',
-        label: userRole === 'creator' ? 'Payouts' : 'Creators', // Show "Payouts" for creators, "Creators" for admins
-        icon: Video,
-        isActive: activeTab === 'creators',
-        onClick: () => onTabChange?.('creators'),
       });
     }
 

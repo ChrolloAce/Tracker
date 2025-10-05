@@ -9,7 +9,6 @@ import KPICards from '../components/KPICards';
 import DateRangeFilter, { DateFilterType } from '../components/DateRangeFilter';
 import VideoAnalyticsModal from '../components/VideoAnalyticsModal';
 import AccountsPage, { AccountsPageRef } from '../components/AccountsPage';
-import ContractsPage from '../components/ContractsPage';
 import SettingsPage from '../components/SettingsPage';
 import SubscriptionPage from '../components/SubscriptionPage';
 import CronManagementPage from '../components/CronManagementPage';
@@ -221,7 +220,7 @@ function DashboardPage() {
       
       // Only trigger on tabs where + button is visible
       if (activeTab === 'settings' || activeTab === 'subscription' || 
-          activeTab === 'contracts' || activeTab === 'creators' || activeTab === 'cron' ||
+          activeTab === 'creators' || activeTab === 'cron' ||
           activeTab === 'team' || activeTab === 'invitations') {
         return;
       }
@@ -527,7 +526,6 @@ function DashboardPage() {
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                 {activeTab === 'dashboard' && 'Dashboard'}
                 {activeTab === 'accounts' && 'Tracked Accounts'}
-                {activeTab === 'contracts' && 'Contracts'}
                 {activeTab === 'subscription' && 'Subscription Plans'}
                 {activeTab === 'analytics' && 'Tracked Links'}
                 {activeTab === 'creators' && 'Creators'}
@@ -540,7 +538,6 @@ function DashboardPage() {
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                   {activeTab === 'dashboard' && 'Track and analyze your video performance'}
                   {activeTab === 'accounts' && 'Monitor entire Instagram and TikTok accounts'}
-                  {activeTab === 'contracts' && 'Manage brand deals and sponsorships'}
                   {activeTab === 'subscription' && 'Choose the perfect plan to scale your tracking'}
                   {activeTab === 'creators' && 'Manage and discover content creators'}
                   {activeTab === 'cron' && 'Manage automated video refreshes'}
@@ -684,9 +681,6 @@ function DashboardPage() {
             />
           )}
 
-          {/* Contracts Tab */}
-          {activeTab === 'contracts' && <ContractsPage />}
-
           {/* Subscription Tab */}
           {activeTab === 'subscription' && <SubscriptionPage />}
 
@@ -719,7 +713,7 @@ function DashboardPage() {
           )}
 
           {/* Other Tabs - Placeholder */}
-          {!['dashboard', 'accounts', 'contracts', 'subscription', 'settings', 'analytics', 'creators', 'cron', 'team', 'invitations'].includes(activeTab) && (
+          {!['dashboard', 'accounts', 'subscription', 'settings', 'analytics', 'creators', 'cron', 'team', 'invitations'].includes(activeTab) && (
             <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">🚧</span>
@@ -752,7 +746,7 @@ function DashboardPage() {
       />
 
       {/* Context-Aware Floating Action Button */}
-      {activeTab !== 'settings' && activeTab !== 'subscription' && activeTab !== 'contracts' && activeTab !== 'creators' && activeTab !== 'cron' && (
+      {activeTab !== 'settings' && activeTab !== 'subscription' && activeTab !== 'creators' && activeTab !== 'cron' && (
         <button
           onClick={() => {
             if (activeTab === 'dashboard') {
