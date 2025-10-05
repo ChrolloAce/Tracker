@@ -10,7 +10,6 @@ import DateRangeFilter, { DateFilterType } from '../components/DateRangeFilter';
 import VideoAnalyticsModal from '../components/VideoAnalyticsModal';
 import AccountsPage, { AccountsPageRef } from '../components/AccountsPage';
 import ContractsPage from '../components/ContractsPage';
-import RulesPage, { RulesPageRef } from '../components/RulesPage';
 import SettingsPage from '../components/SettingsPage';
 import SubscriptionPage from '../components/SubscriptionPage';
 import CronManagementPage from '../components/CronManagementPage';
@@ -71,7 +70,6 @@ function DashboardPage() {
   const [accountsPlatformFilter, setAccountsPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'youtube'>('all');
   const accountsPageRef = useRef<AccountsPageRef | null>(null);
   const trackedLinksPageRef = useRef<TrackedLinksPageRef | null>(null);
-  const rulesPageRef = useRef<RulesPageRef | null>(null);
 
   // Dashboard platform filter state
   const [dashboardPlatformFilter, setDashboardPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'youtube'>('all');
@@ -532,7 +530,6 @@ function DashboardPage() {
                 {activeTab === 'contracts' && 'Contracts'}
                 {activeTab === 'subscription' && 'Subscription Plans'}
                 {activeTab === 'analytics' && 'Tracked Links'}
-                {activeTab === 'rules' && 'Tracking Rules'}
                 {activeTab === 'creators' && 'Creators'}
                 {activeTab === 'cron' && 'Cron Jobs'}
                 {activeTab === 'team' && 'Team Management'}
@@ -545,7 +542,6 @@ function DashboardPage() {
                   {activeTab === 'accounts' && 'Monitor entire Instagram and TikTok accounts'}
                   {activeTab === 'contracts' && 'Manage brand deals and sponsorships'}
                   {activeTab === 'subscription' && 'Choose the perfect plan to scale your tracking'}
-                  {activeTab === 'rules' && 'Filter videos automatically based on conditions'}
                   {activeTab === 'creators' && 'Manage and discover content creators'}
                   {activeTab === 'cron' && 'Manage automated video refreshes'}
                   {activeTab === 'team' && 'Manage team members and their access'}
@@ -639,19 +635,6 @@ function DashboardPage() {
               />
             </div>
           )}
-          {activeTab === 'rules' && (
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => rulesPageRef.current?.openCreateModal()}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Create Rule
-              </button>
-            </div>
-          )}
         </div>
       </header>
 
@@ -704,9 +687,6 @@ function DashboardPage() {
           {/* Contracts Tab */}
           {activeTab === 'contracts' && <ContractsPage />}
 
-          {/* Rules Tab */}
-          {activeTab === 'rules' && <RulesPage ref={rulesPageRef} />}
-
           {/* Subscription Tab */}
           {activeTab === 'subscription' && <SubscriptionPage />}
 
@@ -739,7 +719,7 @@ function DashboardPage() {
           )}
 
           {/* Other Tabs - Placeholder */}
-          {!['dashboard', 'accounts', 'contracts', 'subscription', 'settings', 'analytics', 'creators', 'rules', 'cron', 'team', 'invitations'].includes(activeTab) && (
+          {!['dashboard', 'accounts', 'contracts', 'subscription', 'settings', 'analytics', 'creators', 'cron', 'team', 'invitations'].includes(activeTab) && (
             <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">🚧</span>
@@ -781,8 +761,6 @@ function DashboardPage() {
               accountsPageRef.current?.openAddModal();
             } else if (activeTab === 'analytics') {
               trackedLinksPageRef.current?.openCreateModal();
-            } else if (activeTab === 'rules') {
-              rulesPageRef.current?.openCreateModal();
             }
           }}
           className="fixed bottom-8 right-8 z-50 bg-gray-900 dark:bg-white hover:bg-black dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-full p-4 shadow-2xl transition-all duration-200 hover:scale-110 group"
@@ -790,7 +768,6 @@ function DashboardPage() {
             activeTab === 'dashboard' ? 'Add Video' :
             activeTab === 'accounts' ? 'Track Account' :
             activeTab === 'analytics' ? 'Create Link' :
-            activeTab === 'rules' ? 'Create Rule' :
             'Add'
           }
         >
@@ -811,7 +788,6 @@ function DashboardPage() {
             {activeTab === 'dashboard' && 'Add Video'}
             {activeTab === 'accounts' && 'Track Account'}
             {activeTab === 'analytics' && 'Create Link'}
-            {activeTab === 'rules' && 'Create Rule'}
           </span>
         </button>
       )}

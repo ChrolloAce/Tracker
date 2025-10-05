@@ -8,7 +8,6 @@ import {
   FileSignature,
   Eye,
   Link,
-  Filter,
   UserPlus
 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -77,16 +76,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         icon: Link,
         isActive: activeTab === 'analytics',
         onClick: () => onTabChange?.('analytics'),
-      });
-    }
-
-    if (can.accessTab('rules')) {
-      items.push({
-        id: 'rules',
-        label: 'Rules',
-        icon: Filter,
-        isActive: activeTab === 'rules',
-        onClick: () => onTabChange?.('rules'),
       });
     }
 
