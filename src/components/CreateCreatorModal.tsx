@@ -4,7 +4,7 @@ import { TrackedAccount } from '../types/firestore';
 import FirestoreDataService from '../services/FirestoreDataService';
 import OrganizationService from '../services/OrganizationService';
 import TeamInvitationService from '../services/TeamInvitationService';
-import { X, ArrowRight, ArrowLeft, Check, Mail, User as UserIcon, Link as LinkIcon, DollarSign, Search } from 'lucide-react';
+import { X, ArrowRight, ArrowLeft, Check, Mail, User as UserIcon, Link as LinkIcon, DollarSign, Search, Phone } from 'lucide-react';
 import { Button } from './ui/Button';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { Modal } from './ui/Modal';
@@ -23,6 +23,7 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
 
   // Step 1: Basic Info
   const [email, setEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [displayName, setDisplayName] = useState('');
 
   // Step 2: Linked Accounts
@@ -64,6 +65,7 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
   const handleClose = () => {
     setStep(1);
     setEmail('');
+    setPhoneNumber('');
     setDisplayName('');
     setSelectedAccountIds([]);
     setSearchQuery('');
@@ -78,11 +80,15 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
 
   const handleNext = () => {
     if (step === 1) {
-      if (!email.trim() || !displayName.trim()) {
-        setError('Please enter both email and display name');
+      if (!displayName.trim()) {
+        setError('Please enter a display name');
         return;
       }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (!email.trim() && !phoneNumber.trim()) {
+        setError('Please enter either an email or phone number');
+        return;
+      }
+      if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         setError('Please enter a valid email address');
         return;
       }
@@ -167,7 +173,10 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
 
   const canProceed = () => {
     if (step === 1) {
-      return email.trim() && displayName.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      const hasDisplayName = displayName.trim().length > 0;
+      const hasContact = email.trim().length > 0 || phoneNumber.trim().length > 0;
+      const emailValid = !email.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      return hasDisplayName && hasContact && emailValid;
     }
     if (step === 2) {
       return true; // Linking accounts is optional
@@ -178,52 +187,8 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
     return false;
   };
 
-  const renderStepIndicator = () => (
-    <div className="flex items-center justify-center gap-2 mb-6">
-      {[1, 2, 3].map((stepNum) => (
-        <div key={stepNum} className="flex items-center">
-          <div
-            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors border-2 ${
-              stepNum === step
-                ? 'bg-white text-black border-white'
-                : stepNum < step
-                ? 'bg-gray-600 text-white border-gray-600'
-                : 'bg-transparent text-gray-500 border-gray-700'
-            }`}
-          >
-            {stepNum < step ? <Check className="w-4 h-4" /> : stepNum}
-          </div>
-          {stepNum < totalSteps && (
-            <div
-              className={`w-12 h-0.5 mx-1 ${
-                stepNum < step ? 'bg-gray-600' : 'bg-gray-700'
-              }`}
-            />
-          )}
-        </div>
-      ))}
-    </div>
-  );
-
   const renderStep1 = () => (
     <div className="space-y-5">
-      <div>
-        <label className="block text-sm font-medium text-white mb-2">
-          Email Address *
-        </label>
-        <div className="relative">
-          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="creator@example.com"
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50"
-            autoFocus
-          />
-        </div>
-      </div>
-
       <div>
         <label className="block text-sm font-medium text-white mb-2">
           Display Name *
@@ -236,13 +201,46 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
             onChange={(e) => setDisplayName(e.target.value)}
             placeholder="John Doe"
             className="w-full pl-10 pr-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50"
+            autoFocus
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-white mb-2">
+          Email Address <span className="text-gray-500 text-xs">(Optional)</span>
+        </label>
+        <div className="relative">
+          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="creator@example.com"
+            className="w-full pl-10 pr-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-white mb-2">
+          Phone Number <span className="text-gray-500 text-xs">(Optional)</span>
+        </label>
+        <div className="relative">
+          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="tel"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+            placeholder="+1 (555) 123-4567"
+            className="w-full pl-10 pr-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50"
           />
         </div>
       </div>
 
       <div className="bg-gray-700/30 border border-gray-600/30 rounded-lg p-4">
         <p className="text-sm text-gray-300">
-          An invitation will be sent to this email. The creator can accept it to join your project.
+          At least one contact method (email or phone) is required. An invitation will be sent if an email is provided.
         </p>
       </div>
     </div>
@@ -524,24 +522,51 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
       <div className="space-y-6">
         {/* Custom Header with Step Indicator */}
         <div>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-white">Invite Creator</h2>
-            <button
-              onClick={handleClose}
-              className="text-gray-400 hover:text-white transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-4">
+              {/* Step Indicator */}
+              <div className="flex items-center gap-2">
+                {[1, 2, 3].map((stepNum) => (
+                  <div key={stepNum} className="flex items-center">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors border-2 ${
+                        stepNum === step
+                          ? 'bg-white text-black border-white'
+                          : stepNum < step
+                          ? 'bg-gray-600 text-white border-gray-600'
+                          : 'bg-transparent text-gray-500 border-gray-700'
+                      }`}
+                    >
+                      {stepNum < step ? <Check className="w-4 h-4" /> : stepNum}
+                    </div>
+                    {stepNum < totalSteps && (
+                      <div
+                        className={`w-8 h-0.5 mx-1 ${
+                          stepNum < step ? 'bg-gray-600' : 'bg-gray-700'
+                        }`}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={handleClose}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
           
-          {renderStepIndicator()}
-          
-          <h3 className="text-center text-lg font-medium text-white mb-1">
-            {getStepTitle()}
-          </h3>
-          <p className="text-center text-sm text-gray-400">
-            Step {step} of {totalSteps}
-          </p>
+          <div>
+            <h3 className="text-lg font-medium text-white mb-1">
+              {getStepTitle()}
+            </h3>
+            <p className="text-sm text-gray-400">
+              Step {step} of {totalSteps}
+            </p>
+          </div>
         </div>
 
         {/* Error Message */}
