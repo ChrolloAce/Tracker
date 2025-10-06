@@ -453,7 +453,7 @@ const OverviewTab: React.FC<{
   linkedAccounts: TrackedAccount[];
   payouts: Payout[];
   recentVideos: any[];
-}> = ({ profile, linkedAccounts, payouts, recentVideos }) => {
+}> = ({ profile, linkedAccounts, recentVideos }) => {
   const [selectedAccount, setSelectedAccount] = React.useState<string>('all');
   const [hoveredVideo, setHoveredVideo] = React.useState<string | null>(null);
   const [showTooltip, setShowTooltip] = React.useState(false);
