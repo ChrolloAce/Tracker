@@ -17,7 +17,9 @@ import {
   Play,
   Eye,
   ThumbsUp,
-  MessageCircle
+  MessageCircle,
+  TrendingUp,
+  Calculator
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -461,8 +463,156 @@ const OverviewTab: React.FC<{
     return num.toString();
   };
 
+  // Calculate real-time earnings based on payment structure
+  const calculateEarnings = () => {
+    if (!profile?.customPaymentTerms || recentVideos.length === 0) {
+      return { total: 0, breakdown: [], details: '' };
+    }
+
+    const terms = profile.customPaymentTerms;
+    let total = 0;
+    const breakdown: any[] = [];
+
+    recentVideos.forEach((video: any) => {
+      let videoEarnings = 0;
+      let calculation = '';
+
+      switch (terms.type) {
+        case 'flat_fee':
+          videoEarnings = terms.baseAmount || 0;
+          calculation = `Flat fee: $${videoEarnings.toFixed(2)}`;
+          break;
+
+        case 'base_cpm':
+          const views = video.viewsCount || 0;
+          const cpmEarnings = (views / 1000) * (terms.cpmRate || 0);
+          videoEarnings = (terms.baseAmount || 0) + cpmEarnings;
+          calculation = `Base: $${(terms.baseAmount || 0).toFixed(2)} + CPM: $${cpmEarnings.toFixed(2)} (${formatNumber(views)} views × $${terms.cpmRate}/1K)`;
+          break;
+
+        case 'base_guaranteed_views':
+          const actualViews = video.viewsCount || 0;
+          const guaranteedViews = terms.guaranteedViews || 0;
+          if (actualViews >= guaranteedViews) {
+            videoEarnings = terms.baseAmount || 0;
+            calculation = `Base: $${videoEarnings.toFixed(2)} (${formatNumber(actualViews)} views ≥ ${formatNumber(guaranteedViews)} required)`;
+          } else {
+            videoEarnings = 0;
+            calculation = `$0 (${formatNumber(actualViews)} views < ${formatNumber(guaranteedViews)} required)`;
+          }
+          break;
+
+        case 'cpc':
+          // Assuming clicks tracked somewhere, default to 0 if not available
+          const clicks = (video as any).clicksCount || 0;
+          videoEarnings = clicks * (terms.cpcRate || 0);
+          calculation = `${clicks} clicks × $${terms.cpcRate} CPC`;
+          break;
+
+        case 'revenue_share':
+          // This would need actual revenue data
+          const revenue = (video as any).revenue || 0;
+          videoEarnings = revenue * ((terms.revenueSharePercentage || 0) / 100);
+          calculation = `${terms.revenueSharePercentage}% of $${revenue.toFixed(2)} revenue`;
+          break;
+
+        case 'retainer':
+          // Retainer is usually monthly, not per video
+          videoEarnings = 0;
+          calculation = `Monthly retainer: $${(terms.retainerAmount || 0).toFixed(2)}`;
+          break;
+
+        default:
+          videoEarnings = 0;
+          calculation = 'No payment structure set';
+      }
+
+      total += videoEarnings;
+      breakdown.push({
+        videoId: video.id,
+        videoTitle: video.title || video.description || 'Untitled',
+        earnings: videoEarnings,
+        calculation,
+        views: video.viewsCount || 0,
+        accountUsername: video.accountInfo?.username || 'Unknown'
+      });
+    });
+
+    return { total, breakdown, details: PAYMENT_TERM_TYPES.find(t => t.value === terms.type)?.label || 'Unknown' };
+  };
+
+  const earnings = calculateEarnings();
+
   return (
     <div className="space-y-6">
+      {/* Real-Time Earnings Calculator */}
+      {profile?.customPaymentTerms && (
+        <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
+          <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+            <Calculator className="w-5 h-5 text-gray-400" />
+            Real-Time Earnings Calculator
+          </h2>
+          
+          <div className="mb-6">
+            <div className="bg-[#0A0A0A] border border-gray-800 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-gray-400">Estimated Earnings</span>
+                <span className="text-xs text-gray-500">{earnings.details}</span>
+              </div>
+              <div className="text-4xl font-bold text-white mb-1">
+                ${earnings.total.toFixed(2)}
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <TrendingUp className="w-3 h-3" />
+                <span>Based on {recentVideos.length} recent videos</span>
+              </div>
+            </div>
+          </div>
+
+          {earnings.breakdown.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-white mb-3">Earnings Breakdown</h3>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {earnings.breakdown.map((item: any) => (
+                  <div
+                    key={item.videoId}
+                    className="bg-[#0A0A0A] border border-gray-800 rounded-lg p-4 hover:border-gray-700 transition-colors"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm text-white font-medium mb-1 truncate">
+                          {item.videoTitle}
+                        </div>
+                        <div className="text-xs text-gray-400">@{item.accountUsername}</div>
+                      </div>
+                      <div className="text-right ml-4">
+                        <div className="text-lg font-bold text-white">
+                          ${item.earnings.toFixed(2)}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {formatNumber(item.views)} views
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-500 bg-gray-900/50 rounded px-2 py-1">
+                      {item.calculation}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {earnings.breakdown.length === 0 && recentVideos.length === 0 && (
+            <div className="text-center py-8 text-gray-400">
+              <Calculator className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+              <p className="text-sm">No videos to calculate earnings from</p>
+              <p className="text-xs text-gray-500 mt-1">Link accounts and sync videos to see real-time earnings</p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Contract Information */}
       <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
         <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
