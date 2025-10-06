@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import clsx from 'clsx';
 import { useAuth } from '../contexts/AuthContext';
 import { OrgMember, Creator, TrackedAccount, Payout, PaymentTermPreset, PaymentTermType, PaymentDueDateType } from '../types/firestore';
 import CreatorLinksService from '../services/CreatorLinksService';
@@ -457,6 +458,8 @@ const OverviewTab: React.FC<{
   payouts: Payout[];
   recentVideos: any[];
 }> = ({ creator, profile, linkedAccounts, recentVideos }) => {
+  const [selectedAccount, setSelectedAccount] = React.useState<string>('all');
+  
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
@@ -534,7 +537,10 @@ const OverviewTab: React.FC<{
         earnings: videoEarnings,
         calculation,
         views: video.views || 0,
-        accountUsername: video.accountInfo?.username || 'Unknown'
+        thumbnail: video.thumbnail,
+        accountId: video.trackedAccountId,
+        accountUsername: video.accountInfo?.username || 'Unknown',
+        platform: video.accountInfo?.platform || video.platform
       });
     });
 
@@ -542,73 +548,111 @@ const OverviewTab: React.FC<{
   };
 
   const earnings = calculateEarnings();
+  
+  // Calculate earnings by account
+  const accountEarnings = linkedAccounts.map(account => {
+    const accountVideos = earnings.breakdown.filter(v => v.accountId === account.id);
+    const totalEarnings = accountVideos.reduce((sum, v) => sum + v.earnings, 0);
+    const totalViews = accountVideos.reduce((sum, v) => sum + v.views, 0);
+    return {
+      account,
+      earnings: totalEarnings,
+      views: totalViews,
+      videoCount: accountVideos.length
+    };
+  });
+
+  // Filter videos by selected account
+  const filteredVideos = selectedAccount === 'all' 
+    ? earnings.breakdown 
+    : earnings.breakdown.filter(v => v.accountId === selectedAccount);
 
   return (
     <div className="space-y-6">
-      {/* Real-Time Earnings Calculator */}
+      {/* Total Earnings Summary */}
       {profile?.customPaymentTerms && (
         <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
-        <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-            <Calculator className="w-5 h-5 text-gray-400" />
-            Real-Time Earnings Calculator
-          </h2>
-          
-          <div className="mb-6">
-            <div className="bg-[#0A0A0A] border border-gray-800 rounded-lg p-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-gray-400">Estimated Earnings</span>
-                <span className="text-xs text-gray-500">{earnings.details}</span>
-              </div>
-              <div className="text-4xl font-bold text-white mb-1">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-semibold text-white mb-1 flex items-center gap-2">
+                <Calculator className="w-6 h-6 text-gray-400" />
+                Total Earnings
+              </h2>
+              <p className="text-sm text-gray-400">{earnings.details}</p>
+            </div>
+            <div className="text-right">
+              <div className="text-4xl font-bold text-white">
                 ${earnings.total.toFixed(2)}
               </div>
-              <div className="flex items-center gap-2 text-xs text-gray-400">
-                <TrendingUp className="w-3 h-3" />
-                <span>Based on {recentVideos.length} recent videos</span>
+              <div className="text-sm text-gray-400 mt-1">
+                {filteredVideos.length} videos
               </div>
             </div>
           </div>
+        </div>
+      )}
 
-          {earnings.breakdown.length > 0 && (
-            <div>
-              <h3 className="text-sm font-medium text-white mb-3">Earnings Breakdown</h3>
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {earnings.breakdown.map((item: any) => (
-                  <div
-                    key={item.videoId}
-                    className="bg-[#0A0A0A] border border-gray-800 rounded-lg p-4 hover:border-gray-700 transition-colors"
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm text-white font-medium mb-1 truncate">
-                          {item.videoTitle}
-                        </div>
-                        <div className="text-xs text-gray-400">@{item.accountUsername}</div>
-                      </div>
-                      <div className="text-right ml-4">
-                        <div className="text-lg font-bold text-white">
-                          ${item.earnings.toFixed(2)}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          {formatNumber(item.views)} views
-                        </div>
-                      </div>
+      {/* Account Cost Breakdown */}
+      {profile?.customPaymentTerms && accountEarnings.length > 0 && (
+        <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
+          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <DollarSign className="w-5 h-5 text-gray-400" />
+            Cost Per Account
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {accountEarnings.map((item) => (
+              <div
+                key={item.account.id}
+                className={clsx(
+                  'bg-[#0A0A0A] border rounded-lg p-4 cursor-pointer transition-all',
+                  selectedAccount === item.account.id
+                    ? 'border-white ring-2 ring-white/20'
+                    : 'border-gray-800 hover:border-gray-700'
+                )}
+                onClick={() => setSelectedAccount(selectedAccount === item.account.id ? 'all' : item.account.id)}
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  {item.account.profilePicture ? (
+                    <img
+                      src={item.account.profilePicture}
+                      alt={item.account.username}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
+                      <User className="w-5 h-5 text-gray-400" />
                     </div>
-                    <div className="text-xs text-gray-500 bg-gray-900/50 rounded px-2 py-1">
-                      {item.calculation}
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-white truncate">
+                        {item.account.displayName || item.account.username}
+                      </span>
+                      <PlatformIcon platform={item.account.platform} size="sm" />
                     </div>
+                    <div className="text-xs text-gray-400">@{item.account.username}</div>
                   </div>
-                ))}
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-400">Total Payout</span>
+                    <span className="text-lg font-bold text-white">${item.earnings.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-500">{item.videoCount} videos</span>
+                    <span className="text-gray-500">{formatNumber(item.views)} views</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
-
-          {earnings.breakdown.length === 0 && recentVideos.length === 0 && (
-            <div className="text-center py-8 text-gray-400">
-              <Calculator className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-              <p className="text-sm">No videos to calculate earnings from</p>
-              <p className="text-xs text-gray-500 mt-1">Link accounts and sync videos to see real-time earnings</p>
-            </div>
+            ))}
+          </div>
+          {selectedAccount !== 'all' && (
+            <button
+              onClick={() => setSelectedAccount('all')}
+              className="mt-4 text-sm text-gray-400 hover:text-white transition-colors"
+            >
+              ← Show all accounts
+            </button>
           )}
         </div>
       )}
@@ -646,113 +690,77 @@ const OverviewTab: React.FC<{
         </div>
       </div>
 
-      {/* Linked Accounts */}
+      {/* Video Performance */}
       <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
-        <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-          <LinkIcon className="w-5 h-5 text-gray-400" />
-          Linked Accounts
-          <span className="text-sm font-normal text-gray-400">({linkedAccounts.length})</span>
-        </h2>
-        {linkedAccounts.length === 0 ? (
-          <div className="text-center py-8 text-gray-400">
-            <User className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-            <p className="text-sm">No accounts linked yet</p>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+            <Play className="w-5 h-5 text-gray-400" />
+            Video Performance
+            <span className="text-sm font-normal text-gray-400">({filteredVideos.length})</span>
+          </h2>
+        </div>
+        
+        {filteredVideos.length === 0 ? (
+          <div className="text-center py-12 text-gray-400">
+            <Play className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+            <p className="text-sm">No videos found</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {selectedAccount !== 'all' ? 'Try selecting a different account' : 'Link accounts and sync videos to see performance'}
+            </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {linkedAccounts.map((account) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {filteredVideos.map((video: any) => (
               <div
-                key={account.id}
-                className="bg-[#0A0A0A] border border-gray-800 rounded-lg p-4 hover:border-gray-700 transition-colors"
+                key={video.videoId}
+                className="bg-[#0A0A0A] border border-gray-800 rounded-lg overflow-hidden hover:border-gray-700 transition-all group"
               >
-                <div className="flex items-start gap-3">
-                  {account.profilePicture ? (
-                    <img
-                      src={account.profilePicture}
-                      alt={account.username}
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center">
-                      <User className="w-6 h-6 text-gray-400" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-medium text-white truncate">
-                        {account.displayName || account.username}
-                      </span>
-                      <PlatformIcon platform={account.platform} size="sm" />
-                    </div>
-                    <div className="text-xs text-gray-400 mb-2">@{account.username}</div>
-                    <div className="flex items-center gap-4 text-xs text-gray-400">
-                      <span>{formatNumber(account.followerCount || 0)} followers</span>
-                      <span>{account.totalVideos || 0} videos</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Recent Videos */}
-      <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
-        <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-          <Play className="w-5 h-5 text-gray-400" />
-          Recent Videos
-          <span className="text-sm font-normal text-gray-400">({recentVideos.length})</span>
-        </h2>
-        {recentVideos.length === 0 ? (
-          <div className="text-center py-8 text-gray-400">
-            <Play className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-            <p className="text-sm">No recent videos</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {recentVideos.map((video: any) => (
-              <div
-                key={video.id}
-                className="bg-[#0A0A0A] border border-gray-800 rounded-lg overflow-hidden hover:border-gray-700 transition-colors"
-              >
-                {video.thumbnail && (
+                {/* Thumbnail */}
+                {video.thumbnail ? (
                   <div className="relative aspect-video bg-gray-900">
                     <img
                       src={video.thumbnail}
-                      alt={video.title || 'Video thumbnail'}
+                      alt={video.videoTitle}
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                      <Play className="w-12 h-12 text-white" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    <div className="absolute bottom-2 right-2 bg-black/80 rounded px-2 py-0.5">
+                      <span className="text-xs font-medium text-white flex items-center gap-1">
+                        <Eye className="w-3 h-3" />
+                        {formatNumber(video.views)}
+                      </span>
                     </div>
                   </div>
+                ) : (
+                  <div className="aspect-video bg-gray-900 flex items-center justify-center">
+                    <Play className="w-12 h-12 text-gray-700" />
+                  </div>
                 )}
-                <div className="p-3">
+                
+                {/* Content */}
+                <div className="p-4">
+                  {/* Account Info */}
                   <div className="flex items-center gap-2 mb-2">
-                    {video.accountInfo && (
-                      <>
-                        <PlatformIcon platform={video.accountInfo.platform} size="sm" />
-                        <span className="text-xs text-gray-400">@{video.accountInfo.username}</span>
-                      </>
-                    )}
+                    <PlatformIcon platform={video.platform} size="sm" />
+                    <span className="text-xs text-gray-400 truncate">@{video.accountUsername}</span>
                   </div>
-                  <div className="text-sm text-white mb-2 line-clamp-2">
-                    {video.title || video.description || 'No title'}
+                  
+                  {/* Video Title */}
+                  <h3 className="text-sm font-medium text-white mb-3 line-clamp-2 min-h-[2.5rem]">
+                    {video.videoTitle}
+                  </h3>
+                  
+                  {/* Payout - Highlighted */}
+                  <div className="bg-white/5 border border-white/10 rounded-lg p-3 mb-3">
+                    <div className="text-xs text-gray-400 mb-1">Video Payout</div>
+                    <div className="text-2xl font-bold text-white">
+                      ${video.earnings.toFixed(2)}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-gray-400">
-                    <span className="flex items-center gap-1">
-                      <Eye className="w-3 h-3" />
-                      {formatNumber(video.views || 0)}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <ThumbsUp className="w-3 h-3" />
-                      {formatNumber(video.likes || 0)}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <MessageCircle className="w-3 h-3" />
-                      {formatNumber(video.comments || 0)}
-                    </span>
+                  
+                  {/* Calculation Details */}
+                  <div className="text-xs text-gray-500 bg-gray-900/50 rounded px-2 py-1.5">
+                    {video.calculation}
                   </div>
                 </div>
               </div>
