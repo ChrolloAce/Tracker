@@ -16,8 +16,7 @@ import {
   AlertCircle,
   User,
   Play,
-  Eye,
-  Calculator
+  Eye
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -454,7 +453,7 @@ const OverviewTab: React.FC<{
   linkedAccounts: TrackedAccount[];
   payouts: Payout[];
   recentVideos: any[];
-}> = ({ profile, linkedAccounts, recentVideos }) => {
+}> = ({ profile, linkedAccounts, payouts, recentVideos }) => {
   const [selectedAccount, setSelectedAccount] = React.useState<string>('all');
   const [hoveredVideo, setHoveredVideo] = React.useState<string | null>(null);
   const [showTooltip, setShowTooltip] = React.useState(false);
