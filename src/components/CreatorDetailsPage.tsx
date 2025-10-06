@@ -484,14 +484,14 @@ const OverviewTab: React.FC<{
           break;
 
         case 'base_cpm':
-          const views = video.viewsCount || 0;
+          const views = video.views || 0;
           const cpmEarnings = (views / 1000) * (terms.cpmRate || 0);
           videoEarnings = (terms.baseAmount || 0) + cpmEarnings;
           calculation = `Base: $${(terms.baseAmount || 0).toFixed(2)} + CPM: $${cpmEarnings.toFixed(2)} (${formatNumber(views)} views × $${terms.cpmRate}/1K)`;
           break;
 
         case 'base_guaranteed_views':
-          const actualViews = video.viewsCount || 0;
+          const actualViews = video.views || 0;
           const guaranteedViews = terms.guaranteedViews || 0;
           if (actualViews >= guaranteedViews) {
             videoEarnings = terms.baseAmount || 0;
@@ -504,7 +504,7 @@ const OverviewTab: React.FC<{
 
         case 'cpc':
           // Assuming clicks tracked somewhere, default to 0 if not available
-          const clicks = (video as any).clicksCount || 0;
+          const clicks = (video as any).clicks || 0;
           videoEarnings = clicks * (terms.cpcRate || 0);
           calculation = `${clicks} clicks × $${terms.cpcRate} CPC`;
           break;
@@ -533,7 +533,7 @@ const OverviewTab: React.FC<{
         videoTitle: video.title || video.description || 'Untitled',
         earnings: videoEarnings,
         calculation,
-        views: video.viewsCount || 0,
+        views: video.views || 0,
         accountUsername: video.accountInfo?.username || 'Unknown'
       });
     });
@@ -548,7 +548,7 @@ const OverviewTab: React.FC<{
       {/* Real-Time Earnings Calculator */}
       {profile?.customPaymentTerms && (
         <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
-          <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+        <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
             <Calculator className="w-5 h-5 text-gray-400" />
             Real-Time Earnings Calculator
           </h2>
@@ -716,10 +716,10 @@ const OverviewTab: React.FC<{
                 key={video.id}
                 className="bg-[#0A0A0A] border border-gray-800 rounded-lg overflow-hidden hover:border-gray-700 transition-colors"
               >
-                {video.thumbnailUrl && (
+                {video.thumbnail && (
                   <div className="relative aspect-video bg-gray-900">
                     <img
-                      src={video.thumbnailUrl}
+                      src={video.thumbnail}
                       alt={video.title || 'Video thumbnail'}
                       className="w-full h-full object-cover"
                     />
@@ -743,15 +743,15 @@ const OverviewTab: React.FC<{
                   <div className="flex items-center gap-3 text-xs text-gray-400">
                     <span className="flex items-center gap-1">
                       <Eye className="w-3 h-3" />
-                      {formatNumber(video.viewsCount || 0)}
+                      {formatNumber(video.views || 0)}
                     </span>
                     <span className="flex items-center gap-1">
                       <ThumbsUp className="w-3 h-3" />
-                      {formatNumber(video.likesCount || 0)}
+                      {formatNumber(video.likes || 0)}
                     </span>
                     <span className="flex items-center gap-1">
                       <MessageCircle className="w-3 h-3" />
-                      {formatNumber(video.commentsCount || 0)}
+                      {formatNumber(video.comments || 0)}
                     </span>
                   </div>
                 </div>
@@ -796,9 +796,9 @@ const AccountsTab: React.FC<{
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-white flex items-center gap-2">
             <LinkIcon className="w-5 h-5 text-gray-400" />
-            Linked Accounts 
-            <span className="text-sm font-normal text-gray-400">({linkedAccounts.length})</span>
-          </h2>
+          Linked Accounts 
+          <span className="text-sm font-normal text-gray-400">({linkedAccounts.length})</span>
+        </h2>
           <Button 
             onClick={onOpenLinkModal}
             className="bg-white hover:bg-gray-200 text-black font-semibold"

@@ -97,13 +97,13 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
             break;
 
           case 'base_cpm':
-            const views = video.viewsCount || 0;
+            const views = video.views || 0;
             const cpmEarnings = (views / 1000) * (terms.cpmRate || 0);
             videoEarnings = (terms.baseAmount || 0) + cpmEarnings;
             break;
 
           case 'base_guaranteed_views':
-            const actualViews = video.viewsCount || 0;
+            const actualViews = video.views || 0;
             const guaranteedViews = terms.guaranteedViews || 0;
             if (actualViews >= guaranteedViews) {
               videoEarnings = terms.baseAmount || 0;
@@ -111,7 +111,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
             break;
 
           case 'cpc':
-            const clicks = (video as any).clicksCount || 0;
+            const clicks = (video as any).clicks || 0;
             videoEarnings = clicks * (terms.cpcRate || 0);
             break;
 
