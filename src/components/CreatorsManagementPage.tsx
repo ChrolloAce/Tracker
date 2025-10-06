@@ -394,7 +394,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
                             ${(calculatedEarnings.get(creator.userId) || 0).toFixed(2)}
                           </div>
                           {profile?.customPaymentTerms && (
-                            <TrendingUp className="w-3 h-3 text-green-400" title="Real-time calculated" />
+                            <TrendingUp className="w-3 h-3 text-green-400" />
                           )}
                         </div>
                         {profile?.customPaymentTerms && (
