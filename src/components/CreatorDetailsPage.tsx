@@ -692,59 +692,90 @@ const OverviewTab: React.FC<{
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {filteredVideos.map((video: any) => (
-                  <tr 
-                    key={video.videoId}
-                    className="hover:bg-white/5 transition-colors"
-                  >
-                    {/* Video Info */}
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center ring-2 ring-white/10 flex-shrink-0">
-                          <PlatformIcon platform={video.platform} size="sm" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium text-white line-clamp-2">
-                            {video.videoTitle}
+                {filteredVideos.map((video: any) => {
+                  // Get account info for profile picture
+                  const account = linkedAccounts.find(acc => acc.id === video.accountId);
+                  
+                  return (
+                    <tr 
+                      key={video.videoId}
+                      className="hover:bg-white/5 transition-colors"
+                    >
+                      {/* Video Info */}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="relative flex-shrink-0">
+                            {account?.profilePicture ? (
+                              <img
+                                src={account.profilePicture}
+                                alt={video.accountUsername}
+                                className="w-10 h-10 rounded-full object-cover ring-2 ring-white/10"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  const parent = target.parentElement;
+                                  if (parent) {
+                                    const fallback = document.createElement('div');
+                                    fallback.className = 'w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center ring-2 ring-white/10';
+                                    fallback.innerHTML = `<span class="text-sm font-bold text-white">${video.accountUsername.charAt(0).toUpperCase()}</span>`;
+                                    parent.appendChild(fallback);
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center ring-2 ring-white/10">
+                                <span className="text-sm font-bold text-white">
+                                  {video.accountUsername.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                            )}
+                            <div className="absolute -bottom-1 -right-1">
+                              <PlatformIcon platform={video.platform} size="sm" />
+                            </div>
                           </div>
-                          <div className="text-xs text-gray-400 mt-0.5">
-                            @{video.accountUsername}
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-medium text-white line-clamp-2">
+                              {video.videoTitle}
+                            </div>
+                            <div className="text-xs text-gray-400 mt-0.5">
+                              @{video.accountUsername}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    
-                    {/* Thumbnail */}
-                    <td className="px-4 py-4">
-                      {video.thumbnail ? (
-                        <img
-                          src={video.thumbnail}
-                          alt={video.videoTitle}
-                          className="w-20 h-14 object-cover rounded"
-                        />
-                      ) : (
-                        <div className="w-20 h-14 bg-gray-900 rounded flex items-center justify-center">
-                          <Play className="w-5 h-5 text-gray-700" />
+                      </td>
+                      
+                      {/* Thumbnail */}
+                      <td className="px-4 py-3">
+                        {video.thumbnail ? (
+                          <img
+                            src={video.thumbnail}
+                            alt={video.videoTitle}
+                            className="w-16 h-12 object-cover rounded"
+                          />
+                        ) : (
+                          <div className="w-16 h-12 bg-gray-900 rounded flex items-center justify-center">
+                            <Play className="w-4 h-4 text-gray-700" />
+                          </div>
+                        )}
+                      </td>
+                      
+                      {/* Views */}
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center gap-1 text-white">
+                          <Eye className="w-3 h-3 text-gray-400" />
+                          <span className="text-sm">{formatNumber(video.views)}</span>
                         </div>
-                      )}
-                    </td>
-                    
-                    {/* Views */}
-                    <td className="px-4 py-4 text-center">
-                      <div className="flex items-center justify-center gap-1 text-white">
-                        <Eye className="w-4 h-4 text-gray-400" />
-                        <span className="font-medium">{formatNumber(video.views)}</span>
-                      </div>
-                    </td>
-                    
-                    {/* Payout */}
-                    <td className="px-4 py-4 text-right">
-                      <div className="text-lg font-bold text-white">
-                        ${video.earnings.toFixed(2)}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      
+                      {/* Payout */}
+                      <td className="px-4 py-3 text-right">
+                        <div className="text-base font-semibold text-white">
+                          ${video.earnings.toFixed(2)}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
