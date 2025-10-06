@@ -60,6 +60,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   const [recentVideos, setRecentVideos] = useState<any[]>([]);
   const [editMode, setEditMode] = useState(false);
   const [showLinkAccountsModal, setShowLinkAccountsModal] = useState(false);
+  const [calculatedTotalEarnings, setCalculatedTotalEarnings] = useState<number>(0);
   
   // Payment terms state
   const [selectedPaymentType, setSelectedPaymentType] = useState<PaymentTermType>('flat_fee');
@@ -83,6 +84,59 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   useEffect(() => {
     loadData();
   }, [currentOrgId, currentProjectId, creator.userId]);
+
+  // Calculate total earnings from videos
+  useEffect(() => {
+    if (!creatorProfile?.customPaymentTerms || recentVideos.length === 0) {
+      setCalculatedTotalEarnings(0);
+      return;
+    }
+
+    const terms = creatorProfile.customPaymentTerms;
+    let total = 0;
+
+    recentVideos.forEach((video: any) => {
+      let videoEarnings = 0;
+
+      switch (terms.type) {
+        case 'flat_fee':
+          videoEarnings = terms.baseAmount || 0;
+          break;
+
+        case 'base_cpm':
+          const views = video.views || 0;
+          const cpmEarnings = (views / 1000) * (terms.cpmRate || 0);
+          videoEarnings = (terms.baseAmount || 0) + cpmEarnings;
+          break;
+
+        case 'base_guaranteed_views':
+          const actualViews = video.views || 0;
+          const guaranteedViews = terms.guaranteedViews || 0;
+          if (actualViews >= guaranteedViews) {
+            videoEarnings = terms.baseAmount || 0;
+          }
+          break;
+
+        case 'cpc':
+          const clicks = (video as any).clicks || 0;
+          videoEarnings = clicks * (terms.cpcRate || 0);
+          break;
+
+        case 'revenue_share':
+          const revenue = (video as any).revenue || 0;
+          videoEarnings = revenue * ((terms.revenueSharePercentage || 0) / 100);
+          break;
+
+        case 'retainer':
+          videoEarnings = 0; // Retainer is monthly, not per video
+          break;
+      }
+
+      total += videoEarnings;
+    });
+
+    setCalculatedTotalEarnings(total);
+  }, [recentVideos, creatorProfile]);
 
   const loadData = async () => {
     if (!currentOrgId || !currentProjectId) return;
@@ -332,7 +386,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
               <span className="text-xs text-gray-400">Total Earned</span>
             </div>
             <div className="text-2xl font-bold text-white">
-              ${(creatorProfile?.totalEarnings || 0).toFixed(2)}
+              ${calculatedTotalEarnings.toFixed(2)}
             </div>
           </div>
           <div className="bg-[#0A0A0A] border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-all duration-200">
@@ -570,7 +624,7 @@ const OverviewTab: React.FC<{
     setHoveredVideo(videoId);
     hoverTimeoutRef.current = setTimeout(() => {
       setShowTooltip(true);
-    }, 1500);
+    }, 500);
   };
 
   const handleMouseLeave = () => {
