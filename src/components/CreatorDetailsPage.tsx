@@ -456,6 +456,9 @@ const OverviewTab: React.FC<{
   recentVideos: any[];
 }> = ({ profile, linkedAccounts, recentVideos }) => {
   const [selectedAccount, setSelectedAccount] = React.useState<string>('all');
+  const [hoveredVideo, setHoveredVideo] = React.useState<string | null>(null);
+  const [showTooltip, setShowTooltip] = React.useState(false);
+  const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -564,31 +567,23 @@ const OverviewTab: React.FC<{
     ? earnings.breakdown 
     : earnings.breakdown.filter(v => v.accountId === selectedAccount);
 
+  const handleMouseEnter = (videoId: string) => {
+    setHoveredVideo(videoId);
+    hoverTimeoutRef.current = setTimeout(() => {
+      setShowTooltip(true);
+    }, 1500);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    setHoveredVideo(null);
+    setShowTooltip(false);
+  };
+
   return (
     <div className="space-y-6">
-      {/* Total Earnings Summary */}
-      {profile?.customPaymentTerms && (
-        <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-semibold text-white mb-1 flex items-center gap-2">
-                <Calculator className="w-6 h-6 text-gray-400" />
-                Total Earnings
-              </h2>
-              <p className="text-sm text-gray-400">{earnings.details}</p>
-            </div>
-            <div className="text-right">
-              <div className="text-4xl font-bold text-white">
-                ${earnings.total.toFixed(2)}
-              </div>
-              <div className="text-sm text-gray-400 mt-1">
-                {filteredVideos.length} videos
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Account Cost Breakdown */}
       {profile?.customPaymentTerms && accountEarnings.length > 0 && (
         <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
@@ -596,6 +591,26 @@ const OverviewTab: React.FC<{
             <DollarSign className="w-5 h-5 text-gray-400" />
             Cost Per Account
           </h3>
+          
+          {/* Summary Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-[#0A0A0A] border border-gray-800 rounded-lg p-4">
+              <div className="text-xs text-gray-400 mb-1">Linked Accounts</div>
+              <div className="text-2xl font-bold text-white">{linkedAccounts.length}</div>
+            </div>
+            <div className="bg-[#0A0A0A] border border-gray-800 rounded-lg p-4">
+              <div className="text-xs text-gray-400 mb-1">Total Earned</div>
+              <div className="text-2xl font-bold text-white">${earnings.total.toFixed(2)}</div>
+            </div>
+            <div className="bg-[#0A0A0A] border border-gray-800 rounded-lg p-4">
+              <div className="text-xs text-gray-400 mb-1">Pending</div>
+              <div className="text-2xl font-bold text-white">$0.00</div>
+            </div>
+            <div className="bg-[#0A0A0A] border border-gray-800 rounded-lg p-4">
+              <div className="text-xs text-gray-400 mb-1">Payouts</div>
+              <div className="text-2xl font-bold text-white">{payouts.length}</div>
+            </div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {accountEarnings.map((item) => (
               <div
@@ -768,10 +783,29 @@ const OverviewTab: React.FC<{
                       </td>
                       
                       {/* Payout */}
-                      <td className="px-4 py-3 text-right">
-                        <div className="text-base font-semibold text-white">
+                      <td 
+                        className="px-4 py-3 text-right relative"
+                        onMouseEnter={() => handleMouseEnter(video.videoId)}
+                        onMouseLeave={handleMouseLeave}
+                      >
+                        <div className="text-sm text-white">
                           ${video.earnings.toFixed(2)}
                         </div>
+                        
+                        {/* Tooltip */}
+                        {hoveredVideo === video.videoId && showTooltip && (
+                          <div className="absolute right-0 bottom-full mb-2 w-64 bg-zinc-900 border border-gray-700 rounded-lg shadow-xl p-3 z-50 pointer-events-none">
+                            <div className="text-xs font-semibold text-white mb-2">
+                              Calculation Breakdown
+                            </div>
+                            <div className="text-xs text-gray-300 whitespace-pre-line">
+                              {video.calculation}
+                            </div>
+                            <div className="absolute top-full right-4 -mt-1">
+                              <div className="border-4 border-transparent border-t-gray-700" />
+                            </div>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );
