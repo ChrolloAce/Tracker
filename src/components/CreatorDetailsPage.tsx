@@ -590,26 +590,6 @@ const OverviewTab: React.FC<{
             <DollarSign className="w-5 h-5 text-gray-400" />
             Cost Per Account
           </h3>
-          
-          {/* Summary Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-[#0A0A0A] border border-gray-800 rounded-lg p-4">
-              <div className="text-xs text-gray-400 mb-1">Linked Accounts</div>
-              <div className="text-2xl font-bold text-white">{linkedAccounts.length}</div>
-            </div>
-            <div className="bg-[#0A0A0A] border border-gray-800 rounded-lg p-4">
-              <div className="text-xs text-gray-400 mb-1">Total Earned</div>
-              <div className="text-2xl font-bold text-white">${earnings.total.toFixed(2)}</div>
-            </div>
-            <div className="bg-[#0A0A0A] border border-gray-800 rounded-lg p-4">
-              <div className="text-xs text-gray-400 mb-1">Pending</div>
-              <div className="text-2xl font-bold text-white">$0.00</div>
-            </div>
-            <div className="bg-[#0A0A0A] border border-gray-800 rounded-lg p-4">
-              <div className="text-xs text-gray-400 mb-1">Payouts</div>
-              <div className="text-2xl font-bold text-white">{payouts.length}</div>
-            </div>
-          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {accountEarnings.map((item) => (
               <div
