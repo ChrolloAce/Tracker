@@ -20,26 +20,33 @@ const TrackingJobsPanel: React.FC<TrackingJobsPanelProps> = ({ onJobCompleted })
   useEffect(() => {
     if (!currentOrgId || !currentProjectId) return;
 
+    console.log('👀 TrackingJobsPanel: Watching for jobs in project:', currentProjectId);
+
     // Watch for job updates in real-time
     const unsubscribe = TrackingJobService.watchProjectJobs(
       currentOrgId,
       currentProjectId,
       (updatedJobs) => {
+        console.log('📊 TrackingJobsPanel: Received job updates:', updatedJobs.length, 'jobs');
         setJobs(updatedJobs);
         
         // Check for newly completed jobs
         updatedJobs.forEach(job => {
           if (job.status === 'completed' && job.accountId) {
+            console.log('✅ Job completed for account:', job.accountId);
             onJobCompleted?.(job.accountId);
           }
         });
       },
       (error) => {
-        console.error('Error watching jobs:', error);
+        console.error('❌ Error watching jobs:', error);
       }
     );
 
-    return () => unsubscribe();
+    return () => {
+      console.log('👋 TrackingJobsPanel: Unsubscribing from job updates');
+      unsubscribe();
+    };
   }, [currentOrgId, currentProjectId, onJobCompleted]);
 
   // Filter to show only active jobs (pending, processing) and recent completed/failed
@@ -49,7 +56,12 @@ const TrackingJobsPanel: React.FC<TrackingJobsPanelProps> = ({ onJobCompleted })
     (job.completedAt && Date.now() - job.completedAt.toMillis() < 5 * 60 * 1000) // Last 5 minutes
   );
 
-  if (activeJobs.length === 0) return null;
+  console.log('🎯 TrackingJobsPanel: Filtered to', activeJobs.length, 'active jobs out of', jobs.length, 'total');
+
+  if (activeJobs.length === 0) {
+    console.log('⚠️  TrackingJobsPanel: No active jobs to display');
+    return null;
+  }
 
   const handleRetry = async (jobId: string) => {
     try {
