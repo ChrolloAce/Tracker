@@ -23,6 +23,7 @@ import { Button } from './ui/Button';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import { Timestamp } from 'firebase/firestore';
+import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
 
 interface CreatorDetailsPageProps {
   creator: OrgMember;
@@ -59,6 +60,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [recentVideos, setRecentVideos] = useState<any[]>([]);
   const [editMode, setEditMode] = useState(false);
+  const [showLinkAccountsModal, setShowLinkAccountsModal] = useState(false);
   
   // Payment terms state
   const [selectedPaymentType, setSelectedPaymentType] = useState<PaymentTermType>('flat_fee');
@@ -123,48 +125,61 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
       }
 
       // Load linked accounts
+      console.log('🔍 Loading linked accounts for creator:', creator.userId);
       const links = await CreatorLinksService.getCreatorLinkedAccounts(
         currentOrgId,
         currentProjectId,
         creator.userId
       );
+      console.log('📋 Found creator links:', links.length, links);
       const accountIds = links.map(link => link.accountId);
+      console.log('📋 Account IDs to link:', accountIds);
       
       // Load all accounts from project
       const projectAccounts = await FirestoreDataService.getTrackedAccounts(
         currentOrgId,
         currentProjectId
       );
+      console.log('📊 All project accounts:', projectAccounts.length);
       setAllAccounts(projectAccounts);
       
       // Filter to linked accounts
       const linked = projectAccounts.filter(acc => accountIds.includes(acc.id));
+      console.log('✅ Linked accounts after filter:', linked.length, linked);
       setLinkedAccounts(linked);
 
       // Load recent videos from linked accounts (max 10)
       if (linked.length > 0) {
+        console.log('🎬 Loading videos for', linked.length, 'accounts');
         const videosPromises = linked.map(async (account) => {
           try {
+            console.log('📹 Fetching videos for account:', account.username);
             const videos = await FirestoreDataService.getVideos(
               currentOrgId,
               currentProjectId,
               { trackedAccountId: account.id, limitCount: 5 }
             );
+            console.log(`✅ Found ${videos.length} videos for ${account.username}`);
             return videos.map(v => ({ ...v, accountInfo: account }));
           } catch (error) {
-            console.error(`Failed to load videos for account ${account.id}:`, error);
+            console.error(`❌ Failed to load videos for account ${account.id}:`, error);
             return [];
           }
         });
         
         const allVideos = (await Promise.all(videosPromises)).flat();
+        console.log('🎬 Total videos loaded:', allVideos.length);
         // Sort by upload date and take top 10
         const sortedVideos = allVideos.sort((a, b) => {
           const dateA = a.uploadDate?.toDate?.() || new Date(0);
           const dateB = b.uploadDate?.toDate?.() || new Date(0);
           return dateB.getTime() - dateA.getTime();
         }).slice(0, 10);
+        console.log('🎬 Sorted and limited videos:', sortedVideos.length);
         setRecentVideos(sortedVideos);
+      } else {
+        console.log('⚠️ No linked accounts found, skipping video loading');
+        setRecentVideos([]);
       }
 
       // Load payouts
@@ -376,6 +391,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
             allAccounts={allAccounts}
             creator={creator}
             onUpdate={loadData}
+            onOpenLinkModal={() => setShowLinkAccountsModal(true)}
           />
         )}
         {activeTab === 'payment' && (
@@ -415,6 +431,18 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
         )}
         {activeTab === 'payouts' && <PayoutsTab payouts={payouts} />}
       </div>
+
+      {/* Link Accounts Modal */}
+      {showLinkAccountsModal && (
+        <LinkCreatorAccountsModal
+          creator={creator}
+          onClose={() => setShowLinkAccountsModal(false)}
+          onSuccess={() => {
+            setShowLinkAccountsModal(false);
+            loadData();
+          }}
+        />
+      )}
     </div>
   );
 };
@@ -610,15 +638,25 @@ const AccountsTab: React.FC<{
   allAccounts: TrackedAccount[];
   creator: OrgMember;
   onUpdate: () => void;
-}> = ({ linkedAccounts }) => {
+  onOpenLinkModal: () => void;
+}> = ({ linkedAccounts, onOpenLinkModal }) => {
   return (
     <div className="space-y-6">
       <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
-        <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-          <LinkIcon className="w-5 h-5 text-gray-400" />
-          Linked Accounts 
-          <span className="text-sm font-normal text-gray-400">({linkedAccounts.length})</span>
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+            <LinkIcon className="w-5 h-5 text-gray-400" />
+            Linked Accounts 
+            <span className="text-sm font-normal text-gray-400">({linkedAccounts.length})</span>
+          </h2>
+          <Button 
+            onClick={onOpenLinkModal}
+            className="bg-white hover:bg-gray-200 text-black font-semibold"
+          >
+            <LinkIcon className="w-4 h-4 mr-2" />
+            Link Accounts
+          </Button>
+        </div>
         {linkedAccounts.length === 0 ? (
           <div className="text-center py-12 text-gray-400">
             <User className="w-16 h-16 text-gray-600 mx-auto mb-4" />
