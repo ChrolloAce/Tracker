@@ -454,7 +454,7 @@ const OverviewTab: React.FC<{
   linkedAccounts: TrackedAccount[];
   payouts: Payout[];
   recentVideos: any[];
-}> = ({ creator, profile, linkedAccounts, recentVideos }) => {
+}> = ({ profile, linkedAccounts, recentVideos }) => {
   const [selectedAccount, setSelectedAccount] = React.useState<string>('all');
   
   const formatNumber = (num: number) => {
