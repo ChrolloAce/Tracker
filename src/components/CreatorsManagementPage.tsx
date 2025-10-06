@@ -3,7 +3,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { OrgMember, Creator } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
 import CreatorLinksService from '../services/CreatorLinksService';
-import { UserPlus, Video, Link as LinkIcon, DollarSign, User, X, Edit3, Users as UsersIcon } from 'lucide-react';
+import FirestoreDataService from '../services/FirestoreDataService';
+import { UserPlus, Video, Link as LinkIcon, DollarSign, User, X, Edit3, Users as UsersIcon, TrendingUp } from 'lucide-react';
 import { Button } from './ui/Button';
 import CreateCreatorModal from './CreateCreatorModal';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
@@ -21,6 +22,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
   const { user, currentOrgId, currentProjectId } = useAuth();
   const [creators, setCreators] = useState<OrgMember[]>([]);
   const [creatorProfiles, setCreatorProfiles] = useState<Map<string, Creator>>(new Map());
+  const [calculatedEarnings, setCalculatedEarnings] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [linkingCreator, setLinkingCreator] = useState<OrgMember | null>(null);
@@ -35,6 +37,103 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
   useImperativeHandle(ref, () => ({
     openInviteModal: () => setShowInviteModal(true)
   }));
+
+  const calculateCreatorEarnings = async (creatorId: string, profile: Creator) => {
+    if (!currentOrgId || !currentProjectId || !profile.customPaymentTerms) {
+      return 0;
+    }
+
+    try {
+      // Get linked accounts
+      const links = await CreatorLinksService.getCreatorLinkedAccounts(
+        currentOrgId,
+        currentProjectId,
+        creatorId
+      );
+      
+      if (links.length === 0) return 0;
+
+      const accountIds = links.map(link => link.accountId);
+      
+      // Load all accounts
+      const projectAccounts = await FirestoreDataService.getTrackedAccounts(
+        currentOrgId,
+        currentProjectId
+      );
+      
+      const linkedAccounts = projectAccounts.filter(acc => accountIds.includes(acc.id));
+      
+      if (linkedAccounts.length === 0) return 0;
+
+      // Load videos for each account
+      const videosPromises = linkedAccounts.map(async (account) => {
+        try {
+          const videos = await FirestoreDataService.getVideos(
+            currentOrgId,
+            currentProjectId,
+            { trackedAccountId: account.id, limitCount: 10 }
+          );
+          return videos;
+        } catch (error) {
+          console.error(`Failed to load videos for account ${account.id}:`, error);
+          return [];
+        }
+      });
+      
+      const allVideos = (await Promise.all(videosPromises)).flat();
+      
+      if (allVideos.length === 0) return 0;
+
+      // Calculate earnings
+      const terms = profile.customPaymentTerms;
+      let total = 0;
+
+      allVideos.forEach((video: any) => {
+        let videoEarnings = 0;
+
+        switch (terms.type) {
+          case 'flat_fee':
+            videoEarnings = terms.baseAmount || 0;
+            break;
+
+          case 'base_cpm':
+            const views = video.viewsCount || 0;
+            const cpmEarnings = (views / 1000) * (terms.cpmRate || 0);
+            videoEarnings = (terms.baseAmount || 0) + cpmEarnings;
+            break;
+
+          case 'base_guaranteed_views':
+            const actualViews = video.viewsCount || 0;
+            const guaranteedViews = terms.guaranteedViews || 0;
+            if (actualViews >= guaranteedViews) {
+              videoEarnings = terms.baseAmount || 0;
+            }
+            break;
+
+          case 'cpc':
+            const clicks = (video as any).clicksCount || 0;
+            videoEarnings = clicks * (terms.cpcRate || 0);
+            break;
+
+          case 'revenue_share':
+            const revenue = (video as any).revenue || 0;
+            videoEarnings = revenue * ((terms.revenueSharePercentage || 0) / 100);
+            break;
+
+          case 'retainer':
+            videoEarnings = 0; // Retainer is monthly, not per video
+            break;
+        }
+
+        total += videoEarnings;
+      });
+
+      return total;
+    } catch (error) {
+      console.error(`Failed to calculate earnings for creator ${creatorId}:`, error);
+      return 0;
+    }
+  };
 
   const loadData = async () => {
     if (!currentOrgId || !currentProjectId || !user) return;
@@ -57,6 +156,16 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
         creatorProfilesMap.set(profile.id, profile);
       });
       setCreatorProfiles(creatorProfilesMap);
+
+      // Calculate real-time earnings for each creator
+      const earningsMap = new Map<string, number>();
+      await Promise.all(
+        creatorProfilesList.map(async (profile) => {
+          const earnings = await calculateCreatorEarnings(profile.id, profile);
+          earningsMap.set(profile.id, earnings);
+        })
+      );
+      setCalculatedEarnings(earningsMap);
     } catch (error) {
       console.error('Failed to load creators:', error);
     } finally {
@@ -115,7 +224,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
   }
 
   const totalLinkedAccounts = Array.from(creatorProfiles.values()).reduce((sum, p) => sum + p.linkedAccountsCount, 0);
-  const totalEarnings = Array.from(creatorProfiles.values()).reduce((sum, p) => sum + p.totalEarnings, 0);
+  const totalEarnings = Array.from(calculatedEarnings.values()).reduce((sum, earnings) => sum + earnings, 0);
 
   return (
     <div className="space-y-6">
@@ -173,7 +282,10 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
             <div className="text-3xl font-bold text-white mb-1">
               ${totalEarnings.toFixed(2)}
             </div>
-            <div className="text-sm text-gray-400">Total Paid Out</div>
+            <div className="flex items-center gap-1 text-sm text-gray-400">
+              <span>Total Earnings</span>
+              <TrendingUp className="w-3 h-3" />
+            </div>
           </div>
         </div>
       </div>
@@ -277,9 +389,19 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm font-semibold text-white">
-                          ${(profile?.totalEarnings || 0).toFixed(2)}
+                        <div className="flex items-center gap-2">
+                          <div className="text-sm font-semibold text-white">
+                            ${(calculatedEarnings.get(creator.userId) || 0).toFixed(2)}
+                          </div>
+                          {profile?.customPaymentTerms && (
+                            <TrendingUp className="w-3 h-3 text-green-400" title="Real-time calculated" />
+                          )}
                         </div>
+                        {profile?.customPaymentTerms && (
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            Calculated
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-400">
