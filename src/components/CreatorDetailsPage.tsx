@@ -17,9 +17,6 @@ import {
   User,
   Play,
   Eye,
-  ThumbsUp,
-  MessageCircle,
-  TrendingUp,
   Calculator
 } from 'lucide-react';
 import { Button } from './ui/Button';
