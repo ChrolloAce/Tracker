@@ -61,6 +61,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   const [editMode, setEditMode] = useState(false);
   const [showLinkAccountsModal, setShowLinkAccountsModal] = useState(false);
   const [calculatedTotalEarnings, setCalculatedTotalEarnings] = useState<number>(0);
+  const [timePeriod, setTimePeriod] = useState<'payment_period' | 'last_30' | 'last_7' | 'all_time'>('payment_period');
   
   // Payment terms state
   const [selectedPaymentType, setSelectedPaymentType] = useState<PaymentTermType>('flat_fee');
@@ -92,10 +93,44 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
       return;
     }
 
+    // Filter videos by time period
+    const now = new Date();
+    let filteredVideos = recentVideos;
+    
+    switch (timePeriod) {
+      case 'last_7':
+        const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        filteredVideos = recentVideos.filter(video => {
+          const uploadDate = video.uploadDate?.toDate?.() || new Date(0);
+          return uploadDate >= last7Days;
+        });
+        break;
+      
+      case 'last_30':
+        const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        filteredVideos = recentVideos.filter(video => {
+          const uploadDate = video.uploadDate?.toDate?.() || new Date(0);
+          return uploadDate >= last30Days;
+        });
+        break;
+      
+      case 'payment_period':
+        const paymentStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        filteredVideos = recentVideos.filter(video => {
+          const uploadDate = video.uploadDate?.toDate?.() || new Date(0);
+          return uploadDate >= paymentStart;
+        });
+        break;
+      
+      case 'all_time':
+      default:
+        filteredVideos = recentVideos;
+    }
+
     const terms = creatorProfile.customPaymentTerms;
     let total = 0;
 
-    recentVideos.forEach((video: any) => {
+    filteredVideos.forEach((video: any) => {
       let videoEarnings = 0;
 
       switch (terms.type) {
@@ -136,7 +171,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
     });
 
     setCalculatedTotalEarnings(total);
-  }, [recentVideos, creatorProfile]);
+  }, [recentVideos, creatorProfile, timePeriod]);
 
   const loadData = async () => {
     if (!currentOrgId || !currentProjectId) return;
@@ -436,6 +471,8 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
             linkedAccounts={linkedAccounts}
             payouts={payouts}
             recentVideos={recentVideos}
+            timePeriod={timePeriod}
+            onTimePeriodChange={setTimePeriod}
           />
         )}
         {activeTab === 'accounts' && (
@@ -507,7 +544,9 @@ const OverviewTab: React.FC<{
   linkedAccounts: TrackedAccount[];
   payouts: Payout[];
   recentVideos: any[];
-}> = ({ profile, linkedAccounts, recentVideos }) => {
+  timePeriod: 'payment_period' | 'last_30' | 'last_7' | 'all_time';
+  onTimePeriodChange: (period: 'payment_period' | 'last_30' | 'last_7' | 'all_time') => void;
+}> = ({ profile, linkedAccounts, recentVideos, timePeriod, onTimePeriodChange }) => {
   const [selectedAccount, setSelectedAccount] = React.useState<string>('all');
   const [hoveredVideo, setHoveredVideo] = React.useState<string | null>(null);
   const [showTooltip, setShowTooltip] = React.useState(false);
@@ -519,9 +558,45 @@ const OverviewTab: React.FC<{
     return num.toString();
   };
 
+  // Filter videos by time period
+  const getFilteredVideosByTime = () => {
+    const now = new Date();
+    
+    switch (timePeriod) {
+      case 'last_7':
+        const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        return recentVideos.filter(video => {
+          const uploadDate = video.uploadDate?.toDate?.() || new Date(0);
+          return uploadDate >= last7Days;
+        });
+      
+      case 'last_30':
+        const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        return recentVideos.filter(video => {
+          const uploadDate = video.uploadDate?.toDate?.() || new Date(0);
+          return uploadDate >= last30Days;
+        });
+      
+      case 'payment_period':
+        // For payment period, we'll use last 30 days as default
+        // This could be customized based on the creator's payment schedule
+        const paymentStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        return recentVideos.filter(video => {
+          const uploadDate = video.uploadDate?.toDate?.() || new Date(0);
+          return uploadDate >= paymentStart;
+        });
+      
+      case 'all_time':
+      default:
+        return recentVideos;
+    }
+  };
+
+  const filteredVideosByTime = getFilteredVideosByTime();
+
   // Calculate real-time earnings based on payment structure
   const calculateEarnings = () => {
-    if (!profile?.customPaymentTerms || recentVideos.length === 0) {
+    if (!profile?.customPaymentTerms || filteredVideosByTime.length === 0) {
       return { total: 0, breakdown: [], details: '' };
     }
 
@@ -529,7 +604,7 @@ const OverviewTab: React.FC<{
     let total = 0;
     const breakdown: any[] = [];
 
-    recentVideos.forEach((video: any) => {
+    filteredVideosByTime.forEach((video: any) => {
       let videoEarnings = 0;
       let calculation = '';
 
@@ -637,6 +712,59 @@ const OverviewTab: React.FC<{
 
   return (
     <div className="space-y-6">
+      {/* Time Period Selector */}
+      <div className="bg-[#161616] rounded-xl border border-gray-800 p-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium text-gray-400">Time Period</h3>
+          <div className="flex gap-2">
+            <button
+              onClick={() => onTimePeriodChange('payment_period')}
+              className={clsx(
+                'px-4 py-2 rounded-lg text-sm font-medium transition-all',
+                timePeriod === 'payment_period'
+                  ? 'bg-white text-black'
+                  : 'bg-[#0A0A0A] text-gray-400 hover:text-white border border-gray-800 hover:border-gray-700'
+              )}
+            >
+              Payment Period
+            </button>
+            <button
+              onClick={() => onTimePeriodChange('last_7')}
+              className={clsx(
+                'px-4 py-2 rounded-lg text-sm font-medium transition-all',
+                timePeriod === 'last_7'
+                  ? 'bg-white text-black'
+                  : 'bg-[#0A0A0A] text-gray-400 hover:text-white border border-gray-800 hover:border-gray-700'
+              )}
+            >
+              Last 7 Days
+            </button>
+            <button
+              onClick={() => onTimePeriodChange('last_30')}
+              className={clsx(
+                'px-4 py-2 rounded-lg text-sm font-medium transition-all',
+                timePeriod === 'last_30'
+                  ? 'bg-white text-black'
+                  : 'bg-[#0A0A0A] text-gray-400 hover:text-white border border-gray-800 hover:border-gray-700'
+              )}
+            >
+              Last 30 Days
+            </button>
+            <button
+              onClick={() => onTimePeriodChange('all_time')}
+              className={clsx(
+                'px-4 py-2 rounded-lg text-sm font-medium transition-all',
+                timePeriod === 'all_time'
+                  ? 'bg-white text-black'
+                  : 'bg-[#0A0A0A] text-gray-400 hover:text-white border border-gray-800 hover:border-gray-700'
+              )}
+            >
+              All Time
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Account Cost Breakdown */}
       {profile?.customPaymentTerms && accountEarnings.length > 0 && (
         <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
@@ -666,18 +794,18 @@ const OverviewTab: React.FC<{
                   ) : (
                     <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
                       <User className="w-5 h-5 text-gray-400" />
-                    </div>
-                  )}
+            </div>
+          )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-white truncate">
                         {item.account.displayName || item.account.username}
                       </span>
                       <PlatformIcon platform={item.account.platform} size="sm" />
-                    </div>
+        </div>
                     <div className="text-xs text-gray-400">@{item.account.username}</div>
-                  </div>
-                </div>
+      </div>
+            </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-400">Total Payout</span>
@@ -699,8 +827,8 @@ const OverviewTab: React.FC<{
               ← Show all accounts
             </button>
           )}
-        </div>
-      )}
+            </div>
+          )}
 
       {/* Video Performance */}
       <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
@@ -709,8 +837,8 @@ const OverviewTab: React.FC<{
             <Play className="w-5 h-5 text-gray-400" />
             Video Performance
             <span className="text-sm font-normal text-gray-400">({filteredVideos.length})</span>
-          </h2>
-        </div>
+        </h2>
+          </div>
         
         {filteredVideos.length === 0 ? (
           <div className="text-center py-12 text-gray-400">
@@ -719,7 +847,7 @@ const OverviewTab: React.FC<{
             <p className="text-xs text-gray-500 mt-1">
               {selectedAccount !== 'all' ? 'Try selecting a different account' : 'Link accounts and sync videos to see performance'}
             </p>
-          </div>
+      </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -775,12 +903,12 @@ const OverviewTab: React.FC<{
                                 <span className="text-sm font-bold text-white">
                                   {video.accountUsername.charAt(0).toUpperCase()}
                                 </span>
-                              </div>
-                            )}
+            </div>
+          )}
                             <div className="absolute -bottom-1 -right-1">
                               <PlatformIcon platform={video.platform} size="sm" />
-                            </div>
-                          </div>
+        </div>
+      </div>
                           <div className="min-w-0 flex-1">
                             <div className="text-sm font-medium text-white line-clamp-2">
                               {video.videoTitle}
@@ -803,8 +931,8 @@ const OverviewTab: React.FC<{
                         ) : (
                           <div className="w-16 h-12 bg-gray-900 rounded flex items-center justify-center">
                             <Play className="w-4 h-4 text-gray-700" />
-                          </div>
-                        )}
+            </div>
+          )}
                       </td>
                       
                       {/* Views */}
@@ -812,7 +940,7 @@ const OverviewTab: React.FC<{
                         <div className="flex items-center justify-center gap-1 text-white">
                           <Eye className="w-3 h-3 text-gray-400" />
                           <span className="text-sm">{formatNumber(video.views)}</span>
-                        </div>
+        </div>
                       </td>
                       
                       {/* Payout */}
@@ -823,7 +951,7 @@ const OverviewTab: React.FC<{
                       >
                         <div className="text-sm text-white">
                           ${video.earnings.toFixed(2)}
-                        </div>
+      </div>
                         
                         {/* Tooltip */}
                         {hoveredVideo === video.videoId && showTooltip && (
