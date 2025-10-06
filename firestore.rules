@@ -431,25 +431,6 @@ service cloud.firestore {
       allow read: if isSignedIn() && 
         request.auth.token.email == resource.data.email;
     }
-    
-    // ==================== TRACKING JOBS ====================
-    
-    // Tracking jobs collection (root level for background processing)
-    match /trackingJobs/{jobId} {
-      // Users can read their own jobs
-      allow read: if isSignedIn() && 
-        (request.auth.uid == resource.data.userId || 
-         isOrgMember(resource.data.orgId));
-      
-      // Users can create jobs for their organizations
-      allow create: if isSignedIn() && 
-        request.resource.data.userId == request.auth.uid &&
-        isOrgMember(request.resource.data.orgId);
-      
-      // Only the system (via serverless) can update jobs
-      // This is enforced via Firebase Admin SDK which bypasses these rules
-      allow update, delete: if false;
-    }
   }
 }
 

@@ -182,8 +182,6 @@ function App() {
         element={
           !user ? (
             <Navigate to="/login" replace />
-          ) : currentOrgId ? (
-            <Navigate to="/dashboard" replace />
           ) : (
             <CreateOrganizationPage />
           )

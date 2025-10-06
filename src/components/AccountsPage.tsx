@@ -39,8 +39,6 @@ import Pagination from './ui/Pagination';
 import ColumnPreferencesService from '../services/ColumnPreferencesService';
 import KPICards from './KPICards';
 import DateFilterService from '../services/DateFilterService';
-import TrackingJobsPanel from './TrackingJobsPanel';
-import TrackingJobService from '../services/TrackingJobService';
 
 export interface AccountsPageProps {
   dateFilter: DateFilterType;
@@ -186,38 +184,37 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     openAddModal: () => setIsAddModalOpen(true)
   }), [handleBackToTable]);
 
-  // Define loadAccounts at component level so it can be called from anywhere
-  const loadAccounts = useCallback(async () => {
-    if (!currentOrgId || !currentProjectId) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      console.log('📥 Loading accounts from Firestore...');
-      const loadedAccounts = await AccountTrackingServiceFirebase.getTrackedAccounts(currentOrgId, currentProjectId);
-      setAccounts(loadedAccounts);
-
-      // Restore selected account from localStorage
-      const savedSelectedAccountId = localStorage.getItem('selectedAccountId');
-      if (savedSelectedAccountId && loadedAccounts.length > 0) {
-        const savedAccount = loadedAccounts.find(a => a.id === savedSelectedAccountId);
-        if (savedAccount) {
-          console.log('🔄 Restoring selected account:', savedAccount.username);
-          setSelectedAccount(savedAccount);
-        }
-      }
-    } catch (error) {
-      console.error('❌ Failed to load accounts:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentOrgId, currentProjectId]);
-
-  // Load accounts on mount
+  // Load accounts on mount and restore selected account
   useEffect(() => {
+    const loadAccounts = async () => {
+      if (!currentOrgId || !currentProjectId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        console.log('📥 Loading accounts from Firestore...');
+        const loadedAccounts = await AccountTrackingServiceFirebase.getTrackedAccounts(currentOrgId, currentProjectId);
+        setAccounts(loadedAccounts);
+
+        // Restore selected account from localStorage
+        const savedSelectedAccountId = localStorage.getItem('selectedAccountId');
+        if (savedSelectedAccountId && loadedAccounts.length > 0) {
+          const savedAccount = loadedAccounts.find(a => a.id === savedSelectedAccountId);
+          if (savedAccount) {
+            console.log('🔄 Restoring selected account:', savedAccount.username);
+            setSelectedAccount(savedAccount);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Failed to load accounts:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     loadAccounts();
-  }, [loadAccounts]);
+  }, [currentOrgId, currentProjectId]);
 
   // Calculate filtered stats for all accounts (for table view)
   useEffect(() => {
@@ -455,15 +452,15 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     const username = newAccountUsername.trim();
     const platform = newAccountPlatform;
 
+    // Add to processing accounts immediately with timestamp
+    setProcessingAccounts(prev => [...prev, { username, platform, startedAt: Date.now() }]);
+    
     // Close modal and reset form immediately
     setNewAccountUsername('');
     setIsAddModalOpen(false);
 
     try {
-      console.log(`🚀 Creating background tracking job for @${username} on ${platform}`);
-      
-      // Create a background job - this returns immediately!
-      const jobId = await TrackingJobService.createJob(
+      const accountId = await AccountTrackingServiceFirebase.addAccount(
         currentOrgId,
         currentProjectId,
         user.uid,
@@ -472,18 +469,25 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         'my' // Default to 'my' account type
       );
       
-      console.log(`✅ Tracking job created: ${jobId}`);
-      console.log(`📊 Watch the bottom-right panel for progress!`);
-      console.log(`💡 You can close this tab - tracking will continue in the background`);
+      // Reload accounts
+      const updatedAccounts = await AccountTrackingServiceFirebase.getTrackedAccounts(currentOrgId, currentProjectId);
+      setAccounts(updatedAccounts);
       
-      // The TrackingJobsPanel will automatically show the job progress
-      // When the job completes, it will call loadAccounts() via onJobCompleted callback
+      console.log(`✅ Added account @${username}`);
       
+      // Automatically sync videos for the newly added account
+      console.log(`🔄 Auto-syncing videos...`);
+      await handleSyncAccount(accountId);
+      
+      // Remove from processing accounts
+      setProcessingAccounts(prev => prev.filter(acc => acc.username !== username));
     } catch (error) {
-      console.error('Failed to create tracking job:', error);
-      alert('Failed to start tracking. Please try again.');
+      console.error('Failed to add account:', error);
+      alert('Failed to add account. Please check the username and try again.');
+      // Remove from processing accounts on error
+      setProcessingAccounts(prev => prev.filter(acc => acc.username !== username));
     }
-  }, [newAccountUsername, newAccountPlatform, currentOrgId, currentProjectId, user]);
+  }, [newAccountUsername, newAccountPlatform, currentOrgId, currentProjectId, user, handleSyncAccount]);
 
   const handleRemoveAccount = useCallback(async (accountId: string) => {
     if (!currentOrgId || !currentProjectId || !window.confirm('Are you sure you want to remove this account?')) return;
@@ -2044,15 +2048,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
           </div>
         )}
       </Modal>
-
-      {/* Background Tracking Jobs Panel */}
-      <TrackingJobsPanel 
-        onJobCompleted={(accountId) => {
-          console.log('Account tracking completed:', accountId);
-          // Refresh accounts list
-          loadAccounts();
-        }}
-      />
     </div>
   );
 });

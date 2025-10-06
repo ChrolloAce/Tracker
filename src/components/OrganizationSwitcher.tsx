@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, Building2, Check, Crown, Shield, User } from 'lucide-react';
+import { ChevronDown, Building2, Check, Crown, Shield, User, Plus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import OrganizationService from '../services/OrganizationService';
 import { Organization, Role } from '../types/firestore';
@@ -190,6 +190,20 @@ const OrganizationSwitcher: React.FC = () => {
                   </button>
                 );
               })}
+            </div>
+
+            {/* Create New Organization Button */}
+            <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-800">
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  window.location.href = '/create-organization';
+                }}
+                className="w-full px-4 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg transition-all flex items-center justify-center gap-2 font-medium"
+              >
+                <Plus className="w-4 h-4" />
+                Create New Organization
+              </button>
             </div>
           </div>
         </div>

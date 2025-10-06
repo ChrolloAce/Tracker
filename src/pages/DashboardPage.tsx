@@ -16,8 +16,7 @@ import TrackedLinksPage, { TrackedLinksPageRef } from '../components/TrackedLink
 import TeamManagementPage from '../components/TeamManagementPage';
 import PendingInvitationsPage from '../components/PendingInvitationsPage';
 import CreatorPortalPage from '../components/CreatorPortalPage';
-import CreatorsManagementPage from '../components/CreatorsManagementPage';
-import TrackingJobsPanel from '../components/TrackingJobsPanel';
+import CreatorsManagementPage, { CreatorsManagementPageRef } from '../components/CreatorsManagementPage';
 import { PageLoadingSkeleton } from '../components/ui/LoadingSkeleton';
 import OrganizationService from '../services/OrganizationService';
 import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
@@ -70,6 +69,7 @@ function DashboardPage() {
   const [accountsPlatformFilter, setAccountsPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'youtube'>('all');
   const accountsPageRef = useRef<AccountsPageRef | null>(null);
   const trackedLinksPageRef = useRef<TrackedLinksPageRef | null>(null);
+  const creatorsPageRef = useRef<CreatorsManagementPageRef | null>(null);
 
   // Dashboard platform filter state
   const [dashboardPlatformFilter, setDashboardPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'youtube'>('all');
@@ -221,8 +221,7 @@ function DashboardPage() {
       
       // Only trigger on tabs where + button is visible
       if (activeTab === 'settings' || activeTab === 'subscription' || 
-          activeTab === 'creators' || activeTab === 'cron' ||
-          activeTab === 'team' || activeTab === 'invitations') {
+          activeTab === 'cron' || activeTab === 'team' || activeTab === 'invitations') {
         return;
       }
       
@@ -236,6 +235,8 @@ function DashboardPage() {
         accountsPageRef.current?.openAddModal();
       } else if (activeTab === 'analytics') {
         trackedLinksPageRef.current?.openCreateModal();
+      } else if (activeTab === 'creators') {
+        creatorsPageRef.current?.openInviteModal();
       }
     };
     
@@ -710,7 +711,7 @@ function DashboardPage() {
 
           {/* Creators Tab - Show appropriate view based on role */}
           {activeTab === 'creators' && (
-            userRole === 'creator' ? <CreatorPortalPage /> : <CreatorsManagementPage />
+            userRole === 'creator' ? <CreatorPortalPage /> : <CreatorsManagementPage ref={creatorsPageRef} />
           )}
 
           {/* Other Tabs - Placeholder */}
@@ -747,7 +748,7 @@ function DashboardPage() {
       />
 
       {/* Context-Aware Floating Action Button */}
-      {activeTab !== 'settings' && activeTab !== 'subscription' && activeTab !== 'creators' && activeTab !== 'cron' && (
+      {activeTab !== 'settings' && activeTab !== 'subscription' && activeTab !== 'cron' && activeTab !== 'team' && activeTab !== 'invitations' && (
         <button
           onClick={() => {
             if (activeTab === 'dashboard') {
@@ -756,6 +757,8 @@ function DashboardPage() {
               accountsPageRef.current?.openAddModal();
             } else if (activeTab === 'analytics') {
               trackedLinksPageRef.current?.openCreateModal();
+            } else if (activeTab === 'creators') {
+              creatorsPageRef.current?.openInviteModal();
             }
           }}
           className="fixed bottom-8 right-8 z-50 bg-gray-900 dark:bg-white hover:bg-black dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-full p-4 shadow-2xl transition-all duration-200 hover:scale-110 group"
@@ -763,6 +766,7 @@ function DashboardPage() {
             activeTab === 'dashboard' ? 'Add Video' :
             activeTab === 'accounts' ? 'Track Account' :
             activeTab === 'analytics' ? 'Create Link' :
+            activeTab === 'creators' ? 'Invite Creator' :
             'Add'
           }
         >
@@ -783,55 +787,10 @@ function DashboardPage() {
             {activeTab === 'dashboard' && 'Add Video'}
             {activeTab === 'accounts' && 'Track Account'}
             {activeTab === 'analytics' && 'Create Link'}
+            {activeTab === 'creators' && 'Invite Creator'}
           </span>
         </button>
       )}
-
-      {/* Background Tracking Jobs Panel */}
-      <TrackingJobsPanel 
-        onJobCompleted={(accountId) => {
-          console.log('Account tracking completed:', accountId);
-          // Refresh data when a job completes
-          if (currentOrgId && currentProjectId) {
-            Promise.all([
-              FirestoreDataService.getVideos(currentOrgId, currentProjectId, { limitCount: 1000 }),
-              FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId)
-            ]).then(([videos, accounts]) => {
-              const accountsMap = new Map(accounts.map(acc => [acc.id, acc]));
-              setTrackedAccounts(accounts);
-              
-              const updatedSubmissions: VideoSubmission[] = videos.map(video => {
-                const account = video.trackedAccountId ? accountsMap.get(video.trackedAccountId) : null;
-                
-                return {
-                  id: video.id,
-                  url: video.url || '',
-                  platform: video.platform as 'instagram' | 'tiktok' | 'youtube',
-                  thumbnail: video.thumbnail || '',
-                  title: video.title || '',
-                  caption: video.description || '',
-                  uploader: account?.displayName || account?.username || '',
-                  uploaderHandle: account?.username || '',
-                  uploaderAvatar: account?.profilePicture || '',
-                  uploadDate: video.uploadDate?.toDate() || new Date(),
-                  dateSubmitted: video.dateAdded?.toDate() || new Date(),
-                  views: video.views || 0,
-                  likes: video.likes || 0,
-                  comments: video.comments || 0,
-                  shares: video.shares || 0,
-                  status: 'approved' as const,
-                  videoId: video.videoId,
-                  trackedAccountId: video.trackedAccountId
-                } as VideoSubmission;
-              });
-              
-              setSubmissions(updatedSubmissions);
-            }).catch(err => {
-              console.error('Failed to refresh after job completion:', err);
-            });
-          }
-        }}
-      />
     </div>
   );
 }

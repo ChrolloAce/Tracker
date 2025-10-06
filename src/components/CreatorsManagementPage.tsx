@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { OrgMember, Creator } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
@@ -9,11 +9,15 @@ import InviteTeamMemberModal from './InviteTeamMemberModal';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
 import CreatorDetailsPage from './CreatorDetailsPage';
 
+export interface CreatorsManagementPageRef {
+  openInviteModal: () => void;
+}
+
 /**
  * CreatorsManagementPage
  * Admin interface to manage creators, link accounts, and track payouts
  */
-const CreatorsManagementPage: React.FC = () => {
+const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props, ref) => {
   const { user, currentOrgId, currentProjectId } = useAuth();
   const [creators, setCreators] = useState<OrgMember[]>([]);
   const [creatorProfiles, setCreatorProfiles] = useState<Map<string, Creator>>(new Map());
@@ -26,6 +30,11 @@ const CreatorsManagementPage: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [currentOrgId, currentProjectId, user]);
+
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    openInviteModal: () => setShowInviteModal(true)
+  }));
 
   const loadData = async () => {
     if (!currentOrgId || !currentProjectId || !user) return;
@@ -344,6 +353,8 @@ const CreatorsManagementPage: React.FC = () => {
       )}
     </div>
   );
-};
+});
+
+CreatorsManagementPage.displayName = 'CreatorsManagementPage';
 
 export default CreatorsManagementPage;

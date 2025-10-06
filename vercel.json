@@ -14,22 +14,12 @@
     },
     "api/cron-refresh-videos.ts": {
       "maxDuration": 300
-    },
-    "api/process-tracking-job.ts": {
-      "maxDuration": 300
-    },
-    "api/trigger-tracking-processor.ts": {
-      "maxDuration": 10
     }
   },
   "crons": [
     {
       "path": "/api/cron-refresh-videos",
       "schedule": "0 */12 * * *"
-    },
-    {
-      "path": "/api/trigger-tracking-processor",
-      "schedule": "* * * * *"
     }
   ],
   "routes": [

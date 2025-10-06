@@ -12,7 +12,6 @@ import {
 import { clsx } from 'clsx';
 import ProjectSwitcher from '../ProjectSwitcher';
 import OrganizationSwitcher from '../OrganizationSwitcher';
-import CreateProjectModal from '../CreateProjectModal';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useAuth } from '../../contexts/AuthContext';
 import blackLogo from '../blacklogo.png';
@@ -42,7 +41,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   onTabChange
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
-  const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
   const { can } = usePermissions();
   const { userRole } = useAuth();
 
@@ -222,7 +220,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">
               Project
             </label>
-            <ProjectSwitcher onCreateProject={() => setShowCreateProjectModal(true)} />
+            <ProjectSwitcher onCreateProject={() => window.location.href = '/create-project'} />
           </div>
         </div>
       )}
@@ -245,16 +243,6 @@ const Sidebar: React.FC<SidebarProps> = ({
       {!isCollapsed && (
         <OrganizationSwitcher />
       )}
-
-      {/* Create Project Modal */}
-      <CreateProjectModal
-        isOpen={showCreateProjectModal}
-        onClose={() => setShowCreateProjectModal(false)}
-        onSuccess={() => {
-          setShowCreateProjectModal(false);
-          // Project switcher will auto-refresh
-        }}
-      />
 
     </div>
   );
