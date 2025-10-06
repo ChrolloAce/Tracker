@@ -673,56 +673,80 @@ const OverviewTab: React.FC<{
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {filteredVideos.map((video: any) => (
-              <div
-                key={video.videoId}
-                className="bg-[#0A0A0A] border border-gray-800 rounded-lg p-4 hover:border-gray-700 transition-all flex items-center gap-4"
-              >
-                {/* Thumbnail */}
-                <div className="flex-shrink-0">
-                  {video.thumbnail ? (
-                    <img
-                      src={video.thumbnail}
-                      alt={video.videoTitle}
-                      className="w-32 h-18 object-cover rounded"
-                    />
-                  ) : (
-                    <div className="w-32 h-18 bg-gray-900 rounded flex items-center justify-center">
-                      <Play className="w-6 h-6 text-gray-700" />
-                    </div>
-                  )}
-                </div>
-                
-                {/* Title */}
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-medium text-white line-clamp-2">
-                    {video.videoTitle}
-                  </h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <PlatformIcon platform={video.platform} size="sm" />
-                    <span className="text-xs text-gray-400">@{video.accountUsername}</span>
-                  </div>
-                </div>
-                
-                {/* Views */}
-                <div className="flex-shrink-0 text-right min-w-[100px]">
-                  <div className="flex items-center justify-end gap-1 text-white font-medium">
-                    <Eye className="w-4 h-4 text-gray-400" />
-                    <span>{formatNumber(video.views)}</span>
-                  </div>
-                  <div className="text-xs text-gray-400 mt-1">views</div>
-                </div>
-                
-                {/* Payout */}
-                <div className="flex-shrink-0 text-right min-w-[120px]">
-                  <div className="text-xl font-bold text-white">
-                    ${video.earnings.toFixed(2)}
-                  </div>
-                  <div className="text-xs text-gray-400 mt-1">payout</div>
-                </div>
-              </div>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/5">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                    Video
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                    Preview
+                  </th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                    Views
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                    Payout
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {filteredVideos.map((video: any) => (
+                  <tr 
+                    key={video.videoId}
+                    className="hover:bg-white/5 transition-colors"
+                  >
+                    {/* Video Info */}
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center ring-2 ring-white/10 flex-shrink-0">
+                          <PlatformIcon platform={video.platform} size="sm" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-white line-clamp-2">
+                            {video.videoTitle}
+                          </div>
+                          <div className="text-xs text-gray-400 mt-0.5">
+                            @{video.accountUsername}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    
+                    {/* Thumbnail */}
+                    <td className="px-4 py-4">
+                      {video.thumbnail ? (
+                        <img
+                          src={video.thumbnail}
+                          alt={video.videoTitle}
+                          className="w-20 h-14 object-cover rounded"
+                        />
+                      ) : (
+                        <div className="w-20 h-14 bg-gray-900 rounded flex items-center justify-center">
+                          <Play className="w-5 h-5 text-gray-700" />
+                        </div>
+                      )}
+                    </td>
+                    
+                    {/* Views */}
+                    <td className="px-4 py-4 text-center">
+                      <div className="flex items-center justify-center gap-1 text-white">
+                        <Eye className="w-4 h-4 text-gray-400" />
+                        <span className="font-medium">{formatNumber(video.views)}</span>
+                      </div>
+                    </td>
+                    
+                    {/* Payout */}
+                    <td className="px-4 py-4 text-right">
+                      <div className="text-lg font-bold text-white">
+                        ${video.earnings.toFixed(2)}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
