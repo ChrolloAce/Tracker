@@ -17,6 +17,7 @@ import TeamManagementPage from '../components/TeamManagementPage';
 import PendingInvitationsPage from '../components/PendingInvitationsPage';
 import CreatorPortalPage from '../components/CreatorPortalPage';
 import CreatorsManagementPage from '../components/CreatorsManagementPage';
+import TrackingJobsPanel from '../components/TrackingJobsPanel';
 import { PageLoadingSkeleton } from '../components/ui/LoadingSkeleton';
 import OrganizationService from '../services/OrganizationService';
 import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
@@ -785,6 +786,52 @@ function DashboardPage() {
           </span>
         </button>
       )}
+
+      {/* Background Tracking Jobs Panel */}
+      <TrackingJobsPanel 
+        onJobCompleted={(accountId) => {
+          console.log('Account tracking completed:', accountId);
+          // Refresh data when a job completes
+          if (currentOrgId && currentProjectId) {
+            Promise.all([
+              FirestoreDataService.getVideos(currentOrgId, currentProjectId, { limitCount: 1000 }),
+              FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId)
+            ]).then(([videos, accounts]) => {
+              const accountsMap = new Map(accounts.map(acc => [acc.id, acc]));
+              setTrackedAccounts(accounts);
+              
+              const updatedSubmissions: VideoSubmission[] = videos.map(video => {
+                const account = video.trackedAccountId ? accountsMap.get(video.trackedAccountId) : null;
+                
+                return {
+                  id: video.id,
+                  url: video.url || '',
+                  platform: video.platform as 'instagram' | 'tiktok' | 'youtube',
+                  thumbnail: video.thumbnail || '',
+                  title: video.title || '',
+                  caption: video.description || '',
+                  uploader: account?.displayName || account?.username || '',
+                  uploaderHandle: account?.username || '',
+                  uploaderAvatar: account?.profilePicture || '',
+                  uploadDate: video.uploadDate?.toDate() || new Date(),
+                  dateSubmitted: video.dateAdded?.toDate() || new Date(),
+                  views: video.views || 0,
+                  likes: video.likes || 0,
+                  comments: video.comments || 0,
+                  shares: video.shares || 0,
+                  status: 'approved' as const,
+                  videoId: video.videoId,
+                  trackedAccountId: video.trackedAccountId
+                } as VideoSubmission;
+              });
+              
+              setSubmissions(updatedSubmissions);
+            }).catch(err => {
+              console.error('Failed to refresh after job completion:', err);
+            });
+          }
+        }}
+      />
     </div>
   );
 }
