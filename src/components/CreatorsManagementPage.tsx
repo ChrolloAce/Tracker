@@ -5,7 +5,7 @@ import OrganizationService from '../services/OrganizationService';
 import CreatorLinksService from '../services/CreatorLinksService';
 import { UserPlus, Video, Link as LinkIcon, DollarSign, User, X, Edit3, Users as UsersIcon } from 'lucide-react';
 import { Button } from './ui/Button';
-import InviteTeamMemberModal from './InviteTeamMemberModal';
+import CreateCreatorModal from './CreateCreatorModal';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
 import CreatorDetailsPage from './CreatorDetailsPage';
 
@@ -327,16 +327,15 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
         </div>
       )}
 
-      {/* Invite Modal - Pre-set to Creator role with current projectId */}
+      {/* Create Creator Modal - Multi-step with account linking and payment settings */}
       {showInviteModal && (
-        <InviteTeamMemberModal
+        <CreateCreatorModal
+          isOpen={showInviteModal}
           onClose={() => setShowInviteModal(false)}
           onSuccess={() => {
             setShowInviteModal(false);
             loadData();
           }}
-          defaultRole="creator"
-          projectId={currentProjectId || undefined}
         />
       )}
 
