@@ -654,39 +654,6 @@ const OverviewTab: React.FC<{
         </div>
       )}
 
-      {/* Contract Information */}
-      <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
-        <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-          <FileText className="w-5 h-5 text-gray-400" />
-          Contract Information
-        </h2>
-        <div className="space-y-3">
-          <div>
-            <span className="text-sm text-gray-400">Payment Type:</span>
-            <div className="text-white mt-1">
-              {profile?.customPaymentTerms?.type 
-                ? PAYMENT_TERM_TYPES.find(t => t.value === profile.customPaymentTerms?.type)?.label 
-                : 'Not set'}
-            </div>
-          </div>
-          {profile?.contractStartDate && (
-            <div>
-              <span className="text-sm text-gray-400">Contract Period:</span>
-              <div className="text-white mt-1">
-                {profile.contractStartDate.toDate().toLocaleDateString()} -{' '}
-                {profile.contractEndDate?.toDate().toLocaleDateString() || 'Ongoing'}
-              </div>
-            </div>
-          )}
-          {profile?.contractNotes && (
-            <div>
-              <span className="text-sm text-gray-400">Notes:</span>
-              <div className="text-white mt-1 whitespace-pre-wrap">{profile.contractNotes}</div>
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Video Performance */}
       <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
         <div className="flex items-center justify-between mb-4">
@@ -706,82 +673,58 @@ const OverviewTab: React.FC<{
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="space-y-3">
             {filteredVideos.map((video: any) => (
               <div
                 key={video.videoId}
-                className="bg-[#0A0A0A] border border-gray-800 rounded-lg overflow-hidden hover:border-gray-700 transition-all group"
+                className="bg-[#0A0A0A] border border-gray-800 rounded-lg p-4 hover:border-gray-700 transition-all flex items-center gap-4"
               >
                 {/* Thumbnail */}
-                {video.thumbnail ? (
-                  <div className="relative aspect-video bg-gray-900">
+                <div className="flex-shrink-0">
+                  {video.thumbnail ? (
                     <img
                       src={video.thumbnail}
                       alt={video.videoTitle}
-                      className="w-full h-full object-cover"
+                      className="w-32 h-18 object-cover rounded"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                    <div className="absolute bottom-2 right-2 bg-black/80 rounded px-2 py-0.5">
-                      <span className="text-xs font-medium text-white flex items-center gap-1">
-                        <Eye className="w-3 h-3" />
-                        {formatNumber(video.views)}
-                      </span>
+                  ) : (
+                    <div className="w-32 h-18 bg-gray-900 rounded flex items-center justify-center">
+                      <Play className="w-6 h-6 text-gray-700" />
                     </div>
-                  </div>
-                ) : (
-                  <div className="aspect-video bg-gray-900 flex items-center justify-center">
-                    <Play className="w-12 h-12 text-gray-700" />
-                  </div>
-                )}
+                  )}
+                </div>
                 
-                {/* Content */}
-                <div className="p-4">
-                  {/* Account Info */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <PlatformIcon platform={video.platform} size="sm" />
-                    <span className="text-xs text-gray-400 truncate">@{video.accountUsername}</span>
-                  </div>
-                  
-                  {/* Video Title */}
-                  <h3 className="text-sm font-medium text-white mb-3 line-clamp-2 min-h-[2.5rem]">
+                {/* Title */}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-medium text-white line-clamp-2">
                     {video.videoTitle}
                   </h3>
-                  
-                  {/* Payout - Highlighted */}
-                  <div className="bg-white/5 border border-white/10 rounded-lg p-3 mb-3">
-                    <div className="text-xs text-gray-400 mb-1">Video Payout</div>
-                    <div className="text-2xl font-bold text-white">
-                      ${video.earnings.toFixed(2)}
-                    </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <PlatformIcon platform={video.platform} size="sm" />
+                    <span className="text-xs text-gray-400">@{video.accountUsername}</span>
                   </div>
-                  
-                  {/* Calculation Details */}
-                  <div className="text-xs text-gray-500 bg-gray-900/50 rounded px-2 py-1.5">
-                    {video.calculation}
+                </div>
+                
+                {/* Views */}
+                <div className="flex-shrink-0 text-right min-w-[100px]">
+                  <div className="flex items-center justify-end gap-1 text-white font-medium">
+                    <Eye className="w-4 h-4 text-gray-400" />
+                    <span>{formatNumber(video.views)}</span>
                   </div>
+                  <div className="text-xs text-gray-400 mt-1">views</div>
+                </div>
+                
+                {/* Payout */}
+                <div className="flex-shrink-0 text-right min-w-[120px]">
+                  <div className="text-xl font-bold text-white">
+                    ${video.earnings.toFixed(2)}
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">payout</div>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </div>
-
-      {/* Recent Activity */}
-      <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
-        <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-          <AlertCircle className="w-5 h-5 text-gray-400" />
-          Recent Activity
-        </h2>
-        <div className="space-y-3">
-          <div className="text-sm text-gray-400">
-            Joined: {creator.joinedAt?.toDate().toLocaleDateString()}
-          </div>
-          {profile?.lastPayoutAt && (
-            <div className="text-sm text-gray-400">
-              Last Payout: {profile.lastPayoutAt.toDate().toLocaleDateString()}
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );
