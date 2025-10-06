@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Users, Upload, X, Check } from 'lucide-react';
+import { Building2, Users, Upload, X, Check, ChevronRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import OrganizationService from '../services/OrganizationService';
 import FirebaseStorageService from '../services/FirebaseStorageService';
@@ -213,12 +213,50 @@ const OrganizationOnboarding: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
+      <div className="w-full max-w-3xl">
+        {/* Step Counter */}
+        <div className="mb-8">
+          <div className="flex items-center justify-center gap-2">
+            {[1, 2, 3].map((stepNum, idx) => (
+              <React.Fragment key={stepNum}>
+                <div className="flex flex-col items-center">
+                  <div
+                    className={clsx(
+                      'w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 border-2',
+                      stepNum === step
+                        ? 'bg-white text-black border-white'
+                        : stepNum < step
+                        ? 'bg-gray-700 text-white border-gray-700'
+                        : 'bg-transparent text-gray-600 border-gray-700'
+                    )}
+                  >
+                    {stepNum < step ? <Check className="w-5 h-5" /> : stepNum}
+                  </div>
+                  <span className={clsx(
+                    'text-xs mt-2 font-medium',
+                    stepNum === step ? 'text-white' : 'text-gray-600'
+                  )}>
+                    {stepNum === 1 && 'Details'}
+                    {stepNum === 2 && 'Team'}
+                    {stepNum === 3 && 'Finish'}
+                  </span>
+                </div>
+                {idx < 2 && (
+                  <ChevronRight className={clsx(
+                    'w-5 h-5 mb-6',
+                    stepNum < step ? 'text-gray-700' : 'text-gray-800'
+                  )} />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-6">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center">
-              <Building2 className="w-8 h-8 text-white" />
+            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center">
+              <Building2 className="w-8 h-8 text-black" />
             </div>
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">
@@ -231,22 +269,6 @@ const OrganizationOnboarding: React.FC = () => {
             {step === 2 && 'Collaborate with your team members'}
             {step === 3 && "Let's personalize your experience"}
           </p>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="flex items-center justify-center space-x-2">
-            {[1, 2, 3].map((s) => (
-              <div
-                key={s}
-                className={clsx(
-                  'h-1 rounded-full transition-all duration-300',
-                  s === 1 ? 'w-32' : 'w-24',
-                  s <= step ? 'bg-blue-600' : 'bg-gray-800'
-                )}
-              />
-            ))}
-          </div>
         </div>
 
         {/* Content */}
@@ -264,7 +286,7 @@ const OrganizationOnboarding: React.FC = () => {
                   value={data.website}
                   onChange={(e) => setData({ ...data, website: e.target.value })}
                   placeholder="https://acme.com"
-                  className="w-full px-4 py-3 bg-[#0A0A0A] border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-blue-600 transition-colors"
+                  className="w-full px-4 py-3 bg-[#0A0A0A] border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-white transition-colors"
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Enter your project's website URL to automatically fill in details.
@@ -281,7 +303,7 @@ const OrganizationOnboarding: React.FC = () => {
                   value={data.name}
                   onChange={(e) => handleNameChange(e.target.value)}
                   placeholder="Acme Inc."
-                  className="w-full px-4 py-3 bg-[#0A0A0A] border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-blue-600 transition-colors"
+                  className="w-full px-4 py-3 bg-[#0A0A0A] border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-white transition-colors"
                   maxLength={50}
                   required
                 />
@@ -300,7 +322,7 @@ const OrganizationOnboarding: React.FC = () => {
                   value={data.slug}
                   onChange={(e) => setData({ ...data, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
                   placeholder="acme-inc"
-                  className="w-full px-4 py-3 bg-[#0A0A0A] border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-blue-600 transition-colors"
+                  className="w-full px-4 py-3 bg-[#0A0A0A] border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-white transition-colors"
                   maxLength={50}
                   required
                 />
@@ -359,12 +381,12 @@ const OrganizationOnboarding: React.FC = () => {
                   onChange={(e) => setCurrentEmail(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleAddTeamMember()}
                   placeholder="email@example.com"
-                  className="flex-1 px-4 py-3 bg-[#0A0A0A] border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-blue-600 transition-colors"
+                  className="flex-1 px-4 py-3 bg-[#0A0A0A] border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-white transition-colors"
                 />
                 <select
                   value={currentRole}
                   onChange={(e) => setCurrentRole(e.target.value)}
-                  className="px-4 py-3 bg-[#0A0A0A] border border-gray-800 rounded-lg text-white focus:outline-none focus:border-blue-600 transition-colors"
+                  className="px-4 py-3 bg-[#0A0A0A] border border-gray-800 rounded-lg text-white focus:outline-none focus:border-white transition-colors"
                 >
                   <option value="member">Member</option>
                   <option value="admin">Admin</option>
@@ -374,7 +396,7 @@ const OrganizationOnboarding: React.FC = () => {
               <button
                 onClick={handleAddTeamMember}
                 disabled={!currentEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(currentEmail)}
-                className="w-full px-4 py-3 bg-[#0A0A0A] border border-gray-800 rounded-lg text-white hover:border-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                className="w-full px-4 py-3 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 font-medium"
               >
                 <Users className="w-5 h-5" />
                 <span>Add member</span>
@@ -416,10 +438,10 @@ const OrganizationOnboarding: React.FC = () => {
                       key={type.id}
                       onClick={() => setData({ ...data, businessType: type.id })}
                       className={clsx(
-                        'px-4 py-3 rounded-lg border transition-all',
+                        'px-4 py-3 rounded-lg border-2 transition-all font-medium',
                         data.businessType === type.id
-                          ? 'bg-blue-600 border-blue-600 text-white'
-                          : 'bg-[#0A0A0A] border-gray-800 text-gray-300 hover:border-gray-700'
+                          ? 'bg-white border-white text-black'
+                          : 'bg-[#0A0A0A] border-gray-800 text-gray-300 hover:border-gray-600'
                       )}
                     >
                       <span className="mr-2">{type.icon}</span>
@@ -440,10 +462,10 @@ const OrganizationOnboarding: React.FC = () => {
                       key={source.id}
                       onClick={() => setData({ ...data, referralSource: source.id })}
                       className={clsx(
-                        'px-4 py-3 rounded-lg border transition-all',
+                        'px-4 py-3 rounded-lg border-2 transition-all font-medium',
                         data.referralSource === source.id
-                          ? 'bg-blue-600 border-blue-600 text-white'
-                          : 'bg-[#0A0A0A] border-gray-800 text-gray-300 hover:border-gray-700'
+                          ? 'bg-white border-white text-black'
+                          : 'bg-[#0A0A0A] border-gray-800 text-gray-300 hover:border-gray-600'
                       )}
                     >
                       <span className="mr-2">{source.icon}</span>
@@ -468,7 +490,7 @@ const OrganizationOnboarding: React.FC = () => {
               <button
                 onClick={handleBack}
                 disabled={loading}
-                className="px-6 py-3 text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                className="px-6 py-3 text-gray-400 hover:text-white transition-colors disabled:opacity-50 font-medium"
               >
                 Back
               </button>
@@ -481,14 +503,14 @@ const OrganizationOnboarding: React.FC = () => {
                 <>
                   <button
                     onClick={() => setStep(totalSteps)}
-                    className="px-6 py-3 text-gray-400 hover:text-white transition-colors"
+                    className="px-6 py-3 text-gray-400 hover:text-white transition-colors font-medium"
                   >
                     Skip
                   </button>
                   <button
                     onClick={handleNext}
                     disabled={!canProceed()}
-                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-6 py-3 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
                   >
                     Continue
                   </button>
@@ -497,11 +519,11 @@ const OrganizationOnboarding: React.FC = () => {
                 <button
                   onClick={handleComplete}
                   disabled={loading || !canProceed()}
-                  className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  className="px-8 py-3 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 font-semibold"
                 >
                   {loading ? (
                     <>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
                       <span>Creating...</span>
                     </>
                   ) : (

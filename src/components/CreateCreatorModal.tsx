@@ -34,6 +34,9 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
   // Step 3: Payment Settings
   const [isPaid, setIsPaid] = useState(true);
   const [paymentNotes, setPaymentNotes] = useState('');
+  const [paymentStructure, setPaymentStructure] = useState<'per-video' | 'monthly' | 'custom'>('per-video');
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentSchedule, setPaymentSchedule] = useState<'weekly' | 'bi-weekly' | 'monthly' | 'custom'>('monthly');
 
   const totalSteps = 3;
 
@@ -66,6 +69,9 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
     setSearchQuery('');
     setIsPaid(true);
     setPaymentNotes('');
+    setPaymentStructure('per-video');
+    setPaymentAmount('');
+    setPaymentSchedule('monthly');
     setError(null);
     onClose();
   };
@@ -124,9 +130,15 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
       // We'll need to store this info temporarily and apply it after they accept.
       
       // For now, we'll just show success and handle linking manually after they join
-      if (selectedAccountIds.length > 0 || paymentNotes) {
+      if (selectedAccountIds.length > 0 || paymentNotes || isPaid) {
         console.log('📝 Accounts to link after acceptance:', selectedAccountIds);
-        console.log('📝 Payment settings:', { isPaid, paymentNotes });
+        console.log('📝 Payment settings:', { 
+          isPaid, 
+          paymentStructure, 
+          paymentAmount, 
+          paymentSchedule, 
+          paymentNotes 
+        });
         // TODO: Store this in a pending_creator_config collection for automatic linking after acceptance
       }
 
@@ -171,12 +183,12 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
       {[1, 2, 3].map((stepNum) => (
         <div key={stepNum} className="flex items-center">
           <div
-            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors border-2 ${
               stepNum === step
-                ? 'bg-purple-600 text-white'
+                ? 'bg-white text-black border-white'
                 : stepNum < step
-                ? 'bg-green-600 text-white'
-                : 'bg-gray-700 text-gray-400'
+                ? 'bg-gray-600 text-white border-gray-600'
+                : 'bg-transparent text-gray-500 border-gray-700'
             }`}
           >
             {stepNum < step ? <Check className="w-4 h-4" /> : stepNum}
@@ -184,7 +196,7 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
           {stepNum < totalSteps && (
             <div
               className={`w-12 h-0.5 mx-1 ${
-                stepNum < step ? 'bg-green-600' : 'bg-gray-700'
+                stepNum < step ? 'bg-gray-600' : 'bg-gray-700'
               }`}
             />
           )}
@@ -206,7 +218,7 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="creator@example.com"
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50"
+            className="w-full pl-10 pr-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50"
             autoFocus
           />
         </div>
@@ -223,13 +235,13 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             placeholder="John Doe"
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50"
+            className="w-full pl-10 pr-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50"
           />
         </div>
       </div>
 
-      <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
-        <p className="text-sm text-blue-300">
+      <div className="bg-gray-700/30 border border-gray-600/30 rounded-lg p-4">
+        <p className="text-sm text-gray-300">
           An invitation will be sent to this email. The creator can accept it to join your project.
         </p>
       </div>
@@ -254,14 +266,14 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search accounts..."
-            className="w-full pl-10 pr-4 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50"
+            className="w-full pl-10 pr-4 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50"
           />
         </div>
 
         {/* Accounts List */}
         {loadingAccounts ? (
           <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-700 border-t-purple-500"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-700 border-t-white"></div>
           </div>
         ) : filteredAccounts.length === 0 ? (
           <div className="text-center py-8 bg-gray-800/50 rounded-lg border border-gray-700/50">
@@ -278,7 +290,7 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
                 onClick={() => toggleAccountSelection(account.id)}
                 className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
                   selectedAccountIds.includes(account.id)
-                    ? 'bg-purple-600/20 border-2 border-purple-500/50'
+                    ? 'bg-white/10 border-2 border-white/50'
                     : 'bg-gray-800/50 border-2 border-transparent hover:bg-gray-700/50'
                 }`}
               >
@@ -305,7 +317,7 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
                   <span className="text-xs text-gray-400">@{account.username}</span>
                 </div>
                 {selectedAccountIds.includes(account.id) && (
-                  <Check className="w-5 h-5 text-purple-400 flex-shrink-0" />
+                  <Check className="w-5 h-5 text-white flex-shrink-0" />
                 )}
               </button>
             ))}
@@ -313,8 +325,8 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
         )}
 
         {selectedAccountIds.length > 0 && (
-          <div className="mt-4 bg-purple-500/10 border border-purple-500/20 rounded-lg p-3">
-            <p className="text-sm text-purple-300">
+          <div className="mt-4 bg-white/10 border border-white/20 rounded-lg p-3">
+            <p className="text-sm text-white font-medium">
               {selectedAccountIds.length} account{selectedAccountIds.length !== 1 ? 's' : ''} selected
             </p>
           </div>
@@ -334,11 +346,11 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
             onClick={() => setIsPaid(true)}
             className={`p-4 rounded-lg border-2 transition-all ${
               isPaid
-                ? 'bg-green-600/20 border-green-500/50'
+                ? 'bg-white/10 border-white/50'
                 : 'bg-gray-800/50 border-gray-700/50 hover:bg-gray-700/50'
             }`}
           >
-            <DollarSign className={`w-6 h-6 mx-auto mb-2 ${isPaid ? 'text-green-400' : 'text-gray-400'}`} />
+            <DollarSign className={`w-6 h-6 mx-auto mb-2 ${isPaid ? 'text-white' : 'text-gray-400'}`} />
             <div className="text-sm font-medium text-white">Paid Creator</div>
             <div className="text-xs text-gray-400 mt-1">Receives payments</div>
           </button>
@@ -347,11 +359,11 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
             onClick={() => setIsPaid(false)}
             className={`p-4 rounded-lg border-2 transition-all ${
               !isPaid
-                ? 'bg-blue-600/20 border-blue-500/50'
+                ? 'bg-white/10 border-white/50'
                 : 'bg-gray-800/50 border-gray-700/50 hover:bg-gray-700/50'
             }`}
           >
-            <UserIcon className={`w-6 h-6 mx-auto mb-2 ${!isPaid ? 'text-blue-400' : 'text-gray-400'}`} />
+            <UserIcon className={`w-6 h-6 mx-auto mb-2 ${!isPaid ? 'text-white' : 'text-gray-400'}`} />
             <div className="text-sm font-medium text-white">Unpaid Creator</div>
             <div className="text-xs text-gray-400 mt-1">No payments</div>
           </button>
@@ -359,25 +371,135 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
       </div>
 
       {isPaid && (
-        <div>
-          <label className="block text-sm font-medium text-white mb-2">
-            Payment Notes (Optional)
-          </label>
-          <textarea
-            value={paymentNotes}
-            onChange={(e) => setPaymentNotes(e.target.value)}
-            placeholder="e.g., $500 per video, paid monthly..."
-            rows={3}
-            className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500/50"
-          />
-          <p className="text-xs text-gray-400 mt-1">
-            You can set detailed payment terms later in the creator's profile
-          </p>
-        </div>
+        <>
+          {/* Payment Structure */}
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">
+              Payment Structure
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => setPaymentStructure('per-video')}
+                className={`px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium ${
+                  paymentStructure === 'per-video'
+                    ? 'bg-white/10 border-white text-white'
+                    : 'bg-gray-800/50 border-gray-700/50 text-gray-400 hover:bg-gray-700/50'
+                }`}
+              >
+                Per Video
+              </button>
+              <button
+                onClick={() => setPaymentStructure('monthly')}
+                className={`px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium ${
+                  paymentStructure === 'monthly'
+                    ? 'bg-white/10 border-white text-white'
+                    : 'bg-gray-800/50 border-gray-700/50 text-gray-400 hover:bg-gray-700/50'
+                }`}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setPaymentStructure('custom')}
+                className={`px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium ${
+                  paymentStructure === 'custom'
+                    ? 'bg-white/10 border-white text-white'
+                    : 'bg-gray-800/50 border-gray-700/50 text-gray-400 hover:bg-gray-700/50'
+                }`}
+              >
+                Custom
+              </button>
+            </div>
+          </div>
+
+          {/* Payment Amount */}
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">
+              Payment Amount
+            </label>
+            <div className="relative">
+              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                placeholder="500"
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50"
+              />
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              {paymentStructure === 'per-video' && 'Amount paid per video'}
+              {paymentStructure === 'monthly' && 'Monthly payment amount'}
+              {paymentStructure === 'custom' && 'Custom payment amount'}
+            </p>
+          </div>
+
+          {/* Payment Schedule */}
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">
+              Payment Schedule
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setPaymentSchedule('weekly')}
+                className={`px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium ${
+                  paymentSchedule === 'weekly'
+                    ? 'bg-white/10 border-white text-white'
+                    : 'bg-gray-800/50 border-gray-700/50 text-gray-400 hover:bg-gray-700/50'
+                }`}
+              >
+                Weekly
+              </button>
+              <button
+                onClick={() => setPaymentSchedule('bi-weekly')}
+                className={`px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium ${
+                  paymentSchedule === 'bi-weekly'
+                    ? 'bg-white/10 border-white text-white'
+                    : 'bg-gray-800/50 border-gray-700/50 text-gray-400 hover:bg-gray-700/50'
+                }`}
+              >
+                Bi-weekly
+              </button>
+              <button
+                onClick={() => setPaymentSchedule('monthly')}
+                className={`px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium ${
+                  paymentSchedule === 'monthly'
+                    ? 'bg-white/10 border-white text-white'
+                    : 'bg-gray-800/50 border-gray-700/50 text-gray-400 hover:bg-gray-700/50'
+                }`}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setPaymentSchedule('custom')}
+                className={`px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium ${
+                  paymentSchedule === 'custom'
+                    ? 'bg-white/10 border-white text-white'
+                    : 'bg-gray-800/50 border-gray-700/50 text-gray-400 hover:bg-gray-700/50'
+                }`}
+              >
+                Custom
+              </button>
+            </div>
+          </div>
+
+          {/* Payment Notes */}
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">
+              Additional Notes (Optional)
+            </label>
+            <textarea
+              value={paymentNotes}
+              onChange={(e) => setPaymentNotes(e.target.value)}
+              placeholder="Additional payment terms, conditions, or notes..."
+              rows={3}
+              className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 resize-none"
+            />
+          </div>
+        </>
       )}
 
-      <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
-        <p className="text-sm text-yellow-300">
+      <div className="bg-gray-700/30 border border-gray-600/30 rounded-lg p-4">
+        <p className="text-sm text-gray-300">
           <strong>Note:</strong> Account linking and payment settings will be applied after the creator accepts the invitation.
         </p>
       </div>
@@ -452,7 +574,7 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
             <Button
               onClick={handleNext}
               disabled={!canProceed() || loading}
-              className="bg-purple-600 hover:bg-purple-700 text-white"
+              className="bg-white hover:bg-gray-200 text-black font-semibold"
             >
               Next
               <ArrowRight className="w-4 h-4 ml-2" />
@@ -461,11 +583,11 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
             <Button
               onClick={handleSubmit}
               disabled={loading}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+              className="bg-white hover:bg-gray-200 text-black font-semibold"
             >
               {loading ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin mr-2" />
                   Sending...
                 </>
               ) : (
