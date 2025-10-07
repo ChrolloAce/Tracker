@@ -386,10 +386,6 @@ function DashboardPage() {
             displayName: videoData.username,
             profilePicture: (videoData as any).profile_pic_url || '',
             followerCount: 0,
-            totalVideos: 0,
-            totalViews: 0,
-            totalLikes: 0,
-            totalComments: 0,
             lastSynced: Timestamp.fromDate(new Date())
           });
 
