@@ -99,7 +99,7 @@ export default async function handler(
 
         if (account.platform === 'tiktok') {
           const response = await fetch(
-            `${process.env.VERCEL_URL || 'https://your-app.vercel.app'}/api/youtube-video?username=${encodeURIComponent(account.username)}&platform=tiktok`,
+            `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://your-app.vercel.app'}/api/youtube-video?username=${encodeURIComponent(account.username)}&platform=tiktok`,
             {
               method: 'GET',
               headers: {
@@ -118,7 +118,7 @@ export default async function handler(
         } else if (account.platform === 'youtube') {
           // YouTube logic (similar to TikTok)
           const response = await fetch(
-            `${process.env.VERCEL_URL || 'https://your-app.vercel.app'}/api/youtube-video?username=${encodeURIComponent(account.username)}&platform=youtube`,
+            `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://your-app.vercel.app'}/api/youtube-video?username=${encodeURIComponent(account.username)}&platform=youtube`,
             {
               method: 'GET',
               headers: {
