@@ -79,32 +79,20 @@ class FirestoreDataService {
     
     await batch.commit();
     console.log(`✅ Added tracked account ${accountData.username} to project ${projectId} with sync status: pending`);
+    console.log(`⏳ Account queued for background sync. Cron job will process in ~5 minutes.`);
     
-    // Trigger immediate sync (fire and forget)
-    this.triggerAccountSync(accountRef.id).catch(err => {
-      console.error('Failed to trigger immediate sync:', err);
-      // Non-critical - cron will pick it up anyway
-    });
+    // Note: We don't trigger immediate sync to avoid auth complexity
+    // The cron job runs every 5 minutes and will pick this up automatically
     
     return accountRef.id;
   }
 
   /**
-   * Trigger immediate sync for an account (fire and forget)
+   * Note: Removed triggerAccountSync() method
+   * We rely solely on the cron job to process pending accounts
+   * This avoids auth complexity and keeps the system simple
+   * The cron runs every 5 minutes automatically
    */
-  private static async triggerAccountSync(accountId: string): Promise<void> {
-    try {
-      await fetch('/api/trigger-sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountId })
-      });
-      console.log(`🚀 Triggered immediate sync for account ${accountId}`);
-    } catch (error) {
-      console.error('Failed to trigger sync:', error);
-      // Non-critical error - cron will process it anyway
-    }
-  }
 
   /**
    * Get all tracked accounts for a project
