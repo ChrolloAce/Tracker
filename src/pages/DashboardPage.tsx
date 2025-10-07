@@ -3,7 +3,6 @@ import { clsx } from 'clsx';
 import { ArrowLeft, ChevronDown, Search } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import { VideoSubmissionsTable } from '../components/VideoSubmissionsTable';
-import { VideoSubmissionModal } from '../components/VideoSubmissionModal';
 import { AddVideoModal } from '../components/AddVideoModal';
 import { TikTokSearchModal } from '../components/TikTokSearchModal';
 import KPICards from '../components/KPICards';
@@ -346,83 +345,8 @@ function DashboardPage() {
     setSelectedVideoForAnalytics(null);
   }, []);
 
-  const handleAddVideo = useCallback(async (videoUrl: string, uploadDate: Date) => {
-    console.log('🚀 Starting video submission process...');
-    console.log('📋 URL submitted:', videoUrl);
-    console.log('📅 Upload date:', uploadDate.toISOString());
-    
-    try {
-      console.log('📡 Calling Video API service...');
-      const { data: videoData, platform } = await VideoApiService.fetchVideoData(videoUrl);
-      
-      console.log('🎬 Processing video data for submission...');
-      const newSubmission: VideoSubmission = {
-        id: Date.now().toString(),
-        url: videoUrl,
-        platform: platform,
-        thumbnail: videoData.thumbnail_url,
-        title: videoData.caption.split('\n')[0] || 'Untitled Video',
-        uploader: videoData.username,
-        uploaderHandle: videoData.username,
-        status: 'pending',
-        views: videoData.view_count || 0,
-        likes: videoData.like_count,
-        comments: videoData.comment_count,
-        shares: platform === 'tiktok' ? (videoData as any).share_count : undefined,
-        dateSubmitted: new Date(),
-        uploadDate: uploadDate, // User-provided upload date
-        timestamp: videoData.timestamp, // Original upload timestamp (legacy)
-      };
-
-      console.log('💾 Adding new submission to dashboard:', {
-        id: newSubmission.id,
-        platform: newSubmission.platform,
-        title: newSubmission.title,
-        username: newSubmission.uploaderHandle,
-        status: newSubmission.status
-      });
-
-      // Save to Firestore
-      if (user && currentOrgId) {
-        const videoId = await FirestoreDataService.addVideo(currentOrgId, currentProjectId!, user.uid, {
-          platform: newSubmission.platform,
-          url: newSubmission.url,
-          videoId: newSubmission.id,
-          title: newSubmission.title,
-          thumbnail: newSubmission.thumbnail,
-          uploadDate: Timestamp.fromDate(uploadDate),
-          views: videoData.view_count || 0,
-          likes: videoData.like_count || 0,
-          comments: videoData.comment_count || 0,
-          shares: 0,
-          status: 'active',
-          isSingular: true
-        });
-
-        // Create initial snapshot
-        await FirestoreDataService.addVideoSnapshot(currentOrgId, currentProjectId!, videoId, user.uid, {
-          views: videoData.view_count || 0,
-          likes: videoData.like_count || 0,
-          comments: videoData.comment_count || 0
-        });
-
-        // Update local state
-        newSubmission.id = videoId;
-      }
-      
-      // Update state
-      setSubmissions(prev => [newSubmission, ...prev]);
-      console.log('✅ Video submission completed and saved to Firestore!');
-      
-    } catch (error) {
-      console.error('❌ Failed to add video submission:', error);
-      console.error('🔍 Error details:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        url: videoUrl
-      });
-      throw error;
-    }
-  }, [user, currentOrgId]);
+  // Legacy function - kept for reference but replaced by handleAddVideosWithAccounts
+  // const handleAddVideo = useCallback(async (videoUrl: string, uploadDate: Date) => { ... }
 
 
   const handleAddVideosWithAccounts = useCallback(async (platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoUrls: string[]) => {
@@ -456,11 +380,11 @@ function DashboardPage() {
         if (!account) {
           console.log(`✨ Account @${username} doesn't exist. Creating new account...`);
           
-          const accountId = await FirestoreDataService.addTrackedAccount(currentOrgId, currentProjectId, {
+          const accountId = await FirestoreDataService.addTrackedAccount(currentOrgId, currentProjectId, user.uid, {
             username,
             platform,
             displayName: videoData.username,
-            profilePicture: videoData.profile_pic_url || '',
+            profilePicture: (videoData as any).profile_pic_url || '',
             followerCount: 0,
             totalVideos: 0,
             totalViews: 0,
@@ -475,19 +399,21 @@ function DashboardPage() {
         }
 
         // Add the video
+        const videoId = Date.now().toString();
+        const uploadDate = new Date(videoData.timestamp * 1000);
         await FirestoreDataService.addVideo(currentOrgId, currentProjectId, user.uid, {
           platform,
           url: videoUrl,
+          videoId,
           thumbnail: videoData.thumbnail_url,
           title: videoData.caption?.split('\n')[0] || 'Untitled Video',
-          description: videoData.caption || '',
-          username,
+          uploadDate: Timestamp.fromDate(uploadDate),
           views: videoData.view_count || 0,
           likes: videoData.like_count || 0,
           comments: videoData.comment_count || 0,
           shares: (videoData as any).share_count || 0,
-          uploadDate: new Date(videoData.timestamp * 1000),
-          dateAdded: new Date()
+          status: 'active',
+          isSingular: true
         });
 
         console.log(`✅ Video added successfully`);
@@ -500,9 +426,8 @@ function DashboardPage() {
 
     console.log(`📊 Results: ${successCount} successful, ${failureCount} failed`);
 
-    // Reload data
-    await loadSubmissions();
-    await loadTrackedAccounts();
+    // Reload data - force page refresh to show new videos and accounts
+    window.location.reload();
 
     if (failureCount > 0) {
       alert(`Added ${successCount} videos successfully. ${failureCount} failed.`);
