@@ -390,7 +390,7 @@ function DashboardPage() {
             totalViews: 0,
             totalLikes: 0,
             totalComments: 0,
-            lastSynced: new Date()
+            lastSynced: Timestamp.fromDate(new Date())
           });
 
           console.log(`✅ Created new account with ID: ${accountId}`);
@@ -400,7 +400,8 @@ function DashboardPage() {
 
         // Add the video
         const videoId = Date.now().toString();
-        const uploadDate = new Date(videoData.timestamp * 1000);
+        const timestamp = (videoData as any).timestamp || Date.now() / 1000;
+        const uploadDate = new Date(Number(timestamp) * 1000);
         await FirestoreDataService.addVideo(currentOrgId, currentProjectId, user.uid, {
           platform,
           url: videoUrl,
