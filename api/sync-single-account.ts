@@ -88,31 +88,93 @@ export default async function handler(
 
     if (account.platform === 'tiktok') {
       console.log(`🎵 Fetching TikTok videos for ${account.username}...`);
-      const response = await fetch(
-        `${baseUrl}/api/youtube-video?username=${encodeURIComponent(account.username)}&platform=tiktok`,
-        {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
+      
+      try {
+        // Use Apify proxy to fetch TikTok videos
+        const response = await fetch(
+          `${baseUrl}/api/apify-proxy`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              actorId: 'clockworks/tiktok-scraper',
+              input: {
+                profiles: [account.username],
+                resultsPerPage: 100
+              },
+              action: 'run'
+            })
+          }
+        );
 
-      if (response.ok) {
-        const data = await response.json();
-        videos = data.videos || [];
+        if (response.ok) {
+          const data = await response.json();
+          const tiktokVideos = data.items || [];
+          
+          console.log(`✅ Fetched ${tiktokVideos.length} TikTok videos`);
+          
+          // Transform TikTok data to video format
+          videos = tiktokVideos.map((item: any, index: number) => ({
+            videoId: item.id || `tiktok_${Date.now()}_${index}`,
+            videoTitle: item.text || 'Untitled TikTok',
+            videoUrl: item.videoUrl || item.webVideoUrl || '',
+            platform: 'tiktok',
+            thumbnail: item.videoMeta?.coverUrl || item.covers?.default || '',
+            accountUsername: account.username,
+            accountDisplayName: item.authorMeta?.name || account.username,
+            uploadDate: item.createTime ? Timestamp.fromMillis(item.createTime * 1000) : Timestamp.now(),
+            views: item.playCount || item.viewCount || 0,
+            likes: item.diggCount || item.likes || 0,
+            comments: item.commentCount || item.comments || 0,
+            shares: item.shareCount || item.shares || 0,
+            caption: item.text || ''
+          }));
+        } else {
+          console.error(`TikTok API returned ${response.status}`);
+        }
+      } catch (tiktokError) {
+        console.error('TikTok fetch error:', tiktokError);
       }
     } else if (account.platform === 'youtube') {
       console.log(`📺 Fetching YouTube videos for ${account.username}...`);
-      const response = await fetch(
-        `${baseUrl}/api/youtube-video?username=${encodeURIComponent(account.username)}&platform=youtube`,
-        {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
+      
+      try {
+        // Use YouTube API endpoint
+        const response = await fetch(
+          `${baseUrl}/api/youtube-channel?username=${encodeURIComponent(account.username)}`,
+          {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+          }
+        );
 
-      if (response.ok) {
-        const data = await response.json();
-        videos = data.videos || [];
+        if (response.ok) {
+          const data = await response.json();
+          const youtubeVideos = data.videos || [];
+          
+          console.log(`✅ Fetched ${youtubeVideos.length} YouTube videos`);
+          
+          // Transform YouTube data to video format
+          videos = youtubeVideos.map((video: any) => ({
+            videoId: video.id || video.videoId,
+            videoTitle: video.title || video.videoTitle || 'Untitled Video',
+            videoUrl: video.url || video.videoUrl || `https://youtube.com/watch?v=${video.id}`,
+            platform: 'youtube',
+            thumbnail: video.thumbnail || '',
+            accountUsername: account.username,
+            accountDisplayName: video.channelTitle || account.username,
+            uploadDate: video.uploadDate ? Timestamp.fromDate(new Date(video.uploadDate)) : Timestamp.now(),
+            views: video.views || video.viewCount || 0,
+            likes: video.likes || video.likeCount || 0,
+            comments: video.comments || video.commentCount || 0,
+            shares: 0,
+            caption: video.description || ''
+          }));
+        } else {
+          console.error(`YouTube API returned ${response.status}`);
+        }
+      } catch (youtubeError) {
+        console.error('YouTube fetch error:', youtubeError);
       }
     } else if (account.platform === 'twitter') {
       console.log(`🐦 Fetching tweets for ${account.username}...`);
