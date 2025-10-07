@@ -386,6 +386,8 @@ function DashboardPage() {
             displayName: videoData.username,
             profilePicture: (videoData as any).profile_pic_url || '',
             followerCount: 0,
+            isActive: true,
+            accountType: 'my',
             lastSynced: Timestamp.fromDate(new Date())
           });
 
