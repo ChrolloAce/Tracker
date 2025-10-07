@@ -474,10 +474,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       setAccounts(updatedAccounts);
       
       console.log(`✅ Added account @${username}`);
-      
-      // Automatically sync videos for the newly added account
-      console.log(`🔄 Auto-syncing videos...`);
-      await handleSyncAccount(accountId);
+      console.log(`⏳ Account queued for background sync. Check your email in 5-10 minutes!`);
       
       // Remove from processing accounts
       setProcessingAccounts(prev => prev.filter(acc => acc.username !== username));
