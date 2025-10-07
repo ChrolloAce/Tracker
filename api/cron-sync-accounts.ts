@@ -82,7 +82,18 @@ export default async function handler(
           }
         });
 
-        // Fetch videos based on platform
+        // Step 1: Fetch and update profile data (if not already set)
+        if (!account.displayName || account.displayName === account.username) {
+          console.log(`👤 Fetching profile data for ${account.username}...`);
+          
+          // For now, just update displayName to be capitalized username
+          // In the future, we could fetch full profile data via API
+          await accountRef.update({
+            displayName: account.username.charAt(0).toUpperCase() + account.username.slice(1)
+          });
+        }
+
+        // Step 2: Fetch videos based on platform
         let videos = [];
         let videosFetched = 0;
 
@@ -124,6 +135,9 @@ export default async function handler(
         } else if (account.platform === 'instagram') {
           // Instagram logic
           console.log(`⚠️  Instagram sync not yet implemented for ${account.username}`);
+        } else if (account.platform === 'twitter') {
+          // Twitter/X logic
+          console.log(`⚠️  Twitter sync not yet implemented for ${account.username}`);
         }
 
         // Update progress

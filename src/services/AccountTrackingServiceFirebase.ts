@@ -57,6 +57,10 @@ export class AccountTrackingServiceFirebase {
   /**
    * Add a new account to track in a project
    */
+  /**
+   * Add account for BACKGROUND sync (NEW - non-blocking)
+   * This adds the account instantly and queues it for background processing
+   */
   static async addAccount(
     orgId: string,
     projectId: string,
@@ -66,9 +70,46 @@ export class AccountTrackingServiceFirebase {
     accountType: 'my' | 'competitor' = 'my'
   ): Promise<string> {
     try {
-      console.log(`➕ Adding ${accountType} account @${username} on ${platform} to project ${projectId}`);
+      console.log(`⚡ Quick-adding ${accountType} account @${username} on ${platform} (background sync)`);
       
-      // Fetch account profile data
+      // Add to Firestore immediately with minimal data
+      // The cron job will fetch profile data and videos in the background
+      const accountData: any = {
+        username,
+        platform,
+        accountType,
+        displayName: username, // Use username as placeholder
+        isActive: true
+      };
+      
+      const accountId = await FirestoreDataService.addTrackedAccount(orgId, projectId, userId, accountData);
+
+      console.log(`✅ Queued account @${username} for background sync (ID: ${accountId})`);
+      console.log(`⏳ Videos will be synced in the background. You'll receive an email when complete.`);
+      
+      return accountId;
+    } catch (error) {
+      console.error('❌ Failed to add account:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add account with IMMEDIATE sync (OLD - blocking, kept for backward compatibility)
+   * Use this only when you need immediate profile data
+   */
+  static async addAccountImmediate(
+    orgId: string,
+    projectId: string,
+    userId: string,
+    username: string,
+    platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter',
+    accountType: 'my' | 'competitor' = 'my'
+  ): Promise<string> {
+    try {
+      console.log(`➕ Adding ${accountType} account @${username} on ${platform} with immediate sync`);
+      
+      // Fetch account profile data (BLOCKS UI)
       let profileData;
       if (platform === 'youtube') {
         profileData = await this.fetchYoutubeProfile(orgId, username);
