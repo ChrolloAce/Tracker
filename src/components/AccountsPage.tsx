@@ -1221,30 +1221,31 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                 </tbody>
               </table>
             </div>
-
-            {/* Pagination for Accounts Table */}
-            <div className="mt-6">
-              <Pagination
-                currentPage={accountsCurrentPage}
-                totalPages={Math.ceil(
-                  ((filteredAccounts.length > 0 ? filteredAccounts : accounts)
-                    .filter(account => 
-                      searchQuery === '' || 
-                      account.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                      account.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
-                    ).length) / accountsItemsPerPage
-                )}
-                itemsPerPage={accountsItemsPerPage}
-                onPageChange={(page) => {
-                  setAccountsCurrentPage(page);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                onItemsPerPageChange={(newItemsPerPage) => {
-                  setAccountsItemsPerPage(newItemsPerPage);
-                  setAccountsCurrentPage(1);
-                }}
-              />
-            </div>
+          )}
+          
+          {/* Pagination for Accounts Table */}
+          <div className="mt-6">
+            <Pagination
+              currentPage={accountsCurrentPage}
+              totalPages={Math.ceil(
+                ((filteredAccounts.length > 0 ? filteredAccounts : accounts)
+                  .filter(account => 
+                    searchQuery === '' || 
+                    account.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    account.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
+                  ).length) / accountsItemsPerPage
+              )}
+              itemsPerPage={accountsItemsPerPage}
+              onPageChange={(page) => {
+                setAccountsCurrentPage(page);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              onItemsPerPageChange={(newItemsPerPage) => {
+                setAccountsItemsPerPage(newItemsPerPage);
+                setAccountsCurrentPage(1);
+              }}
+            />
+          </div>
           </div>
         </div>
       ) : (
