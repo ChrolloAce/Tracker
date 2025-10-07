@@ -1186,7 +1186,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                       </tr>
                       );
                     })}
-                  }
                 </tbody>
               </table>
             </div>
