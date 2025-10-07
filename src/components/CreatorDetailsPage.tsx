@@ -236,7 +236,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
       console.log('✅ Linked accounts after filter:', linked.length, linked);
       setLinkedAccounts(linked);
 
-      // Load recent videos from linked accounts (max 10)
+      // Load all videos from linked accounts
       if (linked.length > 0) {
         console.log('🎬 Loading videos for', linked.length, 'accounts');
         const videosPromises = linked.map(async (account) => {
@@ -245,7 +245,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
             const videos = await FirestoreDataService.getVideos(
               currentOrgId,
               currentProjectId,
-              { trackedAccountId: account.id, limitCount: 5 }
+              { trackedAccountId: account.id }
             );
             console.log(`✅ Found ${videos.length} videos for ${account.username}`);
             return videos.map(v => ({ ...v, accountInfo: account }));
@@ -257,13 +257,13 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
         
         const allVideos = (await Promise.all(videosPromises)).flat();
         console.log('🎬 Total videos loaded:', allVideos.length);
-        // Sort by upload date and take top 10
+        // Sort by upload date (newest first)
         const sortedVideos = allVideos.sort((a, b) => {
           const dateA = a.uploadDate?.toDate?.() || new Date(0);
           const dateB = b.uploadDate?.toDate?.() || new Date(0);
           return dateB.getTime() - dateA.getTime();
-        }).slice(0, 10);
-        console.log('🎬 Sorted and limited videos:', sortedVideos.length);
+        });
+        console.log('🎬 Sorted videos:', sortedVideos.length);
         setRecentVideos(sortedVideos);
       } else {
         console.log('⚠️ No linked accounts found, skipping video loading');
@@ -558,6 +558,16 @@ const OverviewTab: React.FC<{
     return num.toString();
   };
 
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return 'N/A';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
   // Filter videos by time period
   const getFilteredVideosByTime = () => {
     const now = new Date();
@@ -761,9 +771,9 @@ const OverviewTab: React.FC<{
             >
               All Time
             </button>
+            </div>
           </div>
-        </div>
-      </div>
+              </div>
 
       {/* Account Cost Breakdown */}
       {profile?.customPaymentTerms && accountEarnings.length > 0 && (
@@ -859,6 +869,9 @@ const OverviewTab: React.FC<{
                   <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Preview
                   </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                    Date
+                  </th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Views
                   </th>
@@ -933,6 +946,13 @@ const OverviewTab: React.FC<{
                             <Play className="w-4 h-4 text-gray-700" />
             </div>
           )}
+                      </td>
+                      
+                      {/* Upload Date */}
+                      <td className="px-4 py-3">
+                        <div className="text-sm text-gray-400">
+                          {formatDate(video.uploadDate)}
+                        </div>
                       </td>
                       
                       {/* Views */}
