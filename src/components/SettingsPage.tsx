@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { Settings, LogOut, Crown, Upload, Camera } from 'lucide-react';
+import { Settings, LogOut, Crown, Upload, Camera, Mail, Send } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../services/firebase';
+import EmailService from '../services/EmailService';
 
 /**
  * SettingsPage Component
@@ -16,6 +17,7 @@ const SettingsPage: React.FC = () => {
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleLogout = async () => {
@@ -76,6 +78,33 @@ const SettingsPage: React.FC = () => {
       alert('Failed to update profile. Please try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSendTestEmail = async () => {
+    if (!user?.email) {
+      alert('No email address found for your account.');
+      return;
+    }
+
+    if (!window.confirm(`Send a test email to ${user.email}?`)) {
+      return;
+    }
+
+    setSendingEmail(true);
+    try {
+      const result = await EmailService.sendTestEmail(user.email);
+      
+      if (result.success) {
+        alert(`✅ Test email sent successfully to ${user.email}!\n\nCheck your inbox (and spam folder) to verify.`);
+      } else {
+        alert(`❌ Failed to send test email:\n${result.message || result.error}`);
+      }
+    } catch (error) {
+      console.error('Failed to send test email:', error);
+      alert('Failed to send test email. Please try again.');
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -218,6 +247,39 @@ const SettingsPage: React.FC = () => {
                 className="px-4 py-2 bg-white text-gray-900 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 dark:border-gray-700"
               >
                 View Plans
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Email Testing Section */}
+        <div className="bg-white dark:bg-[#161616] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#1A1A1A]">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <Mail className="w-5 h-5 text-gray-900 dark:text-white" />
+              Email Testing
+            </h2>
+          </div>
+          <div className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-medium text-gray-900 dark:text-white mb-1">
+                  Test Email Integration
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Send a test email to verify your email service is working
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                  Will send to: <span className="font-mono">{user?.email || 'No email found'}</span>
+                </p>
+              </div>
+              <button 
+                onClick={handleSendTestEmail}
+                disabled={sendingEmail || !user?.email}
+                className="flex items-center gap-2 px-4 py-2 bg-white text-gray-900 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Send className="w-4 h-4" />
+                {sendingEmail ? 'Sending...' : 'Send Test Email'}
               </button>
             </div>
           </div>
