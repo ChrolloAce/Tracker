@@ -184,6 +184,7 @@ export default async function handler(
       
       // First, fetch profile data
       try {
+        console.log(`👤 Fetching profile data for ${account.username}...`);
         const profileResponse = await fetch(
           `${baseUrl}/api/apify-proxy`,
           {
@@ -201,8 +202,11 @@ export default async function handler(
           }
         );
 
+        console.log(`📡 Profile response status: ${profileResponse.status}`);
+        
         if (profileResponse.ok) {
           const profileData = await profileResponse.json();
+          console.log(`📊 Profile data received:`, JSON.stringify(profileData).substring(0, 500));
           const firstTweet = profileData.items?.[0];
           
           if (firstTweet?.author) {
@@ -214,13 +218,19 @@ export default async function handler(
               isVerified: firstTweet.author.isVerified || firstTweet.author.isBlueVerified || false
             });
             console.log(`✅ Updated profile data for @${account.username}`);
+          } else {
+            console.warn(`⚠️ No author data found in first tweet for ${account.username}`);
           }
+        } else {
+          const errorText = await profileResponse.text();
+          console.error(`❌ Profile fetch failed with status ${profileResponse.status}: ${errorText}`);
         }
       } catch (profileError) {
-        console.error('Profile fetch failed, continuing with tweets:', profileError);
+        console.error('Profile fetch error:', profileError);
       }
 
       // Now fetch tweets
+      console.log(`📥 Fetching tweets for ${account.username}...`);
       const tweetsResponse = await fetch(
         `${baseUrl}/api/apify-proxy`,
         {
@@ -244,14 +254,29 @@ export default async function handler(
         }
       );
 
+      console.log(`📡 Tweets response status: ${tweetsResponse.status}`);
+      
       if (tweetsResponse.ok) {
         const tweetsData = await tweetsResponse.json();
+        console.log(`📊 Raw tweets data structure:`, Object.keys(tweetsData));
+        console.log(`📊 Tweets data sample:`, JSON.stringify(tweetsData).substring(0, 1000));
+        
         const allTweets = tweetsData.items || [];
+        console.log(`📊 Total items received: ${allTweets.length}`);
+        
+        if (allTweets.length === 0) {
+          console.warn(`⚠️ No tweets found for @${account.username}. This could mean:`);
+          console.warn(`   - The account has no tweets`);
+          console.warn(`   - The account is private`);
+          console.warn(`   - The account doesn't exist`);
+          console.warn(`   - The Apify actor is not working properly`);
+          console.warn(`   - The username format is incorrect`);
+        }
         
         // Filter out retweets
         const tweets = allTweets.filter((tweet: any) => !tweet.isRetweet);
         
-        console.log(`✅ Fetched ${tweets.length} tweets (${allTweets.length} total, retweets filtered)`);
+        console.log(`📊 Fetched ${tweets.length} tweets (${allTweets.length} total, ${allTweets.length - tweets.length} retweets filtered)`);
         
         // Transform tweets to video format
         videos = tweets.map((tweet: any, index: number) => {
@@ -282,6 +307,10 @@ export default async function handler(
             caption: tweetText
           };
         });
+      } else {
+        const errorText = await tweetsResponse.text();
+        console.error(`❌ Tweets fetch failed with status ${tweetsResponse.status}: ${errorText}`);
+        throw new Error(`Failed to fetch tweets: ${tweetsResponse.status} - ${errorText}`);
       }
     }
 

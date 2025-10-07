@@ -40,10 +40,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
     
     const normalizedActorId = normalizeActorId(actorId);
-    const APIFY_TOKEN = process.env.APIFY_TOKEN || 'apify_api_7wvIrJjtEH6dTZktJZAtcIGAylH7cX2jRweu';
+    const APIFY_TOKEN = process.env.APIFY_TOKEN;
 
-    console.log('🔄 Apify proxy request:', { actorId, action, inputKeys: Object.keys(input || {}) });
-    console.log('🔑 Using token:', APIFY_TOKEN ? 'Token found' : 'No token found');
+    // CRITICAL: Token must be set in Vercel environment variables
+    if (!APIFY_TOKEN) {
+      console.error('🚨 CRITICAL: APIFY_TOKEN environment variable is NOT SET!');
+      console.error('   → Go to Vercel Dashboard → Settings → Environment Variables');
+      console.error('   → Add APIFY_TOKEN with your token from https://console.apify.com/account/integrations');
+      console.error('   → Redeploy your app');
+      return res.status(500).json({
+        error: 'APIFY_TOKEN not configured',
+        message: 'The APIFY_TOKEN environment variable is not set in Vercel',
+        solution: [
+          '1. Go to https://console.apify.com/account/integrations and copy your token',
+          '2. Go to Vercel Dashboard → Your Project → Settings → Environment Variables',
+          '3. Add APIFY_TOKEN with your token value',
+          '4. Check ALL environments (Production, Preview, Development)',
+          '5. Redeploy your app'
+        ]
+      });
+    }
+
+    console.log('🔄 Apify proxy request:', { actorId, normalizedActorId, action, inputKeys: Object.keys(input || {}) });
+    console.log('📋 Input parameters:', JSON.stringify(input).substring(0, 500));
+    console.log('🔑 Using token:', APIFY_TOKEN ? `Token found (${APIFY_TOKEN.substring(0, 15)}...)` : 'No token found');
 
     if (action === 'run') {
       // Prefer run-sync-get-dataset-items (returns array of items)
@@ -58,7 +78,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (!runResponse.ok) {
         const errorText = await runResponse.text();
-        console.warn('⚠️ run-sync-get-dataset-items failed:', runResponse.status, errorText);
+        console.error('❌ run-sync-get-dataset-items failed:', runResponse.status);
+        console.error('❌ Error response:', errorText.substring(0, 1000));
+        
+        // Special handling for 401 Unauthorized
+        if (runResponse.status === 401) {
+          console.error('🚨 APIFY TOKEN IS INVALID OR MISSING!');
+          console.error('   → Go to https://console.apify.com/account/integrations');
+          console.error('   → Copy your Personal API token');
+          console.error('   → Set it as APIFY_TOKEN in Vercel environment variables');
+        }
 
         // Fallback: use /runs then wait for completion and fetch dataset items
         const runsUrl = `https://api.apify.com/v2/acts/${normalizedActorId}/runs?token=${APIFY_TOKEN}`;
@@ -73,6 +102,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!startRunRes.ok) {
           const startErr = await startRunRes.text();
           console.error('❌ Failed to start run via /runs:', startRunRes.status, startErr);
+          
+          if (startRunRes.status === 401) {
+            console.error('🚨 APIFY TOKEN IS INVALID OR MISSING!');
+            return res.status(401).json({
+              error: 'Apify authentication failed',
+              message: 'Your APIFY_TOKEN is invalid, expired, or not set',
+              details: startErr,
+              solution: [
+                '1. Go to https://console.apify.com/account/integrations',
+                '2. Copy your Personal API token',
+                '3. Add it as APIFY_TOKEN in Vercel environment variables',
+                '4. Redeploy your app'
+              ],
+              actorId: normalizedActorId
+            });
+          }
+          
           return res.status(startRunRes.status).json({
             error: `Failed to start actor run: ${startRunRes.status}`,
             details: startErr,
@@ -108,11 +154,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const items = await runResponse.json();
-      console.log('🎯 Synchronous run completed, got items directly:', Array.isArray(items) ? items.length : 'unknown');
+      const itemsArray = Array.isArray(items) ? items : [];
+      console.log('🎯 Synchronous run completed, got items directly:', itemsArray.length);
+      
+      if (itemsArray.length === 0) {
+        console.warn('⚠️ Apify returned 0 items. This could mean:');
+        console.warn('   - The username does not exist or is incorrect');
+        console.warn('   - The account is private');
+        console.warn('   - The account has no content');
+        console.warn('   - The Apify actor has an issue');
+        console.warn(`   - Actor: ${normalizedActorId}`);
+        console.warn(`   - Input: ${JSON.stringify(input).substring(0, 200)}`);
+      }
 
       return res.status(200).json({
         run: { id: 'sync-run', status: 'SUCCEEDED', defaultDatasetId: 'sync' },
-        items: Array.isArray(items) ? items : [],
+        items: itemsArray,
       });
 
     } else if (action === 'dataset') {
