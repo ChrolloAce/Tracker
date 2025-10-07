@@ -1235,6 +1235,12 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                     account.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
                   ).length) / accountsItemsPerPage
               )}
+              totalItems={(filteredAccounts.length > 0 ? filteredAccounts : accounts)
+                .filter(account => 
+                  searchQuery === '' || 
+                  account.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  account.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
+                ).length}
               itemsPerPage={accountsItemsPerPage}
               onPageChange={(page) => {
                 setAccountsCurrentPage(page);
