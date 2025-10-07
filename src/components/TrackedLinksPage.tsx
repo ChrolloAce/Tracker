@@ -107,29 +107,33 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     
     try {
       if (editingLink) {
-        // Update existing link
-        await FirestoreDataService.updateLink(currentOrgId, currentProjectId, editingLink.id, {
+        // Update existing link - filter out undefined values
+        const updateData: any = {
           originalUrl,
           title,
-          description,
-          tags,
-          linkedAccountId,
-        });
+        };
+        
+        if (description !== undefined) updateData.description = description;
+        if (tags !== undefined) updateData.tags = tags;
+        if (linkedAccountId !== undefined) updateData.linkedAccountId = linkedAccountId;
+        
+        await FirestoreDataService.updateLink(currentOrgId, currentProjectId, editingLink.id, updateData);
       } else {
         // Create new link
         const shortCode = generateShortCode();
         
-        await FirestoreDataService.createLink(currentOrgId, currentProjectId, user.uid, {
+        const createData: any = {
           shortCode,
           originalUrl,
           title,
-          description,
-          tags,
-          linkedAccountId,
-          linkedVideoId: undefined,
-          lastClickedAt: undefined,
           isActive: true
-        });
+        };
+        
+        if (description !== undefined) createData.description = description;
+        if (tags !== undefined) createData.tags = tags;
+        if (linkedAccountId !== undefined) createData.linkedAccountId = linkedAccountId;
+        
+        await FirestoreDataService.createLink(currentOrgId, currentProjectId, user.uid, createData);
       }
       
       await loadLinks();

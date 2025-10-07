@@ -111,10 +111,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     { id: '1', type: 'description_contains', value: '', operator: 'AND' }
   ]);
   
-  // Pagination state
+  // Pagination state for videos (details view)
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(() => {
     const saved = localStorage.getItem('accountVideos_itemsPerPage');
+    return saved ? Number(saved) : 10;
+  });
+
+  // Pagination state for accounts table (list view)
+  const [accountsCurrentPage, setAccountsCurrentPage] = useState(1);
+  const [accountsItemsPerPage, setAccountsItemsPerPage] = useState(() => {
+    const saved = localStorage.getItem('accounts_itemsPerPage');
     return saved ? Number(saved) : 10;
   });
   
@@ -144,10 +151,20 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     ColumnPreferencesService.savePreferences('accountVideos', visibleColumns);
   }, [visibleColumns]);
 
-  // Save items per page preference
+  // Save items per page preference for videos
   useEffect(() => {
     localStorage.setItem('accountVideos_itemsPerPage', String(itemsPerPage));
   }, [itemsPerPage]);
+
+  // Save items per page preference for accounts table
+  useEffect(() => {
+    localStorage.setItem('accounts_itemsPerPage', String(accountsItemsPerPage));
+  }, [accountsItemsPerPage]);
+
+  // Reset accounts pagination when search query changes
+  useEffect(() => {
+    setAccountsCurrentPage(1);
+  }, [searchQuery]);
 
   // Save processing accounts to localStorage
   useEffect(() => {
@@ -1043,13 +1060,20 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                   ))}
 
                   {/* Regular Accounts */}
-                  {(filteredAccounts.length > 0 ? filteredAccounts : accounts)
-                    .filter(account => 
-                      searchQuery === '' || 
-                      account.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                      account.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
-                    )
-                    .map((account) => {
+                  {(() => {
+                    const accountsToShow = (filteredAccounts.length > 0 ? filteredAccounts : accounts)
+                      .filter(account => 
+                        searchQuery === '' || 
+                        account.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        account.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
+                      );
+                    
+                    // Apply pagination
+                    const startIndex = (accountsCurrentPage - 1) * accountsItemsPerPage;
+                    const endIndex = startIndex + accountsItemsPerPage;
+                    const paginatedAccounts = accountsToShow.slice(startIndex, endIndex);
+                    
+                    return paginatedAccounts.map((account) => {
                       const isAccountSyncing = syncingAccounts.has(account.id);
                       
                       return (
@@ -1192,10 +1216,37 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                         </td>
                       </tr>
                       );
-                    })}
+                    });
+                  })()}
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination for Accounts Table */}
+            {viewMode === 'table' && (
+              <div className="mt-6">
+                <Pagination
+                  currentPage={accountsCurrentPage}
+                  totalPages={Math.ceil(
+                    ((filteredAccounts.length > 0 ? filteredAccounts : accounts)
+                      .filter(account => 
+                        searchQuery === '' || 
+                        account.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        account.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
+                      ).length) / accountsItemsPerPage
+                  )}
+                  itemsPerPage={accountsItemsPerPage}
+                  onPageChange={(page) => {
+                    setAccountsCurrentPage(page);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  onItemsPerPageChange={(newItemsPerPage) => {
+                    setAccountsItemsPerPage(newItemsPerPage);
+                    setAccountsCurrentPage(1);
+                  }}
+                />
+              </div>
+            )}
           )}
           </div>
         </div>
