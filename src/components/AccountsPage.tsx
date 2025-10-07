@@ -460,7 +460,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     setIsAddModalOpen(false);
 
     try {
-      const accountId = await AccountTrackingServiceFirebase.addAccount(
+      await AccountTrackingServiceFirebase.addAccount(
         currentOrgId,
         currentProjectId,
         user.uid,
