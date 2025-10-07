@@ -176,6 +176,20 @@ export interface TrackedAccount {
   lastSynced?: Timestamp;
   isActive: boolean;
   
+  // Background sync status (for Vercel cron jobs)
+  syncStatus?: 'idle' | 'pending' | 'syncing' | 'completed' | 'error';
+  syncProgress?: {
+    current: number;
+    total: number;
+    message: string;
+  };
+  lastSyncAt?: Timestamp;
+  lastSyncError?: string;
+  syncRequestedBy?: string; // userId who requested the sync
+  syncRequestedAt?: Timestamp;
+  syncRetryCount?: number;
+  maxRetries?: number;
+  
   // Aggregates (computed)
   totalVideos: number;
   totalViews: number;

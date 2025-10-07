@@ -14,9 +14,16 @@
     },
     "api/cron-refresh-videos.ts": {
       "maxDuration": 300
+    },
+    "api/cron-sync-accounts.ts": {
+      "maxDuration": 300
     }
   },
   "crons": [
+    {
+      "path": "/api/cron-sync-accounts",
+      "schedule": "*/5 * * * *"
+    },
     {
       "path": "/api/cron-refresh-videos",
       "schedule": "0 */12 * * *"

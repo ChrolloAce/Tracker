@@ -42,7 +42,7 @@ class FirestoreDataService {
   ): Promise<string> {
     const batch = writeBatch(db);
     
-    // Create tracked account in project
+    // Create tracked account in project with background sync fields
     const accountRef = doc(collection(db, 'organizations', orgId, 'projects', projectId, 'trackedAccounts'));
     const fullAccountData: TrackedAccount = {
       ...accountData,
@@ -54,7 +54,18 @@ class FirestoreDataService {
       totalViews: 0,
       totalLikes: 0,
       totalComments: 0,
-      totalShares: 0
+      totalShares: 0,
+      // Background sync fields
+      syncStatus: 'pending',
+      syncRequestedBy: userId,
+      syncRequestedAt: Timestamp.now(),
+      syncRetryCount: 0,
+      maxRetries: 3,
+      syncProgress: {
+        current: 0,
+        total: 100,
+        message: 'Queued for sync...'
+      }
     };
     
     batch.set(accountRef, fullAccountData);
@@ -67,8 +78,32 @@ class FirestoreDataService {
     });
     
     await batch.commit();
-    console.log(`✅ Added tracked account ${accountData.username} to project ${projectId}`);
+    console.log(`✅ Added tracked account ${accountData.username} to project ${projectId} with sync status: pending`);
+    
+    // Trigger immediate sync (fire and forget)
+    this.triggerAccountSync(accountRef.id).catch(err => {
+      console.error('Failed to trigger immediate sync:', err);
+      // Non-critical - cron will pick it up anyway
+    });
+    
     return accountRef.id;
+  }
+
+  /**
+   * Trigger immediate sync for an account (fire and forget)
+   */
+  private static async triggerAccountSync(accountId: string): Promise<void> {
+    try {
+      await fetch('/api/trigger-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId })
+      });
+      console.log(`🚀 Triggered immediate sync for account ${accountId}`);
+    } catch (error) {
+      console.error('Failed to trigger sync:', error);
+      // Non-critical error - cron will process it anyway
+    }
   }
 
   /**
