@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../services/firebase';
 import { 
   Plus, 
   Users, 
@@ -98,6 +100,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       return [];
     }
   });
+  const [syncingAccounts, setSyncingAccounts] = useState<Set<string>>(new Set());
   const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
   const [allRules, setAllRules] = useState<TrackingRule[]>([]);
   const [accountRules, setAccountRules] = useState<string[]>([]); // Rule IDs applied to the account
@@ -214,6 +217,42 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     };
 
     loadAccounts();
+  }, [currentOrgId, currentProjectId]);
+
+  // Real-time listener for syncing accounts
+  useEffect(() => {
+    if (!currentOrgId || !currentProjectId) return;
+
+    console.log('👂 Setting up real-time sync status listener...');
+
+    const accountsRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts');
+    const syncingQuery = query(accountsRef, where('syncStatus', 'in', ['pending', 'syncing']));
+
+    const unsubscribe = onSnapshot(syncingQuery, (snapshot) => {
+      const syncingIds = new Set<string>();
+      const previousSize = syncingAccounts.size;
+      
+      snapshot.docs.forEach((doc) => {
+        syncingIds.add(doc.id);
+        const data = doc.data();
+        console.log(`🔄 Account syncing: ${data.username} - ${data.syncStatus}`);
+      });
+
+      setSyncingAccounts(syncingIds);
+
+      // If an account just finished syncing (size decreased), reload
+      if (syncingIds.size < previousSize && syncingIds.size === 0) {
+        console.log('✅ All syncs completed! Reloading accounts...');
+        setTimeout(() => {
+          window.location.reload(); // Force reload to show new data
+        }, 1000);
+      }
+    });
+
+    return () => {
+      console.log('👋 Cleaning up sync status listener');
+      unsubscribe();
+    };
   }, [currentOrgId, currentProjectId]);
 
   // Calculate filtered stats for all accounts (for table view)
@@ -1010,13 +1049,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                       account.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
                       account.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
                     )
-                    .map((account) => (
+                    .map((account) => {
+                      const isSyncing = syncingAccounts.has(account.id);
+                      
+                      return (
                       <tr 
                         key={account.id}
                         className={clsx(
                           'hover:bg-white/5 dark:hover:bg-white/5 transition-colors cursor-pointer',
                           {
                             'bg-blue-900/20 dark:bg-blue-900/20': selectedAccount?.id === account.id,
+                            'bg-yellow-900/10 dark:bg-yellow-900/10 animate-pulse': isSyncing,
                           }
                         )}
                         onClick={() => setSelectedAccount(account)}
@@ -1043,9 +1086,19 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                 <Users className="w-5 h-5 text-gray-500" />
                               </div>
                             </div>
-                            <div>
-                              <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                {account.displayName || account.username}
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {account.displayName || account.username}
+                                </div>
+                                {isSyncing && (
+                                  <div className="flex items-center gap-1.5">
+                                    <RefreshCw className="w-3.5 h-3.5 text-yellow-500 animate-spin" />
+                                    <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">
+                                      Syncing...
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                               <div className="text-sm text-gray-500">@{account.username}</div>
                             </div>
@@ -1131,7 +1184,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                           </div>
                         </td>
                       </tr>
-                    ))
+                      );
+                    })}
                   }
                 </tbody>
               </table>
