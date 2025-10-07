@@ -205,26 +205,69 @@ export default async function handler(
             const userEmail = userDoc.data()?.email;
 
             if (userEmail) {
-              await fetch(
-                `${process.env.VERCEL_URL || 'https://your-app.vercel.app'}/api/send-test-email`,
-                {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    to: userEmail,
-                    subject: `✅ Account synced: ${account.username}`,
-                    html: `
-                      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-                        <h2>Account sync completed!</h2>
-                        <p><strong>${account.username}</strong> on ${account.platform} has been successfully synced.</p>
-                        <p>📊 <strong>${savedCount} videos</strong> have been added to your dashboard.</p>
-                        <hr>
-                        <p style="color: #666; font-size: 12px;">This sync was completed in the background by our automated system.</p>
-                      </div>
-                    `
-                  })
-                }
-              );
+              const appUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://your-app.vercel.app';
+              
+              await fetch(`${appUrl}/api/send-test-email`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  to: userEmail,
+                  subject: `✅ Account Synced: @${account.username}`,
+                  html: `
+                    <!DOCTYPE html>
+                    <html>
+                      <head>
+                        <meta charset="utf-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                      </head>
+                      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+                        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px 20px; border-radius: 10px 10px 0 0; text-align: center;">
+                          <h1 style="color: white; margin: 0; font-size: 24px;">✅ Account Synced!</h1>
+                        </div>
+                        
+                        <div style="background: #f9fafb; padding: 30px 20px; border-radius: 0 0 10px 10px;">
+                          <p style="font-size: 16px; margin-bottom: 20px;">
+                            Great news! Your account has been successfully synced.
+                          </p>
+                          
+                          <div style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #10b981; margin: 20px 0;">
+                            <p style="margin: 0; font-size: 14px;">
+                              <strong>Account:</strong> @${account.username}<br>
+                              <strong>Platform:</strong> ${account.platform.charAt(0).toUpperCase() + account.platform.slice(1)}<br>
+                              <strong>Videos Added:</strong> ${savedCount}
+                            </p>
+                          </div>
+                          
+                          <p style="font-size: 14px; color: #666; margin-top: 20px;">
+                            All videos from this account are now available in your dashboard. You can view analytics, track performance, and monitor engagement.
+                          </p>
+                          
+                          <div style="text-align: center; margin-top: 30px;">
+                            <a href="${appUrl}" style="display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                              View Dashboard
+                            </a>
+                          </div>
+                          
+                          <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+                          
+                          <p style="font-size: 12px; color: #999; text-align: center; margin: 0;">
+                            This sync was completed automatically by our background processing system<br>
+                            ${new Date().toLocaleString('en-US', { 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        </div>
+                      </body>
+                    </html>
+                  `
+                })
+              });
+              
+              console.log(`📧 Sent success email to ${userEmail} for account ${account.username}`);
             }
           } catch (emailError) {
             console.error('Failed to send email:', emailError);
@@ -264,25 +307,75 @@ export default async function handler(
             const userEmail = userDoc.data()?.email;
 
             if (userEmail) {
-              await fetch(
-                `${process.env.VERCEL_URL || 'https://your-app.vercel.app'}/api/send-test-email`,
-                {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    to: userEmail,
-                    subject: `❌ Failed to sync: ${account.username}`,
-                    html: `
-                      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-                        <h2 style="color: #dc2626;">Account sync failed</h2>
-                        <p>We couldn't sync <strong>${account.username}</strong> on ${account.platform} after 3 attempts.</p>
-                        <p><strong>Error:</strong> ${error.message}</p>
-                        <p>Please check the account settings and try again, or contact support if the issue persists.</p>
-                      </div>
-                    `
-                  })
-                }
-              );
+              const appUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://your-app.vercel.app';
+              
+              await fetch(`${appUrl}/api/send-test-email`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  to: userEmail,
+                  subject: `❌ Sync Failed: @${account.username}`,
+                  html: `
+                    <!DOCTYPE html>
+                    <html>
+                      <head>
+                        <meta charset="utf-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                      </head>
+                      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+                        <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); padding: 30px 20px; border-radius: 10px 10px 0 0; text-align: center;">
+                          <h1 style="color: white; margin: 0; font-size: 24px;">❌ Sync Failed</h1>
+                        </div>
+                        
+                        <div style="background: #f9fafb; padding: 30px 20px; border-radius: 0 0 10px 10px;">
+                          <p style="font-size: 16px; margin-bottom: 20px;">
+                            We were unable to sync your account after 3 attempts.
+                          </p>
+                          
+                          <div style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #dc2626; margin: 20px 0;">
+                            <p style="margin: 0; font-size: 14px;">
+                              <strong>Account:</strong> @${account.username}<br>
+                              <strong>Platform:</strong> ${account.platform.charAt(0).toUpperCase() + account.platform.slice(1)}<br>
+                              <strong>Error:</strong> ${error.message}
+                            </p>
+                          </div>
+                          
+                          <div style="background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 20px 0;">
+                            <p style="margin: 0; font-size: 14px; color: #92400e;">
+                              <strong>💡 What to try:</strong><br>
+                              • Check that the username is correct<br>
+                              • Make sure the account is public<br>
+                              • Verify the platform is correct<br>
+                              • Try adding the account again
+                            </p>
+                          </div>
+                          
+                          <div style="text-align: center; margin-top: 30px;">
+                            <a href="${appUrl}" style="display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                              Go to Dashboard
+                            </a>
+                          </div>
+                          
+                          <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+                          
+                          <p style="font-size: 12px; color: #999; text-align: center; margin: 0;">
+                            If the problem persists, please contact support<br>
+                            ${new Date().toLocaleString('en-US', { 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        </div>
+                      </body>
+                    </html>
+                  `
+                })
+              });
+              
+              console.log(`📧 Sent failure email to ${userEmail} for account ${account.username}`);
             }
           } catch (emailError) {
             console.error('Failed to send error email:', emailError);
