@@ -9,9 +9,10 @@ interface CreateLinkModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreate: (originalUrl: string, title: string, description?: string, tags?: string[], linkedAccountId?: string) => void;
+  editingLink?: any | null;
 }
 
-const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCreate }) => {
+const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCreate, editingLink }) => {
   const { currentOrgId, currentProjectId } = useAuth();
   const [originalUrl, setOriginalUrl] = useState('');
   const [title, setTitle] = useState('');
@@ -20,6 +21,20 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
   const [error, setError] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Populate fields when editing
+  useEffect(() => {
+    if (editingLink) {
+      setOriginalUrl(editingLink.originalUrl || '');
+      setTitle(editingLink.title || '');
+      setLinkedAccountId(editingLink.linkedAccountId || '');
+    } else {
+      // Reset fields when creating new link
+      setOriginalUrl('');
+      setTitle('');
+      setLinkedAccountId('');
+    }
+  }, [editingLink]);
 
   // Load accounts when modal opens
   useEffect(() => {
@@ -91,7 +106,9 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
       <div className="bg-white dark:bg-[#161616] rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Create Tracked Link</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              {editingLink ? 'Edit Tracked Link' : 'Create Tracked Link'}
+            </h2>
             <button
               onClick={onClose}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
@@ -245,7 +262,7 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
               type="submit"
               className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
             >
-              Create Link
+              {editingLink ? 'Update Link' : 'Create Link'}
             </button>
           </div>
         </form>

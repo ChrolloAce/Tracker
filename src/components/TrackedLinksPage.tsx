@@ -1,5 +1,5 @@
 import { useState, useEffect, forwardRef, useImperativeHandle, useMemo } from 'react';
-import { Link as LinkIcon, Plus, Copy, ExternalLink, Trash2, BarChart, QrCode, ArrowUp, ArrowDown } from 'lucide-react';
+import { Link as LinkIcon, Plus, Copy, ExternalLink, Trash2, BarChart, Edit2, ArrowUp, ArrowDown } from 'lucide-react';
 import { TrackedLink, TrackedAccount } from '../types/firestore';
 import FirestoreDataService from '../services/FirestoreDataService';
 import CreateLinkModal from './CreateLinkModal';
@@ -29,6 +29,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
   const [accounts, setAccounts] = useState<Map<string, TrackedAccount>>(new Map());
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedLink, setSelectedLink] = useState<TrackedLink | null>(null);
+  const [editingLink, setEditingLink] = useState<TrackedLink | null>(null);
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -105,26 +106,38 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     if (!currentOrgId || !currentProjectId || !user) return;
     
     try {
-      // Generate unique short code
-      const shortCode = generateShortCode();
-      
-      await FirestoreDataService.createLink(currentOrgId, currentProjectId, user.uid, {
-        shortCode,
-        originalUrl,
-        title,
-        description,
-        tags,
-        linkedAccountId,
-        linkedVideoId: undefined,
-        lastClickedAt: undefined,
-        isActive: true
-      });
+      if (editingLink) {
+        // Update existing link
+        await FirestoreDataService.updateLink(currentOrgId, currentProjectId, editingLink.id, {
+          originalUrl,
+          title,
+          description,
+          tags,
+          linkedAccountId,
+        });
+      } else {
+        // Create new link
+        const shortCode = generateShortCode();
+        
+        await FirestoreDataService.createLink(currentOrgId, currentProjectId, user.uid, {
+          shortCode,
+          originalUrl,
+          title,
+          description,
+          tags,
+          linkedAccountId,
+          linkedVideoId: undefined,
+          lastClickedAt: undefined,
+          isActive: true
+        });
+      }
       
       await loadLinks();
       setIsCreateModalOpen(false);
+      setEditingLink(null);
     } catch (error) {
-      console.error('Failed to create link:', error);
-      alert('Failed to create link. Please try again.');
+      console.error(`Failed to ${editingLink ? 'update' : 'create'} link:`, error);
+      alert(`Failed to ${editingLink ? 'update' : 'create'} link. Please try again.`);
     }
   };
 
@@ -767,10 +780,14 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                           <BarChart className="w-4 h-4" />
                         </button>
                         <button
-                          className="p-1.5 text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
-                          title="Generate QR Code"
+                          onClick={() => {
+                            setEditingLink(link);
+                            setIsCreateModalOpen(true);
+                          }}
+                          className="p-1.5 text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+                          title="Edit Link"
                         >
-                          <QrCode className="w-4 h-4" />
+                          <Edit2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteLink(link.id)}
@@ -806,8 +823,12 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       {isCreateModalOpen && (
         <CreateLinkModal
           isOpen={isCreateModalOpen}
-          onClose={() => setIsCreateModalOpen(false)}
+          onClose={() => {
+            setIsCreateModalOpen(false);
+            setEditingLink(null);
+          }}
           onCreate={handleCreateLink}
+          editingLink={editingLink}
         />
       )}
 
