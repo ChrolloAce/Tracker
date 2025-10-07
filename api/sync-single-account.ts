@@ -97,10 +97,13 @@ export default async function handler(
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              actorId: 'clockworks/tiktok-scraper',
+              actorId: 'clockworks~tiktok-scraper',  // Note: tilde, not slash!
               input: {
                 profiles: [account.username],
-                resultsPerPage: 100
+                resultsPerPage: 100,
+                proxy: {
+                  useApifyProxy: true
+                }
               },
               action: 'run'
             })
