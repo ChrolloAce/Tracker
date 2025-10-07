@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { runApifyActor } from './apify-client';
 
 // Initialize Firebase Admin (same as cron job)
 if (!getApps().length) {
@@ -84,59 +85,45 @@ export default async function handler(
 
     // Fetch videos based on platform
     let videos = [];
-    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
 
     if (account.platform === 'tiktok') {
       console.log(`🎵 Fetching TikTok videos for ${account.username}...`);
       
       try {
-        // Use Apify proxy to fetch TikTok videos
-        const response = await fetch(
-          `${baseUrl}/api/apify-proxy`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              actorId: 'clockworks~tiktok-scraper',  // Note: tilde, not slash!
-              input: {
-                profiles: [account.username],
-                resultsPerPage: 100,
-                proxy: {
-                  useApifyProxy: true
-                }
-              },
-              action: 'run'
-            })
+        // Call Apify directly (no HTTP proxy)
+        const data = await runApifyActor({
+          actorId: 'clockworks~tiktok-scraper',
+          input: {
+            profiles: [account.username],
+            resultsPerPage: 100,
+            proxy: {
+              useApifyProxy: true
+            }
           }
-        );
+        });
 
-        if (response.ok) {
-          const data = await response.json();
-          const tiktokVideos = data.items || [];
-          
-          console.log(`✅ Fetched ${tiktokVideos.length} TikTok videos`);
-          
-          // Transform TikTok data to video format
-          videos = tiktokVideos.map((item: any, index: number) => ({
-            videoId: item.id || `tiktok_${Date.now()}_${index}`,
-            videoTitle: item.text || 'Untitled TikTok',
-            videoUrl: item.videoUrl || item.webVideoUrl || '',
-            platform: 'tiktok',
-            thumbnail: item.videoMeta?.coverUrl || item.covers?.default || '',
-            accountUsername: account.username,
-            accountDisplayName: item.authorMeta?.name || account.username,
-            uploadDate: item.createTime ? Timestamp.fromMillis(item.createTime * 1000) : Timestamp.now(),
-            views: item.playCount || item.viewCount || 0,
-            likes: item.diggCount || item.likes || 0,
-            comments: item.commentCount || item.comments || 0,
-            shares: item.shareCount || item.shares || 0,
-            caption: item.text || ''
-          }));
-        } else {
-          console.error(`TikTok API returned ${response.status}`);
-        }
+        const tiktokVideos = data.items || [];
+        console.log(`✅ Fetched ${tiktokVideos.length} TikTok videos`);
+        
+        // Transform TikTok data to video format
+        videos = tiktokVideos.map((item: any, index: number) => ({
+          videoId: item.id || `tiktok_${Date.now()}_${index}`,
+          videoTitle: item.text || 'Untitled TikTok',
+          videoUrl: item.videoUrl || item.webVideoUrl || '',
+          platform: 'tiktok',
+          thumbnail: item.videoMeta?.coverUrl || item.covers?.default || '',
+          accountUsername: account.username,
+          accountDisplayName: item.authorMeta?.name || account.username,
+          uploadDate: item.createTime ? Timestamp.fromMillis(item.createTime * 1000) : Timestamp.now(),
+          views: item.playCount || item.viewCount || 0,
+          likes: item.diggCount || item.likes || 0,
+          comments: item.commentCount || item.comments || 0,
+          shares: item.shareCount || item.shares || 0,
+          caption: item.text || ''
+        }));
       } catch (tiktokError) {
         console.error('TikTok fetch error:', tiktokError);
+        throw tiktokError;
       }
     } else if (account.platform === 'youtube') {
       console.log(`📺 Fetching YouTube videos for ${account.username}...`);
@@ -185,45 +172,29 @@ export default async function handler(
       // First, fetch profile data
       try {
         console.log(`👤 Fetching profile data for ${account.username}...`);
-        const profileResponse = await fetch(
-          `${baseUrl}/api/apify-proxy`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              actorId: 'apidojo/tweet-scraper',
-              input: {
-                twitterHandles: [account.username],
-                maxItems: 1,
-                onlyVerifiedUsers: false,
-              },
-              action: 'run'
-            })
+        const profileData = await runApifyActor({
+          actorId: 'apidojo/tweet-scraper',
+          input: {
+            twitterHandles: [account.username],
+            maxItems: 1,
+            onlyVerifiedUsers: false,
           }
-        );
+        });
 
-        console.log(`📡 Profile response status: ${profileResponse.status}`);
+        console.log(`📊 Profile data received`);
+        const firstTweet = profileData.items?.[0];
         
-        if (profileResponse.ok) {
-          const profileData = await profileResponse.json();
-          console.log(`📊 Profile data received:`, JSON.stringify(profileData).substring(0, 500));
-          const firstTweet = profileData.items?.[0];
-          
-          if (firstTweet?.author) {
-            await accountRef.update({
-              displayName: firstTweet.author.name || account.username,
-              profilePicture: firstTweet.author.profilePicture || '',
-              followerCount: firstTweet.author.followers || 0,
-              followingCount: firstTweet.author.following || 0,
-              isVerified: firstTweet.author.isVerified || firstTweet.author.isBlueVerified || false
-            });
-            console.log(`✅ Updated profile data for @${account.username}`);
-          } else {
-            console.warn(`⚠️ No author data found in first tweet for ${account.username}`);
-          }
+        if (firstTweet?.author) {
+          await accountRef.update({
+            displayName: firstTweet.author.name || account.username,
+            profilePicture: firstTweet.author.profilePicture || '',
+            followerCount: firstTweet.author.followers || 0,
+            followingCount: firstTweet.author.following || 0,
+            isVerified: firstTweet.author.isVerified || firstTweet.author.isBlueVerified || false
+          });
+          console.log(`✅ Updated profile data for @${account.username}`);
         } else {
-          const errorText = await profileResponse.text();
-          console.error(`❌ Profile fetch failed with status ${profileResponse.status}: ${errorText}`);
+          console.warn(`⚠️ No author data found in first tweet for ${account.username}`);
         }
       } catch (profileError) {
         console.error('Profile fetch error:', profileError);
@@ -231,87 +202,62 @@ export default async function handler(
 
       // Now fetch tweets
       console.log(`📥 Fetching tweets for ${account.username}...`);
-      const tweetsResponse = await fetch(
-        `${baseUrl}/api/apify-proxy`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            actorId: 'apidojo/tweet-scraper',
-            input: {
-              twitterHandles: [account.username],
-              maxItems: 100,
-              sort: 'Latest',
-              onlyImage: false,
-              onlyVideo: false,
-              onlyQuote: false,
-              onlyVerifiedUsers: false,
-              onlyTwitterBlue: false,
-              includeSearchTerms: false,
-            },
-            action: 'run'
-          })
+      const tweetsData = await runApifyActor({
+        actorId: 'apidojo/tweet-scraper',
+        input: {
+          twitterHandles: [account.username],
+          maxItems: 100,
+          sort: 'Latest',
+          onlyImage: false,
+          onlyVideo: false,
+          onlyQuote: false,
+          onlyVerifiedUsers: false,
+          onlyTwitterBlue: false,
+          includeSearchTerms: false,
         }
-      );
+      });
 
-      console.log(`📡 Tweets response status: ${tweetsResponse.status}`);
+      const allTweets = tweetsData.items || [];
+      console.log(`📊 Total items received: ${allTweets.length}`);
       
-      if (tweetsResponse.ok) {
-        const tweetsData = await tweetsResponse.json();
-        console.log(`📊 Raw tweets data structure:`, Object.keys(tweetsData));
-        console.log(`📊 Tweets data sample:`, JSON.stringify(tweetsData).substring(0, 1000));
-        
-        const allTweets = tweetsData.items || [];
-        console.log(`📊 Total items received: ${allTweets.length}`);
-        
-        if (allTweets.length === 0) {
-          console.warn(`⚠️ No tweets found for @${account.username}. This could mean:`);
-          console.warn(`   - The account has no tweets`);
-          console.warn(`   - The account is private`);
-          console.warn(`   - The account doesn't exist`);
-          console.warn(`   - The Apify actor is not working properly`);
-          console.warn(`   - The username format is incorrect`);
-        }
-        
-        // Filter out retweets
-        const tweets = allTweets.filter((tweet: any) => !tweet.isRetweet);
-        
-        console.log(`📊 Fetched ${tweets.length} tweets (${allTweets.length} total, ${allTweets.length - tweets.length} retweets filtered)`);
-        
-        // Transform tweets to video format
-        videos = tweets.map((tweet: any, index: number) => {
-          let thumbnail = '';
-          if (tweet.media && tweet.media.length > 0) {
-            thumbnail = tweet.media[0];
-          } else if (tweet.extendedEntities?.media && tweet.extendedEntities.media.length > 0) {
-            thumbnail = tweet.extendedEntities.media[0].media_url_https || '';
-          }
-
-          const tweetId = tweet.id || `tweet_${Date.now()}_${index}`;
-          const tweetUrl = tweet.url || `https://twitter.com/i/status/${tweetId}`;
-          const tweetText = tweet.fullText || tweet.text || '';
-
-          return {
-            videoId: tweetId,
-            videoTitle: tweetText ? tweetText.substring(0, 100) + (tweetText.length > 100 ? '...' : '') : 'Untitled Tweet',
-            videoUrl: tweetUrl,
-            platform: 'twitter',
-            thumbnail: thumbnail,
-            accountUsername: account.username,
-            accountDisplayName: tweet.author?.name || account.username,
-            uploadDate: tweet.createdAt ? Timestamp.fromDate(new Date(tweet.createdAt)) : Timestamp.now(),
-            views: tweet.viewCount || 0,
-            likes: tweet.likeCount || 0,
-            comments: tweet.replyCount || 0,
-            shares: tweet.retweetCount || 0,
-            caption: tweetText
-          };
-        });
-      } else {
-        const errorText = await tweetsResponse.text();
-        console.error(`❌ Tweets fetch failed with status ${tweetsResponse.status}: ${errorText}`);
-        throw new Error(`Failed to fetch tweets: ${tweetsResponse.status} - ${errorText}`);
+      if (allTweets.length === 0) {
+        console.warn(`⚠️ No tweets found for @${account.username}`);
       }
+      
+      // Filter out retweets
+      const tweets = allTweets.filter((tweet: any) => !tweet.isRetweet);
+      
+      console.log(`📊 Fetched ${tweets.length} tweets (${allTweets.length} total, retweets filtered)`);
+      
+      // Transform tweets to video format
+      videos = tweets.map((tweet: any, index: number) => {
+        let thumbnail = '';
+        if (tweet.media && tweet.media.length > 0) {
+          thumbnail = tweet.media[0];
+        } else if (tweet.extendedEntities?.media && tweet.extendedEntities.media.length > 0) {
+          thumbnail = tweet.extendedEntities.media[0].media_url_https || '';
+        }
+
+        const tweetId = tweet.id || `tweet_${Date.now()}_${index}`;
+        const tweetUrl = tweet.url || `https://twitter.com/i/status/${tweetId}`;
+        const tweetText = tweet.fullText || tweet.text || '';
+
+        return {
+          videoId: tweetId,
+          videoTitle: tweetText ? tweetText.substring(0, 100) + (tweetText.length > 100 ? '...' : '') : 'Untitled Tweet',
+          videoUrl: tweetUrl,
+          platform: 'twitter',
+          thumbnail: thumbnail,
+          accountUsername: account.username,
+          accountDisplayName: tweet.author?.name || account.username,
+          uploadDate: tweet.createdAt ? Timestamp.fromDate(new Date(tweet.createdAt)) : Timestamp.now(),
+          views: tweet.viewCount || 0,
+          likes: tweet.likeCount || 0,
+          comments: tweet.replyCount || 0,
+          shares: tweet.retweetCount || 0,
+          caption: tweetText
+        };
+      });
     }
 
     console.log(`📊 Found ${videos.length} videos/posts`);
