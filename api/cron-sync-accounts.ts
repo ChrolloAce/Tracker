@@ -136,8 +136,117 @@ export default async function handler(
           // Instagram logic
           console.log(`⚠️  Instagram sync not yet implemented for ${account.username}`);
         } else if (account.platform === 'twitter') {
-          // Twitter/X logic
-          console.log(`⚠️  Twitter sync not yet implemented for ${account.username}`);
+          // Twitter/X logic via Apify
+          console.log(`🐦 Fetching tweets for @${account.username}...`);
+          
+          try {
+            // First, fetch profile data if needed
+            if (!account.displayName || account.displayName === account.username || !account.profilePicture) {
+              const profileResponse = await fetch(
+                `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/api/apify-proxy`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    actorId: 'apidojo/tweet-scraper',
+                    input: {
+                      twitterHandles: [account.username],
+                      maxItems: 1,
+                      onlyVerifiedUsers: false,
+                    },
+                    action: 'run'
+                  })
+                }
+              );
+
+              if (profileResponse.ok) {
+                const profileData = await profileResponse.json();
+                const firstTweet = profileData.items?.[0];
+                
+                if (firstTweet?.author) {
+                  await accountRef.update({
+                    displayName: firstTweet.author.name || account.username,
+                    profilePicture: firstTweet.author.profilePicture || '',
+                    followerCount: firstTweet.author.followers || 0,
+                    followingCount: firstTweet.author.following || 0,
+                    isVerified: firstTweet.author.isVerified || firstTweet.author.isBlueVerified || false
+                  });
+                  console.log(`✅ Updated profile data for @${account.username}`);
+                }
+              }
+            }
+
+            // Now fetch tweets
+            const tweetsResponse = await fetch(
+              `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/api/apify-proxy`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  actorId: 'apidojo/tweet-scraper',
+                  input: {
+                    twitterHandles: [account.username],
+                    maxItems: 100,
+                    sort: 'Latest',
+                    onlyImage: false,
+                    onlyVideo: false,
+                    onlyQuote: false,
+                    onlyVerifiedUsers: false,
+                    onlyTwitterBlue: false,
+                    includeSearchTerms: false,
+                  },
+                  action: 'run'
+                })
+              }
+            );
+
+            if (tweetsResponse.ok) {
+              const tweetsData = await tweetsResponse.json();
+              const allTweets = tweetsData.items || [];
+              
+              // Filter out retweets
+              const tweets = allTweets.filter((tweet: any) => !tweet.isRetweet);
+              
+              console.log(`✅ Fetched ${tweets.length} tweets (${allTweets.length} total, retweets filtered)`);
+              
+              // Transform tweets to video format
+              videos = tweets.map((tweet: any, index: number) => {
+                let thumbnail = '';
+                if (tweet.media && tweet.media.length > 0) {
+                  thumbnail = tweet.media[0];
+                } else if (tweet.extendedEntities?.media && tweet.extendedEntities.media.length > 0) {
+                  thumbnail = tweet.extendedEntities.media[0].media_url_https || '';
+                }
+
+                const tweetId = tweet.id || `tweet_${Date.now()}_${index}`;
+                const tweetUrl = tweet.url || `https://twitter.com/i/status/${tweetId}`;
+                const tweetText = tweet.fullText || tweet.text || '';
+
+                return {
+                  videoId: tweetId,
+                  videoTitle: tweetText ? tweetText.substring(0, 100) + (tweetText.length > 100 ? '...' : '') : 'Untitled Tweet',
+                  videoUrl: tweetUrl,
+                  platform: 'twitter',
+                  thumbnail: thumbnail,
+                  accountUsername: account.username,
+                  accountDisplayName: tweet.author?.name || account.username,
+                  uploadDate: tweet.createdAt ? Timestamp.fromDate(new Date(tweet.createdAt)) : Timestamp.now(),
+                  views: tweet.viewCount || 0,
+                  likes: tweet.likeCount || 0,
+                  comments: tweet.replyCount || 0,
+                  shares: tweet.retweetCount || 0,
+                  caption: tweetText
+                };
+              });
+              
+              videosFetched = videos.length;
+            } else {
+              throw new Error(`Twitter API returned ${tweetsResponse.status}`);
+            }
+          } catch (twitterError: any) {
+            console.error(`❌ Twitter sync error for ${account.username}:`, twitterError);
+            throw twitterError;
+          }
         }
 
         // Update progress
