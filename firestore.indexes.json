@@ -86,6 +86,14 @@
       ]
     },
     {
+      "collectionGroup": "trackedAccounts",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "syncStatus", "order": "ASCENDING" },
+        { "fieldPath": "syncRetryCount", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "links",
       "queryScope": "COLLECTION",
       "fields": [
