@@ -17,6 +17,9 @@
     },
     "api/cron-sync-accounts.ts": {
       "maxDuration": 300
+    },
+    "api/sync-single-account.ts": {
+      "maxDuration": 300
     }
   },
   "crons": [
