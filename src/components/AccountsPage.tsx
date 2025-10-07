@@ -1056,13 +1056,15 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                       <tr 
                         key={account.id}
                         className={clsx(
-                          'hover:bg-white/5 dark:hover:bg-white/5 transition-colors cursor-pointer',
+                          'transition-colors',
                           {
-                            'bg-blue-900/20 dark:bg-blue-900/20': selectedAccount?.id === account.id,
+                            'bg-blue-900/20 dark:bg-blue-900/20': selectedAccount?.id === account.id && !isAccountSyncing,
                             'bg-yellow-900/10 dark:bg-yellow-900/10 animate-pulse': isAccountSyncing,
+                            'hover:bg-white/5 dark:hover:bg-white/5 cursor-pointer': !isAccountSyncing,
+                            'cursor-not-allowed opacity-60 pointer-events-none': isAccountSyncing,
                           }
                         )}
-                        onClick={() => setSelectedAccount(account)}
+                        onClick={() => !isAccountSyncing && setSelectedAccount(account)}
                       >
                         {/* Username Column */}
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -1151,9 +1153,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                 e.stopPropagation();
                                 handleRefreshProfile(account.id);
                               }}
-                              disabled={isRefreshingProfile === account.id}
-                              className="text-gray-400 hover:text-green-600 transition-colors disabled:animate-spin"
-                              title="Refresh profile"
+                              disabled={isRefreshingProfile === account.id || isAccountSyncing}
+                              className="text-gray-400 hover:text-green-600 transition-colors disabled:animate-spin disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={isAccountSyncing ? "Account is syncing..." : "Refresh profile"}
                             >
                               <User className="w-4 h-4" />
                             </button>
@@ -1162,9 +1164,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                 e.stopPropagation();
                                 handleSyncAccount(account.id);
                               }}
-                              disabled={isSyncing === account.id}
-                              className="text-gray-400 hover:text-blue-600 transition-colors disabled:animate-spin"
-                              title="Sync videos"
+                              disabled={isSyncing === account.id || isAccountSyncing}
+                              className="text-gray-400 hover:text-blue-600 transition-colors disabled:animate-spin disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={isAccountSyncing ? "Account is syncing..." : "Sync videos"}
                             >
                               <RefreshCw className="w-4 h-4" />
                             </button>
@@ -1173,12 +1175,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                 e.stopPropagation();
                                 handleRemoveAccount(account.id);
                               }}
-                              className="text-gray-400 hover:text-red-600 transition-colors"
-                              title="Remove account"
+                              disabled={isAccountSyncing}
+                              className="text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={isAccountSyncing ? "Account is syncing..." : "Remove account"}
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
-                            <button className="text-gray-400 hover:text-gray-600 transition-colors">
+                            <button 
+                              disabled={isAccountSyncing}
+                              className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={isAccountSyncing ? "Account is syncing..." : "More options"}
+                            >
                               <MoreHorizontal className="w-4 h-4" />
                             </button>
                           </div>
