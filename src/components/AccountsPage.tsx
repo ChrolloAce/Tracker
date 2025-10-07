@@ -1800,7 +1800,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                 <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
                   Choose Platform
                 </label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <button
                     onClick={() => setNewAccountPlatform('instagram')}
                     className={clsx(
@@ -1865,7 +1865,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                   value={newAccountUsername}
                   onChange={(e) => setNewAccountUsername(e.target.value)}
                     placeholder="username"
-                    className="w-full pl-8 pr-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
+                    className="w-full pl-8 pr-4 py-4 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                 />
                 </div>
                 <p className="text-sm text-gray-500 mt-2">
@@ -1877,7 +1877,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
             <div className="flex space-x-4 mt-8">
               <button
                 onClick={() => setIsAddModalOpen(false)}
-                className="flex-1 px-6 py-3 text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                className="flex-1 px-6 py-3 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
               >
                 Cancel
               </button>

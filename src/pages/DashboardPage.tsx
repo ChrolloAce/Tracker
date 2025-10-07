@@ -4,6 +4,7 @@ import { ArrowLeft, ChevronDown, Search } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import { VideoSubmissionsTable } from '../components/VideoSubmissionsTable';
 import { VideoSubmissionModal } from '../components/VideoSubmissionModal';
+import { AddVideoModal } from '../components/AddVideoModal';
 import { TikTokSearchModal } from '../components/TikTokSearchModal';
 import KPICards from '../components/KPICards';
 import DateRangeFilter, { DateFilterType } from '../components/DateRangeFilter';
@@ -424,6 +425,90 @@ function DashboardPage() {
   }, [user, currentOrgId]);
 
 
+  const handleAddVideosWithAccounts = useCallback(async (platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter', videoUrls: string[]) => {
+    if (!user || !currentOrgId || !currentProjectId) {
+      throw new Error('User not authenticated or no organization selected');
+    }
+
+    console.log('🎬 Adding videos with account management...', { platform, count: videoUrls.length });
+
+    let successCount = 0;
+    let failureCount = 0;
+
+    for (const videoUrl of videoUrls) {
+      try {
+        console.log(`📹 Processing video: ${videoUrl}`);
+        
+        // Fetch video data
+        const { data: videoData } = await VideoApiService.fetchVideoData(videoUrl);
+        const username = videoData.username;
+
+        console.log(`👤 Video belongs to: @${username}`);
+
+        // Check if account exists
+        const accounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
+        let account = accounts.find(acc => 
+          acc.username.toLowerCase() === username.toLowerCase() && 
+          acc.platform === platform
+        );
+
+        // If account doesn't exist, create it
+        if (!account) {
+          console.log(`✨ Account @${username} doesn't exist. Creating new account...`);
+          
+          const accountId = await FirestoreDataService.addTrackedAccount(currentOrgId, currentProjectId, {
+            username,
+            platform,
+            displayName: videoData.username,
+            profilePicture: videoData.profile_pic_url || '',
+            followerCount: 0,
+            totalVideos: 0,
+            totalViews: 0,
+            totalLikes: 0,
+            totalComments: 0,
+            lastSynced: new Date()
+          });
+
+          console.log(`✅ Created new account with ID: ${accountId}`);
+        } else {
+          console.log(`✅ Account @${username} already exists (ID: ${account.id})`);
+        }
+
+        // Add the video
+        await FirestoreDataService.addVideo(currentOrgId, currentProjectId, user.uid, {
+          platform,
+          url: videoUrl,
+          thumbnail: videoData.thumbnail_url,
+          title: videoData.caption?.split('\n')[0] || 'Untitled Video',
+          description: videoData.caption || '',
+          username,
+          views: videoData.view_count || 0,
+          likes: videoData.like_count || 0,
+          comments: videoData.comment_count || 0,
+          shares: (videoData as any).share_count || 0,
+          uploadDate: new Date(videoData.timestamp * 1000),
+          dateAdded: new Date()
+        });
+
+        console.log(`✅ Video added successfully`);
+        successCount++;
+      } catch (error) {
+        console.error(`❌ Failed to process video ${videoUrl}:`, error);
+        failureCount++;
+      }
+    }
+
+    console.log(`📊 Results: ${successCount} successful, ${failureCount} failed`);
+
+    // Reload data
+    await loadSubmissions();
+    await loadTrackedAccounts();
+
+    if (failureCount > 0) {
+      alert(`Added ${successCount} videos successfully. ${failureCount} failed.`);
+    }
+  }, [user, currentOrgId, currentProjectId]);
+
   const handleStatusUpdate = useCallback(async (id: string, status: VideoSubmission['status']) => {
     if (!user || !currentOrgId) return;
     
@@ -729,10 +814,10 @@ function DashboardPage() {
         </div>
       </main>
 
-      <VideoSubmissionModal
+      <AddVideoModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSubmit={handleAddVideo}
+        onAddVideo={handleAddVideosWithAccounts}
       />
 
       <TikTokSearchModal
