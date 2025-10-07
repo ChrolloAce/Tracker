@@ -105,22 +105,62 @@ export default async function handler(
         const tiktokVideos = data.items || [];
         console.log(`✅ Fetched ${tiktokVideos.length} TikTok videos`);
         
+        // Get profile data from first video (if available)
+        if (tiktokVideos.length > 0 && tiktokVideos[0]) {
+          const firstVideo = tiktokVideos[0];
+          const profilePicture = firstVideo['authorMeta.avatar'] || firstVideo.authorMeta?.avatar || '';
+          const followerCount = firstVideo['authorMeta.fans'] || firstVideo.authorMeta?.fans || 0;
+          const displayName = firstVideo['authorMeta.nickName'] || firstVideo.authorMeta?.nickName || firstVideo['authorMeta.name'] || firstVideo.authorMeta?.name || account.username;
+          
+          // Update account profile if we have new data
+          if (profilePicture || followerCount > 0) {
+            try {
+              await accountRef.update({
+                displayName: displayName,
+                profilePicture: profilePicture,
+                followerCount: followerCount,
+                isVerified: firstVideo['authorMeta.verified'] || firstVideo.authorMeta?.verified || false
+              });
+              console.log(`✅ Updated TikTok profile: ${followerCount} followers`);
+            } catch (updateError) {
+              console.warn('⚠️ Could not update profile:', updateError);
+            }
+          }
+        }
+        
         // Transform TikTok data to video format
-        videos = tiktokVideos.map((item: any, index: number) => ({
-          videoId: item.id || `tiktok_${Date.now()}_${index}`,
-          videoTitle: item.text || 'Untitled TikTok',
-          videoUrl: item.videoUrl || item.webVideoUrl || '',
-          platform: 'tiktok',
-          thumbnail: item.videoMeta?.coverUrl || item.covers?.default || '',
-          accountUsername: account.username,
-          accountDisplayName: item.authorMeta?.name || account.username,
-          uploadDate: item.createTime ? Timestamp.fromMillis(item.createTime * 1000) : Timestamp.now(),
-          views: item.playCount || item.viewCount || 0,
-          likes: item.diggCount || item.likes || 0,
-          comments: item.commentCount || item.comments || 0,
-          shares: item.shareCount || item.shares || 0,
-          caption: item.text || ''
-        }));
+        videos = tiktokVideos.map((item: any, index: number) => {
+          // Handle both flat keys ("authorMeta.name") and nested objects (authorMeta.name)
+          const getField = (flatKey: string, nestedPath: string[]) => {
+            if (item[flatKey]) return item[flatKey];
+            let obj = item;
+            for (const key of nestedPath) {
+              if (obj && obj[key]) obj = obj[key];
+              else return null;
+            }
+            return obj;
+          };
+          
+          return {
+            videoId: item.id || `tiktok_${Date.now()}_${index}`,
+            videoTitle: item.text || 'Untitled TikTok',
+            videoUrl: item.videoUrl || item.webVideoUrl || '',
+            platform: 'tiktok',
+            thumbnail: getField('videoMeta.coverUrl', ['videoMeta', 'coverUrl']) || item.covers?.default || '',
+            accountUsername: account.username,
+            accountDisplayName: getField('authorMeta.nickName', ['authorMeta', 'nickName']) || 
+                               getField('authorMeta.name', ['authorMeta', 'name']) || 
+                               account.username,
+            uploadDate: item.createTime ? Timestamp.fromMillis(item.createTime * 1000) : 
+                       item.createTimeISO ? Timestamp.fromDate(new Date(item.createTimeISO)) : 
+                       Timestamp.now(),
+            views: item.playCount || item.viewCount || 0,
+            likes: item.diggCount || item.likes || 0,
+            comments: item.commentCount || item.comments || 0,
+            shares: item.shareCount || item.shares || 0,
+            caption: item.text || ''
+          };
+        });
       } catch (tiktokError) {
         console.error('TikTok fetch error:', tiktokError);
         throw tiktokError;
