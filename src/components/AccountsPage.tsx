@@ -1050,7 +1050,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                       account.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
                     )
                     .map((account) => {
-                      const isSyncing = syncingAccounts.has(account.id);
+                      const isAccountSyncing = syncingAccounts.has(account.id);
                       
                       return (
                       <tr 
@@ -1059,7 +1059,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                           'hover:bg-white/5 dark:hover:bg-white/5 transition-colors cursor-pointer',
                           {
                             'bg-blue-900/20 dark:bg-blue-900/20': selectedAccount?.id === account.id,
-                            'bg-yellow-900/10 dark:bg-yellow-900/10 animate-pulse': isSyncing,
+                            'bg-yellow-900/10 dark:bg-yellow-900/10 animate-pulse': isAccountSyncing,
                           }
                         )}
                         onClick={() => setSelectedAccount(account)}
@@ -1091,7 +1091,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                 <div className="text-sm font-medium text-gray-900 dark:text-white">
                                   {account.displayName || account.username}
                                 </div>
-                                {isSyncing && (
+                                {isAccountSyncing && (
                                   <div className="flex items-center gap-1.5">
                                     <RefreshCw className="w-3.5 h-3.5 text-yellow-500 animate-spin" />
                                     <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">
