@@ -377,10 +377,11 @@ function DashboardPage() {
         );
 
         // If account doesn't exist, create it
+        let accountId: string;
         if (!account) {
           console.log(`✨ Account @${username} doesn't exist. Creating new account...`);
           
-          const accountId = await FirestoreDataService.addTrackedAccount(currentOrgId, currentProjectId, user.uid, {
+          accountId = await FirestoreDataService.addTrackedAccount(currentOrgId, currentProjectId, user.uid, {
             username,
             platform,
             displayName: videoData.username,
@@ -393,13 +394,17 @@ function DashboardPage() {
 
           console.log(`✅ Created new account with ID: ${accountId}`);
         } else {
-          console.log(`✅ Account @${username} already exists (ID: ${account.id})`);
+          accountId = account.id;
+          console.log(`✅ Account @${username} already exists (ID: ${accountId})`);
         }
 
-        // Add the video
+        // Add the video and link it to the account
         const videoId = Date.now().toString();
         const timestamp = (videoData as any).timestamp || Date.now() / 1000;
         const uploadDate = new Date(Number(timestamp) * 1000);
+        
+        console.log(`📹 Adding video to account ${accountId}...`);
+        
         await FirestoreDataService.addVideo(currentOrgId, currentProjectId, user.uid, {
           platform,
           url: videoUrl,
@@ -412,7 +417,8 @@ function DashboardPage() {
           comments: videoData.comment_count || 0,
           shares: (videoData as any).share_count || 0,
           status: 'active',
-          isSingular: true
+          isSingular: false,
+          trackedAccountId: accountId
         });
 
         console.log(`✅ Video added successfully`);
