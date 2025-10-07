@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-import { runApifyActor } from './apify-client';
+import { runApifyActor } from './apify-client.js';
 
 // Initialize Firebase Admin (same as cron job)
 if (!getApps().length) {
