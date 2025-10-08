@@ -42,6 +42,7 @@ import Pagination from './ui/Pagination';
 import ColumnPreferencesService from '../services/ColumnPreferencesService';
 import KPICards from './KPICards';
 import DateFilterService from '../services/DateFilterService';
+import CreateLinkModal from './CreateLinkModal';
 
 /**
  * Extract username from social media URL
@@ -128,6 +129,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState<TrackedAccount | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [showAttachCreatorModal, setShowAttachCreatorModal] = useState(false);
+  const [showCreateLinkModal, setShowCreateLinkModal] = useState(false);
   const [showColumnToggle, setShowColumnToggle] = useState(false);
   const [processingAccounts, setProcessingAccounts] = useState<Array<{username: string; platform: string; startedAt: number}>>(() => {
     // Restore from localStorage and clean up old entries (> 5 minutes old)
@@ -1429,6 +1432,13 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                       <Plus className="w-3 h-3" />
                       {activeRulesCount > 0 ? 'Manage Rules' : 'Add Rule'}
                     </button>
+                    <button
+                      onClick={() => setShowAttachCreatorModal(true)}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded-lg transition-colors"
+                    >
+                      <Plus className="w-3 h-3" />
+                      Attach to Creator
+                    </button>
                   </div>
                   <div className="flex items-center space-x-6 text-sm text-gray-600 dark:text-gray-400">
                     <div className="flex items-center space-x-2">
@@ -1478,6 +1488,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                     linkClicks={[]}
                     dateFilter={dateFilter}
                     timePeriod="days"
+                    onCreateLink={() => setShowCreateLinkModal(true)}
                   />
                 </div>
               );
@@ -2363,6 +2374,91 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                   className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-600"
                 >
                   Delete Account
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Link Modal */}
+      {showCreateLinkModal && selectedAccount && (
+        <CreateLinkModal
+          isOpen={showCreateLinkModal}
+          onClose={() => setShowCreateLinkModal(false)}
+          onCreate={() => {
+            setShowCreateLinkModal(false);
+          }}
+        />
+      )}
+
+      {/* Attach to Creator Modal */}
+      {showAttachCreatorModal && selectedAccount && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-900 dark:bg-zinc-900 rounded-2xl p-8 w-full max-w-md shadow-2xl border border-purple-500/20">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-purple-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Users className="w-8 h-8 text-purple-500" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">Attach to Creator</h2>
+              <p className="text-gray-400">
+                Link @{selectedAccount.username} to a creator profile
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
+                <div className="flex items-center gap-3">
+                  {selectedAccount.profilePicture ? (
+                    <img 
+                      src={selectedAccount.profilePicture} 
+                      alt={selectedAccount.username}
+                      className="w-12 h-12 rounded-full"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                      <Users className="w-6 h-6 text-white" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <div className="font-semibold text-white">@{selectedAccount.username}</div>
+                    <div className="text-sm text-gray-400 capitalize">{selectedAccount.platform}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Select Creator
+                </label>
+                <select
+                  className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                >
+                  <option value="">Choose a creator...</option>
+                  <option value="creator1">Creator 1</option>
+                  <option value="creator2">Creator 2</option>
+                </select>
+                <p className="mt-2 text-xs text-gray-500">
+                  This feature will link the account to a creator for better organization
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowAttachCreatorModal(false)}
+                  className="flex-1 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    // TODO: Implement creator attachment logic
+                    console.log('Attaching account to creator');
+                    setShowAttachCreatorModal(false);
+                  }}
+                  className="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  Attach Account
                 </button>
               </div>
             </div>

@@ -24,6 +24,7 @@ interface KPICardsProps {
   linkClicks?: LinkClick[];
   dateFilter?: DateFilterType;
   timePeriod?: TimePeriodType;
+  onCreateLink?: () => void;
 }
 
 interface KPICardData {
@@ -39,11 +40,17 @@ interface KPICardData {
   ctaText?: string;
 }
 
-const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateFilter = 'all', timePeriod = 'weeks' }) => {
+const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateFilter = 'all', timePeriod = 'weeks', onCreateLink }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedMetric, setSelectedMetric] = useState<'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts' | 'engagement' | 'linkClicks'>('views');
 
   const handleCardClick = (metricId: string) => {
+    // If it's link clicks and there are no links, trigger create link callback
+    if (metricId === 'link-clicks' && linkClicks.length === 0 && onCreateLink) {
+      onCreateLink();
+      return;
+    }
+    
     setSelectedMetric(metricId as any);
     setIsModalOpen(true);
   };
@@ -397,10 +404,12 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
       {
         id: 'link-clicks',
         label: 'Link Clicks',
-        value: formatNumber(linkClicks.length),
+        value: linkClicks.length === 0 ? 'No links assigned' : formatNumber(linkClicks.length),
         icon: LinkIcon,
         accent: 'slate',
-        period: linkClicks.length > 0 ? 'Total clicks' : 'No clicks yet',
+        isEmpty: linkClicks.length === 0,
+        ctaText: linkClicks.length === 0 ? 'Create one?' : undefined,
+        period: linkClicks.length > 0 ? 'Total clicks' : undefined,
         sparklineData: (() => {
           // Generate link clicks sparkline data
           let numPoints = 30;
