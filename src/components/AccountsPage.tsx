@@ -6,10 +6,8 @@ import {
   Users, 
   RefreshCw,
   Trash2,
-  User,
   Filter,
   Search,
-  MoreHorizontal,
   AlertCircle,
   Play,
   Eye,
@@ -119,7 +117,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [selectedVideoForPlayer, setSelectedVideoForPlayer] = useState<{url: string; title: string; platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter' } | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState<string | null>(null);
-  const [isRefreshingProfile, setIsRefreshingProfile] = useState<string | null>(null);
   const [newAccountUsername, setNewAccountUsername] = useState('');
   const [newAccountPlatform, setNewAccountPlatform] = useState<'instagram' | 'tiktok' | 'youtube' | 'twitter'>('instagram');
   const [clipboardDetectedAccount, setClipboardDetectedAccount] = useState(false);
@@ -128,6 +125,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<'username' | 'followers' | 'videos' | 'views' | 'likes' | 'comments' | 'dateAdded'>('dateAdded');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [accountToDelete, setAccountToDelete] = useState<TrackedAccount | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [showColumnToggle, setShowColumnToggle] = useState(false);
   const [processingAccounts, setProcessingAccounts] = useState<Array<{username: string; platform: string; startedAt: number}>>(() => {
     // Restore from localStorage and clean up old entries (> 5 minutes old)
@@ -679,109 +679,36 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     }
   }, [newAccountUsername, newAccountPlatform, currentOrgId, currentProjectId, user, handleSyncAccount]);
 
-  const handleRemoveAccount = useCallback(async (accountId: string) => {
-    if (!currentOrgId || !currentProjectId || !window.confirm('Are you sure you want to remove this account?')) return;
+  const handleRemoveAccount = useCallback((accountId: string) => {
+    const account = accounts.find(a => a.id === accountId);
+    if (!account) return;
+    
+    setAccountToDelete(account);
+    setShowDeleteModal(true);
+    setDeleteConfirmText('');
+  }, [accounts]);
+
+  const confirmDeleteAccount = useCallback(async () => {
+    if (!currentOrgId || !currentProjectId || !accountToDelete) return;
+    if (deleteConfirmText !== accountToDelete.username) return;
 
     try {
-      await AccountTrackingServiceFirebase.removeAccount(currentOrgId, currentProjectId, accountId);
-      setAccounts(prev => prev.filter(a => a.id !== accountId));
+      await AccountTrackingServiceFirebase.removeAccount(currentOrgId, currentProjectId, accountToDelete.id);
+      setAccounts(prev => prev.filter(a => a.id !== accountToDelete.id));
       
-      if (selectedAccount?.id === accountId) {
+      if (selectedAccount?.id === accountToDelete.id) {
         setSelectedAccount(null);
         setAccountVideos([]);
       }
+      
+      setShowDeleteModal(false);
+      setAccountToDelete(null);
+      setDeleteConfirmText('');
     } catch (error) {
       console.error('Failed to remove account:', error);
       alert('Failed to remove account. Please try again.');
     }
-  }, [selectedAccount, currentOrgId]);
-
-  const handleRefreshProfile = useCallback(async (accountId: string) => {
-    if (!currentOrgId || !currentProjectId || !user) return;
-
-    setIsRefreshingProfile(accountId);
-    try {
-      await AccountTrackingServiceFirebase.refreshAccountProfile(currentOrgId, currentProjectId, user.uid, accountId);
-      
-      // Update accounts list
-      const updatedAccounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
-      setAccounts(updatedAccounts);
-      
-      // Update selected account if it's the one being refreshed
-      if (selectedAccount?.id === accountId) {
-        const updatedAccount = updatedAccounts.find(a => a.id === accountId);
-        if (updatedAccount) {
-          setSelectedAccount(updatedAccount);
-          
-          // Also refresh videos from Firestore with rules and date filtering
-          const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, currentProjectId, accountId);
-          console.log('🔄 Refreshed videos after profile update:', videos.length);
-          
-          // Apply rules filtering
-          const rulesFilteredVideos = await RulesService.filterVideosByRules(
-            currentOrgId,
-            currentProjectId,
-            accountId,
-            updatedAccount.platform,
-            videos
-          );
-          
-          // Apply date filtering
-          const videoSubmissions: VideoSubmission[] = rulesFilteredVideos.map(video => ({
-            id: video.id || video.videoId || '',
-            url: video.url || '',
-            platform: updatedAccount.platform,
-            thumbnail: video.thumbnail || '',
-            title: video.caption || 'No caption',
-            uploader: updatedAccount.displayName || updatedAccount.username,
-            uploaderHandle: updatedAccount.username,
-            status: 'approved' as const,
-            views: video.viewsCount || video.views || 0,
-            likes: video.likesCount || video.likes || 0,
-            comments: video.commentsCount || video.comments || 0,
-            shares: video.sharesCount || video.shares || 0,
-            dateSubmitted: video.uploadDate || new Date(),
-            uploadDate: video.uploadDate || new Date(),
-            snapshots: []
-          }));
-          
-          const dateFilteredSubmissions = DateFilterService.filterVideosByDateRange(
-            videoSubmissions,
-            dateFilter,
-            undefined
-          );
-          
-          // Convert back to AccountVideo
-          const finalFilteredVideos: AccountVideo[] = dateFilteredSubmissions.map(sub => {
-            const originalVideo = rulesFilteredVideos.find(v => (v.id || v.videoId) === sub.id);
-            return originalVideo || {
-              id: sub.id,
-              videoId: sub.id,
-              url: sub.url,
-              thumbnail: sub.thumbnail,
-              caption: sub.title,
-              viewsCount: sub.views,
-              likesCount: sub.likes,
-              commentsCount: sub.comments,
-              sharesCount: sub.shares,
-              uploadDate: sub.uploadDate,
-              timestamp: sub.uploadDate.toISOString()
-            };
-          });
-          
-          console.log(`🔄 Filtered refreshed videos: ${finalFilteredVideos.length}/${videos.length}`);
-          setAccountVideos(finalFilteredVideos);
-        }
-      }
-      
-      console.log(`✅ Refreshed profile for account`);
-    } catch (error) {
-      console.error('Profile refresh failed:', error);
-      alert('Profile refresh failed. Please try again.');
-    } finally {
-      setIsRefreshingProfile(null);
-    }
-  }, [selectedAccount, currentOrgId, currentProjectId, user, dateFilter]);
+  }, [accountToDelete, deleteConfirmText, selectedAccount, currentOrgId, currentProjectId]);
 
   // Rule management functions
   const handleOpenRuleModal = useCallback(async () => {
@@ -1410,28 +1337,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleRefreshProfile(account.id);
-                              }}
-                              disabled={isRefreshingProfile === account.id || isAccountSyncing}
-                              className="text-gray-400 hover:text-green-600 transition-colors disabled:animate-spin disabled:opacity-50 disabled:cursor-not-allowed"
-                              title={isAccountSyncing ? "Account is syncing..." : "Refresh profile"}
-                            >
-                              <User className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSyncAccount(account.id);
-                              }}
-                              disabled={isSyncing === account.id || isAccountSyncing}
-                              className="text-gray-400 hover:text-blue-600 transition-colors disabled:animate-spin disabled:opacity-50 disabled:cursor-not-allowed"
-                              title={isAccountSyncing ? "Account is syncing..." : "Sync videos"}
-                            >
-                              <RefreshCw className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
                                 handleRemoveAccount(account.id);
                               }}
                               disabled={isAccountSyncing}
@@ -1439,13 +1344,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                               title={isAccountSyncing ? "Account is syncing..." : "Remove account"}
                             >
                               <Trash2 className="w-4 h-4" />
-                            </button>
-                            <button 
-                              disabled={isAccountSyncing}
-                              className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                              title={isAccountSyncing ? "Account is syncing..." : "More options"}
-                            >
-                              <MoreHorizontal className="w-4 h-4" />
                             </button>
                           </div>
                         </td>
@@ -2395,6 +2293,82 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
           </div>
         )}
       </Modal>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && accountToDelete && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-900 dark:bg-zinc-900 rounded-2xl p-8 w-full max-w-md shadow-2xl border border-red-500/20">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-8 h-8 text-red-500" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">Delete Account</h2>
+              <p className="text-gray-400">
+                This action cannot be undone. All videos and data for this account will be permanently removed.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
+                <div className="flex items-center gap-3 mb-3">
+                  {accountToDelete.profilePicture ? (
+                    <img 
+                      src={accountToDelete.profilePicture} 
+                      alt={accountToDelete.username}
+                      className="w-12 h-12 rounded-full"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                      <Users className="w-6 h-6 text-white" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <div className="font-semibold text-white">@{accountToDelete.username}</div>
+                    <div className="text-sm text-gray-400 capitalize">{accountToDelete.platform}</div>
+                  </div>
+                </div>
+                <div className="text-sm text-gray-400">
+                  {accountToDelete.totalVideos} videos • {formatNumber(accountToDelete.followerCount || 0)} followers
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Type <span className="font-bold text-white">{accountToDelete.username}</span> to confirm
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="Enter username to confirm"
+                  className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setAccountToDelete(null);
+                    setDeleteConfirmText('');
+                  }}
+                  className="flex-1 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeleteAccount}
+                  disabled={deleteConfirmText !== accountToDelete.username}
+                  className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-600"
+                >
+                  Delete Account
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
