@@ -404,11 +404,11 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
       {
         id: 'link-clicks',
         label: 'Link Clicks',
-        value: linkClicks.length === 0 ? 'No links assigned' : formatNumber(linkClicks.length),
+        value: linkClicks.length === 0 ? 'Need setup →' : formatNumber(linkClicks.length),
         icon: LinkIcon,
         accent: 'slate',
         isEmpty: linkClicks.length === 0,
-        ctaText: linkClicks.length === 0 ? 'Create one?' : undefined,
+        ctaText: linkClicks.length === 0 ? 'Create one' : undefined,
         period: linkClicks.length > 0 ? 'Total clicks' : undefined,
         sparklineData: (() => {
           // Generate link clicks sparkline data
@@ -699,13 +699,6 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
               <p className="text-xs text-zinc-500">{data.period}</p>
             )}
           </div>
-
-          {/* CTA (Empty State) */}
-          {data.ctaText && (
-            <button className="mt-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs text-zinc-300/90 bg-white/5 hover:bg-white/10 transition-colors self-start">
-              {data.ctaText}
-            </button>
-          )}
         </div>
 
         {/* Right: Sparkline */}
@@ -723,8 +716,13 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
           </div>
         )}
 
-        {/* More CTA (top-right) */}
-        {!data.isEmpty && !data.ctaText && (
+        {/* CTA Buttons (top-right) */}
+        {data.ctaText ? (
+          <button className="absolute top-4 right-4 inline-flex items-center gap-0.5 rounded-full px-2.5 py-1 text-xs text-zinc-300/90 bg-white/5 hover:bg-white/10 transition-colors">
+            {data.ctaText}
+            <ChevronRight className="w-3 h-3" />
+          </button>
+        ) : !data.isEmpty && (
           <button className="absolute top-4 right-4 inline-flex items-center gap-0.5 rounded-full px-2.5 py-1 text-xs text-zinc-300/90 bg-white/5 hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100">
             More
             <ChevronRight className="w-3 h-3" />
