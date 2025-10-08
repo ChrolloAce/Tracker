@@ -79,37 +79,52 @@ class InstagramApiService {
   private async transformApifyData(apifyData: any, originalUrl: string): Promise<InstagramVideoData> {
     console.log('🔄 Transforming Apify data to our format...');
     console.log('📋 Available fields:', Object.keys(apifyData));
+    console.log('🔍 RAW APIFY DATA:', JSON.stringify(apifyData, null, 2));
     
     // Extract ID from URL or use shortCode
     const urlMatch = originalUrl.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
     const id = urlMatch ? urlMatch[1] : apifyData.shortCode || apifyData.id || 'unknown';
 
+    // Try multiple possible field names for thumbnail
+    const thumbnailUrl = apifyData.displayUrl || apifyData.thumbnailUrl || apifyData.thumbnail || apifyData.imageUrl || '';
+    
     // Download and save thumbnail locally
     let localThumbnailUrl = '';
-    if (apifyData.displayUrl) {
-      console.log('💾 Downloading thumbnail locally...');
-      localThumbnailUrl = await this.downloadThumbnail(apifyData.displayUrl, id);
+    if (thumbnailUrl) {
+      console.log('💾 Downloading thumbnail from:', thumbnailUrl);
+      localThumbnailUrl = await this.downloadThumbnail(thumbnailUrl, id);
+    } else {
+      console.warn('⚠️ No thumbnail URL found in Apify data');
     }
+
+    // Try multiple possible field names for each data point
+    const username = apifyData.ownerUsername || apifyData.owner?.username || apifyData.username || 'unknown_user';
+    const caption = apifyData.caption || apifyData.text || apifyData.description || 'No caption';
+    const likes = apifyData.likesCount || apifyData.likes || apifyData.likeCount || 0;
+    const comments = apifyData.commentsCount || apifyData.comments || apifyData.commentCount || 0;
+    const views = apifyData.videoViewCount || apifyData.videoPlayCount || apifyData.viewCount || apifyData.views || 0;
+    const timestamp = apifyData.timestamp || apifyData.takenAt || apifyData.createdTime || new Date().toISOString();
 
     const transformedData: InstagramVideoData = {
       id: id,
-      thumbnail_url: localThumbnailUrl || apifyData.displayUrl || '',
-      caption: apifyData.caption || 'No caption available',
-      username: apifyData.ownerUsername || apifyData.ownerFullName || 'unknown_user',
-      like_count: apifyData.likesCount || 0,
-      comment_count: apifyData.commentsCount || 0,
-      view_count: apifyData.videoViewCount || apifyData.videoPlayCount || 0,
-      timestamp: apifyData.timestamp || new Date().toISOString()
+      thumbnail_url: localThumbnailUrl || thumbnailUrl,
+      caption: caption,
+      username: username,
+      like_count: likes,
+      comment_count: comments,
+      view_count: views,
+      timestamp: timestamp
     };
 
     console.log('✅ Data transformation completed with real values:', {
       id: transformedData.id,
       username: transformedData.username,
+      caption: transformedData.caption.substring(0, 50) + '...',
       likes: transformedData.like_count,
       comments: transformedData.comment_count,
       views: transformedData.view_count,
       uploadDate: new Date(transformedData.timestamp).toLocaleDateString(),
-      thumbnail: transformedData.thumbnail_url ? 'Downloaded locally' : 'Using original URL'
+      thumbnail: transformedData.thumbnail_url ? '✓ Present' : '✗ Missing'
     });
 
     return transformedData;
