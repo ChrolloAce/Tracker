@@ -30,7 +30,7 @@ export default async function handler(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'onboarding@resend.dev', // Use your verified domain once you have one
+        from: 'ViewTrack <noreply@viewtrack.app>',
         to: [to],
         subject: subject,
         html: html,
