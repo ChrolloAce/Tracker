@@ -56,16 +56,16 @@ class FirestoreDataService {
       totalLikes: 0,
       totalComments: 0,
       totalShares: 0,
-      // Background sync fields
-      syncStatus: 'pending',
+      // Background sync fields - set to 'completed' if skipping sync, 'pending' otherwise
+      syncStatus: skipSync ? 'completed' : 'pending',
       syncRequestedBy: userId,
       syncRequestedAt: Timestamp.now(),
       syncRetryCount: 0,
       maxRetries: 3,
       syncProgress: {
-        current: 0,
+        current: skipSync ? 100 : 0,
         total: 100,
-        message: 'Queued for sync...'
+        message: skipSync ? 'Video added successfully' : 'Queued for sync...'
       }
     };
     
@@ -79,7 +79,7 @@ class FirestoreDataService {
     });
     
     await batch.commit();
-    console.log(`✅ Added tracked account ${accountData.username} to project ${projectId} with sync status: pending`);
+    console.log(`✅ Added tracked account ${accountData.username} to project ${projectId} with sync status: ${skipSync ? 'completed' : 'pending'}`);
     
     if (!skipSync) {
       console.log(`⚡ Triggering immediate sync for instant feedback...`);
@@ -89,7 +89,7 @@ class FirestoreDataService {
         // Non-critical - cron will pick it up anyway
       });
     } else {
-      console.log(`⏭️ Skipping sync - account created for single video addition`);
+      console.log(`⏭️ Skipping sync - account created for single video addition (status set to 'completed')`);
     }
     
     return accountRef.id;
