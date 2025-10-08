@@ -355,10 +355,23 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
         maxResults: 1
       };
     } else if (platform === 'twitter') {
+      // Extract username from Twitter URL
+      // e.g., https://x.com/username/status/123 or https://twitter.com/username/status/123
+      const urlObj = new URL(url);
+      const pathParts = urlObj.pathname.split('/').filter(p => p);
+      const username = pathParts[0]; // First part is username
+      
       actorId = 'apidojo~tweet-scraper';
       input = {
-        searchTerms: [url],
-        maxItems: 1
+        twitterHandles: [username],
+        maxItems: 10, // Get recent tweets to find the specific one
+        sort: 'Latest',
+        onlyImage: false,
+        onlyVideo: false,
+        onlyQuote: false,
+        onlyVerifiedUsers: false,
+        onlyTwitterBlue: false,
+        includeSearchTerms: false
       };
     } else {
       throw new Error(`Unsupported platform: ${platform}`);
@@ -385,7 +398,22 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
       throw new Error('No data returned from Apify');
     }
 
-    const rawData = items[0];
+    let rawData = items[0];
+    
+    // For Twitter, try to find the specific tweet by URL
+    if (platform === 'twitter' && items.length > 1) {
+      const tweetId = url.split('/status/')[1]?.split('?')[0];
+      if (tweetId) {
+        const specificTweet = items.find((item: any) => 
+          item.id === tweetId || item.url?.includes(tweetId)
+        );
+        if (specificTweet) {
+          rawData = specificTweet;
+          console.log(`🎯 Found specific tweet: ${tweetId}`);
+        }
+      }
+    }
+    
     console.log('📦 Raw Apify data received');
     
     // Transform data based on platform
