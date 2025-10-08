@@ -25,9 +25,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('views');
   const [secondaryMetric, setSecondaryMetric] = useState<MetricType | null>(null);
 
-  if (!isOpen || !video) return null;
-
-  // Prepare chart data from snapshots
+  // Prepare chart data from snapshots - MUST be before early return
   const chartData = useMemo((): ChartDataPoint[] => {
     if (!video) return [];
     
@@ -97,6 +95,9 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       shares: first.shares > 0 ? ((last.shares - first.shares) / first.shares) * 100 : 0
     };
   }, [chartData]);
+
+  // Early return AFTER all hooks
+  if (!isOpen || !video) return null;
 
   // Show current metrics when only one snapshot exists
   const showGrowth = chartData.length > 1;
