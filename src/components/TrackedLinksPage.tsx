@@ -12,7 +12,7 @@ import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import Pagination from './ui/Pagination';
 import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
 import { LinkClick } from '../services/LinkClicksService';
-import collaborativeAnimation from '../../public/lottie/Collaborative Problem Solving.json';
+import websiteStatsAnimation from '../../public/lottie/Website Statistics Infographic.json';
 
 export interface TrackedLinksPageRef {
   openCreateModal: () => void;
@@ -371,10 +371,10 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       {/* Stats Overview - Dashboard Style */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Total Clicks Card */}
-        <div className="bg-gradient-to-br from-blue-500/10 via-purple-500/5 to-transparent backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all duration-300 group">
+        <div className="bg-zinc-900/60 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all duration-300 group">
           <div className="flex items-start justify-between mb-4">
-            <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-              <BarChart className="w-6 h-6 text-white" />
+            <div className="p-3 bg-blue-500/10 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
+              <BarChart className="w-6 h-6 text-blue-400" />
             </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1">
@@ -456,10 +456,10 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         </div>
 
         {/* Unique Clicks Card */}
-        <div className="bg-gradient-to-br from-purple-500/10 via-pink-500/5 to-transparent backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all duration-300 group">
+        <div className="bg-zinc-900/60 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all duration-300 group">
           <div className="flex items-start justify-between mb-4">
-            <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-              <BarChart className="w-6 h-6 text-white" />
+            <div className="p-3 bg-purple-500/10 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
+              <BarChart className="w-6 h-6 text-purple-400" />
             </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1">
@@ -535,10 +535,10 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         </div>
 
         {/* Avg CTR Card */}
-        <div className="bg-gradient-to-br from-orange-500/10 via-yellow-500/5 to-transparent backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all duration-300 group">
+        <div className="bg-zinc-900/60 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all duration-300 group">
           <div className="flex items-start justify-between mb-4">
-            <div className="p-3 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-              <BarChart className="w-6 h-6 text-white" />
+            <div className="p-3 bg-orange-500/10 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
+              <BarChart className="w-6 h-6 text-orange-400" />
             </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1">
@@ -619,7 +619,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         {paginatedLinks.length === 0 ? (
           <div className="p-12 text-center">
             <div className="w-64 h-64 mx-auto mb-4">
-              <Lottie animationData={collaborativeAnimation} loop={true} />
+              <Lottie animationData={websiteStatsAnimation} loop={true} />
             </div>
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Links Yet</h3>
             <p className="text-gray-500 dark:text-gray-400 mb-4">
