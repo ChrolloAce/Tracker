@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, AlertCircle, Link as LinkIcon, X, ChevronDown, RefreshCw } from 'lucide-react';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { UrlParserService } from '../services/UrlParserService';
 
@@ -102,92 +102,102 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-      <div className="bg-zinc-900 dark:bg-zinc-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="text-center p-8 pb-6">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Plus className="w-8 h-8 text-white" />
+      <div className="bg-[#151515] rounded-[14px] w-full max-w-[580px] shadow-2xl" style={{ padding: '24px' }}>
+        {/* Header */}
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h2 className="text-lg font-bold text-white mb-1">Add Videos</h2>
+            <p className="text-sm text-[#A1A1AA]">Enter video URLs you want to track & analyze.</p>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Add Videos to Track</h2>
-          <p className="text-gray-500 dark:text-gray-400">Paste video URLs and we'll detect the platform automatically</p>
-        </div>
-
-        <div className="px-8 pb-6 space-y-4">
-          <div className="flex items-center justify-between mb-3">
-            <label className="block text-sm font-semibold text-gray-900 dark:text-white">
-              Video URLs
-            </label>
-            <button
-              onClick={handleAddVideoInput}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add Another
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {videoInputs.map((input, index) => (
-              <div key={input.id} className="flex gap-3">
-                <div className="flex-1 relative">
-                  <input
-                    type="text"
-                    value={input.url}
-                    onChange={(e) => handleVideoUrlChange(input.id, e.target.value)}
-                    placeholder={`Paste video URL ${videoInputs.length > 1 ? `${index + 1}` : ''}`}
-                    className="w-full px-4 py-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
-                  />
-                  {input.detectedPlatform && (
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                      <PlatformIcon platform={input.detectedPlatform} size="sm" />
-                    </div>
-                  )}
-                </div>
-                {videoInputs.length > 1 && (
-                  <button
-                    onClick={() => handleRemoveVideoInput(input.id)}
-                    className="p-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
-                    title="Remove URL"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {urlError && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
-              <span className="text-sm text-red-700 dark:text-red-300">
-                {urlError}
-              </span>
-            </div>
-          )}
-
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Paste full video URLs from Instagram, TikTok, YouTube, or Twitter. Accounts will be created automatically if they don't exist.
-          </p>
-        </div>
-
-        {/* Footer */}
-        <div className="p-8 pt-6 flex space-x-4">
           <button
             onClick={() => {
               onClose();
               setVideoInputs([{ id: '1', url: '', detectedPlatform: null }]);
               setUrlError(null);
             }}
-            className="flex-1 px-6 py-3 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
+            className="text-white/80 hover:text-white transition-colors p-1"
           >
-            Cancel
+            <X className="w-5 h-5" strokeWidth={1.5} />
           </button>
-          <button
-            onClick={handleSubmit}
-            disabled={videoInputs.every(input => !input.url.trim())}
-            className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-          >
-            Add Videos
-          </button>
+        </div>
+        
+        {/* Input Fields */}
+        <div className="space-y-3 mb-6">
+          {videoInputs.map((input, index) => (
+            <div key={input.id} className="flex gap-2 items-start">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={input.url}
+                  onChange={(e) => handleVideoUrlChange(input.id, e.target.value)}
+                  placeholder="Enter TikTok, YouTube, or Instagram video URL"
+                  className="w-full pl-4 pr-10 py-2.5 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-white/20 focus:border-white/20 text-sm"
+                />
+                {input.detectedPlatform ? (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <PlatformIcon platform={input.detectedPlatform} size="sm" />
+                  </div>
+                ) : (
+                  <LinkIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-600" />
+                )}
+              </div>
+              
+              <div className="relative opacity-0 pointer-events-none">
+                <select
+                  disabled
+                  className="appearance-none pl-3 pr-8 py-2.5 bg-[#1E1E20] border border-gray-700/50 rounded-full text-white text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20 whitespace-nowrap"
+                >
+                  <option>10 videos</option>
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+              </div>
+
+              <button
+                onClick={() => handleRemoveVideoInput(input.id)}
+                disabled={videoInputs.length === 1}
+                className={`p-2.5 rounded-lg transition-colors ${
+                  videoInputs.length === 1
+                    ? 'text-gray-500 opacity-30 cursor-not-allowed'
+                    : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
+                }`}
+              >
+                <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+              </button>
+            </div>
+          ))}
+
+          {/* Show validation error */}
+          {urlError && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <AlertCircle className="w-4 h-4 text-red-400" />
+              <span className="text-xs text-red-300">
+                {urlError}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between pt-4 border-t border-gray-800/50">
+          <div className="flex items-center gap-2 text-[#9B9B9B] text-xs">
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Processing takes up to 5 minutes.</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleAddVideoInput}
+              className="px-4 py-2 text-sm font-medium text-gray-400 border border-gray-700 rounded-full hover:border-gray-600 hover:text-gray-300 transition-colors"
+            >
+              Add More
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={videoInputs.every(input => !input.url.trim())}
+              className="px-4 py-2 text-sm font-bold text-black bg-white rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+            >
+              Add Videos
+            </button>
+          </div>
         </div>
       </div>
     </div>

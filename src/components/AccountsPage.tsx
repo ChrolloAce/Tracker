@@ -19,7 +19,10 @@ import {
   Activity,
   Edit2,
   CheckCircle2,
-  Circle
+  Circle,
+  Link as LinkIcon,
+  X,
+  ChevronDown
   } from 'lucide-react';
 import pricingPlansAnimation from '../../public/lottie/Pricing Plans.json';
 import { AccountVideo } from '../types/accounts';
@@ -1990,77 +1993,13 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       {/* Add Account Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 dark:bg-zinc-900 rounded-2xl p-8 w-full max-w-md shadow-2xl">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/20">
-                <Plus className="w-8 h-8 text-white" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Add Account to Track</h2>
-              <p className="text-gray-500 dark:text-gray-400">Paste the account URL and we'll detect the platform automatically</p>
-            </div>
-            
-            <div className="space-y-6">
+          <div className="bg-[#151515] rounded-[14px] w-full max-w-[580px] shadow-2xl" style={{ padding: '24px' }}>
+            {/* Header */}
+            <div className="flex items-start justify-between mb-6">
               <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
-                  Account URL
-                </label>
-                
-                <div className="flex gap-3">
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
-                      value={newAccountUrl}
-                      onChange={(e) => handleUrlChange(e.target.value)}
-                      placeholder="https://instagram.com/username or https://tiktok.com/@username"
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
-                    />
-                    {detectedPlatform && (
-                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                        <PlatformIcon platform={detectedPlatform} size="sm" />
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="relative">
-                    <select
-                      value={postsToScrape}
-                      onChange={(e) => setPostsToScrape(Number(e.target.value))}
-                      className="appearance-none px-4 py-3 pr-10 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium cursor-pointer"
-                    >
-                      <option value={10}>10 posts</option>
-                      <option value={25}>25 posts</option>
-                      <option value={50}>50 posts</option>
-                      <option value={100}>100 posts</option>
-                      <option value={250}>250 posts</option>
-                      <option value={500}>500 posts</option>
-                      <option value={1000}>1000 posts</option>
-                      <option value={2000}>2000 posts</option>
-                    </select>
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                      <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Show validation error */}
-                {urlValidationError && (
-                  <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                    <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
-                    <span className="text-sm text-red-700 dark:text-red-300">
-                      {urlValidationError}
-                    </span>
-                  </div>
-                )}
-                
-                <p className="text-sm text-gray-500 mt-2">
-                  Paste the full URL to the account profile page
-                </p>
+                <h2 className="text-lg font-bold text-white mb-1">Track Accounts</h2>
+                <p className="text-sm text-[#A1A1AA]">Enter accounts you want to track videos & analytics for.</p>
               </div>
-            </div>
-
-            <div className="flex space-x-4 mt-8">
               <button
                 onClick={() => {
                   setIsAddModalOpen(false);
@@ -2069,17 +2008,93 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                   setUrlValidationError(null);
                   setPostsToScrape(10);
                 }}
-                className="flex-1 px-6 py-3 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
+                className="text-white/80 hover:text-white transition-colors p-1"
               >
-                Cancel
+                <X className="w-5 h-5" strokeWidth={1.5} />
               </button>
-              <button
-                onClick={handleAddAccount}
-                disabled={!newAccountUrl.trim() || !detectedPlatform}
-                className="flex-1 px-6 py-3 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium border border-white/10"
-              >
-                Add Account
-              </button>
+            </div>
+            
+            {/* Input Fields */}
+            <div className="space-y-3 mb-6">
+              <div className="flex gap-2 items-start">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    value={newAccountUrl}
+                    onChange={(e) => handleUrlChange(e.target.value)}
+                    placeholder="Enter TikTok, YouTube, or Instagram URL"
+                    className="w-full pl-4 pr-10 py-2.5 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-white/20 focus:border-white/20 text-sm"
+                  />
+                  {detectedPlatform ? (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <PlatformIcon platform={detectedPlatform} size="sm" />
+                    </div>
+                  ) : (
+                    <LinkIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-600" />
+                  )}
+                </div>
+                
+                <div className="relative">
+                  <select
+                    value={postsToScrape}
+                    onChange={(e) => setPostsToScrape(Number(e.target.value))}
+                    className="appearance-none pl-3 pr-8 py-2.5 bg-[#1E1E20] border border-gray-700/50 rounded-full text-white text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20 whitespace-nowrap"
+                  >
+                    <option value={10}>10 videos</option>
+                    <option value={25}>25 videos</option>
+                    <option value={50}>50 videos</option>
+                    <option value={100}>100 videos</option>
+                    <option value={250}>250 videos</option>
+                    <option value={500}>500 videos</option>
+                    <option value={1000}>1000 videos</option>
+                    <option value={2000}>2000 videos</option>
+                  </select>
+                  <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                </div>
+
+                <button
+                  className="p-2.5 text-gray-500 hover:text-gray-300 hover:bg-white/5 rounded-lg transition-colors opacity-30 cursor-not-allowed"
+                  disabled
+                >
+                  <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+                </button>
+              </div>
+
+              {/* Show validation error */}
+              {urlValidationError && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-lg">
+                  <AlertCircle className="w-4 h-4 text-red-400" />
+                  <span className="text-xs text-red-300">
+                    {urlValidationError}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between pt-4 border-t border-gray-800/50">
+              <div className="flex items-center gap-2 text-[#9B9B9B] text-xs">
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Processing takes up to 5 minutes.</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    // Add more functionality (currently disabled since we only support 1 input)
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-gray-400 border border-gray-700 rounded-full hover:border-gray-600 hover:text-gray-300 transition-colors opacity-50 cursor-not-allowed"
+                  disabled
+                >
+                  Add More
+                </button>
+                <button
+                  onClick={handleAddAccount}
+                  disabled={!newAccountUrl.trim() || !detectedPlatform}
+                  className="px-4 py-2 text-sm font-bold text-black bg-white rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
+                >
+                  Track Accounts
+                </button>
+              </div>
             </div>
           </div>
         </div>
