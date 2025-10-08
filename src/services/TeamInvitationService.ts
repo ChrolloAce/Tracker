@@ -90,7 +90,15 @@ class TeamInvitationService {
         : 'https://viewtrack.app';
       const inviteLink = `${baseUrl}/invitations/${inviteRef.id}`;
       
+      // Extract name from email (part before @), capitalize first letter
+      const emailUsername = email.split('@')[0];
+      const recipientName = emailUsername
+        .split(/[._-]/)
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+      
       console.log(`📧 Attempting to send invitation email to ${email}...`);
+      console.log(`👤 Recipient name: ${recipientName}`);
       console.log(`🔗 Invite link: ${inviteLink}`);
       
       if (role === 'creator' && projectId) {
@@ -98,6 +106,7 @@ class TeamInvitationService {
         console.log(`🎨 Sending creator invitation email...`);
         const result = await EmailService.sendCreatorInvitation({
           to: email,
+          recipientName: recipientName,
           inviterName: invitedByName,
           organizationName: organizationName,
           projectName: organizationName, // You might want to pass actual project name
@@ -114,6 +123,7 @@ class TeamInvitationService {
         console.log(`👥 Sending team member invitation email...`);
         const result = await EmailService.sendTeamInvitation({
           to: email,
+          recipientName: recipientName,
           inviterName: invitedByName,
           organizationName: organizationName,
           role: role,
