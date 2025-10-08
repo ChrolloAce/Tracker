@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, AlertCircle, Link as LinkIcon, X, ChevronDown, RefreshCw } from 'lucide-react';
+import { Trash2, AlertCircle, Link as LinkIcon, X, ChevronDown, RefreshCw } from 'lucide-react';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { UrlParserService } from '../services/UrlParserService';
 
@@ -123,7 +123,7 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
         
         {/* Input Fields */}
         <div className="space-y-3 mb-6">
-          {videoInputs.map((input, index) => (
+          {videoInputs.map((input) => (
             <div key={input.id} className="flex gap-2 items-start">
               <div className="relative flex-1">
                 <input

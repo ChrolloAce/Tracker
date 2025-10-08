@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
-import { X, ExternalLink, TrendingUp, TrendingDown, Calendar, Eye, Heart, MessageCircle } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { X, ExternalLink, TrendingUp, TrendingDown, Eye, Heart, MessageCircle, Share2, ChevronDown } from 'lucide-react';
 import { VideoSubmission } from '../types';
-import { ResponsiveContainer, AreaChart, Area, Tooltip } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { PlatformIcon } from './ui/PlatformIcon';
 
 interface VideoAnalyticsModalProps {
@@ -19,7 +19,12 @@ interface ChartDataPoint {
   timestamp: number;
 }
 
+type MetricType = 'views' | 'likes' | 'comments' | 'shares';
+
 const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose }) => {
+  const [selectedMetric, setSelectedMetric] = useState<MetricType>('views');
+  const [secondaryMetric, setSecondaryMetric] = useState<MetricType | null>(null);
+
   if (!isOpen || !video) return null;
 
   // Prepare chart data from snapshots
@@ -29,9 +34,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       return [{
         date: new Date(video.timestamp || video.dateSubmitted).toLocaleDateString('en-US', { 
           month: 'short', 
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
+          day: 'numeric'
         }),
         views: video.views,
         likes: video.likes,
@@ -49,9 +52,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     return sortedSnapshots.map(snapshot => ({
       date: new Date(snapshot.capturedAt).toLocaleDateString('en-US', { 
         month: 'short', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        day: 'numeric'
       }),
       views: snapshot.views,
       likes: snapshot.likes,
@@ -99,9 +100,14 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   const showGrowth = chartData.length > 1;
 
   const formatNumber = (num: number): string => {
+    if (num >= 1000000) {
+      return `${(num / 1000000).toFixed(1)}M`;
+    }
+    if (num >= 1000) {
+      return `${(num / 1000).toFixed(1)}K`;
+    }
     return num.toLocaleString();
   };
-
 
   const formatGrowth = (growth: number, percentage: number): string => {
     const sign = growth >= 0 ? '+' : '';
@@ -109,331 +115,320 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     return `${sign}${formatNumber(growth)} (${percentSign}${percentage.toFixed(1)}%)`;
   };
 
-  const getGrowthColor = (growth: number): string => {
-    if (growth > 0) return 'text-green-600';
-    if (growth < 0) return 'text-red-600';
-    return 'text-gray-600';
+  const getMetricColor = (metric: MetricType): string => {
+    switch (metric) {
+      case 'views': return '#B47CFF';
+      case 'likes': return '#FF6B9D';
+      case 'comments': return '#4ECDC4';
+      case 'shares': return '#FFE66D';
+      default: return '#B47CFF';
+    }
   };
 
-  const getGrowthIcon = (growth: number) => {
-    if (growth > 0) return <TrendingUp className="w-4 h-4 text-green-600" />;
-    if (growth < 0) return <TrendingDown className="w-4 h-4 text-red-600" />;
-    return null;
+  const getMetricLabel = (metric: MetricType): string => {
+    return metric.charAt(0).toUpperCase() + metric.slice(1);
   };
+
+  const maxValue = Math.max(...chartData.map(d => d[selectedMetric]));
+  const yAxisMax = Math.ceil(maxValue * 1.1);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-[#161616] rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+      <div 
+        className="bg-[#151515] rounded-[14px] shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto animate-slideUp"
+        style={{ padding: '24px' }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800">
-          <div className="flex items-center space-x-4">
+        <div className="flex items-start justify-between mb-6">
+          <div className="flex items-center gap-4">
             <img
               src={video.thumbnail}
               alt={video.title}
-              className="w-16 h-16 rounded-lg object-cover"
+              className="w-16 h-16 rounded-lg object-cover ring-2 ring-white/10"
             />
             <div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-2 mb-1">
                 <PlatformIcon platform={video.platform} size="sm" />
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white line-clamp-2">
+                <h2 className="text-lg font-bold text-white line-clamp-1">
                   {video.title}
                 </h2>
               </div>
-              <p className="text-gray-600 dark:text-gray-400">@{video.uploaderHandle}</p>
-              <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-[#A1A1AA]">@{video.uploaderHandle}</p>
+              <div className="flex items-center gap-3 mt-1 text-xs text-[#9B9B9B]">
                 <span>Posted: {new Date(video.timestamp || video.dateSubmitted).toLocaleDateString()}</span>
                 {video.lastRefreshed && (
                   <>
                     <span>•</span>
-                    <span>Last updated: {new Date(video.lastRefreshed).toLocaleDateString()}</span>
+                    <span>Updated: {new Date(video.lastRefreshed).toLocaleDateString()}</span>
                   </>
                 )}
               </div>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             <a
               href={video.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+              className="p-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-all"
             >
               <ExternalLink className="w-5 h-5" />
             </a>
             <button
               onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+              className="p-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-all"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5" strokeWidth={1.5} />
             </button>
           </div>
         </div>
 
-
-        {/* Performance Charts */}
-        <div className="p-6">
+        {/* Main Chart */}
+        <div className="bg-[#1A1A1A] rounded-xl border border-white/5 p-6 mb-6">
+          {/* Chart Header */}
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Performance Analytics</h3>
-            {chartData.length === 1 && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">
-                Initial Snapshot
-              </span>
-            )}
+            <h3 className="text-base font-bold text-white">Metrics</h3>
+            <div className="flex items-center gap-3">
+              {/* Primary Metric Selector */}
+              <div className="relative">
+                <select
+                  value={selectedMetric}
+                  onChange={(e) => setSelectedMetric(e.target.value as MetricType)}
+                  className="appearance-none pl-3 pr-10 py-2 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-white text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20"
+                  style={{ minWidth: '120px' }}
+                >
+                  <option value="views">Views</option>
+                  <option value="likes">Likes</option>
+                  <option value="comments">Comments</option>
+                  <option value="shares">Shares</option>
+                </select>
+                <div 
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 rounded-sm pointer-events-none"
+                  style={{ backgroundColor: getMetricColor(selectedMetric) }}
+                />
+                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+              </div>
+
+              {/* Secondary Metric Selector */}
+              <div className="relative">
+                <select
+                  value={secondaryMetric || ''}
+                  onChange={(e) => setSecondaryMetric(e.target.value ? e.target.value as MetricType : null)}
+                  className="appearance-none pl-3 pr-10 py-2 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-gray-400 text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20"
+                  style={{ minWidth: '150px' }}
+                >
+                  <option value="">Add secondary</option>
+                  <option value="views">Views</option>
+                  <option value="likes">Likes</option>
+                  <option value="comments">Comments</option>
+                  <option value="shares">Shares</option>
+                </select>
+                {secondaryMetric && (
+                  <div 
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 rounded-sm pointer-events-none"
+                    style={{ backgroundColor: getMetricColor(secondaryMetric) }}
+                  />
+                )}
+                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
           </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Total Views Chart */}
-            <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center">
-                    <Eye className="w-6 h-6 text-gray-900 dark:text-white" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">TOTAL VIEWS</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mb-4">
-                <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
-                  {formatNumber(video.views)}
-                </div>
-                {showGrowth && totalGrowth.views !== 0 && (
-                  <div className={`flex items-center text-sm ${getGrowthColor(totalGrowth.views)}`}>
-                    {getGrowthIcon(totalGrowth.views)}
-                    <span className="ml-1">
-                      {formatGrowth(totalGrowth.views, growthPercentages.views)}
-                    </span>
-                  </div>
-                )}
-                {!showGrowth && (
-                  <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                    <span>Starting point</span>
-                  </div>
-                )}
-              </div>
 
-              <div className="h-20">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData}>
-                    <defs>
-                      <linearGradient id="viewsGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <Tooltip
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          return (
-                            <div className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-xl text-sm">
-                              <p className="font-semibold">Views: {payload[0].value?.toLocaleString()}</p>
+          {/* Chart */}
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="primaryGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={getMetricColor(selectedMetric)} stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor={getMetricColor(selectedMetric)} stopOpacity={0}/>
+                  </linearGradient>
+                  {secondaryMetric && (
+                    <linearGradient id="secondaryGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={getMetricColor(secondaryMetric)} stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor={getMetricColor(secondaryMetric)} stopOpacity={0}/>
+                    </linearGradient>
+                  )}
+                  <filter id="glow">
+                    <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                    <feMerge>
+                      <feMergeNode in="coloredBlur"/>
+                      <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                  </filter>
+                </defs>
+                <CartesianGrid 
+                  strokeDasharray="0" 
+                  stroke="rgba(255,255,255,0.03)" 
+                  vertical={false}
+                />
+                <XAxis 
+                  dataKey="date"
+                  stroke="#CFCFCF"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                />
+                <YAxis 
+                  stroke="#CFCFCF"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                  tickFormatter={(value) => formatNumber(value)}
+                  domain={[0, yAxisMax]}
+                />
+                <Tooltip
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="bg-black/90 backdrop-blur-sm border border-white/10 px-3 py-2 rounded-lg shadow-xl">
+                          {payload.map((entry, index) => (
+                            <div key={index} className="flex items-center gap-2 mb-1 last:mb-0">
+                              <div 
+                                className="w-2 h-2 rounded-sm"
+                                style={{ backgroundColor: entry.color }}
+                              />
+                              <p className="text-xs font-medium text-white">
+                                {entry.name}: {entry.value?.toLocaleString()}
+                              </p>
                             </div>
-                          );
-                        }
-                        return null;
-                      }}
-                      cursor={{ stroke: '#3B82F6', strokeWidth: 1, strokeDasharray: '3 3' }}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="views" 
-                      stroke="#3B82F6" 
-                      strokeWidth={2}
-                      fill="url(#viewsGradient)"
-                      dot={false}
-                      activeDot={{ r: 4, fill: '#3B82F6', strokeWidth: 2, stroke: '#fff' }}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+                          ))}
+                          <p className="text-[10px] text-gray-400 mt-1">
+                            {payload[0]?.payload?.date}
+                          </p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey={selectedMetric}
+                  name={getMetricLabel(selectedMetric)}
+                  stroke={getMetricColor(selectedMetric)}
+                  strokeWidth={2.5}
+                  fill="url(#primaryGradient)"
+                  dot={false}
+                  activeDot={{ 
+                    r: 5, 
+                    fill: getMetricColor(selectedMetric), 
+                    strokeWidth: 2, 
+                    stroke: '#fff',
+                    filter: 'url(#glow)'
+                  }}
+                  animationDuration={800}
+                  animationEasing="ease-in-out"
+                />
+                {secondaryMetric && (
+                  <Area 
+                    type="monotone" 
+                    dataKey={secondaryMetric}
+                    name={getMetricLabel(secondaryMetric)}
+                    stroke={getMetricColor(secondaryMetric)}
+                    strokeWidth={2}
+                    fill="url(#secondaryGradient)"
+                    dot={false}
+                    activeDot={{ 
+                      r: 4, 
+                      fill: getMetricColor(secondaryMetric), 
+                      strokeWidth: 2, 
+                      stroke: '#fff' 
+                    }}
+                    animationDuration={800}
+                    animationEasing="ease-in-out"
+                  />
+                )}
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
 
-              {/* Total Likes Chart */}
-              <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-green-50 dark:bg-green-900/30 rounded-xl flex items-center justify-center">
-                      <Heart className="w-6 h-6 text-green-600 dark:text-green-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">TOTAL LIKES</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="mb-4">
-                  <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
-                    {formatNumber(video.likes)}
-                  </div>
-                  {showGrowth && totalGrowth.likes !== 0 && (
-                    <div className={`flex items-center text-sm ${getGrowthColor(totalGrowth.likes)}`}>
-                      {getGrowthIcon(totalGrowth.likes)}
-                      <span className="ml-1">
-                        {formatGrowth(totalGrowth.likes, growthPercentages.likes)}
-                      </span>
-                    </div>
-                  )}
-                  {!showGrowth && (
-                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                      <span>Starting point</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="h-20">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData}>
-                      <defs>
-                        <linearGradient id="likesGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10B981" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <Area 
-                        type="monotone" 
-                        dataKey="likes" 
-                        stroke="#10B981" 
-                        strokeWidth={2}
-                        fill="url(#likesGradient)" 
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Total Comments Chart */}
-              <div className="bg-white dark:bg-[#1A1A1A] rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-purple-50 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
-                      <MessageCircle className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">TOTAL COMMENTS</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="mb-4">
-                  <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
-                    {formatNumber(video.comments)}
-                  </div>
-                  {showGrowth && totalGrowth.comments !== 0 && (
-                    <div className={`flex items-center text-sm ${getGrowthColor(totalGrowth.comments)}`}>
-                      {getGrowthIcon(totalGrowth.comments)}
-                      <span className="ml-1">
-                        {formatGrowth(totalGrowth.comments, growthPercentages.comments)}
-                      </span>
-                    </div>
-                  )}
-                  {!showGrowth && (
-                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                      <span>Starting point</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="h-20">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData}>
-                      <defs>
-                        <linearGradient id="commentsGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <Area 
-                        type="monotone" 
-                        dataKey="comments" 
-                        stroke="#8B5CF6" 
-                        strokeWidth={2}
-                        fill="url(#commentsGradient)" 
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
+          {/* Watermark */}
+          <div className="text-right mt-4">
+            <span className="text-xs text-white/20 font-medium">viral.app</span>
           </div>
         </div>
 
-        {/* Snapshot History */}
-        {video.snapshots && video.snapshots.length > 0 && (
-          <div className="p-6 border-t border-gray-200 dark:border-gray-800">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Snapshot History</h3>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-                <thead className="bg-gray-50 dark:bg-[#1A1A1A]">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Date & Time
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Views
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Likes
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Comments
-                    </th>
-                    {video.platform === 'tiktok' && (
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Shares
-                      </th>
-                    )}
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Type
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-[#161616] divide-y divide-gray-200 dark:divide-gray-800">
-                  {[...video.snapshots]
-                    .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())
-                    .map((snapshot, index) => (
-                    <tr key={snapshot.id} className={index === 0 ? 'bg-gray-100 dark:bg-gray-800' : ''}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                        <div className="flex items-center space-x-2">
-                          <Calendar className="w-4 h-4 text-gray-400" />
-                          <span>
-                            {new Date(snapshot.capturedAt).toLocaleString()}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                        {formatNumber(snapshot.views)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                        {formatNumber(snapshot.likes)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                        {formatNumber(snapshot.comments)}
-                      </td>
-                      {video.platform === 'tiktok' && (
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                          {formatNumber(snapshot.shares || 0)}
-                        </td>
-                      )}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          snapshot.capturedBy === 'initial_upload' 
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                            : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
-                        }`}>
-                          {snapshot.capturedBy === 'initial_upload' ? 'Initial' : 'Refresh'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Views */}
+          <div className="bg-[#1A1A1A] border border-white/5 rounded-xl p-4 hover:border-[#B47CFF]/30 transition-all duration-300">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-lg bg-[#B47CFF]/10 flex items-center justify-center">
+                <Eye className="w-4 h-4 text-[#B47CFF]" />
+              </div>
+              <span className="text-xs text-[#A1A1AA] font-medium uppercase tracking-wider">Views</span>
             </div>
+            <div className="text-2xl font-bold text-white mb-1">
+              {formatNumber(video.views)}
+            </div>
+            {showGrowth && totalGrowth.views !== 0 && (
+              <div className={`flex items-center gap-1 text-xs ${totalGrowth.views > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {totalGrowth.views > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                <span>{formatGrowth(totalGrowth.views, growthPercentages.views)}</span>
+              </div>
+            )}
           </div>
-        )}
 
+          {/* Likes */}
+          <div className="bg-[#1A1A1A] border border-white/5 rounded-xl p-4 hover:border-[#FF6B9D]/30 transition-all duration-300">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-lg bg-[#FF6B9D]/10 flex items-center justify-center">
+                <Heart className="w-4 h-4 text-[#FF6B9D]" />
+              </div>
+              <span className="text-xs text-[#A1A1AA] font-medium uppercase tracking-wider">Likes</span>
+            </div>
+            <div className="text-2xl font-bold text-white mb-1">
+              {formatNumber(video.likes)}
+            </div>
+            {showGrowth && totalGrowth.likes !== 0 && (
+              <div className={`flex items-center gap-1 text-xs ${totalGrowth.likes > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {totalGrowth.likes > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                <span>{formatGrowth(totalGrowth.likes, growthPercentages.likes)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Comments */}
+          <div className="bg-[#1A1A1A] border border-white/5 rounded-xl p-4 hover:border-[#4ECDC4]/30 transition-all duration-300">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-lg bg-[#4ECDC4]/10 flex items-center justify-center">
+                <MessageCircle className="w-4 h-4 text-[#4ECDC4]" />
+              </div>
+              <span className="text-xs text-[#A1A1AA] font-medium uppercase tracking-wider">Comments</span>
+            </div>
+            <div className="text-2xl font-bold text-white mb-1">
+              {formatNumber(video.comments)}
+            </div>
+            {showGrowth && totalGrowth.comments !== 0 && (
+              <div className={`flex items-center gap-1 text-xs ${totalGrowth.comments > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {totalGrowth.comments > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                <span>{formatGrowth(totalGrowth.comments, growthPercentages.comments)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Shares */}
+          <div className="bg-[#1A1A1A] border border-white/5 rounded-xl p-4 hover:border-[#FFE66D]/30 transition-all duration-300">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 rounded-lg bg-[#FFE66D]/10 flex items-center justify-center">
+                <Share2 className="w-4 h-4 text-[#FFE66D]" />
+              </div>
+              <span className="text-xs text-[#A1A1AA] font-medium uppercase tracking-wider">Shares</span>
+            </div>
+            <div className="text-2xl font-bold text-white mb-1">
+              {formatNumber(video.shares || 0)}
+            </div>
+            {showGrowth && totalGrowth.shares !== 0 && (
+              <div className={`flex items-center gap-1 text-xs ${totalGrowth.shares > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {totalGrowth.shares > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                <span>{formatGrowth(totalGrowth.shares, growthPercentages.shares)}</span>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
+    </div>
   );
 };
 
