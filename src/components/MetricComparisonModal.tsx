@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { LinkClick } from '../services/LinkClicksService';
@@ -41,6 +41,12 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
 }) => {
   const [primaryMetric, setPrimaryMetric] = useState<MetricType>(initialMetric);
   const [secondaryMetric, setSecondaryMetric] = useState<MetricType | null>(null);
+  const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
+
+  // Update primary metric when initialMetric changes (when different KPI is clicked)
+  useEffect(() => {
+    setPrimaryMetric(initialMetric);
+  }, [initialMetric]);
 
   // Helper function to get metric value from video
   const getMetricValue = useCallback((video: VideoSubmission, metric: MetricType): number => {
@@ -212,7 +218,7 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
       className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4"
       onClick={handleBackdropClick}
     >
-      <div className="bg-[#0A0A0A] rounded-3xl max-w-6xl w-full max-h-[90vh] overflow-hidden border border-gray-800/50 shadow-2xl shadow-purple-900/20">
+      <div className="bg-[#0A0A0A] rounded-3xl max-w-6xl w-full max-h-[90vh] overflow-y-auto border border-gray-800/50 shadow-2xl shadow-purple-900/20">
         {/* Header */}
         <div className="flex items-center justify-between px-8 py-6 border-b border-gray-800/30">
           <h2 className="text-2xl font-bold text-white tracking-tight">Metrics</h2>
@@ -373,7 +379,98 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
                     />
                   </>
                 )}
+
+                {/* Interactive data points */}
+                {chartData.map((d, i) => {
+                  const x = (i / (chartData.length - 1)) * 1000;
+                  const yPrimary = 400 - (d.primary / maxValue) * 380;
+                  const ySecondary = secondaryMetric ? 400 - (d.secondary / maxValue) * 380 : 0;
+                  
+                  return (
+                    <g key={i}>
+                      {/* Primary metric point */}
+                      <circle
+                        cx={x}
+                        cy={yPrimary}
+                        r={hoveredPoint === i ? "6" : "0"}
+                        fill={primaryColor}
+                        className="transition-all duration-200"
+                        opacity="0.9"
+                      />
+                      <circle
+                        cx={x}
+                        cy={yPrimary}
+                        r="10"
+                        fill="transparent"
+                        className="cursor-pointer"
+                        onMouseEnter={() => setHoveredPoint(i)}
+                        onMouseLeave={() => setHoveredPoint(null)}
+                      />
+                      
+                      {/* Secondary metric point */}
+                      {secondaryMetric && (
+                        <>
+                          <circle
+                            cx={x}
+                            cy={ySecondary}
+                            r={hoveredPoint === i ? "6" : "0"}
+                            fill={secondaryColor}
+                            className="transition-all duration-200"
+                            opacity="0.9"
+                          />
+                          <circle
+                            cx={x}
+                            cy={ySecondary}
+                            r="10"
+                            fill="transparent"
+                            className="cursor-pointer"
+                            onMouseEnter={() => setHoveredPoint(i)}
+                            onMouseLeave={() => setHoveredPoint(null)}
+                          />
+                        </>
+                      )}
+                    </g>
+                  );
+                })}
               </svg>
+
+              {/* Hover tooltip */}
+              {hoveredPoint !== null && chartData[hoveredPoint] && (
+                <div 
+                  className="absolute bg-gray-900/95 backdrop-blur-sm border border-purple-500/30 rounded-xl px-4 py-3 shadow-2xl shadow-purple-500/20 pointer-events-none z-10"
+                  style={{
+                    left: `${((hoveredPoint / (chartData.length - 1)) * 100)}%`,
+                    top: '50%',
+                    transform: 'translate(-50%, -50%)',
+                  }}
+                >
+                  <div className="text-xs font-medium text-gray-400 mb-2">
+                    {formatDate(chartData[hoveredPoint].date)}
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-purple-400 to-purple-600" />
+                      <span className="text-xs font-medium text-gray-400">
+                        {metricOptions.find(m => m.id === primaryMetric)?.label}:
+                      </span>
+                      <span className="text-sm font-bold text-white">
+                        {formatNumber(chartData[hoveredPoint].primary)}
+                      </span>
+                    </div>
+                    {secondaryMetric && (
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-purple-300 to-indigo-500" />
+                        <span className="text-xs font-medium text-gray-400">
+                          {metricOptions.find(m => m.id === secondaryMetric)?.label}:
+                        </span>
+                        <span className="text-sm font-bold text-white">
+                          {formatNumber(chartData[hoveredPoint].secondary)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* X-axis labels */}
               <div className="flex justify-between mt-4 px-1">
