@@ -120,8 +120,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [selectedVideoForPlayer, setSelectedVideoForPlayer] = useState<{url: string; title: string; platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter' } | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState<string | null>(null);
-  const [newAccountUsername, setNewAccountUsername] = useState('');
-  const [newAccountPlatform, setNewAccountPlatform] = useState<'instagram' | 'tiktok' | 'youtube' | 'twitter'>('instagram');
+  const [newAccountUrl, setNewAccountUrl] = useState('');
+  const [detectedPlatform, setDetectedPlatform] = useState<'instagram' | 'tiktok' | 'youtube' | 'twitter' | null>(null);
+  const [urlValidationError, setUrlValidationError] = useState<string | null>(null);
   const [clipboardDetectedAccount, setClipboardDetectedAccount] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -268,23 +269,19 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         const parsed = await UrlParserService.autoDetectFromClipboard();
         
         if (parsed && parsed.isValid && parsed.platform) {
-          // Extract username from URL
-          const username = extractUsernameFromUrl(parsed.url, parsed.platform);
-          
-          if (username) {
-            setNewAccountPlatform(parsed.platform);
-            setNewAccountUsername(username);
-            setClipboardDetectedAccount(true);
-            console.log(`🎯 Auto-filled ${parsed.platform} username from clipboard: @${username}`);
-          }
+          setNewAccountUrl(parsed.url);
+          setDetectedPlatform(parsed.platform);
+          setClipboardDetectedAccount(true);
+          console.log(`🎯 Auto-filled ${parsed.platform} URL from clipboard: ${parsed.url}`);
         }
       };
       
       checkClipboard();
     } else {
       // Reset when modal closes
-      setNewAccountUsername('');
-      setNewAccountPlatform('instagram');
+      setNewAccountUrl('');
+      setDetectedPlatform(null);
+      setUrlValidationError(null);
       setClipboardDetectedAccount(false);
     }
   }, [isAddModalOpen]);
@@ -646,17 +643,50 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     }
   }, [selectedAccount, currentOrgId, user]);
 
-  const handleAddAccount = useCallback(async () => {
-    if (!newAccountUsername.trim() || !currentOrgId || !currentProjectId || !user) return;
+  // Handle URL input change and auto-detect platform
+  const handleUrlChange = useCallback((url: string) => {
+    setNewAccountUrl(url);
+    setUrlValidationError(null);
+    setClipboardDetectedAccount(false); // Clear clipboard indicator when user types
+    
+    if (!url.trim()) {
+      setDetectedPlatform(null);
+      return;
+    }
+    
+    const parsed = UrlParserService.parseUrl(url);
+    
+    if (parsed.platform) {
+      setDetectedPlatform(parsed.platform);
+      setUrlValidationError(null);
+    } else if (url.trim().length > 5) {
+      // Only show error if they've typed enough
+      setDetectedPlatform(null);
+      setUrlValidationError('Please enter a valid Instagram, TikTok, YouTube, or Twitter URL');
+    }
+  }, []);
 
-    const username = newAccountUsername.trim();
-    const platform = newAccountPlatform;
+  const handleAddAccount = useCallback(async () => {
+    if (!newAccountUrl.trim() || !currentOrgId || !currentProjectId || !user || !detectedPlatform) return;
+
+    const url = newAccountUrl.trim();
+    const platform = detectedPlatform;
+    
+    // Extract username from URL
+    const username = extractUsernameFromUrl(url, platform);
+    
+    if (!username) {
+      setUrlValidationError('Could not extract username from URL. Please check the URL format.');
+      return;
+    }
 
     // Add to processing accounts immediately with timestamp
     setProcessingAccounts(prev => [...prev, { username, platform, startedAt: Date.now() }]);
     
     // Close modal and reset form immediately
-    setNewAccountUsername('');
+    setNewAccountUrl('');
+    setDetectedPlatform(null);
+    setUrlValidationError(null);
     setIsAddModalOpen(false);
 
     try {
@@ -680,11 +710,11 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       setProcessingAccounts(prev => prev.filter(acc => acc.username !== username));
     } catch (error) {
       console.error('Failed to add account:', error);
-      alert('Failed to add account. Please check the username and try again.');
+      alert('Failed to add account. Please check the URL and try again.');
       // Remove from processing accounts on error
       setProcessingAccounts(prev => prev.filter(acc => acc.username !== username));
     }
-  }, [newAccountUsername, newAccountPlatform, currentOrgId, currentProjectId, user, handleSyncAccount]);
+  }, [newAccountUrl, detectedPlatform, currentOrgId, currentProjectId, user, handleSyncAccount]);
 
   // Helper to generate short code for links
   const generateShortCode = (length: number = 6): string => {
@@ -1980,115 +2010,82 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-zinc-900 dark:bg-zinc-900 rounded-2xl p-8 w-full max-w-md shadow-2xl">
             <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Plus className="w-8 h-8 text-blue-600" />
+              <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Plus className="w-8 h-8 text-white" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Add Account to Track</h2>
-              <p className="text-gray-500 dark:text-gray-400">Start monitoring a new Instagram, TikTok, or YouTube account</p>
+              <p className="text-gray-500 dark:text-gray-400">Paste the account URL and we'll detect the platform automatically</p>
             </div>
             
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
-                  Choose Platform
-                </label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <button
-                    onClick={() => setNewAccountPlatform('instagram')}
-                    className={clsx(
-                      'flex flex-col items-center justify-center space-y-2 py-4 px-3 rounded-xl border-2 transition-all duration-200',
-                      newAccountPlatform === 'instagram'
-                        ? 'border-blue-500 bg-blue-600 text-white shadow-md'
-                        : 'border-gray-700 dark:border-gray-700 hover:border-gray-600 dark:hover:border-gray-600 hover:bg-gray-800 dark:hover:bg-gray-800 text-gray-300'
-                    )}
-                  >
-                    <PlatformIcon platform="instagram" size="md" />
-                    <span className="font-medium text-xs">Instagram</span>
-                  </button>
-                  <button
-                    onClick={() => setNewAccountPlatform('tiktok')}
-                    className={clsx(
-                      'flex flex-col items-center justify-center space-y-2 py-4 px-3 rounded-xl border-2 transition-all duration-200',
-                      newAccountPlatform === 'tiktok'
-                        ? 'border-blue-500 bg-blue-600 text-white shadow-md'
-                        : 'border-gray-700 dark:border-gray-700 hover:border-gray-600 dark:hover:border-gray-600 hover:bg-gray-800 dark:hover:bg-gray-800 text-gray-300'
-                    )}
-                  >
-                    <PlatformIcon platform="tiktok" size="md" />
-                    <span className="font-medium text-xs">TikTok</span>
-                  </button>
-                  <button
-                    onClick={() => setNewAccountPlatform('youtube')}
-                    className={clsx(
-                      'flex flex-col items-center justify-center space-y-2 py-4 px-3 rounded-xl border-2 transition-all duration-200',
-                      newAccountPlatform === 'youtube'
-                        ? 'border-blue-500 bg-blue-600 text-white shadow-md'
-                        : 'border-gray-700 dark:border-gray-700 hover:border-gray-600 dark:hover:border-gray-600 hover:bg-gray-800 dark:hover:bg-gray-800 text-gray-300'
-                    )}
-                  >
-                    <Play className="w-6 h-6" />
-                    <span className="font-medium text-xs">YouTube</span>
-                  </button>
-                  <button
-                    onClick={() => setNewAccountPlatform('twitter')}
-                    className={clsx(
-                      'flex flex-col items-center justify-center space-y-2 py-4 px-3 rounded-xl border-2 transition-all duration-200',
-                      newAccountPlatform === 'twitter'
-                        ? 'border-blue-500 bg-blue-600 text-white shadow-md'
-                        : 'border-gray-700 dark:border-gray-700 hover:border-gray-600 dark:hover:border-gray-600 hover:bg-gray-800 dark:hover:bg-gray-800 text-gray-300'
-                    )}
-                  >
-                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                    </svg>
-                    <span className="font-medium text-xs">Twitter</span>
-                  </button>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
-                  Username
+                  Account URL
                 </label>
                 
                 {clipboardDetectedAccount && (
-                  <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                    <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
-                    <span className="text-sm text-green-700 dark:text-green-300">
-                      ✨ Auto-detected account from clipboard!
+                    <span className="text-sm text-blue-700 dark:text-blue-300">
+                      ✨ Auto-detected URL from clipboard!
                     </span>
                   </div>
                 )}
                 
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">@</span>
-                <input
-                  type="text"
-                  value={newAccountUsername}
-                  onChange={(e) => setNewAccountUsername(e.target.value)}
-                    placeholder="username"
-                    className="w-full pl-8 pr-4 py-4 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
-                />
+                  <input
+                    type="text"
+                    value={newAccountUrl}
+                    onChange={(e) => handleUrlChange(e.target.value)}
+                    placeholder="https://instagram.com/username or https://tiktok.com/@username"
+                    className="w-full px-4 py-4 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+                  />
                 </div>
+                
+                {/* Show detected platform */}
+                {detectedPlatform && (
+                  <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                    <PlatformIcon platform={detectedPlatform} size="sm" />
+                    <span className="text-sm text-green-700 dark:text-green-300 font-medium capitalize">
+                      ✓ {detectedPlatform} account detected
+                    </span>
+                  </div>
+                )}
+                
+                {/* Show validation error */}
+                {urlValidationError && (
+                  <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                    <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
+                    <span className="text-sm text-red-700 dark:text-red-300">
+                      {urlValidationError}
+                    </span>
+                  </div>
+                )}
+                
                 <p className="text-sm text-gray-500 mt-2">
-                  Enter the username without the @ symbol
+                  Paste the full URL to the account profile page
                 </p>
               </div>
             </div>
 
             <div className="flex space-x-4 mt-8">
               <button
-                onClick={() => setIsAddModalOpen(false)}
+                onClick={() => {
+                  setIsAddModalOpen(false);
+                  setNewAccountUrl('');
+                  setDetectedPlatform(null);
+                  setUrlValidationError(null);
+                }}
                 className="flex-1 px-6 py-3 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddAccount}
-                disabled={!newAccountUsername.trim()}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg hover:shadow-xl"
+                disabled={!newAccountUrl.trim() || !detectedPlatform}
+                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
               >
                 Add Account
               </button>
