@@ -38,7 +38,8 @@ class FirestoreDataService {
     orgId: string,
     projectId: string,
     userId: string,
-    accountData: Omit<TrackedAccount, 'id' | 'orgId' | 'dateAdded' | 'addedBy' | 'totalVideos' | 'totalViews' | 'totalLikes' | 'totalComments' | 'totalShares'>
+    accountData: Omit<TrackedAccount, 'id' | 'orgId' | 'dateAdded' | 'addedBy' | 'totalVideos' | 'totalViews' | 'totalLikes' | 'totalComments' | 'totalShares'>,
+    skipSync: boolean = false
   ): Promise<string> {
     const batch = writeBatch(db);
     
@@ -79,13 +80,17 @@ class FirestoreDataService {
     
     await batch.commit();
     console.log(`✅ Added tracked account ${accountData.username} to project ${projectId} with sync status: pending`);
-    console.log(`⚡ Triggering immediate sync for instant feedback...`);
     
-    // Trigger immediate sync (fire and forget)
-    this.triggerImmediateSync(orgId, projectId, accountRef.id).catch(err => {
-      console.error('Failed to trigger immediate sync:', err);
-      // Non-critical - cron will pick it up anyway
-    });
+    if (!skipSync) {
+      console.log(`⚡ Triggering immediate sync for instant feedback...`);
+      // Trigger immediate sync (fire and forget)
+      this.triggerImmediateSync(orgId, projectId, accountRef.id).catch(err => {
+        console.error('Failed to trigger immediate sync:', err);
+        // Non-critical - cron will pick it up anyway
+      });
+    } else {
+      console.log(`⏭️ Skipping sync - account created for single video addition`);
+    }
     
     return accountRef.id;
   }

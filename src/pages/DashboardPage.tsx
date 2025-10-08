@@ -380,19 +380,26 @@ function DashboardPage() {
         let accountId: string;
         if (!account) {
           console.log(`✨ Account @${username} doesn't exist. Creating new account...`);
+          console.log(`📌 Note: NOT syncing all videos - only adding the specified video`);
           
-          accountId = await FirestoreDataService.addTrackedAccount(currentOrgId, currentProjectId, user.uid, {
-            username,
-            platform,
-            displayName: videoData.username,
-            profilePicture: '', // Will be fetched by background sync
-            followerCount: 0,
-            isActive: true,
-            accountType: 'my',
-            lastSynced: Timestamp.fromDate(new Date())
-          });
+          accountId = await FirestoreDataService.addTrackedAccount(
+            currentOrgId, 
+            currentProjectId, 
+            user.uid, 
+            {
+              username,
+              platform,
+              displayName: videoData.username,
+              profilePicture: '', // Will be fetched by background sync
+              followerCount: 0,
+              isActive: true,
+              accountType: 'my',
+              lastSynced: Timestamp.fromDate(new Date())
+            },
+            true // skipSync = true - don't fetch all videos from account
+          );
 
-          console.log(`✅ Created new account with ID: ${accountId}`);
+          console.log(`✅ Created new account with ID: ${accountId} (sync skipped)`);
         } else {
           accountId = account.id;
           console.log(`✅ Account @${username} already exists (ID: ${accountId})`);
