@@ -50,6 +50,10 @@ function DashboardPage() {
   const [allRules, setAllRules] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
+  
+  // Loading/pending state for immediate UI feedback
+  const [pendingVideos, setPendingVideos] = useState<VideoSubmission[]>([]);
+  const [pendingAccounts, setPendingAccounts] = useState<TrackedAccount[]>([]);
   const [dateFilter, setDateFilter] = useState<DateFilterType>('last30days');
   const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>();
   const [selectedVideoForAnalytics, setSelectedVideoForAnalytics] = useState<VideoSubmission | null>(null);
@@ -313,6 +317,11 @@ function DashboardPage() {
     return filtered;
   }, [submissions, dateFilter, customDateRange, dashboardPlatformFilter, selectedAccountIds, trackedAccounts, allRules]);
 
+  // Combine real submissions with pending videos for immediate UI feedback
+  const combinedSubmissions = useMemo(() => {
+    return [...pendingVideos, ...filteredSubmissions];
+  }, [pendingVideos, filteredSubmissions]);
+
   // Apply date filter to link clicks
   const filteredLinkClicks = useMemo(() => {
     if (dateFilter === 'all') {
@@ -356,6 +365,31 @@ function DashboardPage() {
 
     console.log('🎬 Adding videos with account management...', { platform, count: videoUrls.length });
 
+    // Create placeholder videos immediately for instant UI feedback
+    const placeholderVideos: VideoSubmission[] = videoUrls.map((url, index) => ({
+      id: `pending-${Date.now()}-${index}`,
+      videoUrl: url,
+      userName: 'Loading...',
+      status: 'pending' as const,
+      caption: 'Fetching video data...',
+      thumbnailUrl: '',
+      userId: user.uid,
+      dateSubmitted: new Date(),
+      uploadDate: new Date(),
+      views: 0,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      platform: platform,
+      trackedAccountId: '',
+      isSingular: false,
+      isLoading: true // Custom flag for loading state
+    }));
+
+    // Add placeholders to state immediately
+    setPendingVideos(prev => [...prev, ...placeholderVideos]);
+    console.log(`✨ Added ${placeholderVideos.length} placeholder videos to UI`);
+
     let successCount = 0;
     let failureCount = 0;
 
@@ -392,6 +426,41 @@ function DashboardPage() {
             displayName,
             followerCount
           });
+          
+          // Create placeholder account for immediate UI feedback
+          const placeholderAccount: TrackedAccount = {
+            id: `pending-account-${Date.now()}-${username}`,
+            username,
+            platform,
+            displayName: displayName || 'Loading...',
+            profilePicture: profilePic || '',
+            followerCount: followerCount || 0,
+            isActive: true,
+            accountType: 'my',
+            orgId: currentOrgId,
+            dateAdded: Timestamp.fromDate(new Date()),
+            addedBy: user.uid,
+            lastSynced: Timestamp.fromDate(new Date()),
+            totalVideos: 0,
+            totalViews: 0,
+            totalLikes: 0,
+            totalComments: 0,
+            totalShares: 0,
+            syncStatus: 'syncing',
+            syncRequestedBy: user.uid,
+            syncRequestedAt: Timestamp.fromDate(new Date()),
+            syncRetryCount: 0,
+            maxRetries: 3,
+            syncProgress: {
+              current: 50,
+              total: 100,
+              message: 'Creating account...'
+            }
+          };
+          
+          // Add placeholder to state immediately
+          setPendingAccounts(prev => [...prev, placeholderAccount]);
+          console.log(`✨ Added placeholder account for @${username} to UI`);
           
           accountId = await FirestoreDataService.addTrackedAccount(
             currentOrgId, 
@@ -721,7 +790,7 @@ function DashboardPage() {
               <>
                 {/* KPI Cards with Working Sparklines */}
                 <KPICards 
-                  submissions={filteredSubmissions}
+                  submissions={combinedSubmissions}
                   linkClicks={filteredLinkClicks}
                   dateFilter={dateFilter}
                   timePeriod="days"
@@ -730,7 +799,7 @@ function DashboardPage() {
                 {/* Video Submissions Table */}
                 <div className="mt-6">
                   <VideoSubmissionsTable
-                    submissions={filteredSubmissions}
+                    submissions={combinedSubmissions}
                     onStatusUpdate={handleStatusUpdate}
                     onDelete={handleDelete}
                     onVideoClick={handleVideoClick}
@@ -747,6 +816,7 @@ function DashboardPage() {
               dateFilter={accountsDateFilter}
               platformFilter={accountsPlatformFilter}
               onViewModeChange={setAccountsViewMode}
+              pendingAccounts={pendingAccounts}
             />
           )}
 

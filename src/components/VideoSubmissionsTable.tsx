@@ -526,17 +526,23 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
           <tbody className="bg-zinc-900/60 divide-y divide-white/5">
             {paginatedSubmissions.map((submission) => {
               const engagementRate = calculateEngagementRate(submission);
+              const isLoading = (submission as any).isLoading;
               
               return (
                 <tr 
                   key={submission.id}
                   onClick={(e) => {
-                    // Don't trigger row click if clicking on video preview link
-                    if (!(e.target as HTMLElement).closest('a')) {
-                      onVideoClick?.(submission);
-                    }
+                    // Don't trigger row click if clicking on video preview link or if loading
+                    if (isLoading || (e.target as HTMLElement).closest('a')) return;
+                    onVideoClick?.(submission);
                   }}
-                  className="hover:bg-white/5 transition-colors cursor-pointer group"
+                  className={clsx(
+                    'transition-colors group',
+                    {
+                      'hover:bg-white/5 cursor-pointer': !isLoading,
+                      'bg-yellow-900/10 animate-pulse cursor-not-allowed pointer-events-none': isLoading
+                    }
+                  )}
                 >
                   {visibleColumns.video && (
                     <td className="px-6 py-5 sticky left-0 bg-zinc-900/60 backdrop-blur z-10 group-hover:bg-white/5">
@@ -572,11 +578,19 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                           </div>
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={submission.title}>
-                            {submission.title && submission.title.length > 15 
-                              ? `${submission.title.substring(0, 15)}...` 
-                              : submission.title}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={submission.title}>
+                              {submission.title && submission.title.length > 15 
+                                ? `${submission.title.substring(0, 15)}...` 
+                                : submission.title}
+                            </p>
+                            {isLoading && (
+                              <svg className="animate-spin h-3 w-3 text-yellow-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                            )}
+                          </div>
                           <p className="text-xs text-gray-500 mt-1">
                             @{submission.uploaderHandle || submission.uploader || 'unknown'}
                           </p>

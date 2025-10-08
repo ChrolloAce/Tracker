@@ -46,6 +46,7 @@ export interface AccountsPageProps {
   dateFilter: DateFilterType;
   platformFilter: 'all' | 'instagram' | 'tiktok' | 'youtube' | 'twitter';
   onViewModeChange: (mode: 'table' | 'details') => void;
+  pendingAccounts?: TrackedAccount[];
 }
 
 export interface AccountsPageRef {
@@ -60,7 +61,7 @@ interface AccountWithFilteredStats extends TrackedAccount {
   filteredTotalComments: number;
 }
 
-const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilter, platformFilter: _platformFilter, onViewModeChange }, ref) => {
+const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilter, platformFilter: _platformFilter, onViewModeChange, pendingAccounts = [] }, ref) => {
   const { user, currentOrgId, currentProjectId } = useAuth();
   const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
   const [filteredAccounts, setFilteredAccounts] = useState<AccountWithFilteredStats[]>([]);
@@ -1073,7 +1074,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                     const endIndex = startIndex + accountsItemsPerPage;
                     const paginatedAccounts = accountsToShow.slice(startIndex, endIndex);
                     
-                    return paginatedAccounts.map((account) => {
+                    // Combine pending accounts (always show at top, not paginated) with paginated accounts
+                    const allAccountsToRender = [...pendingAccounts, ...paginatedAccounts];
+                    
+                    return allAccountsToRender.map((account) => {
                       const isAccountSyncing = syncingAccounts.has(account.id);
                       
                       return (
