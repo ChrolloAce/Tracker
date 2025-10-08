@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { X, Info } from 'lucide-react';
+import { X } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { LinkClick } from '../services/LinkClicksService';
 import { DateFilterType } from './DateRangeFilter';
@@ -22,14 +22,14 @@ interface MetricOption {
 }
 
 const metricOptions: MetricOption[] = [
-  { id: 'views', label: 'Views', color: '#F97316' },
-  { id: 'likes', label: 'Likes', color: '#A855F7' },
-  { id: 'comments', label: 'Comments', color: '#3B82F6' },
-  { id: 'shares', label: 'Shares', color: '#F59E0B' },
-  { id: 'videos', label: 'Videos', color: '#8B5CF6' },
-  { id: 'accounts', label: 'Accounts', color: '#14B8A6' },
-  { id: 'engagement', label: 'Engagement', color: '#8B5CF6' },
-  { id: 'linkClicks', label: 'Link Clicks', color: '#64748B' },
+  { id: 'views', label: 'Views', color: '#B47CFF' },
+  { id: 'likes', label: 'Likes', color: '#B47CFF' },
+  { id: 'comments', label: 'Comments', color: '#B47CFF' },
+  { id: 'shares', label: 'Shares', color: '#B47CFF' },
+  { id: 'videos', label: 'Videos', color: '#B47CFF' },
+  { id: 'accounts', label: 'Accounts', color: '#B47CFF' },
+  { id: 'engagement', label: 'Engagement', color: '#B47CFF' },
+  { id: 'linkClicks', label: 'Link Clicks', color: '#B47CFF' },
 ];
 
 const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
@@ -40,7 +40,7 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
   initialMetric = 'views',
 }) => {
   const [primaryMetric, setPrimaryMetric] = useState<MetricType>(initialMetric);
-  const [secondaryMetric, setSecondaryMetric] = useState<MetricType>('likes');
+  const [secondaryMetric, setSecondaryMetric] = useState<MetricType | null>(null);
 
   // Helper function to get metric value from video
   const getMetricValue = useCallback((video: VideoSubmission, metric: MetricType): number => {
@@ -117,9 +117,11 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
       const dateKey = new Date(videoDate).toISOString().split('T')[0];
       if (dataByDate[dateKey]) {
         const primaryValue = getMetricValue(video, primaryMetric);
-        const secondaryValue = getMetricValue(video, secondaryMetric);
         dataByDate[dateKey].primary += primaryValue;
-        dataByDate[dateKey].secondary += secondaryValue;
+        if (secondaryMetric) {
+          const secondaryValue = getMetricValue(video, secondaryMetric);
+          dataByDate[dateKey].secondary += secondaryValue;
+        }
       }
     });
 
@@ -156,81 +158,115 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
     return `${month} ${day}`;
   };
 
-  const primaryColor = metricOptions.find(m => m.id === primaryMetric)?.color || '#F97316';
-  const secondaryColor = metricOptions.find(m => m.id === secondaryMetric)?.color || '#A855F7';
+  // Create smooth bezier curve path with proper tension
+  const createSmoothPath = (points: { x: number; y: number }[]): string => {
+    if (points.length === 0) return '';
+    if (points.length === 1) return `M ${points[0].x},${points[0].y}`;
+    if (points.length === 2) return `M ${points[0].x},${points[0].y} L ${points[1].x},${points[1].y}`;
+    
+    let path = `M ${points[0].x},${points[0].y}`;
+    
+    // Use cubic bezier curves for smooth, flowing lines
+    for (let i = 0; i < points.length - 1; i++) {
+      const curr = points[i];
+      const next = points[i + 1];
+      
+      // Control points for smooth curve (tension factor)
+      const tension = 0.3;
+      const dx = next.x - curr.x;
+      const dy = next.y - curr.y;
+      
+      const cp1x = curr.x + dx * tension;
+      const cp1y = curr.y;
+      const cp2x = next.x - dx * tension;
+      const cp2y = next.y;
+      
+      path += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${next.x},${next.y}`;
+    }
+    
+    return path;
+  };
 
-  const maxPrimary = Math.max(...chartData.map(d => d.primary), 1);
-  const maxSecondary = Math.max(...chartData.map(d => d.secondary), 1);
+  const primaryColor = '#B47CFF';
+  const secondaryColor = '#7C3AED';
 
+  const maxValue = Math.max(...chartData.map(d => secondaryMetric ? Math.max(d.primary, d.secondary) : d.primary), 1);
   const totalPrimary = chartData.reduce((sum, d) => sum + d.primary, 0);
-  const totalSecondary = chartData.reduce((sum, d) => sum + d.secondary, 0);
+  const totalSecondary = secondaryMetric ? chartData.reduce((sum, d) => sum + d.secondary, 0) : 0;
+
+  // Generate Y-axis labels
+  const yAxisSteps = 5;
+  const yAxisLabels = Array.from({ length: yAxisSteps }, (_, i) => {
+    return formatNumber(maxValue * (1 - i / (yAxisSteps - 1)));
+  });
 
   if (!isOpen) return null;
 
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[#1A1A1A] rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden border border-gray-800 shadow-2xl">
+    <div 
+      className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4"
+      onClick={handleBackdropClick}
+    >
+      <div className="bg-[#0A0A0A] rounded-3xl max-w-6xl w-full max-h-[90vh] overflow-hidden border border-gray-800/50 shadow-2xl shadow-purple-900/20">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-800">
-          <div className="flex items-center space-x-3">
-            <h2 className="text-2xl font-bold text-white">Metrics</h2>
-            <button className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors">
-              <Info className="w-5 h-5 text-gray-400" />
-            </button>
-          </div>
+        <div className="flex items-center justify-between px-8 py-6 border-b border-gray-800/30">
+          <h2 className="text-2xl font-bold text-white tracking-tight">Metrics</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-800/50 rounded-xl transition-all duration-200"
           >
-            <X className="w-5 h-5 text-gray-400" />
+            <X className="w-5 h-5 text-gray-400 hover:text-white transition-colors" />
           </button>
         </div>
 
         {/* Metric Selectors */}
-        <div className="flex items-center justify-center space-x-4 p-6">
+        <div className="flex items-center space-x-3 px-8 pt-6">
           {/* Primary Metric */}
           <div className="relative">
-            <select
-              value={primaryMetric}
-              onChange={(e) => setPrimaryMetric(e.target.value as MetricType)}
-              className="appearance-none bg-gray-900 border border-gray-700 rounded-xl px-6 py-3 pr-12 text-white font-medium cursor-pointer hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-              style={{ 
-                backgroundImage: `linear-gradient(to right, ${primaryColor}20, transparent)`,
-                borderColor: primaryColor 
-              }}
-            >
-              {metricOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-center space-x-2 bg-gray-900/50 border border-purple-500/30 rounded-xl px-4 py-2.5 backdrop-blur-sm">
+              <div className="w-3 h-3 rounded-sm bg-gradient-to-br from-purple-400 to-purple-600 shadow-lg shadow-purple-500/50" />
+              <select
+                value={primaryMetric}
+                onChange={(e) => setPrimaryMetric(e.target.value as MetricType)}
+                className="appearance-none bg-transparent text-white font-medium text-sm cursor-pointer focus:outline-none pr-6"
+              >
+                {metricOptions.map((option) => (
+                  <option key={option.id} value={option.id} className="bg-gray-900">
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <svg className="w-4 h-4 text-gray-400 absolute right-3 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </div>
           </div>
 
-          {/* Secondary Metric */}
+          {/* Secondary Metric Selector */}
           <div className="relative">
-            <select
-              value={secondaryMetric}
-              onChange={(e) => setSecondaryMetric(e.target.value as MetricType)}
-              className="appearance-none bg-gray-900 border border-gray-700 rounded-xl px-6 py-3 pr-12 text-white font-medium cursor-pointer hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500"
-              style={{ 
-                backgroundImage: `linear-gradient(to right, ${secondaryColor}20, transparent)`,
-                borderColor: secondaryColor 
-              }}
-            >
-              {metricOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-center space-x-2 bg-gray-900/50 border border-gray-700/50 rounded-xl px-4 py-2.5 backdrop-blur-sm">
+              {secondaryMetric && (
+                <div className="w-3 h-3 rounded-sm bg-gradient-to-br from-purple-300 to-indigo-500 shadow-lg shadow-purple-400/30" />
+              )}
+              <select
+                value={secondaryMetric || ''}
+                onChange={(e) => setSecondaryMetric(e.target.value as MetricType || null)}
+                className="appearance-none bg-transparent text-gray-400 font-medium text-sm cursor-pointer focus:outline-none pr-6"
+              >
+                <option value="" className="bg-gray-900">Add secondary</option>
+                {metricOptions.map((option) => (
+                  <option key={option.id} value={option.id} className="bg-gray-900 text-white">
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <svg className="w-4 h-4 text-gray-400 absolute right-3 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </div>
@@ -238,151 +274,159 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
         </div>
 
         {/* Chart */}
-        <div className="p-6">
-          <div className="bg-black rounded-2xl p-8 relative" style={{ minHeight: '500px' }}>
+        <div className="px-8 py-6">
+          <div className="bg-gradient-to-br from-[#0F0F0F] to-[#080808] rounded-2xl p-8 relative border border-gray-800/30 shadow-inner">
             {/* Y-axis labels */}
-            <div className="absolute left-0 top-0 bottom-0 w-16 flex flex-col justify-between text-sm text-gray-500 py-12">
-              <span className="text-right pr-2">{formatNumber(Math.max(maxPrimary, maxSecondary))}</span>
-              <span className="text-right pr-2">{formatNumber(Math.max(maxPrimary, maxSecondary) * 0.75)}</span>
-              <span className="text-right pr-2">{formatNumber(Math.max(maxPrimary, maxSecondary) * 0.5)}</span>
-              <span className="text-right pr-2">{formatNumber(Math.max(maxPrimary, maxSecondary) * 0.25)}</span>
-              <span className="text-right pr-2">0</span>
+            <div className="absolute left-4 top-8 bottom-16 flex flex-col justify-between text-xs font-medium text-gray-500">
+              {yAxisLabels.map((label, i) => (
+                <span key={i} className="text-right w-12">{label}</span>
+              ))}
             </div>
 
             {/* Chart area with grid */}
-            <div className="ml-16 mr-8 h-full relative">
+            <div className="ml-16 mr-4 relative" style={{ height: '420px' }}>
               {/* Grid lines */}
               <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-                {[0, 1, 2, 3, 4].map((i) => (
-                  <div key={i} className="w-full border-t border-gray-800/50" />
+                {yAxisLabels.map((_, i) => (
+                  <div key={i} className="w-full border-t border-gray-800/30" />
                 ))}
               </div>
 
               {/* SVG Chart */}
-              <svg viewBox="0 0 1000 400" className="w-full h-96" preserveAspectRatio="none">
-                {/* Primary line */}
-                <polyline
-                  fill="none"
-                  stroke={primaryColor}
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  points={chartData.map((d, i) => {
-                    const x = (i / (chartData.length - 1)) * 1000;
-                    const y = 400 - (d.primary / Math.max(maxPrimary, maxSecondary, 1)) * 400;
-                    return `${x},${y}`;
-                  }).join(' ')}
-                />
-                
-                {/* Primary area fill */}
-                <polygon
-                  fill={`${primaryColor}40`}
-                  points={`0,400 ${chartData.map((d, i) => {
-                    const x = (i / (chartData.length - 1)) * 1000;
-                    const y = 400 - (d.primary / Math.max(maxPrimary, maxSecondary, 1)) * 400;
-                    return `${x},${y}`;
-                  }).join(' ')} 1000,400`}
-                />
+              <svg viewBox="0 0 1000 400" className="w-full h-full" preserveAspectRatio="none">
+                <defs>
+                  {/* Gradient for primary fill */}
+                  <linearGradient id="primaryGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor={primaryColor} stopOpacity="0.8" />
+                    <stop offset="50%" stopColor={primaryColor} stopOpacity="0.4" />
+                    <stop offset="100%" stopColor={primaryColor} stopOpacity="0.05" />
+                  </linearGradient>
+                  
+                  {/* Gradient for secondary fill */}
+                  <linearGradient id="secondaryGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor={secondaryColor} stopOpacity="0.7" />
+                    <stop offset="50%" stopColor={secondaryColor} stopOpacity="0.35" />
+                    <stop offset="100%" stopColor={secondaryColor} stopOpacity="0.05" />
+                  </linearGradient>
 
-                {/* Secondary line */}
-                <polyline
-                  fill="none"
-                  stroke={secondaryColor}
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  points={chartData.map((d, i) => {
-                    const x = (i / (chartData.length - 1)) * 1000;
-                    const y = 400 - (d.secondary / Math.max(maxPrimary, maxSecondary, 1)) * 400;
-                    return `${x},${y}`;
-                  }).join(' ')}
-                />
+                  {/* Glow filter for the line */}
+                  <filter id="glow">
+                    <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                    <feMerge>
+                      <feMergeNode in="coloredBlur"/>
+                      <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                  </filter>
+                </defs>
 
-                {/* Secondary area fill */}
-                <polygon
-                  fill={`${secondaryColor}40`}
-                  points={`0,400 ${chartData.map((d, i) => {
-                    const x = (i / (chartData.length - 1)) * 1000;
-                    const y = 400 - (d.secondary / Math.max(maxPrimary, maxSecondary, 1)) * 400;
-                    return `${x},${y}`;
-                  }).join(' ')} 1000,400`}
-                />
+                {/* Primary metric area and line */}
+                {chartData.length > 0 && (
+                  <>
+                    {/* Area fill */}
+                    <path
+                      d={`${createSmoothPath(chartData.map((d, i) => ({
+                        x: (i / (chartData.length - 1)) * 1000,
+                        y: 400 - (d.primary / maxValue) * 380
+                      })))} L ${1000},400 L 0,400 Z`}
+                      fill="url(#primaryGradient)"
+                      opacity="0.9"
+                    />
+                    
+                    {/* Glow line */}
+                    <path
+                      d={createSmoothPath(chartData.map((d, i) => ({
+                        x: (i / (chartData.length - 1)) * 1000,
+                        y: 400 - (d.primary / maxValue) * 380
+                      })))}
+                      fill="none"
+                      stroke={primaryColor}
+                      strokeWidth="2.5"
+                      filter="url(#glow)"
+                      opacity="0.95"
+                    />
+                  </>
+                )}
 
-                {/* Data points for primary */}
-                {chartData.map((d, i) => {
-                  const x = (i / (chartData.length - 1)) * 1000;
-                  const y = 400 - (d.primary / Math.max(maxPrimary, maxSecondary, 1)) * 400;
-                  return (
-                    <circle
-                      key={`primary-${i}`}
-                      cx={x}
-                      cy={y}
-                      r="4"
-                      fill={primaryColor}
-                      className="hover:r-6 transition-all"
-                    >
-                      <title>{`${metricOptions.find(m => m.id === primaryMetric)?.label}: ${formatNumber(d.primary)} (${formatDate(d.date)})`}</title>
-                    </circle>
-                  );
-                })}
-
-                {/* Data points for secondary */}
-                {chartData.map((d, i) => {
-                  const x = (i / (chartData.length - 1)) * 1000;
-                  const y = 400 - (d.secondary / Math.max(maxPrimary, maxSecondary, 1)) * 400;
-                  return (
-                    <circle
-                      key={`secondary-${i}`}
-                      cx={x}
-                      cy={y}
-                      r="4"
-                      fill={secondaryColor}
-                      className="hover:r-6 transition-all"
-                    >
-                      <title>{`${metricOptions.find(m => m.id === secondaryMetric)?.label}: ${formatNumber(d.secondary)} (${formatDate(d.date)})`}</title>
-                    </circle>
-                  );
-                })}
+                {/* Secondary metric area and line */}
+                {secondaryMetric && chartData.length > 0 && (
+                  <>
+                    {/* Area fill */}
+                    <path
+                      d={`${createSmoothPath(chartData.map((d, i) => ({
+                        x: (i / (chartData.length - 1)) * 1000,
+                        y: 400 - (d.secondary / maxValue) * 380
+                      })))} L ${1000},400 L 0,400 Z`}
+                      fill="url(#secondaryGradient)"
+                      opacity="0.6"
+                    />
+                    
+                    {/* Glow line */}
+                    <path
+                      d={createSmoothPath(chartData.map((d, i) => ({
+                        x: (i / (chartData.length - 1)) * 1000,
+                        y: 400 - (d.secondary / maxValue) * 380
+                      })))}
+                      fill="none"
+                      stroke={secondaryColor}
+                      strokeWidth="2.5"
+                      filter="url(#glow)"
+                      opacity="0.85"
+                    />
+                  </>
+                )}
               </svg>
 
               {/* X-axis labels */}
-              <div className="flex justify-between mt-4 text-xs text-gray-500">
+              <div className="flex justify-between mt-4 px-1">
                 {chartData.filter((_, i) => {
-                  const step = Math.ceil(chartData.length / 8);
+                  const step = Math.max(1, Math.ceil(chartData.length / 10));
                   return i % step === 0 || i === chartData.length - 1;
                 }).map((data, index) => (
-                  <span key={index}>{formatDate(data.date)}</span>
+                  <span key={index} className="text-xs font-medium text-gray-500">
+                    {formatDate(data.date)}
+                  </span>
                 ))}
               </div>
             </div>
 
             {/* Watermark */}
-            <div className="absolute bottom-8 right-8 flex items-center space-x-2 opacity-20">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500" />
-              <span className="text-2xl font-bold text-white">viral.app</span>
+            <div className="absolute bottom-4 right-6 flex items-center space-x-2 opacity-10">
+              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-blue-500" />
+              <span className="text-lg font-bold text-white">viral.app</span>
             </div>
           </div>
 
           {/* Summary Stats */}
-          <div className="grid grid-cols-2 gap-4 mt-6">
-            <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
+          <div className={`grid ${secondaryMetric ? 'grid-cols-2' : 'grid-cols-1'} gap-4 mt-6`}>
+            <div className="bg-gradient-to-br from-gray-900/50 to-gray-900/30 rounded-xl p-5 border border-purple-500/20 backdrop-blur-sm">
               <div className="flex items-center space-x-3">
-                <div className="w-4 h-4 rounded" style={{ backgroundColor: primaryColor }} />
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500/20 to-purple-600/10 flex items-center justify-center border border-purple-500/30">
+                  <div className="w-4 h-4 rounded bg-gradient-to-br from-purple-400 to-purple-600 shadow-lg shadow-purple-500/50" />
+                </div>
                 <div>
-                  <p className="text-sm text-gray-400">{metricOptions.find(m => m.id === primaryMetric)?.label}</p>
-                  <p className="text-2xl font-bold text-white">{formatNumber(totalPrimary)}</p>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {metricOptions.find(m => m.id === primaryMetric)?.label}
+                  </p>
+                  <p className="text-2xl font-bold text-white mt-0.5">{formatNumber(totalPrimary)}</p>
                 </div>
               </div>
             </div>
-            <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
-              <div className="flex items-center space-x-3">
-                <div className="w-4 h-4 rounded" style={{ backgroundColor: secondaryColor }} />
-                <div>
-                  <p className="text-sm text-gray-400">{metricOptions.find(m => m.id === secondaryMetric)?.label}</p>
-                  <p className="text-2xl font-bold text-white">{formatNumber(totalSecondary)}</p>
+
+            {secondaryMetric && (
+              <div className="bg-gradient-to-br from-gray-900/50 to-gray-900/30 rounded-xl p-5 border border-indigo-500/20 backdrop-blur-sm">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500/20 to-indigo-600/10 flex items-center justify-center border border-indigo-500/30">
+                    <div className="w-4 h-4 rounded bg-gradient-to-br from-purple-300 to-indigo-500 shadow-lg shadow-indigo-400/30" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {metricOptions.find(m => m.id === secondaryMetric)?.label}
+                    </p>
+                    <p className="text-2xl font-bold text-white mt-0.5">{formatNumber(totalSecondary)}</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
