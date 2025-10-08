@@ -228,20 +228,20 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
     let input: any;
 
     if (platform === 'tiktok') {
-      actorId = 'clockworks/tiktok-scraper';
+      actorId = 'clockworks~tiktok-scraper';
       input = {
         postURLs: [url],
         resultsPerPage: 1
       };
     } else if (platform === 'instagram') {
-      actorId = 'apify/instagram-scraper';
+      actorId = 'apify~instagram-scraper';
       input = {
         directUrls: [url],
         resultsType: 'posts',
         resultsLimit: 1
       };
     } else if (platform === 'youtube') {
-      actorId = 'streamers/youtube-scraper';
+      actorId = 'streamers~youtube-scraper';
       input = {
         startUrls: [{ url }],
         maxResults: 1
