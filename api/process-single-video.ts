@@ -256,17 +256,47 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       follower_count: rawData.follower_count || rawData.ownerFollowersCount || 0
     };
   } else if (platform === 'youtube') {
-    // YouTube structure
+    // YouTube structure - handle both YouTube API v3 and Apify scraper formats
+    console.log('[YouTube Transform] Raw data keys:', Object.keys(rawData));
+    console.log('[YouTube Transform] Statistics:', rawData.statistics);
+    console.log('[YouTube Transform] Snippet:', rawData.snippet);
+    
+    // YouTube API v3 format (from /api/youtube-video)
+    if (rawData.snippet || rawData.statistics) {
+      const thumbnails = rawData.snippet?.thumbnails;
+      const thumbnail = thumbnails?.maxres?.url || 
+                       thumbnails?.standard?.url || 
+                       thumbnails?.high?.url || 
+                       thumbnails?.medium?.url || 
+                       thumbnails?.default?.url || '';
+      
+      return {
+        id: rawData.id || '',
+        thumbnail_url: thumbnail,
+        caption: rawData.snippet?.title || rawData.snippet?.description || '',
+        username: rawData.snippet?.channelTitle || '',
+        like_count: parseInt(rawData.statistics?.likeCount || '0', 10),
+        comment_count: parseInt(rawData.statistics?.commentCount || '0', 10),
+        view_count: parseInt(rawData.statistics?.viewCount || '0', 10),
+        share_count: 0,
+        timestamp: rawData.snippet?.publishedAt || new Date().toISOString(),
+        profile_pic_url: rawData.channelThumbnail || '',
+        display_name: rawData.snippet?.channelTitle || '',
+        follower_count: rawData.subscribers || 0
+      };
+    }
+    
+    // Apify scraper format (fallback)
     return {
       id: rawData.id || '',
       thumbnail_url: rawData.thumbnail || rawData.thumbnails?.default?.url || '',
-      caption: rawData.description || '',
+      caption: rawData.description || rawData.title || '',
       username: rawData.channelName || rawData.author || '',
       like_count: rawData.likes || 0,
       comment_count: rawData.comments || 0,
       view_count: rawData.views || 0,
       share_count: 0,
-      timestamp: rawData.uploadDate || new Date().toISOString(),
+      timestamp: rawData.uploadDate || rawData.publishedAt || new Date().toISOString(),
       profile_pic_url: rawData.channelThumbnail || '',
       display_name: rawData.channelName || '',
       follower_count: rawData.subscribers || 0
@@ -320,11 +350,52 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
         resultsLimit: 1
       };
     } else if (platform === 'youtube') {
-      actorId = 'streamers~youtube-scraper';
-      input = {
-        startUrls: [{ url }],
-        maxResults: 1
-      };
+      // Use YouTube API directly instead of Apify for better reliability
+      console.log('🎥 Using YouTube Data API v3 for video:', url);
+      
+      // Extract video ID from URL
+      let videoId = '';
+      try {
+        const urlObj = new URL(url);
+        if (urlObj.hostname.includes('youtube.com')) {
+          if (urlObj.pathname.includes('/shorts/')) {
+            videoId = urlObj.pathname.split('/shorts/')[1]?.split('/')[0] || '';
+          } else {
+            videoId = urlObj.searchParams.get('v') || '';
+          }
+        } else if (urlObj.hostname.includes('youtu.be')) {
+          videoId = urlObj.pathname.substring(1).split('/')[0];
+        }
+      } catch (e) {
+        throw new Error('Could not parse YouTube video ID from URL');
+      }
+      
+      if (!videoId) {
+        throw new Error('Could not extract video ID from YouTube URL');
+      }
+      
+      const youtubeApiKey = process.env.YOUTUBE_API_KEY;
+      if (!youtubeApiKey) {
+        throw new Error('YOUTUBE_API_KEY not configured');
+      }
+      
+      const ytUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${encodeURIComponent(videoId)}&key=${youtubeApiKey}`;
+      const ytResponse = await fetch(ytUrl);
+      
+      if (!ytResponse.ok) {
+        throw new Error(`YouTube API error: ${ytResponse.status}`);
+      }
+      
+      const ytData = await ytResponse.json();
+      if (!ytData.items || ytData.items.length === 0) {
+        throw new Error('Video not found on YouTube');
+      }
+      
+      console.log('✅ YouTube API returned data:', ytData.items[0].snippet?.title);
+      const rawVideoData = ytData.items[0];
+      const transformedData = transformVideoData(rawVideoData, platform);
+      console.log('🔄 Transformed YouTube data:', transformedData);
+      return transformedData;
     } else if (platform === 'twitter') {
       // Extract username from Twitter URL
       // e.g., https://x.com/username/status/123 or https://twitter.com/username/status/123
