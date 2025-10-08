@@ -1,4 +1,5 @@
 import { useState, useEffect, forwardRef, useImperativeHandle, useMemo } from 'react';
+import Lottie from 'lottie-react';
 import { Link as LinkIcon, Plus, Copy, ExternalLink, Trash2, BarChart, Edit2, ArrowUp, ArrowDown } from 'lucide-react';
 import { TrackedLink, TrackedAccount } from '../types/firestore';
 import FirestoreDataService from '../services/FirestoreDataService';
@@ -11,6 +12,7 @@ import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import Pagination from './ui/Pagination';
 import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
 import { LinkClick } from '../services/LinkClicksService';
+import collaborativeAnimation from '../../public/lottie/Collaborative Problem Solving.json';
 
 export interface TrackedLinksPageRef {
   openCreateModal: () => void;
@@ -616,8 +618,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 overflow-hidden">
         {paginatedLinks.length === 0 ? (
           <div className="p-12 text-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <LinkIcon className="w-8 h-8 text-gray-400" />
+            <div className="w-64 h-64 mx-auto mb-4">
+              <Lottie animationData={collaborativeAnimation} loop={true} />
             </div>
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Links Yet</h3>
             <p className="text-gray-500 dark:text-gray-400 mb-4">

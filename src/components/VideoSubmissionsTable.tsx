@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, Edit3, ChevronUp, ChevronDown, Filter } from 'lucide-react';
+import Lottie from 'lottie-react';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { MiniTrendChart } from './ui/MiniTrendChart';
@@ -10,6 +11,7 @@ import VideoPlayerModal from './VideoPlayerModal';
 import Pagination from './ui/Pagination';
 import ColumnPreferencesService from '../services/ColumnPreferencesService';
 import { OutlierBadge, calculateOutlierStatus } from './ui/OutlierBadge';
+import videoMaterialAnimation from '../../public/lottie/Video Material.json';
 
 interface VideoSubmissionsTableProps {
   submissions: VideoSubmission[];
@@ -778,8 +780,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
       {/* Empty State */}
       {submissions.length === 0 && (
         <div className="px-6 py-16 text-center">
-          <div className="w-16 h-16 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
-            <Eye className="w-8 h-8 text-gray-400" />
+          <div className="w-64 h-64 mx-auto mb-6">
+            <Lottie animationData={videoMaterialAnimation} loop={true} />
           </div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No videos found</h3>
           <p className="text-gray-500 max-w-sm mx-auto">

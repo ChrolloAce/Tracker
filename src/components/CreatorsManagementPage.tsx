@@ -1,4 +1,5 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import Lottie from 'lottie-react';
 import { useAuth } from '../contexts/AuthContext';
 import { OrgMember, Creator } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
@@ -9,6 +10,7 @@ import { Button } from './ui/Button';
 import CreateCreatorModal from './CreateCreatorModal';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
 import CreatorDetailsPage from './CreatorDetailsPage';
+import userProfileAnimation from '../../public/lottie/User Profile.json';
 
 export interface CreatorsManagementPageRef {
   openInviteModal: () => void;
@@ -293,7 +295,9 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
       {/* Creators List - Dashboard Style */}
       {creators.length === 0 ? (
         <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-12 text-center">
-          <Video className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+          <div className="w-64 h-64 mx-auto mb-4">
+            <Lottie animationData={userProfileAnimation} loop={true} />
+          </div>
           <h3 className="text-lg font-medium text-white mb-2">No creators yet</h3>
           <p className="text-gray-400 mb-6">
             Invite content creators to track their accounts and manage payouts
