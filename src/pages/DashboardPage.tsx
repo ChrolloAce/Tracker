@@ -385,7 +385,7 @@ function DashboardPage() {
             username,
             platform,
             displayName: videoData.username,
-            profilePicture: (videoData as any).profile_pic_url || '',
+            profilePicture: '', // Will be fetched by background sync
             followerCount: 0,
             isActive: true,
             accountType: 'my',
@@ -417,12 +417,19 @@ function DashboardPage() {
         
         console.log(`📹 Adding video to account ${accountId}...`);
         console.log(`📅 Upload date: ${uploadDate.toISOString()}`);
+        console.log(`🖼️ Thumbnail URL:`, videoData.thumbnail_url);
+        console.log(`📊 Video data:`, {
+          views: videoData.view_count,
+          likes: videoData.like_count,
+          comments: videoData.comment_count,
+          caption: videoData.caption?.substring(0, 50)
+        });
         
         await FirestoreDataService.addVideo(currentOrgId, currentProjectId, user.uid, {
           platform,
           url: videoUrl,
           videoId,
-          thumbnail: videoData.thumbnail_url,
+          thumbnail: videoData.thumbnail_url || '',
           title: videoData.caption?.split('\n')[0] || 'Untitled Video',
           uploadDate: Timestamp.fromDate(uploadDate),
           views: videoData.view_count || 0,
@@ -449,18 +456,20 @@ function DashboardPage() {
     // Only reload if at least one video was added successfully
     if (successCount > 0) {
       console.log('🔄 Reloading page to show new videos...');
+      console.log('⏳ Account profile picture will be fetched by background sync job');
       setTimeout(() => {
         window.location.reload();
-      }, 1000);
+      }, 2000); // Increased delay to ensure Firestore writes complete
     }
 
     // Show result message
     if (failureCount > 0 && successCount === 0) {
       alert(`Failed to add videos. Check console for details.`);
     } else if (failureCount > 0) {
-      alert(`Added ${successCount} videos successfully. ${failureCount} failed.`);
+      alert(`Added ${successCount} videos successfully. ${failureCount} failed.\n\nNote: Profile pictures will be fetched by background sync.`);
     } else if (successCount > 0) {
       // Success message will show after reload
+      console.log('✅ Videos added! Profile pictures will load shortly via background sync.');
     }
   }, [user, currentOrgId, currentProjectId]);
 
