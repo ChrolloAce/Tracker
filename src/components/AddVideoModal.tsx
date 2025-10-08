@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, AlertCircle } from 'lucide-react';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { UrlParserService } from '../services/UrlParserService';
 
