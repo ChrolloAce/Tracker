@@ -174,7 +174,6 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
       // Control points for smooth curve (tension factor)
       const tension = 0.3;
       const dx = next.x - curr.x;
-      const dy = next.y - curr.y;
       
       const cp1x = curr.x + dx * tension;
       const cp1y = curr.y;
