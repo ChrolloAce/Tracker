@@ -17,7 +17,6 @@ interface VideoInput {
 export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, onAddVideo }) => {
   const [selectedPlatform, setSelectedPlatform] = useState<'instagram' | 'tiktok' | 'youtube' | 'twitter'>('tiktok');
   const [videoInputs, setVideoInputs] = useState<VideoInput[]>([{ id: '1', url: '' }]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAddVideoInput = () => {
     setVideoInputs([...videoInputs, { id: Date.now().toString(), url: '' }]);
@@ -43,19 +42,16 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      await onAddVideo(selectedPlatform, urls);
-      // Reset form
-      setVideoInputs([{ id: '1', url: '' }]);
-      setSelectedPlatform('tiktok');
-      onClose();
-    } catch (error) {
+    // Close modal immediately and reset form
+    setVideoInputs([{ id: '1', url: '' }]);
+    setSelectedPlatform('tiktok');
+    onClose();
+    
+    // Process videos in background (server-side will handle and page will reload)
+    onAddVideo(selectedPlatform, urls).catch(error => {
       console.error('Failed to add videos:', error);
-      alert('Failed to add videos. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
+      // Error handling happens in DashboardPage with console logs
+    });
   };
 
   if (!isOpen) return null;
@@ -190,17 +186,16 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
         <div className="sticky bottom-0 bg-white dark:bg-[#1A1A1A] border-t border-gray-200 dark:border-gray-800 p-6 flex space-x-4">
           <button
             onClick={onClose}
-            disabled={isSubmitting}
-            className="flex-1 px-6 py-3 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 px-6 py-3 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting || videoInputs.every(input => !input.url.trim())}
+            disabled={videoInputs.every(input => !input.url.trim())}
             className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg hover:shadow-xl"
           >
-            {isSubmitting ? 'Adding Videos...' : 'Add Videos'}
+            Add Videos
           </button>
         </div>
       </div>
