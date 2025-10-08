@@ -5,7 +5,7 @@ import { OrgMember, Creator } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
 import CreatorLinksService from '../services/CreatorLinksService';
 import FirestoreDataService from '../services/FirestoreDataService';
-import { UserPlus, Video, Link as LinkIcon, DollarSign, User, X, Edit3, Users as UsersIcon, TrendingUp } from 'lucide-react';
+import { UserPlus, Link as LinkIcon, DollarSign, User, X, Edit3, Users as UsersIcon, TrendingUp } from 'lucide-react';
 import { Button } from './ui/Button';
 import CreateCreatorModal from './CreateCreatorModal';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
