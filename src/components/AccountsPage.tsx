@@ -686,6 +686,46 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     }
   }, [newAccountUsername, newAccountPlatform, currentOrgId, currentProjectId, user, handleSyncAccount]);
 
+  // Helper to generate short code for links
+  const generateShortCode = (length: number = 6): string => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+
+  // Handle creating a tracked link
+  const handleCreateLink = async (originalUrl: string, title: string, description?: string, tags?: string[], linkedAccountId?: string) => {
+    if (!currentOrgId || !currentProjectId || !user) return;
+    
+    try {
+      const shortCode = generateShortCode();
+      
+      const createData: any = {
+        shortCode,
+        originalUrl,
+        title,
+        isActive: true
+      };
+      
+      if (description !== undefined) createData.description = description;
+      if (tags !== undefined) createData.tags = tags;
+      if (linkedAccountId !== undefined) createData.linkedAccountId = linkedAccountId;
+      
+      await FirestoreDataService.createLink(currentOrgId, currentProjectId, user.uid, createData);
+      
+      setShowCreateLinkModal(false);
+      
+      // Show success message
+      alert('✅ Link created successfully!');
+    } catch (error) {
+      console.error('Failed to create link:', error);
+      alert('Failed to create link. Please try again.');
+    }
+  };
+
   const handleRemoveAccount = useCallback((accountId: string) => {
     const account = accounts.find(a => a.id === accountId);
     if (!account) return;
@@ -2406,9 +2446,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         <CreateLinkModal
           isOpen={showCreateLinkModal}
           onClose={() => setShowCreateLinkModal(false)}
-          onCreate={() => {
-            setShowCreateLinkModal(false);
-          }}
+          onCreate={handleCreateLink}
+          preselectedAccountId={selectedAccount.id}
         />
       )}
 

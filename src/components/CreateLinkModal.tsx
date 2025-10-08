@@ -10,9 +10,10 @@ interface CreateLinkModalProps {
   onClose: () => void;
   onCreate: (originalUrl: string, title: string, description?: string, tags?: string[], linkedAccountId?: string) => void;
   editingLink?: any | null;
+  preselectedAccountId?: string; // Account ID to pre-select and lock
 }
 
-const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCreate, editingLink }) => {
+const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCreate, editingLink, preselectedAccountId }) => {
   const { currentOrgId, currentProjectId } = useAuth();
   const [originalUrl, setOriginalUrl] = useState('');
   const [title, setTitle] = useState('');
@@ -22,19 +23,24 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Populate fields when editing
+  // Populate fields when editing or preselecting
   useEffect(() => {
     if (editingLink) {
       setOriginalUrl(editingLink.originalUrl || '');
       setTitle(editingLink.title || '');
       setLinkedAccountId(editingLink.linkedAccountId || '');
+    } else if (preselectedAccountId) {
+      // Set preselected account when creating from account detail view
+      setLinkedAccountId(preselectedAccountId);
+      setOriginalUrl('');
+      setTitle('');
     } else {
       // Reset fields when creating new link
       setOriginalUrl('');
       setTitle('');
       setLinkedAccountId('');
     }
-  }, [editingLink]);
+  }, [editingLink, preselectedAccountId]);
 
   // Load accounts when modal opens
   useEffect(() => {
@@ -160,8 +166,13 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
             <div className="relative" ref={dropdownRef}>
               <button
                 type="button"
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="w-full flex items-center justify-between px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onClick={() => !preselectedAccountId && setIsDropdownOpen(!isDropdownOpen)}
+                disabled={!!preselectedAccountId}
+                className={`w-full flex items-center justify-between px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg ${
+                  preselectedAccountId 
+                    ? 'bg-gray-100 dark:bg-gray-900 cursor-not-allowed opacity-75' 
+                    : 'bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-gray-50 dark:hover:bg-gray-750'
+                } text-gray-900 dark:text-white`}
               >
                 {selectedAccount ? (
                   <div className="flex items-center gap-3">
@@ -186,7 +197,9 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
                 ) : (
                   <span className="text-gray-500 dark:text-gray-400">None</span>
                 )}
-                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                {!preselectedAccountId && (
+                  <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                )}
               </button>
 
               {isDropdownOpen && (
