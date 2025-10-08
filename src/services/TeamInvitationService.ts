@@ -84,14 +84,18 @@ class TeamInvitationService {
     
     // Send email notification
     try {
-      const inviteLink = `${window.location.origin}/invitations/${inviteRef.id}`;
+      // Use production URL for invite links
+      const baseUrl = window.location.hostname === 'localhost' 
+        ? 'http://localhost:5173' 
+        : 'https://tracker-red-zeta.vercel.app';
+      const inviteLink = `${baseUrl}/invitations/${inviteRef.id}`;
       
-      console.log(`📤 Attempting to send invitation email to ${email}...`);
-      console.log(`🔗 Invitation link: ${inviteLink}`);
+      console.log(`📧 Attempting to send invitation email to ${email}...`);
+      console.log(`🔗 Invite link: ${inviteLink}`);
       
       if (role === 'creator' && projectId) {
         // Send creator invitation email
-        console.log(`🎨 Sending creator invitation...`);
+        console.log(`🎨 Sending creator invitation email...`);
         const result = await EmailService.sendCreatorInvitation({
           to: email,
           inviterName: invitedByName,
@@ -101,16 +105,13 @@ class TeamInvitationService {
         });
         
         if (result.success) {
-          console.log(`✅ 📧 Successfully sent creator invitation email to ${email}`);
-          console.log(`📬 Email ID: ${result.emailId}`);
+          console.log(`✅ Successfully sent creator invitation email to ${email}`);
         } else {
-          console.error(`❌ Failed to send creator invitation email to ${email}`);
-          console.error(`Error details:`, result.error || result.message);
-          console.error(`Full response:`, result);
+          console.error(`❌ Failed to send creator invitation email:`, result.error);
         }
       } else {
         // Send team member invitation email
-        console.log(`👥 Sending team member invitation (role: ${role})...`);
+        console.log(`👥 Sending team member invitation email...`);
         const result = await EmailService.sendTeamInvitation({
           to: email,
           inviterName: invitedByName,
@@ -120,22 +121,15 @@ class TeamInvitationService {
         });
         
         if (result.success) {
-          console.log(`✅ 📧 Successfully sent team invitation email to ${email}`);
-          console.log(`📬 Email ID: ${result.emailId}`);
+          console.log(`✅ Successfully sent team invitation email to ${email}`);
         } else {
-          console.error(`❌ Failed to send team invitation email to ${email}`);
-          console.error(`Error details:`, result.error || result.message);
-          console.error(`Full response:`, result);
+          console.error(`❌ Failed to send team invitation email:`, result.error);
         }
       }
     } catch (emailError) {
       // Don't fail invitation creation if email fails
-      console.error(`🚨 Exception while sending invitation email to ${email}:`);
-      console.error(emailError);
-      if (emailError instanceof Error) {
-        console.error(`Error message: ${emailError.message}`);
-        console.error(`Error stack:`, emailError.stack);
-      }
+      console.error('❌ Error sending invitation email:', emailError);
+      console.error('Full error details:', emailError);
     }
     
     return inviteRef.id;
