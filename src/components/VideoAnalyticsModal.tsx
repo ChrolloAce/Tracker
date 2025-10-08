@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState } from 'react';
 import { X, ExternalLink, TrendingUp, TrendingDown, Eye, Heart, MessageCircle, Share2, ChevronDown } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
@@ -24,29 +24,13 @@ type MetricType = 'views' | 'likes' | 'comments' | 'shares';
 const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose }) => {
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('views');
   const [secondaryMetric, setSecondaryMetric] = useState<MetricType | null>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
-
-  // Click outside to close
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
-        onClose();
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen, onClose]);
 
   if (!isOpen || !video) return null;
 
   // Prepare chart data from snapshots
   const chartData = useMemo((): ChartDataPoint[] => {
+    if (!video) return [];
+    
     // If no snapshots, create initial data point from current video stats
     if (!video.snapshots || video.snapshots.length === 0) {
       return [{
@@ -78,7 +62,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       shares: snapshot.shares || 0,
       timestamp: new Date(snapshot.capturedAt).getTime()
     }));
-  }, [video.snapshots, video.views, video.likes, video.comments, video.shares, video.timestamp, video.dateSubmitted]);
+  }, [video?.id]);
 
   // Calculate total growth
   const totalGrowth = useMemo(() => {
@@ -153,7 +137,6 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
       <div 
-        ref={modalRef}
         className="bg-[#151515] rounded-[14px] shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto animate-slideUp"
         style={{ padding: '24px' }}
       >
@@ -203,44 +186,38 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         </div>
 
         {/* Main Chart */}
-        <div className="bg-[#1A1A1A] rounded-xl border border-white/5 p-6 mb-6 relative">
+        <div className="bg-[#1A1A1A] rounded-xl border border-white/5 p-6 mb-6">
           {/* Chart Header */}
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-bold text-white">Metrics</h3>
+            <h3 className="text-base font-bold text-white">Metrics</h3>
             <div className="flex items-center gap-3">
               {/* Primary Metric Selector */}
               <div className="relative">
-                <div 
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-2.5 h-2.5 rounded-sm pointer-events-none z-10"
-                  style={{ backgroundColor: getMetricColor(selectedMetric) }}
-                />
                 <select
                   value={selectedMetric}
                   onChange={(e) => setSelectedMetric(e.target.value as MetricType)}
-                  className="appearance-none pl-7 pr-8 py-2 bg-[#1E1E20] border border-gray-700/50 rounded-full text-white text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20 shadow-inner"
-                  style={{ minWidth: '110px' }}
+                  className="appearance-none pl-3 pr-10 py-2 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-white text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20"
+                  style={{ minWidth: '120px' }}
                 >
                   <option value="views">Views</option>
                   <option value="likes">Likes</option>
                   <option value="comments">Comments</option>
                   <option value="shares">Shares</option>
                 </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                <div 
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 rounded-sm pointer-events-none"
+                  style={{ backgroundColor: getMetricColor(selectedMetric) }}
+                />
+                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
               </div>
 
               {/* Secondary Metric Selector */}
               <div className="relative">
-                {secondaryMetric && (
-                  <div 
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 w-2.5 h-2.5 rounded-sm pointer-events-none z-10"
-                    style={{ backgroundColor: getMetricColor(secondaryMetric) }}
-                  />
-                )}
                 <select
                   value={secondaryMetric || ''}
                   onChange={(e) => setSecondaryMetric(e.target.value ? e.target.value as MetricType : null)}
-                  className={`appearance-none ${secondaryMetric ? 'pl-7' : 'pl-3'} pr-8 py-2 bg-[#1E1E20] border border-gray-700/50 rounded-full text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20 shadow-inner ${secondaryMetric ? 'text-white' : 'text-gray-400'}`}
-                  style={{ minWidth: '140px' }}
+                  className="appearance-none pl-3 pr-10 py-2 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-gray-400 text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20"
+                  style={{ minWidth: '150px' }}
                 >
                   <option value="">Add secondary</option>
                   <option value="views">Views</option>
@@ -248,37 +225,34 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                   <option value="comments">Comments</option>
                   <option value="shares">Shares</option>
                 </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                {secondaryMetric && (
+                  <div 
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 rounded-sm pointer-events-none"
+                    style={{ backgroundColor: getMetricColor(secondaryMetric) }}
+                  />
+                )}
+                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
               </div>
             </div>
           </div>
 
           {/* Chart */}
-          <div className="h-80 relative">
+          <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="primaryGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={getMetricColor(selectedMetric)} stopOpacity={0.5}/>
-                    <stop offset="50%" stopColor={getMetricColor(selectedMetric)} stopOpacity={0.2}/>
-                    <stop offset="100%" stopColor={getMetricColor(selectedMetric)} stopOpacity={0}/>
+                    <stop offset="5%" stopColor={getMetricColor(selectedMetric)} stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor={getMetricColor(selectedMetric)} stopOpacity={0}/>
                   </linearGradient>
                   {secondaryMetric && (
                     <linearGradient id="secondaryGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={getMetricColor(secondaryMetric)} stopOpacity={0.4}/>
-                      <stop offset="50%" stopColor={getMetricColor(secondaryMetric)} stopOpacity={0.15}/>
-                      <stop offset="100%" stopColor={getMetricColor(secondaryMetric)} stopOpacity={0}/>
+                      <stop offset="5%" stopColor={getMetricColor(secondaryMetric)} stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor={getMetricColor(secondaryMetric)} stopOpacity={0}/>
                     </linearGradient>
                   )}
-                  <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                    <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-                    <feMerge>
-                      <feMergeNode in="coloredBlur"/>
-                      <feMergeNode in="SourceGraphic"/>
-                    </feMerge>
-                  </filter>
-                  <filter id="lineGlow">
-                    <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                  <filter id="glow">
+                    <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
                     <feMerge>
                       <feMergeNode in="coloredBlur"/>
                       <feMergeNode in="SourceGraphic"/>
@@ -287,46 +261,41 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                 </defs>
                 <CartesianGrid 
                   strokeDasharray="0" 
-                  stroke="rgba(255,255,255,0.04)" 
+                  stroke="rgba(255,255,255,0.03)" 
                   vertical={false}
-                  horizontal={true}
                 />
                 <XAxis 
                   dataKey="date"
-                  stroke="#6B7280"
-                  fontSize={11}
+                  stroke="#CFCFCF"
+                  fontSize={12}
                   tickLine={false}
-                  axisLine={{ stroke: 'rgba(255,255,255,0.08)' }}
-                  tick={{ fill: '#9CA3AF' }}
+                  axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                 />
                 <YAxis 
-                  stroke="#6B7280"
-                  fontSize={11}
+                  stroke="#CFCFCF"
+                  fontSize={12}
                   tickLine={false}
-                  axisLine={{ stroke: 'rgba(255,255,255,0.08)' }}
+                  axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
                   tickFormatter={(value) => formatNumber(value)}
                   domain={[0, yAxisMax]}
-                  tick={{ fill: '#CFCFCF' }}
-                  width={45}
                 />
                 <Tooltip
-                  cursor={{ stroke: getMetricColor(selectedMetric), strokeWidth: 1.5, strokeOpacity: 0.3, strokeDasharray: '4 4' }}
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       return (
-                        <div className="bg-black/95 backdrop-blur-md border border-white/20 px-3 py-2.5 rounded-lg shadow-2xl">
+                        <div className="bg-black/90 backdrop-blur-sm border border-white/10 px-3 py-2 rounded-lg shadow-xl">
                           {payload.map((entry, index) => (
-                            <div key={index} className="flex items-center gap-2 mb-1.5 last:mb-0">
+                            <div key={index} className="flex items-center gap-2 mb-1 last:mb-0">
                               <div 
-                                className="w-2.5 h-2.5 rounded-sm shadow-lg"
-                                style={{ backgroundColor: entry.color, boxShadow: `0 0 8px ${entry.color}` }}
+                                className="w-2 h-2 rounded-sm"
+                                style={{ backgroundColor: entry.color }}
                               />
-                              <p className="text-xs font-semibold text-white">
-                                {entry.name}: <span className="font-bold">{entry.value?.toLocaleString()}</span>
+                              <p className="text-xs font-medium text-white">
+                                {entry.name}: {entry.value?.toLocaleString()}
                               </p>
                             </div>
                           ))}
-                          <p className="text-[10px] text-gray-400 mt-1.5 pt-1.5 border-t border-white/10">
+                          <p className="text-[10px] text-gray-400 mt-1">
                             {payload[0]?.payload?.date}
                           </p>
                         </div>
@@ -344,16 +313,14 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                   fill="url(#primaryGradient)"
                   dot={false}
                   activeDot={{ 
-                    r: 6, 
+                    r: 5, 
                     fill: getMetricColor(selectedMetric), 
-                    strokeWidth: 3, 
+                    strokeWidth: 2, 
                     stroke: '#fff',
-                    filter: 'url(#glow)',
-                    style: { cursor: 'pointer' }
+                    filter: 'url(#glow)'
                   }}
-                  animationDuration={1000}
+                  animationDuration={800}
                   animationEasing="ease-in-out"
-                  style={{ filter: 'url(#lineGlow)' }}
                 />
                 {secondaryMetric && (
                   <Area 
@@ -365,25 +332,22 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                     fill="url(#secondaryGradient)"
                     dot={false}
                     activeDot={{ 
-                      r: 5, 
+                      r: 4, 
                       fill: getMetricColor(secondaryMetric), 
-                      strokeWidth: 2.5, 
-                      stroke: '#fff',
-                      filter: 'url(#glow)',
-                      style: { cursor: 'pointer' }
+                      strokeWidth: 2, 
+                      stroke: '#fff' 
                     }}
-                    animationDuration={1000}
+                    animationDuration={800}
                     animationEasing="ease-in-out"
-                    style={{ filter: 'url(#lineGlow)' }}
                   />
                 )}
               </AreaChart>
             </ResponsiveContainer>
-            
-            {/* Watermark - positioned over chart area */}
-            <div className="absolute bottom-4 right-8 pointer-events-none">
-              <span className="text-xs text-white/15 font-medium tracking-wider">viral.app</span>
-            </div>
+          </div>
+
+          {/* Watermark */}
+          <div className="text-right mt-4">
+            <span className="text-xs text-white/20 font-medium">viral.app</span>
           </div>
         </div>
 
