@@ -25,6 +25,7 @@ interface KPICardsProps {
   dateFilter?: DateFilterType;
   timePeriod?: TimePeriodType;
   onCreateLink?: () => void;
+  onDateFilterChange?: (filter: DateFilterType, customRange?: { startDate: Date; endDate: Date }) => void;
 }
 
 interface KPICardData {
@@ -40,9 +41,16 @@ interface KPICardData {
   ctaText?: string;
 }
 
-const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateFilter = 'all', timePeriod = 'weeks', onCreateLink }) => {
+const KPICards: React.FC<KPICardsProps> = ({ 
+  submissions, 
+  linkClicks = [], 
+  dateFilter = 'all', 
+  timePeriod = 'weeks', 
+  onCreateLink,
+  onDateFilterChange = () => {} 
+}) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedMetric, setSelectedMetric] = useState<'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts' | 'engagement' | 'linkClicks'>('views');
+  const [selectedMetric, setSelectedMetric] = useState<'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts' | 'engagement' | 'engagementRate' | 'linkClicks'>('views');
 
   const handleCardClick = (metricId: string) => {
     // If it's link clicks and there are no links, trigger create link callback
@@ -328,7 +336,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         sparklineData: generateSparklineData('accounts')
       },
       {
-        id: 'engagement',
+        id: 'engagementRate',
         label: 'Engagement Rate',
         value: `${engagementRate.toFixed(1)}%`,
         icon: Activity,
@@ -462,6 +470,7 @@ const KPICards: React.FC<KPICardsProps> = ({ submissions, linkClicks = [], dateF
         submissions={submissions}
         linkClicks={linkClicks}
         dateFilter={dateFilter}
+        onDateFilterChange={onDateFilterChange}
         initialMetric={selectedMetric}
       />
     </>
@@ -539,7 +548,7 @@ const KPISparkline: React.FC<{
               }
               
               // Format value based on metric type
-              const isEngagementRate = id === 'engagement';
+              const isEngagementRate = id === 'engagementRate';
               
               // Helper function to format numbers (1M, 200K, etc.)
               const formatDisplayNumber = (num: number): string => {

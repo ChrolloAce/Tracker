@@ -95,6 +95,7 @@ function extractUsernameFromUrl(url: string, platform: string): string | null {
 
 export interface AccountsPageProps {
   dateFilter: DateFilterType;
+  onDateFilterChange?: (filter: DateFilterType, customRange?: { startDate: Date; endDate: Date }) => void;
   platformFilter: 'all' | 'instagram' | 'tiktok' | 'youtube' | 'twitter';
   searchQuery?: string;
   onViewModeChange: (mode: 'table' | 'details') => void;
@@ -113,7 +114,7 @@ interface AccountWithFilteredStats extends TrackedAccount {
   filteredTotalComments: number;
 }
 
-const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilter, platformFilter, searchQuery = '', onViewModeChange, pendingAccounts = [] }, ref) => {
+const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilter, onDateFilterChange, platformFilter, searchQuery = '', onViewModeChange, pendingAccounts = [] }, ref) => {
   const { user, currentOrgId, currentProjectId } = useAuth();
   const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
   const [filteredAccounts, setFilteredAccounts] = useState<AccountWithFilteredStats[]>([]);
@@ -1564,6 +1565,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                     dateFilter={dateFilter}
                     timePeriod="days"
                     onCreateLink={() => setShowCreateLinkModal(true)}
+                    onDateFilterChange={onDateFilterChange}
                   />
                 </div>
               );

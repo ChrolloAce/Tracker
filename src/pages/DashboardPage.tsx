@@ -714,6 +714,7 @@ function DashboardPage() {
                   linkClicks={filteredLinkClicks}
                   dateFilter={dateFilter}
                   timePeriod="days"
+                  onDateFilterChange={handleDateFilterChange}
                 />
                 
                 {/* Video Submissions Table */}
@@ -734,6 +735,7 @@ function DashboardPage() {
             <AccountsPage 
               ref={accountsPageRef}
               dateFilter={accountsDateFilter}
+              onDateFilterChange={(filter) => setAccountsDateFilter(filter)}
               platformFilter={accountsPlatformFilter}
               searchQuery={accountsSearchQuery}
               onViewModeChange={setAccountsViewMode}

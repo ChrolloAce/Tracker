@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { LinkClick } from '../services/LinkClicksService';
 import { DateFilterType } from './DateRangeFilter';
+import DateRangeFilter from './DateRangeFilter';
 
 interface MetricComparisonModalProps {
   isOpen: boolean;
@@ -10,10 +11,11 @@ interface MetricComparisonModalProps {
   submissions: VideoSubmission[];
   linkClicks: LinkClick[];
   dateFilter: DateFilterType;
-  initialMetric?: 'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts' | 'engagement' | 'linkClicks';
+  onDateFilterChange: (filter: DateFilterType, customRange?: { startDate: Date; endDate: Date }) => void;
+  initialMetric?: 'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts' | 'engagement' | 'engagementRate' | 'linkClicks';
 }
 
-type MetricType = 'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts' | 'engagement' | 'linkClicks';
+type MetricType = 'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts' | 'engagement' | 'engagementRate' | 'linkClicks';
 
 interface MetricOption {
   id: MetricType;
@@ -29,6 +31,7 @@ const metricOptions: MetricOption[] = [
   { id: 'videos', label: 'Videos', color: '#B47CFF' },
   { id: 'accounts', label: 'Accounts', color: '#B47CFF' },
   { id: 'engagement', label: 'Engagement', color: '#B47CFF' },
+  { id: 'engagementRate', label: 'Engagement Rate', color: '#B47CFF' },
   { id: 'linkClicks', label: 'Link Clicks', color: '#B47CFF' },
 ];
 
@@ -37,10 +40,13 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
   onClose,
   submissions,
   linkClicks,
+  dateFilter,
+  onDateFilterChange,
   initialMetric = 'views',
 }) => {
   const [primaryMetric, setPrimaryMetric] = useState<MetricType>(initialMetric);
   const [secondaryMetric, setSecondaryMetric] = useState<MetricType | null>(null);
+  const [tertiaryMetric, setTertiaryMetric] = useState<MetricType | null>(null);
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
 
   // Update primary metric when initialMetric changes (when different KPI is clicked)
@@ -65,6 +71,12 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
         return 0; // Would need account tracking
       case 'engagement':
         return (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
+      case 'engagementRate':
+        // Engagement rate = (likes + comments + shares) / views * 100
+        const views = video.views || 0;
+        if (views === 0) return 0;
+        const totalEngagement = (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
+        return (totalEngagement / views) * 100;
       case 'linkClicks':
         return 0; // Handled separately
       default:
@@ -74,7 +86,7 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
 
   const chartData = useMemo(() => {
     // Group submissions by date
-    const dataByDate: { [key: string]: { primary: number; secondary: number } } = {};
+    const dataByDate: { [key: string]: { primary: number; secondary: number; tertiary: number; viewsCount: number; engagementCount: number } } = {};
 
     // Find actual date range from data
     let minDate: Date | null = null;
@@ -112,7 +124,7 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
     // Initialize all dates in range with 0
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
       const dateKey = d.toISOString().split('T')[0];
-      dataByDate[dateKey] = { primary: 0, secondary: 0 };
+      dataByDate[dateKey] = { primary: 0, secondary: 0, tertiary: 0, viewsCount: 0, engagementCount: 0 };
     }
 
     // Aggregate video data
@@ -122,25 +134,49 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
 
       const dateKey = new Date(videoDate).toISOString().split('T')[0];
       if (dataByDate[dateKey]) {
+        // Track views and engagement for rate calculations
+        dataByDate[dateKey].viewsCount += video.views || 0;
+        dataByDate[dateKey].engagementCount += (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
+        
         const primaryValue = getMetricValue(video, primaryMetric);
         dataByDate[dateKey].primary += primaryValue;
         if (secondaryMetric) {
           const secondaryValue = getMetricValue(video, secondaryMetric);
           dataByDate[dateKey].secondary += secondaryValue;
         }
+        if (tertiaryMetric) {
+          const tertiaryValue = getMetricValue(video, tertiaryMetric);
+          dataByDate[dateKey].tertiary += tertiaryValue;
+        }
       }
     });
 
     // Aggregate link clicks data
-    if (primaryMetric === 'linkClicks' || secondaryMetric === 'linkClicks') {
+    if (primaryMetric === 'linkClicks' || secondaryMetric === 'linkClicks' || tertiaryMetric === 'linkClicks') {
       linkClicks.forEach((click) => {
         const dateKey = new Date(click.timestamp).toISOString().split('T')[0];
         if (dataByDate[dateKey]) {
           if (primaryMetric === 'linkClicks') dataByDate[dateKey].primary += 1;
           if (secondaryMetric === 'linkClicks') dataByDate[dateKey].secondary += 1;
+          if (tertiaryMetric === 'linkClicks') dataByDate[dateKey].tertiary += 1;
         }
       });
     }
+    
+    // Post-process engagement rate for aggregated data
+    Object.keys(dataByDate).forEach(dateKey => {
+      const data = dataByDate[dateKey];
+      // If any metric is engagement rate, recalculate it from aggregated values
+      if (primaryMetric === 'engagementRate' && data.viewsCount > 0) {
+        data.primary = (data.engagementCount / data.viewsCount) * 100;
+      }
+      if (secondaryMetric === 'engagementRate' && data.viewsCount > 0) {
+        data.secondary = (data.engagementCount / data.viewsCount) * 100;
+      }
+      if (tertiaryMetric === 'engagementRate' && data.viewsCount > 0) {
+        data.tertiary = (data.engagementCount / data.viewsCount) * 100;
+      }
+    });
 
     // Convert to array and format
     return Object.entries(dataByDate)
@@ -149,13 +185,19 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
         date: new Date(date),
         primary: values.primary,
         secondary: values.secondary,
+        tertiary: values.tertiary,
       }));
-  }, [submissions, linkClicks, primaryMetric, secondaryMetric, getMetricValue]);
+  }, [submissions, linkClicks, primaryMetric, secondaryMetric, tertiaryMetric, getMetricValue]);
 
-  const formatNumber = (num: number): string => {
+  const formatNumber = (num: number, metric?: MetricType): string => {
+    // Format engagement rate as percentage
+    if (metric === 'engagementRate') {
+      return `${num.toFixed(2)}%`;
+    }
+    
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)} M`;
     if (num >= 1000) return `${(num / 1000).toFixed(0)} k`;
-    return num.toString();
+    return num.toFixed(0);
   };
 
   const formatDate = (date: Date): string => {
@@ -194,15 +236,28 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
 
   const primaryColor = '#B47CFF';
   const secondaryColor = '#7C3AED';
+  const tertiaryColor = '#3B82F6';
 
-  const maxValue = Math.max(...chartData.map(d => secondaryMetric ? Math.max(d.primary, d.secondary) : d.primary), 1);
-  const totalPrimary = chartData.reduce((sum, d) => sum + d.primary, 0);
-  const totalSecondary = secondaryMetric ? chartData.reduce((sum, d) => sum + d.secondary, 0) : 0;
+  const maxValue = Math.max(
+    ...chartData.map(d => {
+      const values = [d.primary];
+      if (secondaryMetric) values.push(d.secondary);
+      if (tertiaryMetric) values.push(d.tertiary);
+      return Math.max(...values);
+    }),
+    1
+  );
 
   // Generate Y-axis labels
   const yAxisSteps = 5;
   const yAxisLabels = Array.from({ length: yAxisSteps }, (_, i) => {
-    return formatNumber(maxValue * (1 - i / (yAxisSteps - 1)));
+    const value = maxValue * (1 - i / (yAxisSteps - 1));
+    // Check if any visible metric is engagement rate
+    const isEngagementRate = 
+      primaryMetric === 'engagementRate' || 
+      secondaryMetric === 'engagementRate' || 
+      tertiaryMetric === 'engagementRate';
+    return formatNumber(value, isEngagementRate ? 'engagementRate' : primaryMetric);
   });
 
   if (!isOpen) return null;
@@ -222,16 +277,24 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between px-8 py-6 border-b border-gray-800/30">
           <h2 className="text-2xl font-bold text-white tracking-tight">Metrics</h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-800/50 rounded-xl transition-all duration-200"
-          >
-            <X className="w-5 h-5 text-gray-400 hover:text-white transition-colors" />
-          </button>
+          <div className="flex items-center space-x-3">
+            <div className="transform scale-90">
+              <DateRangeFilter
+                selectedFilter={dateFilter}
+                onFilterChange={onDateFilterChange}
+              />
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-800/50 rounded-xl transition-all duration-200"
+            >
+              <X className="w-5 h-5 text-gray-400 hover:text-white transition-colors" />
+            </button>
+          </div>
         </div>
 
         {/* Metric Selectors */}
-        <div className="flex items-center space-x-3 px-8 pt-6">
+        <div className="flex items-center space-x-3 px-8 pt-6 flex-wrap gap-y-3">
           {/* Primary Metric */}
           <div className="relative">
             <div className="flex items-center space-x-2 bg-gray-900/50 border border-purple-500/30 rounded-xl px-4 py-2.5 backdrop-blur-sm">
@@ -264,7 +327,31 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
                 onChange={(e) => setSecondaryMetric(e.target.value as MetricType || null)}
                 className="appearance-none bg-transparent text-gray-400 font-medium text-sm cursor-pointer focus:outline-none pr-6"
               >
-                <option value="" className="bg-gray-900">Add secondary</option>
+                <option value="" className="bg-gray-900">Add 2nd metric</option>
+                {metricOptions.map((option) => (
+                  <option key={option.id} value={option.id} className="bg-gray-900 text-white">
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <svg className="w-4 h-4 text-gray-400 absolute right-3 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Tertiary Metric Selector */}
+          <div className="relative">
+            <div className="flex items-center space-x-2 bg-gray-900/50 border border-gray-700/50 rounded-xl px-4 py-2.5 backdrop-blur-sm">
+              {tertiaryMetric && (
+                <div className="w-3 h-3 rounded-sm bg-gradient-to-br from-blue-400 to-blue-600 shadow-lg shadow-blue-400/30" />
+              )}
+              <select
+                value={tertiaryMetric || ''}
+                onChange={(e) => setTertiaryMetric(e.target.value as MetricType || null)}
+                className="appearance-none bg-transparent text-gray-400 font-medium text-sm cursor-pointer focus:outline-none pr-6"
+              >
+                <option value="" className="bg-gray-900">Add 3rd metric</option>
                 {metricOptions.map((option) => (
                   <option key={option.id} value={option.id} className="bg-gray-900 text-white">
                     {option.label}
@@ -338,6 +425,13 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
                     <stop offset="50%" stopColor={secondaryColor} stopOpacity="0.35" />
                     <stop offset="100%" stopColor={secondaryColor} stopOpacity="0.05" />
                   </linearGradient>
+                  
+                  {/* Gradient for tertiary fill */}
+                  <linearGradient id="tertiaryGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor={tertiaryColor} stopOpacity="0.6" />
+                    <stop offset="50%" stopColor={tertiaryColor} stopOpacity="0.3" />
+                    <stop offset="100%" stopColor={tertiaryColor} stopOpacity="0.05" />
+                  </linearGradient>
 
                   {/* Glow filter for the line */}
                   <filter id="glow">
@@ -405,6 +499,34 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
                   </>
                 )}
 
+                {/* Tertiary metric area and line */}
+                {tertiaryMetric && chartData.length > 0 && (
+                  <>
+                    {/* Area fill */}
+                    <path
+                      d={`${createSmoothPath(chartData.map((d, i) => ({
+                        x: (i / (chartData.length - 1)) * 1000,
+                        y: 400 - (d.tertiary / maxValue) * 380
+                      })))} L ${1000},400 L 0,400 Z`}
+                      fill="url(#tertiaryGradient)"
+                      opacity="0.5"
+                    />
+                    
+                    {/* Glow line */}
+                    <path
+                      d={createSmoothPath(chartData.map((d, i) => ({
+                        x: (i / (chartData.length - 1)) * 1000,
+                        y: 400 - (d.tertiary / maxValue) * 380
+                      })))}
+                      fill="none"
+                      stroke={tertiaryColor}
+                      strokeWidth="2.5"
+                      filter="url(#glow)"
+                      opacity="0.75"
+                    />
+                  </>
+                )}
+
                 {/* Vertical crosshair line */}
                 {hoveredPoint !== null && chartData[hoveredPoint] && (
                   <line
@@ -427,6 +549,7 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
                   const x = (i / (chartData.length - 1)) * 1000;
                   const yPrimary = 400 - (d.primary / maxValue) * 380;
                   const ySecondary = secondaryMetric ? 400 - (d.secondary / maxValue) * 380 : 0;
+                  const yTertiary = tertiaryMetric ? 400 - (d.tertiary / maxValue) * 380 : 0;
                   
                   return (
                     <g key={i}>
@@ -483,6 +606,35 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
                           )}
                         </>
                       )}
+                      
+                      {/* Tertiary metric point */}
+                      {tertiaryMetric && (
+                        <>
+                          <circle
+                            cx={x}
+                            cy={yTertiary}
+                            r={hoveredPoint === i ? "8" : "0"}
+                            fill={tertiaryColor}
+                            className="transition-all duration-150"
+                            opacity="1"
+                            style={{
+                              filter: hoveredPoint === i ? 'drop-shadow(0 0 6px rgba(59, 130, 246, 0.8))' : 'none'
+                            }}
+                          />
+                          {hoveredPoint === i && (
+                            <circle
+                              cx={x}
+                              cy={yTertiary}
+                              r="12"
+                              fill="none"
+                              stroke={tertiaryColor}
+                              strokeWidth="2"
+                              opacity="0.3"
+                              className="animate-ping"
+                            />
+                          )}
+                        </>
+                      )}
                     </g>
                   );
                 })}
@@ -510,7 +662,7 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
                         </span>
                       </div>
                       <span className="text-sm font-bold text-white">
-                        {formatNumber(chartData[hoveredPoint].primary)}
+                        {formatNumber(chartData[hoveredPoint].primary, primaryMetric)}
                       </span>
                     </div>
                     {secondaryMetric && (
@@ -522,7 +674,20 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
                           </span>
                         </div>
                         <span className="text-sm font-bold text-white">
-                          {formatNumber(chartData[hoveredPoint].secondary)}
+                          {formatNumber(chartData[hoveredPoint].secondary, secondaryMetric)}
+                        </span>
+                      </div>
+                    )}
+                    {tertiaryMetric && (
+                      <div className="flex items-center justify-between space-x-4">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 shadow-lg shadow-blue-400/30" />
+                          <span className="text-xs font-medium text-gray-400">
+                            {metricOptions.find(m => m.id === tertiaryMetric)?.label}
+                          </span>
+                        </div>
+                        <span className="text-sm font-bold text-white">
+                          {formatNumber(chartData[hoveredPoint].tertiary, tertiaryMetric)}
                         </span>
                       </div>
                     )}
@@ -548,39 +713,6 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
               <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-blue-500" />
               <span className="text-lg font-bold text-white">viral.app</span>
             </div>
-          </div>
-
-          {/* Summary Stats */}
-          <div className={`grid ${secondaryMetric ? 'grid-cols-2' : 'grid-cols-1'} gap-4 mt-6`}>
-            <div className="bg-gradient-to-br from-gray-900/50 to-gray-900/30 rounded-xl p-5 border border-purple-500/20 backdrop-blur-sm">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500/20 to-purple-600/10 flex items-center justify-center border border-purple-500/30">
-                  <div className="w-4 h-4 rounded bg-gradient-to-br from-purple-400 to-purple-600 shadow-lg shadow-purple-500/50" />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    {metricOptions.find(m => m.id === primaryMetric)?.label}
-                  </p>
-                  <p className="text-2xl font-bold text-white mt-0.5">{formatNumber(totalPrimary)}</p>
-                </div>
-              </div>
-            </div>
-
-            {secondaryMetric && (
-              <div className="bg-gradient-to-br from-gray-900/50 to-gray-900/30 rounded-xl p-5 border border-indigo-500/20 backdrop-blur-sm">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500/20 to-indigo-600/10 flex items-center justify-center border border-indigo-500/30">
-                    <div className="w-4 h-4 rounded bg-gradient-to-br from-purple-300 to-indigo-500 shadow-lg shadow-indigo-400/30" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {metricOptions.find(m => m.id === secondaryMetric)?.label}
-                    </p>
-                    <p className="text-2xl font-bold text-white mt-0.5">{formatNumber(totalSecondary)}</p>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
