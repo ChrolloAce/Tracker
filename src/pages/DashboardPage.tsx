@@ -517,6 +517,7 @@ function DashboardPage() {
           videoId,
           thumbnail: videoData.thumbnail_url || '',
           title: videoData.caption?.split('\n')[0] || 'Untitled Video',
+          description: videoData.caption || '', // Add description field for caption
           uploadDate: Timestamp.fromDate(uploadDate),
           views: videoData.view_count || 0,
           likes: videoData.like_count || 0,
@@ -539,23 +540,28 @@ function DashboardPage() {
 
     console.log(`📊 Results: ${successCount} successful, ${failureCount} failed`);
 
-    // Only reload if at least one video was added successfully
+    // Handle results and reload
     if (successCount > 0) {
       console.log('🔄 Reloading page to show new videos...');
       console.log('⏳ Account profile picture will be fetched by background sync job');
+      
+      // Show success message
+      const message = successCount === 1 
+        ? '✅ Video added successfully! Refreshing...' 
+        : `✅ ${successCount} videos added successfully! Refreshing...`;
+      console.log(message);
+      
       setTimeout(() => {
+        // Clear pending videos before reload to avoid duplicates
+        setPendingVideos([]);
+        setPendingAccounts([]);
         window.location.reload();
-      }, 2000); // Increased delay to ensure Firestore writes complete
-    }
-
-    // Show result message
-    if (failureCount > 0 && successCount === 0) {
-      alert(`Failed to add videos. Check console for details.`);
+      }, 3000); // 3 seconds - gives time to see loading state
     } else if (failureCount > 0) {
-      alert(`Added ${successCount} videos successfully. ${failureCount} failed.\n\nNote: Profile pictures will be fetched by background sync.`);
-    } else if (successCount > 0) {
-      // Success message will show after reload
-      console.log('✅ Videos added! Profile pictures will load shortly via background sync.');
+      // All failed - clear pending and show error
+      setPendingVideos([]);
+      setPendingAccounts([]);
+      alert(`Failed to add ${failureCount} video(s). Check console for details.`);
     }
   }, [user, currentOrgId, currentProjectId]);
 
