@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { TeamInvitation, Role, Creator } from '../types/firestore';
+import EmailService from './EmailService';
 
 /**
  * TeamInvitationService - Manages team invitations
@@ -80,6 +81,47 @@ class TeamInvitationService {
     
     await setDoc(inviteRef, inviteData);
     console.log(`✅ Created invitation for ${email}`);
+    
+    // Send email notification
+    try {
+      const inviteLink = `${window.location.origin}/invitations/${inviteRef.id}`;
+      
+      if (role === 'creator' && projectId) {
+        // Send creator invitation email
+        const result = await EmailService.sendCreatorInvitation({
+          to: email,
+          inviterName: invitedByName,
+          organizationName: organizationName,
+          projectName: organizationName, // You might want to pass actual project name
+          inviteLink: inviteLink
+        });
+        
+        if (result.success) {
+          console.log(`📧 Sent creator invitation email to ${email}`);
+        } else {
+          console.warn(`⚠️ Failed to send creator invitation email:`, result.error);
+        }
+      } else {
+        // Send team member invitation email
+        const result = await EmailService.sendTeamInvitation({
+          to: email,
+          inviterName: invitedByName,
+          organizationName: organizationName,
+          role: role,
+          inviteLink: inviteLink
+        });
+        
+        if (result.success) {
+          console.log(`📧 Sent team invitation email to ${email}`);
+        } else {
+          console.warn(`⚠️ Failed to send team invitation email:`, result.error);
+        }
+      }
+    } catch (emailError) {
+      // Don't fail invitation creation if email fails
+      console.error('Failed to send invitation email:', emailError);
+    }
+    
     return inviteRef.id;
   }
   
