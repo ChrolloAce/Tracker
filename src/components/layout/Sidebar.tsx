@@ -253,9 +253,9 @@ const Sidebar: React.FC<SidebarProps> = ({
     <CreateProjectModal
       isOpen={showCreateProject}
       onClose={() => setShowCreateProject(false)}
-      onSuccess={(projectId) => {
+      onSuccess={() => {
         setShowCreateProject(false);
-        console.log('✅ Project created:', projectId);
+        console.log('✅ Project created successfully');
         window.location.reload(); // Refresh to load new project
       }}
     />
