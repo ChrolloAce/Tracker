@@ -100,6 +100,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       uploadDate = new Date();
     }
 
+    // Validate we have required data
+    if (!videoData.username) {
+      throw new Error('Video data missing username');
+    }
+
     // Check if account exists or needs to be created
     const accountsRef = db.collection(`organizations/${orgId}/projects/${projectId}/trackedAccounts`);
     const accountQuery = accountsRef
@@ -215,6 +220,64 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }
 
 /**
+ * Transform raw Apify data to standardized VideoData format
+ */
+function transformVideoData(rawData: any, platform: string): VideoData {
+  if (platform === 'tiktok') {
+    // TikTok uses authorMeta structure
+    return {
+      id: rawData.id || rawData.videoId || '',
+      thumbnail_url: rawData.videoMeta?.coverUrl || rawData.covers?.default || '',
+      caption: rawData.text || '',
+      username: rawData['authorMeta.name'] || rawData.authorMeta?.name || '',
+      like_count: rawData.diggCount || rawData['videoMeta.diggCount'] || 0,
+      comment_count: rawData.commentCount || rawData['videoMeta.commentCount'] || 0,
+      view_count: rawData.playCount || rawData['videoMeta.playCount'] || 0,
+      share_count: rawData.shareCount || rawData['videoMeta.shareCount'] || 0,
+      timestamp: rawData.createTime || rawData.createTimeISO || new Date().toISOString(),
+      profile_pic_url: rawData['authorMeta.avatar'] || rawData.authorMeta?.avatar || '',
+      display_name: rawData['authorMeta.nickName'] || rawData.authorMeta?.nickName || '',
+      follower_count: rawData['authorMeta.fans'] || rawData.authorMeta?.fans || 0
+    };
+  } else if (platform === 'instagram') {
+    // Instagram has multiple possible field names
+    return {
+      id: rawData.id || rawData.shortcode || '',
+      thumbnail_url: rawData.thumbnail_url || rawData.displayUrl || rawData.thumbnailUrl || '',
+      caption: rawData.caption || rawData.text || '',
+      username: rawData.username || rawData.ownerUsername || '',
+      like_count: rawData.like_count || rawData.likesCount || 0,
+      comment_count: rawData.comment_count || rawData.commentsCount || 0,
+      view_count: rawData.view_count || rawData.videoViewCount || 0,
+      share_count: 0,
+      timestamp: rawData.timestamp || rawData.taken_at_timestamp || new Date().toISOString(),
+      profile_pic_url: rawData.profile_pic_url || rawData.ownerProfilePicUrl || '',
+      display_name: rawData.display_name || rawData.ownerFullName || '',
+      follower_count: rawData.follower_count || rawData.ownerFollowersCount || 0
+    };
+  } else if (platform === 'youtube') {
+    // YouTube structure
+    return {
+      id: rawData.id || '',
+      thumbnail_url: rawData.thumbnail || rawData.thumbnails?.default?.url || '',
+      caption: rawData.description || '',
+      username: rawData.channelName || rawData.author || '',
+      like_count: rawData.likes || 0,
+      comment_count: rawData.comments || 0,
+      view_count: rawData.views || 0,
+      share_count: 0,
+      timestamp: rawData.uploadDate || new Date().toISOString(),
+      profile_pic_url: rawData.channelThumbnail || '',
+      display_name: rawData.channelName || '',
+      follower_count: rawData.subscribers || 0
+    };
+  }
+  
+  // Fallback for unknown platforms
+  return rawData as VideoData;
+}
+
+/**
  * Fetch video data from Apify
  */
 async function fetchVideoData(url: string, platform: string): Promise<VideoData | null> {
@@ -271,7 +334,11 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
       throw new Error('No data returned from Apify');
     }
 
-    const videoData = items[0];
+    const rawData = items[0];
+    console.log('📦 Raw Apify data received:', JSON.stringify(rawData, null, 2));
+    
+    // Transform data based on platform
+    const videoData = transformVideoData(rawData, platform);
     console.log(`✅ Fetched video data for: ${videoData.username || 'unknown'}`);
     
     return videoData;
