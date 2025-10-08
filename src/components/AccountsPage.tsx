@@ -465,20 +465,24 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
           comparison = (a.followerCount || 0) - (b.followerCount || 0);
           break;
         case 'videos':
-          comparison = ('filteredTotalVideos' in a ? a.filteredTotalVideos : a.totalVideos) - 
-                      ('filteredTotalVideos' in b ? b.filteredTotalVideos : b.totalVideos);
+          const aVideos = ('filteredTotalVideos' in a ? (a as AccountWithFilteredStats).filteredTotalVideos : a.totalVideos);
+          const bVideos = ('filteredTotalVideos' in b ? (b as AccountWithFilteredStats).filteredTotalVideos : b.totalVideos);
+          comparison = aVideos - bVideos;
           break;
         case 'views':
-          comparison = ('filteredTotalViews' in a ? a.filteredTotalViews : a.totalViews) - 
-                      ('filteredTotalViews' in b ? b.filteredTotalViews : b.totalViews);
+          const aViews = ('filteredTotalViews' in a ? (a as AccountWithFilteredStats).filteredTotalViews : a.totalViews);
+          const bViews = ('filteredTotalViews' in b ? (b as AccountWithFilteredStats).filteredTotalViews : b.totalViews);
+          comparison = aViews - bViews;
           break;
         case 'likes':
-          comparison = ('filteredTotalLikes' in a ? a.filteredTotalLikes : a.totalLikes) - 
-                      ('filteredTotalLikes' in b ? b.filteredTotalLikes : b.totalLikes);
+          const aLikes = ('filteredTotalLikes' in a ? (a as AccountWithFilteredStats).filteredTotalLikes : a.totalLikes);
+          const bLikes = ('filteredTotalLikes' in b ? (b as AccountWithFilteredStats).filteredTotalLikes : b.totalLikes);
+          comparison = aLikes - bLikes;
           break;
         case 'comments':
-          comparison = ('filteredTotalComments' in a ? a.filteredTotalComments : a.totalComments) - 
-                      ('filteredTotalComments' in b ? b.filteredTotalComments : b.totalComments);
+          const aComments = ('filteredTotalComments' in a ? (a as AccountWithFilteredStats).filteredTotalComments : a.totalComments);
+          const bComments = ('filteredTotalComments' in b ? (b as AccountWithFilteredStats).filteredTotalComments : b.totalComments);
+          comparison = aComments - bComments;
           break;
         case 'dateAdded':
           comparison = a.dateAdded.toDate().getTime() - b.dateAdded.toDate().getTime();
