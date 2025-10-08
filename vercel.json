@@ -23,6 +23,9 @@
     },
     "api/cron-process-videos.ts": {
       "maxDuration": 300
+    },
+    "api/process-single-video.ts": {
+      "maxDuration": 300
     }
   },
   "crons": [

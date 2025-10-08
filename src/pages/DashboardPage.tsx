@@ -396,8 +396,8 @@ function DashboardPage() {
       try {
         console.log(`📝 Queuing video: ${videoUrl}`);
         
-        // Create a pending video record - cron job will fetch the data
-        await FirestoreDataService.addVideo(currentOrgId, currentProjectId, user.uid, {
+        // Create a pending video record
+        const videoId = await FirestoreDataService.addVideo(currentOrgId, currentProjectId, user.uid, {
           platform,
           url: videoUrl,
           videoId: `temp-${Date.now()}`, // Temporary ID until processed
@@ -418,7 +418,23 @@ function DashboardPage() {
           syncRetryCount: 0
         });
 
-        console.log(`✅ Video queued successfully`);
+        console.log(`✅ Video queued: ${videoId}`);
+        
+        // Trigger immediate processing (like accounts)
+        console.log(`⚡ Triggering immediate processing...`);
+        fetch('/api/process-single-video', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            videoId,
+            orgId: currentOrgId,
+            projectId: currentProjectId
+          })
+        }).catch(err => {
+          console.error('Failed to trigger immediate processing:', err);
+          // Non-critical - cron will pick it up
+        });
+
         successCount++;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -433,17 +449,17 @@ function DashboardPage() {
     // Handle results
     if (successCount > 0) {
       const message = successCount === 1 
-        ? '✅ Video queued for processing! It will appear shortly...' 
-        : `✅ ${successCount} videos queued! They will appear as they're processed...`;
+        ? '✅ Video processing started! Refreshing shortly...' 
+        : `✅ ${successCount} videos processing! Refreshing shortly...`;
       console.log(message);
-      alert(message + '\n\nCron job will process them in the next 2 minutes.');
+      console.log('⚡ Videos are being processed in the background...');
       
-      // Reload after 5 seconds to show queued videos
+      // Reload after 8 seconds to allow processing to complete
       setTimeout(() => {
         setPendingVideos([]);
         setPendingAccounts([]);
         window.location.reload();
-      }, 5000);
+      }, 8000); // 8 seconds for Apify API + processing
     } else if (failureCount > 0) {
       setPendingVideos([]);
       setPendingAccounts([]);
