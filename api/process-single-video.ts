@@ -2,15 +2,25 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 
-// Initialize Firebase Admin
-if (getApps().length === 0) {
-  const serviceAccount = JSON.parse(
-    process.env.FIREBASE_SERVICE_ACCOUNT_KEY || '{}'
-  );
-  
-  initializeApp({
-    credential: cert(serviceAccount)
-  });
+// Initialize Firebase Admin (same as sync-single-account)
+if (!getApps().length) {
+  try {
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
+    if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+      privateKey = privateKey.slice(1, -1);
+    }
+    privateKey = privateKey.replace(/\\n/g, '\n');
+
+    const serviceAccount = {
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: privateKey,
+    };
+
+    initializeApp({ credential: cert(serviceAccount as any) });
+  } catch (error) {
+    console.error('Failed to initialize Firebase Admin:', error);
+  }
 }
 
 const db = getFirestore();
