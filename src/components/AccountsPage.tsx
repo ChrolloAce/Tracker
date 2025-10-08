@@ -107,7 +107,7 @@ interface AccountWithFilteredStats extends TrackedAccount {
   filteredTotalComments: number;
 }
 
-const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilter, platformFilter: _platformFilter, onViewModeChange, pendingAccounts = [] }, ref) => {
+const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilter, platformFilter, onViewModeChange, pendingAccounts = [] }, ref) => {
   const { user, currentOrgId, currentProjectId } = useAuth();
   const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
   const [filteredAccounts, setFilteredAccounts] = useState<AccountWithFilteredStats[]>([]);
@@ -126,6 +126,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [searchQuery, setSearchQuery] = useState('');
   const [syncError, setSyncError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<'username' | 'followers' | 'videos' | 'views' | 'likes' | 'comments' | 'dateAdded'>('dateAdded');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showColumnToggle, setShowColumnToggle] = useState(false);
   const [processingAccounts, setProcessingAccounts] = useState<Array<{username: string; platform: string; startedAt: number}>>(() => {
     // Restore from localStorage and clean up old entries (> 5 minutes old)
@@ -433,6 +435,61 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
 
     calculateFilteredStats();
   }, [accounts, currentOrgId, currentProjectId, dateFilter, viewMode]);
+
+  // Apply platform filtering and sorting
+  const processedAccounts = useMemo(() => {
+    let result = filteredAccounts.length > 0 ? filteredAccounts : accounts;
+    
+    // Apply platform filter
+    if (platformFilter !== 'all') {
+      result = result.filter(account => account.platform === platformFilter);
+    }
+    
+    // Apply search filter
+    if (searchQuery) {
+      result = result.filter(account => 
+        account.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        account.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    
+    // Apply sorting
+    const sorted = [...result].sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortBy) {
+        case 'username':
+          comparison = a.username.localeCompare(b.username);
+          break;
+        case 'followers':
+          comparison = (a.followerCount || 0) - (b.followerCount || 0);
+          break;
+        case 'videos':
+          comparison = ('filteredTotalVideos' in a ? a.filteredTotalVideos : a.totalVideos) - 
+                      ('filteredTotalVideos' in b ? b.filteredTotalVideos : b.totalVideos);
+          break;
+        case 'views':
+          comparison = ('filteredTotalViews' in a ? a.filteredTotalViews : a.totalViews) - 
+                      ('filteredTotalViews' in b ? b.filteredTotalViews : b.totalViews);
+          break;
+        case 'likes':
+          comparison = ('filteredTotalLikes' in a ? a.filteredTotalLikes : a.totalLikes) - 
+                      ('filteredTotalLikes' in b ? b.filteredTotalLikes : b.totalLikes);
+          break;
+        case 'comments':
+          comparison = ('filteredTotalComments' in a ? a.filteredTotalComments : a.totalComments) - 
+                      ('filteredTotalComments' in b ? b.filteredTotalComments : b.totalComments);
+          break;
+        case 'dateAdded':
+          comparison = a.dateAdded.toDate().getTime() - b.dateAdded.toDate().getTime();
+          break;
+      }
+      
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+    
+    return sorted;
+  }, [filteredAccounts, accounts, platformFilter, searchQuery, sortBy, sortOrder]);
 
   // Load videos when account is selected or date filter changes
   useEffect(() => {
@@ -1034,8 +1091,25 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-zinc-900/40 border-b border-gray-200 dark:border-white/5">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
-                      Username
+                    <th 
+                      className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
+                      onClick={() => {
+                        if (sortBy === 'username') {
+                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortBy('username');
+                          setSortOrder('asc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        Username
+                        {sortBy === 'username' && (
+                          <span className="text-blue-500">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Platform
@@ -1043,20 +1117,105 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Last post
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Followers
+                    <th 
+                      className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
+                      onClick={() => {
+                        if (sortBy === 'followers') {
+                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortBy('followers');
+                          setSortOrder('desc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        Followers
+                        {sortBy === 'followers' && (
+                          <span className="text-blue-500">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Posts
+                    <th 
+                      className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
+                      onClick={() => {
+                        if (sortBy === 'videos') {
+                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortBy('videos');
+                          setSortOrder('desc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        Posts
+                        {sortBy === 'videos' && (
+                          <span className="text-blue-500">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Views
+                    <th 
+                      className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
+                      onClick={() => {
+                        if (sortBy === 'views') {
+                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortBy('views');
+                          setSortOrder('desc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        Views
+                        {sortBy === 'views' && (
+                          <span className="text-blue-500">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Likes
+                    <th 
+                      className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
+                      onClick={() => {
+                        if (sortBy === 'likes') {
+                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortBy('likes');
+                          setSortOrder('desc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        Likes
+                        {sortBy === 'likes' && (
+                          <span className="text-blue-500">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Comments
+                    <th 
+                      className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
+                      onClick={() => {
+                        if (sortBy === 'comments') {
+                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortBy('comments');
+                          setSortOrder('desc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        Comments
+                        {sortBy === 'comments' && (
+                          <span className="text-blue-500">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
@@ -1137,17 +1296,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
 
                   {/* Regular Accounts */}
                   {(() => {
-                    const accountsToShow = (filteredAccounts.length > 0 ? filteredAccounts : accounts)
-                      .filter(account => 
-                        searchQuery === '' || 
-                        account.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        account.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
-                      );
-                    
-                    // Apply pagination
+                    // Apply pagination to processed accounts
                     const startIndex = (accountsCurrentPage - 1) * accountsItemsPerPage;
                     const endIndex = startIndex + accountsItemsPerPage;
-                    const paginatedAccounts = accountsToShow.slice(startIndex, endIndex);
+                    const paginatedAccounts = processedAccounts.slice(startIndex, endIndex);
                     
                     // Combine pending accounts (always show at top, not paginated) with paginated accounts
                     const allAccountsToRender = [...pendingAccounts, ...paginatedAccounts];
@@ -1306,20 +1458,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
           <div className="mt-6">
             <Pagination
               currentPage={accountsCurrentPage}
-              totalPages={Math.ceil(
-                ((filteredAccounts.length > 0 ? filteredAccounts : accounts)
-                  .filter(account => 
-                    searchQuery === '' || 
-                    account.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    account.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
-                  ).length) / accountsItemsPerPage
-              )}
-              totalItems={(filteredAccounts.length > 0 ? filteredAccounts : accounts)
-                .filter(account => 
-                  searchQuery === '' || 
-                  account.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  account.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
-                ).length}
+              totalPages={Math.ceil(processedAccounts.length / accountsItemsPerPage)}
+              totalItems={processedAccounts.length}
               itemsPerPage={accountsItemsPerPage}
               onPageChange={(page) => {
                 setAccountsCurrentPage(page);
