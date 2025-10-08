@@ -271,6 +271,22 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       display_name: rawData.channelName || '',
       follower_count: rawData.subscribers || 0
     };
+  } else if (platform === 'twitter') {
+    // Twitter/X structure
+    return {
+      id: rawData.id || '',
+      thumbnail_url: rawData.media?.[0] || rawData.extendedEntities?.media?.[0]?.media_url_https || '',
+      caption: rawData.fullText || rawData.text || '',
+      username: rawData.author?.userName || '',
+      like_count: rawData.likeCount || 0,
+      comment_count: rawData.replyCount || 0,
+      view_count: rawData.viewCount || 0,
+      share_count: rawData.retweetCount || 0,
+      timestamp: rawData.createdAt || new Date().toISOString(),
+      profile_pic_url: rawData.author?.profilePicture || '',
+      display_name: rawData.author?.name || '',
+      follower_count: rawData.author?.followers || 0
+    };
   }
   
   // Fallback for unknown platforms
@@ -308,6 +324,12 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
       input = {
         startUrls: [{ url }],
         maxResults: 1
+      };
+    } else if (platform === 'twitter') {
+      actorId = 'apidojo~tweet-scraper';
+      input = {
+        searchTerms: [url],
+        maxItems: 1
       };
     } else {
       throw new Error(`Unsupported platform: ${platform}`);
