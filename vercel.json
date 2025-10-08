@@ -22,16 +22,7 @@
       "maxDuration": 300
     }
   },
-  "crons": [
-    {
-      "path": "/api/cron-sync-accounts",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron-refresh-videos",
-      "schedule": "0 */12 * * *"
-    }
-  ],
+  "crons": [],
   "routes": [
     {
       "src": "/l/([^/]+)",
