@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Plus, Trash2, Clipboard } from 'lucide-react';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { clsx } from 'clsx';
+import { UrlParserService } from '../services/UrlParserService';
 
 interface AddVideoModalProps {
   isOpen: boolean;
@@ -17,6 +18,36 @@ interface VideoInput {
 export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, onAddVideo }) => {
   const [selectedPlatform, setSelectedPlatform] = useState<'instagram' | 'tiktok' | 'youtube' | 'twitter'>('tiktok');
   const [videoInputs, setVideoInputs] = useState<VideoInput[]>([{ id: '1', url: '' }]);
+  const [clipboardDetected, setClipboardDetected] = useState(false);
+
+  // Auto-detect URL from clipboard when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const checkClipboard = async () => {
+        const parsed = await UrlParserService.autoDetectFromClipboard();
+        
+        if (parsed && parsed.isValid && parsed.platform) {
+          // Set the platform
+          setSelectedPlatform(parsed.platform);
+          
+          // Set the URL in the first input
+          setVideoInputs([{ id: '1', url: parsed.url }]);
+          
+          // Mark as detected for visual feedback
+          setClipboardDetected(true);
+          
+          console.log(`🎯 Auto-filled ${parsed.platform} URL from clipboard`);
+        }
+      };
+      
+      checkClipboard();
+    } else {
+      // Reset when modal closes
+      setVideoInputs([{ id: '1', url: '' }]);
+      setSelectedPlatform('tiktok');
+      setClipboardDetected(false);
+    }
+  }, [isOpen]);
 
   const handleAddVideoInput = () => {
     setVideoInputs([...videoInputs, { id: Date.now().toString(), url: '' }]);
@@ -150,6 +181,15 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
                 Add Another
               </button>
             </div>
+
+            {clipboardDetected && (
+              <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                <Clipboard className="w-4 h-4 text-green-600 dark:text-green-400" />
+                <span className="text-sm text-green-700 dark:text-green-300">
+                  ✨ Auto-detected URL from clipboard!
+                </span>
+              </div>
+            )}
 
             <div className="space-y-3">
               {videoInputs.map((input, index) => (

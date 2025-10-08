@@ -39,10 +39,54 @@ import { VideoSubmission } from '../types';
 import VideoPlayerModal from './VideoPlayerModal';
 import { DateFilterType } from './DateRangeFilter';
 import { Modal } from './ui/Modal';
+import { UrlParserService } from '../services/UrlParserService';
 import Pagination from './ui/Pagination';
 import ColumnPreferencesService from '../services/ColumnPreferencesService';
 import KPICards from './KPICards';
 import DateFilterService from '../services/DateFilterService';
+
+/**
+ * Extract username from social media URL
+ */
+function extractUsernameFromUrl(url: string, platform: string): string | null {
+  try {
+    const urlObj = new URL(url);
+    const pathname = urlObj.pathname;
+    
+    // Remove trailing slash
+    const cleanPath = pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
+    
+    if (platform === 'instagram') {
+      // Instagram: https://www.instagram.com/username/
+      const match = cleanPath.match(/^\/([^\/]+)\/?$/);
+      return match ? match[1] : null;
+    }
+    
+    if (platform === 'tiktok') {
+      // TikTok: https://www.tiktok.com/@username
+      const match = cleanPath.match(/^\/@?([^\/]+)\/?$/);
+      return match ? match[1] : null;
+    }
+    
+    if (platform === 'youtube') {
+      // YouTube: https://www.youtube.com/@username or /c/username or /user/username
+      const match = cleanPath.match(/^\/@?([^\/]+)\/?$/) || 
+                   cleanPath.match(/^\/c\/([^\/]+)\/?$/) ||
+                   cleanPath.match(/^\/user\/([^\/]+)\/?$/);
+      return match ? match[1] : null;
+    }
+    
+    if (platform === 'twitter') {
+      // Twitter/X: https://twitter.com/username or https://x.com/username
+      const match = cleanPath.match(/^\/([^\/]+)\/?$/);
+      return match ? match[1] : null;
+    }
+    
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 export interface AccountsPageProps {
   dateFilter: DateFilterType;
@@ -78,6 +122,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [isRefreshingProfile, setIsRefreshingProfile] = useState<string | null>(null);
   const [newAccountUsername, setNewAccountUsername] = useState('');
   const [newAccountPlatform, setNewAccountPlatform] = useState<'instagram' | 'tiktok' | 'youtube' | 'twitter'>('instagram');
+  const [clipboardDetectedAccount, setClipboardDetectedAccount] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [syncError, setSyncError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -206,6 +251,34 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     handleBackToTable,
     openAddModal: () => setIsAddModalOpen(true)
   }), [handleBackToTable]);
+
+  // Auto-detect account URL from clipboard when modal opens
+  useEffect(() => {
+    if (isAddModalOpen) {
+      const checkClipboard = async () => {
+        const parsed = await UrlParserService.autoDetectFromClipboard();
+        
+        if (parsed && parsed.isValid && parsed.platform) {
+          // Extract username from URL
+          const username = extractUsernameFromUrl(parsed.url, parsed.platform);
+          
+          if (username) {
+            setNewAccountPlatform(parsed.platform);
+            setNewAccountUsername(username);
+            setClipboardDetectedAccount(true);
+            console.log(`🎯 Auto-filled ${parsed.platform} username from clipboard: @${username}`);
+          }
+        }
+      };
+      
+      checkClipboard();
+    } else {
+      // Reset when modal closes
+      setNewAccountUsername('');
+      setNewAccountPlatform('instagram');
+      setClipboardDetectedAccount(false);
+    }
+  }, [isAddModalOpen]);
 
   // Load accounts on mount and restore selected account
   useEffect(() => {
@@ -1864,6 +1937,18 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                 <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
                   Username
                 </label>
+                
+                {clipboardDetectedAccount && (
+                  <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                    <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    <span className="text-sm text-green-700 dark:text-green-300">
+                      ✨ Auto-detected account from clipboard!
+                    </span>
+                  </div>
+                )}
+                
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">@</span>
                 <input
