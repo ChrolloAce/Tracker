@@ -8,7 +8,6 @@ import {
   RefreshCw,
   Trash2,
   Filter,
-  Search,
   AlertCircle,
   Play,
   Eye,
@@ -94,6 +93,7 @@ function extractUsernameFromUrl(url: string, platform: string): string | null {
 export interface AccountsPageProps {
   dateFilter: DateFilterType;
   platformFilter: 'all' | 'instagram' | 'tiktok' | 'youtube' | 'twitter';
+  searchQuery?: string;
   onViewModeChange: (mode: 'table' | 'details') => void;
   pendingAccounts?: TrackedAccount[];
 }
@@ -110,7 +110,7 @@ interface AccountWithFilteredStats extends TrackedAccount {
   filteredTotalComments: number;
 }
 
-const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilter, platformFilter, onViewModeChange, pendingAccounts = [] }, ref) => {
+const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilter, platformFilter, searchQuery = '', onViewModeChange, pendingAccounts = [] }, ref) => {
   const { user, currentOrgId, currentProjectId } = useAuth();
   const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
   const [filteredAccounts, setFilteredAccounts] = useState<AccountWithFilteredStats[]>([]);
@@ -126,7 +126,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [detectedPlatform, setDetectedPlatform] = useState<'instagram' | 'tiktok' | 'youtube' | 'twitter' | null>(null);
   const [urlValidationError, setUrlValidationError] = useState<string | null>(null);
   const [postsToScrape, setPostsToScrape] = useState<number>(10);
-  const [searchQuery, setSearchQuery] = useState('');
   const [syncError, setSyncError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<'username' | 'followers' | 'videos' | 'views' | 'likes' | 'comments' | 'dateAdded'>('dateAdded');
@@ -1077,23 +1076,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         </div>
       )}
 
-      {/* Controls Bar - Only show in table mode */}
-      {viewMode === 'table' && (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search by name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 w-80 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white"
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Main Content */}
       {viewMode === 'table' ? (
@@ -1129,7 +1111,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                       <div className="flex items-center gap-2">
                         Username
                         {sortBy === 'username' && (
-                          <span className="text-blue-500">
+                          <span className="text-white">
                             {sortOrder === 'asc' ? '↑' : '↓'}
                           </span>
                         )}
@@ -1155,7 +1137,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                       <div className="flex items-center gap-2">
                         Followers
                         {sortBy === 'followers' && (
-                          <span className="text-blue-500">
+                          <span className="text-white">
                             {sortOrder === 'asc' ? '↑' : '↓'}
                           </span>
                         )}
@@ -1175,7 +1157,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                       <div className="flex items-center gap-2">
                         Posts
                         {sortBy === 'videos' && (
-                          <span className="text-blue-500">
+                          <span className="text-white">
                             {sortOrder === 'asc' ? '↑' : '↓'}
                           </span>
                         )}
@@ -1195,7 +1177,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                       <div className="flex items-center gap-2">
                         Views
                         {sortBy === 'views' && (
-                          <span className="text-blue-500">
+                          <span className="text-white">
                             {sortOrder === 'asc' ? '↑' : '↓'}
                           </span>
                         )}
@@ -1215,7 +1197,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                       <div className="flex items-center gap-2">
                         Likes
                         {sortBy === 'likes' && (
-                          <span className="text-blue-500">
+                          <span className="text-white">
                             {sortOrder === 'asc' ? '↑' : '↓'}
                           </span>
                         )}
@@ -1235,7 +1217,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                       <div className="flex items-center gap-2">
                         Comments
                         {sortBy === 'comments' && (
-                          <span className="text-blue-500">
+                          <span className="text-white">
                             {sortOrder === 'asc' ? '↑' : '↓'}
                           </span>
                         )}
@@ -1265,7 +1247,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                             <div className="text-sm font-medium text-gray-900 dark:text-white">
                               @{procAccount.username}
                             </div>
-                            <div className="text-sm text-blue-600 dark:text-blue-400 font-medium animate-pulse">
+                            <div className="text-sm text-gray-400 dark:text-gray-400 font-medium animate-pulse">
                               ⏳ Account processing...
                             </div>
                           </div>
@@ -1506,18 +1488,18 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                     {activeRulesCount > 0 && (
                       <button
                         onClick={handleOpenRuleModal}
-                        className="flex items-center gap-1.5 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-full hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors group"
+                        className="flex items-center gap-1.5 px-3 py-1 bg-white/5 dark:bg-white/5 border border-white/10 dark:border-white/10 rounded-full hover:bg-white/10 dark:hover:bg-white/10 transition-colors group"
                       >
-                        <Filter className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                        <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+                        <Filter className="w-3.5 h-3.5 text-gray-400 dark:text-gray-400" />
+                        <span className="text-xs font-semibold text-gray-300 dark:text-gray-300">
                           {activeRulesCount} {activeRulesCount === 1 ? 'Rule' : 'Rules'} Active
                         </span>
-                        <Edit2 className="w-3 h-3 text-blue-600 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <Edit2 className="w-3 h-3 text-gray-400 dark:text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </button>
                     )}
                     <button
                       onClick={handleOpenRuleModal}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
+                      className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-medium rounded-lg transition-colors border border-white/10"
                     >
                       <Plus className="w-3 h-3" />
                       {activeRulesCount > 0 ? 'Manage Rules' : 'Add Rule'}
@@ -1670,7 +1652,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                             <div className="flex items-center gap-1">
                               Views
                               {sortColumn === 'views' && (
-                                <span className="text-blue-400">
+                                <span className="text-white">
                                   {sortDirection === 'asc' ? '↑' : '↓'}
                                 </span>
                               )}
@@ -1685,7 +1667,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                             <div className="flex items-center gap-1">
                               Likes
                               {sortColumn === 'likes' && (
-                                <span className="text-blue-400">
+                                <span className="text-white">
                                   {sortDirection === 'asc' ? '↑' : '↓'}
                                 </span>
                               )}
@@ -1700,7 +1682,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                             <div className="flex items-center gap-1">
                               Comments
                               {sortColumn === 'comments' && (
-                                <span className="text-blue-400">
+                                <span className="text-white">
                                   {sortDirection === 'asc' ? '↑' : '↓'}
                                 </span>
                               )}
@@ -1715,7 +1697,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                             <div className="flex items-center gap-1">
                               Shares
                               {sortColumn === 'shares' && (
-                                <span className="text-blue-400">
+                                <span className="text-white">
                                   {sortDirection === 'asc' ? '↑' : '↓'}
                                 </span>
                               )}
@@ -1730,7 +1712,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                             <div className="flex items-center gap-1">
                               Engagement
                               {sortColumn === 'engagement' && (
-                                <span className="text-blue-400">
+                                <span className="text-white">
                                   {sortDirection === 'asc' ? '↑' : '↓'}
                                 </span>
                               )}
@@ -1745,7 +1727,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                             <div className="flex items-center gap-1">
                               Upload Date
                               {sortColumn === 'uploadDate' && (
-                                <span className="text-blue-400">
+                                <span className="text-white">
                                   {sortDirection === 'asc' ? '↑' : '↓'}
                                 </span>
                               )}
@@ -1950,7 +1932,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                   e.stopPropagation();
                                   window.open(video.url, '_blank');
                                 }}
-                                className="text-gray-400 hover:text-blue-400 transition-colors"
+                                className="text-gray-400 hover:text-white transition-colors"
                               >
                                 <ExternalLink className="w-4 h-4" />
                               </button>
@@ -1992,7 +1974,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                   <button
                     onClick={() => handleSyncAccount(selectedAccount.id)}
                     disabled={isSyncing === selectedAccount.id}
-                    className="inline-flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                    className="inline-flex items-center space-x-2 px-6 py-3 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors disabled:opacity-50 border border-white/10"
                   >
                     <RefreshCw className={clsx('w-4 h-4', { 'animate-spin': isSyncing === selectedAccount.id })} />
                     <span>{isSyncing === selectedAccount.id ? 'Syncing...' : 'Sync Videos'}</span>
@@ -2010,7 +1992,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-zinc-900 dark:bg-zinc-900 rounded-2xl p-8 w-full max-w-md shadow-2xl">
             <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/20">
                 <Plus className="w-8 h-8 text-white" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Add Account to Track</h2>
@@ -2094,7 +2076,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
               <button
                 onClick={handleAddAccount}
                 disabled={!newAccountUrl.trim() || !detectedPlatform}
-                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                className="flex-1 px-6 py-3 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium border border-white/10"
               >
                 Add Account
               </button>
@@ -2152,7 +2134,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                 </label>
                 <button
                   onClick={addCondition}
-                  className="flex items-center gap-1 px-3 py-1 text-sm text-blue-400 hover:bg-blue-900/30 rounded-lg transition-colors"
+                  className="flex items-center gap-1 px-3 py-1 text-sm text-gray-400 hover:bg-white/10 rounded-lg transition-colors"
                 >
                   <Plus className="w-3 h-3" />
                   Add Condition
@@ -2240,7 +2222,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
             </div>
 
             {/* Info message */}
-            <div className="p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+            <div className="p-4 bg-white/5 border border-white/10 rounded-lg">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 mt-0.5">
                   <svg className="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
@@ -2269,7 +2251,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
               <button
                 onClick={handleSaveRule}
                 disabled={!ruleName.trim() || conditions.filter(c => c.value !== '').length === 0}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-white/10"
               >
                 Create Rule
               </button>
@@ -2281,7 +2263,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
             <p className="text-gray-400 mb-4">No rules created yet</p>
             <button
               onClick={handleShowCreateForm}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors border border-white/10"
             >
               Create Your First Rule
             </button>
@@ -2301,7 +2283,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                     className={clsx(
                       'p-4 rounded-lg border transition-all cursor-pointer group',
                       isApplied
-                        ? 'bg-blue-900/20 border-blue-500/50'
+                        ? 'bg-white/10 border-white/20'
                         : 'bg-gray-800/50 border-gray-700 hover:border-gray-600'
                     )}
                     onClick={() => handleToggleRule(rule.id)}
@@ -2309,7 +2291,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                     <div className="flex items-start gap-3">
                       <div className="mt-0.5">
                         {isApplied ? (
-                          <CheckCircle2 className="w-5 h-5 text-blue-400" />
+                          <CheckCircle2 className="w-5 h-5 text-white" />
                         ) : (
                           <Circle className="w-5 h-5 text-gray-500 group-hover:text-gray-400" />
                         )}
@@ -2356,7 +2338,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
             <div className="pt-4 border-t border-gray-700 flex items-center justify-between">
               <button
                 onClick={handleShowCreateForm}
-                className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                className="text-sm text-gray-400 hover:text-white transition-colors"
               >
                 Create New Rule →
               </button>

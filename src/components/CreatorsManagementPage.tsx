@@ -238,20 +238,19 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
             <div className="bg-purple-500/10 rounded-lg p-3 group-hover:bg-purple-500/20 transition-colors">
               <UsersIcon className="w-6 h-6 text-purple-400" />
             </div>
-              <Button
-                onClick={() => setShowInviteModal(true)}
-                size="sm"
-                className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border-purple-500/20"
-              >
-                <UserPlus className="w-4 h-4 mr-1" />
-                Invite
-              </Button>
-            </div>
-            <div className="text-3xl font-bold text-white mb-1">
-              {creators.length}
-            </div>
-            <div className="text-sm text-gray-400">Total Creators</div>
+            <Button
+              onClick={() => setShowInviteModal(true)}
+              size="sm"
+              className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border-purple-500/20"
+            >
+              <UserPlus className="w-4 h-4 mr-1" />
+              Invite
+            </Button>
           </div>
+          <div className="text-3xl font-bold text-white mb-1">
+            {creators.length}
+          </div>
+          <div className="text-sm text-gray-400">Total Creators</div>
         </div>
 
         {/* Linked Accounts */}

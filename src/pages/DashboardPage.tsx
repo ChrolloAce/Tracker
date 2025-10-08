@@ -70,6 +70,7 @@ function DashboardPage() {
   const [accountsDateFilter, setAccountsDateFilter] = useState<DateFilterType>('all');
   const [accountsViewMode, setAccountsViewMode] = useState<'table' | 'details'>('table');
   const [accountsPlatformFilter, setAccountsPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'youtube'>('all');
+  const [accountsSearchQuery, setAccountsSearchQuery] = useState('');
   const accountsPageRef = useRef<AccountsPageRef | null>(null);
   const trackedLinksPageRef = useRef<TrackedLinksPageRef | null>(null);
   const creatorsPageRef = useRef<CreatorsManagementPageRef | null>(null);
@@ -636,7 +637,7 @@ function DashboardPage() {
                 <select
                   value={accountsPlatformFilter}
                   onChange={(e) => setAccountsPlatformFilter(e.target.value as 'all' | 'instagram' | 'tiktok' | 'youtube')}
-                  className="appearance-none pl-4 pr-10 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  className="appearance-none pl-4 pr-10 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-white/20 cursor-pointer"
                 >
                   <option value="all">All Platforms</option>
                   <option value="instagram">Instagram</option>
@@ -644,6 +645,18 @@ function DashboardPage() {
                   <option value="youtube">YouTube</option>
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
+
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Search accounts..."
+                  value={accountsSearchQuery}
+                  onChange={(e) => setAccountsSearchQuery(e.target.value)}
+                  className="pl-10 pr-4 py-2 w-64 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-transparent bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white"
+                />
               </div>
               
               <DateRangeFilter
@@ -722,6 +735,7 @@ function DashboardPage() {
               ref={accountsPageRef}
               dateFilter={accountsDateFilter}
               platformFilter={accountsPlatformFilter}
+              searchQuery={accountsSearchQuery}
               onViewModeChange={setAccountsViewMode}
               pendingAccounts={pendingAccounts}
             />
