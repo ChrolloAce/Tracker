@@ -163,17 +163,25 @@ class TikTokApiService {
 
     // Store share count separately for TikTok videos
     (transformedData as any).share_count = tiktokData.shareCount || 0;
+    
+    // Store author metadata for profile information
+    (transformedData as any).profile_pic_url = tiktokData['authorMeta.avatar'] || '';
+    (transformedData as any).display_name = tiktokData['authorMeta.nickName'] || username;
+    (transformedData as any).follower_count = tiktokData['authorMeta.fans'] || 0;
 
     console.log('✅ TikTok data transformation completed with real values:', {
       id: transformedData.id,
       username: transformedData.username,
+      displayName: (transformedData as any).display_name,
       likes: transformedData.like_count,
       comments: transformedData.comment_count,
       views: transformedData.view_count,
       shares: tiktokData.shareCount || 0,
       duration: tiktokData['videoMeta.duration'] || 0,
       uploadDate: new Date(transformedData.timestamp).toLocaleDateString(),
-      thumbnail: transformedData.thumbnail_url ? 'Downloaded locally' : 'Using original URL'
+      thumbnail: transformedData.thumbnail_url ? 'Downloaded locally' : 'Using original URL',
+      profilePic: (transformedData as any).profile_pic_url ? '✓ Present' : '✗ Missing',
+      followers: (transformedData as any).follower_count
     });
 
     return transformedData;

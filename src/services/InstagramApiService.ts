@@ -104,6 +104,11 @@ class InstagramApiService {
     const comments = apifyData.commentsCount || apifyData.comments || apifyData.commentCount || 0;
     const views = apifyData.videoViewCount || apifyData.videoPlayCount || apifyData.viewCount || apifyData.views || 0;
     const timestamp = apifyData.timestamp || apifyData.takenAt || apifyData.createdTime || new Date().toISOString();
+    
+    // Extract profile information
+    const profilePic = apifyData.ownerProfilePicUrl || apifyData.owner?.profilePicUrl || apifyData.profilePicUrl || '';
+    const displayName = apifyData.ownerFullName || apifyData.owner?.fullName || username;
+    const followerCount = apifyData.ownerFollowersCount || apifyData.owner?.followersCount || 0;
 
     const transformedData: InstagramVideoData = {
       id: id,
@@ -115,16 +120,24 @@ class InstagramApiService {
       view_count: views,
       timestamp: timestamp
     };
+    
+    // Store profile metadata
+    (transformedData as any).profile_pic_url = profilePic;
+    (transformedData as any).display_name = displayName;
+    (transformedData as any).follower_count = followerCount;
 
     console.log('✅ Data transformation completed with real values:', {
       id: transformedData.id,
       username: transformedData.username,
+      displayName: displayName,
       caption: transformedData.caption.substring(0, 50) + '...',
       likes: transformedData.like_count,
       comments: transformedData.comment_count,
       views: transformedData.view_count,
       uploadDate: new Date(transformedData.timestamp).toLocaleDateString(),
-      thumbnail: transformedData.thumbnail_url ? '✓ Present' : '✗ Missing'
+      thumbnail: transformedData.thumbnail_url ? '✓ Present' : '✗ Missing',
+      profilePic: profilePic ? '✓ Present' : '✗ Missing',
+      followers: followerCount
     });
 
     return transformedData;

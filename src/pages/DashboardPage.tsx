@@ -382,6 +382,17 @@ function DashboardPage() {
           console.log(`✨ Account @${username} doesn't exist. Creating new account...`);
           console.log(`📌 Note: NOT syncing all videos - only adding the specified video`);
           
+          // Extract profile information from video data
+          const profilePic = (videoData as any).profile_pic_url || '';
+          const displayName = (videoData as any).display_name || videoData.username;
+          const followerCount = (videoData as any).follower_count || 0;
+          
+          console.log(`📸 Profile info extracted:`, {
+            profilePic: profilePic ? 'Found ✓' : 'Not found',
+            displayName,
+            followerCount
+          });
+          
           accountId = await FirestoreDataService.addTrackedAccount(
             currentOrgId, 
             currentProjectId, 
@@ -389,9 +400,9 @@ function DashboardPage() {
             {
               username,
               platform,
-              displayName: videoData.username,
-              profilePicture: '', // Will be fetched by background sync
-              followerCount: 0,
+              displayName: displayName,
+              profilePicture: profilePic,
+              followerCount: followerCount,
               isActive: true,
               accountType: 'my',
               lastSynced: Timestamp.fromDate(new Date())
