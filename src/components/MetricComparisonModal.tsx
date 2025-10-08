@@ -298,7 +298,32 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
               </div>
 
               {/* SVG Chart */}
-              <svg viewBox="0 0 1000 400" className="w-full h-full" preserveAspectRatio="none">
+              <svg 
+                viewBox="0 0 1000 400" 
+                className="w-full h-full" 
+                preserveAspectRatio="none"
+                onMouseMove={(e) => {
+                  const svg = e.currentTarget;
+                  const rect = svg.getBoundingClientRect();
+                  const x = ((e.clientX - rect.left) / rect.width) * 1000;
+                  
+                  // Find nearest data point
+                  let nearestIndex = 0;
+                  let minDistance = Infinity;
+                  
+                  chartData.forEach((_, i) => {
+                    const pointX = (i / (chartData.length - 1)) * 1000;
+                    const distance = Math.abs(x - pointX);
+                    if (distance < minDistance) {
+                      minDistance = distance;
+                      nearestIndex = i;
+                    }
+                  });
+                  
+                  setHoveredPoint(nearestIndex);
+                }}
+                onMouseLeave={() => setHoveredPoint(null)}
+              >
                 <defs>
                   {/* Gradient for primary fill */}
                   <linearGradient id="primaryGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -380,6 +405,23 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
                   </>
                 )}
 
+                {/* Vertical crosshair line */}
+                {hoveredPoint !== null && chartData[hoveredPoint] && (
+                  <line
+                    x1={(hoveredPoint / (chartData.length - 1)) * 1000}
+                    y1="0"
+                    x2={(hoveredPoint / (chartData.length - 1)) * 1000}
+                    y2="400"
+                    stroke={primaryColor}
+                    strokeWidth="2"
+                    opacity="0.4"
+                    className="transition-all duration-150"
+                    style={{
+                      filter: 'drop-shadow(0 0 4px rgba(180, 124, 255, 0.5))'
+                    }}
+                  />
+                )}
+
                 {/* Interactive data points */}
                 {chartData.map((d, i) => {
                   const x = (i / (chartData.length - 1)) * 1000;
@@ -392,20 +434,26 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
                       <circle
                         cx={x}
                         cy={yPrimary}
-                        r={hoveredPoint === i ? "6" : "0"}
+                        r={hoveredPoint === i ? "8" : "0"}
                         fill={primaryColor}
-                        className="transition-all duration-200"
-                        opacity="0.9"
+                        className="transition-all duration-150"
+                        opacity="1"
+                        style={{
+                          filter: hoveredPoint === i ? 'drop-shadow(0 0 6px rgba(180, 124, 255, 0.8))' : 'none'
+                        }}
                       />
-                      <circle
-                        cx={x}
-                        cy={yPrimary}
-                        r="10"
-                        fill="transparent"
-                        className="cursor-pointer"
-                        onMouseEnter={() => setHoveredPoint(i)}
-                        onMouseLeave={() => setHoveredPoint(null)}
-                      />
+                      {hoveredPoint === i && (
+                        <circle
+                          cx={x}
+                          cy={yPrimary}
+                          r="12"
+                          fill="none"
+                          stroke={primaryColor}
+                          strokeWidth="2"
+                          opacity="0.3"
+                          className="animate-ping"
+                        />
+                      )}
                       
                       {/* Secondary metric point */}
                       {secondaryMetric && (
@@ -413,20 +461,26 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
                           <circle
                             cx={x}
                             cy={ySecondary}
-                            r={hoveredPoint === i ? "6" : "0"}
+                            r={hoveredPoint === i ? "8" : "0"}
                             fill={secondaryColor}
-                            className="transition-all duration-200"
-                            opacity="0.9"
+                            className="transition-all duration-150"
+                            opacity="1"
+                            style={{
+                              filter: hoveredPoint === i ? 'drop-shadow(0 0 6px rgba(124, 58, 237, 0.8))' : 'none'
+                            }}
                           />
-                          <circle
-                            cx={x}
-                            cy={ySecondary}
-                            r="10"
-                            fill="transparent"
-                            className="cursor-pointer"
-                            onMouseEnter={() => setHoveredPoint(i)}
-                            onMouseLeave={() => setHoveredPoint(null)}
-                          />
+                          {hoveredPoint === i && (
+                            <circle
+                              cx={x}
+                              cy={ySecondary}
+                              r="12"
+                              fill="none"
+                              stroke={secondaryColor}
+                              strokeWidth="2"
+                              opacity="0.3"
+                              className="animate-ping"
+                            />
+                          )}
                         </>
                       )}
                     </g>
@@ -437,32 +491,36 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
               {/* Hover tooltip */}
               {hoveredPoint !== null && chartData[hoveredPoint] && (
                 <div 
-                  className="absolute bg-gray-900/95 backdrop-blur-sm border border-purple-500/30 rounded-xl px-4 py-3 shadow-2xl shadow-purple-500/20 pointer-events-none z-10"
+                  className="absolute bg-gray-900/95 backdrop-blur-sm border border-purple-500/30 rounded-xl px-4 py-3 shadow-2xl shadow-purple-500/20 pointer-events-none z-20 min-w-[200px]"
                   style={{
                     left: `${((hoveredPoint / (chartData.length - 1)) * 100)}%`,
-                    top: '50%',
-                    transform: 'translate(-50%, -50%)',
+                    top: '-10px',
+                    transform: hoveredPoint > chartData.length / 2 ? 'translateX(-100%)' : 'translateX(0)',
                   }}
                 >
-                  <div className="text-xs font-medium text-gray-400 mb-2">
+                  <div className="text-xs font-bold text-white mb-2">
                     {formatDate(chartData[hoveredPoint].date)}
                   </div>
                   <div className="space-y-1.5">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-purple-400 to-purple-600" />
-                      <span className="text-xs font-medium text-gray-400">
-                        {metricOptions.find(m => m.id === primaryMetric)?.label}:
-                      </span>
+                    <div className="flex items-center justify-between space-x-4">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 shadow-lg shadow-purple-500/50" />
+                        <span className="text-xs font-medium text-gray-400">
+                          {metricOptions.find(m => m.id === primaryMetric)?.label}
+                        </span>
+                      </div>
                       <span className="text-sm font-bold text-white">
                         {formatNumber(chartData[hoveredPoint].primary)}
                       </span>
                     </div>
                     {secondaryMetric && (
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-purple-300 to-indigo-500" />
-                        <span className="text-xs font-medium text-gray-400">
-                          {metricOptions.find(m => m.id === secondaryMetric)?.label}:
-                        </span>
+                      <div className="flex items-center justify-between space-x-4">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-purple-300 to-indigo-500 shadow-lg shadow-indigo-400/30" />
+                          <span className="text-xs font-medium text-gray-400">
+                            {metricOptions.find(m => m.id === secondaryMetric)?.label}
+                          </span>
+                        </div>
                         <span className="text-sm font-bold text-white">
                           {formatNumber(chartData[hoveredPoint].secondary)}
                         </span>
