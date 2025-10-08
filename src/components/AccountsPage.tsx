@@ -23,7 +23,8 @@ import {
   CheckCircle2,
   Circle
   } from 'lucide-react';
-import { TrackedAccount, AccountVideo } from '../types/accounts';
+import { AccountVideo } from '../types/accounts';
+import { TrackedAccount } from '../types/firestore';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import RulesService from '../services/RulesService';
 import { TrackingRule, RuleCondition, RuleConditionType } from '../types/rules';

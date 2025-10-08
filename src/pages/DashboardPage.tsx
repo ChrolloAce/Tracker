@@ -368,23 +368,22 @@ function DashboardPage() {
     // Create placeholder videos immediately for instant UI feedback
     const placeholderVideos: VideoSubmission[] = videoUrls.map((url, index) => ({
       id: `pending-${Date.now()}-${index}`,
-      videoUrl: url,
-      userName: 'Loading...',
-      status: 'pending' as const,
+      url: url,
+      platform: platform,
+      thumbnail: '',
+      title: 'Loading...',
       caption: 'Fetching video data...',
-      thumbnailUrl: '',
-      userId: user.uid,
-      dateSubmitted: new Date(),
-      uploadDate: new Date(),
+      uploader: 'Loading...',
+      uploaderHandle: 'loading',
+      status: 'pending' as const,
       views: 0,
       likes: 0,
       comments: 0,
       shares: 0,
-      platform: platform,
-      trackedAccountId: '',
-      isSingular: false,
+      dateSubmitted: new Date(),
+      uploadDate: new Date(),
       isLoading: true // Custom flag for loading state
-    }));
+    } as VideoSubmission & { isLoading: boolean }));
 
     // Add placeholders to state immediately
     setPendingVideos(prev => [...prev, ...placeholderVideos]);
