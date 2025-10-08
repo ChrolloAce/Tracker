@@ -363,7 +363,7 @@ function DashboardPage() {
       throw new Error('User not authenticated or no organization selected');
     }
 
-    console.log('🎬 Adding videos with account management...', { platform, count: videoUrls.length });
+    console.log('🎬 Adding videos to processing queue...', { platform, count: videoUrls.length });
 
     // Create placeholder videos immediately for instant UI feedback
     const placeholderVideos: VideoSubmission[] = videoUrls.map((url, index) => ({
@@ -371,10 +371,10 @@ function DashboardPage() {
       url: url,
       platform: platform,
       thumbnail: '',
-      title: 'Loading...',
-      caption: 'Fetching video data...',
-      uploader: 'Loading...',
-      uploaderHandle: 'loading',
+      title: 'Processing...',
+      caption: 'Video queued for processing...',
+      uploader: 'Processing...',
+      uploaderHandle: 'processing',
       status: 'pending' as const,
       views: 0,
       likes: 0,
@@ -392,176 +392,63 @@ function DashboardPage() {
     let successCount = 0;
     let failureCount = 0;
 
+    // Queue videos for background processing (like accounts)
     for (const videoUrl of videoUrls) {
       try {
-        console.log(`📹 Processing video: ${videoUrl}`);
+        console.log(`📝 Queuing video: ${videoUrl}`);
         
-        // Fetch video data
-        const { data: videoData } = await VideoApiService.fetchVideoData(videoUrl);
-        const username = videoData.username;
-
-        console.log(`👤 Video belongs to: @${username}`);
-
-        // Check if account exists
-        const accounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
-        let account = accounts.find(acc => 
-          acc.username.toLowerCase() === username.toLowerCase() && 
-          acc.platform === platform
-        );
-
-        // If account doesn't exist, create it
-        let accountId: string;
-        if (!account) {
-          console.log(`✨ Account @${username} doesn't exist. Creating new account...`);
-          console.log(`📌 Note: NOT syncing all videos - only adding the specified video`);
-          
-          // Extract profile information from video data
-          const profilePic = (videoData as any).profile_pic_url || '';
-          const displayName = (videoData as any).display_name || videoData.username;
-          const followerCount = (videoData as any).follower_count || 0;
-          
-          console.log(`📸 Profile info extracted:`, {
-            profilePic: profilePic ? 'Found ✓' : 'Not found',
-            displayName,
-            followerCount
-          });
-          
-          // Create placeholder account for immediate UI feedback
-          const placeholderAccount: TrackedAccount = {
-            id: `pending-account-${Date.now()}-${username}`,
-            username,
-            platform,
-            displayName: displayName || 'Loading...',
-            profilePicture: profilePic || '',
-            followerCount: followerCount || 0,
-            isActive: true,
-            accountType: 'my',
-            orgId: currentOrgId,
-            dateAdded: Timestamp.fromDate(new Date()),
-            addedBy: user.uid,
-            lastSynced: Timestamp.fromDate(new Date()),
-            totalVideos: 0,
-            totalViews: 0,
-            totalLikes: 0,
-            totalComments: 0,
-            totalShares: 0,
-            syncStatus: 'syncing',
-            syncRequestedBy: user.uid,
-            syncRequestedAt: Timestamp.fromDate(new Date()),
-            syncRetryCount: 0,
-            maxRetries: 3,
-            syncProgress: {
-              current: 50,
-              total: 100,
-              message: 'Creating account...'
-            }
-          };
-          
-          // Add placeholder to state immediately
-          setPendingAccounts(prev => [...prev, placeholderAccount]);
-          console.log(`✨ Added placeholder account for @${username} to UI`);
-          
-          accountId = await FirestoreDataService.addTrackedAccount(
-            currentOrgId, 
-            currentProjectId, 
-            user.uid, 
-            {
-              username,
-              platform,
-              displayName: displayName,
-              profilePicture: profilePic,
-              followerCount: followerCount,
-              isActive: true,
-              accountType: 'my',
-              lastSynced: Timestamp.fromDate(new Date())
-            },
-            true // skipSync = true - don't fetch all videos from account
-          );
-
-          console.log(`✅ Created new account with ID: ${accountId} (sync skipped)`);
-        } else {
-          accountId = account.id;
-          console.log(`✅ Account @${username} already exists (ID: ${accountId})`);
-        }
-
-        // Add the video and link it to the account
-        const videoId = Date.now().toString();
-        
-        // Handle timestamp - it can be ISO string or Unix timestamp
-        let uploadDate: Date;
-        if (videoData.timestamp) {
-          // If it's already a string (ISO format), parse it directly
-          if (typeof videoData.timestamp === 'string') {
-            uploadDate = new Date(videoData.timestamp);
-          } else {
-            // If it's a number (Unix timestamp), convert from seconds to milliseconds
-            uploadDate = new Date(Number(videoData.timestamp) * 1000);
-          }
-        } else {
-          uploadDate = new Date();
-        }
-        
-        console.log(`📹 Adding video to account ${accountId}...`);
-        console.log(`📅 Upload date: ${uploadDate.toISOString()}`);
-        console.log(`🖼️ Thumbnail URL:`, videoData.thumbnail_url);
-        console.log(`📊 Video data:`, {
-          views: videoData.view_count,
-          likes: videoData.like_count,
-          comments: videoData.comment_count,
-          caption: videoData.caption?.substring(0, 50)
-        });
-        
+        // Create a pending video record - cron job will fetch the data
         await FirestoreDataService.addVideo(currentOrgId, currentProjectId, user.uid, {
           platform,
           url: videoUrl,
-          videoId,
-          thumbnail: videoData.thumbnail_url || '',
-          title: videoData.caption?.split('\n')[0] || 'Untitled Video',
-          description: videoData.caption || '', // Add description field for caption
-          uploadDate: Timestamp.fromDate(uploadDate),
-          views: videoData.view_count || 0,
-          likes: videoData.like_count || 0,
-          comments: videoData.comment_count || 0,
-          shares: (videoData as any).share_count || 0,
+          videoId: `temp-${Date.now()}`, // Temporary ID until processed
+          thumbnail: '',
+          title: 'Processing...',
+          description: '',
+          uploadDate: Timestamp.now(),
+          views: 0,
+          likes: 0,
+          comments: 0,
+          shares: 0,
           status: 'active',
           isSingular: false,
-          trackedAccountId: accountId
+          // Background processing fields
+          syncStatus: 'pending',
+          syncRequestedBy: user.uid,
+          syncRequestedAt: Timestamp.now(),
+          syncRetryCount: 0
         });
 
-        console.log(`✅ Video added successfully`);
+        console.log(`✅ Video queued successfully`);
         successCount++;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`❌ Failed to process video ${videoUrl}:`, errorMessage);
+        console.error(`❌ Failed to queue video ${videoUrl}:`, errorMessage);
         console.error('Full error:', error);
         failureCount++;
       }
     }
 
-    console.log(`📊 Results: ${successCount} successful, ${failureCount} failed`);
+    console.log(`📊 Results: ${successCount} queued, ${failureCount} failed`);
 
-    // Handle results and reload
+    // Handle results
     if (successCount > 0) {
-      console.log('🔄 Reloading page to show new videos...');
-      console.log('⏳ Account profile picture will be fetched by background sync job');
-      
-      // Show success message
       const message = successCount === 1 
-        ? '✅ Video added successfully! Refreshing...' 
-        : `✅ ${successCount} videos added successfully! Refreshing...`;
+        ? '✅ Video queued for processing! It will appear shortly...' 
+        : `✅ ${successCount} videos queued! They will appear as they're processed...`;
       console.log(message);
+      alert(message + '\n\nCron job will process them in the next 2 minutes.');
       
+      // Reload after 5 seconds to show queued videos
       setTimeout(() => {
-        // Clear pending videos before reload to avoid duplicates
         setPendingVideos([]);
         setPendingAccounts([]);
         window.location.reload();
-      }, 3000); // 3 seconds - gives time to see loading state
+      }, 5000);
     } else if (failureCount > 0) {
-      // All failed - clear pending and show error
       setPendingVideos([]);
       setPendingAccounts([]);
-      alert(`Failed to add ${failureCount} video(s). Check console for details.`);
+      alert(`Failed to queue ${failureCount} video(s). Check console for details.`);
     }
   }, [user, currentOrgId, currentProjectId]);
 

@@ -20,9 +20,17 @@
     },
     "api/sync-single-account.ts": {
       "maxDuration": 300
+    },
+    "api/cron-process-videos.ts": {
+      "maxDuration": 300
     }
   },
-  "crons": [],
+  "crons": [
+    {
+      "path": "/api/cron-process-videos",
+      "schedule": "*/2 * * * *"
+    }
+  ],
   "routes": [
     {
       "src": "/l/([^/]+)",

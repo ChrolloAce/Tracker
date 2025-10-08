@@ -263,6 +263,14 @@ export interface VideoDoc extends VideoMetrics, VideoDeltas {
   status: 'active' | 'archived';
   isSingular: boolean; // Not tied to tracked account
   
+  // Background processing (like accounts)
+  syncStatus?: 'pending' | 'processing' | 'completed' | 'failed';
+  syncRequestedBy?: string;
+  syncRequestedAt?: Timestamp;
+  syncCompletedAt?: Timestamp;
+  syncError?: string;
+  syncRetryCount?: number;
+  
   // Engagement rate (computed)
   engagementRate?: number;
 }
