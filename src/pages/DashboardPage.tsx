@@ -400,10 +400,23 @@ function DashboardPage() {
 
         // Add the video and link it to the account
         const videoId = Date.now().toString();
-        const timestamp = (videoData as any).timestamp || Date.now() / 1000;
-        const uploadDate = new Date(Number(timestamp) * 1000);
+        
+        // Handle timestamp - it can be ISO string or Unix timestamp
+        let uploadDate: Date;
+        if (videoData.timestamp) {
+          // If it's already a string (ISO format), parse it directly
+          if (typeof videoData.timestamp === 'string') {
+            uploadDate = new Date(videoData.timestamp);
+          } else {
+            // If it's a number (Unix timestamp), convert from seconds to milliseconds
+            uploadDate = new Date(Number(videoData.timestamp) * 1000);
+          }
+        } else {
+          uploadDate = new Date();
+        }
         
         console.log(`📹 Adding video to account ${accountId}...`);
+        console.log(`📅 Upload date: ${uploadDate.toISOString()}`);
         
         await FirestoreDataService.addVideo(currentOrgId, currentProjectId, user.uid, {
           platform,
@@ -424,18 +437,30 @@ function DashboardPage() {
         console.log(`✅ Video added successfully`);
         successCount++;
       } catch (error) {
-        console.error(`❌ Failed to process video ${videoUrl}:`, error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`❌ Failed to process video ${videoUrl}:`, errorMessage);
+        console.error('Full error:', error);
         failureCount++;
       }
     }
 
     console.log(`📊 Results: ${successCount} successful, ${failureCount} failed`);
 
-    // Reload data - force page refresh to show new videos and accounts
-    window.location.reload();
+    // Only reload if at least one video was added successfully
+    if (successCount > 0) {
+      console.log('🔄 Reloading page to show new videos...');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    }
 
-    if (failureCount > 0) {
+    // Show result message
+    if (failureCount > 0 && successCount === 0) {
+      alert(`Failed to add videos. Check console for details.`);
+    } else if (failureCount > 0) {
       alert(`Added ${successCount} videos successfully. ${failureCount} failed.`);
+    } else if (successCount > 0) {
+      // Success message will show after reload
     }
   }, [user, currentOrgId, currentProjectId]);
 
