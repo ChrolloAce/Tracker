@@ -123,7 +123,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [newAccountUrl, setNewAccountUrl] = useState('');
   const [detectedPlatform, setDetectedPlatform] = useState<'instagram' | 'tiktok' | 'youtube' | 'twitter' | null>(null);
   const [urlValidationError, setUrlValidationError] = useState<string | null>(null);
-  const [clipboardDetectedAccount, setClipboardDetectedAccount] = useState(false);
+  const [postsToScrape, setPostsToScrape] = useState<number>(10);
   const [searchQuery, setSearchQuery] = useState('');
   const [syncError, setSyncError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -271,7 +271,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         if (parsed && parsed.isValid && parsed.platform) {
           setNewAccountUrl(parsed.url);
           setDetectedPlatform(parsed.platform);
-          setClipboardDetectedAccount(true);
           console.log(`🎯 Auto-filled ${parsed.platform} URL from clipboard: ${parsed.url}`);
         }
       };
@@ -282,7 +281,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       setNewAccountUrl('');
       setDetectedPlatform(null);
       setUrlValidationError(null);
-      setClipboardDetectedAccount(false);
+      setPostsToScrape(10);
     }
   }, [isAddModalOpen]);
 
@@ -647,7 +646,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const handleUrlChange = useCallback((url: string) => {
     setNewAccountUrl(url);
     setUrlValidationError(null);
-    setClipboardDetectedAccount(false); // Clear clipboard indicator when user types
     
     if (!url.trim()) {
       setDetectedPlatform(null);
@@ -2023,36 +2021,44 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                   Account URL
                 </label>
                 
-                {clipboardDetectedAccount && (
-                  <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                    <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                    <span className="text-sm text-blue-700 dark:text-blue-300">
-                      ✨ Auto-detected URL from clipboard!
-                    </span>
+                <div className="flex gap-3">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={newAccountUrl}
+                      onChange={(e) => handleUrlChange(e.target.value)}
+                      placeholder="https://instagram.com/username or https://tiktok.com/@username"
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+                    />
+                    {detectedPlatform && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <PlatformIcon platform={detectedPlatform} size="sm" />
+                      </div>
+                    )}
                   </div>
-                )}
-                
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={newAccountUrl}
-                    onChange={(e) => handleUrlChange(e.target.value)}
-                    placeholder="https://instagram.com/username or https://tiktok.com/@username"
-                    className="w-full px-4 py-4 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
-                  />
+                  
+                  <div className="relative">
+                    <select
+                      value={postsToScrape}
+                      onChange={(e) => setPostsToScrape(Number(e.target.value))}
+                      className="appearance-none px-4 py-3 pr-10 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium cursor-pointer"
+                    >
+                      <option value={10}>10 posts</option>
+                      <option value={25}>25 posts</option>
+                      <option value={50}>50 posts</option>
+                      <option value={100}>100 posts</option>
+                      <option value={250}>250 posts</option>
+                      <option value={500}>500 posts</option>
+                      <option value={1000}>1000 posts</option>
+                      <option value={2000}>2000 posts</option>
+                    </select>
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                      <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
                 </div>
-                
-                {/* Show detected platform */}
-                {detectedPlatform && (
-                  <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                    <PlatformIcon platform={detectedPlatform} size="sm" />
-                    <span className="text-sm text-green-700 dark:text-green-300 font-medium capitalize">
-                      ✓ {detectedPlatform} account detected
-                    </span>
-                  </div>
-                )}
                 
                 {/* Show validation error */}
                 {urlValidationError && (
@@ -2077,6 +2083,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                   setNewAccountUrl('');
                   setDetectedPlatform(null);
                   setUrlValidationError(null);
+                  setPostsToScrape(10);
                 }}
                 className="flex-1 px-6 py-3 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
               >
