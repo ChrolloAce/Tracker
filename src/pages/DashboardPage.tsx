@@ -21,7 +21,6 @@ import { PageLoadingSkeleton } from '../components/ui/LoadingSkeleton';
 import OrganizationService from '../services/OrganizationService';
 import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
 import { VideoSubmission, InstagramVideoData } from '../types';
-import VideoApiService from '../services/VideoApiService';
 import DateFilterService from '../services/DateFilterService';
 import ThemeService from '../services/ThemeService';
 import FirestoreDataService from '../services/FirestoreDataService';
