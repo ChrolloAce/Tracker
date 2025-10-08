@@ -26,6 +26,7 @@ import {
 import { AccountVideo } from '../types/accounts';
 import { TrackedAccount } from '../types/firestore';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
+import FirestoreDataService from '../services/FirestoreDataService';
 import RulesService from '../services/RulesService';
 import { TrackingRule, RuleCondition, RuleConditionType } from '../types/rules';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -216,7 +217,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
 
       try {
         console.log('📥 Loading accounts from Firestore...');
-        const loadedAccounts = await AccountTrackingServiceFirebase.getTrackedAccounts(currentOrgId, currentProjectId);
+        const loadedAccounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
         setAccounts(loadedAccounts);
 
         // Restore selected account from localStorage
@@ -466,7 +467,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       const videoCount = await AccountTrackingServiceFirebase.syncAccountVideos(currentOrgId, currentProjectId, user.uid, accountId);
       
       // Update accounts list
-      const updatedAccounts = await AccountTrackingServiceFirebase.getTrackedAccounts(currentOrgId, currentProjectId);
+      const updatedAccounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
       setAccounts(updatedAccounts);
       
       // Update videos if this account is selected
@@ -528,7 +529,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       );
       
       // Reload accounts
-      const updatedAccounts = await AccountTrackingServiceFirebase.getTrackedAccounts(currentOrgId, currentProjectId);
+      const updatedAccounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
       setAccounts(updatedAccounts);
       
       console.log(`✅ Added account @${username}`);
@@ -569,7 +570,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       await AccountTrackingServiceFirebase.refreshAccountProfile(currentOrgId, currentProjectId, user.uid, accountId);
       
       // Update accounts list
-      const updatedAccounts = await AccountTrackingServiceFirebase.getTrackedAccounts(currentOrgId, currentProjectId);
+      const updatedAccounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
       setAccounts(updatedAccounts);
       
       // Update selected account if it's the one being refreshed
@@ -1146,7 +1147,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
 
                         {/* Last Post Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {account.lastSynced ? formatDate(account.lastSynced) : 'Never'}
+                          {account.lastSynced ? formatDate(account.lastSynced.toDate()) : 'Never'}
                         </td>
 
                         {/* Followers Column */}
@@ -1320,7 +1321,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                     </div>
                     <div className="flex items-center space-x-2">
                       <Calendar className="w-4 h-4" />
-                      <span>Joined {formatDate(selectedAccount.dateAdded)}</span>
+                      <span>Joined {formatDate(selectedAccount.dateAdded.toDate())}</span>
                     </div>
                     {selectedAccount.followerCount && (
                       <div>
