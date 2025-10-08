@@ -12,6 +12,7 @@ import {
 import { clsx } from 'clsx';
 import ProjectSwitcher from '../ProjectSwitcher';
 import OrganizationSwitcher from '../OrganizationSwitcher';
+import CreateProjectModal from '../CreateProjectModal';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useAuth } from '../../contexts/AuthContext';
 import blackLogo from '../blacklogo.png';
@@ -41,6 +42,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onTabChange
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
+  const [showCreateProject, setShowCreateProject] = useState(false);
   const { can } = usePermissions();
   const { userRole } = useAuth();
 
@@ -155,6 +157,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
+    <>
     <div className={clsx(
       'fixed left-0 top-0 flex flex-col h-screen bg-white dark:bg-[#111111] border-r border-gray-200 dark:border-gray-800 transition-all duration-300 z-30',
       {
@@ -220,7 +223,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">
               Project
             </label>
-            <ProjectSwitcher onCreateProject={() => window.location.href = '/create-project'} />
+            <ProjectSwitcher onCreateProject={() => setShowCreateProject(true)} />
           </div>
         </div>
       )}
@@ -245,6 +248,18 @@ const Sidebar: React.FC<SidebarProps> = ({
       )}
 
     </div>
+
+    {/* Create Project Modal */}
+    <CreateProjectModal
+      isOpen={showCreateProject}
+      onClose={() => setShowCreateProject(false)}
+      onSuccess={(projectId) => {
+        setShowCreateProject(false);
+        console.log('✅ Project created:', projectId);
+        window.location.reload(); // Refresh to load new project
+      }}
+    />
+    </>
   );
 };
 
