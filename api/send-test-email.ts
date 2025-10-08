@@ -23,50 +23,29 @@ export default async function handler(
   try {
     const RESEND_API_KEY = process.env.RESEND_API_KEY || 're_QdN3ugAr_NsKxb9N9tyfsj1pukCN3eUcT';
 
-    console.log(`📧 Sending email to: ${to}`);
-    console.log(`📝 Subject: ${subject}`);
-    console.log(`🔑 API Key configured: ${RESEND_API_KEY ? 'Yes' : 'No'}`);
-
-    const payload = {
-      from: 'ViewTrack <noreply@viewtrack.app>',
-      to: [to],
-      subject: subject,
-      html: html,
-    };
-
-    console.log(`📤 Calling Resend API...`);
-
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${RESEND_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        from: 'ViewTrack <team@viewtrack.app>',
+        to: [to],
+        subject: subject,
+        html: html,
+      }),
     });
 
     const data = await response.json();
-    console.log(`📬 Resend API response status: ${response.status}`);
-    console.log(`📬 Resend API response data:`, JSON.stringify(data, null, 2));
 
     if (!response.ok) {
-      console.error('❌ Resend API error:', data);
-      
-      // Check for common errors
-      if (data.message?.includes('not verified')) {
-        console.error('⚠️ Domain viewtrack.app is not verified yet. Please wait for DNS propagation.');
-      }
-      
+      console.error('Resend API error:', data);
       return res.status(response.status).json({ 
         error: data.message || 'Failed to send email',
-        details: data,
-        hint: data.message?.includes('not verified') 
-          ? 'Domain verification is still pending. Check Resend dashboard.' 
-          : undefined
+        details: data
       });
     }
-
-    console.log(`✅ Email sent successfully! ID: ${data.id}`);
 
     return res.status(200).json({ 
       success: true, 
@@ -75,7 +54,7 @@ export default async function handler(
     });
 
   } catch (error: any) {
-    console.error('🚨 Error sending email:', error);
+    console.error('Error sending email:', error);
     return res.status(500).json({ 
       error: 'Failed to send email', 
       message: error.message 

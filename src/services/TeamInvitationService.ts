@@ -87,7 +87,7 @@ class TeamInvitationService {
       // Use production URL for invite links
       const baseUrl = window.location.hostname === 'localhost' 
         ? 'http://localhost:5173' 
-        : 'https://tracker-red-zeta.vercel.app';
+        : 'https://viewtrack.app';
       const inviteLink = `${baseUrl}/invitations/${inviteRef.id}`;
       
       console.log(`📧 Attempting to send invitation email to ${email}...`);
