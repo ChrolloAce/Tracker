@@ -1,6 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { runApifyActor } from './apify-client';
 
 // Initialize Firebase Admin (same pattern as other API files)
 if (!getApps().length) {
@@ -250,12 +251,6 @@ async function refreshAccountVideos(
   username: string,
   platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter'
 ): Promise<any[]> {
-  const APIFY_TOKEN = process.env.APIFY_TOKEN;
-  
-  if (!APIFY_TOKEN) {
-    throw new Error('APIFY_TOKEN not configured');
-  }
-
   // Use the appropriate Apify actor based on platform
   let actorId: string;
   let input: any;
@@ -296,21 +291,15 @@ async function refreshAccountVideos(
     throw new Error(`Unsupported platform: ${platform}`);
   }
 
-  // Run Apify actor
-  const runResponse = await fetch(
-    `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${APIFY_TOKEN}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input)
-    }
-  );
+  // Run Apify actor using the helper function
+  const result = await runApifyActor({
+    actorId: actorId,
+    input: input
+  });
 
-  if (!runResponse.ok) {
-    throw new Error(`Apify request failed: ${runResponse.statusText}`);
-  }
+  const videos = result.items || [];
 
-  const videos = await runResponse.json();
+  console.log(`    📊 Apify returned ${videos.length} items for ${platform}`);
 
   // Save videos to Firestore
   if (videos && videos.length > 0) {
@@ -357,7 +346,7 @@ async function saveVideosToFirestore(
       .collection('videos')
       .doc(videoId);
 
-    // Check if video exists
+    // Check if video exists (Firebase Admin uses .exists property, not .exists() method)
     const existingDoc = await videoRef.get();
 
     // Extract metrics based on platform
@@ -391,7 +380,7 @@ async function saveVideosToFirestore(
       lastRefreshed: new Date()
     };
 
-    if (existingDoc.exists()) {
+    if (existingDoc.exists) {
       // Update existing video
       batch.update(videoRef, videoData);
       
