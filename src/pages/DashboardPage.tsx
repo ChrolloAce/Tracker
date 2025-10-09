@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { clsx } from 'clsx';
-import { ArrowLeft, ChevronDown, Search } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Search, RefreshCw } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import { VideoSubmissionsTable } from '../components/VideoSubmissionsTable';
 import { AddVideoModal } from '../components/AddVideoModal';
@@ -86,6 +86,9 @@ function DashboardPage() {
   const [linksSearchQuery, setLinksSearchQuery] = useState('');
   const [linksDateFilter, setLinksDateFilter] = useState<DateFilterType>('last30days');
   const [linksCustomDateRange, setLinksCustomDateRange] = useState<DateRange | undefined>();
+  
+  // Manual refresh state
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
   // Save active tab to localStorage whenever it changes
   useEffect(() => {
@@ -608,6 +611,41 @@ function DashboardPage() {
     console.log('✅ TikTok search results added and saved locally!');
   }, []);
 
+  // Manual refresh all videos - creates new snapshots
+  const handleManualRefreshAll = useCallback(async () => {
+    if (!user || !currentOrgId || !currentProjectId || isManualRefreshing) return;
+    
+    console.log('🔄 Starting manual refresh for all videos...');
+    setIsManualRefreshing(true);
+    
+    try {
+      const response = await fetch('/api/manual-refresh-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orgId: currentOrgId,
+          projectId: currentProjectId,
+          userId: user.uid
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log('✅ Manual refresh completed:', result);
+        alert(`✅ Successfully refreshed ${result.stats.successCount} videos!\n\nNew snapshots have been created for all videos.\nDuration: ${result.duration}`);
+      } else {
+        console.error('❌ Manual refresh failed:', result.error);
+        alert(`❌ Manual refresh failed: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('❌ Manual refresh error:', error);
+      alert('❌ Failed to refresh videos. Check console for details.');
+    } finally {
+      setIsManualRefreshing(false);
+    }
+  }, [user, currentOrgId, currentProjectId, isManualRefreshing]);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
       {/* Fixed Sidebar */}
@@ -696,6 +734,33 @@ function DashboardPage() {
                 customRange={customDateRange}
                 onFilterChange={handleDateFilterChange}
               />
+              
+              {/* Temporary Manual Refresh Button */}
+              <button
+                onClick={handleManualRefreshAll}
+                disabled={isManualRefreshing}
+                className={clsx(
+                  'px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200',
+                  'border-2 border-dashed',
+                  {
+                    'bg-yellow-500/10 border-yellow-500/50 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-500/20': !isManualRefreshing,
+                    'bg-gray-500/10 border-gray-500/50 text-gray-500 cursor-not-allowed': isManualRefreshing
+                  }
+                )}
+                title="Temporary: Creates snapshots for all videos with current metrics"
+              >
+                {isManualRefreshing ? (
+                  <div className="flex items-center space-x-2">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Refreshing...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <RefreshCw className="w-4 h-4" />
+                    <span>🚧 Refresh All (TEMP)</span>
+                  </div>
+                )}
+              </button>
             </div>
           )}
           {activeTab === 'accounts' && (
