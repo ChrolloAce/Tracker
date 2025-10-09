@@ -2,16 +2,22 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
-// Initialize Firebase Admin
+// Initialize Firebase Admin (same pattern as other API files)
 if (!getApps().length) {
   try {
-    const serviceAccount = JSON.parse(
-      process.env.FIREBASE_SERVICE_ACCOUNT_KEY || '{}'
-    );
-    
-    initializeApp({
-      credential: cert(serviceAccount)
-    });
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
+    if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+      privateKey = privateKey.slice(1, -1);
+    }
+    privateKey = privateKey.replace(/\\n/g, '\n');
+
+    const serviceAccount = {
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: privateKey,
+    };
+
+    initializeApp({ credential: cert(serviceAccount as any) });
   } catch (error) {
     console.error('Failed to initialize Firebase Admin:', error);
   }
@@ -25,6 +31,16 @@ const db = getFirestore();
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
+    // Verify Firebase is initialized
+    if (!getApps().length) {
+      console.error('❌ Firebase Admin not initialized');
+      return res.status(500).json({
+        error: 'Server configuration error: Firebase not initialized',
+        errorType: 'FIREBASE_INIT_ERROR',
+        timestamp: new Date().toISOString()
+      });
+    }
+
     // Get all organizations
     const orgsSnapshot = await db.collection('organizations').get();
     
@@ -101,8 +117,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).send(html);
 
   } catch (error: any) {
+    console.error('❌ Cron status error:', error);
     return res.status(500).json({
-      error: error.message,
+      error: error?.message || 'Internal server error',
+      errorType: 'PROCESSING_ERROR',
       timestamp: new Date().toISOString()
     });
   }

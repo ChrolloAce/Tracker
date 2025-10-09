@@ -2,16 +2,22 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
-// Initialize Firebase Admin
+// Initialize Firebase Admin (same pattern as other API files)
 if (!getApps().length) {
   try {
-    const serviceAccount = JSON.parse(
-      process.env.FIREBASE_SERVICE_ACCOUNT_KEY || '{}'
-    );
-    
-    initializeApp({
-      credential: cert(serviceAccount)
-    });
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
+    if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+      privateKey = privateKey.slice(1, -1);
+    }
+    privateKey = privateKey.replace(/\\n/g, '\n');
+
+    const serviceAccount = {
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: privateKey,
+    };
+
+    initializeApp({ credential: cert(serviceAccount as any) });
   } catch (error) {
     console.error('Failed to initialize Firebase Admin:', error);
   }
@@ -28,26 +34,38 @@ const db = getFirestore();
  * - Manual triggers: Accepts authenticated user requests (no CRON_SECRET needed)
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const authHeader = req.headers.authorization;
-  const cronSecret = process.env.CRON_SECRET;
-  
-  // Allow requests with valid CRON_SECRET OR from authenticated users
-  const isCronJob = cronSecret && authHeader === `Bearer ${cronSecret}`;
-  const isManualTrigger = req.body?.manual === true; // Manual trigger from authenticated user
-  
-  if (!isCronJob && !isManualTrigger) {
-    console.warn('⚠️ Unauthorized refresh attempt');
-    return res.status(401).json({ 
-      success: false,
-      error: 'Unauthorized: Must be a scheduled cron job or manual trigger' 
-    });
-  }
-
-  const triggerType = isCronJob ? 'Scheduled Cron Job' : 'Manual Trigger';
-  console.log(`🚀 Starting automated video refresh (${triggerType})...`);
-  const startTime = Date.now();
-
+  // Add top-level error handling
   try {
+    // Verify Firebase is initialized
+    if (!getApps().length) {
+      console.error('❌ Firebase Admin not initialized');
+      return res.status(500).json({
+        success: false,
+        error: 'Server configuration error: Firebase not initialized',
+        errorType: 'FIREBASE_INIT_ERROR'
+      });
+    }
+
+    const authHeader = req.headers.authorization;
+    const cronSecret = process.env.CRON_SECRET;
+    
+    // Allow requests with valid CRON_SECRET OR from authenticated users
+    const isCronJob = cronSecret && authHeader === `Bearer ${cronSecret}`;
+    const isManualTrigger = req.body?.manual === true; // Manual trigger from authenticated user
+    
+    if (!isCronJob && !isManualTrigger) {
+      console.warn('⚠️ Unauthorized refresh attempt');
+      return res.status(401).json({ 
+        success: false,
+        error: 'Unauthorized: Must be a scheduled cron job or manual trigger' 
+      });
+    }
+
+    const triggerType = isCronJob ? 'Scheduled Cron Job' : 'Manual Trigger';
+    console.log(`🚀 Starting automated video refresh (${triggerType})...`);
+    const startTime = Date.now();
+
+    try {
     // Get all organizations
     const orgsSnapshot = await db.collection('organizations').get();
     console.log(`📊 Found ${orgsSnapshot.size} organizations`);
@@ -163,11 +181,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json(summary);
 
+    } catch (error: any) {
+      console.error('❌ Cron job failed:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message,
+        errorType: 'PROCESSING_ERROR',
+        timestamp: new Date().toISOString()
+      });
+    }
   } catch (error: any) {
-    console.error('❌ Cron job failed:', error);
+    // Top-level catch for any unhandled errors
+    console.error('❌ Unhandled error in cron-refresh-videos:', error);
     return res.status(500).json({
       success: false,
-      error: error.message,
+      error: error?.message || 'Internal server error',
+      errorType: 'UNHANDLED_ERROR',
       timestamp: new Date().toISOString()
     });
   }
