@@ -60,7 +60,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       shares: snapshot.shares || 0,
       timestamp: new Date(snapshot.capturedAt).getTime()
     }));
-  }, [video?.id]);
+  }, [video?.id, video?.snapshots?.length]);
 
   // Calculate total growth
   const totalGrowth = useMemo(() => {
