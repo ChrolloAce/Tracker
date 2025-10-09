@@ -64,52 +64,19 @@ const KPICards: React.FC<KPICardsProps> = ({
   };
 
   const kpiData = useMemo(() => {
-    // For filtered date ranges, calculate growth during that period using snapshots
-    // For "all time", show total current metrics
-    const isFilteredPeriod = dateFilter !== 'all';
+    // Note: submissions are already filtered by date range from DashboardPage
+    // So we just need to sum up the current metrics for all filtered videos
     
     let totalViews = 0;
     let totalLikes = 0;
     let totalComments = 0;
     let totalShares = 0;
     
-    if (isFilteredPeriod) {
-      // Calculate delta (growth) for the filtered period using snapshots
-      submissions.forEach(video => {
-        if (!video.snapshots || video.snapshots.length === 0) {
-          // No snapshots: count full current metrics (newly added video)
-          totalViews += video.views || 0;
-          totalLikes += video.likes || 0;
-          totalComments += video.comments || 0;
-          totalShares += video.shares || 0;
-        } else {
-          // Has snapshots: find the earliest snapshot in the period and calculate delta
-          const sortedSnapshots = [...video.snapshots].sort((a, b) => 
-            new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
-          );
-          
-          // Find the first snapshot at or before the period start
-          const periodStartSnapshot = sortedSnapshots[0];
-          
-          // Calculate growth since that snapshot
-          const viewsDelta = Math.max(0, (video.views || 0) - (periodStartSnapshot?.views || 0));
-          const likesDelta = Math.max(0, (video.likes || 0) - (periodStartSnapshot?.likes || 0));
-          const commentsDelta = Math.max(0, (video.comments || 0) - (periodStartSnapshot?.comments || 0));
-          const sharesDelta = Math.max(0, (video.shares || 0) - (periodStartSnapshot?.shares || 0));
-          
-          totalViews += viewsDelta;
-          totalLikes += likesDelta;
-          totalComments += commentsDelta;
-          totalShares += sharesDelta;
-        }
-      });
-    } else {
-      // "All time": show total current metrics
-      totalViews = submissions.reduce((sum, v) => sum + (v.views || 0), 0);
-      totalLikes = submissions.reduce((sum, v) => sum + (v.likes || 0), 0);
-      totalComments = submissions.reduce((sum, v) => sum + (v.comments || 0), 0);
-      totalShares = submissions.reduce((sum, v) => sum + (v.shares || 0), 0);
-    }
+    // Sum up current metrics for all (already filtered) submissions
+    totalViews = submissions.reduce((sum, v) => sum + (v.views || 0), 0);
+    totalLikes = submissions.reduce((sum, v) => sum + (v.likes || 0), 0);
+    totalComments = submissions.reduce((sum, v) => sum + (v.comments || 0), 0);
+    totalShares = submissions.reduce((sum, v) => sum + (v.shares || 0), 0);
     
     const activeAccounts = new Set(submissions.map(v => v.uploaderHandle)).size;
     const publishedVideos = submissions.length;
