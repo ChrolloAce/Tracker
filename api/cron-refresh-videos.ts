@@ -248,7 +248,7 @@ async function refreshAccountVideos(
   projectId: string,
   accountId: string,
   username: string,
-  platform: 'instagram' | 'tiktok' | 'youtube'
+  platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter'
 ): Promise<any[]> {
   const APIFY_TOKEN = process.env.APIFY_TOKEN;
   
@@ -267,13 +267,30 @@ async function refreshAccountVideos(
       resultsLimit: 50
     };
   } else if (platform === 'tiktok') {
-    actorId = 'clockworks/tiktok-profile-scraper';
+    // FIXED: Use correct actor ID (clockworks~tiktok-scraper, not tiktok-profile-scraper)
+    actorId = 'clockworks~tiktok-scraper';
     input = {
       profiles: [username],
-      maxProfilesPerQuery: 1,
+      resultsPerPage: 100,
       shouldDownloadVideos: false,
       shouldDownloadCovers: false,
-      shouldDownloadSlideshowImages: false
+      shouldDownloadSubtitles: false,
+      proxy: {
+        useApifyProxy: true
+      }
+    };
+  } else if (platform === 'twitter') {
+    actorId = 'apidojo/tweet-scraper';
+    input = {
+      twitterHandles: [username],
+      maxItems: 100,
+      sort: 'Latest',
+      onlyImage: false,
+      onlyVideo: false,
+      onlyQuote: false,
+      onlyVerifiedUsers: false,
+      onlyTwitterBlue: false,
+      includeSearchTerms: false
     };
   } else {
     throw new Error(`Unsupported platform: ${platform}`);
@@ -324,6 +341,8 @@ async function saveVideosToFirestore(
       videoId = video.shortCode || video.id;
     } else if (platform === 'tiktok') {
       videoId = video.id || video.videoId;
+    } else if (platform === 'twitter') {
+      videoId = video.id;
     } else {
       continue;
     }
@@ -341,11 +360,34 @@ async function saveVideosToFirestore(
     // Check if video exists
     const existingDoc = await videoRef.get();
 
+    // Extract metrics based on platform
+    let views = 0;
+    let likes = 0;
+    let comments = 0;
+    let shares = 0;
+
+    if (platform === 'instagram') {
+      views = video.videoViewCount || video.viewCount || 0;
+      likes = video.likesCount || 0;
+      comments = video.commentsCount || 0;
+      shares = 0;
+    } else if (platform === 'tiktok') {
+      views = video.playCount || 0;
+      likes = video.diggCount || 0;
+      comments = video.commentCount || 0;
+      shares = video.shareCount || 0;
+    } else if (platform === 'twitter') {
+      views = video.viewCount || 0;
+      likes = video.likeCount || 0;
+      comments = video.replyCount || 0;
+      shares = video.retweetCount || 0;
+    }
+
     const videoData = {
-      views: platform === 'instagram' ? (video.videoViewCount || video.viewCount || 0) : (video.playCount || 0),
-      likes: platform === 'instagram' ? (video.likesCount || 0) : (video.diggCount || 0),
-      comments: platform === 'instagram' ? (video.commentsCount || 0) : (video.commentCount || 0),
-      shares: platform === 'tiktok' ? (video.shareCount || 0) : 0,
+      views,
+      likes,
+      comments,
+      shares,
       lastRefreshed: new Date()
     };
 
@@ -366,25 +408,61 @@ async function saveVideosToFirestore(
         capturedBy: 'scheduled_refresh' // Indicates this was from a scheduled cron job
       });
     } else {
-      // Create new video
+      // Create new video with platform-specific data
+      let url = '';
+      let thumbnail = '';
+      let title = '';
+      let description = '';
+      let uploadDate = new Date();
+      let duration = 0;
+      let hashtags: string[] = [];
+
+      if (platform === 'instagram') {
+        url = `https://www.instagram.com/reel/${videoId}`;
+        thumbnail = video.displayUrl || video.thumbnailUrl || '';
+        title = (video.caption || '').substring(0, 100);
+        description = video.caption || '';
+        uploadDate = new Date(video.timestamp || Date.now());
+        duration = video.videoDuration || 0;
+        hashtags = video.hashtags || [];
+      } else if (platform === 'tiktok') {
+        url = `https://www.tiktok.com/@${video.authorMeta?.name || 'user'}/video/${videoId}`;
+        thumbnail = video.covers?.[0] || '';
+        title = (video.text || '').substring(0, 100);
+        description = video.text || '';
+        uploadDate = new Date(video.createTime || Date.now());
+        duration = video.videoDuration || 0;
+        hashtags = video.hashtags || [];
+      } else if (platform === 'twitter') {
+        url = video.url || `https://twitter.com/i/status/${videoId}`;
+        // Get thumbnail from media if available
+        if (video.media && video.media.length > 0) {
+          thumbnail = video.media[0];
+        } else if (video.extendedEntities?.media && video.extendedEntities.media.length > 0) {
+          thumbnail = video.extendedEntities.media[0].media_url_https || '';
+        }
+        const tweetText = video.fullText || video.text || '';
+        title = tweetText.substring(0, 100);
+        description = tweetText;
+        uploadDate = new Date(video.createdAt || Date.now());
+        duration = 0; // Twitter doesn't provide video duration in basic data
+        hashtags = video.entities?.hashtags?.map((h: any) => h.text || '') || [];
+      }
+
       batch.set(videoRef, {
         ...videoData,
         id: videoId,
         orgId,
         trackedAccountId: accountId,
         videoId: videoId,
-        url: platform === 'instagram' ? 
-          `https://www.instagram.com/reel/${videoId}` : 
-          `https://www.tiktok.com/@${video.authorMeta?.name}/video/${videoId}`,
-        thumbnail: platform === 'instagram' ? 
-          (video.displayUrl || video.thumbnailUrl) : 
-          (video.covers?.[0] || ''),
-        title: (video.caption || video.text || '').substring(0, 100),
-        description: video.caption || video.text || '',
+        url,
+        thumbnail,
+        title,
+        description,
         platform: platform,
-        uploadDate: new Date(video.timestamp || video.createTime || Date.now()),
-        duration: video.videoDuration || 0,
-        hashtags: video.hashtags || [],
+        uploadDate,
+        duration,
+        hashtags,
         status: 'active',
         isSingular: false,
         dateAdded: new Date(),
