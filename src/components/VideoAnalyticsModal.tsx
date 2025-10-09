@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { X, ExternalLink, TrendingUp, TrendingDown, Eye, Heart, MessageCircle, Share2, ChevronDown } from 'lucide-react';
+import { X, ExternalLink, TrendingUp, TrendingDown, Eye, Heart, MessageCircle, Share2, ChevronDown, Camera } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -430,6 +430,97 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
             )}
           </div>
         </div>
+
+        {/* Snapshots List */}
+        {video.snapshots && video.snapshots.length > 0 && (
+          <div className="mt-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Camera className="w-5 h-5 text-white/60" />
+              <h3 className="text-base font-bold text-white">
+                Snapshots ({video.snapshots.length})
+              </h3>
+            </div>
+            <div className="bg-[#1A1A1A] border border-white/5 rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-white/5">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-[#A1A1AA] uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-[#A1A1AA] uppercase tracking-wider">
+                        Captured By
+                      </th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-[#A1A1AA] uppercase tracking-wider">
+                        Views
+                      </th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-[#A1A1AA] uppercase tracking-wider">
+                        Likes
+                      </th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-[#A1A1AA] uppercase tracking-wider">
+                        Comments
+                      </th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-[#A1A1AA] uppercase tracking-wider">
+                        Shares
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {video.snapshots
+                      .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())
+                      .map((snapshot, index) => {
+                        const capturedByLabel = 
+                          snapshot.capturedBy === 'initial_upload' ? 'Initial Upload' :
+                          snapshot.capturedBy === 'manual_refresh' ? 'Manual Refresh' :
+                          snapshot.capturedBy === 'scheduled_refresh' ? 'Scheduled Refresh' :
+                          'System';
+                        
+                        return (
+                          <tr 
+                            key={snapshot.id || index}
+                            className="border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors"
+                          >
+                            <td className="px-4 py-3 text-sm text-white/80">
+                              {new Date(snapshot.capturedAt).toLocaleString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                hour12: true
+                              })}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                snapshot.capturedBy === 'initial_upload' ? 'bg-blue-500/10 text-blue-400' :
+                                snapshot.capturedBy === 'manual_refresh' ? 'bg-purple-500/10 text-purple-400' :
+                                snapshot.capturedBy === 'scheduled_refresh' ? 'bg-green-500/10 text-green-400' :
+                                'bg-gray-500/10 text-gray-400'
+                              }`}>
+                                {capturedByLabel}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-white/90 text-right font-medium">
+                              {formatNumber(snapshot.views)}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-white/90 text-right font-medium">
+                              {formatNumber(snapshot.likes)}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-white/90 text-right font-medium">
+                              {formatNumber(snapshot.comments)}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-white/90 text-right font-medium">
+                              {formatNumber(snapshot.shares || 0)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -301,6 +301,31 @@ service cloud.firestore {
           allow update, delete: if canManageOrg(orgId);
         }
         
+        // Alternative path for rules (same as trackingRules)
+        match /rules/{ruleId} {
+          // All members can read rules
+          allow read: if canReadOrg(orgId);
+          
+          // All members can create rules
+          allow create: if canWriteOrg(orgId);
+          
+          // Only admins can update/delete rules
+          allow update, delete: if canManageOrg(orgId);
+        }
+        
+        // ==================== PROJECT LINK CLICKS (AGGREGATED) ====================
+        
+        match /linkClicks/{clickId} {
+          // All members can read aggregated click data
+          allow read: if canReadOrg(orgId);
+          
+          // Public API or system can create clicks
+          allow create: if true;
+          
+          // Clicks are immutable
+          allow update, delete: if false;
+        }
+        
         // ==================== PROJECT CREATOR LINKS ====================
         
         match /creatorLinks/{linkId} {
