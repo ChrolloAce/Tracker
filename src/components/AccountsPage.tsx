@@ -39,6 +39,7 @@ import { MiniTrendChart } from './ui/MiniTrendChart';
 import { TrendCalculationService } from '../services/TrendCalculationService';
 import { VideoSubmission } from '../types';
 import VideoPlayerModal from './VideoPlayerModal';
+import VideoAnalyticsModal from './VideoAnalyticsModal';
 import { DateFilterType } from './DateRangeFilter';
 import { Modal } from './ui/Modal';
 import { UrlParserService } from '../services/UrlParserService';
@@ -124,6 +125,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [viewMode, setViewMode] = useState<'table' | 'details'>('table');
   const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
   const [selectedVideoForPlayer, setSelectedVideoForPlayer] = useState<{url: string; title: string; platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter' } | null>(null);
+  const [selectedVideoForAnalytics, setSelectedVideoForAnalytics] = useState<VideoSubmission | null>(null);
+  const [isVideoAnalyticsModalOpen, setIsVideoAnalyticsModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState<string | null>(null);
   const [newAccountUrl, setNewAccountUrl] = useState('');
@@ -1788,6 +1791,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                           <tr 
                             key={video.id}
                             className="hover:bg-white/5 transition-colors cursor-pointer group"
+                            onClick={() => {
+                              setSelectedVideoForAnalytics(videoSubmission);
+                              setIsVideoAnalyticsModalOpen(true);
+                            }}
                           >
                             {visibleColumns.video && (
                             <td className="px-6 py-5 sticky left-0 bg-zinc-900/60 backdrop-blur z-10 group-hover:bg-white/5">
@@ -2124,6 +2131,16 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
           platform={selectedVideoForPlayer.platform}
         />
       )}
+
+      {/* Video Analytics Modal */}
+      <VideoAnalyticsModal
+        video={selectedVideoForAnalytics}
+        isOpen={isVideoAnalyticsModalOpen}
+        onClose={() => {
+          setIsVideoAnalyticsModalOpen(false);
+          setSelectedVideoForAnalytics(null);
+        }}
+      />
 
       {/* Rule Management Modal */}
       <Modal
