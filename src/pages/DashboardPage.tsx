@@ -198,6 +198,8 @@ function DashboardPage() {
           const account = video.trackedAccountId ? accountsMap.get(video.trackedAccountId) : null;
           const snapshots = snapshotsMap.get(video.id) || [];
           
+          const uploadDate = video.uploadDate?.toDate?.() || new Date();
+          
           return {
             id: video.id,
             url: video.url || '',
@@ -214,7 +216,8 @@ function DashboardPage() {
             comments: video.comments || 0,
             shares: video.shares || 0,
             dateSubmitted: video.dateAdded?.toDate?.() || new Date(),
-            uploadDate: video.uploadDate?.toDate?.() || new Date(),
+            uploadDate: uploadDate,
+            timestamp: uploadDate.toISOString(), // Add timestamp for backward compatibility
             lastRefreshed: video.lastRefreshed?.toDate?.(),
             snapshots: snapshots
           };
@@ -222,6 +225,17 @@ function DashboardPage() {
         
         console.log(`🎬 Real-time update: ${allSubmissions.length} videos`);
         console.log(`📸 Videos with snapshots: ${allSubmissions.filter(v => v.snapshots && v.snapshots.length > 0).length}`);
+        
+        // Debug: Log first video to check data
+        if (allSubmissions.length > 0) {
+          console.log('📹 Sample video data:', {
+            title: allSubmissions[0].title,
+            views: allSubmissions[0].views,
+            likes: allSubmissions[0].likes,
+            uploadDate: allSubmissions[0].uploadDate,
+            timestamp: allSubmissions[0].timestamp
+          });
+        }
         setSubmissions(allSubmissions);
         setIsLoadingData(false);
       } catch (error) {
