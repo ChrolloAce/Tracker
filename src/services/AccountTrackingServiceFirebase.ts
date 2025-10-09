@@ -845,6 +845,7 @@ export class AccountTrackingServiceFirebase {
         url: v.url || '',
         thumbnail: v.thumbnail || '',
         caption: v.description || '',
+        title: v.title || '',
         uploadDate: v.uploadDate.toDate(),
         views: v.views || 0,
         likes: v.likes || 0,

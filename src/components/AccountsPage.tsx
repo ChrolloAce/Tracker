@@ -392,7 +392,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
             url: video.url || '',
             platform: account.platform,
             thumbnail: video.thumbnail || '',
-            title: video.caption || 'No caption',
+            title: video.caption || video.title || 'No caption',
             uploader: account.displayName || account.username,
             uploaderHandle: account.username,
             status: 'approved' as const,
@@ -539,7 +539,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
           url: video.url || '',
           platform: selectedAccount.platform,
           thumbnail: video.thumbnail || '',
-          title: video.caption || 'No caption',
+          title: video.caption || video.title || 'No caption',
           uploader: selectedAccount.displayName || selectedAccount.username,
           uploaderHandle: selectedAccount.username,
           status: 'approved' as const,
@@ -1544,7 +1544,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                 url: video.url || '',
                 platform: selectedAccount.platform,
                 thumbnail: video.thumbnail || '',
-                title: video.caption || 'No caption',
+                title: video.caption || video.title || 'No caption',
                 uploader: selectedAccount.displayName || selectedAccount.username,
                 uploaderHandle: selectedAccount.username,
                 status: 'approved' as const,
@@ -1762,7 +1762,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                           url: video.url || '',
                           platform: selectedAccount.platform,
                           thumbnail: video.thumbnail || '',
-                          title: video.caption || 'No caption',
+                          title: video.caption || video.title || 'No caption',
                           uploader: selectedAccount.displayName || selectedAccount.username,
                           uploaderHandle: selectedAccount.username,
                           status: 'approved' as const,
@@ -1802,8 +1802,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                   </div>
                                 </div>
                                 <div className="min-w-0 flex-1 max-w-[200px]">
-                                  <p className="text-sm font-medium text-white truncate" title={video.caption || 'No caption'}>
-                                    {video.caption || 'No caption'}
+                                  <p className="text-sm font-medium text-white truncate" title={video.caption || video.title || 'No caption'}>
+                                    {video.caption || video.title || 'No caption'}
                                   </p>
                                   <p className="text-xs text-gray-400 mt-1 truncate">
                                     @{selectedAccount.username}
@@ -1824,7 +1824,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                   e.stopPropagation();
                                   setSelectedVideoForPlayer({
                                     url: video.url || '',
-                                    title: video.caption || 'No caption',
+                                    title: video.caption || video.title || 'No caption',
                                     platform: selectedAccount.platform
                                   });
                                   setVideoPlayerOpen(true);
