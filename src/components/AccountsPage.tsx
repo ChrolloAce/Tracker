@@ -1873,9 +1873,31 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                           <tr 
                             key={video.id}
                             className="hover:bg-white/5 transition-colors cursor-pointer group"
-                            onClick={() => {
-                              setSelectedVideoForAnalytics(videoSubmission);
-                              setIsVideoAnalyticsModalOpen(true);
+                            onClick={async () => {
+                              if (!currentOrgId || !currentProjectId) return;
+                              
+                              try {
+                                // Fetch snapshots for this video
+                                const snapshots = await FirestoreDataService.getVideoSnapshots(
+                                  currentOrgId, 
+                                  currentProjectId, 
+                                  video.id || video.videoId || ''
+                                );
+                                
+                                // Update videoSubmission with snapshots
+                                const videoSubmissionWithSnapshots: VideoSubmission = {
+                                  ...videoSubmission,
+                                  snapshots: snapshots
+                                };
+                                
+                                setSelectedVideoForAnalytics(videoSubmissionWithSnapshots);
+                                setIsVideoAnalyticsModalOpen(true);
+                              } catch (error) {
+                                console.error('❌ Failed to load snapshots:', error);
+                                // Still open modal without snapshots
+                                setSelectedVideoForAnalytics(videoSubmission);
+                                setIsVideoAnalyticsModalOpen(true);
+                              }
                             }}
                           >
                             {visibleColumns.video && (

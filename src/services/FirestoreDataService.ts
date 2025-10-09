@@ -17,10 +17,11 @@ import { db } from './firebase';
 import { 
   TrackedAccount, 
   VideoDoc,
-  VideoSnapshot,
+  VideoSnapshot as FirestoreVideoSnapshot,
   TrackedLink,
   LinkClick
 } from '../types/firestore';
+import { VideoSnapshot } from '../types/index';
 
 /**
  * FirestoreDataService - Manages videos, tracked accounts, and links within projects
@@ -249,6 +250,80 @@ class FirestoreDataService {
   }
 
   /**
+   * Get snapshots for a specific video
+   */
+  static async getVideoSnapshots(
+    orgId: string,
+    projectId: string,
+    videoId: string
+  ): Promise<VideoSnapshot[]> {
+    try {
+      const snapshotsRef = collection(
+        db, 
+        'organizations', orgId, 
+        'projects', projectId, 
+        'videos', videoId, 
+        'snapshots'
+      );
+      const snapshotsQuery = query(snapshotsRef, orderBy('capturedAt', 'asc'));
+      const snapshotsSnapshot = await getDocs(snapshotsQuery);
+      
+      const snapshots: VideoSnapshot[] = snapshotsSnapshot.docs.map(doc => {
+        const data = doc.data() as FirestoreVideoSnapshot;
+        
+        // Convert Firestore snapshot to VideoSubmission snapshot format
+        return {
+          id: doc.id,
+          videoId: data.videoId,
+          views: data.views,
+          likes: data.likes,
+          comments: data.comments,
+          shares: data.shares,
+          capturedAt: data.capturedAt?.toDate?.() || new Date(),
+          capturedBy: (data.capturedBy === 'initial_upload' || 
+                      data.capturedBy === 'manual_refresh' || 
+                      data.capturedBy === 'scheduled_refresh')
+                      ? data.capturedBy 
+                      : 'manual_refresh' as const
+        } as VideoSnapshot;
+      });
+      
+      return snapshots;
+    } catch (error) {
+      console.error(`❌ Failed to fetch snapshots for video ${videoId}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Get snapshots for multiple videos (batch operation)
+   */
+  static async getVideoSnapshotsBatch(
+    orgId: string,
+    projectId: string,
+    videoIds: string[]
+  ): Promise<Map<string, VideoSnapshot[]>> {
+    const snapshotsMap = new Map<string, VideoSnapshot[]>();
+    
+    // Fetch snapshots for each video
+    const promises = videoIds.map(async (videoId) => {
+      const snapshots = await this.getVideoSnapshots(orgId, projectId, videoId);
+      return { videoId, snapshots };
+    });
+    
+    const results = await Promise.all(promises);
+    
+    // Build map
+    results.forEach(({ videoId, snapshots }) => {
+      snapshotsMap.set(videoId, snapshots);
+    });
+    
+    console.log(`📸 Loaded snapshots for ${results.filter(r => r.snapshots.length > 0).length}/${videoIds.length} videos`);
+    
+    return snapshotsMap;
+  }
+
+  /**
    * Add or update multiple videos for a tracked account (batch operation)
    */
   static async syncAccountVideos(
@@ -418,12 +493,15 @@ class FirestoreDataService {
   ): Promise<void> {
     const batch = writeBatch(db);
     
-    // Create snapshot
+    // Create snapshot (using Firestore type for storage)
     const snapshotRef = doc(collection(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId, 'snapshots'));
-    const snapshotData: VideoSnapshot = {
+    const snapshotData: FirestoreVideoSnapshot = {
       id: snapshotRef.id,
       videoId,
-      ...metrics,
+      views: metrics.views,
+      likes: metrics.likes,
+      comments: metrics.comments,
+      shares: metrics.shares,
       capturedAt: Timestamp.now(),
       capturedBy: userId
     };
@@ -441,19 +519,6 @@ class FirestoreDataService {
     console.log(`✅ Added snapshot for video ${videoId}`);
   }
 
-  /**
-   * Get video snapshots for time-series analysis
-   */
-  static async getVideoSnapshots(orgId: string, projectId: string, videoId: string, limitCount: number = 30): Promise<VideoSnapshot[]> {
-    const q = query(
-      collection(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId, 'snapshots'),
-      orderBy('capturedAt', 'desc'),
-      limit(limitCount)
-    );
-    
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as VideoSnapshot));
-  }
 
   // ==================== TRACKED LINKS ====================
   

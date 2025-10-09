@@ -183,9 +183,20 @@ function DashboardPage() {
         const accounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
         const accountsMap = new Map(accounts.map(acc => [acc.id, acc]));
         
+        // Get video IDs for snapshot fetching
+        const videoIds = snapshot.docs.map(doc => doc.id);
+        
+        // Fetch snapshots for all videos in parallel
+        const snapshotsMap = await FirestoreDataService.getVideoSnapshotsBatch(
+          currentOrgId, 
+          currentProjectId, 
+          videoIds
+        );
+        
         const allSubmissions: VideoSubmission[] = snapshot.docs.map(doc => {
           const video = { id: doc.id, ...doc.data() } as any;
           const account = video.trackedAccountId ? accountsMap.get(video.trackedAccountId) : null;
+          const snapshots = snapshotsMap.get(video.id) || [];
           
           return {
             id: video.id,
@@ -205,11 +216,12 @@ function DashboardPage() {
             dateSubmitted: video.dateAdded?.toDate?.() || new Date(),
             uploadDate: video.uploadDate?.toDate?.() || new Date(),
             lastRefreshed: video.lastRefreshed?.toDate?.(),
-            snapshots: []
+            snapshots: snapshots
           };
         });
         
         console.log(`🎬 Real-time update: ${allSubmissions.length} videos`);
+        console.log(`📸 Videos with snapshots: ${allSubmissions.filter(v => v.snapshots && v.snapshots.length > 0).length}`);
         setSubmissions(allSubmissions);
         setIsLoadingData(false);
       } catch (error) {
