@@ -15,7 +15,7 @@ import DeleteOrganizationModal from './DeleteOrganizationModal';
  * Features: Profile settings, photo upload, subscription management
  */
 const SettingsPage: React.FC = () => {
-  const { logout, user } = useAuth();
+  const { logout, user, currentOrgId } = useAuth();
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -30,18 +30,15 @@ const SettingsPage: React.FC = () => {
   // Load current organization
   useEffect(() => {
     const loadOrganization = async () => {
-      console.log('🔍 Settings: Loading organization...', { hasUser: !!user });
+      console.log('🔍 Settings: Loading organization...', { hasUser: !!user, currentOrgId });
       
       if (!user) {
         console.log('⚠️ Settings: No user found');
         return;
       }
       
-      const currentOrgId = localStorage.getItem('currentOrganizationId');
-      console.log('🔍 Settings: Current org ID from localStorage:', currentOrgId);
-      
       if (!currentOrgId) {
-        console.log('⚠️ Settings: No organization ID in localStorage');
+        console.log('⚠️ Settings: No organization ID from AuthContext');
         return;
       }
 
@@ -65,7 +62,7 @@ const SettingsPage: React.FC = () => {
     };
 
     loadOrganization();
-  }, [user]);
+  }, [user, currentOrgId]);
 
   const handleLogout = async () => {
     if (window.confirm('Are you sure you want to sign out?')) {
@@ -192,7 +189,7 @@ const SettingsPage: React.FC = () => {
         <h3 className="text-sm font-bold text-yellow-800 dark:text-yellow-300 mb-2">🐛 Debug Info (temporary)</h3>
         <div className="text-xs font-mono text-yellow-700 dark:text-yellow-400 space-y-1">
           <p>User: {user?.email || 'Not loaded'}</p>
-          <p>Current Org ID: {localStorage.getItem('currentOrganizationId') || 'None'}</p>
+          <p>Current Org ID (from AuthContext): {currentOrgId || 'None'}</p>
           <p>Current Org Name: {currentOrganization?.name || 'Not loaded'}</p>
           <p>Is Owner: {isOwner ? 'Yes ✅' : 'No ❌'}</p>
           <p>Should show delete section: {currentOrganization && isOwner ? 'Yes ✅' : 'No ❌'}</p>
