@@ -157,7 +157,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
           try {
             // Fetch fresh data from platform
-            const videos = await refreshAccountVideos(
+            const result = await refreshAccountVideos(
               orgId,
               projectId,
               accountId,
@@ -165,17 +165,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               platform
             );
 
-            if (videos && videos.length > 0) {
-              console.log(`    ✅ Successfully refreshed ${videos.length} videos for @${username}`);
-              totalVideosRefreshed += videos.length;
+            if (result.fetched > 0) {
+              console.log(`    ✅ @${username}: Updated ${result.updated} videos, Skipped ${result.skipped} new videos`);
+              totalVideosRefreshed += result.updated;
 
               // Update account lastSynced timestamp
               await accountDoc.ref.update({
-                lastSynced: new Date(),
-                totalVideos: videos.length
+                lastSynced: new Date()
               });
             } else {
-              console.log(`    ⚠️ No videos found for @${username}`);
+              console.log(`    ⚠️ No videos returned from API for @${username}`);
             }
 
           } catch (error: any) {
@@ -250,7 +249,7 @@ async function refreshAccountVideos(
   accountId: string,
   username: string,
   platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter'
-): Promise<any[]> {
+): Promise<{ fetched: number; updated: number; skipped: number }> {
   // Use the appropriate Apify actor based on platform
   let actorId: string;
   let input: any;
@@ -301,16 +300,26 @@ async function refreshAccountVideos(
 
   console.log(`    📊 Apify returned ${videos.length} items for ${platform}`);
 
-  // Save videos to Firestore
+  // Save videos to Firestore (only update existing ones)
+  let updated = 0;
+  let skipped = 0;
+  
   if (videos && videos.length > 0) {
-    await saveVideosToFirestore(orgId, projectId, accountId, videos, platform);
+    const counts = await saveVideosToFirestore(orgId, projectId, accountId, videos, platform);
+    updated = counts.updated;
+    skipped = counts.skipped;
   }
 
-  return videos;
+  return {
+    fetched: videos.length,
+    updated: updated,
+    skipped: skipped
+  };
 }
 
 /**
  * Save videos to Firestore with batched writes
+ * ONLY updates existing videos - does not add new videos
  */
 async function saveVideosToFirestore(
   orgId: string,
@@ -318,9 +327,11 @@ async function saveVideosToFirestore(
   accountId: string,
   videos: any[],
   platform: string
-) {
+): Promise<{ updated: number; skipped: number }> {
   const batch = db.batch();
   let batchCount = 0;
+  let updatedCount = 0;
+  let skippedCount = 0;
   const BATCH_SIZE = 500;
 
   for (const video of videos) {
@@ -380,98 +391,30 @@ async function saveVideosToFirestore(
       lastRefreshed: new Date()
     };
 
-    if (existingDoc.exists) {
-      // Update existing video
-      batch.update(videoRef, videoData);
-      
-      // Create a snapshot for the updated metrics
-      const snapshotRef = videoRef.collection('snapshots').doc();
-      batch.set(snapshotRef, {
-        id: snapshotRef.id,
-        videoId: videoId,
-        views: videoData.views,
-        likes: videoData.likes,
-        comments: videoData.comments,
-        shares: videoData.shares,
-        capturedAt: new Date(),
-        capturedBy: 'scheduled_refresh' // Indicates this was from a scheduled cron job
-      });
-    } else {
-      // Create new video with platform-specific data
-      let url = '';
-      let thumbnail = '';
-      let title = '';
-      let description = '';
-      let uploadDate = new Date();
-      let duration = 0;
-      let hashtags: string[] = [];
-
-      if (platform === 'instagram') {
-        url = `https://www.instagram.com/reel/${videoId}`;
-        thumbnail = video.displayUrl || video.thumbnailUrl || '';
-        title = (video.caption || '').substring(0, 100);
-        description = video.caption || '';
-        uploadDate = new Date(video.timestamp || Date.now());
-        duration = video.videoDuration || 0;
-        hashtags = video.hashtags || [];
-      } else if (platform === 'tiktok') {
-        url = `https://www.tiktok.com/@${video.authorMeta?.name || 'user'}/video/${videoId}`;
-        thumbnail = video.covers?.[0] || '';
-        title = (video.text || '').substring(0, 100);
-        description = video.text || '';
-        uploadDate = new Date(video.createTime || Date.now());
-        duration = video.videoDuration || 0;
-        hashtags = video.hashtags || [];
-      } else if (platform === 'twitter') {
-        url = video.url || `https://twitter.com/i/status/${videoId}`;
-        // Get thumbnail from media if available
-        if (video.media && video.media.length > 0) {
-          thumbnail = video.media[0];
-        } else if (video.extendedEntities?.media && video.extendedEntities.media.length > 0) {
-          thumbnail = video.extendedEntities.media[0].media_url_https || '';
-        }
-        const tweetText = video.fullText || video.text || '';
-        title = tweetText.substring(0, 100);
-        description = tweetText;
-        uploadDate = new Date(video.createdAt || Date.now());
-        duration = 0; // Twitter doesn't provide video duration in basic data
-        hashtags = video.entities?.hashtags?.map((h: any) => h.text || '') || [];
-      }
-
-      batch.set(videoRef, {
-        ...videoData,
-        id: videoId,
-        orgId,
-        trackedAccountId: accountId,
-        videoId: videoId,
-        url,
-        thumbnail,
-        title,
-        description,
-        platform: platform,
-        uploadDate,
-        duration,
-        hashtags,
-        status: 'active',
-        isSingular: false,
-        dateAdded: new Date(),
-        addedBy: 'cron-job'
-      });
-      
-      // Create initial snapshot for new video
-      const snapshotRef = videoRef.collection('snapshots').doc();
-      batch.set(snapshotRef, {
-        id: snapshotRef.id,
-        videoId: videoId,
-        views: videoData.views,
-        likes: videoData.likes,
-        comments: videoData.comments,
-        shares: videoData.shares,
-        capturedAt: new Date(),
-        capturedBy: 'initial_upload' // Indicates this was from initial video upload
-      });
+    // ONLY update existing videos - don't add new ones
+    if (!existingDoc.exists) {
+      // Skip videos that don't already exist in the database
+      skippedCount++;
+      continue;
     }
 
+    // Update existing video metrics
+    batch.update(videoRef, videoData);
+    
+    // Create a snapshot for the updated metrics
+    const snapshotRef = videoRef.collection('snapshots').doc();
+    batch.set(snapshotRef, {
+      id: snapshotRef.id,
+      videoId: videoId,
+      views: videoData.views,
+      likes: videoData.likes,
+      comments: videoData.comments,
+      shares: videoData.shares,
+      capturedAt: new Date(),
+      capturedBy: 'scheduled_refresh' // Indicates this was from a scheduled cron job
+    });
+
+    updatedCount++;
     batchCount++;
 
     // Commit batch if we reach the limit
@@ -485,5 +428,9 @@ async function saveVideosToFirestore(
   if (batchCount > 0) {
     await batch.commit();
   }
+
+  console.log(`      📊 Updated: ${updatedCount} videos, Skipped: ${skippedCount} new videos`);
+  
+  return { updated: updatedCount, skipped: skippedCount };
 }
 
