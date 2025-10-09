@@ -697,13 +697,25 @@ export class AccountTrackingServiceFirebase {
         );
       }
 
+      const caption = item.text || item.description || '';
+      
+      // Debug: Log first video caption
+      if (videos.length === 0 && caption) {
+        console.log('🔍 TikTok first video caption:', {
+          text: item.text,
+          description: item.description,
+          finalCaption: caption,
+          videoId: item.id
+        });
+      }
+      
       videos.push({
         id: `${account.id}_${item.id}`,
         accountId: account.id,
         videoId: item.id || '',
         url: item.webVideoUrl || `https://www.tiktok.com/@${account.username}/video/${item.id}`,
         thumbnail: uploadedThumbnail,
-        caption: item.text || item.description || '',
+        caption: caption,
         uploadDate: new Date(item.createTimeISO || item.createTime || Date.now()),
         views: item.playCount || 0,
         likes: item.diggCount || 0,

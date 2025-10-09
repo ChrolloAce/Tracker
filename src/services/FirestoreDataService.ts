@@ -298,6 +298,16 @@ class FirestoreDataService {
               lastRefreshed: Timestamp.now()
             });
           } else {
+            // Debug: Log first video being saved
+            if (batchVideos.indexOf(video) === 0 && video.caption) {
+              console.log('🔍 Saving first video to Firestore:', {
+                caption: video.caption,
+                title: video.caption?.substring(0, 100),
+                description: video.caption,
+                videoId: video.videoId
+              });
+            }
+            
             // Create new video document
             const videoData: VideoDoc = {
               id: videoRef.id,

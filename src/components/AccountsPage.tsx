@@ -511,6 +511,15 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, currentProjectId, selectedAccount.id);
         console.log('📹 Loaded videos from Firestore:', videos.length);
         
+        // Debug: Check caption data
+        if (videos.length > 0) {
+          console.log('🔍 First video caption data:', {
+            caption: videos[0].caption,
+            title: videos[0].title,
+            url: videos[0].url
+          });
+        }
+        
         // Apply rules to filter videos in real-time
         console.log('📋 Applying rules to filter videos...');
         
