@@ -1,10 +1,12 @@
-import React, { useState, useRef } from 'react';
-import { Settings, LogOut, Crown, Upload, Camera, Mail, Send } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Settings, LogOut, Crown, Upload, Camera, Mail, Send, Trash2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../services/firebase';
 import EmailService from '../services/EmailService';
+import OrganizationService from '../services/OrganizationService';
+import DeleteOrganizationModal from './DeleteOrganizationModal';
 
 /**
  * SettingsPage Component
@@ -19,6 +21,36 @@ const SettingsPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Organization management
+  const [currentOrganization, setCurrentOrganization] = useState<any>(null);
+  const [isOwner, setIsOwner] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  // Load current organization
+  useEffect(() => {
+    const loadOrganization = async () => {
+      if (!user) return;
+      
+      const currentOrgId = localStorage.getItem('currentOrganizationId');
+      if (!currentOrgId) return;
+
+      try {
+        const orgs = await OrganizationService.getUserOrganizations(user.uid);
+        const org = orgs.find(o => o.id === currentOrgId);
+        setCurrentOrganization(org || null);
+        
+        if (org) {
+          const ownerStatus = await OrganizationService.isOrgOwner(org.id, user.uid);
+          setIsOwner(ownerStatus);
+        }
+      } catch (error) {
+        console.error('Failed to load organization:', error);
+      }
+    };
+
+    loadOrganization();
+  }, [user]);
 
   const handleLogout = async () => {
     if (window.confirm('Are you sure you want to sign out?')) {
@@ -105,6 +137,25 @@ const SettingsPage: React.FC = () => {
       alert('Failed to send test email. Please try again.');
     } finally {
       setSendingEmail(false);
+    }
+  };
+
+  const handleDeleteOrganization = async (organizationId: string) => {
+    if (!user) return;
+    
+    try {
+      await OrganizationService.deleteOrganization(organizationId, user.uid);
+      
+      // Clear local storage
+      localStorage.removeItem('currentOrganizationId');
+      localStorage.removeItem('currentProjectId');
+      
+      // Redirect to create organization page
+      alert('✅ Organization deleted successfully!');
+      window.location.href = '/';
+    } catch (error: any) {
+      console.error('Failed to delete organization:', error);
+      throw error;
     }
   };
 
@@ -285,6 +336,40 @@ const SettingsPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Danger Zone - Delete Organization */}
+        {currentOrganization && isOwner && (
+          <div className="bg-white dark:bg-[#161616] rounded-xl border-2 border-red-200 dark:border-red-900/50 overflow-hidden">
+            <div className="px-6 py-4 border-b border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/10">
+              <h2 className="text-lg font-semibold text-red-600 dark:text-red-400 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5" />
+                Danger Zone
+              </h2>
+            </div>
+            <div className="p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-medium text-gray-900 dark:text-white mb-1">
+                    Delete Organization
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Permanently delete "{currentOrganization.name}" and all its data
+                  </p>
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-2 font-medium">
+                    ⚠️ This action cannot be undone. All projects, videos, and analytics will be lost.
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setIsDeleteModalOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex-shrink-0"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Account Actions */}
         <div className="bg-white dark:bg-[#161616] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           <div className="p-6">
@@ -310,6 +395,17 @@ const SettingsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Delete Organization Modal */}
+      {currentOrganization && (
+        <DeleteOrganizationModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          organizationName={currentOrganization.name}
+          organizationId={currentOrganization.id}
+          onConfirmDelete={handleDeleteOrganization}
+        />
+      )}
     </div>
   );
 };
