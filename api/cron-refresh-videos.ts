@@ -162,7 +162,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               projectId,
               accountId,
               username,
-              platform
+              platform,
+              isManualTrigger
             );
 
             if (result.fetched > 0) {
@@ -248,7 +249,8 @@ async function refreshAccountVideos(
   projectId: string,
   accountId: string,
   username: string,
-  platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter'
+  platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter',
+  isManualTrigger: boolean
 ): Promise<{ fetched: number; updated: number; skipped: number }> {
   // Use the appropriate Apify actor based on platform
   let actorId: string;
@@ -305,7 +307,7 @@ async function refreshAccountVideos(
   let skipped = 0;
   
   if (videos && videos.length > 0) {
-    const counts = await saveVideosToFirestore(orgId, projectId, accountId, videos, platform);
+    const counts = await saveVideosToFirestore(orgId, projectId, accountId, videos, platform, isManualTrigger);
     updated = counts.updated;
     skipped = counts.skipped;
   }
@@ -326,7 +328,8 @@ async function saveVideosToFirestore(
   projectId: string,
   accountId: string,
   videos: any[],
-  platform: string
+  platform: string,
+  isManualTrigger: boolean
 ): Promise<{ updated: number; skipped: number }> {
   const batch = db.batch();
   let batchCount = 0;
@@ -411,7 +414,7 @@ async function saveVideosToFirestore(
       comments: videoData.comments,
       shares: videoData.shares,
       capturedAt: new Date(),
-      capturedBy: 'scheduled_refresh' // Indicates this was from a scheduled cron job
+      capturedBy: isManualTrigger ? 'manual_refresh' : 'scheduled_refresh'
     });
 
     updatedCount++;
