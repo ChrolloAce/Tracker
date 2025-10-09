@@ -627,7 +627,7 @@ function DashboardPage() {
   const handleManualRefreshAll = useCallback(async () => {
     if (!user || !currentOrgId || !currentProjectId || isManualRefreshing) return;
     
-    console.log('🔄 Starting manual refresh for all videos (via cron endpoint)...');
+    console.log('🔄 Starting manual refresh for current organization and project...');
     setIsManualRefreshing(true);
     
     try {
@@ -635,7 +635,9 @@ function DashboardPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          manual: true // Flag to indicate this is a manual trigger, not a scheduled cron job
+          manual: true, // Flag to indicate this is a manual trigger, not a scheduled cron job
+          organizationId: currentOrgId, // Only refresh current organization
+          projectId: currentProjectId // Only refresh current project
         })
       });
       

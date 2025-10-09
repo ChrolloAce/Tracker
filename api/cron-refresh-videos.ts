@@ -61,14 +61,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
+    // Get scope from request body (for manual triggers)
+    const scopedOrgId = req.body?.organizationId;
+    const scopedProjectId = req.body?.projectId;
+    
     const triggerType = isCronJob ? 'Scheduled Cron Job' : 'Manual Trigger';
-    console.log(`🚀 Starting automated video refresh (${triggerType})...`);
+    const scopeInfo = scopedOrgId ? ` (Org: ${scopedOrgId}${scopedProjectId ? `, Project: ${scopedProjectId}` : ''})` : ' (All Organizations)';
+    console.log(`🚀 Starting automated video refresh (${triggerType}${scopeInfo})...`);
     const startTime = Date.now();
 
     try {
-    // Get all organizations
-    const orgsSnapshot = await db.collection('organizations').get();
-    console.log(`📊 Found ${orgsSnapshot.size} organizations`);
+    // Get organizations to process
+    let orgsSnapshot;
+    if (scopedOrgId) {
+      // Manual trigger: only process specified organization
+      const orgDoc = await db.collection('organizations').doc(scopedOrgId).get();
+      if (!orgDoc.exists) {
+        return res.status(404).json({
+          success: false,
+          error: `Organization ${scopedOrgId} not found`,
+          errorType: 'ORG_NOT_FOUND'
+        });
+      }
+      orgsSnapshot = { docs: [orgDoc], size: 1 };
+    } else {
+      // Scheduled cron: process all organizations
+      orgsSnapshot = await db.collection('organizations').get();
+    }
+    console.log(`📊 Found ${orgsSnapshot.size} organization(s) to process`);
 
     let totalAccountsProcessed = 0;
     let totalVideosRefreshed = 0;
@@ -79,14 +99,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const orgId = orgDoc.id;
       console.log(`\n📁 Processing organization: ${orgId}`);
 
-      // Get all projects for this org
-      const projectsSnapshot = await db
-        .collection('organizations')
-        .doc(orgId)
-        .collection('projects')
-        .get();
+      // Get projects to process
+      let projectsSnapshot;
+      if (scopedProjectId && scopedOrgId === orgId) {
+        // Manual trigger with specific project: only process that project
+        const projectDoc = await db
+          .collection('organizations')
+          .doc(orgId)
+          .collection('projects')
+          .doc(scopedProjectId)
+          .get();
+        
+        if (!projectDoc.exists) {
+          console.error(`  ⚠️ Project ${scopedProjectId} not found in organization ${orgId}`);
+          continue;
+        }
+        projectsSnapshot = { docs: [projectDoc], size: 1 };
+      } else {
+        // Get all projects for this org
+        projectsSnapshot = await db
+          .collection('organizations')
+          .doc(orgId)
+          .collection('projects')
+          .get();
+      }
 
-      console.log(`  📂 Found ${projectsSnapshot.size} projects`);
+      console.log(`  📂 Found ${projectsSnapshot.size} project(s) to process`);
 
       // Process each project
       for (const projectDoc of projectsSnapshot.docs) {
