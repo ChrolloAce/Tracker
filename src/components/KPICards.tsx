@@ -412,12 +412,12 @@ const KPICards: React.FC<KPICardsProps> = ({
       {
         id: 'link-clicks',
         label: 'Link Clicks',
-        value: linkClicks.length === 0 ? 'Need setup →' : formatNumber(linkClicks.length),
+        value: formatNumber(linkClicks.length),
         icon: LinkIcon,
         accent: 'slate',
         isEmpty: linkClicks.length === 0,
-        ctaText: linkClicks.length === 0 ? 'Create one' : undefined,
-        period: linkClicks.length > 0 ? 'Total clicks' : undefined,
+        ctaText: linkClicks.length === 0 ? 'Create link' : undefined,
+        period: 'Total clicks',
         sparklineData: (() => {
           // Generate link clicks sparkline data
           let numPoints = 30;
@@ -711,7 +711,7 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
         </div>
 
         {/* Right: Sparkline */}
-        {data.sparklineData && !data.isEmpty && (
+        {data.sparklineData && (
           <div className="w-[40%] h-full flex items-center ml-2">
             <KPISparkline
               data={data.sparklineData}
