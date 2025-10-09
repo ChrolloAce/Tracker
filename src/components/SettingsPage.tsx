@@ -30,34 +30,19 @@ const SettingsPage: React.FC = () => {
   // Load current organization
   useEffect(() => {
     const loadOrganization = async () => {
-      console.log('🔍 Settings: Loading organization...', { hasUser: !!user, currentOrgId });
-      
-      if (!user) {
-        console.log('⚠️ Settings: No user found');
-        return;
-      }
-      
-      if (!currentOrgId) {
-        console.log('⚠️ Settings: No organization ID from AuthContext');
-        return;
-      }
+      if (!user || !currentOrgId) return;
 
       try {
         const orgs = await OrganizationService.getUserOrganizations(user.uid);
-        console.log('🔍 Settings: User organizations:', orgs);
-        
         const org = orgs.find(o => o.id === currentOrgId);
-        console.log('🔍 Settings: Found current org:', org);
-        
         setCurrentOrganization(org || null);
         
         if (org) {
           const ownerStatus = await OrganizationService.isOrgOwner(org.id, user.uid);
-          console.log('🔍 Settings: Is owner?', ownerStatus);
           setIsOwner(ownerStatus);
         }
       } catch (error) {
-        console.error('❌ Settings: Failed to load organization:', error);
+        console.error('Failed to load organization:', error);
       }
     };
 
@@ -182,18 +167,6 @@ const SettingsPage: React.FC = () => {
         <p className="mt-2 text-gray-600 dark:text-gray-400">
           Manage your preferences and account settings
         </p>
-      </div>
-
-      {/* DEBUG INFO - TEMPORARY */}
-      <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-        <h3 className="text-sm font-bold text-yellow-800 dark:text-yellow-300 mb-2">🐛 Debug Info (temporary)</h3>
-        <div className="text-xs font-mono text-yellow-700 dark:text-yellow-400 space-y-1">
-          <p>User: {user?.email || 'Not loaded'}</p>
-          <p>Current Org ID (from AuthContext): {currentOrgId || 'None'}</p>
-          <p>Current Org Name: {currentOrganization?.name || 'Not loaded'}</p>
-          <p>Is Owner: {isOwner ? 'Yes ✅' : 'No ❌'}</p>
-          <p>Should show delete section: {currentOrganization && isOwner ? 'Yes ✅' : 'No ❌'}</p>
-        </div>
       </div>
 
       {/* Settings Sections */}

@@ -78,8 +78,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const orgData = orgDoc.data();
     console.log(`📁 Organization: ${orgData?.name}`);
 
-    // Verify user is the owner
-    if (orgData?.ownerId !== userId) {
+    // Verify user is the owner (field is ownerUserId, not ownerId)
+    if (orgData?.ownerUserId !== userId) {
+      console.error(`❌ Permission denied: User ${userId} is not owner (owner is: ${orgData?.ownerUserId})`);
       return res.status(403).json({
         success: false,
         error: 'Only the organization owner can delete it'
