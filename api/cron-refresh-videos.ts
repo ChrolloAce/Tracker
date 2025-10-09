@@ -21,21 +21,30 @@ const db = getFirestore();
 
 /**
  * Cron Job: Refresh all videos for all tracked accounts
- * Runs every 12 hours
+ * Runs every 12 hours (scheduled) or can be triggered manually by authenticated users
  * 
- * Security: Requires CRON_SECRET environment variable to match
+ * Security: 
+ * - Cron jobs: Requires CRON_SECRET in Authorization header
+ * - Manual triggers: Accepts authenticated user requests (no CRON_SECRET needed)
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Security check - verify cron secret
   const authHeader = req.headers.authorization;
   const cronSecret = process.env.CRON_SECRET;
   
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-    console.warn('⚠️ Unauthorized cron job attempt');
-    return res.status(401).json({ error: 'Unauthorized' });
+  // Allow requests with valid CRON_SECRET OR from authenticated users
+  const isCronJob = cronSecret && authHeader === `Bearer ${cronSecret}`;
+  const isManualTrigger = req.body?.manual === true; // Manual trigger from authenticated user
+  
+  if (!isCronJob && !isManualTrigger) {
+    console.warn('⚠️ Unauthorized refresh attempt');
+    return res.status(401).json({ 
+      success: false,
+      error: 'Unauthorized: Must be a scheduled cron job or manual trigger' 
+    });
   }
 
-  console.log('🚀 Starting automated video refresh job...');
+  const triggerType = isCronJob ? 'Scheduled Cron Job' : 'Manual Trigger';
+  console.log(`🚀 Starting automated video refresh (${triggerType})...`);
   const startTime = Date.now();
 
   try {
@@ -276,6 +285,19 @@ async function saveVideosToFirestore(
     if (existingDoc.exists()) {
       // Update existing video
       batch.update(videoRef, videoData);
+      
+      // Create a snapshot for the updated metrics
+      const snapshotRef = videoRef.collection('snapshots').doc();
+      batch.set(snapshotRef, {
+        id: snapshotRef.id,
+        videoId: videoId,
+        views: videoData.views,
+        likes: videoData.likes,
+        comments: videoData.comments,
+        shares: videoData.shares,
+        capturedAt: new Date(),
+        capturedBy: 'scheduled_refresh' // Indicates this was from a scheduled cron job
+      });
     } else {
       // Create new video
       batch.set(videoRef, {
@@ -300,6 +322,19 @@ async function saveVideosToFirestore(
         isSingular: false,
         dateAdded: new Date(),
         addedBy: 'cron-job'
+      });
+      
+      // Create initial snapshot for new video
+      const snapshotRef = videoRef.collection('snapshots').doc();
+      batch.set(snapshotRef, {
+        id: snapshotRef.id,
+        videoId: videoId,
+        views: videoData.views,
+        likes: videoData.likes,
+        comments: videoData.comments,
+        shares: videoData.shares,
+        capturedAt: new Date(),
+        capturedBy: 'initial_upload' // Indicates this was from initial video upload
       });
     }
 

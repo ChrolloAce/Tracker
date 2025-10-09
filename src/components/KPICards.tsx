@@ -64,8 +64,37 @@ const KPICards: React.FC<KPICardsProps> = ({
   };
 
   const kpiData = useMemo(() => {
+    // Determine the date range based on date filter
+    let dateRangeStart: Date | null = null;
+    let dateRangeEnd: Date = new Date(); // Always up to now
+    
+    if (dateFilter === 'today') {
+      dateRangeStart = new Date();
+      dateRangeStart.setHours(0, 0, 0, 0);
+    } else if (dateFilter === 'last7days') {
+      dateRangeStart = new Date();
+      dateRangeStart.setDate(dateRangeStart.getDate() - 7);
+    } else if (dateFilter === 'last30days') {
+      dateRangeStart = new Date();
+      dateRangeStart.setDate(dateRangeStart.getDate() - 30);
+    } else if (dateFilter === 'last90days') {
+      dateRangeStart = new Date();
+      dateRangeStart.setDate(dateRangeStart.getDate() - 90);
+    } else if (dateFilter === 'mtd') {
+      dateRangeStart = new Date();
+      dateRangeStart.setDate(1);
+      dateRangeStart.setHours(0, 0, 0, 0);
+    } else if (dateFilter === 'ytd') {
+      dateRangeStart = new Date();
+      dateRangeStart.setMonth(0, 1);
+      dateRangeStart.setHours(0, 0, 0, 0);
+    }
+    // For 'all' time, dateRangeStart remains null
+    
     // Note: submissions are already filtered by date range from DashboardPage
-    // So we just need to sum up the current metrics for all filtered videos
+    // We need to:
+    // 1. Sum up current metrics for all filtered videos
+    // 2. Add snapshot values if they fall within the selected time period
     
     let totalViews = 0;
     let totalLikes = 0;
@@ -77,6 +106,27 @@ const KPICards: React.FC<KPICardsProps> = ({
     totalLikes = submissions.reduce((sum, v) => sum + (v.likes || 0), 0);
     totalComments = submissions.reduce((sum, v) => sum + (v.comments || 0), 0);
     totalShares = submissions.reduce((sum, v) => sum + (v.shares || 0), 0);
+    
+    // Add snapshot values that fall within the selected date range
+    if (dateRangeStart) {
+      submissions.forEach(video => {
+        if (video.snapshots && video.snapshots.length > 0) {
+          video.snapshots.forEach(snapshot => {
+            const capturedDate = snapshot.capturedAt instanceof Date 
+              ? snapshot.capturedAt 
+              : new Date(snapshot.capturedAt);
+            
+            // Check if snapshot falls within the selected time period
+            if (capturedDate >= dateRangeStart! && capturedDate <= dateRangeEnd) {
+              totalViews += snapshot.views || 0;
+              totalLikes += snapshot.likes || 0;
+              totalComments += snapshot.comments || 0;
+              totalShares += snapshot.shares || 0;
+            }
+          });
+        }
+      });
+    }
     
     const activeAccounts = new Set(submissions.map(v => v.uploaderHandle)).size;
     const publishedVideos = submissions.length;

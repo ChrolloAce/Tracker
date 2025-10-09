@@ -623,21 +623,19 @@ function DashboardPage() {
     console.log('✅ TikTok search results added and saved locally!');
   }, []);
 
-  // Manual refresh all videos - creates new snapshots
+  // Manual refresh all videos - triggers cron job to create new snapshots
   const handleManualRefreshAll = useCallback(async () => {
     if (!user || !currentOrgId || !currentProjectId || isManualRefreshing) return;
     
-    console.log('🔄 Starting manual refresh for all videos...');
+    console.log('🔄 Starting manual refresh for all videos (via cron endpoint)...');
     setIsManualRefreshing(true);
     
     try {
-      const response = await fetch('/api/manual-refresh-all', {
+      const response = await fetch('/api/cron-refresh-videos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          orgId: currentOrgId,
-          projectId: currentProjectId,
-          userId: user.uid
+          manual: true // Flag to indicate this is a manual trigger, not a scheduled cron job
         })
       });
       
