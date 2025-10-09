@@ -2,24 +2,30 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 
-// Initialize Firebase Admin
-let firebaseInitialized = false;
-if (!getApps().length) {
+// Initialize Firebase Admin (using separate env vars like other working endpoints)
+if (getApps().length === 0) {
   try {
-    const serviceAccount = JSON.parse(
-      process.env.FIREBASE_SERVICE_ACCOUNT_KEY || '{}'
-    );
-    
-    initializeApp({
-      credential: cert(serviceAccount)
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
+    // Handle quoted private keys
+    if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+      privateKey = privateKey.slice(1, -1);
+    }
+    // Replace escaped newlines with actual newlines
+    privateKey = privateKey.replace(/\\n/g, '\n');
+
+    const serviceAccount = {
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: privateKey,
+    };
+
+    initializeApp({ 
+      credential: cert(serviceAccount as any) 
     });
-    firebaseInitialized = true;
     console.log('✅ Firebase Admin initialized');
   } catch (error) {
     console.error('❌ Failed to initialize Firebase Admin:', error);
   }
-} else {
-  firebaseInitialized = true;
 }
 
 /**
@@ -31,16 +37,6 @@ if (!getApps().length) {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Wrap entire handler in try-catch to ensure all errors return JSON
   try {
-    // Check Firebase initialization
-    if (!firebaseInitialized) {
-      console.error('❌ Firebase not initialized');
-      return res.status(500).json({ 
-        success: false,
-        error: 'Firebase Admin not initialized',
-        timestamp: new Date().toISOString()
-      });
-    }
-
     if (req.method !== 'POST') {
       return res.status(405).json({ 
         success: false,
