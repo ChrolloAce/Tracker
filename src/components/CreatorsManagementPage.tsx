@@ -14,6 +14,7 @@ import userProfileAnimation from '../../public/lottie/User Profile.json';
 
 export interface CreatorsManagementPageRef {
   openInviteModal: () => void;
+  refreshData?: () => Promise<void>;
 }
 
 /**
@@ -37,7 +38,12 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
 
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
-    openInviteModal: () => setShowInviteModal(true)
+    openInviteModal: () => setShowInviteModal(true),
+    refreshData: async () => {
+      console.log('🔄 Manually refreshing CreatorsManagementPage data...');
+      await loadData();
+      console.log('✅ CreatorsManagementPage data refreshed');
+    }
   }));
 
   const calculateCreatorEarnings = async (creatorId: string, profile: Creator) => {

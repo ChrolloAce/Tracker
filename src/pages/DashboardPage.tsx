@@ -28,7 +28,8 @@ import LinkClicksService, { LinkClick } from '../services/LinkClicksService';
 import RulesService from '../services/RulesService';
 import { cssVariables } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp, collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
+import { db } from '../services/firebase';
 import { fixVideoPlatforms } from '../services/FixVideoPlatform';
 import { TrackedAccount } from '../types/firestore';
 
@@ -91,6 +92,33 @@ function DashboardPage() {
     localStorage.setItem('activeTab', activeTab);
   }, [activeTab]);
 
+  // Refresh data when switching tabs
+  useEffect(() => {
+    if (!currentOrgId || !currentProjectId) return;
+    
+    console.log(`🔄 Tab changed to: ${activeTab} - Refreshing data...`);
+    
+    // Trigger refresh for the active tab
+    switch (activeTab) {
+      case 'accounts':
+        // AccountsPage has its own real-time listeners, just trigger a manual refresh
+        accountsPageRef.current?.refreshData?.();
+        break;
+      case 'analytics':
+        // TrackedLinksPage will refresh via its own mechanisms
+        trackedLinksPageRef.current?.refreshData?.();
+        break;
+      case 'creators':
+        // CreatorsManagementPage will refresh via its own mechanisms
+        creatorsPageRef.current?.refreshData?.();
+        break;
+      case 'dashboard':
+        // Dashboard data is already handled by real-time listeners above
+        console.log('✅ Dashboard data refreshed via real-time listeners');
+        break;
+    }
+  }, [activeTab, currentOrgId, currentProjectId]);
+
   // Load user role
   useEffect(() => {
     if (!user || !currentOrgId) return;
@@ -108,51 +136,52 @@ function DashboardPage() {
     loadUserRole();
   }, [user, currentOrgId]);
 
-  // Load data from Firestore on app initialization and when project changes
+  // Real-time data loading with Firestore listeners
   useEffect(() => {
     if (!user || !currentOrgId || !currentProjectId) {
       return;
     }
 
-    const loadData = async () => {
-      setIsLoadingData(true);
+    console.log('🎯 ViewTrack Dashboard - Setting up real-time listeners');
+    console.log('📁 Organization ID:', currentOrgId);
+    console.log('📁 Project ID:', currentProjectId);
+    
+    // Initialize theme
+    ThemeService.initializeTheme();
+    
+    setIsLoadingData(true);
+    
+    const unsubscribers: Array<() => void> = [];
+    
+    // Real-time listener for tracked accounts
+    const accountsRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts');
+    const accountsQuery = query(accountsRef, orderBy('dateAdded', 'desc'));
+    
+    const unsubAccounts = onSnapshot(accountsQuery, (snapshot) => {
+      const accounts: TrackedAccount[] = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as TrackedAccount));
+      
+      console.log(`👥 Real-time update: ${accounts.length} tracked accounts`);
+      setTrackedAccounts(accounts);
+    }, (error) => {
+      console.error('❌ Accounts listener error:', error);
+    });
+    unsubscribers.push(unsubAccounts);
+    
+    // Real-time listener for videos
+    const videosRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'videos');
+    const videosQuery = query(videosRef, orderBy('dateAdded', 'desc'), limit(1000));
+    
+    const unsubVideos = onSnapshot(videosQuery, async (snapshot) => {
       try {
-        console.log('🎯 ViewTrack Dashboard initialized');
-        console.log('🔥 Loading data from Firestore...');
-        console.log('📁 Organization ID:', currentOrgId);
-        
-        // Initialize theme
-        ThemeService.initializeTheme();
-        
-        // No migration needed - all new data goes directly to projects!
-        console.log('📁 Projects-first architecture enabled');
-        
-        // Load videos from Firestore for current project
-        const firestoreVideos = currentProjectId 
-          ? await FirestoreDataService.getVideos(currentOrgId, currentProjectId, { limitCount: 1000 })
-          : [];
-        
-        // Load tracked accounts to get uploader info
-        const accounts = currentProjectId
-          ? await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId)
-          : [];
+        // Get current accounts for mapping
+        const accounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
         const accountsMap = new Map(accounts.map(acc => [acc.id, acc]));
-        setTrackedAccounts(accounts); // Store for account filter
         
-        // Load all rules for filtering
-        const rules = currentProjectId
-          ? await RulesService.getRules(currentOrgId, currentProjectId)
-          : [];
-        setAllRules(rules);
-        console.log(`📋 Loaded ${rules.length} tracking rules`);
-        
-        // Load link clicks
-        const clicks = await LinkClicksService.getProjectLinkClicks(currentOrgId, currentProjectId);
-        setLinkClicks(clicks);
-        console.log(`📊 Loaded ${clicks.length} link clicks`);
-        
-        // Convert Firestore videos to VideoSubmission format
-        const allSubmissions: VideoSubmission[] = firestoreVideos.map(video => {
+        const allSubmissions: VideoSubmission[] = snapshot.docs.map(doc => {
+          const video = { id: doc.id, ...doc.data() } as any;
           const account = video.trackedAccountId ? accountsMap.get(video.trackedAccountId) : null;
           
           return {
@@ -161,7 +190,7 @@ function DashboardPage() {
             platform: video.platform as 'instagram' | 'tiktok' | 'youtube',
             thumbnail: video.thumbnail || '',
             title: video.title || '',
-            caption: video.description || '', // Include caption for rules filtering
+            caption: video.description || '',
             uploader: account?.displayName || account?.username || '',
             uploaderHandle: account?.username || '',
             uploaderProfilePicture: account?.profilePicture,
@@ -170,26 +199,65 @@ function DashboardPage() {
             likes: video.likes || 0,
             comments: video.comments || 0,
             shares: video.shares || 0,
-            dateSubmitted: video.dateAdded.toDate(),
-            uploadDate: video.uploadDate.toDate(),
-            lastRefreshed: video.lastRefreshed?.toDate(),
-            snapshots: [] // Will be loaded on-demand when viewing analytics
+            dateSubmitted: video.dateAdded?.toDate?.() || new Date(),
+            uploadDate: video.uploadDate?.toDate?.() || new Date(),
+            lastRefreshed: video.lastRefreshed?.toDate?.(),
+            snapshots: []
           };
         });
         
-        console.log(`✅ Loaded ${allSubmissions.length} videos from Firestore`);
-        console.log(`📁 Current Project ID: ${currentProjectId}`);
-        
+        console.log(`🎬 Real-time update: ${allSubmissions.length} videos`);
         setSubmissions(allSubmissions);
-        console.log('🔍 Open browser console to see API logs when adding videos');
+        setIsLoadingData(false);
       } catch (error) {
-        console.error('❌ Failed to load data from Firestore:', error);
-      } finally {
+        console.error('❌ Error processing videos snapshot:', error);
         setIsLoadingData(false);
       }
+    }, (error) => {
+      console.error('❌ Videos listener error:', error);
+      setIsLoadingData(false);
+    });
+    unsubscribers.push(unsubVideos);
+    
+    // Real-time listener for rules
+    const rulesRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'rules');
+    
+    const unsubRules = onSnapshot(rulesRef, (snapshot) => {
+      const rules = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      console.log(`📋 Real-time update: ${rules.length} tracking rules`);
+      setAllRules(rules);
+    }, (error) => {
+      console.error('❌ Rules listener error:', error);
+    });
+    unsubscribers.push(unsubRules);
+    
+    // Real-time listener for link clicks
+    const clicksRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'linkClicks');
+    
+    const unsubClicks = onSnapshot(clicksRef, (snapshot) => {
+      const clicks: LinkClick[] = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as LinkClick));
+      
+      console.log(`📊 Real-time update: ${clicks.length} link clicks`);
+      setLinkClicks(clicks);
+    }, (error) => {
+      console.error('❌ Link clicks listener error:', error);
+    });
+    unsubscribers.push(unsubClicks);
+    
+    console.log('✅ Real-time listeners active');
+    
+    // Cleanup function
+    return () => {
+      console.log('🧹 Cleaning up real-time listeners');
+      unsubscribers.forEach(unsub => unsub());
     };
-
-    loadData();
   }, [user, currentOrgId, currentProjectId]); // Reload when project changes!
 
   // Apply CSS variables to the root and expose fix function

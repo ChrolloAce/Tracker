@@ -107,6 +107,7 @@ export interface AccountsPageProps {
 export interface AccountsPageRef {
   handleBackToTable: () => void;
   openAddModal: () => void;
+  refreshData?: () => Promise<void>;
 }
 
 interface AccountWithFilteredStats extends TrackedAccount {
@@ -267,11 +268,119 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     onViewModeChange('table');
   }, [onViewModeChange]);
 
+  // Load videos for a specific account
+  const loadAccountVideos = useCallback(async (accountId: string) => {
+    if (!currentOrgId || !currentProjectId) return;
+    
+    const account = accounts.find(a => a.id === accountId);
+    if (!account) return;
+    
+    console.log('📱 Loading videos for account:', account.username);
+    const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, currentProjectId, accountId);
+    console.log('📹 Loaded videos from Firestore:', videos.length);
+    
+    // Apply rules to filter videos
+    console.log('📋 Applying rules to filter videos...');
+    
+    // Get active rules for this account
+    const accountRules = await RulesService.getRulesForAccount(
+      currentOrgId,
+      currentProjectId,
+      accountId,
+      account.platform
+    );
+    setActiveRulesCount(accountRules.length);
+    
+    const rulesFilteredVideos = await RulesService.filterVideosByRules(
+      currentOrgId,
+      currentProjectId,
+      accountId,
+      account.platform,
+      videos
+    );
+    
+    console.log(`✅ Rules filtered: ${rulesFilteredVideos.length}/${videos.length} videos match rules (${accountRules.length} rules active)`);
+    
+    // Apply date filtering on top of rules filtering
+    const videoSubmissions: VideoSubmission[] = rulesFilteredVideos.map(video => ({
+      id: video.id || video.videoId || '',
+      url: video.url || '',
+      platform: account.platform,
+      thumbnail: video.thumbnail || '',
+      title: video.caption || video.title || 'No caption',
+      uploader: account.displayName || account.username,
+      uploaderHandle: account.username,
+      status: 'approved' as const,
+      views: video.viewsCount || video.views || 0,
+      likes: video.likesCount || video.likes || 0,
+      comments: video.commentsCount || video.comments || 0,
+      shares: video.sharesCount || video.shares || 0,
+      dateSubmitted: video.uploadDate || new Date(),
+      uploadDate: video.uploadDate || new Date(),
+      snapshots: []
+    }));
+    
+    const dateFilteredSubmissions = DateFilterService.filterVideosByDateRange(
+      videoSubmissions,
+      dateFilter,
+      undefined
+    );
+    
+    // Convert back to AccountVideo
+    const finalFilteredVideos: AccountVideo[] = dateFilteredSubmissions.map(sub => {
+      const originalVideo = rulesFilteredVideos.find(v => (v.id || v.videoId) === sub.id);
+      return originalVideo || {
+        id: sub.id,
+        videoId: sub.id,
+        url: sub.url,
+        thumbnail: sub.thumbnail,
+        caption: sub.title,
+        viewsCount: sub.views,
+        likesCount: sub.likes,
+        commentsCount: sub.comments,
+        sharesCount: sub.shares,
+        uploadDate: sub.uploadDate,
+        timestamp: sub.uploadDate.toISOString()
+      };
+    });
+    
+    console.log(`✅ Date + Rules filtered: ${finalFilteredVideos.length}/${videos.length} videos (${accountRules.length} rules, ${dateFilter} date range)`);
+    setAccountVideos(finalFilteredVideos);
+  }, [currentOrgId, currentProjectId, accounts, dateFilter]);
+
   // Expose handleBackToTable and openAddModal to parent component
+  // Refresh data function for parent to call
+  const refreshData = useCallback(async () => {
+    if (!currentOrgId || !currentProjectId) return;
+    
+    console.log('🔄 Manually refreshing AccountsPage data...');
+    
+    try {
+      // Reload links and clicks
+      const [loadedLinks, loadedClicks] = await Promise.all([
+        FirestoreDataService.getLinks(currentOrgId, currentProjectId),
+        LinkClicksService.getProjectLinkClicks(currentOrgId, currentProjectId)
+      ]);
+      
+      setTrackedLinks(loadedLinks);
+      setLinkClicks(loadedClicks);
+      
+      // Reload selected account's videos if one is selected
+      if (selectedAccount) {
+        await loadAccountVideos(selectedAccount.id);
+      }
+      
+      console.log('✅ AccountsPage data refreshed');
+    } catch (error) {
+      console.error('❌ Failed to refresh data:', error);
+    }
+  }, [currentOrgId, currentProjectId, selectedAccount, loadAccountVideos]);
+
   useImperativeHandle(ref, () => ({
     handleBackToTable,
-    openAddModal: () => setIsAddModalOpen(true)
-  }), [handleBackToTable]);
+    openAddModal: () => setIsAddModalOpen(true),
+    refreshData
+  }), [handleBackToTable, refreshData]);
 
   // Auto-detect account URL from clipboard when modal opens
   useEffect(() => {
@@ -296,36 +405,48 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     }
   }, [isAddModalOpen]);
 
-  // Load accounts on mount and restore selected account
+  // Real-time listener for accounts
   useEffect(() => {
-    const loadAccounts = async () => {
-      if (!currentOrgId || !currentProjectId) {
-        setLoading(false);
-        return;
-      }
+    if (!currentOrgId || !currentProjectId) {
+      setLoading(false);
+      return;
+    }
 
-      try {
-        console.log('📥 Loading accounts from Firestore...');
-        const loadedAccounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
-        setAccounts(loadedAccounts);
+    console.log('👂 Setting up real-time accounts listener...');
+    
+    const accountsRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts');
+    const accountsQuery = query(accountsRef);
 
-        // Restore selected account from localStorage
-        const savedSelectedAccountId = localStorage.getItem('selectedAccountId');
-        if (savedSelectedAccountId && loadedAccounts.length > 0) {
-          const savedAccount = loadedAccounts.find(a => a.id === savedSelectedAccountId);
-          if (savedAccount) {
-            console.log('🔄 Restoring selected account:', savedAccount.username);
-            setSelectedAccount(savedAccount);
-          }
+    const unsubscribe = onSnapshot(accountsQuery, (snapshot) => {
+      console.log('📥 Real-time accounts update received');
+      const loadedAccounts: TrackedAccount[] = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as TrackedAccount));
+      
+      setAccounts(loadedAccounts);
+      console.log(`✅ Updated ${loadedAccounts.length} accounts`);
+
+      // Restore or update selected account from localStorage
+      const savedSelectedAccountId = localStorage.getItem('selectedAccountId');
+      if (savedSelectedAccountId && loadedAccounts.length > 0) {
+        const savedAccount = loadedAccounts.find(a => a.id === savedSelectedAccountId);
+        if (savedAccount) {
+          console.log('🔄 Updating selected account:', savedAccount.username);
+          setSelectedAccount(savedAccount);
         }
-      } catch (error) {
-        console.error('❌ Failed to load accounts:', error);
-      } finally {
-        setLoading(false);
       }
-    };
+      
+      setLoading(false);
+    }, (error) => {
+      console.error('❌ Accounts listener error:', error);
+      setLoading(false);
+    });
 
-    loadAccounts();
+    return () => {
+      console.log('👋 Cleaning up accounts listener');
+      unsubscribe();
+    };
   }, [currentOrgId, currentProjectId]);
 
   // Load links and link clicks
@@ -372,12 +493,15 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
 
       setSyncingAccounts(syncingIds);
 
-      // If an account just finished syncing (size decreased), reload
+      // If an account just finished syncing (size decreased), refresh the selected account's videos
       if (syncingIds.size < previousSize && syncingIds.size === 0) {
-        console.log('✅ All syncs completed! Reloading accounts...');
-        setTimeout(() => {
-          window.location.reload(); // Force reload to show new data
-        }, 1000);
+        console.log('✅ All syncs completed! Refreshing data...');
+        
+        // Refresh the selected account's videos if one is selected
+        if (selectedAccount) {
+          console.log(`🔄 Refreshing videos for ${selectedAccount.username}...`);
+          loadAccountVideos(selectedAccount.id);
+        }
       }
     });
 
@@ -385,7 +509,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       console.log('👋 Cleaning up sync status listener');
       unsubscribe();
     };
-  }, [currentOrgId, currentProjectId]);
+  }, [currentOrgId, currentProjectId, syncingAccounts.size, selectedAccount]);
 
   // Calculate filtered stats for all accounts (for table view)
   useEffect(() => {
@@ -536,86 +660,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   useEffect(() => {
     const loadVideos = async () => {
       if (selectedAccount && currentOrgId && currentProjectId) {
-        console.log('📱 Loading videos for account:', selectedAccount.username);
-        const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, currentProjectId, selectedAccount.id);
-        console.log('📹 Loaded videos from Firestore:', videos.length);
-        
-        // Debug: Check caption data
-        if (videos.length > 0) {
-          console.log('🔍 First video caption data:', {
-            caption: videos[0].caption,
-            title: videos[0].title,
-            url: videos[0].url
-          });
-        }
-        
-        // Apply rules to filter videos in real-time
-        console.log('📋 Applying rules to filter videos...');
-        
-        // Get active rules for this account
-        const accountRules = await RulesService.getRulesForAccount(
-          currentOrgId,
-          currentProjectId,
-          selectedAccount.id,
-          selectedAccount.platform
-        );
-        setActiveRulesCount(accountRules.length);
-        
-        const rulesFilteredVideos = await RulesService.filterVideosByRules(
-          currentOrgId,
-          currentProjectId,
-          selectedAccount.id,
-          selectedAccount.platform,
-          videos
-        );
-        
-        console.log(`✅ Rules filtered: ${rulesFilteredVideos.length}/${videos.length} videos match rules (${accountRules.length} rules active)`);
-        
-        // Apply date filtering on top of rules filtering
-        const videoSubmissions: VideoSubmission[] = rulesFilteredVideos.map(video => ({
-          id: video.id || video.videoId || '',
-          url: video.url || '',
-          platform: selectedAccount.platform,
-          thumbnail: video.thumbnail || '',
-          title: video.caption || video.title || 'No caption',
-          uploader: selectedAccount.displayName || selectedAccount.username,
-          uploaderHandle: selectedAccount.username,
-          status: 'approved' as const,
-          views: video.viewsCount || video.views || 0,
-          likes: video.likesCount || video.likes || 0,
-          comments: video.commentsCount || video.comments || 0,
-          shares: video.sharesCount || video.shares || 0,
-          dateSubmitted: video.uploadDate || new Date(),
-          uploadDate: video.uploadDate || new Date(),
-          snapshots: []
-        }));
-        
-        const dateFilteredSubmissions = DateFilterService.filterVideosByDateRange(
-          videoSubmissions,
-          dateFilter,
-          undefined
-        );
-        
-        // Convert back to AccountVideo
-        const finalFilteredVideos: AccountVideo[] = dateFilteredSubmissions.map(sub => {
-          const originalVideo = rulesFilteredVideos.find(v => (v.id || v.videoId) === sub.id);
-          return originalVideo || {
-            id: sub.id,
-            videoId: sub.id,
-            url: sub.url,
-            thumbnail: sub.thumbnail,
-            caption: sub.title,
-            viewsCount: sub.views,
-            likesCount: sub.likes,
-            commentsCount: sub.comments,
-            sharesCount: sub.shares,
-            uploadDate: sub.uploadDate,
-            timestamp: sub.uploadDate.toISOString()
-          };
-        });
-        
-        console.log(`✅ Date + Rules filtered: ${finalFilteredVideos.length}/${videos.length} videos (${accountRules.length} rules, ${dateFilter} date range)`);
-        setAccountVideos(finalFilteredVideos);
+        await loadAccountVideos(selectedAccount.id);
         setViewMode('details');
         onViewModeChange('details');
         
@@ -635,7 +680,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     };
 
     loadVideos();
-  }, [selectedAccount, currentOrgId, currentProjectId, onViewModeChange, dateFilter]);
+  }, [selectedAccount, currentOrgId, currentProjectId, onViewModeChange, dateFilter, loadAccountVideos]);
 
   const handleSyncAccount = useCallback(async (accountId: string) => {
     if (!currentOrgId || !currentProjectId || !user) return;

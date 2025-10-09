@@ -16,6 +16,7 @@ import websiteStatsAnimation from '../../public/lottie/Website Statistics Infogr
 
 export interface TrackedLinksPageRef {
   openCreateModal: () => void;
+  refreshData?: () => Promise<void>;
 }
 
 interface TrackedLinksPageProps {
@@ -39,8 +40,17 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   
   // Expose openCreateModal to parent component
+  // Refresh data function for parent to call
+  const refreshData = async () => {
+    console.log('🔄 Manually refreshing TrackedLinksPage data...');
+    await loadLinks();
+    await loadAccounts();
+    console.log('✅ TrackedLinksPage data refreshed');
+  };
+
   useImperativeHandle(ref, () => ({
-    openCreateModal: () => setIsCreateModalOpen(true)
+    openCreateModal: () => setIsCreateModalOpen(true),
+    refreshData
   }), []);
   
   // Pagination state
