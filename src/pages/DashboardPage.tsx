@@ -629,18 +629,30 @@ function DashboardPage() {
         })
       });
       
-      const result = await response.json();
+      // Get response text first to handle both JSON and non-JSON responses
+      const responseText = await response.text();
+      
+      // Try to parse as JSON
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (jsonError) {
+        // If JSON parsing fails, show the raw response
+        console.error('❌ Failed to parse JSON response:', responseText);
+        alert(`❌ Server error: Unable to parse response\n\nStatus: ${response.status}\nResponse: ${responseText.substring(0, 200)}...`);
+        return;
+      }
       
       if (result.success) {
         console.log('✅ Manual refresh completed:', result);
         alert(`✅ Successfully refreshed ${result.stats.successCount} videos!\n\nNew snapshots have been created for all videos.\nDuration: ${result.duration}`);
       } else {
         console.error('❌ Manual refresh failed:', result.error);
-        alert(`❌ Manual refresh failed: ${result.error}`);
+        alert(`❌ Manual refresh failed: ${result.error}\n\nError type: ${result.errorType || 'Unknown'}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Manual refresh error:', error);
-      alert('❌ Failed to refresh videos. Check console for details.');
+      alert(`❌ Failed to refresh videos: ${error?.message || 'Unknown error'}\n\nCheck console for details.`);
     } finally {
       setIsManualRefreshing(false);
     }

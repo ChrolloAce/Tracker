@@ -3,6 +3,7 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 
 // Initialize Firebase Admin
+let firebaseInitialized = false;
 if (!getApps().length) {
   try {
     const serviceAccount = JSON.parse(
@@ -12,12 +13,14 @@ if (!getApps().length) {
     initializeApp({
       credential: cert(serviceAccount)
     });
+    firebaseInitialized = true;
+    console.log('✅ Firebase Admin initialized');
   } catch (error) {
-    console.error('Failed to initialize Firebase Admin:', error);
+    console.error('❌ Failed to initialize Firebase Admin:', error);
   }
+} else {
+  firebaseInitialized = true;
 }
-
-const db = getFirestore();
 
 /**
  * Manual Refresh All Videos
@@ -26,20 +29,41 @@ const db = getFirestore();
  * This is a temporary endpoint for manual data refresh
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const { orgId, projectId, userId } = req.body;
-
-  if (!orgId || !projectId || !userId) {
-    return res.status(400).json({ error: 'Missing required parameters' });
-  }
-
-  console.log('🔄 Manual refresh triggered for:', { orgId, projectId, userId });
-  const startTime = Date.now();
-
+  // Wrap entire handler in try-catch to ensure all errors return JSON
   try {
+    // Check Firebase initialization
+    if (!firebaseInitialized) {
+      console.error('❌ Firebase not initialized');
+      return res.status(500).json({ 
+        success: false,
+        error: 'Firebase Admin not initialized',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    if (req.method !== 'POST') {
+      return res.status(405).json({ 
+        success: false,
+        error: 'Method not allowed',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const { orgId, projectId, userId } = req.body;
+
+    if (!orgId || !projectId || !userId) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Missing required parameters: orgId, projectId, userId',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    console.log('🔄 Manual refresh triggered for:', { orgId, projectId, userId });
+    const startTime = Date.now();
+
+    const db = getFirestore();
+    
     // Get all videos for this project
     const videosSnapshot = await db
       .collection('organizations')
@@ -130,10 +154,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json(summary);
 
   } catch (error: any) {
+    // Catch all errors and return JSON response
     console.error('❌ Manual refresh failed:', error);
     return res.status(500).json({
       success: false,
-      error: error.message,
+      error: error?.message || 'Unknown error occurred',
+      errorType: error?.constructor?.name || 'Error',
       timestamp: new Date().toISOString()
     });
   }
