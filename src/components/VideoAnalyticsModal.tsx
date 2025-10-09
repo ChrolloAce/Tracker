@@ -136,10 +136,14 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   const yAxisMax = Math.ceil(maxValue * 1.1);
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+    <div 
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn"
+      onClick={onClose}
+    >
       <div 
         className="bg-[#151515] rounded-[14px] shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto animate-slideUp"
         style={{ padding: '24px' }}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
@@ -197,8 +201,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                 <select
                   value={selectedMetric}
                   onChange={(e) => setSelectedMetric(e.target.value as MetricType)}
-                  className="appearance-none pl-3 pr-10 py-2 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-white text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20"
-                  style={{ minWidth: '120px' }}
+                  className="appearance-none pl-8 pr-10 py-2 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-white text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20"
+                  style={{ minWidth: '140px' }}
                 >
                   <option value="views">Views</option>
                   <option value="likes">Likes</option>
@@ -206,7 +210,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                   <option value="shares">Shares</option>
                 </select>
                 <div 
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 rounded-sm pointer-events-none"
+                  className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3 h-3 rounded-sm pointer-events-none"
                   style={{ backgroundColor: getMetricColor(selectedMetric) }}
                 />
                 <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
@@ -217,10 +221,14 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                 <select
                   value={secondaryMetric || ''}
                   onChange={(e) => setSecondaryMetric(e.target.value ? e.target.value as MetricType : null)}
-                  className="appearance-none pl-3 pr-10 py-2 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-gray-400 text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20"
-                  style={{ minWidth: '150px' }}
+                  className="appearance-none pr-10 py-2 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20"
+                  style={{ 
+                    minWidth: '160px',
+                    paddingLeft: secondaryMetric ? '32px' : '12px',
+                    color: secondaryMetric ? '#ffffff' : '#9ca3af'
+                  }}
                 >
-                  <option value="">Add secondary</option>
+                  <option value="">+ Add comparison</option>
                   <option value="views">Views</option>
                   <option value="likes">Likes</option>
                   <option value="comments">Comments</option>
@@ -228,7 +236,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                 </select>
                 {secondaryMetric && (
                   <div 
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 rounded-sm pointer-events-none"
+                    className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3 h-3 rounded-sm pointer-events-none"
                     style={{ backgroundColor: getMetricColor(secondaryMetric) }}
                   />
                 )}
@@ -312,11 +320,16 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                   stroke={getMetricColor(selectedMetric)}
                   strokeWidth={2.5}
                   fill="url(#primaryGradient)"
-                  dot={false}
-                  activeDot={{ 
-                    r: 5, 
+                  dot={{ 
+                    r: 4, 
                     fill: getMetricColor(selectedMetric), 
                     strokeWidth: 2, 
+                    stroke: '#151515'
+                  }}
+                  activeDot={{ 
+                    r: 6, 
+                    fill: getMetricColor(selectedMetric), 
+                    strokeWidth: 2.5, 
                     stroke: '#fff',
                     filter: 'url(#glow)'
                   }}
@@ -331,9 +344,14 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                     stroke={getMetricColor(secondaryMetric)}
                     strokeWidth={2}
                     fill="url(#secondaryGradient)"
-                    dot={false}
+                    dot={{ 
+                      r: 3, 
+                      fill: getMetricColor(secondaryMetric), 
+                      strokeWidth: 1.5, 
+                      stroke: '#151515'
+                    }}
                     activeDot={{ 
-                      r: 4, 
+                      r: 5, 
                       fill: getMetricColor(secondaryMetric), 
                       strokeWidth: 2, 
                       stroke: '#fff' 
