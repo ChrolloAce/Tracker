@@ -143,13 +143,12 @@ const SettingsPage: React.FC = () => {
     try {
       await OrganizationService.deleteOrganization(organizationId, user.uid);
       
-      // Clear local storage
-      localStorage.removeItem('currentOrganizationId');
-      localStorage.removeItem('currentProjectId');
+      // Show success message
+      alert('✅ Organization deleted successfully! Redirecting...');
       
-      // Redirect to create organization page
-      alert('✅ Organization deleted successfully!');
+      // Reload the page - AuthContext will detect no orgs and redirect to create org page
       window.location.href = '/';
+      window.location.reload();
     } catch (error: any) {
       console.error('Failed to delete organization:', error);
       throw error;

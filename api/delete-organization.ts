@@ -170,11 +170,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await orgRef.delete();
     console.log(`✅ Organization deleted: ${orgData?.name}`);
 
-    // 5. Remove organization from owner's organizations array
+    // 5. Update owner's user document
     const ownerRef = db.collection('users').doc(userId);
-    await ownerRef.update({
+    const ownerDoc = await ownerRef.get();
+    const ownerData = ownerDoc.data();
+    
+    // Remove organization from owner's organizations array and clear defaultOrgId if it matches
+    const updates: any = {
       organizations: FieldValue.arrayRemove(organizationId)
-    });
+    };
+    
+    // If this was the default org, clear it
+    if (ownerData?.defaultOrgId === organizationId) {
+      updates.defaultOrgId = FieldValue.delete();
+      console.log(`🧹 Cleared defaultOrgId for user ${userId}`);
+    }
+    
+    await ownerRef.update(updates);
 
     return res.status(200).json({
       success: true,

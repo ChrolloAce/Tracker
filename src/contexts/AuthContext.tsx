@@ -60,6 +60,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // Get or create default organization
         const orgId = await OrganizationService.getOrCreateDefaultOrg(user.uid, user.email!, user.displayName || undefined);
+        
+        // If no organization exists, redirect to create organization page
+        if (!orgId) {
+          console.log('🔄 No organizations found, redirecting to create organization page');
+          setCurrentOrgId(null);
+          setCurrentProjectId(null);
+          setUserRole(null);
+          setLoading(false);
+          
+          // Redirect to create organization page
+          if (window.location.pathname !== '/create-organization') {
+            window.location.href = '/create-organization';
+          }
+          return;
+        }
+        
         setCurrentOrgId(orgId);
         console.log('✅ Current organization:', orgId);
 

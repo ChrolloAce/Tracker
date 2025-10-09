@@ -195,22 +195,39 @@ class OrganizationService {
 
   /**
    * Get user's default organization (or create one)
+   * Returns null if user has no orgs and shouldn't auto-create
    */
-  static async getOrCreateDefaultOrg(userId: string, email: string, displayName?: string): Promise<string> {
+  static async getOrCreateDefaultOrg(userId: string, _email: string, _displayName?: string): Promise<string | null> {
     const userAccount = await this.getUserAccount(userId);
     
+    // Check if default org exists and is accessible
     if (userAccount?.defaultOrgId) {
-      const org = await this.getOrganization(userAccount.defaultOrgId);
-      if (org) return userAccount.defaultOrgId;
+      try {
+        const org = await this.getOrganization(userAccount.defaultOrgId);
+        if (org) {
+          // Verify user is still a member
+          const member = await getDoc(doc(db, 'organizations', userAccount.defaultOrgId, 'members', userId));
+          if (member.exists() && member.data()?.status === 'active') {
+            return userAccount.defaultOrgId;
+          }
+        }
+      } catch (error) {
+        console.warn('Default org no longer accessible:', error);
+      }
     }
     
-    // Create default organization
-    const defaultName = email.split('@')[0] + "'s Workspace";
-    return await this.createOrganization(userId, { 
-      name: defaultName,
-      email,
-      displayName
-    });
+    // Check if user has any other organizations
+    const userOrgs = await this.getUserOrganizations(userId);
+    if (userOrgs.length > 0) {
+      // Use first available org
+      const firstOrgId = userOrgs[0].id;
+      await this.setDefaultOrg(userId, firstOrgId);
+      return firstOrgId;
+    }
+    
+    // No organizations found - return null to trigger redirect to create org page
+    console.log('❌ User has no organizations');
+    return null;
   }
 
   // ==================== MEMBERS ====================
