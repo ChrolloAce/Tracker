@@ -49,7 +49,8 @@ import KPICards from './KPICards';
 import DateFilterService from '../services/DateFilterService';
 import CreateLinkModal from './CreateLinkModal';
 import CreatorLinksService from '../services/CreatorLinksService';
-import { Creator } from '../types/firestore';
+import LinkClicksService, { LinkClick } from '../services/LinkClicksService';
+import { Creator, TrackedLink as FirestoreTrackedLink } from '../types/firestore';
 
 /**
  * Extract username from social media URL
@@ -145,6 +146,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [creators, setCreators] = useState<Creator[]>([]);
   const [selectedCreatorId, setSelectedCreatorId] = useState<string>('');
   const [showColumnToggle, setShowColumnToggle] = useState(false);
+  const [trackedLinks, setTrackedLinks] = useState<FirestoreTrackedLink[]>([]);
+  const [linkClicks, setLinkClicks] = useState<LinkClick[]>([]);
   const [processingAccounts, setProcessingAccounts] = useState<Array<{username: string; platform: string; startedAt: number}>>(() => {
     // Restore from localStorage and clean up old entries (> 5 minutes old)
     const saved = localStorage.getItem('processingAccounts');
@@ -323,6 +326,29 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     };
 
     loadAccounts();
+  }, [currentOrgId, currentProjectId]);
+
+  // Load links and link clicks
+  useEffect(() => {
+    const loadLinksAndClicks = async () => {
+      if (!currentOrgId || !currentProjectId) return;
+
+      try {
+        console.log('🔗 Loading tracked links and clicks...');
+        const [loadedLinks, loadedClicks] = await Promise.all([
+          FirestoreDataService.getLinks(currentOrgId, currentProjectId),
+          LinkClicksService.getProjectLinkClicks(currentOrgId, currentProjectId)
+        ]);
+        
+        setTrackedLinks(loadedLinks);
+        setLinkClicks(loadedClicks);
+        console.log(`✅ Loaded ${loadedLinks.length} links and ${loadedClicks.length} clicks`);
+      } catch (error) {
+        console.error('❌ Failed to load links and clicks:', error);
+      }
+    };
+
+    loadLinksAndClicks();
   }, [currentOrgId, currentProjectId]);
 
   // Real-time listener for syncing accounts
@@ -1569,11 +1595,22 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                 snapshots: []
               }));
 
+              // Filter link clicks for this account
+              // 1. Find all links associated with this account
+              const accountLinkIds = trackedLinks
+                .filter(link => link.linkedAccountId === selectedAccount.id)
+                .map(link => link.id);
+              
+              // 2. Filter clicks to only those from this account's links
+              const accountLinkClicks = linkClicks.filter(click => 
+                accountLinkIds.includes(click.linkId)
+              );
+
               return (
                 <div className="mb-6">
                   <KPICards 
                     submissions={filteredVideoSubmissions}
-                    linkClicks={[]}
+                    linkClicks={accountLinkClicks}
                     dateFilter={dateFilter}
                     timePeriod="days"
                     onCreateLink={() => setShowCreateLinkModal(true)}
