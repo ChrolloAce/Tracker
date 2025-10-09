@@ -269,6 +269,20 @@ service cloud.firestore {
           
           // Only admins can update/delete videos
           allow update, delete: if canManageOrg(orgId);
+          
+          // ==================== VIDEO SNAPSHOTS ====================
+          
+          match /snapshots/{snapshotId} {
+            // All members can read snapshots
+            allow read: if canReadOrg(orgId);
+            
+            // All members can create snapshots (for manual refresh)
+            // Cloud Functions can also create (via Admin SDK, bypasses rules)
+            allow create: if canWriteOrg(orgId);
+            
+            // Snapshots are immutable after creation
+            allow update, delete: if false;
+          }
         }
         
         // ==================== PROJECT TRACKING RULES ====================
