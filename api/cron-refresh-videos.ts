@@ -1,7 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import { runApifyActor } from './apify-client';
+import { runApifyActor } from './apify-client.js';
 
 // Initialize Firebase Admin (same pattern as other API files)
 if (!getApps().length) {
