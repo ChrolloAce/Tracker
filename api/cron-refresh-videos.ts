@@ -338,30 +338,43 @@ async function saveVideosToFirestore(
   const BATCH_SIZE = 500;
 
   for (const video of videos) {
-    // Extract video ID based on platform
-    let videoId: string;
+    // Extract video ID based on platform (this is the platform's video ID, not Firestore doc ID)
+    let platformVideoId: string;
     if (platform === 'instagram') {
-      videoId = video.shortCode || video.id;
+      platformVideoId = video.shortCode || video.id;
     } else if (platform === 'tiktok') {
-      videoId = video.id || video.videoId;
+      platformVideoId = video.id || video.videoId;
     } else if (platform === 'twitter') {
-      videoId = video.id;
+      platformVideoId = video.id;
     } else {
       continue;
     }
 
-    if (!videoId) continue;
+    if (!platformVideoId) continue;
 
-    const videoRef = db
+    // Query for the video by its videoId field (not document ID)
+    const videosCollectionRef = db
       .collection('organizations')
       .doc(orgId)
       .collection('projects')
       .doc(projectId)
-      .collection('videos')
-      .doc(videoId);
-
-    // Check if video exists (Firebase Admin uses .exists property, not .exists() method)
-    const existingDoc = await videoRef.get();
+      .collection('videos');
+    
+    const videoQuery = videosCollectionRef
+      .where('videoId', '==', platformVideoId)
+      .limit(1);
+    
+    const querySnapshot = await videoQuery.get();
+    
+    // Check if video exists
+    if (querySnapshot.empty) {
+      // Video doesn't exist in database - skip it
+      skippedCount++;
+      continue;
+    }
+    
+    const existingDoc = querySnapshot.docs[0];
+    const videoRef = existingDoc.ref;
 
     // Extract metrics based on platform
     let views = 0;
@@ -394,13 +407,6 @@ async function saveVideosToFirestore(
       lastRefreshed: new Date()
     };
 
-    // ONLY update existing videos - don't add new ones
-    if (!existingDoc.exists) {
-      // Skip videos that don't already exist in the database
-      skippedCount++;
-      continue;
-    }
-
     // Update existing video metrics
     batch.update(videoRef, videoData);
     
@@ -408,7 +414,7 @@ async function saveVideosToFirestore(
     const snapshotRef = videoRef.collection('snapshots').doc();
     batch.set(snapshotRef, {
       id: snapshotRef.id,
-      videoId: videoId,
+      videoId: platformVideoId,  // Use the platform's video ID
       views: videoData.views,
       likes: videoData.likes,
       comments: videoData.comments,
