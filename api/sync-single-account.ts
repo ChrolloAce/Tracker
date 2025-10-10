@@ -366,6 +366,39 @@ export default async function handler(
 
     console.log(`✅ Completed immediate sync: ${account.username} - ${savedCount} videos saved`);
 
+    // Send email notification to user
+    try {
+      const userEmail = account.syncRequestedBy || account.addedBy;
+      if (userEmail) {
+        // Get user document to find email
+        const userRef = db.collection('users').doc(userEmail);
+        const userDoc = await userRef.get();
+        const userData = userDoc.data();
+        
+        if (userData?.email) {
+          await fetch(`${process.env.VERCEL_URL || 'https://tracker-red-zeta.vercel.app'}/api/send-notification-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: userData.email,
+              type: 'account_synced',
+              data: {
+                username: account.username,
+                platform: account.platform,
+                videosAdded: savedCount,
+                dashboardUrl: 'https://tracker-red-zeta.vercel.app'
+              }
+            })
+          }).catch(err => console.error('Failed to send notification email:', err));
+          
+          console.log(`📧 Notification email sent to ${userData.email}`);
+        }
+      }
+    } catch (emailError) {
+      console.error('Failed to send notification email:', emailError);
+      // Don't fail the request if email fails
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Account synced successfully',

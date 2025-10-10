@@ -190,6 +190,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log(`✅ Successfully processed video: ${video.url}`);
 
+    // Send email notification to user
+    try {
+      const userId = video.addedBy;
+      if (userId) {
+        // Get user document to find email
+        const userRef = db.collection('users').doc(userId);
+        const userDoc = await userRef.get();
+        const userData = userDoc.data();
+        
+        if (userData?.email) {
+          await fetch(`${process.env.VERCEL_URL || 'https://tracker-red-zeta.vercel.app'}/api/send-notification-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: userData.email,
+              type: 'video_processed',
+              data: {
+                title: videoData.caption?.substring(0, 100) || 'Video',
+                platform: video.platform,
+                uploaderHandle: videoData.username,
+                views: videoData.view_count || 0,
+                likes: videoData.like_count || 0,
+                thumbnail: videoData.thumbnail_url,
+                dashboardUrl: 'https://tracker-red-zeta.vercel.app'
+              }
+            })
+          }).catch(err => console.error('Failed to send notification email:', err));
+          
+          console.log(`📧 Notification email sent to ${userData.email}`);
+        }
+      }
+    } catch (emailError) {
+      console.error('Failed to send notification email:', emailError);
+      // Don't fail the request if email fails
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Video processed successfully',
