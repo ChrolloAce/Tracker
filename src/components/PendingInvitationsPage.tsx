@@ -4,6 +4,7 @@ import { TeamInvitation } from '../types/firestore';
 import TeamInvitationService from '../services/TeamInvitationService';
 import { Mail, Check, X, Building2, Clock, AlertCircle } from 'lucide-react';
 import { Button } from './ui/Button';
+import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 
 const PendingInvitationsPage: React.FC = () => {
   const { user } = useAuth();
@@ -107,11 +108,7 @@ const PendingInvitationsPage: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-400">Loading invitations...</div>
-      </div>
-    );
+    return <PageLoadingSkeleton type="team" />;
   }
 
   if (invitations.length === 0) {

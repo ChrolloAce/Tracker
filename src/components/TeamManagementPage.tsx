@@ -8,6 +8,7 @@ import { Button } from './ui/Button';
 import InviteTeamMemberModal from './InviteTeamMemberModal';
 import EditMemberPermissionsModal from './EditMemberPermissionsModal';
 import { TeamMemberPermissions } from '../types/permissions';
+import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 
 const TeamManagementPage: React.FC = () => {
   const { user, currentOrgId } = useAuth();
@@ -200,11 +201,7 @@ const TeamManagementPage: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-400">Loading team members...</div>
-      </div>
-    );
+    return <PageLoadingSkeleton type="team" />;
   }
 
   return (

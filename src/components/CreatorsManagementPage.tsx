@@ -10,6 +10,7 @@ import { Button } from './ui/Button';
 import CreateCreatorModal from './CreateCreatorModal';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
 import CreatorDetailsPage from './CreatorDetailsPage';
+import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import userProfileAnimation from '../../public/lottie/User Profile.json';
 
 export interface CreatorsManagementPageRef {
@@ -224,11 +225,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-700 border-t-purple-500"></div>
-      </div>
-    );
+    return <PageLoadingSkeleton type="creators" />;
   }
 
   const totalLinkedAccounts = Array.from(creatorProfiles.values()).reduce((sum, p) => sum + p.linkedAccountsCount, 0);
