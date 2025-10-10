@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, Crown, Upload, Camera, Mail, Send, Trash2, AlertTriangle, CreditCard, Bell, Building2, User as UserIcon, Download, X, Users } from 'lucide-react';
+import { LogOut, Crown, Upload, Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, Building2, User as UserIcon, Download, X, Users, Edit3 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -184,52 +184,63 @@ const SettingsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
-      {/* Banner Image */}
-      <div className="relative h-48 bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 overflow-hidden">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-20"></div>
-      </div>
-
-      {/* Profile Block (Overlapping Banner) */}
-      <div className="max-w-6xl mx-auto px-6 -mt-20 relative z-10">
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-white/10 shadow-xl p-6">
+      {/* Profile Header */}
+      <div className="max-w-6xl mx-auto px-6 pt-8">
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm p-6">
           <div className="flex items-center justify-between flex-wrap gap-4">
             {/* Profile Info */}
             <div className="flex items-center gap-6">
-              {/* Profile Photo */}
+              {/* Profile Photo with Upload Button */}
               <div className="relative">
                 {user?.photoURL ? (
                   <img 
                     src={user.photoURL} 
                     alt={user.displayName || 'User'} 
-                    className="w-24 h-24 rounded-full object-cover border-4 border-white dark:border-zinc-800 shadow-lg"
+                    className="w-20 h-20 rounded-full object-cover border-4 border-gray-200 dark:border-zinc-800"
                   />
                 ) : (
-                  <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center border-4 border-white dark:border-zinc-800 shadow-lg">
-                    <span className="text-3xl font-bold text-white">
+                  <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center border-4 border-gray-200 dark:border-zinc-800">
+                    <span className="text-2xl font-bold text-white">
                       {user?.displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
                     </span>
                   </div>
                 )}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="absolute -bottom-1 -right-1 w-8 h-8 bg-purple-600 hover:bg-purple-700 rounded-full flex items-center justify-center border-3 border-white dark:border-zinc-900 transition-colors disabled:opacity-50 shadow-lg"
+                  title="Upload photo"
+                >
+                  <Camera className="w-4 h-4 text-white" />
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                />
               </div>
 
               {/* Name and Email */}
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
-                  Settings
-                </h1>
-                <p className="text-gray-500 dark:text-gray-400">
+                <div className="flex items-center gap-2 mb-1">
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {displayName || user?.displayName || 'User'}
+                  </h1>
+                  <button 
+                    onClick={() => setActiveTab('profile')}
+                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                    title="Edit name"
+                  >
+                    <Edit3 className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                  </button>
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   {user?.email}
                 </p>
               </div>
             </div>
-
-            {/* View Profile Button */}
-            <button 
-              onClick={() => setActiveTab('profile')}
-              className="px-6 py-2.5 border-2 border-gray-200 dark:border-white/10 hover:border-purple-500 dark:hover:border-purple-500 text-gray-900 dark:text-white rounded-xl transition-all duration-200 font-medium"
-            >
-              View profile
-            </button>
           </div>
         </div>
 
@@ -519,28 +530,6 @@ const SettingsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Test Email Section */}
-              <div className="bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-200 dark:border-blue-900/30 p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Send className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white">Test Email Integration</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
-                        Send a test email to {user?.email}
-                      </p>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={handleSendTestEmail}
-                    disabled={sendingEmail || !user?.email}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {sendingEmail ? 'Sending...' : 'Send Test Email'}
-                  </button>
-                </div>
-              </div>
-
               {/* Action Buttons */}
               <div className="flex items-center justify-end gap-3">
                 <button className="px-6 py-2.5 border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-900 dark:text-white rounded-lg transition-colors font-medium">
@@ -577,8 +566,8 @@ const SettingsPage: React.FC = () => {
                         disabled
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white"
                       />
-                    </div>
-                    
+            </div>
+
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm text-gray-500 dark:text-gray-400">Created</p>
@@ -683,60 +672,6 @@ const SettingsPage: React.FC = () => {
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Profile</h2>
                 <p className="text-gray-600 dark:text-gray-400">Manage your personal information.</p>
-              </div>
-
-              {/* Profile Photo */}
-              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Profile Photo</h3>
-                
-                <div className="flex items-center gap-6">
-                  <div className="relative">
-                    {user?.photoURL ? (
-                      <img 
-                        src={user.photoURL} 
-                        alt={user.displayName || 'User'} 
-                        className="w-24 h-24 rounded-full object-cover border-4 border-gray-200 dark:border-zinc-700"
-                      />
-                    ) : (
-                      <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center border-4 border-gray-200 dark:border-zinc-700">
-                    <span className="text-3xl font-bold text-white">
-                      {user?.displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-                    </span>
-                  </div>
-                )}
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                      className="absolute bottom-0 right-0 w-10 h-10 bg-purple-600 hover:bg-purple-700 rounded-full flex items-center justify-center border-4 border-white dark:border-zinc-900 transition-colors disabled:opacity-50"
-                >
-                      <Camera className="w-5 h-5 text-white" />
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                />
-              </div>
-                  
-              <div>
-                    <h4 className="font-medium text-gray-900 dark:text-white mb-1">
-                      Upload a photo
-                    </h4>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-                      JPG, PNG or GIF. Max size 5MB.
-                </p>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-900 dark:text-white rounded-lg transition-colors disabled:opacity-50 font-medium"
-                >
-                  <Upload className="w-4 h-4" />
-                  {uploading ? 'Uploading...' : 'Upload Photo'}
-                </button>
-              </div>
-            </div>
               </div>
 
               {/* Personal Information */}

@@ -32,7 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const result = await resend.emails.send({
-      from: 'ViewTrack <notifications@resend.dev>',
+      from: 'ViewTrack <onboarding@resend.dev>',
       to: [to],
       subject,
       html,
