@@ -6,8 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
-  Link,
-  FileText
+  Link
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import ProjectSwitcher from '../ProjectSwitcher';
@@ -88,16 +87,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         icon: Video,
         isActive: activeTab === 'creators',
         onClick: () => onTabChange?.('creators'),
-      });
-    }
-
-    if (can.accessTab('contracts')) {
-      items.push({
-        id: 'contracts',
-        label: 'Contracts',
-        icon: FileText,
-        isActive: activeTab === 'contracts',
-        onClick: () => onTabChange?.('contracts'),
       });
     }
 

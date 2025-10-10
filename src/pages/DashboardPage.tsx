@@ -16,7 +16,6 @@ import CronManagementPage from '../components/CronManagementPage';
 import TrackedLinksPage, { TrackedLinksPageRef } from '../components/TrackedLinksPage';
 import CreatorPortalPage from '../components/CreatorPortalPage';
 import CreatorsManagementPage, { CreatorsManagementPageRef } from '../components/CreatorsManagementPage';
-import ContractsManagementPage from '../components/ContractsManagementPage';
 import { PageLoadingSkeleton } from '../components/ui/LoadingSkeleton';
 import OrganizationService from '../services/OrganizationService';
 import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
@@ -656,11 +655,10 @@ function DashboardPage() {
                 {activeTab === 'subscription' && 'Subscription Plans'}
                 {activeTab === 'analytics' && 'Tracked Links'}
                 {activeTab === 'creators' && 'Creators'}
-                {activeTab === 'contracts' && 'Contracts'}
                 {activeTab === 'cron' && 'Cron Jobs'}
                 {activeTab === 'settings' && 'Settings'}
               </h1>
-              {activeTab !== 'analytics' && activeTab !== 'contracts' && (
+              {activeTab !== 'analytics' && (
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                   {activeTab === 'dashboard' && 'Track and analyze your video performance'}
                   {activeTab === 'accounts' && 'Monitor entire Instagram and TikTok accounts'}
@@ -851,11 +849,8 @@ function DashboardPage() {
             userRole === 'creator' ? <CreatorPortalPage /> : <CreatorsManagementPage ref={creatorsPageRef} />
           )}
 
-          {/* Contracts Tab */}
-          {activeTab === 'contracts' && <ContractsManagementPage />}
-
           {/* Other Tabs - Placeholder */}
-          {!['dashboard', 'accounts', 'subscription', 'settings', 'analytics', 'creators', 'contracts', 'cron', 'team', 'invitations'].includes(activeTab) && (
+          {!['dashboard', 'accounts', 'subscription', 'settings', 'analytics', 'creators', 'cron', 'team', 'invitations'].includes(activeTab) && (
             <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">🚧</span>

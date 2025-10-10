@@ -8,6 +8,7 @@ import CreateProjectPage from './pages/CreateProjectPage';
 import DashboardPage from './pages/DashboardPage';
 import LinkRedirect from './components/LinkRedirect';
 import ContractSigningPage from './pages/ContractSigningPage';
+import ContractEditorPage from './pages/ContractEditorPage';
 import { useEffect, useState } from 'react';
 import { AlertCircle } from 'lucide-react';
 
@@ -167,6 +168,18 @@ function App() {
       
       {/* Public contract signing route - no authentication required */}
       <Route path="/contract/:contractId" element={<ContractSigningPage />} />
+
+      {/* Contract editor route - requires authentication */}
+      <Route 
+        path="/contract/edit/:creatorId" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : (
+            <ContractEditorPage />
+          )
+        } 
+      />
 
       <Route 
         path="/onboarding" 
