@@ -67,9 +67,6 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   
   // Payment rules state (new structured system)
   const [paymentRules, setPaymentRules] = useState<PaymentRule[]>([]);
-  const [paymentSchedule, setPaymentSchedule] = useState<'weekly' | 'bi-weekly' | 'monthly' | 'custom'>('monthly');
-  const [customSchedule, setCustomSchedule] = useState('');
-  const [additionalNotes, setAdditionalNotes] = useState('');
   
   // Payment terms state
   const [selectedPaymentType, setSelectedPaymentType] = useState<PaymentTermType>('flat_fee');
@@ -223,9 +220,6 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
       // Load payment rules from new system
       if (profile?.paymentInfo) {
         setPaymentRules((profile.paymentInfo.paymentRules as PaymentRule[]) || []);
-        setPaymentSchedule(profile.paymentInfo.schedule || 'monthly');
-        setCustomSchedule(profile.paymentInfo.customSchedule || '');
-        setAdditionalNotes(profile.paymentInfo.notes || '');
       }
 
       // Load linked accounts
@@ -312,9 +306,6 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
         {
           isPaid: true,
           paymentRules: paymentRules as any,
-          schedule: paymentSchedule,
-          customSchedule: paymentSchedule === 'custom' ? customSchedule : '',
-          notes: additionalNotes,
           updatedAt: new Date()
         }
       );
@@ -547,52 +538,6 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
                 rules={paymentRules}
                 onChange={setPaymentRules}
               />
-
-              {/* Payment Schedule */}
-              <div className="mt-6">
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Payment Schedule
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {['weekly', 'bi-weekly', 'monthly', 'custom'].map((schedule) => (
-                    <button
-                      key={schedule}
-                      onClick={() => setPaymentSchedule(schedule as typeof paymentSchedule)}
-                      className={clsx(
-                        "px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium capitalize",
-                        paymentSchedule === schedule
-                          ? 'bg-white/10 border-white text-white'
-                          : 'bg-gray-800/50 border-gray-700/50 text-gray-400 hover:bg-gray-700/50'
-                      )}
-                    >
-                      {schedule === 'bi-weekly' ? 'Bi-Weekly' : schedule}
-                    </button>
-                  ))}
-                </div>
-                {paymentSchedule === 'custom' && (
-                  <input
-                    type="text"
-                    value={customSchedule}
-                    onChange={(e) => setCustomSchedule(e.target.value)}
-                    placeholder="E.g., Every 15 days, On the 1st and 15th of each month"
-                    className="mt-2 w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
-                  />
-                )}
-              </div>
-
-              {/* Additional Notes */}
-              <div className="mt-6">
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Additional Notes (Optional)
-                </label>
-                <textarea
-                  value={additionalNotes}
-                  onChange={(e) => setAdditionalNotes(e.target.value)}
-                  placeholder="Any special terms, bonus structures, or other details..."
-                  rows={3}
-                  className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 resize-none text-sm"
-                />
-              </div>
 
               {/* Save Button */}
               <div className="flex justify-end mt-6">
