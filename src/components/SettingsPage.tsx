@@ -148,75 +148,18 @@ const SettingsPage: React.FC = () => {
       owner: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
       admin: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
       member: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-      creator: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400',
+      creator: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
     };
     return styles[role as keyof typeof styles] || styles.member;
   };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
-      {/* Profile Header */}
+      {/* Header */}
       <div className="max-w-6xl mx-auto px-6 pt-8">
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm p-6">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            {/* Profile Info */}
-            <div className="flex items-center gap-6">
-              {/* Profile Photo with Upload Button */}
-              <div className="relative">
-                {user?.photoURL ? (
-                  <img 
-                    src={user.photoURL} 
-                    alt={user.displayName || 'User'} 
-                    className="w-20 h-20 rounded-full object-cover border-4 border-gray-200 dark:border-zinc-800"
-                  />
-                ) : (
-                  <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center border-4 border-gray-200 dark:border-zinc-800">
-                    <span className="text-2xl font-bold text-white">
-                      {user?.displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-                    </span>
-                  </div>
-                )}
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  className="absolute -bottom-1 -right-1 w-8 h-8 bg-purple-600 hover:bg-purple-700 rounded-full flex items-center justify-center border-3 border-white dark:border-zinc-900 transition-colors disabled:opacity-50 shadow-lg"
-                  title="Upload photo"
-                >
-                  <Camera className="w-4 h-4 text-white" />
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                />
-              </div>
-
-              {/* Name and Email */}
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {displayName || user?.displayName || 'User'}
-                  </h1>
-                  <button 
-                    onClick={() => setActiveTab('profile')}
-                    className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-                    title="Edit name"
-                  >
-                    <Edit3 className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                  </button>
-                </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {user?.email}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Tabs Navigation */}
-        <div className="mt-8 border-b border-gray-200 dark:border-white/10">
+        <div className="border-b border-gray-200 dark:border-white/10">
           <nav className="flex space-x-8">
             {[
               { id: 'billing', label: 'Billing', icon: CreditCard },
@@ -233,7 +176,7 @@ const SettingsPage: React.FC = () => {
                   className={`
                     flex items-center gap-2 px-1 py-4 border-b-2 font-medium text-sm transition-colors
                     ${isActive 
-                      ? 'border-purple-600 text-purple-600 dark:text-purple-400' 
+                      ? 'border-gray-900 text-gray-900 dark:border-white dark:text-white' 
                       : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
                     }
                   `}
@@ -272,7 +215,7 @@ const SettingsPage: React.FC = () => {
                       <p className="text-2xl font-bold text-gray-900 dark:text-white">Pro Plan</p>
                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Renews on March 15, 2025</p>
                     </div>
-                    <button className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium">
+                    <button className="px-4 py-2 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-lg transition-colors font-medium">
                       Change plan
                     </button>
                   </div>
@@ -306,7 +249,7 @@ const SettingsPage: React.FC = () => {
                     <input
                       type="text"
                       placeholder="1234 5678 9012 3456"
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent"
                     />
                   </div>
                   
@@ -318,7 +261,7 @@ const SettingsPage: React.FC = () => {
                       <input
                         type="text"
                         placeholder="MM / YY"
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent"
                       />
                     </div>
                     <div>
@@ -328,7 +271,7 @@ const SettingsPage: React.FC = () => {
                       <input
                         type="text"
                         placeholder="123"
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent"
                       />
                     </div>
                   </div>
@@ -337,10 +280,10 @@ const SettingsPage: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Billing address
                     </label>
-                    <input
+                <input
                       type="text"
                       placeholder="123 Main St, City, State, ZIP"
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -379,7 +322,7 @@ const SettingsPage: React.FC = () => {
                             </span>
                           </td>
                           <td className="py-4 px-4 text-right">
-                            <button className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 text-sm font-medium inline-flex items-center gap-1">
+                            <button className="text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300 text-sm font-medium inline-flex items-center gap-1">
                               <Download className="w-4 h-4" />
                               Download
                             </button>
@@ -414,7 +357,7 @@ const SettingsPage: React.FC = () => {
               {/* Email Notifications */}
               <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
                 <div className="flex items-center gap-3 mb-6">
-                  <Mail className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                  <Mail className="w-6 h-6 text-gray-900 dark:text-white" />
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Email Notifications</h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Receive updates via email</p>
@@ -442,7 +385,7 @@ const SettingsPage: React.FC = () => {
                         onClick={() => setEmailNotifications(prev => ({ ...prev, [key]: !value }))}
                         className={`
                           relative inline-flex h-6 w-11 items-center rounded-full transition-colors
-                          ${value ? 'bg-purple-600' : 'bg-gray-200 dark:bg-zinc-700'}
+                          ${value ? 'bg-gray-900 dark:bg-white' : 'bg-gray-200 dark:bg-zinc-700'}
                         `}
                       >
                         <span
@@ -460,7 +403,7 @@ const SettingsPage: React.FC = () => {
               {/* In-App Notifications */}
               <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
                 <div className="flex items-center gap-3 mb-6">
-                  <Bell className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                  <Bell className="w-6 h-6 text-gray-900 dark:text-white" />
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">In-App Notifications</h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Notifications within the application</p>
@@ -480,13 +423,13 @@ const SettingsPage: React.FC = () => {
                           {key === 'teamUpdates' && 'Updates from your team members'}
                           {key === 'mentions' && 'When someone mentions you'}
                           {key === 'reports' && 'Weekly and monthly reports'}
-                        </p>
-                      </div>
-                      <button
+        </p>
+      </div>
+                <button
                         onClick={() => setInAppNotifications(prev => ({ ...prev, [key]: !value }))}
                         className={`
                           relative inline-flex h-6 w-11 items-center rounded-full transition-colors
-                          ${value ? 'bg-purple-600' : 'bg-gray-200 dark:bg-zinc-700'}
+                          ${value ? 'bg-gray-900 dark:bg-white' : 'bg-gray-200 dark:bg-zinc-700'}
                         `}
                       >
                         <span
@@ -515,7 +458,7 @@ const SettingsPage: React.FC = () => {
 
           {/* Organization Tab */}
           {activeTab === 'organization' && (
-            <div className="space-y-6">
+      <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Organization</h2>
                 <p className="text-gray-600 dark:text-gray-400">Manage your teams and permissions.</p>
@@ -566,7 +509,7 @@ const SettingsPage: React.FC = () => {
                       {orgMembers.length} member{orgMembers.length !== 1 ? 's' : ''} in your organization
                     </p>
                   </div>
-                  <button className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium inline-flex items-center gap-2">
+                  <button className="px-4 py-2 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-lg transition-colors font-medium inline-flex items-center gap-2">
                     <Users className="w-4 h-4" />
                     Invite member
                   </button>
@@ -576,11 +519,11 @@ const SettingsPage: React.FC = () => {
                   {orgMembers.map((member) => (
                     <div key={member.userId} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-zinc-800/50 rounded-lg">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                        <div className="w-10 h-10 bg-gray-900 dark:bg-white rounded-full flex items-center justify-center">
                           {member.photoURL ? (
                             <img src={member.photoURL} alt={member.displayName || ''} className="w-10 h-10 rounded-full object-cover" />
                           ) : (
-                            <span className="text-white font-semibold">
+                            <span className="text-white dark:text-gray-900 font-semibold">
                               {member.displayName?.charAt(0) || member.email?.charAt(0) || 'U'}
                             </span>
                           )}
@@ -621,7 +564,7 @@ const SettingsPage: React.FC = () => {
                         Permanently delete "{currentOrganization.name}" and all its data
                       </p>
                       <p className="text-xs text-red-600 dark:text-red-400 mt-2">
-                        ⚠️ This action cannot be undone. All projects, videos, and analytics will be lost.
+                        This action cannot be undone. All projects, videos, and analytics will be lost.
                       </p>
                     </div>
                   </div>
@@ -643,6 +586,50 @@ const SettingsPage: React.FC = () => {
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Profile</h2>
                 <p className="text-gray-600 dark:text-gray-400">Manage your personal information.</p>
+          </div>
+
+            {/* Profile Photo */}
+              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Profile Photo</h3>
+                
+            <div className="flex items-center gap-6">
+              <div className="relative">
+                {user?.photoURL ? (
+                  <img 
+                    src={user.photoURL} 
+                    alt={user.displayName || 'User'} 
+                        className="w-20 h-20 rounded-full object-cover border-4 border-gray-200 dark:border-zinc-800"
+                  />
+                ) : (
+                      <div className="w-20 h-20 bg-gray-900 dark:bg-white rounded-full flex items-center justify-center border-4 border-gray-200 dark:border-zinc-800">
+                        <span className="text-2xl font-bold text-white dark:text-gray-900">
+                      {user?.displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                    </span>
+                  </div>
+                )}
+                  </div>
+                  
+                  <div className="flex-1">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                      className="px-4 py-2 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                >
+                      <Camera className="w-4 h-4" />
+                      {uploading ? 'Uploading...' : 'Upload Photo'}
+                </button>
+                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      JPG, PNG or GIF. Max size 5MB.
+                    </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                />
+              </div>
+                </div>
               </div>
 
               {/* Personal Information */}
@@ -659,7 +646,7 @@ const SettingsPage: React.FC = () => {
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Enter your name"
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent"
               />
             </div>
 
