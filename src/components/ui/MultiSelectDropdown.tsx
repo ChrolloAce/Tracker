@@ -90,7 +90,7 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-gray-900 border border-white/10 rounded-lg shadow-2xl z-50 max-h-96 overflow-hidden flex flex-col backdrop-blur-xl">
+        <div className="absolute right-0 top-full mt-2 w-80 bg-gradient-to-br from-[#121212] to-[#151515] border border-white/10 rounded-lg shadow-2xl z-50 max-h-96 overflow-hidden flex flex-col backdrop-blur-xl">
           {/* Header */}
           <div className="p-3 border-b border-white/10 flex items-center justify-between bg-white/5">
             <span className="text-sm font-semibold text-white/90">

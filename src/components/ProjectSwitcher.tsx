@@ -108,7 +108,7 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-2 w-full bg-gray-900 rounded-xl shadow-2xl border border-white/10 z-50 overflow-hidden backdrop-blur-xl">
+        <div className="absolute top-full left-0 right-0 mt-2 w-full bg-gradient-to-br from-[#121212] to-[#151515] rounded-xl shadow-2xl border border-white/10 z-50 overflow-hidden backdrop-blur-xl">
           {/* Header */}
           <div className="px-4 py-3 border-b border-white/10 bg-white/5">
             <h3 className="text-sm font-semibold text-white/90">

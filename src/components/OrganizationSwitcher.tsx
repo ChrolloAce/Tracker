@@ -121,7 +121,7 @@ const OrganizationSwitcher: React.FC = () => {
           onClick={() => setIsOpen(false)}
         >
           <div 
-            className="bg-gray-900 rounded-xl shadow-2xl border border-white/10 w-full max-w-md backdrop-blur-xl"
+            className="bg-gradient-to-br from-[#121212] to-[#151515] rounded-xl shadow-2xl border border-white/10 w-full max-w-md backdrop-blur-xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
