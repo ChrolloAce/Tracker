@@ -145,13 +145,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         console.log(`    👥 Found ${accountsSnapshot.size} active accounts`);
 
-        // Process accounts in parallel batches for better performance
-        const BATCH_SIZE = 10; // Process 10 accounts at a time
+        // Process accounts in parallel batches for maximum performance
+        // With 12-hour intervals, we can handle large batches aggressively
+        const BATCH_SIZE = 50; // Process 50 accounts at once (lightning fast!)
         const accounts = accountsSnapshot.docs;
         
         for (let i = 0; i < accounts.length; i += BATCH_SIZE) {
           const batch = accounts.slice(i, i + BATCH_SIZE);
-          console.log(`\n    🔄 Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(accounts.length / BATCH_SIZE)} (${batch.length} accounts)...`);
+          console.log(`\n    ⚡ Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(accounts.length / BATCH_SIZE)} (${batch.length} accounts)...`);
           
           // Process this batch in parallel
           const batchPromises = batch.map(async (accountDoc) => {
@@ -218,10 +219,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
           });
           
-          // Small delay between batches to avoid overwhelming the API
-          if (i + BATCH_SIZE < accounts.length) {
-            await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second between batches
-          }
+          // No delay needed - with 12 hour intervals, we maximize speed
+          // Apify proxy handles rate limiting automatically
         }
       }
     }
