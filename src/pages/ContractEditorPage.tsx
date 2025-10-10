@@ -9,7 +9,6 @@ import { CONTRACT_TEMPLATES, ContractTemplate } from '../types/contracts';
 import { 
   ArrowLeft, 
   FileText, 
-  Save, 
   Share2, 
   Copy, 
   ExternalLink, 
@@ -26,7 +25,6 @@ const ContractEditorPage: React.FC = () => {
   
   const [creator, setCreator] = useState<OrgMember | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [sharing, setSharing] = useState(false);
   
   const [contractStartDate, setContractStartDate] = useState('');

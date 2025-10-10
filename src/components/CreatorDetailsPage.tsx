@@ -6,7 +6,6 @@ import CreatorLinksService from '../services/CreatorLinksService';
 import PayoutsService from '../services/PayoutsService';
 import FirestoreDataService from '../services/FirestoreDataService';
 import TieredPaymentService from '../services/TieredPaymentService';
-import { ContractService } from '../services/ContractService';
 import { 
   ArrowLeft, 
   Link as LinkIcon, 
@@ -18,11 +17,7 @@ import {
   AlertCircle,
   User,
   Play,
-  Eye,
-  Share2,
-  Copy,
-  ExternalLink,
-  Check
+  Eye
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -31,9 +26,7 @@ import { Timestamp } from 'firebase/firestore';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
 import TieredPaymentBuilder from './TieredPaymentBuilder';
 import PaymentInvoicePreview from './PaymentInvoicePreview';
-import ContractPreview from './ContractPreview';
 import { TieredPaymentStructure } from '../types/payments';
-import { CONTRACT_TEMPLATES, ContractTemplate } from '../types/contracts';
 
 interface CreatorDetailsPageProps {
   creator: OrgMember;
@@ -60,7 +53,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   onBack,
   onUpdate,
 }) => {
-  const { currentOrgId, currentProjectId, user } = useAuth();
+  const { currentOrgId, currentProjectId } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'accounts' | 'payment' | 'contract' | 'payouts'>('overview');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -247,13 +240,6 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
         if (terms.daysAfterPosted !== undefined) setDaysAfterPosted(terms.daysAfterPosted);
         if (terms.viewsRequired !== undefined) setViewsRequired(terms.viewsRequired);
       }
-      if (profile?.contractNotes) setContractNotes(profile.contractNotes);
-      if (profile?.contractStartDate) {
-        setContractStartDate(profile.contractStartDate.toDate().toISOString().split('T')[0]);
-      }
-      if (profile?.contractEndDate) {
-        setContractEndDate(profile.contractEndDate.toDate().toISOString().split('T')[0]);
-      }
 
       // Load tiered payment structure from paymentInfo
       if (profile?.paymentInfo && (profile.paymentInfo as any).tieredStructure) {
@@ -391,15 +377,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
 
       const updates: any = {
         customPaymentTerms: customTerms,
-        contractNotes,
       };
-
-      if (contractStartDate) {
-        updates.contractStartDate = Timestamp.fromDate(new Date(contractStartDate));
-      }
-      if (contractEndDate) {
-        updates.contractEndDate = Timestamp.fromDate(new Date(contractEndDate));
-      }
 
       await CreatorLinksService.updateCreatorProfile(
         currentOrgId,
