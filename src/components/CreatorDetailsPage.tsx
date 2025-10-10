@@ -881,7 +881,7 @@ const OverviewTab: React.FC<{
             <Play className="w-16 h-16 text-gray-600 mx-auto mb-4" />
             <p className="text-sm">No videos found</p>
             <p className="text-xs text-gray-500 mt-1">
-              {selectedAccount !== 'all' ? 'Try selecting a different account' : 'Link accounts and sync videos to see performance'}
+              Link accounts and sync videos to see performance
             </p>
       </div>
         ) : (
