@@ -110,15 +110,9 @@ function getAccountSyncedTemplate(data: any): string {
                     </p>
                     
                     <div style="text-align: center; margin: 30px 0;">
-                      <table cellpadding="0" cellspacing="0" border="0" align="center">
-                        <tr>
-                          <td align="center" style="border-radius: 8px; background-color: #667eea;">
-                            <a href="${data.dashboardUrl || 'https://tracker-red-zeta.vercel.app'}" target="_blank" style="display: inline-block; padding: 14px 32px; font-size: 16px; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-                              View Dashboard
-                            </a>
-                          </td>
-                        </tr>
-                      </table>
+                      <a href="${data.dashboardUrl || 'https://tracker-red-zeta.vercel.app'}" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                        View Dashboard
+                      </a>
                     </div>
                   </td>
                 </tr>
@@ -218,15 +212,9 @@ function getVideoProcessedTemplate(data: any): string {
                     </p>
                     
                     <div style="text-align: center; margin: 30px 0;">
-                      <table cellpadding="0" cellspacing="0" border="0" align="center">
-                        <tr>
-                          <td align="center" style="border-radius: 8px; background-color: #f5576c;">
-                            <a href="${data.dashboardUrl || 'https://tracker-red-zeta.vercel.app'}" target="_blank" style="display: inline-block; padding: 14px 32px; font-size: 16px; color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-                              View Video
-                            </a>
-                          </td>
-                        </tr>
-                      </table>
+                      <a href="${data.dashboardUrl || 'https://tracker-red-zeta.vercel.app'}" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                        View Video
+                      </a>
                     </div>
                   </td>
                 </tr>

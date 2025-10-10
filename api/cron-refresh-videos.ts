@@ -145,51 +145,83 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         console.log(`    👥 Found ${accountsSnapshot.size} active accounts`);
 
-        // Process each account
-        for (const accountDoc of accountsSnapshot.docs) {
-          const accountId = accountDoc.id;
-          const accountData = accountDoc.data();
-          const username = accountData.username;
-          const platform = accountData.platform;
+        // Process accounts in parallel batches for better performance
+        const BATCH_SIZE = 10; // Process 10 accounts at a time
+        const accounts = accountsSnapshot.docs;
+        
+        for (let i = 0; i < accounts.length; i += BATCH_SIZE) {
+          const batch = accounts.slice(i, i + BATCH_SIZE);
+          console.log(`\n    🔄 Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(accounts.length / BATCH_SIZE)} (${batch.length} accounts)...`);
+          
+          // Process this batch in parallel
+          const batchPromises = batch.map(async (accountDoc) => {
+            const accountId = accountDoc.id;
+            const accountData = accountDoc.data();
+            const username = accountData.username;
+            const platform = accountData.platform;
 
-          console.log(`\n    🔄 Refreshing @${username} (${platform})...`);
-          totalAccountsProcessed++;
+            try {
+              // Fetch fresh data from platform
+              const result = await refreshAccountVideos(
+                orgId,
+                projectId,
+                accountId,
+                username,
+                platform,
+                isManualTrigger
+              );
 
-          try {
-            // Fetch fresh data from platform
-            const result = await refreshAccountVideos(
-              orgId,
-              projectId,
-              accountId,
-              username,
-              platform,
-              isManualTrigger
-            );
+              if (result.fetched > 0) {
+                console.log(`    ✅ @${username}: Updated ${result.updated} videos, Skipped ${result.skipped} new videos`);
 
-            if (result.fetched > 0) {
-              console.log(`    ✅ @${username}: Updated ${result.updated} videos, Skipped ${result.skipped} new videos`);
-              totalVideosRefreshed += result.updated;
+                // Update account lastSynced timestamp
+                await accountDoc.ref.update({
+                  lastSynced: new Date()
+                });
+                
+                return { success: true, username, updated: result.updated };
+              } else {
+                console.log(`    ⚠️ No videos returned from API for @${username}`);
+                return { success: true, username, updated: 0 };
+              }
 
-              // Update account lastSynced timestamp
-              await accountDoc.ref.update({
-                lastSynced: new Date()
-              });
-            } else {
-              console.log(`    ⚠️ No videos returned from API for @${username}`);
+            } catch (error: any) {
+              console.error(`    ❌ Failed to refresh @${username}:`, error.message);
+              return {
+                success: false,
+                username,
+                error: error.message,
+                org: orgId,
+                project: projectId
+              };
             }
+          });
 
-          } catch (error: any) {
-            console.error(`    ❌ Failed to refresh @${username}:`, error.message);
-            failedAccounts.push({
-              org: orgId,
-              project: projectId,
-              account: username,
-              error: error.message
-            });
+          // Wait for all accounts in this batch to complete
+          const results = await Promise.allSettled(batchPromises);
+          
+          // Process results
+          results.forEach((result) => {
+            totalAccountsProcessed++;
+            if (result.status === 'fulfilled') {
+              const data = result.value;
+              if (data.success) {
+                totalVideosRefreshed += data.updated || 0;
+              } else {
+                failedAccounts.push({
+                  org: data.org,
+                  project: data.project,
+                  account: data.username,
+                  error: data.error
+                });
+              }
+            }
+          });
+          
+          // Small delay between batches to avoid overwhelming the API
+          if (i + BATCH_SIZE < accounts.length) {
+            await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second between batches
           }
-
-          // Add delay to avoid rate limiting (2 seconds between accounts)
-          await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
     }

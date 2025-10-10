@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { X, ExternalLink, TrendingUp, TrendingDown, Eye, Heart, MessageCircle, Share2, ChevronDown, Camera, RotateCcw } from 'lucide-react';
+import { X, ExternalLink, TrendingUp, TrendingDown, Eye, Heart, MessageCircle, Share2, ChevronDown, Camera } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -24,12 +24,6 @@ type MetricType = 'views' | 'likes' | 'comments' | 'shares';
 const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose }) => {
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('views');
   const [secondaryMetric, setSecondaryMetric] = useState<MetricType | null>(null);
-
-  // Reset function to restore original state
-  const handleReset = () => {
-    setSelectedMetric('views');
-    setSecondaryMetric(null);
-  };
 
   // Prepare chart data from snapshots - MUST be before early return
   const chartData = useMemo((): ChartDataPoint[] => {
@@ -179,13 +173,6 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleReset}
-              title="Reset to default view"
-              className="p-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-all"
-            >
-              <RotateCcw className="w-5 h-5" />
-            </button>
             <a
               href={video.url}
               target="_blank"
@@ -379,7 +366,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
 
           {/* Watermark */}
           <div className="text-right mt-4">
-            <span className="text-xs text-white/20 font-medium">The Facecard App</span>
+            <span className="text-xs text-white/20 font-medium">viral.app</span>
           </div>
         </div>
 

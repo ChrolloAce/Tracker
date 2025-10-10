@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { X, RotateCcw } from 'lucide-react';
+import { X } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { LinkClick } from '../services/LinkClicksService';
 import { DateFilterType } from './DateRangeFilter';
@@ -48,13 +48,6 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
   const [secondaryMetric, setSecondaryMetric] = useState<MetricType | null>(null);
   const [tertiaryMetric, setTertiaryMetric] = useState<MetricType | null>(null);
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
-
-  // Reset function to restore original state
-  const handleReset = () => {
-    setPrimaryMetric('views');
-    setSecondaryMetric(null);
-    setTertiaryMetric(null);
-  };
 
   // Update primary metric when initialMetric changes (when different KPI is clicked)
   useEffect(() => {
@@ -291,13 +284,6 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
                 onFilterChange={onDateFilterChange}
               />
             </div>
-            <button
-              onClick={handleReset}
-              title="Reset to default view"
-              className="p-2 hover:bg-gray-800/50 rounded-xl transition-all duration-200"
-            >
-              <RotateCcw className="w-5 h-5 text-gray-400 hover:text-white transition-colors" />
-            </button>
             <button
               onClick={onClose}
               className="p-2 hover:bg-gray-800/50 rounded-xl transition-all duration-200"
@@ -725,7 +711,7 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
             {/* Watermark */}
             <div className="absolute bottom-4 right-6 flex items-center space-x-2 opacity-10">
               <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-blue-500" />
-              <span className="text-lg font-bold text-white">The Facecard App</span>
+              <span className="text-lg font-bold text-white">viral.app</span>
             </div>
           </div>
         </div>
