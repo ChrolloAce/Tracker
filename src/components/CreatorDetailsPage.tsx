@@ -436,7 +436,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
               <TieredPaymentBuilder
                 value={tieredPaymentStructure}
                 onChange={setTieredPaymentStructure}
-                alwaysEdit={true}
+                alwaysEdit={false}
               />
 
               {/* Save Button */}

@@ -218,12 +218,155 @@ export const PAYMENT_TIER_TEMPLATES: PaymentTierTemplate[] = [
     ]
   },
   {
-    id: 'custom',
-    name: 'Start From Scratch',
-    description: 'Build your own payment structure',
-    icon: '⚡',
-    example: '',
-    tiers: []
+    id: 'cpm_only',
+    name: 'CPM Only',
+    description: 'Simple CPM-based payment with optional cap',
+    icon: '📊',
+    example: 'A video with 1M views: $10,000 (capped at $5,000)',
+    tiers: [
+      {
+        order: 0,
+        label: 'CPM Payment',
+        description: 'Payment per 1,000 views',
+        appliesTo: 'per_video',
+        components: [
+          {
+            id: 'comp-1',
+            type: 'cpm',
+            amount: 10,
+            maxAmount: 5000,
+            label: '$10 CPM (capped at $5,000)'
+          }
+        ],
+        isPaid: false
+      }
+    ]
+  },
+  {
+    id: 'hybrid_performance',
+    name: 'Hybrid Performance',
+    description: 'Base + CPM + milestone bonuses for viral content',
+    icon: '🚀',
+    example: 'A video with 1M views: $250 + $10,000 + $500 + $1,000 = $11,750',
+    tiers: [
+      {
+        order: 0,
+        label: 'Base + CPM',
+        description: 'Base payment plus CPM',
+        appliesTo: 'per_video',
+        components: [
+          {
+            id: 'comp-1',
+            type: 'flat_fee',
+            amount: 250,
+            label: '$250 base'
+          },
+          {
+            id: 'comp-2',
+            type: 'cpm',
+            amount: 10,
+            label: '$10 CPM'
+          }
+        ],
+        isPaid: false
+      },
+      {
+        order: 1,
+        label: 'Viral Bonus (500K)',
+        description: 'Bonus for viral content',
+        appliesTo: 'milestone',
+        milestoneCondition: {
+          type: 'views',
+          threshold: 500000
+        },
+        components: [
+          {
+            id: 'comp-3',
+            type: 'bonus',
+            amount: 500,
+            label: '$500 at 500K views'
+          }
+        ],
+        isPaid: false
+      },
+      {
+        order: 2,
+        label: 'Mega Viral Bonus (1M)',
+        description: 'Bonus for mega viral content',
+        appliesTo: 'milestone',
+        milestoneCondition: {
+          type: 'views',
+          threshold: 1000000
+        },
+        components: [
+          {
+            id: 'comp-4',
+            type: 'bonus',
+            amount: 1000,
+            label: '$1,000 at 1M views'
+          }
+        ],
+        isPaid: false
+      }
+    ]
+  },
+  {
+    id: 'tiered_cpm',
+    name: 'Tiered CPM Rates',
+    description: 'Increasing CPM rates based on view thresholds',
+    icon: '📈',
+    example: 'A video with 1M views: $200 (0-10K) + $500 (10K-100K) + $9,000 (100K-1M) = $9,700',
+    tiers: [
+      {
+        order: 0,
+        label: 'Initial Views Payment',
+        description: 'First 10K views at $20 CPM',
+        appliesTo: 'per_video',
+        components: [
+          {
+            id: 'comp-1',
+            type: 'cpm',
+            amount: 20,
+            maxViews: 10000,
+            label: '$20 CPM (first 10K views)'
+          }
+        ],
+        isPaid: false
+      },
+      {
+        order: 1,
+        label: 'Growth Phase Payment',
+        description: '10K-100K views at $5 CPM',
+        appliesTo: 'per_video',
+        components: [
+          {
+            id: 'comp-2',
+            type: 'cpm',
+            amount: 5,
+            minViews: 10000,
+            maxViews: 100000,
+            label: '$5 CPM (10K-100K views)'
+          }
+        ],
+        isPaid: false
+      },
+      {
+        order: 2,
+        label: 'Scale Phase Payment',
+        description: 'Above 100K views at $10 CPM',
+        appliesTo: 'per_video',
+        components: [
+          {
+            id: 'comp-3',
+            type: 'cpm',
+            amount: 10,
+            minViews: 100000,
+            label: '$10 CPM (100K+ views)'
+          }
+        ],
+        isPaid: false
+      }
+    ]
   }
 ];
 

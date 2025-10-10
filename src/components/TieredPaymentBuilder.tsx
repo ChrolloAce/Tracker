@@ -300,31 +300,57 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
   // Template Selection View
   if (showTemplates && !structure) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div>
-          <h3 className="text-base font-medium text-white mb-1">Choose Payment Template</h3>
-          <p className="text-sm text-gray-400">Select a starting point or build from scratch</p>
+          <h3 className="text-xl font-semibold text-white mb-2">Payment Structure</h3>
+          <p className="text-sm text-gray-400">Choose a payment template to get started</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-2">
+        <div className="grid grid-cols-1 gap-3">
           {PAYMENT_TIER_TEMPLATES.map((template) => (
             <button
               key={template.id}
               onClick={() => handleInitializeFromTemplate(template.id)}
-              className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg transition-all text-left group"
+              className="p-4 bg-[#161616] hover:bg-[#1a1a1a] border border-gray-800 hover:border-gray-700 rounded-xl transition-all text-left group"
             >
-              <div className="flex items-start gap-3">
-                <div className="text-xl">{template.icon}</div>
+              <div className="flex items-start gap-4">
+                <div className="text-3xl flex-shrink-0">{template.icon}</div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-white font-medium text-sm group-hover:text-white/90">{template.name}</h4>
-                  <p className="text-xs text-gray-400 mt-0.5">{template.description}</p>
+                  <h4 className="text-white font-semibold text-base group-hover:text-white mb-1">{template.name}</h4>
+                  <p className="text-sm text-gray-400 mb-2">{template.description}</p>
                   {template.example && (
-                    <p className="text-xs text-gray-500 mt-1 italic">{template.example}</p>
+                    <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 mt-2">
+                      <p className="text-xs text-gray-300">{template.example}</p>
+                    </div>
                   )}
                 </div>
               </div>
             </button>
           ))}
+        </div>
+
+        <div className="pt-4 border-t border-gray-800">
+          <button
+            onClick={() => {
+              const emptyStructure: TieredPaymentStructure = {
+                id: `payment-${Date.now()}`,
+                name: 'Custom Payment Structure',
+                currency: 'USD',
+                tiers: [],
+                isActive: true,
+                totalPaid: 0,
+                createdAt: new Date() as any,
+                createdBy: ''
+              };
+              setStructure(emptyStructure);
+              setShowTemplates(false);
+              setIsEditing(true);
+              onChange(emptyStructure);
+            }}
+            className="w-full px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-white font-medium text-sm transition-all"
+          >
+            Start from scratch
+          </button>
         </div>
       </div>
     );
@@ -432,13 +458,27 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
             <h3 className="text-sm font-medium text-white">Edit Payment Structure</h3>
             <p className="text-xs text-gray-400 mt-0.5">Build your payment stages and components</p>
           </div>
-          <button
-            onClick={() => setIsEditing(false)}
-            className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
-          >
-            <Check className="w-3.5 h-3.5" />
-            Done
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (confirm('Switch to a different template? Current changes will be lost.')) {
+                  setStructure(null);
+                  setShowTemplates(true);
+                  setIsEditing(false);
+                }
+              }}
+              className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 rounded-lg text-sm font-medium transition-colors"
+            >
+              Change Template
+            </button>
+            <button
+              onClick={() => setIsEditing(false)}
+              className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+            >
+              <Check className="w-3.5 h-3.5" />
+              Done
+            </button>
+          </div>
         </div>
       )}
 
