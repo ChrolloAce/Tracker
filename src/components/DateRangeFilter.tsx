@@ -79,7 +79,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-80 bg-gray-900 border border-white/10 rounded-lg shadow-2xl z-50 backdrop-blur-xl">
+        <div className="absolute top-full right-0 mt-2 w-80 bg-gradient-to-br from-[#121212] to-[#151515] border border-white/10 rounded-lg shadow-2xl z-50 backdrop-blur-xl">
           <div className="p-2">
             {filterOptions.map((option) => (
               <div key={option.value}>
