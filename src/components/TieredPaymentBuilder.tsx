@@ -261,7 +261,13 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
             if (!comp.minViews || views >= comp.minViews) {
               const eligibleViews = comp.minViews ? views - comp.minViews : views;
               amount = (eligibleViews / 1000) * comp.amount;
-              desc = `$${amount.toFixed(2)} (${(eligibleViews / 1000).toFixed(1)}K views × $${comp.amount} CPM)`;
+              // Apply cap if set
+              if (comp.maxAmount && amount > comp.maxAmount) {
+                amount = comp.maxAmount;
+                desc = `$${amount.toFixed(2)} (capped)`;
+              } else {
+                desc = `$${amount.toFixed(2)} (${(eligibleViews / 1000).toFixed(1)}K views × $${comp.amount} CPM)`;
+              }
             }
           } else if (comp.type === 'per_view') {
             if (!comp.minViews || views >= comp.minViews) {
@@ -532,13 +538,25 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
                     />
 
                     {(comp.type === 'cpm' || comp.type === 'per_view') && (
-                      <input
-                        type="number"
-                        value={comp.minViews || ''}
-                        onChange={(e) => handleUpdateComponent(tier.id, comp.id, { minViews: parseInt(e.target.value) || undefined })}
-                        placeholder="After X views..."
-                        className="w-32 px-2 py-1 bg-gray-800/50 border border-gray-700/50 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-white/50"
-                      />
+                      <>
+                        <input
+                          type="number"
+                          value={comp.minViews || ''}
+                          onChange={(e) => handleUpdateComponent(tier.id, comp.id, { minViews: parseInt(e.target.value) || undefined })}
+                          placeholder="After X views..."
+                          className="w-32 px-2 py-1 bg-gray-800/50 border border-gray-700/50 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-white/50"
+                        />
+                        {comp.type === 'cpm' && (
+                          <input
+                            type="number"
+                            value={comp.maxAmount || ''}
+                            onChange={(e) => handleUpdateComponent(tier.id, comp.id, { maxAmount: parseFloat(e.target.value) || undefined })}
+                            placeholder="Cap $..."
+                            step="0.01"
+                            className="w-24 px-2 py-1 bg-gray-800/50 border border-gray-700/50 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-white/50"
+                          />
+                        )}
+                      </>
                     )}
 
                     <button

@@ -33,6 +33,9 @@ const PaymentInvoicePreview: React.FC<PaymentInvoicePreviewProps> = ({ structure
           if (comp.minViews) {
             desc += ` (after ${(comp.minViews / 1000).toFixed(0)}K views)`;
           }
+          if (comp.maxAmount) {
+            desc += ` [capped at $${comp.maxAmount.toLocaleString()}]`;
+          }
           componentDescs.push(desc);
         } else if (comp.type === 'per_view') {
           componentDescs.push(`$${comp.amount} per view`);
@@ -68,48 +71,48 @@ const PaymentInvoicePreview: React.FC<PaymentInvoicePreviewProps> = ({ structure
   const invoiceLines = generateInvoiceText();
 
   return (
-    <div className="bg-white text-gray-900 rounded-lg p-8 shadow-2xl h-full flex flex-col" style={{ fontFamily: 'Georgia, serif' }}>
+    <div className="bg-[#0A0A0A] border border-gray-800 text-white rounded-lg p-8 shadow-2xl h-full flex flex-col">
       {/* Header */}
-      <div className="border-b-2 border-gray-900 pb-4 mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-1">PAYMENT AGREEMENT</h2>
-        <p className="text-sm text-gray-600">Creator Compensation Structure</p>
+      <div className="border-b-2 border-white/20 pb-4 mb-6">
+        <h2 className="text-2xl font-bold text-white mb-1">PAYMENT AGREEMENT</h2>
+        <p className="text-sm text-gray-400">Creator Compensation Structure</p>
       </div>
 
       {/* Creator Info */}
       <div className="mb-6">
         <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Creator</div>
-        <div className="text-lg font-semibold text-gray-900">{creatorName}</div>
+        <div className="text-lg font-semibold text-white">{creatorName}</div>
       </div>
 
       {/* Contract Name */}
       {structure.name && (
         <div className="mb-6">
           <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Contract</div>
-          <div className="text-base text-gray-900">{structure.name}</div>
+          <div className="text-base text-white">{structure.name}</div>
         </div>
       )}
 
       {/* Payment Terms */}
       <div className="flex-1">
-        <div className="text-xs text-gray-500 uppercase tracking-wide mb-3 border-b border-gray-300 pb-1">
+        <div className="text-xs text-gray-500 uppercase tracking-wide mb-3 border-b border-white/10 pb-1">
           Payment Terms
         </div>
         <div className="space-y-3">
           {invoiceLines.map((line, index) => (
             <div key={index} className="flex items-start gap-3">
-              <div className="text-base text-gray-900 leading-relaxed">{line}</div>
+              <div className="text-base text-gray-300 leading-relaxed">{line}</div>
             </div>
           ))}
         </div>
       </div>
 
       {/* Footer */}
-      <div className="mt-8 pt-6 border-t-2 border-gray-900">
+      <div className="mt-8 pt-6 border-t-2 border-white/20">
         <div className="flex items-center justify-between text-sm">
-          <div className="text-gray-600">
+          <div className="text-gray-400">
             {structure.tiers.length} payment stage{structure.tiers.length !== 1 ? 's' : ''}
           </div>
-          <div className="text-gray-400 text-xs">
+          <div className="text-gray-500 text-xs">
             {new Date().toLocaleDateString('en-US', { 
               year: 'numeric', 
               month: 'long', 

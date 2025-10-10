@@ -5,6 +5,7 @@ import { OrgMember, Creator, TrackedAccount, Payout, PaymentTermPreset, PaymentT
 import CreatorLinksService from '../services/CreatorLinksService';
 import PayoutsService from '../services/PayoutsService';
 import FirestoreDataService from '../services/FirestoreDataService';
+import TieredPaymentService from '../services/TieredPaymentService';
 import { 
   ArrowLeft, 
   Link as LinkIcon, 
@@ -92,9 +93,9 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
     loadData();
   }, [currentOrgId, currentProjectId, creator.userId]);
 
-  // Calculate total earnings from videos
+  // Calculate total earnings from videos using tiered payment structure
   useEffect(() => {
-    if (!creatorProfile?.customPaymentTerms || recentVideos.length === 0) {
+    if (!tieredPaymentStructure || recentVideos.length === 0) {
       setCalculatedTotalEarnings(0);
       return;
     }
@@ -133,19 +134,50 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
         filteredVideos = recentVideos;
     }
 
-    const terms = creatorProfile.customPaymentTerms;
+    // Use TieredPaymentService to calculate earnings
+    const totalVideos = filteredVideos.length;
+    const totalViews = filteredVideos.reduce((sum: number, video: any) => sum + (video.views || 0), 0);
+    const totalEngagement = filteredVideos.reduce((sum: number, video: any) => 
+      sum + (video.likes || 0) + (video.comments || 0) + (video.shares || 0), 0
+    );
+    const daysElapsed = Math.floor((now.getTime() - (creatorProfile?.createdAt?.toDate?.()?.getTime() || now.getTime())) / (1000 * 60 * 60 * 24));
+
     let total = 0;
 
+    // Calculate per-video earnings
     filteredVideos.forEach((video: any) => {
-      let videoEarnings = 0;
+      const videoEarnings = TieredPaymentService.calculatePerVideoEarnings(
+        tieredPaymentStructure,
+        video.views || 0,
+        (video.likes || 0) + (video.comments || 0) + (video.shares || 0)
+      );
+      total += videoEarnings;
+    });
 
-      switch (terms.type) {
-        case 'flat_fee':
-          videoEarnings = terms.baseAmount || 0;
-          break;
+    // Add milestone bonuses (calculated once, not per video)
+    const milestoneEarnings = TieredPaymentService.calculateMilestoneEarnings(
+      tieredPaymentStructure,
+      totalViews,
+      totalVideos,
+      daysElapsed,
+      totalEngagement
+    );
+    total += milestoneEarnings.total;
 
-        case 'base_cpm':
-          const views = video.views || 0;
+    // OLD SYSTEM FALLBACK (in case no tiered structure but has customPaymentTerms)
+    if (total === 0 && creatorProfile?.customPaymentTerms) {
+      const terms = creatorProfile.customPaymentTerms;
+
+      filteredVideos.forEach((video: any) => {
+        let videoEarnings = 0;
+
+        switch (terms.type) {
+          case 'flat_fee':
+            videoEarnings = terms.baseAmount || 0;
+            break;
+
+          case 'base_cpm':
+            const views = video.views || 0;
           const cpmEarnings = (views / 1000) * (terms.cpmRate || 0);
           videoEarnings = (terms.baseAmount || 0) + cpmEarnings;
           break;
@@ -173,11 +205,12 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
           break;
       }
 
-      total += videoEarnings;
-    });
+        total += videoEarnings;
+      });
+    }
 
     setCalculatedTotalEarnings(total);
-  }, [recentVideos, creatorProfile, timePeriod]);
+  }, [recentVideos, creatorProfile, timePeriod, tieredPaymentStructure]);
 
   const loadData = async () => {
     if (!currentOrgId || !currentProjectId) return;

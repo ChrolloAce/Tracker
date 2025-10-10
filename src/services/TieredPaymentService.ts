@@ -105,7 +105,9 @@ class TieredPaymentService {
         if (component.minViews && views < component.minViews) return 0;
         const eligibleViews = component.minViews ? views - component.minViews : views;
         const maxViews = component.maxViews ? Math.min(eligibleViews, component.maxViews - (component.minViews || 0)) : eligibleViews;
-        return (maxViews / 1000) * component.amount;
+        const cpmAmount = (maxViews / 1000) * component.amount;
+        // Apply cap if maxAmount is set
+        return component.maxAmount ? Math.min(cpmAmount, component.maxAmount) : cpmAmount;
 
       case 'per_view':
         if (component.minViews && views < component.minViews) return 0;

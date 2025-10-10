@@ -21,6 +21,7 @@ export interface PaymentComponent {
   // Conditions for this component
   minViews?: number; // Only applies after X views
   maxViews?: number; // Only applies up to X views
+  maxAmount?: number; // Cap on total earnings from this component (useful for CPM)
   
   // Human-readable label
   label?: string;
