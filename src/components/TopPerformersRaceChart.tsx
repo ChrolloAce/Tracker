@@ -14,12 +14,6 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
   const [topAccountsCount, setTopAccountsCount] = useState(5);
   const [videosMetric, setVideosMetric] = useState<MetricType>('views');
   const [accountsMetric, setAccountsMetric] = useState<MetricType>('views');
-  const [animationTrigger, setAnimationTrigger] = useState(0);
-
-  // Trigger animation on mount and when data changes
-  useEffect(() => {
-    setAnimationTrigger(prev => prev + 1);
-  }, [submissions, topVideosCount, topAccountsCount, videosMetric, accountsMetric]);
 
   // Calculate metric value for a video
   const getMetricValue = (video: VideoSubmission, metric: MetricType): number => {
@@ -66,14 +60,14 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
       if (!accountMap.has(handle)) {
         accountMap.set(handle, {
           handle,
-          displayName: video.uploaderDisplayName || handle,
+          displayName: video.uploader || handle,
           platform: video.platform,
           totalViews: 0,
           totalLikes: 0,
           totalComments: 0,
           totalShares: 0,
           videoCount: 0,
-          profileImage: video.uploaderProfileImage
+          profileImage: video.uploaderProfilePicture
         });
       }
 
@@ -119,10 +113,6 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
           return topAccounts[0].totalViews > 0 ? (totalEng / topAccounts[0].totalViews) * 100 : 0;
         })())
     : 1;
-
-  const formatMetricLabel = (metric: MetricType): string => {
-    return metric.charAt(0).toUpperCase() + metric.slice(1);
-  };
 
   const formatNumber = (num: number, metric: MetricType): string => {
     if (metric === 'engagement') {
@@ -241,7 +231,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                 {/* Account Name Below */}
                 <div className="ml-6 mt-1 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                   <PlatformIcon platform={video.platform} className="w-3 h-3" />
-                  <span>{video.uploaderDisplayName || video.uploaderHandle || 'Unknown'}</span>
+                  <span>{video.uploader || video.uploaderHandle || 'Unknown'}</span>
                 </div>
               </div>
             );
