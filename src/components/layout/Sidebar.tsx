@@ -6,8 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
-  Link,
-  UserPlus
+  Link
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import ProjectSwitcher from '../ProjectSwitcher';
