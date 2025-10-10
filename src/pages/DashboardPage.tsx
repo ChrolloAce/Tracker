@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { clsx } from 'clsx';
-import { ArrowLeft, ChevronDown, Search, RefreshCw } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Search } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import { VideoSubmissionsTable } from '../components/VideoSubmissionsTable';
 import { AddVideoModal } from '../components/AddVideoModal';
