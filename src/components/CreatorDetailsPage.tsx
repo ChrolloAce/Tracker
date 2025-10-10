@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import clsx from 'clsx';
 import { useAuth } from '../contexts/AuthContext';
-import { OrgMember, Creator, TrackedAccount, Payout, PaymentTermPreset, PaymentTermType, PaymentDueDateType } from '../types/firestore';
+import { OrgMember, Creator, TrackedAccount, Payout } from '../types/firestore';
 import CreatorLinksService from '../services/CreatorLinksService';
 import PayoutsService from '../services/PayoutsService';
 import FirestoreDataService from '../services/FirestoreDataService';
@@ -13,9 +13,6 @@ import {
   Link as LinkIcon, 
   DollarSign, 
   FileText,
-  Edit3,
-  Save,
-  X,
   AlertCircle,
   User,
   Play,
@@ -24,12 +21,12 @@ import {
   ExternalLink,
   Check,
   Clock,
-  Plus
+  Plus,
+  Save
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
-import { Timestamp } from 'firebase/firestore';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
 import TieredPaymentBuilder from './TieredPaymentBuilder';
 import PaymentInvoicePreview from './PaymentInvoicePreview';
@@ -40,17 +37,6 @@ interface CreatorDetailsPageProps {
   onBack: () => void;
   onUpdate: () => void;
 }
-
-const PAYMENT_TERM_TYPES: { value: PaymentTermType; label: string; description: string }[] = [
-  { value: 'flat_fee', label: 'Flat Fee', description: 'Fixed payment per deliverable' },
-  { value: 'base_cpm', label: 'Base + CPM', description: 'Base payment + cost per 1000 views' },
-  { value: 'base_guaranteed_views', label: 'Base + Guaranteed Views', description: 'Base payment with view guarantee' },
-  { value: 'cpc', label: 'CPC (Cost per Click)', description: 'Payment per click generated' },
-  { value: 'cpa_cps', label: 'CPA / CPS', description: 'Cost per acquisition or sale' },
-  { value: 'revenue_share', label: 'Revenue Share / Affiliate', description: 'Percentage of revenue generated' },
-  { value: 'tiered_performance', label: 'Tiered Performance Bonuses', description: 'Bonuses based on performance tiers' },
-  { value: 'retainer', label: 'Retainer Agreement', description: 'Monthly retainer payment' },
-];
 
 /**
  * CreatorDetailsPage - Full dashboard view for managing creator details
@@ -69,7 +55,6 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   const [allAccounts, setAllAccounts] = useState<TrackedAccount[]>([]);
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [recentVideos, setRecentVideos] = useState<any[]>([]);
-  const [editMode, setEditMode] = useState(false);
   const [showLinkAccountsModal, setShowLinkAccountsModal] = useState(false);
   const [calculatedTotalEarnings, setCalculatedTotalEarnings] = useState<number>(0);
   const [contracts, setContracts] = useState<ShareableContract[]>([]);
@@ -78,22 +63,6 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   
   // Tiered payment structure state
   const [tieredPaymentStructure, setTieredPaymentStructure] = useState<TieredPaymentStructure | null>(null);
-  
-  // Payment terms state
-  const [selectedPaymentType, setSelectedPaymentType] = useState<PaymentTermType>('flat_fee');
-  const [baseAmount, setBaseAmount] = useState<number>(0);
-  const [cpmRate, setCpmRate] = useState<number>(0);
-  const [guaranteedViews, setGuaranteedViews] = useState<number>(0);
-  const [cpcRate, setCpcRate] = useState<number>(0);
-  const [cpaRate, setCpaRate] = useState<number>(0);
-  const [revenueSharePercentage, setRevenueSharePercentage] = useState<number>(0);
-  const [retainerAmount, setRetainerAmount] = useState<number>(0);
-  
-  // Payment due date state
-  const [dueDateType, setDueDateType] = useState<PaymentDueDateType>('none');
-  const [fixedDueDate, setFixedDueDate] = useState<string>('');
-  const [daysAfterPosted, setDaysAfterPosted] = useState<number>(30);
-  const [viewsRequired, setViewsRequired] = useState<number>(100000);
 
   useEffect(() => {
     loadData();
@@ -256,25 +225,6 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
       );
       setCreatorProfile(profile);
 
-      // Load payment terms from profile
-      if (profile?.customPaymentTerms) {
-        const terms = profile.customPaymentTerms;
-        if (terms.type) setSelectedPaymentType(terms.type);
-        if (terms.baseAmount !== undefined) setBaseAmount(terms.baseAmount);
-        if (terms.cpmRate !== undefined) setCpmRate(terms.cpmRate);
-        if (terms.guaranteedViews !== undefined) setGuaranteedViews(terms.guaranteedViews);
-        if (terms.cpcRate !== undefined) setCpcRate(terms.cpcRate);
-        if (terms.cpaRate !== undefined) setCpaRate(terms.cpaRate);
-        if (terms.revenueSharePercentage !== undefined) setRevenueSharePercentage(terms.revenueSharePercentage);
-        if (terms.retainerAmount !== undefined) setRetainerAmount(terms.retainerAmount);
-        if (terms.dueDateType) setDueDateType(terms.dueDateType);
-        if (terms.fixedDueDate) {
-          setFixedDueDate(terms.fixedDueDate.toDate().toISOString().split('T')[0]);
-        }
-        if (terms.daysAfterPosted !== undefined) setDaysAfterPosted(terms.daysAfterPosted);
-        if (terms.viewsRequired !== undefined) setViewsRequired(terms.viewsRequired);
-      }
-
       // Load tiered payment structure from paymentInfo
       if (profile?.paymentInfo && (profile.paymentInfo as any).tieredStructure) {
         const loadedStructure = (profile.paymentInfo as any).tieredStructure as TieredPaymentStructure;
@@ -385,51 +335,6 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
     }
   };
 
-  const handleSavePaymentTerms = async () => {
-    if (!currentOrgId || !currentProjectId) return;
-
-    setSaving(true);
-    try {
-      const customTerms: Partial<PaymentTermPreset> = {
-        type: selectedPaymentType,
-        baseAmount,
-        cpmRate,
-        guaranteedViews,
-        cpcRate,
-        cpaRate,
-        revenueSharePercentage,
-        retainerAmount,
-        currency: 'USD',
-        dueDateType,
-        daysAfterPosted,
-        viewsRequired,
-      };
-
-      if (fixedDueDate) {
-        customTerms.fixedDueDate = Timestamp.fromDate(new Date(fixedDueDate));
-      }
-
-      const updates: any = {
-        customPaymentTerms: customTerms,
-      };
-
-      await CreatorLinksService.updateCreatorProfile(
-        currentOrgId,
-        currentProjectId,
-        creator.userId,
-        updates
-      );
-
-      setEditMode(false);
-      await loadData();
-      onUpdate();
-    } catch (error) {
-      console.error('Failed to save payment terms:', error);
-      alert('Failed to save payment terms');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   if (loading) {
     return <PageLoadingSkeleton />;
@@ -474,56 +379,16 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-4 gap-4 mt-6">
-          <div className="bg-[#0A0A0A] border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-all duration-200">
-            <div className="flex items-center gap-2 mb-1">
-              <LinkIcon className="w-4 h-4 text-gray-400" />
-              <span className="text-xs text-gray-400">Linked Accounts</span>
-            </div>
-            <div className="text-2xl font-bold text-white">
-              {linkedAccounts.length}
-            </div>
-          </div>
-          <div className="bg-[#0A0A0A] border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-all duration-200">
-            <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="w-4 h-4 text-gray-400" />
-              <span className="text-xs text-gray-400">Total Earned</span>
-            </div>
-            <div className="text-2xl font-bold text-white">
-              ${calculatedTotalEarnings.toFixed(2)}
-            </div>
-          </div>
-          <div className="bg-[#0A0A0A] border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-all duration-200">
-            <div className="flex items-center gap-2 mb-1">
-              <AlertCircle className="w-4 h-4 text-gray-400" />
-              <span className="text-xs text-gray-400">Pending</span>
-            </div>
-            <div className="text-2xl font-bold text-white">
-              ${totalPending.toFixed(2)}
-            </div>
-          </div>
-          <div className="bg-[#0A0A0A] border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-all duration-200">
-            <div className="flex items-center gap-2 mb-1">
-              <FileText className="w-4 h-4 text-gray-400" />
-              <span className="text-xs text-gray-400">Payouts</span>
-            </div>
-            <div className="text-2xl font-bold text-white">
-              {payouts.length}
-            </div>
-          </div>
-        </div>
-
         {/* Tabs */}
-        <div className="flex gap-1 mt-6 bg-[#0A0A0A] rounded-lg p-1 border border-gray-800">
+        <div className="flex gap-6 mt-8 border-b border-gray-800">
           {(['overview', 'accounts', 'payment', 'contract'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2.5 rounded-md transition-all duration-200 capitalize font-medium text-sm ${
+              className={`px-1 py-4 border-b-2 font-medium text-sm transition-colors capitalize ${
                 activeTab === tab
-                  ? 'bg-white text-black'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                  ? 'border-white text-white'
+                  : 'border-transparent text-gray-400 hover:text-gray-300'
               }`}
             >
               {tab === 'payment' ? 'Payment Terms' : tab === 'contract' ? 'Contract' : tab}
@@ -544,6 +409,8 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
             timePeriod={timePeriod}
             onTimePeriodChange={setTimePeriod}
             tieredPaymentStructure={tieredPaymentStructure}
+            calculatedTotalEarnings={calculatedTotalEarnings}
+            totalPending={totalPending}
           />
         )}
         {activeTab === 'accounts' && (
@@ -637,7 +504,9 @@ const OverviewTab: React.FC<{
   timePeriod: 'payment_period' | 'last_30' | 'last_7' | 'all_time';
   onTimePeriodChange: (period: 'payment_period' | 'last_30' | 'last_7' | 'all_time') => void;
   tieredPaymentStructure: TieredPaymentStructure | null;
-}> = ({ profile, linkedAccounts, recentVideos, timePeriod, onTimePeriodChange, tieredPaymentStructure }) => {
+  calculatedTotalEarnings: number;
+  totalPending: number;
+}> = ({ profile, linkedAccounts, payouts, recentVideos, timePeriod, onTimePeriodChange, tieredPaymentStructure, calculatedTotalEarnings, totalPending }) => {
   const [hoveredVideo, setHoveredVideo] = React.useState<string | null>(null);
   const [showTooltip, setShowTooltip] = React.useState(false);
   const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -805,7 +674,7 @@ const OverviewTab: React.FC<{
       });
     });
 
-    return { total, breakdown, details: PAYMENT_TERM_TYPES.find(t => t.value === terms.type)?.label || 'Unknown' };
+    return { total, breakdown, details: terms.type || 'Custom Payment' };
   };
 
   const earnings = calculateEarnings();
@@ -830,6 +699,46 @@ const OverviewTab: React.FC<{
 
   return (
     <div className="space-y-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-4 gap-4">
+        <div className="bg-[#0A0A0A] border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-all duration-200">
+          <div className="flex items-center gap-2 mb-1">
+            <LinkIcon className="w-4 h-4 text-gray-400" />
+            <span className="text-xs text-gray-400">Linked Accounts</span>
+          </div>
+          <div className="text-2xl font-bold text-white">
+            {linkedAccounts.length}
+          </div>
+        </div>
+        <div className="bg-[#0A0A0A] border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-all duration-200">
+          <div className="flex items-center gap-2 mb-1">
+            <DollarSign className="w-4 h-4 text-gray-400" />
+            <span className="text-xs text-gray-400">Total Earned</span>
+          </div>
+          <div className="text-2xl font-bold text-white">
+            ${calculatedTotalEarnings.toFixed(2)}
+          </div>
+        </div>
+        <div className="bg-[#0A0A0A] border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-all duration-200">
+          <div className="flex items-center gap-2 mb-1">
+            <AlertCircle className="w-4 h-4 text-gray-400" />
+            <span className="text-xs text-gray-400">Pending</span>
+          </div>
+          <div className="text-2xl font-bold text-white">
+            ${totalPending.toFixed(2)}
+          </div>
+        </div>
+        <div className="bg-[#0A0A0A] border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-all duration-200">
+          <div className="flex items-center gap-2 mb-1">
+            <FileText className="w-4 h-4 text-gray-400" />
+            <span className="text-xs text-gray-400">Payouts</span>
+          </div>
+          <div className="text-2xl font-bold text-white">
+            {payouts.length}
+          </div>
+        </div>
+      </div>
+
       {/* Time Period Selector */}
       <div className="bg-[#161616] rounded-xl border border-gray-800 p-4">
         <div className="flex items-center justify-between">
@@ -1426,112 +1335,6 @@ const ContractTab: React.FC<{
             </div>
           )}
         </>
-      )}
-    </div>
-  );
-};
-
-// Payouts Tab Component
-const PayoutsTab: React.FC<{ payouts: Payout[] }> = ({ payouts }) => {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'paid':
-        return 'bg-white/10 text-white border-white/20';
-      case 'pending':
-        return 'bg-gray-700/50 text-gray-300 border-gray-600/50';
-      case 'processing':
-        return 'bg-gray-600/50 text-gray-200 border-gray-500/50';
-      case 'failed':
-        return 'bg-gray-800/50 text-gray-400 border-gray-700/50';
-      default:
-        return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
-    }
-  };
-
-  return (
-    <div className="bg-[#161616] rounded-xl border border-gray-800 overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-700/50 bg-gray-800/50">
-        <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-          <DollarSign className="w-5 h-5 text-gray-400" />
-          Payment History
-        </h2>
-      </div>
-
-      {payouts.length === 0 ? (
-        <div className="p-12 text-center">
-          <DollarSign className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">No payouts yet</h3>
-          <p className="text-gray-400">
-            Payment history will appear here once payouts are processed.
-          </p>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-700/20 border-b border-gray-700/30">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
-                  Period
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
-                  Amount
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
-                  Metrics
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
-                  Date
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-700/30">
-              {payouts.map((payout) => (
-                <tr key={payout.id} className="hover:bg-gray-700/20 transition-colors">
-                  <td className="px-6 py-4 text-sm text-white">
-                    {payout.periodStart.toDate().toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                    {' - '}
-                    {payout.periodEnd.toDate().toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-white">
-                      ${payout.amount.toFixed(2)}
-                    </div>
-                    {payout.rateDescription && (
-                      <div className="text-xs text-gray-400">{payout.rateDescription}</div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-400">
-                    {payout.totalViews.toLocaleString()} views
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(
-                        payout.status
-                      )}`}
-                    >
-                      {payout.status.charAt(0).toUpperCase() + payout.status.slice(1)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-400">
-                    {payout.paidAt
-                      ? payout.paidAt.toDate().toLocaleDateString()
-                      : payout.createdAt.toDate().toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
       )}
     </div>
   );
