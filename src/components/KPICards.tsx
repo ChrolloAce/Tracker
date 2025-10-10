@@ -148,35 +148,37 @@ const KPICards: React.FC<KPICardsProps> = ({
     });
 
     // Calculate growth for all metrics
+    // CP = Current Period (last 7 days), PP = Previous Period (previous 7 days)
     const last7DaysViews = last7Days.reduce((sum, v) => sum + (v.views || 0), 0);
     const previous7DaysViews = previous7Days.reduce((sum, v) => sum + (v.views || 0), 0);
-    const viewsGrowthAbsolute = last7DaysViews - previous7DaysViews;
+    // If PP is 0, all CP data is new growth, so show + with CP value
+    const viewsGrowthAbsolute = previous7DaysViews === 0 ? last7DaysViews : last7DaysViews - previous7DaysViews;
     const viewsGrowth = previous7DaysViews > 0 
       ? ((last7DaysViews - previous7DaysViews) / previous7DaysViews) * 100 
       : 0;
 
     const last7DaysLikes = last7Days.reduce((sum, v) => sum + (v.likes || 0), 0);
     const previous7DaysLikes = previous7Days.reduce((sum, v) => sum + (v.likes || 0), 0);
-    const likesGrowthAbsolute = last7DaysLikes - previous7DaysLikes;
+    const likesGrowthAbsolute = previous7DaysLikes === 0 ? last7DaysLikes : last7DaysLikes - previous7DaysLikes;
 
     const last7DaysComments = last7Days.reduce((sum, v) => sum + (v.comments || 0), 0);
     const previous7DaysComments = previous7Days.reduce((sum, v) => sum + (v.comments || 0), 0);
-    const commentsGrowthAbsolute = last7DaysComments - previous7DaysComments;
+    const commentsGrowthAbsolute = previous7DaysComments === 0 ? last7DaysComments : last7DaysComments - previous7DaysComments;
 
     const last7DaysShares = last7Days.reduce((sum, v) => sum + (v.shares || 0), 0);
     const previous7DaysShares = previous7Days.reduce((sum, v) => sum + (v.shares || 0), 0);
-    const sharesGrowthAbsolute = last7DaysShares - previous7DaysShares;
+    const sharesGrowthAbsolute = previous7DaysShares === 0 ? last7DaysShares : last7DaysShares - previous7DaysShares;
 
     const last7DaysVideos = last7Days.length;
     const previous7DaysVideos = previous7Days.length;
-    const videosGrowthAbsolute = last7DaysVideos - previous7DaysVideos;
+    const videosGrowthAbsolute = previous7DaysVideos === 0 ? last7DaysVideos : last7DaysVideos - previous7DaysVideos;
 
     // Calculate engagement rate growth
     const last7DaysEngagement = last7DaysLikes + last7DaysComments + last7DaysShares;
     const previous7DaysEngagement = previous7DaysLikes + previous7DaysComments + previous7DaysShares;
     const last7DaysEngagementRate = last7DaysViews > 0 ? (last7DaysEngagement / last7DaysViews) * 100 : 0;
     const previous7DaysEngagementRate = previous7DaysViews > 0 ? (previous7DaysEngagement / previous7DaysViews) * 100 : 0;
-    const engagementRateGrowthAbsolute = last7DaysEngagementRate - previous7DaysEngagementRate;
+    const engagementRateGrowthAbsolute = previous7DaysEngagementRate === 0 ? last7DaysEngagementRate : last7DaysEngagementRate - previous7DaysEngagementRate;
 
     // Generate sparkline data based on date filter and metric type
     const generateSparklineData = (metric: 'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts') => {
@@ -318,7 +320,7 @@ const KPICards: React.FC<KPICardsProps> = ({
       const clickDate = new Date(click.timestamp);
       return clickDate >= now14DaysAgo && clickDate < now7DaysAgo;
     }).length;
-    const clicksGrowthAbsolute = last7DaysClicks - previous7DaysClicks;
+    const clicksGrowthAbsolute = previous7DaysClicks === 0 ? last7DaysClicks : last7DaysClicks - previous7DaysClicks;
 
     // Generate sparkline data first so we can calculate trends
     const viewsSparkline = generateSparklineData('views');
@@ -701,7 +703,7 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
           <span className="inline-flex items-center gap-0.5 text-xs font-medium text-white">
             {data.delta.isPositive ? '+' : '-'}
             {data.delta.isPercentage 
-              ? Math.abs(data.delta.absoluteValue).toFixed(2) 
+              ? `${Math.abs(data.delta.absoluteValue).toFixed(2)}%`
               : formatDeltaNumber(data.delta.absoluteValue)}
           </span>
         </div>

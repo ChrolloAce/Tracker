@@ -241,14 +241,6 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
             <div className="bg-gray-200 dark:bg-gray-800 rounded-lg p-3 group-hover:bg-gray-300 dark:group-hover:bg-gray-700 transition-colors">
               <UsersIcon className="w-6 h-6 text-gray-900 dark:text-white" />
             </div>
-            <Button
-              onClick={() => setShowInviteModal(true)}
-              size="sm"
-              className="bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-700"
-            >
-              <UserPlus className="w-4 h-4 mr-1" />
-              Invite
-            </Button>
           </div>
           <div className="text-3xl font-bold text-white mb-1">
             {creators.length}
