@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar, ChevronDown } from 'lucide-react';
 
-export type DateFilterType = 'today' | 'last7days' | 'last30days' | 'last90days' | 'mtd' | 'ytd' | 'custom' | 'all';
+export type DateFilterType = 'today' | 'yesterday' | 'last7days' | 'last30days' | 'last90days' | 'mtd' | 'ytd' | 'custom' | 'all';
 
 interface DateRange {
   startDate: Date;
@@ -30,6 +30,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
   const filterOptions = [
     { value: 'all', label: 'All Time', description: 'Show all videos' },
     { value: 'today', label: 'Today', description: 'Today only' },
+    { value: 'yesterday', label: 'Yesterday', description: 'Yesterday only' },
     { value: 'last7days', label: 'Last 7 Days', description: 'Past week' },
     { value: 'last30days', label: 'Last 30 Days', description: 'Past month' },
     { value: 'last90days', label: 'Last 90 Days', description: 'Past quarter' },

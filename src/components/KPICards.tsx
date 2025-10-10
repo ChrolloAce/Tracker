@@ -70,6 +70,13 @@ const KPICards: React.FC<KPICardsProps> = ({
     if (dateFilter === 'today') {
       dateRangeStart = new Date();
       dateRangeStart.setHours(0, 0, 0, 0);
+    } else if (dateFilter === 'yesterday') {
+      dateRangeStart = new Date();
+      dateRangeStart.setDate(dateRangeStart.getDate() - 1);
+      dateRangeStart.setHours(0, 0, 0, 0);
+      dateRangeEnd = new Date();
+      dateRangeEnd.setDate(dateRangeEnd.getDate() - 1);
+      dateRangeEnd.setHours(23, 59, 59, 999);
     } else if (dateFilter === 'last7days') {
       dateRangeStart = new Date();
       dateRangeStart.setDate(dateRangeStart.getDate() - 7);
@@ -190,6 +197,9 @@ const KPICards: React.FC<KPICardsProps> = ({
       
       // Match the number of points to the actual filtered range
       if (dateFilter === 'today') {
+        numPoints = 24;
+        intervalMs = 60 * 60 * 1000; // 1 hour
+      } else if (dateFilter === 'yesterday') {
         numPoints = 24;
         intervalMs = 60 * 60 * 1000; // 1 hour
       } else if (dateFilter === 'last7days') {
@@ -398,6 +408,9 @@ const KPICards: React.FC<KPICardsProps> = ({
         if (dateFilter === 'today') {
           numPoints = 24;
           intervalMs = 60 * 60 * 1000;
+        } else if (dateFilter === 'yesterday') {
+          numPoints = 24;
+          intervalMs = 60 * 60 * 1000;
         } else if (dateFilter === 'last7days') {
           numPoints = 7;
         } else if (dateFilter === 'last90days') {
@@ -473,6 +486,9 @@ const KPICards: React.FC<KPICardsProps> = ({
         let intervalMs = 24 * 60 * 60 * 1000; // 1 day
         
         if (dateFilter === 'today') {
+          numPoints = 24;
+          intervalMs = 60 * 60 * 1000;
+        } else if (dateFilter === 'yesterday') {
           numPoints = 24;
           intervalMs = 60 * 60 * 1000;
         } else if (dateFilter === 'last7days') {
