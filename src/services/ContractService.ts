@@ -10,7 +10,7 @@ import {
   getDocs
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { ShareableContract, ContractSignature } from '../types/contract';
+import { ShareableContract } from '../types/contract';
 
 export class ContractService {
   private static CONTRACTS_COLLECTION = 'shareableContracts';
