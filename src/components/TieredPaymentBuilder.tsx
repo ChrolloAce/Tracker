@@ -75,7 +75,7 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
 
     const newTier: PaymentTier = {
       id: `tier-${Date.now()}`,
-      order: structure.tiers.length,
+      order: structure.tiers?.length || 0,
       label: 'New Payment Stage',
       appliesTo: 'per_video',
       components: [],
@@ -83,12 +83,12 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
     };
 
     handleUpdateStructure({
-      tiers: [...structure.tiers, newTier]
+      tiers: [...(structure.tiers || []), newTier]
     });
   };
 
   const handleUpdateTier = (tierId: string, updates: Partial<PaymentTier>) => {
-    if (!structure) return;
+    if (!structure || !structure.tiers) return;
 
     const updatedTiers = structure.tiers.map(tier =>
       tier.id === tierId ? { ...tier, ...updates } : tier
@@ -98,7 +98,7 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
   };
 
   const handleDeleteTier = (tierId: string) => {
-    if (!structure) return;
+    if (!structure || !structure.tiers) return;
 
     const updatedTiers = structure.tiers
       .filter(tier => tier.id !== tierId)
@@ -108,7 +108,7 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
   };
 
   const handleAddComponent = (tierId: string) => {
-    if (!structure) return;
+    if (!structure || !structure.tiers) return;
 
     const updatedTiers = structure.tiers.map(tier => {
       if (tier.id === tierId) {
@@ -129,7 +129,7 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
   };
 
   const handleUpdateComponent = (tierId: string, componentId: string, updates: Partial<PaymentComponent>) => {
-    if (!structure) return;
+    if (!structure || !structure.tiers) return;
 
     const updatedTiers = structure.tiers.map(tier => {
       if (tier.id === tierId) {
@@ -147,7 +147,7 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
   };
 
   const handleDeleteComponent = (tierId: string, componentId: string) => {
-    if (!structure) return;
+    if (!structure || !structure.tiers) return;
 
     const updatedTiers = structure.tiers.map(tier => {
       if (tier.id === tierId) {
@@ -164,7 +164,7 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
 
   // Generate human-readable summary
   const generateSummary = (): string => {
-    if (!structure || structure.tiers.length === 0) return '';
+    if (!structure || !structure.tiers || structure.tiers.length === 0) return '';
 
     const parts: string[] = [];
 
@@ -211,7 +211,7 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
 
   // Calculate example earnings for a video
   const calculateExample = (views: number): { total: number; breakdown: string[] } => {
-    if (!structure) return { total: 0, breakdown: [] };
+    if (!structure || !structure.tiers) return { total: 0, breakdown: [] };
 
     let total = 0;
     const breakdown: string[] = [];
@@ -320,7 +320,7 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2">
                 <h3 className="text-sm font-medium text-gray-400">Payment Structure</h3>
-                {structure.tiers.length > 0 && (
+                {structure.tiers && structure.tiers.length > 0 && (
                   <span className="text-xs px-2 py-0.5 bg-green-500/10 text-green-400 rounded">
                     {structure.tiers.length} stage{structure.tiers.length !== 1 ? 's' : ''}
                   </span>
@@ -347,7 +347,7 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
         </div>
 
         {/* Example Calculations */}
-        {structure.tiers.length > 0 && (
+        {structure.tiers && structure.tiers.length > 0 && (
           <div className="bg-white/5 border border-white/10 rounded-lg p-4">
             <h4 className="text-xs font-medium text-gray-400 mb-3">Example Earnings</h4>
             
@@ -404,7 +404,7 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
 
       {/* Tiers */}
       <div className="space-y-3">
-        {structure.tiers.map((tier) => (
+        {structure.tiers && structure.tiers.map((tier) => (
           <div
             key={tier.id}
             className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3"
