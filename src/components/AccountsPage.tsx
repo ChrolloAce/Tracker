@@ -1593,7 +1593,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                     </button>
                     <button
                       onClick={() => setShowAttachCreatorModal(true)}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded-lg transition-colors"
+                      className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 dark:bg-white hover:bg-purple-700 text-white text-xs font-medium rounded-lg transition-colors"
                     >
                       <Plus className="w-3 h-3" />
                       Attach to Creator
@@ -2664,7 +2664,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                         }
                       }}
                       disabled={!selectedCreatorId}
-                      className="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 px-4 py-3 bg-gray-900 dark:bg-white hover:bg-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Attach Account
                     </button>

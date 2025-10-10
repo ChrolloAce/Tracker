@@ -146,7 +146,7 @@ const OrganizationSwitcher: React.FC = () => {
                     className={clsx(
                       'w-full px-4 py-3 flex items-start space-x-3 rounded-lg transition-colors text-left mb-1',
                       org.id === currentOrgId
-                        ? 'bg-purple-50 dark:bg-purple-900/20'
+                        ? 'bg-purple-50 dark:bg-gray-200 dark:bg-gray-800'
                         : 'hover:bg-gray-50 dark:hover:bg-gray-800'
                     )}
                   >

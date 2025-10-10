@@ -85,7 +85,7 @@ function LoadingSkeleton() {
           <div className="space-y-3">
             <button
               onClick={handleRetry}
-              className="w-full px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors"
+              className="w-full px-6 py-3 bg-gray-900 dark:bg-white hover:bg-purple-700 text-white rounded-lg font-medium transition-colors"
             >
               Try Again
             </button>

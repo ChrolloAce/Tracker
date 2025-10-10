@@ -421,7 +421,7 @@ const TeamManagementPage: React.FC = () => {
       {/* Received Invitations Section */}
       {receivedInvitations.length > 0 && (
         <div className="bg-gradient-to-br from-purple-900/20 to-pink-900/20 rounded-lg border border-purple-500/30 overflow-hidden">
-          <div className="px-6 py-4 border-b border-purple-500/30 bg-purple-900/20">
+          <div className="px-6 py-4 border-b border-purple-500/30 bg-gray-200 dark:bg-gray-800">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Mail className="w-5 h-5 text-gray-900 dark:text-white" />
@@ -484,7 +484,7 @@ const TeamManagementPage: React.FC = () => {
                       <Button
                         onClick={() => handleAcceptInvitation(invitation)}
                         disabled={actionLoading === invitation.id}
-                        className="bg-purple-600 hover:bg-purple-700 text-white px-6"
+                        className="bg-gray-900 dark:bg-white hover:bg-purple-700 text-white px-6"
                       >
                         {actionLoading === invitation.id ? 'Accepting...' : 'Accept'}
                       </Button>

@@ -93,7 +93,7 @@ const EditMemberPermissionsModal: React.FC<EditMemberPermissionsModalProps> = ({
           onChange();
         }}
         className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
-          checked ? 'bg-purple-600' : 'bg-gray-700'
+          checked ? 'bg-gray-900 dark:bg-white' : 'bg-gray-700'
         }`}
       >
         <span
@@ -144,7 +144,7 @@ const EditMemberPermissionsModal: React.FC<EditMemberPermissionsModalProps> = ({
                   {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
                 </span>
                 {hasCustomPermissions && (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-900/30 text-blue-300 border border-blue-500/30">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-900/30 text-gray-900 dark:text-white border border-blue-500/30">
                     <Edit className="w-3 h-3" />
                     Custom
                   </span>

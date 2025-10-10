@@ -230,7 +230,7 @@ const ProjectCreationFlow: React.FC<ProjectCreationFlowProps> = ({ onClose, onSu
                   key={s}
                   className={clsx(
                     'h-1 rounded-full transition-all duration-300 flex-1',
-                    s <= step ? 'bg-purple-600' : 'bg-gray-800'
+                    s <= step ? 'bg-gray-900 dark:bg-white' : 'bg-gray-800'
                   )}
                 />
               ))}
@@ -260,7 +260,7 @@ const ProjectCreationFlow: React.FC<ProjectCreationFlowProps> = ({ onClose, onSu
                     value={data.website}
                     onChange={(e) => setData({ ...data, website: e.target.value })}
                     placeholder="https://acme.com"
-                    className="w-full px-4 py-3 bg-[#161616] border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-purple-600 transition-colors"
+                    className="w-full px-4 py-3 bg-[#161616] border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-gray-900 dark:border-white transition-colors"
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Enter your project's website URL to automatically fill in details.
@@ -277,7 +277,7 @@ const ProjectCreationFlow: React.FC<ProjectCreationFlowProps> = ({ onClose, onSu
                     value={data.name}
                     onChange={(e) => handleNameChange(e.target.value)}
                     placeholder="Acme Inc."
-                    className="w-full px-4 py-3 bg-[#161616] border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-purple-600 transition-colors"
+                    className="w-full px-4 py-3 bg-[#161616] border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-gray-900 dark:border-white transition-colors"
                     maxLength={50}
                     required
                   />
@@ -296,7 +296,7 @@ const ProjectCreationFlow: React.FC<ProjectCreationFlowProps> = ({ onClose, onSu
                     value={data.slug}
                     onChange={(e) => setData({ ...data, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
                     placeholder="acme-inc"
-                    className="w-full px-4 py-3 bg-[#161616] border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-purple-600 transition-colors"
+                    className="w-full px-4 py-3 bg-[#161616] border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-gray-900 dark:border-white transition-colors"
                     maxLength={50}
                   />
                   <p className="text-xs text-gray-500 mt-1">
@@ -326,7 +326,7 @@ const ProjectCreationFlow: React.FC<ProjectCreationFlowProps> = ({ onClose, onSu
                       </div>
                     ) : (
                       <label className="cursor-pointer">
-                        <div className="w-20 h-20 mx-auto mb-4 bg-purple-900/20 rounded-lg flex items-center justify-center border border-purple-800/30">
+                        <div className="w-20 h-20 mx-auto mb-4 bg-gray-200 dark:bg-gray-800 rounded-lg flex items-center justify-center border border-gray-300 dark:border-gray-700">
                           <Upload className="w-8 h-8 text-purple-400" />
                         </div>
                         <p className="text-gray-300 mb-1">Drag and drop or click to select an image.</p>
@@ -354,12 +354,12 @@ const ProjectCreationFlow: React.FC<ProjectCreationFlowProps> = ({ onClose, onSu
                     onChange={(e) => setCurrentEmail(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleAddTeamMember()}
                     placeholder="email@example.com"
-                    className="flex-1 px-4 py-3 bg-[#161616] border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-purple-600 transition-colors"
+                    className="flex-1 px-4 py-3 bg-[#161616] border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-gray-900 dark:border-white transition-colors"
                   />
                   <select
                     value={currentRole}
                     onChange={(e) => setCurrentRole(e.target.value)}
-                    className="px-4 py-3 bg-[#161616] border border-gray-800 rounded-lg text-white focus:outline-none focus:border-purple-600 transition-colors"
+                    className="px-4 py-3 bg-[#161616] border border-gray-800 rounded-lg text-white focus:outline-none focus:border-gray-900 dark:border-white transition-colors"
                   >
                     <option value="member">Member</option>
                     <option value="admin">Admin</option>
@@ -413,7 +413,7 @@ const ProjectCreationFlow: React.FC<ProjectCreationFlowProps> = ({ onClose, onSu
                         className={clsx(
                           'px-4 py-3 rounded-lg border transition-all text-left',
                           data.businessType === type.id
-                            ? 'bg-purple-600 border-purple-600 text-white'
+                            ? 'bg-gray-900 dark:bg-white border-gray-900 dark:border-white text-white'
                             : 'bg-[#161616] border-gray-800 text-gray-300 hover:border-gray-700'
                         )}
                       >
@@ -437,7 +437,7 @@ const ProjectCreationFlow: React.FC<ProjectCreationFlowProps> = ({ onClose, onSu
                         className={clsx(
                           'px-4 py-3 rounded-lg border transition-all text-left',
                           data.referralSource === source.id
-                            ? 'bg-purple-600 border-purple-600 text-white'
+                            ? 'bg-gray-900 dark:bg-white border-gray-900 dark:border-white text-white'
                             : 'bg-[#161616] border-gray-800 text-gray-300 hover:border-gray-700'
                         )}
                       >
@@ -531,7 +531,7 @@ const ProjectCreationFlow: React.FC<ProjectCreationFlowProps> = ({ onClose, onSu
             transformOrigin: 'center'
           }} />
           {/* Floating decorative elements */}
-          <div className="absolute top-20 right-20 w-32 h-32 bg-purple-600/10 rounded-full blur-3xl" />
+          <div className="absolute top-20 right-20 w-32 h-32 bg-gray-900 dark:bg-white/10 rounded-full blur-3xl" />
           <div className="absolute bottom-40 right-40 w-40 h-40 bg-pink-600/10 rounded-full blur-3xl" />
         </div>
       </div>
