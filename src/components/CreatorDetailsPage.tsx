@@ -146,7 +146,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
 
     // Calculate per-video earnings
     filteredVideos.forEach((video: any) => {
-      const videoEarnings = TieredPaymentService.calculatePerVideoEarnings(
+      const videoEarnings = TieredPaymentService.calculateVideoEarnings(
         tieredPaymentStructure,
         video.views || 0,
         (video.likes || 0) + (video.comments || 0) + (video.shares || 0)
@@ -155,7 +155,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
     });
 
     // Add milestone bonuses (calculated once, not per video)
-    const milestoneEarnings = TieredPaymentService.calculateMilestoneEarnings(
+    const milestoneEarnings = TieredPaymentService.calculateMilestoneBonuses(
       tieredPaymentStructure,
       totalViews,
       totalVideos,
