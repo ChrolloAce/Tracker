@@ -8,6 +8,7 @@ import { TikTokSearchModal } from '../components/TikTokSearchModal';
 import KPICards from '../components/KPICards';
 import DateRangeFilter, { DateFilterType } from '../components/DateRangeFilter';
 import VideoAnalyticsModal from '../components/VideoAnalyticsModal';
+import TopPerformersRaceChart from '../components/TopPerformersRaceChart';
 import AccountsPage, { AccountsPageRef } from '../components/AccountsPage';
 import SettingsPage from '../components/SettingsPage';
 import SubscriptionPage from '../components/SubscriptionPage';
@@ -798,6 +799,11 @@ function DashboardPage() {
                   timePeriod="days"
                   onDateFilterChange={handleDateFilterChange}
                 />
+                
+                {/* Top Performers Race Chart */}
+                <div className="mt-6">
+                  <TopPerformersRaceChart submissions={combinedSubmissions} />
+                </div>
                 
                 {/* Video Submissions Table */}
                 <div className="mt-6">
