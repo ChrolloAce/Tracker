@@ -6,9 +6,11 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../services/firebase';
 import OrganizationService from '../services/OrganizationService';
 import DeleteOrganizationModal from './DeleteOrganizationModal';
+import TeamManagementPage from './TeamManagementPage';
+import PendingInvitationsPage from './PendingInvitationsPage';
 import { OrgMember } from '../types/firestore';
 
-type TabType = 'billing' | 'notifications' | 'organization' | 'profile';
+type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'team';
 
 /**
  * SettingsPage Component
@@ -166,6 +168,7 @@ const SettingsPage: React.FC = () => {
               { id: 'notifications', label: 'Notifications', icon: Bell },
               { id: 'organization', label: 'Organization', icon: Building2 },
               { id: 'profile', label: 'Profile', icon: UserIcon },
+              { id: 'team', label: 'Team', icon: Users },
             ].map(tab => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -703,6 +706,28 @@ const SettingsPage: React.FC = () => {
               © 2025 All rights reserved
             </p>
           </div>
+            </div>
+          )}
+
+          {/* Team Tab */}
+          {activeTab === 'team' && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Team Management</h2>
+                <p className="text-gray-600 dark:text-gray-400">Manage your team members and pending invitations.</p>
+              </div>
+
+              {/* Team Members */}
+              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Team Members</h3>
+                <TeamManagementPage />
+              </div>
+
+              {/* Pending Invitations */}
+              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Pending Invitations</h3>
+                <PendingInvitationsPage />
+              </div>
             </div>
           )}
         </div>

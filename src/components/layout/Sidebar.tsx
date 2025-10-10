@@ -97,15 +97,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const bottomItems: NavItem[] = useMemo(() => {
     const items: NavItem[] = [];
 
-    if (can.accessTab('team')) {
-      items.push({
-        id: 'team',
-        label: 'Team',
-        icon: UserPlus,
-        isActive: activeTab === 'team',
-        onClick: () => onTabChange?.('team'),
-      });
-    }
+    // Team tab moved to Settings
 
     if (can.accessTab('settings')) {
       items.push({

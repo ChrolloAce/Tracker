@@ -14,8 +14,6 @@ import SettingsPage from '../components/SettingsPage';
 import SubscriptionPage from '../components/SubscriptionPage';
 import CronManagementPage from '../components/CronManagementPage';
 import TrackedLinksPage, { TrackedLinksPageRef } from '../components/TrackedLinksPage';
-import TeamManagementPage from '../components/TeamManagementPage';
-import PendingInvitationsPage from '../components/PendingInvitationsPage';
 import CreatorPortalPage from '../components/CreatorPortalPage';
 import CreatorsManagementPage, { CreatorsManagementPageRef } from '../components/CreatorsManagementPage';
 import { PageLoadingSkeleton } from '../components/ui/LoadingSkeleton';
@@ -306,8 +304,7 @@ function DashboardPage() {
       if (isModalOpen || isTikTokSearchOpen || isAnalyticsModalOpen) return;
       
       // Only trigger on tabs where + button is visible
-      if (activeTab === 'settings' || activeTab === 'subscription' || 
-          activeTab === 'cron' || activeTab === 'team' || activeTab === 'invitations') {
+      if (activeTab === 'settings' || activeTab === 'subscription' || activeTab === 'cron') {
         return;
       }
       
@@ -659,8 +656,6 @@ function DashboardPage() {
                 {activeTab === 'analytics' && 'Tracked Links'}
                 {activeTab === 'creators' && 'Creators'}
                 {activeTab === 'cron' && 'Cron Jobs'}
-                {activeTab === 'team' && 'Team Management'}
-                {activeTab === 'invitations' && 'Pending Invitations'}
                 {activeTab === 'settings' && 'Settings'}
               </h1>
               {activeTab !== 'analytics' && (
@@ -670,8 +665,6 @@ function DashboardPage() {
                   {activeTab === 'subscription' && 'Choose the perfect plan to scale your tracking'}
                   {activeTab === 'creators' && 'Manage and discover content creators'}
                   {activeTab === 'cron' && 'Manage automated video refreshes'}
-                  {activeTab === 'team' && 'Manage team members and their access'}
-                  {activeTab === 'invitations' && 'Review and accept organization invitations'}
                   {activeTab === 'settings' && 'Configure your preferences'}
                 </p>
               )}
@@ -696,14 +689,14 @@ function DashboardPage() {
                 <select
                   value={dashboardPlatformFilter}
                   onChange={(e) => setDashboardPlatformFilter(e.target.value as 'all' | 'instagram' | 'tiktok' | 'youtube')}
-                  className="appearance-none pl-4 pr-10 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                  className="appearance-none pl-4 pr-10 py-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
                 >
-                  <option value="all">All Platforms</option>
-                  <option value="instagram">Instagram</option>
-                  <option value="tiktok">TikTok</option>
-                  <option value="youtube">YouTube</option>
+                  <option value="all" className="bg-gray-900">All Platforms</option>
+                  <option value="instagram" className="bg-gray-900">Instagram</option>
+                  <option value="tiktok" className="bg-gray-900">TikTok</option>
+                  <option value="youtube" className="bg-gray-900">YouTube</option>
                 </select>
-                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
               </div>
               
               <DateRangeFilter
@@ -720,14 +713,14 @@ function DashboardPage() {
                 <select
                   value={accountsPlatformFilter}
                   onChange={(e) => setAccountsPlatformFilter(e.target.value as 'all' | 'instagram' | 'tiktok' | 'youtube')}
-                  className="appearance-none pl-4 pr-10 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-white/20 cursor-pointer"
+                  className="appearance-none pl-4 pr-10 py-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
                 >
-                  <option value="all">All Platforms</option>
-                  <option value="instagram">Instagram</option>
-                  <option value="tiktok">TikTok</option>
-                  <option value="youtube">YouTube</option>
+                  <option value="all" className="bg-gray-900">All Platforms</option>
+                  <option value="instagram" className="bg-gray-900">Instagram</option>
+                  <option value="tiktok" className="bg-gray-900">TikTok</option>
+                  <option value="youtube" className="bg-gray-900">YouTube</option>
                 </select>
-                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
               </div>
 
               {/* Search Bar */}
@@ -834,14 +827,8 @@ function DashboardPage() {
           {/* Subscription Tab */}
           {activeTab === 'subscription' && <SubscriptionPage />}
 
-          {/* Settings Tab */}
+          {/* Settings Tab (includes Team tab inside) */}
           {activeTab === 'settings' && <SettingsPage />}
-
-          {/* Team Management Tab */}
-          {activeTab === 'team' && <TeamManagementPage />}
-
-          {/* Pending Invitations Tab */}
-          {activeTab === 'invitations' && <PendingInvitationsPage />}
 
           {/* Cron Management Tab */}
           {activeTab === 'cron' && <CronManagementPage />}

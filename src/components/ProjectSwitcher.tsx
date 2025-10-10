@@ -84,38 +84,37 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={clsx(
-          'w-full flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors',
-          'hover:bg-gray-100 dark:hover:bg-gray-800',
-          'border border-gray-200 dark:border-gray-700',
-          isOpen && 'bg-gray-100 dark:bg-gray-800'
+          'w-full flex items-center space-x-2 px-3 py-2 rounded-lg transition-all',
+          'hover:bg-white/5 bg-white/5 border border-white/10 hover:border-white/20 backdrop-blur-sm',
+          isOpen && 'bg-white/10'
         )}
       >
         {currentProject.imageUrl ? (
           <img
             src={currentProject.imageUrl}
             alt={currentProject.name}
-            className="w-6 h-6 rounded object-contain bg-gray-100 dark:bg-gray-800"
+            className="w-6 h-6 rounded object-contain bg-white/5"
           />
         ) : (
           <span className="text-base">{currentProject.icon || '📁'}</span>
         )}
-        <span className="text-sm font-medium text-gray-900 dark:text-white">
+        <span className="text-sm font-medium text-white/90">
           {currentProject.name}
         </span>
         <ChevronDown className={clsx(
-          'w-4 h-4 text-gray-500 transition-transform',
+          'w-4 h-4 text-white/50 transition-transform',
           isOpen && 'rotate-180'
         )} />
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-2 w-full bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
+        <div className="absolute top-full left-0 right-0 mt-2 w-full bg-gray-900 rounded-xl shadow-2xl border border-white/10 z-50 overflow-hidden backdrop-blur-xl">
           {/* Header */}
-          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+          <div className="px-4 py-3 border-b border-white/10 bg-white/5">
+            <h3 className="text-sm font-semibold text-white/90">
               Switch Project
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            <p className="text-xs text-white/60 mt-0.5">
               {projects.length} project{projects.length !== 1 ? 's' : ''}
             </p>
           </div>
@@ -129,8 +128,8 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
                 className={clsx(
                   'w-full px-4 py-3 flex items-start space-x-3 transition-colors text-left',
                   project.id === currentProjectId
-                    ? 'bg-blue-50 dark:bg-blue-900/20'
-                    : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                    ? 'bg-white/10'
+                    : 'hover:bg-white/5'
                 )}
               >
                 <div className="flex-shrink-0 mt-0.5">
@@ -138,11 +137,11 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
                     <img
                       src={project.imageUrl}
                       alt={project.name}
-                      className="w-8 h-8 rounded-lg object-contain bg-gray-100 dark:bg-gray-800"
+                      className="w-8 h-8 rounded-lg object-contain bg-white/5"
                     />
                   ) : (
                     <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-200 dark:bg-gray-700"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/10"
                     >
                       <span className="text-lg">{project.icon || '📁'}</span>
                     </div>
@@ -151,12 +150,12 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    <h4 className="text-sm font-medium text-white/90 truncate">
                       {project.name}
                     </h4>
                     <div className="flex items-center gap-1">
                       {project.id === currentProjectId && (
-                        <Check className="w-4 h-4 text-blue-600 dark:text-gray-900 dark:text-white flex-shrink-0" />
+                        <Check className="w-4 h-4 text-white/90 flex-shrink-0" />
                       )}
                       <button
                         onClick={(e) => {
@@ -164,15 +163,15 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
                           setEditingProject(project);
                           setIsOpen(false);
                         }}
-                        className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                        className="p-1 hover:bg-white/10 rounded transition-colors"
                         title="Edit project"
                       >
-                        <Edit3 className="w-3.5 h-3.5 text-gray-500 hover:text-blue-600 dark:hover:text-gray-900 dark:text-white" />
+                        <Edit3 className="w-3.5 h-3.5 text-white/50 hover:text-white/90" />
                       </button>
                     </div>
                   </div>
                   {project.description && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                    <p className="text-xs text-white/50 truncate mt-0.5">
                       {project.description}
                     </p>
                   )}
@@ -183,13 +182,13 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
 
           {/* Create New Project Button */}
           {onCreateProject && (
-            <div className="border-t border-gray-200 dark:border-gray-800 p-2">
+            <div className="border-t border-white/10 bg-white/5 p-2">
               <button
                 onClick={() => {
                   setIsOpen(false);
                   onCreateProject();
                 }}
-                className="w-full px-3 py-2 flex items-center space-x-2 text-sm font-medium text-blue-600 dark:text-gray-900 dark:text-white hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                className="w-full px-3 py-2 flex items-center space-x-2 text-sm font-medium text-white/90 hover:bg-white/10 rounded-lg transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 <span>Create New Project</span>

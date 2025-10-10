@@ -69,56 +69,56 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 hover:border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/20 transition-all backdrop-blur-sm"
       >
-        <Calendar className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        <Calendar className="w-4 h-4 text-white/50" />
+        <span className="text-sm font-medium text-white/90">
           {getFilterLabel()}
         </span>
-        <ChevronDown className={`w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-4 h-4 text-white/50 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+        <div className="absolute top-full left-0 mt-2 w-80 bg-gray-900 border border-white/10 rounded-lg shadow-2xl z-50 backdrop-blur-xl">
           <div className="p-2">
             {filterOptions.map((option) => (
               <div key={option.value}>
                 {option.value !== 'custom' ? (
                   <button
                     onClick={() => handleFilterSelect(option.value as DateFilterType)}
-                    className={`w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                      selectedFilter === option.value ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'
+                    className={`w-full text-left px-3 py-2 rounded-md hover:bg-white/5 transition-colors ${
+                      selectedFilter === option.value ? 'bg-white/10 text-white' : 'text-white/90'
                     }`}
                   >
                     <div className="font-medium">{option.label}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">{option.description}</div>
+                    <div className="text-xs text-white/50">{option.description}</div>
                   </button>
                 ) : (
                   <div className="px-3 py-2">
-                    <div className="font-medium text-gray-700 dark:text-gray-300 mb-2">{option.label}</div>
+                    <div className="font-medium text-white/90 mb-2">{option.label}</div>
                     <div className="space-y-2">
                       <div>
-                        <label className="block text-xs text-gray-500 mb-1">Start Date</label>
+                        <label className="block text-xs text-white/50 mb-1">Start Date</label>
                         <input
                           type="date"
                           value={customStartDate}
                           onChange={(e) => setCustomStartDate(e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          className="w-full px-2 py-1 text-sm border border-white/10 bg-white/5 text-white rounded focus:outline-none focus:ring-1 focus:ring-white/20"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-500 mb-1">End Date</label>
+                        <label className="block text-xs text-white/50 mb-1">End Date</label>
                         <input
                           type="date"
                           value={customEndDate}
                           onChange={(e) => setCustomEndDate(e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          className="w-full px-2 py-1 text-sm border border-white/10 bg-white/5 text-white rounded focus:outline-none focus:ring-1 focus:ring-white/20"
                         />
                       </div>
                       <button
                         onClick={handleCustomRangeApply}
                         disabled={!customStartDate || !customEndDate}
-                        className="w-full px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                        className="w-full px-3 py-1 text-sm bg-white/90 text-gray-900 rounded hover:bg-white disabled:bg-white/20 disabled:cursor-not-allowed transition-colors"
                       >
                         Apply Custom Range
                       </button>

@@ -76,11 +76,11 @@ const OrganizationSwitcher: React.FC = () => {
     if (!role) return null;
     switch (role) {
       case 'owner':
-        return <Crown className="w-3 h-3 text-yellow-500" />;
+        return <Crown className="w-3 h-3 text-yellow-400" />;
       case 'admin':
-        return <Shield className="w-3 h-3 text-gray-900 dark:text-white" />;
+        return <Shield className="w-3 h-3 text-white/90" />;
       case 'member':
-        return <User className="w-3 h-3 text-gray-500" />;
+        return <User className="w-3 h-3 text-white/50" />;
     }
   };
 
@@ -99,19 +99,18 @@ const OrganizationSwitcher: React.FC = () => {
   return (
     <>
       {/* Organization Button at Bottom */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+      <div className="p-4 border-t border-white/10">
         <button
           onClick={() => setIsOpen(!isOpen)}
           className={clsx(
-            'w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors',
-            'hover:bg-gray-100 dark:hover:bg-gray-800',
-            'border border-gray-200 dark:border-gray-700'
+            'w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all',
+            'hover:bg-white/5 bg-white/5 border border-white/10 hover:border-white/20 backdrop-blur-sm'
           )}
         >
-          <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
+          <span className="text-sm font-medium text-white/90 truncate">
             {currentOrg.name}
           </span>
-          <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+          <ChevronDown className="w-4 h-4 text-white/50 flex-shrink-0" />
         </button>
       </div>
 
@@ -122,15 +121,15 @@ const OrganizationSwitcher: React.FC = () => {
           onClick={() => setIsOpen(false)}
         >
           <div 
-            className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-md"
+            className="bg-gray-900 rounded-xl shadow-2xl border border-white/10 w-full max-w-md backdrop-blur-xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <div className="px-6 py-4 border-b border-white/10 bg-white/5">
+              <h3 className="text-lg font-semibold text-white/90">
                 Switch Organization
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-sm text-white/60 mt-1">
                 {organizations.length} organization{organizations.length !== 1 ? 's' : ''}
               </p>
             </div>
@@ -146,8 +145,8 @@ const OrganizationSwitcher: React.FC = () => {
                     className={clsx(
                       'w-full px-4 py-3 flex items-start space-x-3 rounded-lg transition-colors text-left mb-1',
                       org.id === currentOrgId
-                        ? 'bg-purple-50 dark:bg-gray-200 dark:bg-gray-800'
-                        : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                        ? 'bg-white/10'
+                        : 'hover:bg-white/5'
                     )}
                   >
                     <div className="flex-shrink-0 mt-0.5">
@@ -158,31 +157,31 @@ const OrganizationSwitcher: React.FC = () => {
                           className="w-10 h-10 rounded-lg object-cover"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
-                          <Building2 className="w-6 h-6 text-white" />
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-white/10">
+                          <Building2 className="w-6 h-6 text-white/70" />
                         </div>
                       )}
                     </div>
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        <h4 className="text-sm font-medium text-white/90 truncate">
                           {org.name}
                         </h4>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                           {getRoleIcon(role)}
                           {org.id === currentOrgId && (
-                            <Check className="w-4 h-4 text-purple-500" />
+                            <Check className="w-4 h-4 text-white/90" />
                           )}
                         </div>
                       </div>
                       <div className="flex items-center gap-3 mt-1">
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                        <p className="text-xs text-white/50">
                           {role && (
                             <span className="capitalize">{role}</span>
                           )}
                         </p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">
+                        <p className="text-xs text-white/40">
                           {org.memberCount} {org.memberCount === 1 ? 'member' : 'members'}
                         </p>
                       </div>
@@ -193,13 +192,13 @@ const OrganizationSwitcher: React.FC = () => {
             </div>
 
             {/* Create New Organization Button */}
-            <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-800">
+            <div className="px-4 py-3 border-t border-white/10 bg-white/5">
               <button
                 onClick={() => {
                   setIsOpen(false);
                   window.location.href = '/create-organization';
                 }}
-                className="w-full px-4 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg transition-all flex items-center justify-center gap-2 font-medium"
+                className="w-full px-4 py-2.5 bg-white/90 hover:bg-white text-gray-900 rounded-lg transition-all flex items-center justify-center gap-2 font-medium"
               >
                 <Plus className="w-4 h-4" />
                 Create New Organization
