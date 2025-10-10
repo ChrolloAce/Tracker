@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, FileText, Loader2 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { useAuth } from '../contexts/AuthContext';
-import FirestoreDataService from '../services/FirestoreDataService';
+import OrganizationService from '../services/OrganizationService';
 import { ContractService } from '../services/ContractService';
 import { OrgMember } from '../types/firestore';
 import { CONTRACT_TEMPLATES } from '../types/contracts';
@@ -33,9 +33,9 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
 
     setLoadingCreators(true);
     try {
-      const members = await FirestoreDataService.getProjectMembers(currentOrgId, currentProjectId);
+      const members = await OrganizationService.getOrgMembers(currentOrgId);
       // Filter to only show creators
-      const creatorMembers = members.filter(m => m.role === 'creator');
+      const creatorMembers = members.filter((m: OrgMember) => m.role === 'creator');
       setCreators(creatorMembers);
     } catch (error) {
       console.error('Error loading creators:', error);
