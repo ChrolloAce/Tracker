@@ -1,6 +1,6 @@
 import { useState, useEffect, forwardRef, useImperativeHandle, useMemo } from 'react';
 import Lottie from 'lottie-react';
-import { Plus, Copy, ExternalLink, Trash2, BarChart, Edit2, ArrowUp, ArrowDown, MousePointer, Users, TrendingUp } from 'lucide-react';
+import { Copy, ExternalLink, Trash2, BarChart, Edit2, ArrowUp, ArrowDown, MousePointer, Users, TrendingUp } from 'lucide-react';
 import { TrackedLink, TrackedAccount } from '../types/firestore';
 import FirestoreDataService from '../services/FirestoreDataService';
 import CreateLinkModal from './CreateLinkModal';
