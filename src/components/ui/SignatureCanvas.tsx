@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { X, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 
 interface SignatureCanvasProps {
   onSignatureChange: (signatureData: string | null) => void;
