@@ -61,7 +61,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   onUpdate,
 }) => {
   const { currentOrgId, currentProjectId } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'accounts' | 'payment' | 'contract' | 'payouts'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'accounts' | 'payment' | 'contract'>('overview');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [creatorProfile, setCreatorProfile] = useState<Creator | null>(null);
@@ -472,29 +472,6 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            {editMode ? (
-              <>
-                <Button
-                  variant="secondary"
-                  onClick={() => setEditMode(false)}
-                  disabled={saving}
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Cancel
-                </Button>
-                <Button onClick={handleSavePaymentTerms} disabled={saving}>
-                  <Save className="w-4 h-4 mr-2" />
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </>
-            ) : (
-              <Button onClick={() => setEditMode(true)}>
-                <Edit3 className="w-4 h-4 mr-2" />
-                Edit Details
-              </Button>
-            )}
-          </div>
         </div>
 
         {/* Stats Cards */}
@@ -539,7 +516,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
 
         {/* Tabs */}
         <div className="flex gap-1 mt-6 bg-[#0A0A0A] rounded-lg p-1 border border-gray-800">
-          {(['overview', 'accounts', 'payment', 'contract', 'payouts'] as const).map((tab) => (
+          {(['overview', 'accounts', 'payment', 'contract'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -633,7 +610,6 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
             loading={loadingContracts}
           />
         )}
-        {activeTab === 'payouts' && <PayoutsTab payouts={payouts} />}
       </div>
 
       {/* Link Accounts Modal */}
