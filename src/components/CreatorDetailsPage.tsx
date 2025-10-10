@@ -552,6 +552,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
             recentVideos={recentVideos}
             timePeriod={timePeriod}
             onTimePeriodChange={setTimePeriod}
+            tieredPaymentStructure={tieredPaymentStructure}
           />
         )}
         {activeTab === 'accounts' && (
@@ -652,7 +653,8 @@ const OverviewTab: React.FC<{
   recentVideos: any[];
   timePeriod: 'payment_period' | 'last_30' | 'last_7' | 'all_time';
   onTimePeriodChange: (period: 'payment_period' | 'last_30' | 'last_7' | 'all_time') => void;
-}> = ({ profile, linkedAccounts, recentVideos, timePeriod, onTimePeriodChange }) => {
+  tieredPaymentStructure: TieredPaymentStructure | null;
+}> = ({ profile, linkedAccounts, recentVideos, timePeriod, onTimePeriodChange, tieredPaymentStructure }) => {
   const [hoveredVideo, setHoveredVideo] = React.useState<string | null>(null);
   const [showTooltip, setShowTooltip] = React.useState(false);
   const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -711,7 +713,40 @@ const OverviewTab: React.FC<{
 
   // Calculate real-time earnings based on payment structure
   const calculateEarnings = () => {
-    if (!profile?.customPaymentTerms || filteredVideosByTime.length === 0) {
+    if (filteredVideosByTime.length === 0) {
+      return { total: 0, breakdown: [], details: '' };
+    }
+
+    // Use TieredPaymentService if tiered structure exists
+    if (tieredPaymentStructure && tieredPaymentStructure.tiers && tieredPaymentStructure.tiers.length > 0) {
+      let total = 0;
+      const breakdown: any[] = [];
+
+      filteredVideosByTime.forEach((video: any) => {
+        const result = TieredPaymentService.calculateVideoEarnings(
+          tieredPaymentStructure,
+          video.views || 0,
+          (video.likes || 0) + (video.comments || 0) + (video.shares || 0)
+        );
+
+        breakdown.push({
+          video: video.title || 'Untitled',
+          videoId: video.id,
+          accountId: video.trackedAccountId,
+          earnings: result.total,
+          views: video.views || 0,
+          uploadDate: video.uploadDate,
+          calculation: result.breakdown.map(b => `${b.label}: $${b.amount.toFixed(2)}`).join(' + ')
+        });
+
+        total += result.total;
+      });
+
+      return { total, breakdown, details: tieredPaymentStructure.name || 'Tiered Payment' };
+    }
+
+    // Fallback to old system
+    if (!profile?.customPaymentTerms) {
       return { total: 0, breakdown: [], details: '' };
     }
 
@@ -865,13 +900,28 @@ const OverviewTab: React.FC<{
           </div>
               </div>
 
+      {/* Total Payout Summary */}
+      {earnings.total > 0 && (
+        <div className="bg-gradient-to-br from-emerald-500/10 to-green-500/10 border border-emerald-500/20 rounded-xl p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-emerald-400 font-medium mb-1">Total Calculated Payout</div>
+              <div className="text-xs text-gray-400">{earnings.details} • {filteredVideosByTime.length} videos</div>
+            </div>
+            <div className="text-right">
+              <div className="text-4xl font-bold text-white">${earnings.total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+              <div className="text-xs text-emerald-400 mt-1">Based on current payment structure</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Video Performance */}
       <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-white flex items-center gap-2">
             <Play className="w-5 h-5 text-gray-400" />
-            Video Performance
+            Video Breakdown & Payouts
             <span className="text-sm font-normal text-gray-400">({filteredVideos.length})</span>
         </h2>
           </div>
