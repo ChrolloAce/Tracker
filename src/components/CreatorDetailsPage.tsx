@@ -151,7 +151,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
         video.views || 0,
         (video.likes || 0) + (video.comments || 0) + (video.shares || 0)
       );
-      total += videoEarnings;
+      total += videoEarnings.total;
     });
 
     // Add milestone bonuses (calculated once, not per video)
