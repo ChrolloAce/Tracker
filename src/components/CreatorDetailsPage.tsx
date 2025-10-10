@@ -6,6 +6,7 @@ import CreatorLinksService from '../services/CreatorLinksService';
 import PayoutsService from '../services/PayoutsService';
 import FirestoreDataService from '../services/FirestoreDataService';
 import TieredPaymentService from '../services/TieredPaymentService';
+import { ContractService } from '../services/ContractService';
 import { 
   ArrowLeft, 
   Link as LinkIcon, 
@@ -17,7 +18,11 @@ import {
   AlertCircle,
   User,
   Play,
-  Eye
+  Eye,
+  Share2,
+  Copy,
+  ExternalLink,
+  Check
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -624,6 +629,9 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
             paymentStructureName={tieredPaymentStructure?.name}
             onSave={handleSavePaymentRules}
             saving={saving}
+            organizationId={currentOrgId || ''}
+            projectId={currentProjectId || ''}
+            userId={user?.uid || ''}
           />
         )}
         {activeTab === 'payouts' && <PayoutsTab payouts={payouts} />}
@@ -1199,8 +1207,80 @@ const ContractTab: React.FC<{
   paymentStructureName?: string;
   onSave: () => void;
   saving: boolean;
+  organizationId: string;
+  projectId: string;
+  userId: string;
 }> = (props) => {
   const [showTemplates, setShowTemplates] = React.useState(!props.contractNotes);
+  const [sharedContracts, setSharedContracts] = React.useState<any[]>([]);
+  const [loadingShare, setLoadingShare] = React.useState(false);
+  const [copiedLink, setCopiedLink] = React.useState(false);
+
+  // Load existing shared contracts
+  React.useEffect(() => {
+    loadSharedContracts();
+  }, [props.creator.id]);
+
+  const loadSharedContracts = async () => {
+    try {
+      const contracts = await ContractService.getContractsForCreator(
+        props.organizationId,
+        props.projectId,
+        props.creator.id
+      );
+      setSharedContracts(contracts);
+    } catch (error) {
+      console.error('Error loading shared contracts:', error);
+    }
+  };
+
+  const handleShareContract = async () => {
+    // Validate contract data
+    if (!props.contractNotes || !props.contractStartDate || !props.contractEndDate) {
+      alert('Please fill in all contract details before sharing');
+      return;
+    }
+
+    setLoadingShare(true);
+    try {
+      const contract = await ContractService.createShareableContract(
+        props.organizationId,
+        props.projectId,
+        props.creator.id,
+        props.creator.displayName || 'Creator',
+        props.creator.email || '',
+        props.contractStartDate,
+        props.contractEndDate,
+        props.contractNotes,
+        props.paymentStructureName,
+        props.userId
+      );
+
+      await loadSharedContracts();
+      
+      // Copy link to clipboard
+      await navigator.clipboard.writeText(contract.shareableLink);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 3000);
+      
+      alert(`Contract link created and copied to clipboard!\n\n${contract.shareableLink}`);
+    } catch (error) {
+      console.error('Error creating shareable contract:', error);
+      alert('Failed to create shareable contract');
+    } finally {
+      setLoadingShare(false);
+    }
+  };
+
+  const handleCopyLink = async (link: string) => {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    } catch (error) {
+      console.error('Error copying link:', error);
+    }
+  };
 
   const handleSelectTemplate = (template: ContractTemplate) => {
     props.onContractNotesChange(template.terms);
@@ -1338,16 +1418,17 @@ Example terms:
             </p>
           </div>
 
-          {/* Save Button */}
-          <div className="flex justify-end pt-4 border-t border-gray-800">
+          {/* Save & Share Buttons */}
+          <div className="flex gap-3 justify-end pt-4 border-t border-gray-800">
             <Button
               onClick={props.onSave}
               disabled={props.saving}
+              variant="outline"
               className="flex items-center gap-2"
             >
               {props.saving ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   Saving...
                 </>
               ) : (
@@ -1357,7 +1438,84 @@ Example terms:
                 </>
               )}
             </Button>
+            
+            <Button
+              onClick={handleShareContract}
+              disabled={loadingShare || !props.contractNotes || !props.contractStartDate || !props.contractEndDate}
+              className="flex items-center gap-2"
+            >
+              {loadingShare ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                  Creating...
+                </>
+              ) : copiedLink ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  Link Copied!
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-4 h-4" />
+                  Share Contract
+                </>
+              )}
+            </Button>
           </div>
+
+          {/* Shared Contracts List */}
+          {sharedContracts.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-gray-800">
+              <h3 className="text-sm font-medium text-gray-300 mb-3">Shared Contract Links</h3>
+              <div className="space-y-2">
+                {sharedContracts.map((contract) => (
+                  <div
+                    key={contract.id}
+                    className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-lg"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={clsx(
+                          'text-xs font-medium px-2 py-0.5 rounded',
+                          contract.status === 'signed' ? 'bg-green-500/20 text-green-400' :
+                          contract.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                          'bg-gray-500/20 text-gray-400'
+                        )}>
+                          {contract.status === 'signed' && '✓ Signed'}
+                          {contract.status === 'pending' && '⏳ Pending'}
+                          {contract.status === 'draft' && '📝 Draft'}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          Created {contract.createdAt?.toDate?.()?.toLocaleDateString() || 'N/A'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1 truncate">
+                        {contract.shareableLink}
+                      </p>
+                    </div>
+                    <div className="flex gap-2 ml-3">
+                      <button
+                        onClick={() => handleCopyLink(contract.shareableLink)}
+                        className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                        title="Copy link"
+                      >
+                        <Copy className="w-4 h-4 text-gray-400" />
+                      </button>
+                      <a
+                        href={contract.shareableLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                        title="Open contract"
+                      >
+                        <ExternalLink className="w-4 h-4 text-gray-400" />
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

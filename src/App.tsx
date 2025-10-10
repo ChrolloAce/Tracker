@@ -7,6 +7,7 @@ import CreateOrganizationPage from './pages/CreateOrganizationPage';
 import CreateProjectPage from './pages/CreateProjectPage';
 import DashboardPage from './pages/DashboardPage';
 import LinkRedirect from './components/LinkRedirect';
+import ContractSigningPage from './pages/ContractSigningPage';
 import { useEffect, useState } from 'react';
 import { AlertCircle } from 'lucide-react';
 
@@ -163,6 +164,9 @@ function App() {
       />
 
       <Route path="/l/:shortId" element={<LinkRedirect />} />
+      
+      {/* Public contract signing route - no authentication required */}
+      <Route path="/contract/:contractId" element={<ContractSigningPage />} />
 
       <Route 
         path="/onboarding" 

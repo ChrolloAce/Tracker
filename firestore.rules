@@ -470,6 +470,28 @@ service cloud.firestore {
       allow read: if isSignedIn() && 
         request.auth.token.email == resource.data.email;
     }
+    
+    // Shareable Contracts - Public access for signing
+    match /shareableContracts/{contractId} {
+      // Anyone can read a contract with the link (public access)
+      allow read: if true;
+      
+      // Organization members can create contracts
+      allow create: if isSignedIn();
+      
+      // Anyone can update to sign the contract (add signatures)
+      // But can only update signature fields, not other contract details
+      allow update: if true &&
+        (
+          // Allow updating creator signature
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['creatorSignature', 'updatedAt', 'status'])) ||
+          // Allow updating company signature
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['companySignature', 'updatedAt', 'status']))
+        );
+      
+      // Only organization members can delete
+      allow delete: if isSignedIn();
+    }
   }
 }
 

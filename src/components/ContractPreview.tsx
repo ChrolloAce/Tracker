@@ -39,7 +39,7 @@ const ContractPreview: React.FC<ContractPreviewProps> = ({
   }
 
   return (
-    <div className="bg-[#0A0A0A] border border-gray-800 text-white rounded-lg p-8 shadow-2xl h-full flex flex-col">
+    <div className="bg-[#0A0A0A] border border-gray-800 text-white rounded-lg p-8 shadow-2xl min-h-full flex flex-col">
       {/* Header */}
       <div className="border-b-2 border-white/20 pb-4 mb-6">
         <h2 className="text-2xl font-bold text-white mb-1">CREATOR CONTRACT</h2>
