@@ -26,6 +26,7 @@ import { Timestamp } from 'firebase/firestore';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
 import TieredPaymentBuilder from './TieredPaymentBuilder';
 import PaymentInvoicePreview from './PaymentInvoicePreview';
+import ContractPreview from './ContractPreview';
 import { TieredPaymentStructure } from '../types/payments';
 
 interface CreatorDetailsPageProps {
@@ -611,12 +612,14 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
         )}
         {activeTab === 'contract' && (
           <ContractTab
+            creator={creator}
             contractNotes={contractNotes}
             onContractNotesChange={setContractNotes}
             contractStartDate={contractStartDate}
             onContractStartDateChange={setContractStartDate}
             contractEndDate={contractEndDate}
             onContractEndDateChange={setContractEndDate}
+            paymentStructureName={tieredPaymentStructure?.name}
             onSave={handleSavePaymentRules}
             saving={saving}
           />
@@ -1215,22 +1218,27 @@ const AccountsTab: React.FC<{
 
 // Contract Tab Component
 const ContractTab: React.FC<{
+  creator: OrgMember;
   contractNotes: string;
   onContractNotesChange: (val: string) => void;
   contractStartDate: string;
   onContractStartDateChange: (val: string) => void;
   contractEndDate: string;
   onContractEndDateChange: (val: string) => void;
+  paymentStructureName?: string;
   onSave: () => void;
   saving: boolean;
 }> = (props) => {
   return (
-    <div className="space-y-6">
-      <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
-        <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
-          <FileText className="w-5 h-5 text-gray-400" />
-          Contract Details
-        </h2>
+    <div className="grid grid-cols-2 gap-6 h-[calc(100vh-300px)]">
+      {/* Left: Edit Contract */}
+      <div className="bg-[#161616] rounded-xl border border-gray-800 p-6 overflow-y-auto">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+            <FileText className="w-5 h-5 text-gray-400" />
+            Contract Details
+          </h2>
+        </div>
 
         <div className="space-y-6">
           {/* Contract Dates */}
@@ -1262,22 +1270,29 @@ const ContractTab: React.FC<{
           {/* Contract Notes */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              Contract Notes & Terms
+              Contract Terms & Conditions
             </label>
             <textarea
               value={props.contractNotes}
               onChange={(e) => props.onContractNotesChange(e.target.value)}
-              rows={8}
-              placeholder="Enter contract details, special terms, exclusivity clauses, etc..."
+              rows={12}
+              placeholder="Enter contract details, terms, exclusivity clauses, content rights, deliverables, etc...
+
+Example terms:
+• Creator agrees to produce X videos per month
+• All content must be original and creator-owned
+• Company has rights to use content for Y months
+• Exclusivity agreement for Z period
+• Termination clauses and notice periods"
               className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 resize-none transition-all"
             />
-            <p className="mt-2 text-sm text-gray-400">
-              Document any special terms, exclusivity agreements, content rights, or other contractual obligations.
+            <p className="mt-2 text-xs text-gray-400">
+              Document all contract terms, deliverables, rights, and obligations
             </p>
           </div>
 
           {/* Save Button */}
-          <div className="flex justify-end">
+          <div className="flex justify-end pt-4 border-t border-gray-800">
             <Button
               onClick={props.onSave}
               disabled={props.saving}
@@ -1291,12 +1306,23 @@ const ContractTab: React.FC<{
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  Save Contract Details
+                  Save Contract
                 </>
               )}
             </Button>
           </div>
         </div>
+      </div>
+
+      {/* Right: Contract Preview */}
+      <div className="overflow-y-auto">
+        <ContractPreview
+          creatorName={props.creator.displayName || props.creator.email || 'Creator'}
+          contractStartDate={props.contractStartDate}
+          contractEndDate={props.contractEndDate}
+          contractNotes={props.contractNotes}
+          paymentStructureName={props.paymentStructureName}
+        />
       </div>
     </div>
   );
