@@ -631,7 +631,6 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
             creator={creator}
             contracts={contracts}
             loading={loadingContracts}
-            onRefresh={loadContracts}
           />
         )}
         {activeTab === 'payouts' && <PayoutsTab payouts={payouts} />}
@@ -1200,8 +1199,7 @@ const ContractTab: React.FC<{
   creator: OrgMember;
   contracts: ShareableContract[];
   loading: boolean;
-  onRefresh: () => void;
-}> = ({ creator, contracts, loading, onRefresh }) => {
+}> = ({ creator, contracts, loading }) => {
   const [currentPage, setCurrentPage] = React.useState(1);
   const [copiedLink, setCopiedLink] = React.useState<string | null>(null);
   const itemsPerPage = 10;
