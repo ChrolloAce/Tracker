@@ -1,4 +1,4 @@
-import { PaymentTier, PaymentComponent, TieredPaymentStructure } from '../types/payments';
+import { PaymentComponent, TieredPaymentStructure } from '../types/payments';
 import { Timestamp } from 'firebase/firestore';
 
 /**

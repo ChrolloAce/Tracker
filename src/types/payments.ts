@@ -92,7 +92,7 @@ export interface PaymentTierTemplate {
   description: string;
   icon?: string;
   example: string; // Example calculation
-  tiers: Omit<PaymentTier, 'id' | 'isPaid' | 'paidAt' | 'paidAmount'>[];
+  tiers: Omit<PaymentTier, 'id' | 'paidAt' | 'paidAmount'>[];
 }
 
 /**
