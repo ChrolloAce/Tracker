@@ -1,48 +1,59 @@
 import { Timestamp } from 'firebase/firestore';
 
 /**
- * Payment Tier Types
+ * Payment Component Types (can be combined in a single tier)
  */
-export type PaymentTierType =
-  | 'upfront'              // Upfront payment (percentage or fixed)
-  | 'on_delivery'          // On video delivery
-  | 'view_milestone'       // After reaching X views
-  | 'engagement_milestone' // After reaching engagement threshold
-  | 'time_based'           // After X days/weeks
-  | 'completion'           // Final payment on completion
-  | 'custom';              // Custom milestone
+export type PaymentComponentType =
+  | 'flat_fee'        // Fixed $ per video
+  | 'cpm'             // $ per 1000 views
+  | 'per_view'        // $ per view
+  | 'per_engagement'  // $ per like/comment/share
+  | 'bonus';          // One-time bonus
 
 /**
- * Payment Tier Condition Type
+ * Single Payment Component (building block)
  */
-export type TierConditionType = 'percentage' | 'fixed_amount';
+export interface PaymentComponent {
+  id: string;
+  type: PaymentComponentType;
+  amount: number; // Rate or fixed amount
+  
+  // Conditions for this component
+  minViews?: number; // Only applies after X views
+  maxViews?: number; // Only applies up to X views
+  
+  // Human-readable label
+  label?: string;
+}
 
 /**
- * Single Payment Tier/Stage
+ * Payment Tier - A stage in the payment structure
+ * Can contain multiple components (e.g., base + CPM)
  */
 export interface PaymentTier {
   id: string;
-  type: PaymentTierType;
-  order: number; // Order in which tiers are displayed
+  order: number;
   
-  // Amount configuration
-  amountType: TierConditionType; // 'percentage' or 'fixed_amount'
-  amount: number; // Dollar amount or percentage
+  // Human-readable description
+  label: string; // e.g., "Per Video Payment"
+  description?: string; // Detailed explanation
   
-  // Condition/Trigger
-  label: string; // Display label (e.g., "Upfront", "After 10K Views")
-  description?: string; // Additional description
+  // Payment components in this tier
+  components: PaymentComponent[];
   
-  // Milestone-specific conditions
-  viewsRequired?: number; // For view_milestone
-  engagementRequired?: number; // For engagement_milestone (likes + comments)
-  videosRequired?: number; // For on_delivery
-  daysAfterStart?: number; // For time_based
+  // When this tier applies
+  appliesTo: 'per_video' | 'per_campaign' | 'milestone';
+  
+  // Milestone conditions (if appliesTo === 'milestone')
+  milestoneCondition?: {
+    type: 'views' | 'videos' | 'time' | 'engagement';
+    threshold: number;
+  };
   
   // Status tracking
   isPaid: boolean;
   paidAt?: Timestamp;
-  paidAmount?: number; // Actual amount paid (useful for percentage-based)
+  paidAmount?: number;
   notes?: string;
 }
 
@@ -52,10 +63,9 @@ export interface PaymentTier {
 export interface TieredPaymentStructure {
   id: string;
   name: string; // Contract name
-  totalAmount: number; // Total contract amount in dollars
   currency: string; // e.g., 'USD'
   
-  // Payment tiers/stages
+  // Payment tiers
   tiers: PaymentTier[];
   
   // Contract dates
@@ -65,7 +75,6 @@ export interface TieredPaymentStructure {
   // Status
   isActive: boolean;
   totalPaid: number; // Running total of paid amounts
-  remainingBalance: number; // Calculated field
   
   // Metadata
   createdAt: Timestamp;
@@ -82,6 +91,7 @@ export interface PaymentTierTemplate {
   name: string;
   description: string;
   icon?: string;
+  example: string; // Example calculation
   tiers: Omit<PaymentTier, 'id' | 'isPaid' | 'paidAt' | 'paidAmount'>[];
 }
 
@@ -90,77 +100,128 @@ export interface PaymentTierTemplate {
  */
 export const PAYMENT_TIER_TEMPLATES: PaymentTierTemplate[] = [
   {
-    id: 'standard_upfront',
-    name: '50% Upfront, 50% on Delivery',
-    description: 'Split payment: half upfront, half when video is delivered',
-    icon: '💰',
+    id: 'flat_fee_simple',
+    name: 'Flat Fee Per Video',
+    description: 'Simple flat payment per video delivered',
+    icon: '💵',
+    example: 'A video would earn $250',
     tiers: [
       {
-        type: 'upfront',
         order: 0,
-        amountType: 'percentage',
-        amount: 50,
-        label: 'Upfront Payment',
-        description: '50% paid before work begins'
-      },
-      {
-        type: 'on_delivery',
-        order: 1,
-        amountType: 'percentage',
-        amount: 50,
-        label: 'On Delivery',
-        description: '50% paid when video is delivered',
-        videosRequired: 1
+        label: 'Per Video Payment',
+        description: 'Flat fee per video',
+        appliesTo: 'per_video',
+        components: [
+          {
+            id: 'comp-1',
+            type: 'flat_fee',
+            amount: 250,
+            label: '$250 per video'
+          }
+        ],
+        isPaid: false
       }
     ]
   },
   {
-    id: 'milestone_based',
-    name: 'Performance-Based Milestones',
-    description: 'Payment tied to view milestones',
+    id: 'base_plus_cpm',
+    name: 'Base + CPM After Threshold',
+    description: 'Base payment + CPM after views threshold',
+    icon: '📈',
+    example: 'A video with 1M views: $250 + $10,000 = $10,250',
+    tiers: [
+      {
+        order: 0,
+        label: 'Per Video Payment',
+        description: 'Base payment plus CPM after 20K views',
+        appliesTo: 'per_video',
+        components: [
+          {
+            id: 'comp-1',
+            type: 'flat_fee',
+            amount: 250,
+            label: '$250 base per video'
+          },
+          {
+            id: 'comp-2',
+            type: 'cpm',
+            amount: 10,
+            minViews: 20000,
+            label: '$10 CPM after 20K views'
+          }
+        ],
+        isPaid: false
+      }
+    ]
+  },
+  {
+    id: 'performance_tiers',
+    name: 'Performance Tiers',
+    description: 'Different rates based on view ranges',
     icon: '🎯',
+    example: 'A video with 1M views: $250 + $500 + $1,000 = $1,750',
     tiers: [
       {
-        type: 'upfront',
         order: 0,
-        amountType: 'percentage',
-        amount: 20,
-        label: 'Upfront Payment',
-        description: '20% paid upfront'
+        label: 'Base Payment',
+        description: 'Paid per video delivered',
+        appliesTo: 'per_video',
+        components: [
+          {
+            id: 'comp-1',
+            type: 'flat_fee',
+            amount: 250,
+            label: '$250 base'
+          }
+        ],
+        isPaid: false
       },
       {
-        type: 'view_milestone',
         order: 1,
-        amountType: 'percentage',
-        amount: 30,
-        label: 'After 10K Views',
-        description: '30% paid after reaching 10,000 views',
-        viewsRequired: 10000
+        label: 'Bronze Tier Bonus',
+        description: 'Bonus for reaching 100K views',
+        appliesTo: 'milestone',
+        milestoneCondition: {
+          type: 'views',
+          threshold: 100000
+        },
+        components: [
+          {
+            id: 'comp-2',
+            type: 'bonus',
+            amount: 500,
+            label: '$500 at 100K views'
+          }
+        ],
+        isPaid: false
       },
       {
-        type: 'view_milestone',
         order: 2,
-        amountType: 'percentage',
-        amount: 30,
-        label: 'After 50K Views',
-        description: '30% paid after reaching 50,000 views',
-        viewsRequired: 50000
-      },
-      {
-        type: 'completion',
-        order: 3,
-        amountType: 'percentage',
-        amount: 20,
-        label: 'Final Payment',
-        description: '20% paid on campaign completion'
+        label: 'Gold Tier Bonus',
+        description: 'Bonus for reaching 1M views',
+        appliesTo: 'milestone',
+        milestoneCondition: {
+          type: 'views',
+          threshold: 1000000
+        },
+        components: [
+          {
+            id: 'comp-3',
+            type: 'bonus',
+            amount: 1000,
+            label: '$1,000 at 1M views'
+          }
+        ],
+        isPaid: false
       }
     ]
   },
   {
-    id: 'custom_tiered',
-    name: 'Custom Tiered',
+    id: 'custom',
+    name: 'Start From Scratch',
     description: 'Build your own payment structure',
     icon: '⚡',
+    example: '',
     tiers: []
   }
 ];

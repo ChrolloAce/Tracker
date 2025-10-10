@@ -1,188 +1,220 @@
-import { PaymentTier, TieredPaymentStructure } from '../types/payments';
+import { PaymentTier, PaymentComponent, TieredPaymentStructure } from '../types/payments';
 import { Timestamp } from 'firebase/firestore';
 
 /**
  * TieredPaymentService
- * Handles calculations and status updates for tiered payment structures
+ * Handles calculations for component-based tiered payment structures
  */
 class TieredPaymentService {
   /**
-   * Calculate the dollar amount for a specific tier
+   * Calculate earnings for a single video based on payment structure
    */
-  static calculateTierAmount(tier: PaymentTier, totalAmount: number): number {
-    if (tier.amountType === 'percentage') {
-      return (totalAmount * tier.amount) / 100;
-    }
-    return tier.amount;
-  }
-
-  /**
-   * Calculate total allocated amount across all tiers
-   */
-  static calculateTotalAllocated(structure: TieredPaymentStructure): {
-    totalPercentage: number;
-    totalDollars: number;
-    remainingPercentage: number;
-    remainingDollars: number;
+  static calculateVideoEarnings(
+    structure: TieredPaymentStructure,
+    videoViews: number,
+    videoEngagement?: number
+  ): {
+    total: number;
+    breakdown: { label: string; amount: number }[];
   } {
-    let totalPercentage = 0;
-    let totalDollars = 0;
+    let total = 0;
+    const breakdown: { label: string; amount: number }[] = [];
 
     structure.tiers.forEach(tier => {
-      if (tier.amountType === 'percentage') {
-        totalPercentage += tier.amount;
-        totalDollars += this.calculateTierAmount(tier, structure.totalAmount);
-      } else {
-        totalDollars += tier.amount;
+      if (tier.appliesTo === 'per_video') {
+        tier.components.forEach(comp => {
+          const amount = this.calculateComponentAmount(comp, videoViews, videoEngagement);
+          if (amount > 0) {
+            total += amount;
+            breakdown.push({
+              label: comp.label || this.generateComponentLabel(comp),
+              amount
+            });
+          }
+        });
       }
     });
 
-    return {
-      totalPercentage,
-      totalDollars,
-      remainingPercentage: 100 - totalPercentage,
-      remainingDollars: structure.totalAmount - totalDollars
-    };
+    return { total, breakdown };
   }
 
   /**
-   * Check if a tier's conditions are met
+   * Calculate milestone bonuses earned
    */
-  static isTierConditionMet(
-    tier: PaymentTier,
-    metrics: {
-      totalViews?: number;
-      totalEngagement?: number;
-      videoCount?: number;
-      daysElapsed?: number;
-      contractCompleted?: boolean;
+  static calculateMilestoneBonuses(
+    structure: TieredPaymentStructure,
+    totalViews: number,
+    totalVideos: number,
+    daysElapsed: number,
+    totalEngagement?: number
+  ): {
+    total: number;
+    breakdown: { label: string; amount: number; achieved: boolean }[];
+  } {
+    let total = 0;
+    const breakdown: { label: string; amount: number; achieved: boolean }[] = [];
+
+    structure.tiers.forEach(tier => {
+      if (tier.appliesTo === 'milestone' && tier.milestoneCondition) {
+        const achieved = this.isMilestoneAchieved(
+          tier.milestoneCondition,
+          totalViews,
+          totalVideos,
+          daysElapsed,
+          totalEngagement
+        );
+
+        if (achieved && !tier.isPaid) {
+          tier.components.forEach(comp => {
+            const amount = comp.amount;
+            total += amount;
+            breakdown.push({
+              label: tier.label,
+              amount,
+              achieved: true
+            });
+          });
+        } else if (!achieved) {
+          tier.components.forEach(comp => {
+            breakdown.push({
+              label: tier.label,
+              amount: comp.amount,
+              achieved: false
+            });
+          });
+        }
+      }
+    });
+
+    return { total, breakdown };
+  }
+
+  /**
+   * Calculate amount for a single payment component
+   */
+  private static calculateComponentAmount(
+    component: PaymentComponent,
+    views: number,
+    engagement?: number
+  ): number {
+    switch (component.type) {
+      case 'flat_fee':
+        return component.amount;
+
+      case 'cpm':
+        if (component.minViews && views < component.minViews) return 0;
+        const eligibleViews = component.minViews ? views - component.minViews : views;
+        const maxViews = component.maxViews ? Math.min(eligibleViews, component.maxViews - (component.minViews || 0)) : eligibleViews;
+        return (maxViews / 1000) * component.amount;
+
+      case 'per_view':
+        if (component.minViews && views < component.minViews) return 0;
+        const countableViews = component.minViews ? views - component.minViews : views;
+        const limitedViews = component.maxViews ? Math.min(countableViews, component.maxViews - (component.minViews || 0)) : countableViews;
+        return limitedViews * component.amount;
+
+      case 'per_engagement':
+        return (engagement || 0) * component.amount;
+
+      case 'bonus':
+        return component.amount;
+
+      default:
+        return 0;
     }
+  }
+
+  /**
+   * Check if milestone is achieved
+   */
+  private static isMilestoneAchieved(
+    condition: { type: 'views' | 'videos' | 'time' | 'engagement'; threshold: number },
+    totalViews: number,
+    totalVideos: number,
+    daysElapsed: number,
+    totalEngagement?: number
   ): boolean {
-    switch (tier.type) {
-      case 'upfront':
-        // Upfront is always immediately available
-        return true;
-
-      case 'on_delivery':
-        return (metrics.videoCount || 0) >= (tier.videosRequired || 1);
-
-      case 'view_milestone':
-        return (metrics.totalViews || 0) >= (tier.viewsRequired || 0);
-
-      case 'engagement_milestone':
-        return (metrics.totalEngagement || 0) >= (tier.engagementRequired || 0);
-
-      case 'time_based':
-        return (metrics.daysElapsed || 0) >= (tier.daysAfterStart || 0);
-
-      case 'completion':
-        return metrics.contractCompleted || false;
-
-      case 'custom':
-        // Custom conditions need manual approval
-        return false;
-
+    switch (condition.type) {
+      case 'views':
+        return totalViews >= condition.threshold;
+      case 'videos':
+        return totalVideos >= condition.threshold;
+      case 'time':
+        return daysElapsed >= condition.threshold;
+      case 'engagement':
+        return (totalEngagement || 0) >= condition.threshold;
       default:
         return false;
     }
   }
 
   /**
-   * Get all tiers that are ready for payment
+   * Generate human-readable label for component
    */
-  static getEligibleTiers(
-    structure: TieredPaymentStructure,
-    metrics: {
-      totalViews?: number;
-      totalEngagement?: number;
-      videoCount?: number;
-      daysElapsed?: number;
-      contractCompleted?: boolean;
+  private static generateComponentLabel(component: PaymentComponent): string {
+    switch (component.type) {
+      case 'flat_fee':
+        return `$${component.amount} base`;
+      case 'cpm':
+        let label = `$${component.amount} CPM`;
+        if (component.minViews) {
+          label += ` after ${(component.minViews / 1000).toFixed(0)}K views`;
+        }
+        return label;
+      case 'per_view':
+        return `$${component.amount} per view`;
+      case 'per_engagement':
+        return `$${component.amount} per engagement`;
+      case 'bonus':
+        return `$${component.amount} bonus`;
+      default:
+        return '';
     }
-  ): PaymentTier[] {
-    return structure.tiers.filter(
-      tier => !tier.isPaid && this.isTierConditionMet(tier, metrics)
-    );
   }
 
   /**
-   * Calculate earnings breakdown for a creator with tiered structure
+   * Generate human-readable description of entire payment structure
    */
-  static calculateEarnings(
-    structure: TieredPaymentStructure,
-    metrics: {
-      totalViews?: number;
-      totalEngagement?: number;
-      videoCount?: number;
-      daysElapsed?: number;
-      contractCompleted?: boolean;
-    }
-  ): {
-    totalEarned: number;
-    totalPending: number;
-    totalRemaining: number;
-    breakdown: {
-      tierId: string;
-      tierLabel: string;
-      amount: number;
-      status: 'paid' | 'eligible' | 'pending';
-      conditionMet: boolean;
-    }[];
-  } {
-    let totalEarned = 0;
-    let totalPending = 0;
-    let totalRemaining = 0;
+  static generateDescription(structure: TieredPaymentStructure): string {
+    const parts: string[] = [];
 
-    const breakdown = structure.tiers.map(tier => {
-      const amount = this.calculateTierAmount(tier, structure.totalAmount);
-      const conditionMet = this.isTierConditionMet(tier, metrics);
-      
-      let status: 'paid' | 'eligible' | 'pending';
-      if (tier.isPaid) {
-        status = 'paid';
-        totalEarned += amount;
-      } else if (conditionMet) {
-        status = 'eligible';
-        totalPending += amount;
-      } else {
-        status = 'pending';
-        totalRemaining += amount;
+    structure.tiers.forEach(tier => {
+      const componentDescs = tier.components.map(comp => 
+        this.generateComponentLabel(comp)
+      );
+
+      if (tier.appliesTo === 'per_video') {
+        parts.push(`${componentDescs.join(' + ')} per video`);
+      } else if (tier.appliesTo === 'milestone' && tier.milestoneCondition) {
+        const threshold = tier.milestoneCondition.threshold;
+        const thresholdStr = threshold >= 1000 
+          ? `${(threshold / 1000).toFixed(0)}K` 
+          : threshold.toString();
+        parts.push(`${componentDescs.join(' + ')} at ${thresholdStr} ${tier.milestoneCondition.type}`);
+      } else if (tier.appliesTo === 'per_campaign') {
+        parts.push(`${componentDescs.join(' + ')} per campaign`);
       }
-
-      return {
-        tierId: tier.id,
-        tierLabel: tier.label,
-        amount,
-        status,
-        conditionMet
-      };
     });
 
-    return {
-      totalEarned,
-      totalPending,
-      totalRemaining,
-      breakdown
-    };
+    return parts.join('; ');
   }
 
   /**
-   * Mark a tier as paid
+   * Mark a milestone tier as paid
    */
   static markTierAsPaid(
     structure: TieredPaymentStructure,
     tierId: string,
-    paidAmount?: number,
+    paidAmount: number,
     notes?: string
   ): TieredPaymentStructure {
     const updatedTiers = structure.tiers.map(tier => {
       if (tier.id === tierId) {
-        const amount = paidAmount || this.calculateTierAmount(tier, structure.totalAmount);
         return {
           ...tier,
           isPaid: true,
           paidAt: Timestamp.now(),
-          paidAmount: amount,
+          paidAmount,
           notes: notes || tier.notes
         };
       }
@@ -197,77 +229,8 @@ class TieredPaymentService {
       ...structure,
       tiers: updatedTiers,
       totalPaid,
-      remainingBalance: structure.totalAmount - totalPaid,
       updatedAt: Timestamp.now()
     };
-  }
-
-  /**
-   * Get a summary of the payment structure
-   */
-  static getSummary(structure: TieredPaymentStructure): {
-    totalTiers: number;
-    paidTiers: number;
-    eligibleTiers: number;
-    pendingTiers: number;
-    completionPercentage: number;
-    isComplete: boolean;
-  } {
-    const totalTiers = structure.tiers.length;
-    const paidTiers = structure.tiers.filter(t => t.isPaid).length;
-    const completionPercentage = totalTiers > 0 ? (paidTiers / totalTiers) * 100 : 0;
-    const isComplete = paidTiers === totalTiers && totalTiers > 0;
-
-    return {
-      totalTiers,
-      paidTiers,
-      eligibleTiers: 0, // Will be calculated with metrics
-      pendingTiers: totalTiers - paidTiers,
-      completionPercentage,
-      isComplete
-    };
-  }
-
-  /**
-   * Generate a human-readable description of the payment structure
-   */
-  static generateDescription(structure: TieredPaymentStructure): string {
-    const parts: string[] = [];
-
-    const sortedTiers = [...structure.tiers].sort((a, b) => a.order - b.order);
-
-    sortedTiers.forEach(tier => {
-      const amount = this.calculateTierAmount(tier, structure.totalAmount);
-      let condition = '';
-
-      switch (tier.type) {
-        case 'upfront':
-          condition = 'upfront';
-          break;
-        case 'on_delivery':
-          condition = `on delivery${tier.videosRequired ? ` of ${tier.videosRequired} video${tier.videosRequired !== 1 ? 's' : ''}` : ''}`;
-          break;
-        case 'view_milestone':
-          condition = `after ${(tier.viewsRequired || 0).toLocaleString()} views`;
-          break;
-        case 'engagement_milestone':
-          condition = `after ${(tier.engagementRequired || 0).toLocaleString()} total engagement`;
-          break;
-        case 'time_based':
-          condition = `${tier.daysAfterStart} days after start`;
-          break;
-        case 'completion':
-          condition = 'on completion';
-          break;
-        case 'custom':
-          condition = tier.description || 'custom milestone';
-          break;
-      }
-
-      parts.push(`$${amount.toLocaleString()} ${condition}`);
-    });
-
-    return parts.join(', ');
   }
 
   /**
@@ -281,34 +244,9 @@ class TieredPaymentService {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    // Check total amount
-    if (structure.totalAmount <= 0) {
-      errors.push('Total contract amount must be greater than 0');
-    }
-
     // Check if there are any tiers
     if (structure.tiers.length === 0) {
       warnings.push('No payment tiers defined');
-    }
-
-    // Calculate allocation
-    const allocation = this.calculateTotalAllocated(structure);
-
-    // Check for over-allocation
-    if (allocation.totalDollars > structure.totalAmount) {
-      errors.push(`Total tier amounts ($${allocation.totalDollars.toLocaleString()}) exceed contract total ($${structure.totalAmount.toLocaleString()})`);
-    }
-
-    // Check for under-allocation (warning only)
-    if (allocation.totalDollars < structure.totalAmount && structure.tiers.length > 0) {
-      const diff = structure.totalAmount - allocation.totalDollars;
-      warnings.push(`$${diff.toLocaleString()} unallocated in payment tiers`);
-    }
-
-    // Check percentage allocation
-    const hasPercentages = structure.tiers.some(t => t.amountType === 'percentage');
-    if (hasPercentages && allocation.totalPercentage > 100) {
-      errors.push(`Percentage allocation exceeds 100% (${allocation.totalPercentage.toFixed(0)}%)`);
     }
 
     // Check individual tiers
@@ -317,26 +255,25 @@ class TieredPaymentService {
         warnings.push(`Tier ${index + 1} has no label`);
       }
 
-      if (tier.amount <= 0) {
-        errors.push(`Tier "${tier.label}" has invalid amount`);
+      if (tier.components.length === 0) {
+        warnings.push(`Tier "${tier.label}" has no payment components`);
       }
 
-      // Check type-specific validations
-      if (tier.type === 'view_milestone' && !tier.viewsRequired) {
-        errors.push(`Tier "${tier.label}" requires view threshold`);
+      // Check milestone conditions
+      if (tier.appliesTo === 'milestone' && !tier.milestoneCondition) {
+        errors.push(`Tier "${tier.label}" is a milestone but has no condition set`);
       }
 
-      if (tier.type === 'engagement_milestone' && !tier.engagementRequired) {
-        errors.push(`Tier "${tier.label}" requires engagement threshold`);
-      }
+      // Check components
+      tier.components.forEach((comp, ci) => {
+        if (comp.amount <= 0) {
+          errors.push(`Tier "${tier.label}" component ${ci + 1} has invalid amount`);
+        }
 
-      if (tier.type === 'on_delivery' && !tier.videosRequired) {
-        warnings.push(`Tier "${tier.label}" has no video count specified`);
-      }
-
-      if (tier.type === 'time_based' && !tier.daysAfterStart) {
-        errors.push(`Tier "${tier.label}" requires days specification`);
-      }
+        if (comp.type === 'cpm' && comp.minViews && comp.minViews < 0) {
+          errors.push(`Tier "${tier.label}" has invalid minViews condition`);
+        }
+      });
     });
 
     return {
@@ -345,7 +282,31 @@ class TieredPaymentService {
       warnings
     };
   }
+
+  /**
+   * Get summary statistics
+   */
+  static getSummary(structure: TieredPaymentStructure): {
+    totalTiers: number;
+    perVideoTiers: number;
+    milestoneTiers: number;
+    paidTiers: number;
+    hasValidStructure: boolean;
+  } {
+    const totalTiers = structure.tiers.length;
+    const perVideoTiers = structure.tiers.filter(t => t.appliesTo === 'per_video').length;
+    const milestoneTiers = structure.tiers.filter(t => t.appliesTo === 'milestone').length;
+    const paidTiers = structure.tiers.filter(t => t.isPaid).length;
+    const validation = this.validate(structure);
+
+    return {
+      totalTiers,
+      perVideoTiers,
+      milestoneTiers,
+      paidTiers,
+      hasValidStructure: validation.isValid
+    };
+  }
 }
 
 export default TieredPaymentService;
-

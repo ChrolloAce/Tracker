@@ -1,89 +1,37 @@
 import React, { useState, useEffect } from 'react';
+import { Plus, Trash2, Edit3, Check, X } from 'lucide-react';
 import { 
-  Plus, 
-  Trash2, 
-  DollarSign, 
-  Eye, 
-  Calendar, 
-  Target, 
-  Video,
-  CheckCircle2,
-  GripVertical,
-  Percent
-} from 'lucide-react';
-import { PaymentTier, PaymentTierType, TieredPaymentStructure, PAYMENT_TIER_TEMPLATES } from '../types/payments';
-import clsx from 'clsx';
+  PaymentTier, 
+  PaymentComponent,
+  PaymentComponentType,
+  TieredPaymentStructure, 
+  PAYMENT_TIER_TEMPLATES 
+} from '../types/payments';
 
 interface TieredPaymentBuilderProps {
   value: TieredPaymentStructure | null;
   onChange: (structure: TieredPaymentStructure) => void;
 }
 
-const TIER_TYPE_OPTIONS: { 
-  value: PaymentTierType; 
-  label: string; 
-  icon: React.ReactNode; 
-  description: string;
-  color: string;
-}[] = [
-  { 
-    value: 'upfront', 
-    label: 'Upfront Payment', 
-    icon: <DollarSign className="w-4 h-4" />, 
-    description: 'Payment before work begins',
-    color: 'bg-blue-500/10 text-blue-400 border-blue-500/30'
-  },
-  { 
-    value: 'on_delivery', 
-    label: 'On Delivery', 
-    icon: <Video className="w-4 h-4" />, 
-    description: 'Payment when video(s) delivered',
-    color: 'bg-purple-500/10 text-purple-400 border-purple-500/30'
-  },
-  { 
-    value: 'view_milestone', 
-    label: 'View Milestone', 
-    icon: <Eye className="w-4 h-4" />, 
-    description: 'Payment after reaching view goal',
-    color: 'bg-green-500/10 text-green-400 border-green-500/30'
-  },
-  { 
-    value: 'engagement_milestone', 
-    label: 'Engagement Milestone', 
-    icon: <Target className="w-4 h-4" />, 
-    description: 'Payment after engagement threshold',
-    color: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
-  },
-  { 
-    value: 'time_based', 
-    label: 'Time-Based', 
-    icon: <Calendar className="w-4 h-4" />, 
-    description: 'Payment after X days',
-    color: 'bg-orange-500/10 text-orange-400 border-orange-500/30'
-  },
-  { 
-    value: 'completion', 
-    label: 'Final Payment', 
-    icon: <CheckCircle2 className="w-4 h-4" />, 
-    description: 'Final payment on completion',
-    color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-  },
-  { 
-    value: 'custom', 
-    label: 'Custom', 
-    icon: <Target className="w-4 h-4" />, 
-    description: 'Custom payment condition',
-    color: 'bg-gray-500/10 text-gray-400 border-gray-500/30'
-  }
+const COMPONENT_TYPES: { value: PaymentComponentType; label: string; unit: string }[] = [
+  { value: 'flat_fee', label: 'Flat Fee', unit: '$' },
+  { value: 'cpm', label: 'CPM (per 1K views)', unit: '$ per 1K' },
+  { value: 'per_view', label: 'Per View', unit: '$ per view' },
+  { value: 'per_engagement', label: 'Per Engagement', unit: '$ per engagement' },
+  { value: 'bonus', label: 'Bonus', unit: '$' }
 ];
 
 const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onChange }) => {
   const [structure, setStructure] = useState<TieredPaymentStructure | null>(value);
-  const [showAddTier, setShowAddTier] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [showTemplates, setShowTemplates] = useState(!value);
 
   useEffect(() => {
     setStructure(value);
+    if (!value) {
+      setShowTemplates(true);
+      setIsEditing(false);
+    }
   }, [value]);
 
   const handleInitializeFromTemplate = (templateId: string) => {
@@ -93,16 +41,18 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
     const newStructure: TieredPaymentStructure = {
       id: `payment-${Date.now()}`,
       name: template.name,
-      totalAmount: 0,
       currency: 'USD',
       tiers: template.tiers.map((tier, index) => ({
         ...tier,
         id: `tier-${Date.now()}-${index}`,
-        isPaid: false
+        isPaid: false,
+        components: tier.components.map((comp, ci) => ({
+          ...comp,
+          id: `comp-${Date.now()}-${ci}`
+        }))
       })),
       isActive: true,
       totalPaid: 0,
-      remainingBalance: 0,
       createdAt: new Date() as any,
       createdBy: ''
     };
@@ -110,37 +60,31 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
     setStructure(newStructure);
     onChange(newStructure);
     setShowTemplates(false);
+    setIsEditing(true);
   };
 
   const handleUpdateStructure = (updates: Partial<TieredPaymentStructure>) => {
     if (!structure) return;
-
     const updated = { ...structure, ...updates };
-    
-    // Recalculate remaining balance
-    updated.remainingBalance = updated.totalAmount - updated.totalPaid;
-    
     setStructure(updated);
     onChange(updated);
   };
 
-  const handleAddTier = (type: PaymentTierType) => {
+  const handleAddTier = () => {
     if (!structure) return;
 
     const newTier: PaymentTier = {
       id: `tier-${Date.now()}`,
-      type,
       order: structure.tiers.length,
-      amountType: 'percentage',
-      amount: 0,
-      label: TIER_TYPE_OPTIONS.find(t => t.value === type)?.label || '',
+      label: 'New Payment Stage',
+      appliesTo: 'per_video',
+      components: [],
       isPaid: false
     };
 
     handleUpdateStructure({
       tiers: [...structure.tiers, newTier]
     });
-    setShowAddTier(false);
   };
 
   const handleUpdateTier = (tierId: string, updates: Partial<PaymentTier>) => {
@@ -163,215 +107,156 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
     handleUpdateStructure({ tiers: updatedTiers });
   };
 
-  const calculateTierAmount = (tier: PaymentTier): number => {
-    if (!structure) return 0;
-    
-    if (tier.amountType === 'percentage') {
-      return (structure.totalAmount * tier.amount) / 100;
-    }
-    return tier.amount;
-  };
+  const handleAddComponent = (tierId: string) => {
+    if (!structure) return;
 
-  const calculateTotalAllocated = (): number => {
-    if (!structure) return 0;
-    
-    return structure.tiers.reduce((sum, tier) => {
-      if (tier.amountType === 'percentage') {
-        return sum + tier.amount;
+    const updatedTiers = structure.tiers.map(tier => {
+      if (tier.id === tierId) {
+        const newComponent: PaymentComponent = {
+          id: `comp-${Date.now()}`,
+          type: 'flat_fee',
+          amount: 0
+        };
+        return {
+          ...tier,
+          components: [...tier.components, newComponent]
+        };
       }
-      return sum + tier.amount;
-    }, 0);
+      return tier;
+    });
+
+    handleUpdateStructure({ tiers: updatedTiers });
   };
 
-  const getTotalDollarAmount = (): number => {
-    if (!structure) return 0;
-    
-    return structure.tiers.reduce((sum, tier) => {
-      return sum + calculateTierAmount(tier);
-    }, 0);
+  const handleUpdateComponent = (tierId: string, componentId: string, updates: Partial<PaymentComponent>) => {
+    if (!structure) return;
+
+    const updatedTiers = structure.tiers.map(tier => {
+      if (tier.id === tierId) {
+        return {
+          ...tier,
+          components: tier.components.map(comp =>
+            comp.id === componentId ? { ...comp, ...updates } : comp
+          )
+        };
+      }
+      return tier;
+    });
+
+    handleUpdateStructure({ tiers: updatedTiers });
   };
 
-  const renderTierForm = (tier: PaymentTier) => {
-    const tierType = TIER_TYPE_OPTIONS.find(t => t.value === tier.type);
-    const tierAmount = calculateTierAmount(tier);
+  const handleDeleteComponent = (tierId: string, componentId: string) => {
+    if (!structure) return;
 
-    return (
-      <div
-        key={tier.id}
-        className={clsx(
-          "border rounded-lg p-4 transition-all",
-          tier.isPaid
-            ? "bg-green-500/5 border-green-500/20"
-            : "bg-white/5 border-white/10"
-        )}
-      >
-        <div className="flex items-start gap-3">
-          {/* Drag Handle */}
-          <div className="flex-shrink-0 mt-2 text-gray-500 cursor-move">
-            <GripVertical className="w-4 h-4" />
-          </div>
+    const updatedTiers = structure.tiers.map(tier => {
+      if (tier.id === tierId) {
+        return {
+          ...tier,
+          components: tier.components.filter(comp => comp.id !== componentId)
+        };
+      }
+      return tier;
+    });
 
-          {/* Tier Icon */}
-          <div className={clsx(
-            "flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center border",
-            tierType?.color || 'bg-gray-500/10 text-gray-400 border-gray-500/30'
-          )}>
-            {tierType?.icon}
-          </div>
+    handleUpdateStructure({ tiers: updatedTiers });
+  };
 
-          {/* Tier Content */}
-          <div className="flex-1 min-w-0 space-y-3">
-            {/* Tier Header */}
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1">
-                <input
-                  type="text"
-                  value={tier.label}
-                  onChange={(e) => handleUpdateTier(tier.id, { label: e.target.value })}
-                  placeholder="Payment stage name..."
-                  className="w-full px-2 py-1 bg-transparent border-none text-white font-medium text-sm focus:outline-none focus:ring-0"
-                />
-                <p className="text-xs text-gray-400 mt-0.5">{tierType?.description}</p>
-              </div>
-              
-              {/* Tier Amount Display */}
-              <div className="text-right flex-shrink-0">
-                <div className="text-lg font-bold text-white">
-                  ${tierAmount.toLocaleString()}
-                </div>
-                {tier.amountType === 'percentage' && (
-                  <div className="text-xs text-gray-400">{tier.amount}% of total</div>
-                )}
-              </div>
+  // Generate human-readable summary
+  const generateSummary = (): string => {
+    if (!structure || structure.tiers.length === 0) return '';
 
-              {/* Delete Button */}
-              <button
-                onClick={() => handleDeleteTier(tier.id)}
-                className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors flex-shrink-0"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
+    const parts: string[] = [];
 
-            {/* Amount Configuration */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-white/70 mb-1">
-                  Amount Type
-                </label>
-                <select
-                  value={tier.amountType}
-                  onChange={(e) => handleUpdateTier(tier.id, { 
-                    amountType: e.target.value as 'percentage' | 'fixed_amount' 
-                  })}
-                  className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
-                >
-                  <option value="percentage">Percentage (%)</option>
-                  <option value="fixed_amount">Fixed Amount ($)</option>
-                </select>
-              </div>
+    structure.tiers.forEach(tier => {
+      const componentDescriptions = tier.components.map(comp => {
+        let desc = '';
+        if (comp.type === 'flat_fee') {
+          desc = `$${comp.amount}`;
+        } else if (comp.type === 'cpm') {
+          desc = `$${comp.amount} CPM`;
+          if (comp.minViews) {
+            desc += ` after ${(comp.minViews / 1000).toFixed(0)}K views`;
+          }
+        } else if (comp.type === 'per_view') {
+          desc = `$${comp.amount} per view`;
+          if (comp.minViews) {
+            desc += ` after ${(comp.minViews / 1000).toFixed(0)}K views`;
+          }
+        } else if (comp.type === 'bonus') {
+          desc = `$${comp.amount} bonus`;
+        } else if (comp.type === 'per_engagement') {
+          desc = `$${comp.amount} per engagement`;
+        }
+        return desc;
+      });
 
-              <div>
-                <label className="block text-xs font-medium text-white/70 mb-1">
-                  {tier.amountType === 'percentage' ? 'Percentage' : 'Amount'}
-                </label>
-                <div className="relative">
-                  {tier.amountType === 'percentage' && (
-                    <Percent className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  )}
-                  {tier.amountType === 'fixed_amount' && (
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  )}
-                  <input
-                    type="number"
-                    value={tier.amount || ''}
-                    onChange={(e) => handleUpdateTier(tier.id, { amount: parseFloat(e.target.value) || 0 })}
-                    placeholder="0"
-                    step={tier.amountType === 'percentage' ? '1' : '0.01'}
-                    className="w-full pl-9 pr-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
-                  />
-                </div>
-              </div>
-            </div>
+      if (tier.appliesTo === 'per_video') {
+        if (tier.components.length > 0) {
+          parts.push(`${componentDescriptions.join(' + ')} per video`);
+        }
+      } else if (tier.appliesTo === 'milestone' && tier.milestoneCondition) {
+        const threshold = tier.milestoneCondition.threshold;
+        const thresholdStr = threshold >= 1000 
+          ? `${(threshold / 1000).toFixed(0)}K` 
+          : threshold.toString();
+        parts.push(`${componentDescriptions.join(' + ')} at ${thresholdStr} ${tier.milestoneCondition.type}`);
+      } else if (tier.appliesTo === 'per_campaign') {
+        parts.push(`${componentDescriptions.join(' + ')} per campaign`);
+      }
+    });
 
-            {/* Condition-Specific Fields */}
-            {tier.type === 'view_milestone' && (
-              <div>
-                <label className="block text-xs font-medium text-white/70 mb-1">
-                  Views Required
-                </label>
-                <input
-                  type="number"
-                  value={tier.viewsRequired || ''}
-                  onChange={(e) => handleUpdateTier(tier.id, { viewsRequired: parseInt(e.target.value) || 0 })}
-                  placeholder="10000"
-                  className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
-                />
-              </div>
-            )}
+    return parts.join(', ');
+  };
 
-            {tier.type === 'engagement_milestone' && (
-              <div>
-                <label className="block text-xs font-medium text-white/70 mb-1">
-                  Total Engagement Required (Likes + Comments)
-                </label>
-                <input
-                  type="number"
-                  value={tier.engagementRequired || ''}
-                  onChange={(e) => handleUpdateTier(tier.id, { engagementRequired: parseInt(e.target.value) || 0 })}
-                  placeholder="1000"
-                  className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
-                />
-              </div>
-            )}
+  // Calculate example earnings for a video
+  const calculateExample = (views: number): { total: number; breakdown: string[] } => {
+    if (!structure) return { total: 0, breakdown: [] };
 
-            {tier.type === 'on_delivery' && (
-              <div>
-                <label className="block text-xs font-medium text-white/70 mb-1">
-                  Number of Videos Required
-                </label>
-                <input
-                  type="number"
-                  value={tier.videosRequired || ''}
-                  onChange={(e) => handleUpdateTier(tier.id, { videosRequired: parseInt(e.target.value) || 0 })}
-                  placeholder="1"
-                  className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
-                />
-              </div>
-            )}
+    let total = 0;
+    const breakdown: string[] = [];
 
-            {tier.type === 'time_based' && (
-              <div>
-                <label className="block text-xs font-medium text-white/70 mb-1">
-                  Days After Contract Start
-                </label>
-                <input
-                  type="number"
-                  value={tier.daysAfterStart || ''}
-                  onChange={(e) => handleUpdateTier(tier.id, { daysAfterStart: parseInt(e.target.value) || 0 })}
-                  placeholder="30"
-                  className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
-                />
-              </div>
-            )}
+    structure.tiers.forEach(tier => {
+      if (tier.appliesTo === 'per_video') {
+        tier.components.forEach(comp => {
+          let amount = 0;
+          let desc = '';
 
-            {/* Description */}
-            <div>
-              <label className="block text-xs font-medium text-white/70 mb-1">
-                Description (optional)
-              </label>
-              <textarea
-                value={tier.description || ''}
-                onChange={(e) => handleUpdateTier(tier.id, { description: e.target.value })}
-                placeholder="Add any additional details about this payment..."
-                rows={2}
-                className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50 resize-none"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+          if (comp.type === 'flat_fee') {
+            amount = comp.amount;
+            desc = `$${amount} flat fee`;
+          } else if (comp.type === 'cpm') {
+            if (!comp.minViews || views >= comp.minViews) {
+              const eligibleViews = comp.minViews ? views - comp.minViews : views;
+              amount = (eligibleViews / 1000) * comp.amount;
+              desc = `$${amount.toFixed(2)} (${(eligibleViews / 1000).toFixed(1)}K views × $${comp.amount} CPM)`;
+            }
+          } else if (comp.type === 'per_view') {
+            if (!comp.minViews || views >= comp.minViews) {
+              const eligibleViews = comp.minViews ? views - comp.minViews : views;
+              amount = eligibleViews * comp.amount;
+              desc = `$${amount.toFixed(2)} (${eligibleViews.toLocaleString()} views × $${comp.amount})`;
+            }
+          }
+
+          if (amount > 0) {
+            total += amount;
+            breakdown.push(desc);
+          }
+        });
+      } else if (tier.appliesTo === 'milestone' && tier.milestoneCondition) {
+        if (tier.milestoneCondition.type === 'views' && views >= tier.milestoneCondition.threshold) {
+          tier.components.forEach(comp => {
+            if (comp.type === 'bonus') {
+              total += comp.amount;
+              breakdown.push(`$${comp.amount} bonus (${(tier.milestoneCondition!.threshold / 1000).toFixed(0)}K milestone)`);
+            }
+          });
+        }
+      }
+    });
+
+    return { total, breakdown };
   };
 
   // Template Selection View
@@ -379,48 +264,38 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
     return (
       <div className="space-y-4">
         <div>
-          <h3 className="text-lg font-semibold text-white mb-2">Choose a Payment Structure Template</h3>
-          <p className="text-sm text-gray-400">Select a template to get started, or build from scratch</p>
+          <h3 className="text-base font-medium text-white mb-1">Choose Payment Template</h3>
+          <p className="text-sm text-gray-400">Select a starting point or build from scratch</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-1 gap-2">
           {PAYMENT_TIER_TEMPLATES.map((template) => (
             <button
               key={template.id}
               onClick={() => handleInitializeFromTemplate(template.id)}
-              className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg transition-all text-left"
+              className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg transition-all text-left group"
             >
               <div className="flex items-start gap-3">
-                <div className="text-2xl">{template.icon}</div>
-                <div className="flex-1">
-                  <h4 className="text-white font-medium">{template.name}</h4>
-                  <p className="text-sm text-gray-400 mt-1">{template.description}</p>
-                  {template.tiers.length > 0 && (
-                    <div className="mt-2 text-xs text-gray-500">
-                      {template.tiers.length} payment stage{template.tiers.length !== 1 ? 's' : ''}
-                    </div>
+                <div className="text-xl">{template.icon}</div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-white font-medium text-sm group-hover:text-white/90">{template.name}</h4>
+                  <p className="text-xs text-gray-400 mt-0.5">{template.description}</p>
+                  {template.example && (
+                    <p className="text-xs text-gray-500 mt-1 italic">{template.example}</p>
                   )}
                 </div>
               </div>
             </button>
           ))}
         </div>
-
-        <button
-          onClick={() => setShowTemplates(false)}
-          className="w-full px-4 py-2 bg-gray-700/50 hover:bg-gray-700 text-white rounded-lg font-medium text-sm transition-colors"
-        >
-          Skip Templates
-        </button>
       </div>
     );
   }
 
-  // Main Builder View
   if (!structure) {
     return (
       <div className="text-center py-8">
-        <p className="text-gray-400 mb-4">No payment structure configured</p>
+        <p className="text-gray-400 text-sm mb-4">No payment structure configured</p>
         <button
           onClick={() => setShowTemplates(true)}
           className="px-4 py-2 bg-white/90 hover:bg-white text-gray-900 rounded-lg font-medium text-sm transition-colors"
@@ -431,139 +306,243 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
     );
   }
 
-  const totalAllocated = calculateTotalAllocated();
-  const totalDollars = getTotalDollarAmount();
-  const hasPercentages = structure.tiers.some(t => t.amountType === 'percentage');
+  const summary = generateSummary();
+  const example1M = calculateExample(1000000);
+  const example100K = calculateExample(100000);
 
-  return (
-    <div className="space-y-4">
-      {/* Contract Overview */}
-      <div className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-white/10 rounded-lg p-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-xs font-medium text-white/70 mb-2">
-              Contract Name
-            </label>
-            <input
-              type="text"
-              value={structure.name}
-              onChange={(e) => handleUpdateStructure({ name: e.target.value })}
-              placeholder="e.g., Q1 2024 Campaign"
-              className="w-full px-3 py-2 bg-gray-800/50 border border-gray-600/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-white/70 mb-2">
-              Total Contract Amount ($)
-            </label>
-            <input
-              type="number"
-              value={structure.totalAmount || ''}
-              onChange={(e) => handleUpdateStructure({ totalAmount: parseFloat(e.target.value) || 0 })}
-              placeholder="1000"
-              step="0.01"
-              className="w-full px-3 py-2 bg-gray-800/50 border border-gray-600/50 rounded-lg text-white text-sm font-bold focus:outline-none focus:ring-2 focus:ring-white/50"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-white/70 mb-2">
-              Payment Stages
-            </label>
-            <div className="px-3 py-2 bg-gray-800/30 border border-gray-600/30 rounded-lg">
-              <div className="text-white font-bold">{structure.tiers.length} stage{structure.tiers.length !== 1 ? 's' : ''}</div>
+  // Collapsed/Read-Only View
+  if (!isEditing) {
+    return (
+      <div className="space-y-4">
+        {/* Summary Card */}
+        <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="text-sm font-medium text-gray-400">Payment Structure</h3>
+                {structure.tiers.length > 0 && (
+                  <span className="text-xs px-2 py-0.5 bg-green-500/10 text-green-400 rounded">
+                    {structure.tiers.length} stage{structure.tiers.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+              
+              {summary ? (
+                <p className="text-white leading-relaxed">
+                  {summary.charAt(0).toUpperCase() + summary.slice(1)}.
+                </p>
+              ) : (
+                <p className="text-gray-500 italic">No payment stages configured</p>
+              )}
             </div>
+
+            <button
+              onClick={() => setIsEditing(true)}
+              className="flex-shrink-0 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              Edit
+            </button>
           </div>
         </div>
 
-        {/* Allocation Summary */}
-        {hasPercentages && (
-          <div className="mt-4 pt-4 border-t border-white/10">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-white/70">Total Allocated:</span>
-              <span className={clsx(
-                "font-bold",
-                totalAllocated === 100 ? "text-green-400" : totalAllocated > 100 ? "text-red-400" : "text-yellow-400"
-              )}>
-                {totalAllocated.toFixed(0)}% 
-                {structure.totalAmount > 0 && ` ($${totalDollars.toLocaleString()})`}
-              </span>
+        {/* Example Calculations */}
+        {structure.tiers.length > 0 && (
+          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+            <h4 className="text-xs font-medium text-gray-400 mb-3">Example Earnings</h4>
+            
+            <div className="space-y-3">
+              {/* 100K example */}
+              <div>
+                <div className="flex items-baseline justify-between mb-1">
+                  <span className="text-sm text-gray-300">Video with 100K views</span>
+                  <span className="text-lg font-bold text-white">${example100K.total.toLocaleString()}</span>
+                </div>
+                {example100K.breakdown.length > 0 && (
+                  <div className="text-xs text-gray-500">
+                    {example100K.breakdown.join(' + ')}
+                  </div>
+                )}
+              </div>
+
+              {/* 1M example */}
+              <div>
+                <div className="flex items-baseline justify-between mb-1">
+                  <span className="text-sm text-gray-300">Video with 1M views</span>
+                  <span className="text-lg font-bold text-white">${example1M.total.toLocaleString()}</span>
+                </div>
+                {example1M.breakdown.length > 0 && (
+                  <div className="text-xs text-gray-500">
+                    {example1M.breakdown.join(' + ')}
+                  </div>
+                )}
+              </div>
             </div>
-            {totalAllocated !== 100 && (
-              <p className={clsx(
-                "text-xs mt-1",
-                totalAllocated > 100 ? "text-red-400" : "text-yellow-400"
-              )}>
-                {totalAllocated > 100 
-                  ? `Over-allocated by ${(totalAllocated - 100).toFixed(0)}%` 
-                  : `${(100 - totalAllocated).toFixed(0)}% remaining to allocate`
-                }
-              </p>
-            )}
           </div>
         )}
       </div>
+    );
+  }
 
-      {/* Payment Tiers */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-semibold text-white">Payment Stages</h4>
-          <span className="text-xs text-gray-400">
-            {structure.tiers.filter(t => t.isPaid).length} of {structure.tiers.length} paid
-          </span>
+  // Edit Mode
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-medium text-white">Edit Payment Structure</h3>
+          <p className="text-xs text-gray-400 mt-0.5">Build your payment stages and components</p>
         </div>
+        <button
+          onClick={() => setIsEditing(false)}
+          className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+        >
+          <Check className="w-3.5 h-3.5" />
+          Done
+        </button>
+      </div>
 
-        {structure.tiers.length === 0 ? (
-          <div className="text-center py-8 bg-white/5 border border-white/10 rounded-lg">
-            <p className="text-gray-400 text-sm mb-3">No payment stages yet</p>
-            <p className="text-gray-500 text-xs">Add your first payment stage to get started</p>
+      {/* Tiers */}
+      <div className="space-y-3">
+        {structure.tiers.map((tier) => (
+          <div
+            key={tier.id}
+            className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3"
+          >
+            {/* Tier Header */}
+            <div className="flex items-start gap-3">
+              <div className="flex-1 space-y-2">
+                <input
+                  type="text"
+                  value={tier.label}
+                  onChange={(e) => handleUpdateTier(tier.id, { label: e.target.value })}
+                  placeholder="Stage name..."
+                  className="w-full px-3 py-1.5 bg-gray-800/50 border border-gray-700/50 rounded text-white text-sm font-medium focus:outline-none focus:ring-1 focus:ring-white/50"
+                />
+                
+                <select
+                  value={tier.appliesTo}
+                  onChange={(e) => handleUpdateTier(tier.id, { appliesTo: e.target.value as any })}
+                  className="w-full px-3 py-1.5 bg-gray-800/50 border border-gray-700/50 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-white/50"
+                >
+                  <option value="per_video">Per Video</option>
+                  <option value="milestone">Milestone</option>
+                  <option value="per_campaign">Per Campaign</option>
+                </select>
+              </div>
+
+              <button
+                onClick={() => handleDeleteTier(tier.id)}
+                className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Milestone Condition */}
+            {tier.appliesTo === 'milestone' && (
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  value={tier.milestoneCondition?.type || 'views'}
+                  onChange={(e) => handleUpdateTier(tier.id, {
+                    milestoneCondition: {
+                      type: e.target.value as any,
+                      threshold: tier.milestoneCondition?.threshold || 0
+                    }
+                  })}
+                  className="px-3 py-1.5 bg-gray-800/50 border border-gray-700/50 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-white/50"
+                >
+                  <option value="views">Views</option>
+                  <option value="videos">Videos</option>
+                  <option value="time">Days</option>
+                  <option value="engagement">Engagement</option>
+                </select>
+                <input
+                  type="number"
+                  value={tier.milestoneCondition?.threshold || ''}
+                  onChange={(e) => handleUpdateTier(tier.id, {
+                    milestoneCondition: {
+                      type: tier.milestoneCondition?.type || 'views',
+                      threshold: parseInt(e.target.value) || 0
+                    }
+                  })}
+                  placeholder="Threshold..."
+                  className="px-3 py-1.5 bg-gray-800/50 border border-gray-700/50 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-white/50"
+                />
+              </div>
+            )}
+
+            {/* Components */}
+            <div className="space-y-2">
+              <div className="text-xs font-medium text-gray-400">Payment Components</div>
+              {tier.components.map((comp) => {
+                return (
+                  <div key={comp.id} className="flex items-center gap-2 bg-gray-800/30 p-2 rounded">
+                    <select
+                      value={comp.type}
+                      onChange={(e) => handleUpdateComponent(tier.id, comp.id, { type: e.target.value as PaymentComponentType })}
+                      className="flex-1 px-2 py-1 bg-gray-800/50 border border-gray-700/50 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-white/50"
+                    >
+                      {COMPONENT_TYPES.map(ct => (
+                        <option key={ct.value} value={ct.value}>{ct.label}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      type="number"
+                      value={comp.amount || ''}
+                      onChange={(e) => handleUpdateComponent(tier.id, comp.id, { amount: parseFloat(e.target.value) || 0 })}
+                      placeholder="Amount"
+                      step="0.01"
+                      className="w-24 px-2 py-1 bg-gray-800/50 border border-gray-700/50 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-white/50"
+                    />
+
+                    {(comp.type === 'cpm' || comp.type === 'per_view') && (
+                      <input
+                        type="number"
+                        value={comp.minViews || ''}
+                        onChange={(e) => handleUpdateComponent(tier.id, comp.id, { minViews: parseInt(e.target.value) || undefined })}
+                        placeholder="After X views..."
+                        className="w-32 px-2 py-1 bg-gray-800/50 border border-gray-700/50 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-white/50"
+                      />
+                    )}
+
+                    <button
+                      onClick={() => handleDeleteComponent(tier.id, comp.id)}
+                      className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })}
+
+              <button
+                onClick={() => handleAddComponent(tier.id)}
+                className="w-full px-3 py-1.5 bg-gray-800/30 hover:bg-gray-800/50 border border-gray-700/30 hover:border-gray-700/50 rounded text-gray-400 hover:text-white text-xs font-medium transition-all flex items-center justify-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Component
+              </button>
+            </div>
           </div>
-        ) : (
-          structure.tiers
-            .sort((a, b) => a.order - b.order)
-            .map(tier => renderTierForm(tier))
-        )}
+        ))}
       </div>
 
       {/* Add Tier Button */}
-      {!showAddTier ? (
-        <button
-          onClick={() => setShowAddTier(true)}
-          className="w-full px-4 py-3 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 rounded-lg transition-all flex items-center justify-center gap-2 text-white font-medium"
-        >
-          <Plus className="w-4 h-4" />
-          Add Payment Stage
-        </button>
-      ) : (
-        <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
-          <h4 className="text-sm font-medium text-white mb-2">Select Payment Stage Type</h4>
-          <div className="grid grid-cols-2 gap-2">
-            {TIER_TYPE_OPTIONS.map((type) => (
-              <button
-                key={type.value}
-                onClick={() => handleAddTier(type.value)}
-                className={clsx(
-                  "p-3 rounded-lg border transition-all text-left hover:bg-white/10",
-                  "bg-gray-800/50 border-gray-700/50"
-                )}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <div className={clsx("w-6 h-6 rounded flex items-center justify-center border", type.color)}>
-                    {type.icon}
-                  </div>
-                  <span className="text-xs font-medium text-white">{type.label}</span>
-                </div>
-                <p className="text-xs text-gray-400">{type.description}</p>
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={() => setShowAddTier(false)}
-            className="w-full px-4 py-2 bg-gray-700/50 hover:bg-gray-700 text-white rounded-lg font-medium text-sm transition-colors"
-          >
-            Cancel
-          </button>
+      <button
+        onClick={handleAddTier}
+        className="w-full px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-white font-medium text-sm transition-all flex items-center justify-center gap-2"
+      >
+        <Plus className="w-4 h-4" />
+        Add Payment Stage
+      </button>
+
+      {/* Preview */}
+      {summary && (
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+          <div className="text-xs font-medium text-blue-400 mb-1">Preview</div>
+          <p className="text-sm text-white">{summary.charAt(0).toUpperCase() + summary.slice(1)}.</p>
         </div>
       )}
     </div>
@@ -571,4 +550,3 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
 };
 
 export default TieredPaymentBuilder;
-
