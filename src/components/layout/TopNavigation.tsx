@@ -21,7 +21,7 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({ onAddVideo, onTikT
           {/* Left section - Logo & Project Switcher */}
           <div className="flex items-center space-x-8">
             <div className="flex items-center">
-              <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-gray-900 dark:bg-white rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">VT</span>
               </div>
               <span className="ml-2 text-lg font-semibold text-gray-900 dark:text-white">

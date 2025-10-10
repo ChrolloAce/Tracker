@@ -166,7 +166,7 @@ const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
           </p>
           <button
             onClick={handleOpenCreate}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 text-white rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />
             Create First Rule
@@ -205,7 +205,7 @@ const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
                       {rule.conditions.map((condition, index) => (
                         <div key={condition.id} className="flex items-center gap-2 text-sm">
                           {index > 0 && (
-                            <span className="text-xs font-semibold text-blue-400">
+                            <span className="text-xs font-semibold text-gray-900 dark:text-white">
                               {rule.conditions[index - 1].operator || 'AND'}
                             </span>
                           )}
@@ -223,7 +223,7 @@ const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
                   </td>
                   <td className="px-6 py-4">
                     {rule.appliesTo.accountIds && rule.appliesTo.accountIds.length > 0 ? (
-                      <span className="px-2 py-1 bg-blue-900/30 text-blue-400 rounded text-xs">
+                      <span className="px-2 py-1 bg-gray-700 dark:bg-gray-300 text-gray-900 dark:text-white rounded text-xs">
                         {rule.appliesTo.accountIds.length} account{rule.appliesTo.accountIds.length > 1 ? 's' : ''}
                       </span>
                     ) : (
@@ -251,7 +251,7 @@ const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => handleOpenEdit(rule)}
-                        className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-900/30 rounded-lg transition-colors"
+                        className="p-2 text-gray-400 hover:text-gray-900 dark:text-white hover:bg-gray-700 dark:bg-gray-300 rounded-lg transition-colors"
                         title="Edit rule"
                       >
                         <Edit2 className="w-4 h-4" />
@@ -301,7 +301,7 @@ const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
               </label>
               <button
                 onClick={addCondition}
-                className="flex items-center gap-1 px-3 py-1 text-sm text-blue-400 hover:bg-blue-900/30 rounded-lg transition-colors"
+                className="flex items-center gap-1 px-3 py-1 text-sm text-gray-900 dark:text-white hover:bg-gray-700 dark:bg-gray-300 rounded-lg transition-colors"
               >
                 <Plus className="w-3 h-3" />
                 Add Condition
@@ -377,7 +377,7 @@ const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
                           type="checkbox"
                           checked={condition.caseSensitive || false}
                           onChange={(e) => updateCondition(condition.id, 'caseSensitive', e.target.checked)}
-                          className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0"
+                          className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:ring-offset-0"
                         />
                         <span>Case sensitive</span>
                       </label>
@@ -389,18 +389,18 @@ const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
           </div>
 
           {/* Info message about manual rule assignment */}
-          <div className="p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+          <div className="p-4 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg">
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 mt-0.5">
-                <svg className="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="w-5 h-5 text-gray-900 dark:text-white" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                 </svg>
               </div>
               <div>
-                <h4 className="text-sm font-semibold text-blue-300 mb-1">
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
                   Apply Rules Manually
                 </h4>
-                <p className="text-xs text-blue-200/80">
+                <p className="text-xs text-gray-700 dark:text-gray-300">
                   After creating this rule, go to any tracked account and use the "Manage Rules" button to apply or remove rules for that specific account.
                 </p>
               </div>
@@ -418,7 +418,7 @@ const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
             <button
               onClick={handleSaveRule}
               disabled={!ruleName.trim() || conditions.filter(c => c.value !== '').length === 0}
-              className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-2 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {editingRule ? 'Update Rule' : 'Create Rule'}
             </button>
