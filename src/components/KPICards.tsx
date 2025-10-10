@@ -97,45 +97,80 @@ const KPICards: React.FC<KPICardsProps> = ({
     }
     // For 'all' time, dateRangeStart remains null
     
-    // Note: submissions are already filtered by date range from DashboardPage
-    // We need to:
-    // 1. Sum up current metrics for all filtered videos
-    // 2. Add snapshot values if they fall within the selected time period
-    
+    // Calculate metrics based on date filter
     let totalViews = 0;
     let totalLikes = 0;
     let totalComments = 0;
     let totalShares = 0;
     
-    // Sum up current metrics for all (already filtered) submissions
-    totalViews = submissions.reduce((sum, v) => sum + (v.views || 0), 0);
-    totalLikes = submissions.reduce((sum, v) => sum + (v.likes || 0), 0);
-    totalComments = submissions.reduce((sum, v) => sum + (v.comments || 0), 0);
-    totalShares = submissions.reduce((sum, v) => sum + (v.shares || 0), 0);
-    
-    // Add snapshot values that fall within the selected date range
     if (dateRangeStart) {
+      // For specific date ranges (today, yesterday, etc.), use snapshot data within the range
       submissions.forEach(video => {
+        const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
+        
         if (video.snapshots && video.snapshots.length > 0) {
-          video.snapshots.forEach(snapshot => {
-            const capturedDate = snapshot.capturedAt instanceof Date 
-              ? snapshot.capturedAt 
-              : new Date(snapshot.capturedAt);
+          // Find snapshots at the start and end of the date range
+          const snapshotsInRange = video.snapshots.filter(s => {
+            const capturedDate = new Date(s.capturedAt);
+            return capturedDate >= dateRangeStart! && capturedDate <= dateRangeEnd;
+          }).sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime());
+          
+          if (snapshotsInRange.length > 0) {
+            // Get the first snapshot before or at range start
+            const snapshotBeforeRange = video.snapshots
+              .filter(s => new Date(s.capturedAt) <= dateRangeStart!)
+              .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
             
-            // Check if snapshot falls within the selected time period
-            if (capturedDate >= dateRangeStart! && capturedDate <= dateRangeEnd) {
-              totalViews += snapshot.views || 0;
-              totalLikes += snapshot.likes || 0;
-              totalComments += snapshot.comments || 0;
-              totalShares += snapshot.shares || 0;
+            // Get the last snapshot in the range
+            const lastSnapshotInRange = snapshotsInRange[snapshotsInRange.length - 1];
+            
+            if (snapshotBeforeRange && lastSnapshotInRange) {
+              // Calculate delta between start and end of period
+              totalViews += Math.max(0, (lastSnapshotInRange.views || 0) - (snapshotBeforeRange.views || 0));
+              totalLikes += Math.max(0, (lastSnapshotInRange.likes || 0) - (snapshotBeforeRange.likes || 0));
+              totalComments += Math.max(0, (lastSnapshotInRange.comments || 0) - (snapshotBeforeRange.comments || 0));
+              totalShares += Math.max(0, (lastSnapshotInRange.shares || 0) - (snapshotBeforeRange.shares || 0));
+            } else if (uploadDate >= dateRangeStart! && uploadDate <= dateRangeEnd) {
+              // Video was uploaded during this period
+              totalViews += lastSnapshotInRange.views || 0;
+              totalLikes += lastSnapshotInRange.likes || 0;
+              totalComments += lastSnapshotInRange.comments || 0;
+              totalShares += lastSnapshotInRange.shares || 0;
             }
-          });
+          } else if (uploadDate >= dateRangeStart! && uploadDate <= dateRangeEnd) {
+            // Video uploaded in range but no snapshots in range, use current metrics
+            totalViews += video.views || 0;
+            totalLikes += video.likes || 0;
+            totalComments += video.comments || 0;
+            totalShares += video.shares || 0;
+          }
+        } else if (uploadDate >= dateRangeStart! && uploadDate <= dateRangeEnd) {
+          // No snapshots, video uploaded in range
+          totalViews += video.views || 0;
+          totalLikes += video.likes || 0;
+          totalComments += video.comments || 0;
+          totalShares += video.shares || 0;
         }
+      });
+    } else {
+      // For 'all' time filter, use current metrics
+      totalViews = submissions.reduce((sum, v) => sum + (v.views || 0), 0);
+      totalLikes = submissions.reduce((sum, v) => sum + (v.likes || 0), 0);
+      totalComments = submissions.reduce((sum, v) => sum + (v.comments || 0), 0);
+      totalShares = submissions.reduce((sum, v) => sum + (v.shares || 0), 0);
+    }
+    
+    // Filter videos by date range for counts
+    let videosInRange = submissions;
+    if (dateRangeStart) {
+      videosInRange = submissions.filter(v => {
+        const uploadDate = new Date(v.uploadDate || v.dateSubmitted);
+        return uploadDate >= dateRangeStart! && uploadDate <= dateRangeEnd;
       });
     }
     
-    const activeAccounts = new Set(submissions.map(v => v.uploaderHandle)).size;
-    const publishedVideos = submissions.length;
+    const activeAccounts = new Set(videosInRange.map(v => v.uploaderHandle)).size;
+    const publishedVideos = videosInRange.length;
     
     const totalEngagement = totalLikes + totalComments;
     const engagementRate = totalViews > 0 ? (totalEngagement / totalViews) * 100 : 0;
