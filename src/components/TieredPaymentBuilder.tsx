@@ -582,19 +582,21 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
       </div>
 
       {/* Add Tier Button */}
-      <button
-        onClick={handleAddTier}
-        className="w-full px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-white font-medium text-sm transition-all flex items-center justify-center gap-2"
-      >
-        <Plus className="w-4 h-4" />
-        Add Payment Stage
-      </button>
+      {(!structure.tiers || structure.tiers.length === 0) && (
+        <button
+          onClick={handleAddTier}
+          className="w-full px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-white font-medium text-sm transition-all flex items-center justify-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Add Payment Stage
+        </button>
+      )}
 
-      {/* Preview */}
-      {summary && (
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
-          <div className="text-xs font-medium text-blue-400 mb-1">Preview</div>
-          <p className="text-sm text-white">{summary.charAt(0).toUpperCase() + summary.slice(1)}.</p>
+      {structure.tiers && structure.tiers.length > 0 && (
+        <div className="bg-white/5 border border-white/10 rounded-lg p-3 text-center">
+          <p className="text-xs text-gray-400">
+            One payment stage per creator. Delete the existing stage to create a new one.
+          </p>
         </div>
       )}
     </div>

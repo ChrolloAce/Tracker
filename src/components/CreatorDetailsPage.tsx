@@ -28,6 +28,7 @@ import TieredPaymentBuilder from './TieredPaymentBuilder';
 import PaymentInvoicePreview from './PaymentInvoicePreview';
 import ContractPreview from './ContractPreview';
 import { TieredPaymentStructure } from '../types/payments';
+import { CONTRACT_TEMPLATES, ContractTemplate } from '../types/contracts';
 
 interface CreatorDetailsPageProps {
   creator: OrgMember;
@@ -880,70 +881,6 @@ const OverviewTab: React.FC<{
           </div>
               </div>
 
-      {/* Account Cost Breakdown */}
-      {profile?.customPaymentTerms && accountEarnings.length > 0 && (
-        <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-gray-400" />
-            Cost Per Account
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {accountEarnings.map((item) => (
-              <div
-                key={item.account.id}
-                className={clsx(
-                  'bg-[#0A0A0A] border rounded-lg p-4 cursor-pointer transition-all',
-                  selectedAccount === item.account.id
-                    ? 'border-white ring-2 ring-white/20'
-                    : 'border-gray-800 hover:border-gray-700'
-                )}
-                onClick={() => setSelectedAccount(selectedAccount === item.account.id ? 'all' : item.account.id)}
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  {item.account.profilePicture ? (
-                    <img
-                      src={item.account.profilePicture}
-                      alt={item.account.username}
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
-                      <User className="w-5 h-5 text-gray-400" />
-            </div>
-          )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-white truncate">
-                        {item.account.displayName || item.account.username}
-                      </span>
-                      <PlatformIcon platform={item.account.platform} size="sm" />
-        </div>
-                    <div className="text-xs text-gray-400">@{item.account.username}</div>
-      </div>
-            </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-400">Total Payout</span>
-                    <span className="text-lg font-bold text-white">${item.earnings.toFixed(2)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-500">{item.videoCount} videos</span>
-                    <span className="text-gray-500">{formatNumber(item.views)} views</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          {selectedAccount !== 'all' && (
-            <button
-              onClick={() => setSelectedAccount('all')}
-              className="mt-4 text-sm text-gray-400 hover:text-white transition-colors"
-            >
-              ← Show all accounts
-            </button>
-          )}
-            </div>
-          )}
 
       {/* Video Performance */}
       <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
@@ -1229,6 +1166,76 @@ const ContractTab: React.FC<{
   onSave: () => void;
   saving: boolean;
 }> = (props) => {
+  const [showTemplates, setShowTemplates] = React.useState(!props.contractNotes);
+
+  const handleSelectTemplate = (template: ContractTemplate) => {
+    props.onContractNotesChange(template.terms);
+    
+    // Set contract duration if template has it
+    if (template.duration && !props.contractStartDate) {
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + template.duration.months);
+      
+      props.onContractStartDateChange(startDate.toISOString().split('T')[0]);
+      props.onContractEndDateChange(endDate.toISOString().split('T')[0]);
+    }
+    
+    setShowTemplates(false);
+  };
+
+  // Show templates if no contract notes
+  if (showTemplates) {
+    return (
+      <div className="grid grid-cols-2 gap-6 h-[calc(100vh-300px)]">
+        <div className="bg-[#161616] rounded-xl border border-gray-800 p-6 overflow-y-auto">
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-white mb-2">Choose a Template</h2>
+            <p className="text-sm text-gray-400">Select a contract template to get started, or create from scratch</p>
+          </div>
+          
+          <div className="space-y-3 mb-6">
+            {CONTRACT_TEMPLATES.map((template) => (
+              <button
+                key={template.id}
+                onClick={() => handleSelectTemplate(template)}
+                className="w-full text-left p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg transition-all group"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl">{template.icon}</div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-white font-medium text-sm group-hover:text-white/90">{template.name}</h4>
+                    <p className="text-xs text-gray-400 mt-0.5">{template.description}</p>
+                    {template.duration && (
+                      <p className="text-xs text-gray-500 mt-1">Duration: {template.duration.months} months</p>
+                    )}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setShowTemplates(false)}
+            className="w-full px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-white font-medium text-sm transition-all"
+          >
+            Start from Scratch
+          </button>
+        </div>
+
+        <div className="overflow-y-auto">
+          <ContractPreview
+            creatorName={props.creator.displayName || props.creator.email || 'Creator'}
+            contractStartDate={props.contractStartDate}
+            contractEndDate={props.contractEndDate}
+            contractNotes={props.contractNotes}
+            paymentStructureName={props.paymentStructureName}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-2 gap-6 h-[calc(100vh-300px)]">
       {/* Left: Edit Contract */}
@@ -1238,6 +1245,12 @@ const ContractTab: React.FC<{
             <FileText className="w-5 h-5 text-gray-400" />
             Contract Details
           </h2>
+          <button
+            onClick={() => setShowTemplates(true)}
+            className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition-colors"
+          >
+            Use Template
+          </button>
         </div>
 
         <div className="space-y-6">
