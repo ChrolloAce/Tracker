@@ -219,9 +219,22 @@ const KPICards: React.FC<KPICardsProps> = ({
         intervalMs = 30 * 24 * 60 * 60 * 1000; // ~1 month
       }
       
+      // Determine the starting point for data generation
+      let startTime: number;
+      if (dateFilter === 'yesterday') {
+        // Start from yesterday at midnight
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        yesterday.setHours(0, 0, 0, 0);
+        startTime = yesterday.getTime();
+      } else {
+        // Start from now and go backwards
+        startTime = Date.now() - ((numPoints - 1) * intervalMs);
+      }
+      
       // Generate trend showing growth over time
-      for (let i = numPoints - 1; i >= 0; i--) {
-        const pointDate = new Date(Date.now() - (i * intervalMs));
+      for (let i = 0; i < numPoints; i++) {
+        const pointDate = new Date(startTime + (i * intervalMs));
         const timestamp = pointDate.getTime();
         
         // For hourly data, calculate previous day's same hour value for comparison
@@ -246,7 +259,7 @@ const KPICards: React.FC<KPICardsProps> = ({
         
         if (metric === 'videos') {
           // For published videos: count how many videos were published IN THIS INTERVAL
-          const nextPointDate = new Date(Date.now() - ((i - 1) * intervalMs));
+          const nextPointDate = new Date(startTime + ((i + 1) * intervalMs));
           const videosPublishedInInterval = submissions.filter(v => {
             const uploadDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
             return uploadDate > pointDate && uploadDate <= nextPointDate;
@@ -254,7 +267,7 @@ const KPICards: React.FC<KPICardsProps> = ({
           data.push({ value: videosPublishedInInterval.length, timestamp, previousValue });
         } else if (metric === 'accounts') {
           // For active accounts: count unique accounts that were active IN THIS INTERVAL
-          const nextPointDate = new Date(Date.now() - ((i - 1) * intervalMs));
+          const nextPointDate = new Date(startTime + ((i + 1) * intervalMs));
           const videosInInterval = submissions.filter(v => {
             const uploadDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
             return uploadDate > pointDate && uploadDate <= nextPointDate;
@@ -263,7 +276,7 @@ const KPICards: React.FC<KPICardsProps> = ({
           data.push({ value: uniqueAccountsInInterval, timestamp, previousValue });
         } else {
           // Show per-day/per-hour values (NOT cumulative)
-          const nextPointDate = new Date(Date.now() - ((i - 1) * intervalMs));
+          const nextPointDate = new Date(startTime + ((i + 1) * intervalMs));
           
           // Calculate metrics for videos in this specific time interval
           let intervalValue = 0;
@@ -417,10 +430,23 @@ const KPICards: React.FC<KPICardsProps> = ({
           numPoints = 90;
         }
         
+        // Determine the starting point for data generation
+        let startTime: number;
+        if (dateFilter === 'yesterday') {
+          // Start from yesterday at midnight
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          yesterday.setHours(0, 0, 0, 0);
+          startTime = yesterday.getTime();
+        } else {
+          // Start from now and go backwards
+          startTime = Date.now() - ((numPoints - 1) * intervalMs);
+        }
+        
         const data = [];
-        for (let i = numPoints - 1; i >= 0; i--) {
-          const pointDate = new Date(Date.now() - (i * intervalMs));
-          const nextPointDate = new Date(Date.now() - ((i - 1) * intervalMs));
+        for (let i = 0; i < numPoints; i++) {
+          const pointDate = new Date(startTime + (i * intervalMs));
+          const nextPointDate = new Date(startTime + ((i + 1) * intervalMs));
           
           // Calculate engagement rate for ONLY this specific day/period
           let periodViews = 0;
@@ -497,10 +523,23 @@ const KPICards: React.FC<KPICardsProps> = ({
           numPoints = 90;
         }
         
+        // Determine the starting point for data generation
+        let startTime: number;
+        if (dateFilter === 'yesterday') {
+          // Start from yesterday at midnight
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          yesterday.setHours(0, 0, 0, 0);
+          startTime = yesterday.getTime();
+        } else {
+          // Start from now and go backwards
+          startTime = Date.now() - ((numPoints - 1) * intervalMs);
+        }
+        
         const data = [];
-        for (let i = numPoints - 1; i >= 0; i--) {
-          const pointDate = new Date(Date.now() - (i * intervalMs));
-          const nextPointDate = new Date(Date.now() - ((i - 1) * intervalMs));
+        for (let i = 0; i < numPoints; i++) {
+          const pointDate = new Date(startTime + (i * intervalMs));
+          const nextPointDate = new Date(startTime + ((i + 1) * intervalMs));
           
           // Count clicks in this time period
           const clicksInPeriod = linkClicks.filter(click => {
