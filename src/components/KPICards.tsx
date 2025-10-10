@@ -653,33 +653,44 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
     <div 
       onClick={onClick}
       className="group relative min-h-[8rem] rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 p-4 lg:p-5 cursor-pointer">
+      
+      {/* Delta Indicator (top-right) */}
+      {data.delta && data.delta.absoluteValue !== undefined && (
+        <div className="absolute top-4 right-4">
+          <span className={`inline-flex items-center gap-0.5 px-2 py-1 rounded-full text-xs font-medium ${
+            data.delta.isPositive 
+              ? 'bg-white/10 text-white' 
+              : 'bg-white/10 text-white'
+          }`}>
+            {data.delta.isPositive ? '+' : '-'}
+            {formatDeltaNumber(data.delta.absoluteValue)}
+          </span>
+        </div>
+      )}
+
+      {/* CTA Button (top-right, if no delta) */}
+      {!data.delta && data.ctaText && (
+        <button className="absolute top-4 right-4 inline-flex items-center gap-0.5 rounded-full px-2.5 py-1 text-xs text-zinc-300/90 bg-white/5 hover:bg-white/10 transition-colors">
+          {data.ctaText}
+          <ChevronRight className="w-3 h-3" />
+        </button>
+      )}
+
       <div className="flex items-start justify-between h-full">
         {/* Left: Text Stack */}
         <div className="flex-1 flex flex-col justify-between min-h-full">
           <div>
             {/* Icon + Label */}
             <div className="flex items-center gap-2.5 mb-3">
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center ring-1 ${colors.icon}`}>
-                <Icon className={`w-4.5 h-4.5 ${colors.iconColor}`} />
-              </div>
+              <Icon className={`w-5 h-5 ${colors.iconColor}`} />
               <span className="text-sm font-medium text-zinc-300">{data.label}</span>
             </div>
 
-            {/* Value + Delta */}
+            {/* Value */}
             <div className="flex items-baseline gap-2 mb-1">
               <span className={`text-3xl font-bold ${data.isEmpty ? 'text-zinc-500' : 'text-white'}`}>
                 {data.value}
               </span>
-              {data.delta && data.delta.absoluteValue !== undefined && (
-                <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium ${
-                  data.delta.isPositive 
-                    ? 'bg-white/10 text-white' 
-                    : 'bg-white/10 text-white'
-                }`}>
-                  {data.delta.isPositive ? '+' : '-'}
-                  {formatDeltaNumber(data.delta.absoluteValue)}
-                </span>
-              )}
             </div>
           </div>
         </div>
@@ -697,14 +708,6 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
               metricLabel={data.label}
             />
           </div>
-        )}
-
-        {/* CTA Buttons (top-right) */}
-        {data.ctaText && (
-          <button className="absolute top-4 right-4 inline-flex items-center gap-0.5 rounded-full px-2.5 py-1 text-xs text-zinc-300/90 bg-white/5 hover:bg-white/10 transition-colors">
-            {data.ctaText}
-            <ChevronRight className="w-3 h-3" />
-          </button>
         )}
       </div>
     </div>
