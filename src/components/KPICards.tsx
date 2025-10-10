@@ -7,8 +7,6 @@ import {
   AtSign, 
   Video, 
   Share2,
-  TrendingUp,
-  TrendingDown,
   ChevronRight,
   Link as LinkIcon
 } from 'lucide-react';
@@ -34,7 +32,7 @@ interface KPICardData {
   value: string | number;
   icon: React.ComponentType<{ className?: string }>;
   accent: 'emerald' | 'pink' | 'blue' | 'violet' | 'teal' | 'orange' | 'slate';
-  delta?: { value: number; isPositive: boolean };
+  delta?: { value: number; isPositive: boolean; absoluteValue: number };
   period?: string;
   sparklineData?: Array<{ value: number; timestamp?: number; previousValue?: number }>;
   isEmpty?: boolean;
@@ -150,6 +148,7 @@ const KPICards: React.FC<KPICardsProps> = ({
 
     const last7DaysViews = last7Days.reduce((sum, v) => sum + (v.views || 0), 0);
     const previous7DaysViews = previous7Days.reduce((sum, v) => sum + (v.views || 0), 0);
+    const viewsGrowthAbsolute = last7DaysViews - previous7DaysViews;
     const viewsGrowth = previous7DaysViews > 0 
       ? ((last7DaysViews - previous7DaysViews) / previous7DaysViews) * 100 
       : 0;
@@ -271,31 +270,6 @@ const KPICards: React.FC<KPICardsProps> = ({
       return num.toString();
     };
 
-    // Get period text based on date filter
-    const getPeriodText = (): string => {
-      switch (dateFilter) {
-        case 'today':
-          return 'Last 24 hours';
-        case 'last7days':
-          return 'Last 7 days';
-        case 'last30days':
-          return 'Last 30 days';
-        case 'last90days':
-          return 'Last 90 days';
-        case 'mtd':
-          return 'Month to date';
-        case 'ytd':
-          return 'Year to date';
-        case 'custom':
-          return 'Custom range';
-        case 'all':
-        default:
-          return 'All time';
-      }
-    };
-
-    const periodText = getPeriodText();
-
     const cards: KPICardData[] = [
       {
         id: 'views',
@@ -303,8 +277,7 @@ const KPICards: React.FC<KPICardsProps> = ({
         value: formatNumber(totalViews),
         icon: Play,
         accent: 'emerald',
-        delta: { value: Math.abs(viewsGrowth), isPositive: viewsGrowth >= 0 },
-        period: periodText,
+        delta: { value: Math.abs(viewsGrowth), isPositive: viewsGrowth >= 0, absoluteValue: viewsGrowthAbsolute },
         sparklineData: generateSparklineData('views')
       },
       {
@@ -313,7 +286,6 @@ const KPICards: React.FC<KPICardsProps> = ({
         value: formatNumber(totalLikes),
         icon: Heart,
         accent: 'pink',
-        period: `${((totalLikes / totalViews) * 100).toFixed(1)}% of views`,
         sparklineData: generateSparklineData('likes')
       },
       {
@@ -322,7 +294,6 @@ const KPICards: React.FC<KPICardsProps> = ({
         value: formatNumber(totalComments),
         icon: MessageCircle,
         accent: 'blue',
-        period: 'Total engagement',
         sparklineData: generateSparklineData('comments')
       },
       {
@@ -331,7 +302,6 @@ const KPICards: React.FC<KPICardsProps> = ({
         value: formatNumber(totalShares),
         icon: Share2,
         accent: 'orange',
-        period: 'Total shares',
         sparklineData: generateSparklineData('shares')
       },
       {
@@ -340,7 +310,6 @@ const KPICards: React.FC<KPICardsProps> = ({
         value: publishedVideos,
         icon: Video,
         accent: 'violet',
-        period: 'All time',
         sparklineData: generateSparklineData('videos')
       },
       {
@@ -349,7 +318,6 @@ const KPICards: React.FC<KPICardsProps> = ({
         value: activeAccounts,
         icon: AtSign,
         accent: 'teal',
-        period: 'Total tracked',
         sparklineData: generateSparklineData('accounts')
       },
       {
@@ -358,7 +326,6 @@ const KPICards: React.FC<KPICardsProps> = ({
         value: `${engagementRate.toFixed(1)}%`,
         icon: Activity,
         accent: 'violet',
-        period: periodText,
         sparklineData: (() => {
           // Generate engagement rate sparkline data (per-day, not cumulative)
           let numPoints = 30;
@@ -434,7 +401,6 @@ const KPICards: React.FC<KPICardsProps> = ({
         accent: 'slate',
         isEmpty: linkClicks.length === 0,
         ctaText: linkClicks.length === 0 ? 'Create link' : undefined,
-        period: 'Total clicks',
         sparklineData: (() => {
           // Generate link clicks sparkline data
           let numPoints = 30;
@@ -630,54 +596,61 @@ const KPISparkline: React.FC<{
 const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: TimePeriodType }> = ({ data, onClick, timePeriod = 'days' }) => {
   const accentColors = {
     emerald: {
-      icon: 'bg-emerald-500/10 ring-emerald-500/20',
-      iconColor: 'text-emerald-400',
-      gradient: ['#10b981', '#10b98100'],
-      stroke: '#10b981',
+      icon: 'bg-white/5',
+      iconColor: 'text-white',
+      gradient: ['#ffffff', '#ffffff00'],
+      stroke: '#ffffff',
       deltaBg: 'bg-emerald-400/10 text-emerald-300'
     },
     pink: {
-      icon: 'bg-pink-500/10 ring-pink-500/20',
-      iconColor: 'text-pink-400',
-      gradient: ['#ec4899', '#ec489900'],
-      stroke: '#ec4899',
+      icon: 'bg-white/5',
+      iconColor: 'text-white',
+      gradient: ['#ffffff', '#ffffff00'],
+      stroke: '#ffffff',
       deltaBg: 'bg-pink-400/10 text-pink-300'
     },
     blue: {
-      icon: 'bg-gray-200 dark:bg-gray-800 ring-blue-500/20',
-      iconColor: 'text-gray-900 dark:text-white',
-      gradient: ['#3b82f6', '#3b82f600'],
-      stroke: '#3b82f6',
+      icon: 'bg-white/5',
+      iconColor: 'text-white',
+      gradient: ['#ffffff', '#ffffff00'],
+      stroke: '#ffffff',
       deltaBg: 'bg-blue-400/10 text-gray-900 dark:text-white'
     },
     violet: {
-      icon: 'bg-violet-500/10 ring-violet-500/20',
-      iconColor: 'text-violet-400',
-      gradient: ['#8b5cf6', '#8b5cf600'],
-      stroke: '#8b5cf6',
+      icon: 'bg-white/5',
+      iconColor: 'text-white',
+      gradient: ['#ffffff', '#ffffff00'],
+      stroke: '#ffffff',
       deltaBg: 'bg-violet-400/10 text-violet-300'
     },
     teal: {
-      icon: 'bg-teal-500/10 ring-teal-500/20',
-      iconColor: 'text-teal-400',
-      gradient: ['#14b8a6', '#14b8a600'],
-      stroke: '#14b8a6',
+      icon: 'bg-white/5',
+      iconColor: 'text-white',
+      gradient: ['#ffffff', '#ffffff00'],
+      stroke: '#ffffff',
       deltaBg: 'bg-teal-400/10 text-teal-300'
     },
     orange: {
-      icon: 'bg-orange-500/10 ring-orange-500/20',
-      iconColor: 'text-orange-400',
-      gradient: ['#f97316', '#f9731600'],
-      stroke: '#f97316',
+      icon: 'bg-white/5',
+      iconColor: 'text-white',
+      gradient: ['#ffffff', '#ffffff00'],
+      stroke: '#ffffff',
       deltaBg: 'bg-orange-400/10 text-orange-300'
     },
     slate: {
-      icon: 'bg-slate-500/10 ring-slate-500/20',
-      iconColor: 'text-slate-400',
-      gradient: ['#64748b', '#64748b00'],
-      stroke: '#64748b',
+      icon: 'bg-white/5',
+      iconColor: 'text-white',
+      gradient: ['#ffffff', '#ffffff00'],
+      stroke: '#ffffff',
       deltaBg: 'bg-slate-400/10 text-slate-300'
     }
+  };
+
+  const formatDeltaNumber = (num: number): string => {
+    const absNum = Math.abs(num);
+    if (absNum >= 1000000) return `${(absNum / 1000000).toFixed(1)}M`;
+    if (absNum >= 1000) return `${(absNum / 1000).toFixed(1)}K`;
+    return absNum.toString();
   };
 
   const colors = accentColors[data.accent];
@@ -704,26 +677,17 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
               <span className={`text-3xl font-bold ${data.isEmpty ? 'text-zinc-500' : 'text-white'}`}>
                 {data.value}
               </span>
-              {data.delta && (
+              {data.delta && data.delta.absoluteValue !== undefined && (
                 <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium ${
                   data.delta.isPositive 
-                    ? 'bg-emerald-400/10 text-emerald-300' 
-                    : 'bg-rose-400/10 text-rose-300'
+                    ? 'bg-white/10 text-white' 
+                    : 'bg-white/10 text-white'
                 }`}>
-                  {data.delta.isPositive ? (
-                    <TrendingUp className="w-3 h-3" />
-                  ) : (
-                    <TrendingDown className="w-3 h-3" />
-                  )}
-                  {data.delta.value.toFixed(1)}%
+                  {data.delta.isPositive ? '+' : '-'}
+                  {formatDeltaNumber(data.delta.absoluteValue)}
                 </span>
               )}
             </div>
-
-            {/* Period Caption */}
-            {data.period && (
-              <p className="text-xs text-zinc-500">{data.period}</p>
-            )}
           </div>
         </div>
 
@@ -743,14 +707,9 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
         )}
 
         {/* CTA Buttons (top-right) */}
-        {data.ctaText ? (
+        {data.ctaText && (
           <button className="absolute top-4 right-4 inline-flex items-center gap-0.5 rounded-full px-2.5 py-1 text-xs text-zinc-300/90 bg-white/5 hover:bg-white/10 transition-colors">
             {data.ctaText}
-            <ChevronRight className="w-3 h-3" />
-          </button>
-        ) : !data.isEmpty && (
-          <button className="absolute top-4 right-4 inline-flex items-center gap-0.5 rounded-full px-2.5 py-1 text-xs text-zinc-300/90 bg-white/5 hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100">
-            More
             <ChevronRight className="w-3 h-3" />
           </button>
         )}

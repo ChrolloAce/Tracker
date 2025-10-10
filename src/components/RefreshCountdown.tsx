@@ -47,25 +47,21 @@ const RefreshCountdown: React.FC = () => {
 
   return (
     <div className="px-4 py-3 border-t border-white/5">
+      {/* Countdown Timer with Icon */}
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-medium text-white/50 uppercase tracking-wider">
-          Auto Refresh
-        </span>
-        <RefreshCw className="w-3 h-3 text-white/30" />
-      </div>
-      
-      {/* Countdown Timer */}
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] text-white/40">Next refresh in:</span>
+        <div className="flex items-center gap-2">
+          <RefreshCw className="w-3.5 h-3.5 text-white/60" />
+          <span className="text-xs font-medium text-white/60">Next refresh in</span>
+        </div>
         <span className="text-sm font-bold text-white/90 font-mono">
           {hours}h {minutes}m {seconds}s
         </span>
       </div>
 
       {/* Progress Bar */}
-      <div className="mt-2 h-1 bg-white/5 rounded-full overflow-hidden">
+      <div className="h-1 bg-white/5 rounded-full overflow-hidden">
         <div 
-          className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-1000 ease-linear"
+          className="h-full bg-white transition-all duration-1000 ease-linear"
           style={{ width: `${progress}%` }}
         />
       </div>
