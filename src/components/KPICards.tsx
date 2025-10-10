@@ -37,6 +37,7 @@ interface KPICardData {
   sparklineData?: Array<{ value: number; timestamp?: number; previousValue?: number }>;
   isEmpty?: boolean;
   ctaText?: string;
+  isIncreasing?: boolean;
 }
 
 const KPICards: React.FC<KPICardsProps> = ({ 
@@ -270,6 +271,29 @@ const KPICards: React.FC<KPICardsProps> = ({
       return num.toString();
     };
 
+    // Helper to determine if data is trending up or down
+    const calculateTrend = (data: Array<{ value: number }> | undefined): boolean => {
+      if (!data || data.length < 2) return true; // Default to green if no data
+      
+      // Compare the average of the first half to the average of the second half
+      const midPoint = Math.floor(data.length / 2);
+      const firstHalf = data.slice(0, midPoint);
+      const secondHalf = data.slice(midPoint);
+      
+      const firstAvg = firstHalf.reduce((sum, d) => sum + d.value, 0) / firstHalf.length;
+      const secondAvg = secondHalf.reduce((sum, d) => sum + d.value, 0) / secondHalf.length;
+      
+      return secondAvg >= firstAvg; // true = increasing (green), false = decreasing (red)
+    };
+
+    // Generate sparkline data first so we can calculate trends
+    const viewsSparkline = generateSparklineData('views');
+    const likesSparkline = generateSparklineData('likes');
+    const commentsSparkline = generateSparklineData('comments');
+    const sharesSparkline = generateSparklineData('shares');
+    const videosSparkline = generateSparklineData('videos');
+    const accountsSparkline = generateSparklineData('accounts');
+
     const cards: KPICardData[] = [
       {
         id: 'views',
@@ -278,7 +302,8 @@ const KPICards: React.FC<KPICardsProps> = ({
         icon: Play,
         accent: 'emerald',
         delta: { value: Math.abs(viewsGrowth), isPositive: viewsGrowth >= 0, absoluteValue: viewsGrowthAbsolute },
-        sparklineData: generateSparklineData('views')
+        sparklineData: viewsSparkline,
+        isIncreasing: calculateTrend(viewsSparkline)
       },
       {
         id: 'likes',
@@ -286,7 +311,8 @@ const KPICards: React.FC<KPICardsProps> = ({
         value: formatNumber(totalLikes),
         icon: Heart,
         accent: 'pink',
-        sparklineData: generateSparklineData('likes')
+        sparklineData: likesSparkline,
+        isIncreasing: calculateTrend(likesSparkline)
       },
       {
         id: 'comments',
@@ -294,7 +320,8 @@ const KPICards: React.FC<KPICardsProps> = ({
         value: formatNumber(totalComments),
         icon: MessageCircle,
         accent: 'blue',
-        sparklineData: generateSparklineData('comments')
+        sparklineData: commentsSparkline,
+        isIncreasing: calculateTrend(commentsSparkline)
       },
       {
         id: 'shares',
@@ -302,7 +329,8 @@ const KPICards: React.FC<KPICardsProps> = ({
         value: formatNumber(totalShares),
         icon: Share2,
         accent: 'orange',
-        sparklineData: generateSparklineData('shares')
+        sparklineData: sharesSparkline,
+        isIncreasing: calculateTrend(sharesSparkline)
       },
       {
         id: 'videos',
@@ -310,7 +338,8 @@ const KPICards: React.FC<KPICardsProps> = ({
         value: publishedVideos,
         icon: Video,
         accent: 'violet',
-        sparklineData: generateSparklineData('videos')
+        sparklineData: videosSparkline,
+        isIncreasing: calculateTrend(videosSparkline)
       },
       {
         id: 'accounts',
@@ -318,122 +347,129 @@ const KPICards: React.FC<KPICardsProps> = ({
         value: activeAccounts,
         icon: AtSign,
         accent: 'teal',
-        sparklineData: generateSparklineData('accounts')
+        sparklineData: accountsSparkline,
+        isIncreasing: calculateTrend(accountsSparkline)
       },
-      {
-        id: 'engagementRate',
-        label: 'Engagement Rate',
-        value: `${engagementRate.toFixed(1)}%`,
-        icon: Activity,
-        accent: 'violet',
-        sparklineData: (() => {
-          // Generate engagement rate sparkline data (per-day, not cumulative)
-          let numPoints = 30;
-          let intervalMs = 24 * 60 * 60 * 1000; // 1 day
+      (() => {
+        // Generate engagement rate sparkline data (per-day, not cumulative)
+        let numPoints = 30;
+        let intervalMs = 24 * 60 * 60 * 1000; // 1 day
+        
+        if (dateFilter === 'today') {
+          numPoints = 24;
+          intervalMs = 60 * 60 * 1000;
+        } else if (dateFilter === 'last7days') {
+          numPoints = 7;
+        } else if (dateFilter === 'last90days') {
+          numPoints = 90;
+        }
+        
+        const data = [];
+        for (let i = numPoints - 1; i >= 0; i--) {
+          const pointDate = new Date(Date.now() - (i * intervalMs));
+          const nextPointDate = new Date(Date.now() - ((i - 1) * intervalMs));
           
-          if (dateFilter === 'today') {
-            numPoints = 24;
-            intervalMs = 60 * 60 * 1000;
-          } else if (dateFilter === 'last7days') {
-            numPoints = 7;
-          } else if (dateFilter === 'last90days') {
-            numPoints = 90;
-          }
+          // Calculate engagement rate for ONLY this specific day/period
+          let periodViews = 0;
+          let periodEngagement = 0;
           
-          const data = [];
-          for (let i = numPoints - 1; i >= 0; i--) {
-            const pointDate = new Date(Date.now() - (i * intervalMs));
-            const nextPointDate = new Date(Date.now() - ((i - 1) * intervalMs));
+          submissions.forEach(video => {
+            const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
             
-            // Calculate engagement rate for ONLY this specific day/period
-            let periodViews = 0;
-            let periodEngagement = 0;
-            
-            submissions.forEach(video => {
-              const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
+            if (video.snapshots && video.snapshots.length > 0) {
+              // Get snapshots at start and end of interval
+              const snapshotAtStart = video.snapshots
+                .filter(s => new Date(s.capturedAt) <= pointDate)
+                .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
               
-              if (video.snapshots && video.snapshots.length > 0) {
-                // Get snapshots at start and end of interval
-                const snapshotAtStart = video.snapshots
-                  .filter(s => new Date(s.capturedAt) <= pointDate)
-                  .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
+              const snapshotAtEnd = video.snapshots
+                .filter(s => new Date(s.capturedAt) <= nextPointDate)
+                .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
+              
+              if (snapshotAtStart && snapshotAtEnd) {
+                // Calculate delta for this interval
+                const viewsDelta = Math.max(0, (snapshotAtEnd.views || 0) - (snapshotAtStart.views || 0));
+                const likesDelta = Math.max(0, (snapshotAtEnd.likes || 0) - (snapshotAtStart.likes || 0));
+                const commentsDelta = Math.max(0, (snapshotAtEnd.comments || 0) - (snapshotAtStart.comments || 0));
+                const sharesDelta = Math.max(0, (snapshotAtEnd.shares || 0) - (snapshotAtStart.shares || 0));
                 
-                const snapshotAtEnd = video.snapshots
-                  .filter(s => new Date(s.capturedAt) <= nextPointDate)
-                  .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-                
-                if (snapshotAtStart && snapshotAtEnd) {
-                  // Calculate delta for this interval
-                  const viewsDelta = Math.max(0, (snapshotAtEnd.views || 0) - (snapshotAtStart.views || 0));
-                  const likesDelta = Math.max(0, (snapshotAtEnd.likes || 0) - (snapshotAtStart.likes || 0));
-                  const commentsDelta = Math.max(0, (snapshotAtEnd.comments || 0) - (snapshotAtStart.comments || 0));
-                  const sharesDelta = Math.max(0, (snapshotAtEnd.shares || 0) - (snapshotAtStart.shares || 0));
-                  
-                  periodViews += viewsDelta;
-                  periodEngagement += likesDelta + commentsDelta + sharesDelta;
-                } else if (snapshotAtEnd && uploadDate > pointDate && uploadDate <= nextPointDate) {
-                  // Video uploaded in this interval
-                  periodViews += snapshotAtEnd.views || 0;
-                  periodEngagement += (snapshotAtEnd.likes || 0) + (snapshotAtEnd.comments || 0) + (snapshotAtEnd.shares || 0);
-                }
-              } else if (uploadDate > pointDate && uploadDate <= nextPointDate) {
-                // Video uploaded in this interval, no snapshots
-                periodViews += video.views || 0;
-                periodEngagement += (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
+                periodViews += viewsDelta;
+                periodEngagement += likesDelta + commentsDelta + sharesDelta;
+              } else if (snapshotAtEnd && uploadDate > pointDate && uploadDate <= nextPointDate) {
+                // Video uploaded in this interval
+                periodViews += snapshotAtEnd.views || 0;
+                periodEngagement += (snapshotAtEnd.likes || 0) + (snapshotAtEnd.comments || 0) + (snapshotAtEnd.shares || 0);
               }
-            });
-            
-            const rate = periodViews > 0 ? ((periodEngagement / periodViews) * 100) : 0;
-            
-            data.push({
-              value: Number(rate.toFixed(1)),
-              timestamp: pointDate.getTime()
-            });
-          }
-          return data;
-        })()
-      },
-      {
-        id: 'link-clicks',
-        label: 'Link Clicks',
-        value: formatNumber(linkClicks.length),
-        icon: LinkIcon,
-        accent: 'slate',
-        isEmpty: linkClicks.length === 0,
-        ctaText: linkClicks.length === 0 ? 'Create link' : undefined,
-        sparklineData: (() => {
-          // Generate link clicks sparkline data
-          let numPoints = 30;
-          let intervalMs = 24 * 60 * 60 * 1000; // 1 day
+            } else if (uploadDate > pointDate && uploadDate <= nextPointDate) {
+              // Video uploaded in this interval, no snapshots
+              periodViews += video.views || 0;
+              periodEngagement += (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
+            }
+          });
           
-          if (dateFilter === 'today') {
-            numPoints = 24;
-            intervalMs = 60 * 60 * 1000;
-          } else if (dateFilter === 'last7days') {
-            numPoints = 7;
-          } else if (dateFilter === 'last90days') {
-            numPoints = 90;
-          }
+          const rate = periodViews > 0 ? ((periodEngagement / periodViews) * 100) : 0;
           
-          const data = [];
-          for (let i = numPoints - 1; i >= 0; i--) {
-            const pointDate = new Date(Date.now() - (i * intervalMs));
-            const nextPointDate = new Date(Date.now() - ((i - 1) * intervalMs));
-            
-            // Count clicks in this time period
-            const clicksInPeriod = linkClicks.filter(click => {
-              const clickDate = new Date(click.timestamp);
-              return clickDate >= pointDate && clickDate < nextPointDate;
-            });
-            
-            data.push({
-              value: clicksInPeriod.length,
-              timestamp: pointDate.getTime()
-            });
-          }
-          return data;
-        })()
-      }
+          data.push({
+            value: Number(rate.toFixed(1)),
+            timestamp: pointDate.getTime()
+          });
+        }
+        
+        const engagementSparkline = data;
+        return {
+          id: 'engagementRate',
+          label: 'Engagement Rate',
+          value: `${engagementRate.toFixed(1)}%`,
+          icon: Activity,
+          accent: 'violet' as const,
+          sparklineData: engagementSparkline,
+          isIncreasing: calculateTrend(engagementSparkline)
+        };
+      })(),
+      (() => {
+        // Generate link clicks sparkline data
+        let numPoints = 30;
+        let intervalMs = 24 * 60 * 60 * 1000; // 1 day
+        
+        if (dateFilter === 'today') {
+          numPoints = 24;
+          intervalMs = 60 * 60 * 1000;
+        } else if (dateFilter === 'last7days') {
+          numPoints = 7;
+        } else if (dateFilter === 'last90days') {
+          numPoints = 90;
+        }
+        
+        const data = [];
+        for (let i = numPoints - 1; i >= 0; i--) {
+          const pointDate = new Date(Date.now() - (i * intervalMs));
+          const nextPointDate = new Date(Date.now() - ((i - 1) * intervalMs));
+          
+          // Count clicks in this time period
+          const clicksInPeriod = linkClicks.filter(click => {
+            const clickDate = new Date(click.timestamp);
+            return clickDate >= pointDate && clickDate < nextPointDate;
+          });
+          
+          data.push({
+            value: clicksInPeriod.length,
+            timestamp: pointDate.getTime()
+          });
+        }
+        
+        const linkClicksSparkline = data;
+        return {
+          id: 'link-clicks',
+          label: 'Link Clicks',
+          value: formatNumber(linkClicks.length),
+          icon: LinkIcon,
+          accent: 'slate' as const,
+          isEmpty: linkClicks.length === 0,
+          ctaText: linkClicks.length === 0 ? 'Create link' : undefined,
+          sparklineData: linkClicksSparkline,
+          isIncreasing: calculateTrend(linkClicksSparkline)
+        };
+      })()
     ];
 
     return cards;
@@ -594,58 +630,6 @@ const KPISparkline: React.FC<{
 };
 
 const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: TimePeriodType }> = ({ data, onClick, timePeriod = 'days' }) => {
-  const accentColors = {
-    emerald: {
-      icon: 'bg-white/5',
-      iconColor: 'text-white',
-      gradient: ['#ffffff', '#ffffff00'],
-      stroke: '#ffffff',
-      deltaBg: 'bg-emerald-400/10 text-emerald-300'
-    },
-    pink: {
-      icon: 'bg-white/5',
-      iconColor: 'text-white',
-      gradient: ['#ffffff', '#ffffff00'],
-      stroke: '#ffffff',
-      deltaBg: 'bg-pink-400/10 text-pink-300'
-    },
-    blue: {
-      icon: 'bg-white/5',
-      iconColor: 'text-white',
-      gradient: ['#ffffff', '#ffffff00'],
-      stroke: '#ffffff',
-      deltaBg: 'bg-blue-400/10 text-gray-900 dark:text-white'
-    },
-    violet: {
-      icon: 'bg-white/5',
-      iconColor: 'text-white',
-      gradient: ['#ffffff', '#ffffff00'],
-      stroke: '#ffffff',
-      deltaBg: 'bg-violet-400/10 text-violet-300'
-    },
-    teal: {
-      icon: 'bg-white/5',
-      iconColor: 'text-white',
-      gradient: ['#ffffff', '#ffffff00'],
-      stroke: '#ffffff',
-      deltaBg: 'bg-teal-400/10 text-teal-300'
-    },
-    orange: {
-      icon: 'bg-white/5',
-      iconColor: 'text-white',
-      gradient: ['#ffffff', '#ffffff00'],
-      stroke: '#ffffff',
-      deltaBg: 'bg-orange-400/10 text-orange-300'
-    },
-    slate: {
-      icon: 'bg-white/5',
-      iconColor: 'text-white',
-      gradient: ['#ffffff', '#ffffff00'],
-      stroke: '#ffffff',
-      deltaBg: 'bg-slate-400/10 text-slate-300'
-    }
-  };
-
   const formatDeltaNumber = (num: number): string => {
     const absNum = Math.abs(num);
     if (absNum >= 1000000) return `${(absNum / 1000000).toFixed(1)}M`;
@@ -653,7 +637,16 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
     return absNum.toString();
   };
 
-  const colors = accentColors[data.accent];
+  // Determine colors based on trend (green for increase, red for decrease)
+  const isIncreasing = data.isIncreasing !== undefined ? data.isIncreasing : true;
+  const colors = {
+    icon: 'bg-white/5',
+    iconColor: 'text-white',
+    gradient: isIncreasing ? ['#22c55e', '#22c55e00'] : ['#ef4444', '#ef444400'], // green-500 : red-500
+    stroke: isIncreasing ? '#22c55e' : '#ef4444',
+    deltaBg: 'bg-white/10 text-white'
+  };
+
   const Icon = data.icon;
 
   return (
