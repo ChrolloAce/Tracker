@@ -432,6 +432,26 @@ export interface Creator {
     customSchedule?: string; // Custom schedule description
     notes?: string; // Additional payment notes
     updatedAt?: Timestamp;
+    // Structured payment rules for calculation
+    paymentRules?: Array<{
+      id: string;
+      type: string;
+      enabled: boolean;
+      amount?: number;
+      rate?: number;
+      percentage?: number;
+      minViews?: number;
+      maxViews?: number;
+      minVideos?: number;
+      milestoneThreshold?: number;
+      milestoneType?: string;
+      milestonePaid?: boolean;
+      upfrontCondition?: {
+        videosRequired?: number;
+        paid?: boolean;
+      };
+      description: string;
+    }>;
   };
 }
 

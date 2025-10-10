@@ -296,6 +296,7 @@ class CreatorLinksService {
     paymentInfo: {
       isPaid: boolean;
       structure?: string;
+      paymentRules?: any[];
       schedule?: string;
       customSchedule?: string;
       notes?: string;

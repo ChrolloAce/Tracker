@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { OrgMember } from '../types/firestore';
 import CreatorLinksService from '../services/CreatorLinksService';
-import { X, Save, DollarSign, User as UserIcon, Copy, Lightbulb } from 'lucide-react';
+import { X, Save, DollarSign, User as UserIcon, Calculator } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
+import PaymentRuleBuilder from './PaymentRuleBuilder';
+import { PaymentRule } from '../services/PaymentCalculationService';
 import clsx from 'clsx';
 
 interface EditCreatorModalProps {
@@ -14,33 +16,6 @@ interface EditCreatorModalProps {
   creator: OrgMember;
 }
 
-const PAYMENT_TEMPLATES = [
-  {
-    title: 'Upfront + Milestone',
-    example: '$500 upfront for 10 videos, then $50 per video after that'
-  },
-  {
-    title: 'Tiered Views',
-    example: '$30 per video under 10k views, $50 per video for 10k-100k views, $100 per video over 100k views'
-  },
-  {
-    title: 'Hybrid Performance',
-    example: '$200 base per video + $10 CPM for views over 50k'
-  },
-  {
-    title: 'Revenue Share',
-    example: '20% of ad revenue + $5 per tracked link click'
-  },
-  {
-    title: 'Multi-Stage Bonus',
-    example: '$300 upfront for 10 videos, bonus $500 when reaching 100k total views, additional $1k at 1M views'
-  },
-  {
-    title: 'Custom Schedule',
-    example: '$1000/month retainer for 8 videos minimum, plus $75 for each additional video'
-  }
-];
-
 const EditCreatorModal: React.FC<EditCreatorModalProps> = ({ isOpen, onClose, onSuccess, creator }) => {
   const { currentOrgId, currentProjectId } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -49,11 +24,10 @@ const EditCreatorModal: React.FC<EditCreatorModalProps> = ({ isOpen, onClose, on
 
   // Form state
   const [isPaid, setIsPaid] = useState(true);
-  const [paymentStructure, setPaymentStructure] = useState('');
+  const [paymentRules, setPaymentRules] = useState<PaymentRule[]>([]);
   const [paymentSchedule, setPaymentSchedule] = useState<'weekly' | 'bi-weekly' | 'monthly' | 'custom'>('monthly');
   const [customSchedule, setCustomSchedule] = useState('');
   const [additionalNotes, setAdditionalNotes] = useState('');
-  const [showTemplates, setShowTemplates] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -75,7 +49,7 @@ const EditCreatorModal: React.FC<EditCreatorModalProps> = ({ isOpen, onClose, on
       // Load existing payment data if available
       if (profile?.paymentInfo) {
         setIsPaid(profile.paymentInfo.isPaid !== false);
-        setPaymentStructure(profile.paymentInfo.structure || '');
+        setPaymentRules((profile.paymentInfo.paymentRules as PaymentRule[]) || []);
         setPaymentSchedule(profile.paymentInfo.schedule || 'monthly');
         setCustomSchedule(profile.paymentInfo.customSchedule || '');
         setAdditionalNotes(profile.paymentInfo.notes || '');
@@ -90,7 +64,6 @@ const EditCreatorModal: React.FC<EditCreatorModalProps> = ({ isOpen, onClose, on
 
   const handleClose = () => {
     setError(null);
-    setShowTemplates(false);
     onClose();
   };
 
@@ -111,7 +84,7 @@ const EditCreatorModal: React.FC<EditCreatorModalProps> = ({ isOpen, onClose, on
         creator.userId,
         {
           isPaid,
-          structure: paymentStructure,
+          paymentRules: paymentRules as any,
           schedule: paymentSchedule,
           customSchedule: paymentSchedule === 'custom' ? customSchedule : '',
           notes: additionalNotes,
@@ -127,11 +100,6 @@ const EditCreatorModal: React.FC<EditCreatorModalProps> = ({ isOpen, onClose, on
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleCopyTemplate = (example: string) => {
-    setPaymentStructure(example);
-    setShowTemplates(false);
   };
 
   return (
@@ -203,52 +171,25 @@ const EditCreatorModal: React.FC<EditCreatorModalProps> = ({ isOpen, onClose, on
 
             {isPaid && (
               <>
-                {/* Payment Structure - Freeform Text Area */}
+                {/* Payment Rules Builder */}
                 <div>
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-3">
                     <label className="block text-sm font-medium text-white">
-                      Payment Structure *
+                      Payment Rules
                     </label>
-                    <button
-                      onClick={() => setShowTemplates(!showTemplates)}
-                      className="flex items-center gap-1 text-xs text-white/70 hover:text-white transition-colors"
-                    >
-                      <Lightbulb className="w-3.5 h-3.5" />
-                      {showTemplates ? 'Hide' : 'Show'} Examples
-                    </button>
-                  </div>
-
-                  {/* Template Examples */}
-                  {showTemplates && (
-                    <div className="mb-3 bg-gray-800/50 border border-gray-700/50 rounded-lg p-3 space-y-2 max-h-48 overflow-y-auto">
-                      <p className="text-xs font-medium text-white/80 mb-2">Click to use a template:</p>
-                      {PAYMENT_TEMPLATES.map((template, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => handleCopyTemplate(template.example)}
-                          className="w-full text-left p-2 rounded bg-gray-700/50 hover:bg-gray-700 transition-colors group"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1">
-                              <div className="text-xs font-medium text-white/90 mb-1">{template.title}</div>
-                              <div className="text-xs text-gray-400">{template.example}</div>
-                            </div>
-                            <Copy className="w-3.5 h-3.5 text-gray-500 group-hover:text-white flex-shrink-0 mt-0.5" />
-                          </div>
-                        </button>
-                      ))}
+                    <div className="flex items-center gap-1.5 text-xs text-white/60">
+                      <Calculator className="w-3.5 h-3.5" />
+                      <span>Auto-calculates earnings</span>
                     </div>
-                  )}
-
-                  <textarea
-                    value={paymentStructure}
-                    onChange={(e) => setPaymentStructure(e.target.value)}
-                    placeholder="E.g., $500 upfront for 10 videos, then $50 per video + $10 CPM for views over 50k, bonus $1000 when reaching 100k total views"
-                    rows={5}
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 resize-none text-sm leading-relaxed"
+                  </div>
+                  
+                  <PaymentRuleBuilder 
+                    rules={paymentRules}
+                    onChange={setPaymentRules}
                   />
+                  
                   <p className="text-xs text-gray-400 mt-2">
-                    Describe your complete payment structure in plain English. Be as specific as possible.
+                    Build payment rules that automatically calculate creator earnings based on video performance.
                   </p>
                 </div>
 
