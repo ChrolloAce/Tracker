@@ -4,7 +4,7 @@ import { TrackedAccount } from '../types/firestore';
 import FirestoreDataService from '../services/FirestoreDataService';
 import OrganizationService from '../services/OrganizationService';
 import TeamInvitationService from '../services/TeamInvitationService';
-import { X, ArrowRight, ArrowLeft, Check, Mail, User as UserIcon, Link as LinkIcon, DollarSign, Search, Phone } from 'lucide-react';
+import { X, Check, Mail, User as UserIcon, Link as LinkIcon, DollarSign, Search, Plus, Trash2 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { Modal } from './ui/Modal';
@@ -15,6 +15,14 @@ interface CreateCreatorModalProps {
   onSuccess: () => void;
 }
 
+interface PaymentRule {
+  id: string;
+  type: 'flat' | 'per-video' | 'cpm' | 'percentage' | 'custom';
+  amount: string;
+  condition: string; // e.g., "for 10 videos", "per 1000 views", "of revenue"
+  description: string; // Full readable description
+}
+
 const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { user, currentOrgId, currentProjectId } = useAuth();
   const [step, setStep] = useState(1);
@@ -23,7 +31,6 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
 
   // Step 1: Basic Info
   const [email, setEmail] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
   const [displayName, setDisplayName] = useState('');
 
   // Step 2: Linked Accounts
@@ -34,10 +41,14 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
 
   // Step 3: Payment Settings
   const [isPaid, setIsPaid] = useState(true);
+  const [paymentRules, setPaymentRules] = useState<PaymentRule[]>([]);
   const [paymentNotes, setPaymentNotes] = useState('');
-  const [paymentStructure, setPaymentStructure] = useState<'per-video' | 'monthly' | 'custom'>('per-video');
-  const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentSchedule, setPaymentSchedule] = useState<'weekly' | 'bi-weekly' | 'monthly' | 'custom'>('monthly');
+
+  // New payment rule form
+  const [newRuleType, setNewRuleType] = useState<PaymentRule['type']>('flat');
+  const [newRuleAmount, setNewRuleAmount] = useState('');
+  const [newRuleCondition, setNewRuleCondition] = useState('');
 
   const totalSteps = 3;
 
@@ -65,15 +76,16 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
   const handleClose = () => {
     setStep(1);
     setEmail('');
-    setPhoneNumber('');
     setDisplayName('');
     setSelectedAccountIds([]);
     setSearchQuery('');
     setIsPaid(true);
+    setPaymentRules([]);
     setPaymentNotes('');
-    setPaymentStructure('per-video');
-    setPaymentAmount('');
     setPaymentSchedule('monthly');
+    setNewRuleType('flat');
+    setNewRuleAmount('');
+    setNewRuleCondition('');
     setError(null);
     onClose();
   };
@@ -84,11 +96,11 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
         setError('Please enter a display name');
         return;
       }
-      if (!email.trim() && !phoneNumber.trim()) {
-        setError('Please enter either an email or phone number');
+      if (!email.trim()) {
+        setError('Please enter an email address');
         return;
       }
-      if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         setError('Please enter a valid email address');
         return;
       }
@@ -104,49 +116,33 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
   };
 
   const handleSubmit = async () => {
-    if (!currentOrgId || !currentProjectId || !user) {
-      setError('Missing organization, project, or user');
+    if (!user || !currentOrgId || !currentProjectId) {
+      setError('Missing required information');
       return;
     }
 
-    setLoading(true);
-    setError(null);
-
     try {
-      // Get organization details
-      const org = await OrganizationService.getOrganization(currentOrgId);
-      const orgName = org?.name || 'Your Organization';
+      setLoading(true);
+      setError(null);
 
-      // Step 1: Send invitation
-      await TeamInvitationService.createInvitation(
-        currentOrgId,
-        email.trim(),
-        'creator',
-        user.uid,
-        user.displayName || 'Team Admin',
-        user.email || '',
-        orgName,
-        currentProjectId
-      );
+      // Format payment rules into a string for storage
+      const paymentStructure = paymentRules.length > 0 
+        ? paymentRules.map(r => r.description).join(' + ')
+        : 'No payment structure set';
 
-      console.log('✅ Creator invitation sent to:', email);
-
-      // Note: We can't link accounts or set payment settings yet because the creator
-      // hasn't accepted the invitation and doesn't have a userId yet.
-      // We'll need to store this info temporarily and apply it after they accept.
-      
-      // For now, we'll just show success and handle linking manually after they join
-      if (selectedAccountIds.length > 0 || paymentNotes || isPaid) {
-        console.log('📝 Accounts to link after acceptance:', selectedAccountIds);
-        console.log('📝 Payment settings:', { 
-          isPaid, 
-          paymentStructure, 
-          paymentAmount, 
-          paymentSchedule, 
-          paymentNotes 
-        });
-        // TODO: Store this in a pending_creator_config collection for automatic linking after acceptance
-      }
+      await TeamInvitationService.inviteCreator({
+        email,
+        displayName,
+        role: 'creator',
+        organizationId: currentOrgId,
+        projectId: currentProjectId,
+        invitedBy: user.uid,
+        linkedAccountIds: selectedAccountIds,
+        isPaid,
+        paymentStructure,
+        paymentSchedule: isPaid ? paymentSchedule : undefined,
+        paymentNotes: isPaid && paymentNotes ? paymentNotes : undefined,
+      });
 
       handleClose();
       onSuccess();
@@ -174,9 +170,9 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
   const canProceed = () => {
     if (step === 1) {
       const hasDisplayName = displayName.trim().length > 0;
-      const hasContact = email.trim().length > 0 || phoneNumber.trim().length > 0;
+      const hasEmail = email.trim().length > 0;
       const emailValid = !email.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-      return hasDisplayName && hasContact && emailValid;
+      return hasDisplayName && hasEmail && emailValid;
     }
     if (step === 2) {
       return true; // Linking accounts is optional
@@ -185,6 +181,47 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
       return true; // Payment settings are optional
     }
     return false;
+  };
+
+  const addPaymentRule = () => {
+    if (!newRuleAmount.trim()) {
+      setError('Please enter an amount');
+      return;
+    }
+
+    const rule: PaymentRule = {
+      id: Date.now().toString(),
+      type: newRuleType,
+      amount: newRuleAmount,
+      condition: newRuleCondition,
+      description: buildRuleDescription(newRuleType, newRuleAmount, newRuleCondition)
+    };
+
+    setPaymentRules([...paymentRules, rule]);
+    setNewRuleAmount('');
+    setNewRuleCondition('');
+    setError(null);
+  };
+
+  const removePaymentRule = (id: string) => {
+    setPaymentRules(paymentRules.filter(r => r.id !== id));
+  };
+
+  const buildRuleDescription = (type: PaymentRule['type'], amount: string, condition: string): string => {
+    switch (type) {
+      case 'flat':
+        return `Pay $${amount} flat fee${condition ? ` for ${condition} videos` : ''}`;
+      case 'per-video':
+        return `Pay $${amount} per video${condition ? ` (${condition})` : ''}`;
+      case 'cpm':
+        return `Pay $${amount} CPM${condition ? ` (per ${condition} views)` : ' (per 1000 views)'}`;
+      case 'percentage':
+        return `Pay ${amount}% of revenue${condition ? ` ${condition}` : ''}`;
+      case 'custom':
+        return condition || `Pay $${amount}`;
+      default:
+        return `Pay $${amount}`;
+    }
   };
 
   const renderStep1 = () => (
@@ -208,7 +245,7 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
 
       <div>
         <label className="block text-sm font-medium text-white mb-2">
-          Email Address <span className="text-gray-500 text-xs">(Optional)</span>
+          Email Address *
         </label>
         <div className="relative">
           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -222,25 +259,9 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
         </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-white mb-2">
-          Phone Number <span className="text-gray-500 text-xs">(Optional)</span>
-        </label>
-        <div className="relative">
-          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="tel"
-            value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
-            placeholder="+1 (555) 123-4567"
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50"
-          />
-        </div>
-      </div>
-
       <div className="bg-gray-700/30 border border-gray-600/30 rounded-lg p-4">
         <p className="text-sm text-gray-300">
-          At least one contact method (email or phone) is required. An invitation will be sent if an email is provided.
+          An invitation email will be sent to the creator with instructions to join your project.
         </p>
       </div>
     </div>
@@ -370,65 +391,103 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
 
       {isPaid && (
         <>
-          {/* Payment Structure */}
+          {/* Payment Rule Builder */}
           <div>
-            <label className="block text-sm font-medium text-white mb-2">
-              Payment Structure
+            <label className="block text-sm font-medium text-white mb-3">
+              Payment Rules
             </label>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                onClick={() => setPaymentStructure('per-video')}
-                className={`px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium ${
-                  paymentStructure === 'per-video'
-                    ? 'bg-white/10 border-white text-white'
-                    : 'bg-gray-800/50 border-gray-700/50 text-gray-400 hover:bg-gray-700/50'
-                }`}
-              >
-                Per Video
-              </button>
-              <button
-                onClick={() => setPaymentStructure('monthly')}
-                className={`px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium ${
-                  paymentStructure === 'monthly'
-                    ? 'bg-white/10 border-white text-white'
-                    : 'bg-gray-800/50 border-gray-700/50 text-gray-400 hover:bg-gray-700/50'
-                }`}
-              >
-                Monthly
-              </button>
-              <button
-                onClick={() => setPaymentStructure('custom')}
-                className={`px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium ${
-                  paymentStructure === 'custom'
-                    ? 'bg-white/10 border-white text-white'
-                    : 'bg-gray-800/50 border-gray-700/50 text-gray-400 hover:bg-gray-700/50'
-                }`}
-              >
-                Custom
-              </button>
-            </div>
-          </div>
+            
+            {/* Add New Rule Form */}
+            <div className="space-y-3 mb-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700/50">
+              <div className="grid grid-cols-5 gap-2">
+                <select
+                  value={newRuleType}
+                  onChange={(e) => setNewRuleType(e.target.value as PaymentRule['type'])}
+                  className="col-span-2 px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
+                >
+                  <option value="flat">Flat Fee</option>
+                  <option value="per-video">Per Video</option>
+                  <option value="cpm">CPM</option>
+                  <option value="percentage">% Revenue</option>
+                  <option value="custom">Custom</option>
+                </select>
+                
+                <div className="relative col-span-2">
+                  <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={newRuleAmount}
+                    onChange={(e) => setNewRuleAmount(e.target.value)}
+                    placeholder={newRuleType === 'percentage' ? '%' : 'Amount'}
+                    className="w-full pl-7 pr-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
+                  />
+                </div>
 
-          {/* Payment Amount */}
-          <div>
-            <label className="block text-sm font-medium text-white mb-2">
-              Payment Amount
-            </label>
-            <div className="relative">
-              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <button
+                  onClick={addPaymentRule}
+                  className="flex items-center justify-center bg-white hover:bg-gray-200 text-black rounded-lg transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+
               <input
                 type="text"
-                value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
-                placeholder="500"
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50"
+                value={newRuleCondition}
+                onChange={(e) => setNewRuleCondition(e.target.value)}
+                placeholder={
+                  newRuleType === 'flat' ? 'e.g., "10" (for 10 videos)' :
+                  newRuleType === 'cpm' ? 'e.g., "1000" (per 1000 views)' :
+                  newRuleType === 'custom' ? 'Describe the payment rule...' :
+                  'Optional condition or details...'
+                }
+                className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
               />
+
+              {/* Preview */}
+              {newRuleAmount && (
+                <div className="text-xs text-gray-300 italic">
+                  Preview: {buildRuleDescription(newRuleType, newRuleAmount, newRuleCondition)}
+                </div>
+              )}
             </div>
-            <p className="text-xs text-gray-400 mt-1">
-              {paymentStructure === 'per-video' && 'Amount paid per video'}
-              {paymentStructure === 'monthly' && 'Monthly payment amount'}
-              {paymentStructure === 'custom' && 'Custom payment amount'}
-            </p>
+
+            {/* Current Rules */}
+            {paymentRules.length > 0 && (
+              <div className="space-y-2">
+                {paymentRules.map((rule) => (
+                  <div
+                    key={rule.id}
+                    className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-lg"
+                  >
+                    <div className="flex-1">
+                      <p className="text-sm text-white font-medium">{rule.description}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {rule.type === 'flat' && 'One-time or periodic flat payment'}
+                        {rule.type === 'per-video' && 'Payment per video published'}
+                        {rule.type === 'cpm' && 'Payment based on views (Cost Per Mille)'}
+                        {rule.type === 'percentage' && 'Percentage of revenue share'}
+                        {rule.type === 'custom' && 'Custom payment structure'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => removePaymentRule(rule.id)}
+                      className="ml-3 p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {paymentRules.length === 0 && (
+              <div className="text-center py-6 bg-gray-800/30 rounded-lg border border-gray-700/30">
+                <DollarSign className="w-10 h-10 text-gray-600 mx-auto mb-2" />
+                <p className="text-sm text-gray-400">No payment rules added yet</p>
+                <p className="text-xs text-gray-500 mt-1">Add flexible payment rules above</p>
+              </div>
+            )}
           </div>
 
           {/* Payment Schedule */}
@@ -495,12 +554,6 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
           </div>
         </>
       )}
-
-      <div className="bg-gray-700/30 border border-gray-600/30 rounded-lg p-4">
-        <p className="text-sm text-gray-300">
-          <strong>Note:</strong> Account linking and payment settings will be applied after the creator accepts the invitation.
-        </p>
-      </div>
     </div>
   );
 
@@ -520,53 +573,55 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="">
       <div className="space-y-6">
-        {/* Custom Header with Step Indicator */}
-        <div>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-white">Invite Creator</h2>
-            <div className="flex items-center gap-4">
-              {/* Step Indicator */}
-              <div className="flex items-center gap-2">
-                {[1, 2, 3].map((stepNum) => (
-                  <div key={stepNum} className="flex items-center">
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors border-2 ${
-                        stepNum === step
-                          ? 'bg-white text-black border-white'
-                          : stepNum < step
-                          ? 'bg-gray-600 text-white border-gray-600'
-                          : 'bg-transparent text-gray-500 border-gray-700'
-                      }`}
-                    >
-                      {stepNum < step ? <Check className="w-4 h-4" /> : stepNum}
-                    </div>
-                    {stepNum < totalSteps && (
-                      <div
-                        className={`w-8 h-0.5 mx-1 ${
-                          stepNum < step ? 'bg-gray-600' : 'bg-gray-700'
-                        }`}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-              <button
-                onClick={handleClose}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
+        {/* Custom Header with Title, Steps, and Close Button in One Row */}
+        <div className="flex items-center justify-between pb-4 border-b border-gray-700">
+          <h2 className="text-xl font-semibold text-white">Invite Creator</h2>
           
-          <div>
-            <h3 className="text-lg font-medium text-white mb-1">
-              {getStepTitle()}
-            </h3>
-            <p className="text-sm text-gray-400">
-              Step {step} of {totalSteps}
-            </p>
+          <div className="flex items-center gap-4">
+            {/* Step Indicator */}
+            <div className="flex items-center gap-2">
+              {[1, 2, 3].map((stepNum) => (
+                <div key={stepNum} className="flex items-center">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors border-2 ${
+                      stepNum === step
+                        ? 'bg-white text-black border-white'
+                        : stepNum < step
+                        ? 'bg-gray-600 text-white border-gray-600'
+                        : 'bg-transparent text-gray-500 border-gray-700'
+                    }`}
+                  >
+                    {stepNum < step ? <Check className="w-4 h-4" /> : stepNum}
+                  </div>
+                  {stepNum < totalSteps && (
+                    <div
+                      className={`w-8 h-0.5 mx-1 ${
+                        stepNum < step ? 'bg-gray-600' : 'bg-gray-700'
+                      }`}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+            
+            {/* Close Button */}
+            <button
+              onClick={handleClose}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
+        </div>
+
+        {/* Step Title and Description */}
+        <div>
+          <h3 className="text-lg font-medium text-white mb-1">
+            {getStepTitle()}
+          </h3>
+          <p className="text-sm text-gray-400">
+            Step {step} of {totalSteps}
+          </p>
         </div>
 
         {/* Error Message */}
@@ -584,16 +639,17 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
         </div>
 
         {/* Navigation Buttons */}
-        <div className="flex items-center justify-between gap-3 pt-4 border-t border-gray-700">
-          <Button
-            variant="ghost"
-            onClick={step === 1 ? handleClose : handleBack}
-            disabled={loading}
-            className="text-gray-400 hover:text-white"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            {step === 1 ? 'Cancel' : 'Back'}
-          </Button>
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-700">
+          {step > 1 && (
+            <Button
+              variant="ghost"
+              onClick={handleBack}
+              disabled={loading}
+              className="text-gray-400 hover:text-white"
+            >
+              Back
+            </Button>
+          )}
 
           {step < totalSteps ? (
             <Button
@@ -602,7 +658,6 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
               className="bg-white hover:bg-gray-200 text-black font-semibold"
             >
               Next
-              <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           ) : (
             <Button
@@ -630,4 +685,3 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
 };
 
 export default CreateCreatorModal;
-
