@@ -175,52 +175,88 @@ const KPICards: React.FC<KPICardsProps> = ({
     const totalEngagement = totalLikes + totalComments;
     const engagementRate = totalViews > 0 ? (totalEngagement / totalViews) * 100 : 0;
 
-    // Calculate growth (last 7 days vs previous 7 days)
-    const now = new Date();
-    const last7Days = submissions.filter(v => {
-      const uploadDate = new Date(v.uploadDate);
-      const daysDiff = (now.getTime() - uploadDate.getTime()) / (1000 * 60 * 60 * 24);
-      return daysDiff <= 7;
-    });
+    // Calculate delta (CP vs PP) based on the selected date filter
+    // CP = Current Period, PP = Previous Period (same length as CP, immediately before it)
     
-    const previous7Days = submissions.filter(v => {
-      const uploadDate = new Date(v.uploadDate);
-      const daysDiff = (now.getTime() - uploadDate.getTime()) / (1000 * 60 * 60 * 24);
-      return daysDiff > 7 && daysDiff <= 14;
-    });
+    // Calculate the previous period's date range
+    let ppDateRangeStart: Date | null = null;
+    let ppDateRangeEnd: Date | null = null;
+    
+    if (dateRangeStart) {
+      const periodLength = dateRangeEnd.getTime() - dateRangeStart.getTime();
+      ppDateRangeEnd = new Date(dateRangeStart.getTime() - 1); // End of PP is 1ms before start of CP
+      ppDateRangeStart = new Date(ppDateRangeEnd.getTime() - periodLength);
+    }
+    
+    // Calculate PP metrics using the same logic as CP
+    let ppViews = 0;
+    let ppLikes = 0;
+    let ppComments = 0;
+    let ppShares = 0;
+    let ppVideos = 0;
+    
+    if (ppDateRangeStart && ppDateRangeEnd) {
+      submissions.forEach(video => {
+        const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
+        
+        if (video.snapshots && video.snapshots.length > 0) {
+          const snapshotsInRange = video.snapshots.filter(s => {
+            const capturedDate = new Date(s.capturedAt);
+            return capturedDate >= ppDateRangeStart! && capturedDate <= ppDateRangeEnd!;
+          }).sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime());
+          
+          if (snapshotsInRange.length > 0) {
+            const snapshotBeforeRange = video.snapshots
+              .filter(s => new Date(s.capturedAt) <= ppDateRangeStart!)
+              .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
+            
+            const lastSnapshotInRange = snapshotsInRange[snapshotsInRange.length - 1];
+            
+            if (snapshotBeforeRange && lastSnapshotInRange) {
+              ppViews += Math.max(0, (lastSnapshotInRange.views || 0) - (snapshotBeforeRange.views || 0));
+              ppLikes += Math.max(0, (lastSnapshotInRange.likes || 0) - (snapshotBeforeRange.likes || 0));
+              ppComments += Math.max(0, (lastSnapshotInRange.comments || 0) - (snapshotBeforeRange.comments || 0));
+              ppShares += Math.max(0, (lastSnapshotInRange.shares || 0) - (snapshotBeforeRange.shares || 0));
+            } else if (uploadDate >= ppDateRangeStart! && uploadDate <= ppDateRangeEnd!) {
+              ppViews += lastSnapshotInRange.views || 0;
+              ppLikes += lastSnapshotInRange.likes || 0;
+              ppComments += lastSnapshotInRange.comments || 0;
+              ppShares += lastSnapshotInRange.shares || 0;
+            }
+          } else if (uploadDate >= ppDateRangeStart! && uploadDate <= ppDateRangeEnd!) {
+            ppViews += video.views || 0;
+            ppLikes += video.likes || 0;
+            ppComments += video.comments || 0;
+            ppShares += video.shares || 0;
+          }
+        } else if (uploadDate >= ppDateRangeStart! && uploadDate <= ppDateRangeEnd!) {
+          ppViews += video.views || 0;
+          ppLikes += video.likes || 0;
+          ppComments += video.comments || 0;
+          ppShares += video.shares || 0;
+        }
+      });
+      
+      // Count videos published in PP
+      ppVideos = submissions.filter(v => {
+        const uploadDate = new Date(v.uploadDate || v.dateSubmitted);
+        return uploadDate >= ppDateRangeStart! && uploadDate <= ppDateRangeEnd!;
+      }).length;
+    }
 
-    // Calculate growth for all metrics
-    // CP = Current Period (last 7 days), PP = Previous Period (previous 7 days)
-    const last7DaysViews = last7Days.reduce((sum, v) => sum + (v.views || 0), 0);
-    const previous7DaysViews = previous7Days.reduce((sum, v) => sum + (v.views || 0), 0);
-    // If PP is 0, all CP data is new growth, so show + with CP value
-    const viewsGrowthAbsolute = previous7DaysViews === 0 ? last7DaysViews : last7DaysViews - previous7DaysViews;
-    const viewsGrowth = previous7DaysViews > 0 
-      ? ((last7DaysViews - previous7DaysViews) / previous7DaysViews) * 100 
-      : 0;
+    // Calculate deltas (CP - PP)
+    const viewsGrowthAbsolute = ppViews === 0 ? totalViews : totalViews - ppViews;
+    const viewsGrowth = ppViews > 0 ? ((totalViews - ppViews) / ppViews) * 100 : 0;
+    
+    const likesGrowthAbsolute = ppLikes === 0 ? totalLikes : totalLikes - ppLikes;
+    const commentsGrowthAbsolute = ppComments === 0 ? totalComments : totalComments - ppComments;
+    const sharesGrowthAbsolute = ppShares === 0 ? totalShares : totalShares - ppShares;
+    const videosGrowthAbsolute = ppVideos === 0 ? publishedVideos : publishedVideos - ppVideos;
 
-    const last7DaysLikes = last7Days.reduce((sum, v) => sum + (v.likes || 0), 0);
-    const previous7DaysLikes = previous7Days.reduce((sum, v) => sum + (v.likes || 0), 0);
-    const likesGrowthAbsolute = previous7DaysLikes === 0 ? last7DaysLikes : last7DaysLikes - previous7DaysLikes;
-
-    const last7DaysComments = last7Days.reduce((sum, v) => sum + (v.comments || 0), 0);
-    const previous7DaysComments = previous7Days.reduce((sum, v) => sum + (v.comments || 0), 0);
-    const commentsGrowthAbsolute = previous7DaysComments === 0 ? last7DaysComments : last7DaysComments - previous7DaysComments;
-
-    const last7DaysShares = last7Days.reduce((sum, v) => sum + (v.shares || 0), 0);
-    const previous7DaysShares = previous7Days.reduce((sum, v) => sum + (v.shares || 0), 0);
-    const sharesGrowthAbsolute = previous7DaysShares === 0 ? last7DaysShares : last7DaysShares - previous7DaysShares;
-
-    const last7DaysVideos = last7Days.length;
-    const previous7DaysVideos = previous7Days.length;
-    const videosGrowthAbsolute = previous7DaysVideos === 0 ? last7DaysVideos : last7DaysVideos - previous7DaysVideos;
-
-    // Calculate engagement rate growth
-    const last7DaysEngagement = last7DaysLikes + last7DaysComments + last7DaysShares;
-    const previous7DaysEngagement = previous7DaysLikes + previous7DaysComments + previous7DaysShares;
-    const last7DaysEngagementRate = last7DaysViews > 0 ? (last7DaysEngagement / last7DaysViews) * 100 : 0;
-    const previous7DaysEngagementRate = previous7DaysViews > 0 ? (previous7DaysEngagement / previous7DaysViews) * 100 : 0;
-    const engagementRateGrowthAbsolute = previous7DaysEngagementRate === 0 ? last7DaysEngagementRate : last7DaysEngagementRate - previous7DaysEngagementRate;
+    // Calculate engagement rate for PP
+    const ppEngagement = ppLikes + ppComments;
+    const ppEngagementRate = ppViews > 0 ? (ppEngagement / ppViews) * 100 : 0;
+    const engagementRateGrowthAbsolute = ppEngagementRate === 0 ? engagementRate : engagementRate - ppEngagementRate;
 
     // Generate sparkline data based on date filter and metric type
     const generateSparklineData = (metric: 'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts') => {
@@ -355,15 +391,30 @@ const KPICards: React.FC<KPICardsProps> = ({
       return num.toString();
     };
 
-    // Calculate link clicks growth (last 7 days vs previous 7 days)
-    const now7DaysAgo = new Date(Date.now() - (7 * 24 * 60 * 60 * 1000));
-    const now14DaysAgo = new Date(Date.now() - (14 * 24 * 60 * 60 * 1000));
-    const last7DaysClicks = linkClicks.filter(click => new Date(click.timestamp) >= now7DaysAgo).length;
-    const previous7DaysClicks = linkClicks.filter(click => {
-      const clickDate = new Date(click.timestamp);
-      return clickDate >= now14DaysAgo && clickDate < now7DaysAgo;
-    }).length;
-    const clicksGrowthAbsolute = previous7DaysClicks === 0 ? last7DaysClicks : last7DaysClicks - previous7DaysClicks;
+    // Calculate link clicks growth using the same CP vs PP logic
+    let cpClicks = 0;
+    let ppClicks = 0;
+    
+    if (dateRangeStart) {
+      // Count clicks in Current Period (CP)
+      cpClicks = linkClicks.filter(click => {
+        const clickDate = new Date(click.timestamp);
+        return clickDate >= dateRangeStart! && clickDate <= dateRangeEnd;
+      }).length;
+      
+      // Count clicks in Previous Period (PP)
+      if (ppDateRangeStart && ppDateRangeEnd) {
+        ppClicks = linkClicks.filter(click => {
+          const clickDate = new Date(click.timestamp);
+          return clickDate >= ppDateRangeStart! && clickDate <= ppDateRangeEnd!;
+        }).length;
+      }
+    } else {
+      // For 'all' time, use total clicks (no PP comparison)
+      cpClicks = linkClicks.length;
+    }
+    
+    const clicksGrowthAbsolute = ppClicks === 0 ? cpClicks : cpClicks - ppClicks;
 
     // Generate sparkline data first so we can calculate trends
     const viewsSparkline = generateSparklineData('views');
@@ -574,15 +625,16 @@ const KPICards: React.FC<KPICardsProps> = ({
         }
         
         const linkClicksSparkline = data;
-        const hasClicks = linkClicks.length > 0;
+        const hasClicks = cpClicks > 0 || linkClicks.length > 0;
+        const displayClicks = dateRangeStart ? cpClicks : linkClicks.length;
         return {
           id: 'link-clicks',
           label: 'Link Clicks',
-          value: formatNumber(linkClicks.length),
+          value: formatNumber(displayClicks),
           icon: LinkIcon,
           accent: 'slate' as const,
-          isEmpty: linkClicks.length === 0,
-          ctaText: linkClicks.length === 0 ? 'Create link' : undefined,
+          isEmpty: displayClicks === 0,
+          ctaText: displayClicks === 0 ? 'Create link' : undefined,
           delta: hasClicks ? { value: 0, isPositive: clicksGrowthAbsolute >= 0, absoluteValue: clicksGrowthAbsolute } : undefined,
           sparklineData: linkClicksSparkline,
           isIncreasing: hasClicks ? clicksGrowthAbsolute >= 0 : true // Use delta, not sparkline trend
