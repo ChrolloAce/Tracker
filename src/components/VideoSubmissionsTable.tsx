@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, Edit3, ChevronUp, ChevronDown, Filter } from 'lucide-react';
+import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, Edit3, ChevronUp, ChevronDown, Filter, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import Lottie from 'lottie-react';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -671,17 +671,27 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   )}
                   {visibleColumns.engagement && (
                     <td className="px-6 py-5">
-                      <div className="flex items-center space-x-2">
-                        <div className={clsx(
-                          "px-2 py-1 rounded-full text-xs font-medium",
+                      <div
+                        className={clsx(
+                          'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all',
                           {
-                            "bg-green-100 text-green-800": engagementRate >= 3,
-                            "bg-yellow-100 text-yellow-800": engagementRate >= 1 && engagementRate < 3,
-                            "bg-red-100 text-red-800": engagementRate < 1,
+                            "bg-green-500/15 text-green-400 border-green-500/30": engagementRate >= 5,
+                            "bg-green-500/10 text-green-400 border-green-500/20": engagementRate >= 3 && engagementRate < 5,
+                            "bg-gray-500/10 text-gray-400 border-gray-500/20": engagementRate >= 1 && engagementRate < 3,
+                            "bg-red-500/10 text-red-400 border-red-500/20": engagementRate < 1,
                           }
-                        )}>
-                          {engagementRate.toFixed(2)}%
-                        </div>
+                        )}
+                      >
+                        {engagementRate >= 5 ? (
+                          <TrendingUp className="w-3.5 h-3.5" />
+                        ) : engagementRate >= 3 ? (
+                          <TrendingUp className="w-3.5 h-3.5" />
+                        ) : engagementRate >= 1 ? (
+                          <Minus className="w-3.5 h-3.5" />
+                        ) : (
+                          <TrendingDown className="w-3.5 h-3.5" />
+                        )}
+                        <span>{engagementRate.toFixed(2)}%</span>
                       </div>
                     </td>
                   )}
