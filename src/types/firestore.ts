@@ -423,6 +423,16 @@ export interface Creator {
   contractNotes?: string;
   contractStartDate?: Timestamp;
   contractEndDate?: Timestamp;
+  
+  // Flexible payment information (freeform)
+  paymentInfo?: {
+    isPaid: boolean;
+    structure?: string; // Freeform payment structure description
+    schedule?: 'weekly' | 'bi-weekly' | 'monthly' | 'custom';
+    customSchedule?: string; // Custom schedule description
+    notes?: string; // Additional payment notes
+    updatedAt?: Timestamp;
+  };
 }
 
 /**

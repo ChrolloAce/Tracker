@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { OrgMember, Creator } from '../types/firestore';
+import { OrgMember } from '../types/firestore';
 import CreatorLinksService from '../services/CreatorLinksService';
 import { X, Save, DollarSign, User as UserIcon, Copy, Lightbulb } from 'lucide-react';
 import { Button } from './ui/Button';
