@@ -653,7 +653,6 @@ const OverviewTab: React.FC<{
   timePeriod: 'payment_period' | 'last_30' | 'last_7' | 'all_time';
   onTimePeriodChange: (period: 'payment_period' | 'last_30' | 'last_7' | 'all_time') => void;
 }> = ({ profile, linkedAccounts, recentVideos, timePeriod, onTimePeriodChange }) => {
-  const [selectedAccount, setSelectedAccount] = React.useState<string>('all');
   const [hoveredVideo, setHoveredVideo] = React.useState<string | null>(null);
   const [showTooltip, setShowTooltip] = React.useState(false);
   const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -793,23 +792,8 @@ const OverviewTab: React.FC<{
 
   const earnings = calculateEarnings();
   
-  // Calculate earnings by account
-  const accountEarnings = linkedAccounts.map(account => {
-    const accountVideos = earnings.breakdown.filter(v => v.accountId === account.id);
-    const totalEarnings = accountVideos.reduce((sum, v) => sum + v.earnings, 0);
-    const totalViews = accountVideos.reduce((sum, v) => sum + v.views, 0);
-    return {
-      account,
-      earnings: totalEarnings,
-      views: totalViews,
-      videoCount: accountVideos.length
-    };
-  });
-
-  // Filter videos by selected account
-  const filteredVideos = selectedAccount === 'all' 
-    ? earnings.breakdown 
-    : earnings.breakdown.filter(v => v.accountId === selectedAccount);
+  // All videos from earnings breakdown
+  const filteredVideos = earnings.breakdown;
 
   const handleMouseEnter = (videoId: string) => {
     setHoveredVideo(videoId);
