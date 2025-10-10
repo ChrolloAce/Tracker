@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import ProjectSwitcher from '../ProjectSwitcher';
-import OrganizationSwitcher from '../OrganizationSwitcher';
 import CreateProjectModal from '../CreateProjectModal';
 import RefreshCountdown from '../RefreshCountdown';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -89,14 +88,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         onClick: () => onTabChange?.('creators'),
       });
     }
-
-    return items;
-  }, [activeTab, can, onTabChange, userRole]);
-
-  const bottomItems: NavItem[] = useMemo(() => {
-    const items: NavItem[] = [];
-
-    // Team tab moved to Settings
 
     if (can.accessTab('settings')) {
       items.push({
@@ -227,21 +218,9 @@ const Sidebar: React.FC<SidebarProps> = ({
         ))}
       </nav>
 
-      {/* Bottom Navigation */}
-      <div className="px-3 py-4 border-t border-gray-200 dark:border-gray-800 space-y-1">
-        {bottomItems.map((item) => (
-          <NavItemComponent key={item.id} item={item} />
-        ))}
-      </div>
-
       {/* Refresh Countdown Timer */}
       {!isCollapsed && (
         <RefreshCountdown />
-      )}
-
-      {/* Organization Switcher at Bottom */}
-      {!isCollapsed && (
-        <OrganizationSwitcher />
       )}
 
     </div>
