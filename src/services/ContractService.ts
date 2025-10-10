@@ -167,6 +167,29 @@ export class ContractService {
   }
 
   /**
+   * Get all contracts for a project
+   */
+  static async getAllContractsForProject(
+    organizationId: string,
+    projectId: string
+  ): Promise<ShareableContract[]> {
+    try {
+      const contractsRef = collection(db, this.CONTRACTS_COLLECTION);
+      const q = query(
+        contractsRef,
+        where('organizationId', '==', organizationId),
+        where('projectId', '==', projectId)
+      );
+      
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => doc.data() as ShareableContract);
+    } catch (error) {
+      console.error('Error fetching contracts:', error);
+      return [];
+    }
+  }
+
+  /**
    * Get all contracts for a creator
    */
   static async getContractsForCreator(
