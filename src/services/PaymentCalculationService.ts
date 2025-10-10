@@ -1,4 +1,4 @@
-import { VideoSubmission } from '../types/firestore';
+import { VideoSubmission } from '../types';
 
 /**
  * Payment Rule Types that can be calculated
@@ -134,9 +134,9 @@ class PaymentCalculationService {
   private static calculateRuleEarnings(
     rule: PaymentRule,
     video: VideoSubmission,
-    allVideos: VideoSubmission[],
-    linkClicks: number,
-    totalRevenue: number
+    _allVideos: VideoSubmission[],
+    _linkClicks: number,
+    _totalRevenue: number
   ): number {
     const views = video.views || 0;
     const likes = video.likes || 0;
@@ -239,7 +239,7 @@ class PaymentCalculationService {
   private static getEarningsDetails(
     rule: PaymentRule,
     videos: VideoSubmission[],
-    earnings: number
+    _earnings: number
   ): string {
     switch (rule.type) {
       case 'flat_upfront':
