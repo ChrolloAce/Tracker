@@ -907,22 +907,6 @@ const OverviewTab: React.FC<{
           </div>
               </div>
 
-      {/* Total Payout Summary */}
-      {earnings.total > 0 && (
-        <div className="bg-gradient-to-br from-emerald-500/10 to-green-500/10 border border-emerald-500/20 rounded-xl p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm text-emerald-400 font-medium mb-1">Total Calculated Payout</div>
-              <div className="text-xs text-gray-400">{earnings.details} • {filteredVideosByTime.length} videos</div>
-            </div>
-            <div className="text-right">
-              <div className="text-4xl font-bold text-white">${earnings.total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-              <div className="text-xs text-emerald-400 mt-1">Based on current payment structure</div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Video Performance */}
       <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
         <div className="flex items-center justify-between mb-4">

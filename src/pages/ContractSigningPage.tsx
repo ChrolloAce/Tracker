@@ -4,6 +4,7 @@ import { ContractService } from '../services/ContractService';
 import { ShareableContract } from '../types/contract';
 import { FileText, Check, Clock, AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import SignatureCanvas from '../components/ui/SignatureCanvas';
 
 const ContractSigningPage: React.FC = () => {
   const { contractId } = useParams<{ contractId: string }>();
@@ -16,6 +17,7 @@ const ContractSigningPage: React.FC = () => {
   const [signing, setSigning] = useState(false);
   const [signAs, setSignAs] = useState<'creator' | 'company' | null>(null);
   const [signerName, setSignerName] = useState('');
+  const [signatureData, setSignatureData] = useState<string | null>(null);
 
   useEffect(() => {
     loadContract();
@@ -49,20 +51,21 @@ const ContractSigningPage: React.FC = () => {
   };
 
   const handleSign = async () => {
-    if (!contract || !signAs || !signerName.trim()) return;
+    if (!contract || !signAs || !signerName.trim() || !signatureData) return;
 
     setSigning(true);
     try {
       if (signAs === 'creator') {
-        await ContractService.signAsCreator(contract.id, signerName);
+        await ContractService.signAsCreator(contract.id, signerName, signatureData);
       } else {
-        await ContractService.signAsCompany(contract.id, signerName);
+        await ContractService.signAsCompany(contract.id, signerName, signatureData);
       }
       
       // Reload contract to show updated signatures
       await loadContract();
       setSignAs(null);
       setSignerName('');
+      setSignatureData(null);
     } catch (err) {
       console.error('Error signing contract:', err);
       alert('Failed to sign contract. Please try again.');
@@ -264,6 +267,13 @@ const ContractSigningPage: React.FC = () => {
                     />
                   </div>
 
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2">
+                      Signature
+                    </label>
+                    <SignatureCanvas onSignatureChange={setSignatureData} />
+                  </div>
+
                   <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
                     <p className="text-xs text-yellow-500">
                       By signing, you agree to the terms and conditions outlined in this contract.
@@ -273,7 +283,7 @@ const ContractSigningPage: React.FC = () => {
                   <div className="flex gap-2">
                     <Button
                       onClick={handleSign}
-                      disabled={!signerName.trim() || signing}
+                      disabled={!signerName.trim() || !signatureData || signing}
                       className="flex-1"
                     >
                       {signing ? (
