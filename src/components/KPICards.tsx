@@ -355,21 +355,6 @@ const KPICards: React.FC<KPICardsProps> = ({
       return num.toString();
     };
 
-    // Helper to determine if data is trending up or down
-    const calculateTrend = (data: Array<{ value: number }> | undefined): boolean => {
-      if (!data || data.length < 2) return true; // Default to green if no data
-      
-      // Compare the average of the first half to the average of the second half
-      const midPoint = Math.floor(data.length / 2);
-      const firstHalf = data.slice(0, midPoint);
-      const secondHalf = data.slice(midPoint);
-      
-      const firstAvg = firstHalf.reduce((sum, d) => sum + d.value, 0) / firstHalf.length;
-      const secondAvg = secondHalf.reduce((sum, d) => sum + d.value, 0) / secondHalf.length;
-      
-      return secondAvg >= firstAvg; // true = increasing (green), false = decreasing (red)
-    };
-
     // Calculate link clicks growth (last 7 days vs previous 7 days)
     const now7DaysAgo = new Date(Date.now() - (7 * 24 * 60 * 60 * 1000));
     const now14DaysAgo = new Date(Date.now() - (14 * 24 * 60 * 60 * 1000));
@@ -397,7 +382,7 @@ const KPICards: React.FC<KPICardsProps> = ({
         accent: 'emerald',
         delta: { value: Math.abs(viewsGrowth), isPositive: viewsGrowth >= 0, absoluteValue: viewsGrowthAbsolute },
         sparklineData: viewsSparkline,
-        isIncreasing: calculateTrend(viewsSparkline)
+        isIncreasing: viewsGrowthAbsolute >= 0 // Use delta, not sparkline trend
       },
       {
         id: 'likes',
@@ -407,7 +392,7 @@ const KPICards: React.FC<KPICardsProps> = ({
         accent: 'pink',
         delta: { value: 0, isPositive: likesGrowthAbsolute >= 0, absoluteValue: likesGrowthAbsolute },
         sparklineData: likesSparkline,
-        isIncreasing: calculateTrend(likesSparkline)
+        isIncreasing: likesGrowthAbsolute >= 0 // Use delta, not sparkline trend
       },
       {
         id: 'comments',
@@ -417,7 +402,7 @@ const KPICards: React.FC<KPICardsProps> = ({
         accent: 'blue',
         delta: { value: 0, isPositive: commentsGrowthAbsolute >= 0, absoluteValue: commentsGrowthAbsolute },
         sparklineData: commentsSparkline,
-        isIncreasing: calculateTrend(commentsSparkline)
+        isIncreasing: commentsGrowthAbsolute >= 0 // Use delta, not sparkline trend
       },
       {
         id: 'shares',
@@ -427,7 +412,7 @@ const KPICards: React.FC<KPICardsProps> = ({
         accent: 'orange',
         delta: { value: 0, isPositive: sharesGrowthAbsolute >= 0, absoluteValue: sharesGrowthAbsolute },
         sparklineData: sharesSparkline,
-        isIncreasing: calculateTrend(sharesSparkline)
+        isIncreasing: sharesGrowthAbsolute >= 0 // Use delta, not sparkline trend
       },
       {
         id: 'videos',
@@ -437,7 +422,7 @@ const KPICards: React.FC<KPICardsProps> = ({
         accent: 'violet',
         delta: { value: 0, isPositive: videosGrowthAbsolute >= 0, absoluteValue: videosGrowthAbsolute },
         sparklineData: videosSparkline,
-        isIncreasing: calculateTrend(videosSparkline)
+        isIncreasing: videosGrowthAbsolute >= 0 // Use delta, not sparkline trend
       },
       {
         id: 'accounts',
@@ -446,7 +431,7 @@ const KPICards: React.FC<KPICardsProps> = ({
         icon: AtSign,
         accent: 'teal',
         sparklineData: accountsSparkline,
-        isIncreasing: calculateTrend(accountsSparkline)
+        isIncreasing: true // Default to green for accounts (no delta calculated)
       },
       (() => {
         // Generate engagement rate sparkline data (per-day, not cumulative)
@@ -538,7 +523,7 @@ const KPICards: React.FC<KPICardsProps> = ({
           accent: 'violet' as const,
           delta: { value: 0, isPositive: engagementRateGrowthAbsolute >= 0, absoluteValue: engagementRateGrowthAbsolute, isPercentage: true },
           sparklineData: engagementSparkline,
-          isIncreasing: calculateTrend(engagementSparkline)
+          isIncreasing: engagementRateGrowthAbsolute >= 0 // Use delta, not sparkline trend
         };
       })(),
       (() => {
@@ -600,7 +585,7 @@ const KPICards: React.FC<KPICardsProps> = ({
           ctaText: linkClicks.length === 0 ? 'Create link' : undefined,
           delta: hasClicks ? { value: 0, isPositive: clicksGrowthAbsolute >= 0, absoluteValue: clicksGrowthAbsolute } : undefined,
           sparklineData: linkClicksSparkline,
-          isIncreasing: calculateTrend(linkClicksSparkline)
+          isIncreasing: hasClicks ? clicksGrowthAbsolute >= 0 : true // Use delta, not sparkline trend
         };
       })()
     ];
