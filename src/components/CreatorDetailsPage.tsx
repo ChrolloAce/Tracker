@@ -23,9 +23,8 @@ import { PlatformIcon } from './ui/PlatformIcon';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import { Timestamp } from 'firebase/firestore';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
-import PaymentRuleBuilder from './PaymentRuleBuilder';
 import TieredPaymentBuilder from './TieredPaymentBuilder';
-import { PaymentRule } from '../services/PaymentCalculationService';
+import PaymentInvoicePreview from './PaymentInvoicePreview';
 import { TieredPaymentStructure } from '../types/payments';
 
 interface CreatorDetailsPageProps {
@@ -67,13 +66,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   const [calculatedTotalEarnings, setCalculatedTotalEarnings] = useState<number>(0);
   const [timePeriod, setTimePeriod] = useState<'payment_period' | 'last_30' | 'last_7' | 'all_time'>('payment_period');
   
-  // Payment system selector
-  const [paymentSystemType, setPaymentSystemType] = useState<'rules' | 'tiered'>('tiered');
-  
-  // Payment rules state (old system)
-  const [paymentRules, setPaymentRules] = useState<PaymentRule[]>([]);
-  
-  // Tiered payment structure state (new system)
+  // Tiered payment structure state
   const [tieredPaymentStructure, setTieredPaymentStructure] = useState<TieredPaymentStructure | null>(null);
   
   // Payment terms state
@@ -225,24 +218,16 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
         setContractEndDate(profile.contractEndDate.toDate().toISOString().split('T')[0]);
       }
 
-      // Load payment rules and tiered structure from paymentInfo
-      if (profile?.paymentInfo) {
-        setPaymentRules((profile.paymentInfo.paymentRules as PaymentRule[]) || []);
+      // Load tiered payment structure from paymentInfo
+      if (profile?.paymentInfo && (profile.paymentInfo as any).tieredStructure) {
+        const loadedStructure = (profile.paymentInfo as any).tieredStructure as TieredPaymentStructure;
         
-        // Load tiered payment structure if it exists
-        if ((profile.paymentInfo as any).tieredStructure) {
-          const loadedStructure = (profile.paymentInfo as any).tieredStructure as TieredPaymentStructure;
-          
-          // Migrate old structure format - ensure tiers array exists
-          if (!loadedStructure.tiers || !Array.isArray(loadedStructure.tiers)) {
-            loadedStructure.tiers = [];
-          }
-          
-          setTieredPaymentStructure(loadedStructure);
-          setPaymentSystemType('tiered');
-        } else if (profile.paymentInfo.paymentRules && profile.paymentInfo.paymentRules.length > 0) {
-          setPaymentSystemType('rules');
+        // Migrate old structure format - ensure tiers array exists
+        if (!loadedStructure.tiers || !Array.isArray(loadedStructure.tiers)) {
+          loadedStructure.tiers = [];
         }
+        
+        setTieredPaymentStructure(loadedStructure);
       }
 
       // Load linked accounts
@@ -322,34 +307,22 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
 
     setSaving(true);
     try {
-      const paymentInfoData: any = {
-        isPaid: true,
-        updatedAt: new Date()
-      };
-
-      // Save based on selected payment system type
-      if (paymentSystemType === 'tiered' && tieredPaymentStructure) {
-        paymentInfoData.tieredStructure = tieredPaymentStructure;
-        // Clear old payment rules if switching to tiered
-        paymentInfoData.paymentRules = [];
-      } else if (paymentSystemType === 'rules') {
-        paymentInfoData.paymentRules = paymentRules as any;
-        // Clear tiered structure if switching to rules
-        paymentInfoData.tieredStructure = null;
-      }
-
       await CreatorLinksService.updateCreatorPaymentInfo(
         currentOrgId,
         currentProjectId,
         creator.userId,
-        paymentInfoData
+        {
+          isPaid: true,
+          tieredStructure: tieredPaymentStructure,
+          updatedAt: new Date()
+        }
       );
 
       await loadData();
       onUpdate();
     } catch (error) {
-      console.error('Failed to save payment information:', error);
-      alert('Failed to save payment information');
+      console.error('Failed to save payment structure:', error);
+      alert('Failed to save payment structure');
     } finally {
       setSaving(false);
     }
@@ -556,125 +529,51 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
           />
         )}
         {activeTab === 'payment' && (
-          <div className="space-y-6">
-            {/* Payment System Type Selector */}
-            <div className="bg-[#161616] rounded-xl border border-gray-800 p-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-gray-400">Payment Structure Type</h3>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setPaymentSystemType('tiered')}
-                    className={clsx(
-                      'px-4 py-2 rounded-lg text-sm font-medium transition-all',
-                      paymentSystemType === 'tiered'
-                        ? 'bg-white text-black'
-                        : 'bg-[#0A0A0A] text-gray-400 hover:text-white border border-gray-800 hover:border-gray-700'
-                    )}
-                  >
-                    💰 Tiered Payment
-                  </button>
-                  <button
-                    onClick={() => setPaymentSystemType('rules')}
-                    className={clsx(
-                      'px-4 py-2 rounded-lg text-sm font-medium transition-all',
-                      paymentSystemType === 'rules'
-                        ? 'bg-white text-black'
-                        : 'bg-[#0A0A0A] text-gray-400 hover:text-white border border-gray-800 hover:border-gray-700'
-                    )}
-                  >
-                    📊 Payment Rules
-                  </button>
-                </div>
+          <div className="grid grid-cols-2 gap-6 h-[calc(100vh-300px)]">
+            {/* Left: Edit Payment Structure */}
+            <div className="bg-[#161616] rounded-xl border border-gray-800 p-6 overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-gray-400" />
+                  Payment Structure
+                </h2>
               </div>
-              <p className="text-xs text-gray-500 mt-2">
-                {paymentSystemType === 'tiered' 
-                  ? 'Create milestone-based payment stages with upfront, delivery, and performance bonuses'
-                  : 'Set up flexible rules based on views, engagement, clicks, and other metrics'
-                }
-              </p>
+
+              <TieredPaymentBuilder
+                value={tieredPaymentStructure}
+                onChange={setTieredPaymentStructure}
+                alwaysEdit={true}
+              />
+
+              {/* Save Button */}
+              <div className="flex justify-end mt-6 pt-4 border-t border-gray-800">
+                <Button
+                  onClick={handleSavePaymentRules}
+                  disabled={saving}
+                  className="flex items-center gap-2"
+                >
+                  {saving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      Save Structure
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
 
-            {/* Tiered Payment System */}
-            {paymentSystemType === 'tiered' && (
-              <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                    <DollarSign className="w-5 h-5 text-gray-400" />
-                    Tiered Payment Structure
-                  </h2>
-                  <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                    <span className="px-2 py-1 bg-white/10 rounded">🎯 Milestone-based</span>
-                  </div>
-                </div>
-
-                <TieredPaymentBuilder
-                  value={tieredPaymentStructure}
-                  onChange={setTieredPaymentStructure}
-                />
-
-                {/* Save Button */}
-                <div className="flex justify-end mt-6">
-                  <Button
-                    onClick={handleSavePaymentRules}
-                    disabled={saving}
-                    className="flex items-center gap-2"
-                  >
-                    {saving ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4" />
-                        Save Payment Structure
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Payment Rules System */}
-            {paymentSystemType === 'rules' && (
-              <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                    <DollarSign className="w-5 h-5 text-gray-400" />
-                    Payment Rules
-                  </h2>
-                  <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                    <span className="px-2 py-1 bg-white/10 rounded">💹 Auto-calculates earnings</span>
-                  </div>
-                </div>
-
-                <PaymentRuleBuilder
-                  rules={paymentRules}
-                  onChange={setPaymentRules}
-                />
-
-                {/* Save Button */}
-                <div className="flex justify-end mt-6">
-                  <Button
-                    onClick={handleSavePaymentRules}
-                    disabled={saving}
-                    className="flex items-center gap-2"
-                  >
-                    {saving ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4" />
-                        Save Payment Rules
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            )}
+            {/* Right: Invoice Preview */}
+            <div className="overflow-y-auto">
+              <PaymentInvoicePreview
+                structure={tieredPaymentStructure}
+                creatorName={creator.displayName || creator.email || 'Creator'}
+              />
+            </div>
           </div>
         )}
         {activeTab === 'contract' && (

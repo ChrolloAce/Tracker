@@ -11,6 +11,7 @@ import {
 interface TieredPaymentBuilderProps {
   value: TieredPaymentStructure | null;
   onChange: (structure: TieredPaymentStructure) => void;
+  alwaysEdit?: boolean; // If true, always show edit mode, skip collapsed view and templates
 }
 
 const COMPONENT_TYPES: { value: PaymentComponentType; label: string; unit: string }[] = [
@@ -21,10 +22,10 @@ const COMPONENT_TYPES: { value: PaymentComponentType; label: string; unit: strin
   { value: 'bonus', label: 'Bonus', unit: '$' }
 ];
 
-const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onChange }) => {
+const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onChange, alwaysEdit = false }) => {
   const [structure, setStructure] = useState<TieredPaymentStructure | null>(value);
-  const [isEditing, setIsEditing] = useState(false);
-  const [showTemplates, setShowTemplates] = useState(!value);
+  const [isEditing, setIsEditing] = useState(alwaysEdit);
+  const [showTemplates, setShowTemplates] = useState(!value && !alwaysEdit);
 
   useEffect(() => {
     // Migrate old structure format to new format
@@ -37,17 +38,33 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
         };
         setStructure(migratedStructure);
         setShowTemplates(false);
-        setIsEditing(false);
+        setIsEditing(alwaysEdit);
       } else {
         setStructure(value);
         setShowTemplates(false);
+        setIsEditing(alwaysEdit);
       }
+    } else if (alwaysEdit) {
+      // In always edit mode, initialize empty structure if none exists
+      const emptyStructure: TieredPaymentStructure = {
+        id: `payment-${Date.now()}`,
+        name: 'Creator Contract',
+        currency: 'USD',
+        tiers: [],
+        isActive: true,
+        totalPaid: 0,
+        createdAt: new Date() as any,
+        createdBy: ''
+      };
+      setStructure(emptyStructure);
+      setShowTemplates(false);
+      setIsEditing(true);
     } else {
       setStructure(null);
       setShowTemplates(true);
       setIsEditing(false);
     }
-  }, [value]);
+  }, [value, alwaysEdit]);
 
   const handleInitializeFromTemplate = (templateId: string) => {
     const template = PAYMENT_TIER_TEMPLATES.find(t => t.id === templateId);
@@ -403,19 +420,21 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-medium text-white">Edit Payment Structure</h3>
-          <p className="text-xs text-gray-400 mt-0.5">Build your payment stages and components</p>
+      {!alwaysEdit && (
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-sm font-medium text-white">Edit Payment Structure</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Build your payment stages and components</p>
+          </div>
+          <button
+            onClick={() => setIsEditing(false)}
+            className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+          >
+            <Check className="w-3.5 h-3.5" />
+            Done
+          </button>
         </div>
-        <button
-          onClick={() => setIsEditing(false)}
-          className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
-        >
-          <Check className="w-3.5 h-3.5" />
-          Done
-        </button>
-      </div>
+      )}
 
       {/* Tiers */}
       <div className="space-y-3">
