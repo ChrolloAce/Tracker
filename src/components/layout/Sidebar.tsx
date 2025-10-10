@@ -13,6 +13,7 @@ import { clsx } from 'clsx';
 import ProjectSwitcher from '../ProjectSwitcher';
 import OrganizationSwitcher from '../OrganizationSwitcher';
 import CreateProjectModal from '../CreateProjectModal';
+import RefreshCountdown from '../RefreshCountdown';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useAuth } from '../../contexts/AuthContext';
 import blackLogo from '../blacklogo.png';
@@ -241,6 +242,11 @@ const Sidebar: React.FC<SidebarProps> = ({
           <NavItemComponent key={item.id} item={item} />
         ))}
       </div>
+
+      {/* Refresh Countdown Timer */}
+      {!isCollapsed && (
+        <RefreshCountdown />
+      )}
 
       {/* Organization Switcher at Bottom */}
       {!isCollapsed && (
