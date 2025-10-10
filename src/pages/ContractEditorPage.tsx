@@ -4,19 +4,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { ContractService } from '../services/ContractService';
 import OrganizationService from '../services/OrganizationService';
 import { OrgMember } from '../types/firestore';
-import { ShareableContract } from '../types/contract';
 import { CONTRACT_TEMPLATES, ContractTemplate } from '../types/contracts';
 import { 
   ArrowLeft, 
   FileText, 
-  Share2, 
-  Copy, 
-  ExternalLink, 
-  Check 
+  Share2
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import ContractPreview from '../components/ContractPreview';
-import clsx from 'clsx';
 
 const ContractEditorPage: React.FC = () => {
   const { creatorId } = useParams<{ creatorId: string }>();
@@ -33,12 +28,9 @@ const ContractEditorPage: React.FC = () => {
   const [paymentStructureName, setPaymentStructureName] = useState('');
   
   const [showTemplates, setShowTemplates] = useState(true);
-  const [sharedContracts, setSharedContracts] = useState<ShareableContract[]>([]);
-  const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
   useEffect(() => {
     loadCreator();
-    loadContracts();
   }, [creatorId, currentOrgId]);
 
   const loadCreator = async () => {
@@ -53,31 +45,6 @@ const ContractEditorPage: React.FC = () => {
       console.error('Error loading creator:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadContracts = async () => {
-    if (!currentOrgId || !currentProjectId || !creatorId) return;
-
-    try {
-      const contracts = await ContractService.getContractsForCreator(
-        currentOrgId,
-        currentProjectId,
-        creatorId
-      );
-      setSharedContracts(contracts);
-      
-      // If there's only one contract and we don't have notes yet, load it
-      if (contracts.length === 1 && !contractNotes) {
-        const contract = contracts[0];
-        setContractStartDate(contract.contractStartDate);
-        setContractEndDate(contract.contractEndDate);
-        setContractNotes(contract.contractNotes);
-        setPaymentStructureName(contract.paymentStructureName || '');
-        setShowTemplates(false);
-      }
-    } catch (error) {
-      console.error('Error loading contracts:', error);
     }
   };
 
@@ -109,7 +76,7 @@ const ContractEditorPage: React.FC = () => {
 
     setSharing(true);
     try {
-      const contract = await ContractService.createShareableContract(
+      await ContractService.createShareableContract(
         currentOrgId,
         currentProjectId,
         creator.userId,
@@ -122,24 +89,12 @@ const ContractEditorPage: React.FC = () => {
         user.uid
       );
 
-      await loadContracts();
-      
-      alert(`Contract links created!\n\n🎨 Creator Link:\n${contract.creatorLink}\n\n🏢 Company Link:\n${contract.companyLink}`);
+      // Redirect back to creator details
+      navigate(-1);
     } catch (error) {
       console.error('Error sharing contract:', error);
       alert('Failed to create contract');
-    } finally {
       setSharing(false);
-    }
-  };
-
-  const handleCopyLink = async (link: string, id: string) => {
-    try {
-      await navigator.clipboard.writeText(link);
-      setCopiedLink(id);
-      setTimeout(() => setCopiedLink(null), 2000);
-    } catch (error) {
-      console.error('Error copying link:', error);
     }
   };
 
@@ -331,85 +286,6 @@ const ContractEditorPage: React.FC = () => {
                     )}
                   </Button>
                 </div>
-
-                {/* Shared Contracts */}
-                {sharedContracts.length > 0 && (
-                  <div className="mt-6 pt-6 border-t border-gray-800">
-                    <h3 className="text-sm font-medium text-gray-300 mb-3">Shared Contracts</h3>
-                    <div className="space-y-3">
-                      {sharedContracts.map((contract) => (
-                        <div
-                          key={contract.id}
-                          className="p-3 bg-white/5 border border-white/10 rounded-lg space-y-2"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className={clsx(
-                              'text-xs font-medium px-2 py-0.5 rounded',
-                              contract.status === 'signed' ? 'bg-green-500/20 text-green-400' :
-                              contract.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                              'bg-gray-500/20 text-gray-400'
-                            )}>
-                              {contract.status === 'signed' && '✓ Signed'}
-                              {contract.status === 'pending' && '⏳ Pending'}
-                              {contract.status === 'draft' && '📝 Draft'}
-                            </span>
-                            <span className="text-xs text-gray-400">
-                              {contract.createdAt?.toDate?.()?.toLocaleDateString() || 'N/A'}
-                            </span>
-                          </div>
-
-                          {/* Creator Link */}
-                          <div className="flex items-center gap-2 bg-white/5 rounded p-2">
-                            <span className="text-xs font-medium text-blue-400 whitespace-nowrap">🎨 Creator:</span>
-                            <p className="text-xs text-gray-500 truncate flex-1">{contract.creatorLink}</p>
-                            <button
-                              onClick={() => handleCopyLink(contract.creatorLink, `creator-${contract.id}`)}
-                              className="p-1 hover:bg-white/10 rounded transition-colors"
-                            >
-                              {copiedLink === `creator-${contract.id}` ? (
-                                <Check className="w-3 h-3 text-green-400" />
-                              ) : (
-                                <Copy className="w-3 h-3 text-gray-400" />
-                              )}
-                            </button>
-                            <a
-                              href={contract.creatorLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1 hover:bg-white/10 rounded transition-colors"
-                            >
-                              <ExternalLink className="w-3 h-3 text-gray-400" />
-                            </a>
-                          </div>
-
-                          {/* Company Link */}
-                          <div className="flex items-center gap-2 bg-white/5 rounded p-2">
-                            <span className="text-xs font-medium text-purple-400 whitespace-nowrap">🏢 Company:</span>
-                            <p className="text-xs text-gray-500 truncate flex-1">{contract.companyLink}</p>
-                            <button
-                              onClick={() => handleCopyLink(contract.companyLink, `company-${contract.id}`)}
-                              className="p-1 hover:bg-white/10 rounded transition-colors"
-                            >
-                              {copiedLink === `company-${contract.id}` ? (
-                                <Check className="w-3 h-3 text-green-400" />
-                              ) : (
-                                <Copy className="w-3 h-3 text-gray-400" />
-                              )}
-                            </button>
-                            <a
-                              href={contract.companyLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1 hover:bg-white/10 rounded transition-colors"
-                            >
-                              <ExternalLink className="w-3 h-3 text-gray-400" />
-                            </a>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 

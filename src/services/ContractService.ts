@@ -52,7 +52,7 @@ export class ContractService {
 
     const baseUrl = window.location.origin;
 
-    const contract: ShareableContract = {
+    const contract: any = {
       id: contractId,
       organizationId,
       projectId,
@@ -62,7 +62,6 @@ export class ContractService {
       contractStartDate,
       contractEndDate,
       contractNotes,
-      paymentStructureName,
       status: 'pending',
       createdAt: now,
       updatedAt: now,
@@ -73,8 +72,13 @@ export class ContractService {
       expiresAt,
     };
 
+    // Only add paymentStructureName if it's defined (Firestore doesn't allow undefined)
+    if (paymentStructureName) {
+      contract.paymentStructureName = paymentStructureName;
+    }
+
     const contractRef = doc(db, this.CONTRACTS_COLLECTION, contractId);
-    await setDoc(contractRef, contract);
+    await setDoc(contractRef, contract as ShareableContract);
 
     return contract;
   }
