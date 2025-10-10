@@ -484,7 +484,7 @@ const TeamManagementPage: React.FC = () => {
                       <Button
                         onClick={() => handleAcceptInvitation(invitation)}
                         disabled={actionLoading === invitation.id}
-                        className="bg-gray-900 dark:bg-white hover:bg-purple-700 text-white px-6"
+                        className="bg-gray-900 dark:bg-white hover:bg-purple-700 text-white dark:text-gray-900 px-6"
                       >
                         {actionLoading === invitation.id ? 'Accepting...' : 'Accept'}
                       </Button>

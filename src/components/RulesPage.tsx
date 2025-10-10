@@ -166,7 +166,7 @@ const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
           </p>
           <button
             onClick={handleOpenCreate}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 text-white rounded-lg transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />
             Create First Rule
@@ -418,7 +418,7 @@ const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
             <button
               onClick={handleSaveRule}
               disabled={!ruleName.trim() || conditions.filter(c => c.value !== '').length === 0}
-              className="flex-1 px-4 py-2 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-2 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {editingRule ? 'Update Rule' : 'Create Rule'}
             </button>
