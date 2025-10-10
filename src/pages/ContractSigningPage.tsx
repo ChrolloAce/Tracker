@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { ContractService } from '../services/ContractService';
 import { ShareableContract } from '../types/contract';
 import { FileText, Check, Clock, AlertCircle, Loader2 } from 'lucide-react';
-import Button from '../components/ui/Button';
+import { Button } from '../components/ui/Button';
 
 const ContractSigningPage: React.FC = () => {
   const { contractId } = useParams<{ contractId: string }>();
@@ -290,7 +290,7 @@ const ContractSigningPage: React.FC = () => {
                         setSignAs(null);
                         setSignerName('');
                       }}
-                      variant="outline"
+                      variant="secondary"
                     >
                       Cancel
                     </Button>

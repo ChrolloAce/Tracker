@@ -60,7 +60,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   onBack,
   onUpdate,
 }) => {
-  const { currentOrgId, currentProjectId } = useAuth();
+  const { currentOrgId, currentProjectId, user } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'accounts' | 'payment' | 'contract' | 'payouts'>('overview');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1219,14 +1219,14 @@ const ContractTab: React.FC<{
   // Load existing shared contracts
   React.useEffect(() => {
     loadSharedContracts();
-  }, [props.creator.id]);
+  }, [props.creator.userId]);
 
   const loadSharedContracts = async () => {
     try {
       const contracts = await ContractService.getContractsForCreator(
         props.organizationId,
         props.projectId,
-        props.creator.id
+        props.creator.userId
       );
       setSharedContracts(contracts);
     } catch (error) {
@@ -1246,7 +1246,7 @@ const ContractTab: React.FC<{
       const contract = await ContractService.createShareableContract(
         props.organizationId,
         props.projectId,
-        props.creator.id,
+        props.creator.userId,
         props.creator.displayName || 'Creator',
         props.creator.email || '',
         props.contractStartDate,
@@ -1419,11 +1419,11 @@ Example terms:
           </div>
 
           {/* Save & Share Buttons */}
-          <div className="flex gap-3 justify-end pt-4 border-t border-gray-800">
+          <div className="flex gap-3 justify-end pt-4 border-gray-800">
             <Button
               onClick={props.onSave}
               disabled={props.saving}
-              variant="outline"
+              variant="secondary"
               className="flex items-center gap-2"
             >
               {props.saving ? (
