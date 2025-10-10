@@ -32,7 +32,7 @@ interface KPICardData {
   value: string | number;
   icon: React.ComponentType<{ className?: string }>;
   accent: 'emerald' | 'pink' | 'blue' | 'violet' | 'teal' | 'orange' | 'slate';
-  delta?: { value: number; isPositive: boolean; absoluteValue: number };
+  delta?: { value: number; isPositive: boolean; absoluteValue: number; isPercentage?: boolean };
   period?: string;
   sparklineData?: Array<{ value: number; timestamp?: number; previousValue?: number }>;
   isEmpty?: boolean;
@@ -460,7 +460,7 @@ const KPICards: React.FC<KPICardsProps> = ({
           value: `${engagementRate.toFixed(1)}%`,
           icon: Activity,
           accent: 'violet' as const,
-          delta: { value: 0, isPositive: engagementRateGrowthAbsolute >= 0, absoluteValue: engagementRateGrowthAbsolute },
+          delta: { value: 0, isPositive: engagementRateGrowthAbsolute >= 0, absoluteValue: engagementRateGrowthAbsolute, isPercentage: true },
           sparklineData: engagementSparkline,
           isIncreasing: calculateTrend(engagementSparkline)
         };
@@ -700,7 +700,9 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
         <div className="absolute top-4 right-4">
           <span className="inline-flex items-center gap-0.5 text-xs font-medium text-white">
             {data.delta.isPositive ? '+' : '-'}
-            {formatDeltaNumber(data.delta.absoluteValue)}
+            {data.delta.isPercentage 
+              ? Math.abs(data.delta.absoluteValue).toFixed(2) 
+              : formatDeltaNumber(data.delta.absoluteValue)}
           </span>
         </div>
       )}
