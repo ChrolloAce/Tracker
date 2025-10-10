@@ -1,12 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Settings, LogOut, Crown, Upload, Camera, Mail, Send, Trash2, AlertTriangle, CreditCard, Bell, Building2, User as UserIcon, Download, Check, X, Shield, Users } from 'lucide-react';
+import { LogOut, Crown, Upload, Camera, Mail, Send, Trash2, AlertTriangle, CreditCard, Bell, Building2, User as UserIcon, Download, X, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../services/firebase';
 import EmailService from '../services/EmailService';
 import OrganizationService from '../services/OrganizationService';
-import TeamInvitationService from '../services/TeamInvitationService';
 import DeleteOrganizationModal from './DeleteOrganizationModal';
 import { OrgMember } from '../types/firestore';
 
@@ -622,7 +621,7 @@ const SettingsPage: React.FC = () => {
                             <img src={member.photoURL} alt={member.displayName || ''} className="w-10 h-10 rounded-full object-cover" />
                           ) : (
                             <span className="text-white font-semibold">
-                              {member.displayName?.charAt(0) || member.email.charAt(0)}
+                              {member.displayName?.charAt(0) || member.email?.charAt(0) || 'U'}
                             </span>
                           )}
                         </div>
@@ -633,7 +632,7 @@ const SettingsPage: React.FC = () => {
                               <span className="ml-2 text-xs text-gray-500">(You)</span>
                             )}
                           </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{member.email}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">{member.email || 'No email'}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
@@ -700,16 +699,16 @@ const SettingsPage: React.FC = () => {
                       />
                     ) : (
                       <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center border-4 border-gray-200 dark:border-zinc-700">
-                        <span className="text-3xl font-bold text-white">
-                          {user?.displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-                        </span>
-                      </div>
-                    )}
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploading}
+                    <span className="text-3xl font-bold text-white">
+                      {user?.displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                    </span>
+                  </div>
+                )}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
                       className="absolute bottom-0 right-0 w-10 h-10 bg-purple-600 hover:bg-purple-700 rounded-full flex items-center justify-center border-4 border-white dark:border-zinc-900 transition-colors disabled:opacity-50"
-                    >
+                >
                       <Camera className="w-5 h-5 text-white" />
                 </button>
                 <input
