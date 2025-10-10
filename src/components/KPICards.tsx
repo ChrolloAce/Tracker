@@ -147,12 +147,36 @@ const KPICards: React.FC<KPICardsProps> = ({
       return daysDiff > 7 && daysDiff <= 14;
     });
 
+    // Calculate growth for all metrics
     const last7DaysViews = last7Days.reduce((sum, v) => sum + (v.views || 0), 0);
     const previous7DaysViews = previous7Days.reduce((sum, v) => sum + (v.views || 0), 0);
     const viewsGrowthAbsolute = last7DaysViews - previous7DaysViews;
     const viewsGrowth = previous7DaysViews > 0 
       ? ((last7DaysViews - previous7DaysViews) / previous7DaysViews) * 100 
       : 0;
+
+    const last7DaysLikes = last7Days.reduce((sum, v) => sum + (v.likes || 0), 0);
+    const previous7DaysLikes = previous7Days.reduce((sum, v) => sum + (v.likes || 0), 0);
+    const likesGrowthAbsolute = last7DaysLikes - previous7DaysLikes;
+
+    const last7DaysComments = last7Days.reduce((sum, v) => sum + (v.comments || 0), 0);
+    const previous7DaysComments = previous7Days.reduce((sum, v) => sum + (v.comments || 0), 0);
+    const commentsGrowthAbsolute = last7DaysComments - previous7DaysComments;
+
+    const last7DaysShares = last7Days.reduce((sum, v) => sum + (v.shares || 0), 0);
+    const previous7DaysShares = previous7Days.reduce((sum, v) => sum + (v.shares || 0), 0);
+    const sharesGrowthAbsolute = last7DaysShares - previous7DaysShares;
+
+    const last7DaysVideos = last7Days.length;
+    const previous7DaysVideos = previous7Days.length;
+    const videosGrowthAbsolute = last7DaysVideos - previous7DaysVideos;
+
+    // Calculate engagement rate growth
+    const last7DaysEngagement = last7DaysLikes + last7DaysComments + last7DaysShares;
+    const previous7DaysEngagement = previous7DaysLikes + previous7DaysComments + previous7DaysShares;
+    const last7DaysEngagementRate = last7DaysViews > 0 ? (last7DaysEngagement / last7DaysViews) * 100 : 0;
+    const previous7DaysEngagementRate = previous7DaysViews > 0 ? (previous7DaysEngagement / previous7DaysViews) * 100 : 0;
+    const engagementRateGrowthAbsolute = last7DaysEngagementRate - previous7DaysEngagementRate;
 
     // Generate sparkline data based on date filter and metric type
     const generateSparklineData = (metric: 'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts') => {
@@ -286,6 +310,16 @@ const KPICards: React.FC<KPICardsProps> = ({
       return secondAvg >= firstAvg; // true = increasing (green), false = decreasing (red)
     };
 
+    // Calculate link clicks growth (last 7 days vs previous 7 days)
+    const now7DaysAgo = new Date(Date.now() - (7 * 24 * 60 * 60 * 1000));
+    const now14DaysAgo = new Date(Date.now() - (14 * 24 * 60 * 60 * 1000));
+    const last7DaysClicks = linkClicks.filter(click => new Date(click.timestamp) >= now7DaysAgo).length;
+    const previous7DaysClicks = linkClicks.filter(click => {
+      const clickDate = new Date(click.timestamp);
+      return clickDate >= now14DaysAgo && clickDate < now7DaysAgo;
+    }).length;
+    const clicksGrowthAbsolute = last7DaysClicks - previous7DaysClicks;
+
     // Generate sparkline data first so we can calculate trends
     const viewsSparkline = generateSparklineData('views');
     const likesSparkline = generateSparklineData('likes');
@@ -311,6 +345,7 @@ const KPICards: React.FC<KPICardsProps> = ({
         value: formatNumber(totalLikes),
         icon: Heart,
         accent: 'pink',
+        delta: { value: 0, isPositive: likesGrowthAbsolute >= 0, absoluteValue: likesGrowthAbsolute },
         sparklineData: likesSparkline,
         isIncreasing: calculateTrend(likesSparkline)
       },
@@ -320,6 +355,7 @@ const KPICards: React.FC<KPICardsProps> = ({
         value: formatNumber(totalComments),
         icon: MessageCircle,
         accent: 'blue',
+        delta: { value: 0, isPositive: commentsGrowthAbsolute >= 0, absoluteValue: commentsGrowthAbsolute },
         sparklineData: commentsSparkline,
         isIncreasing: calculateTrend(commentsSparkline)
       },
@@ -329,6 +365,7 @@ const KPICards: React.FC<KPICardsProps> = ({
         value: formatNumber(totalShares),
         icon: Share2,
         accent: 'orange',
+        delta: { value: 0, isPositive: sharesGrowthAbsolute >= 0, absoluteValue: sharesGrowthAbsolute },
         sparklineData: sharesSparkline,
         isIncreasing: calculateTrend(sharesSparkline)
       },
@@ -338,6 +375,7 @@ const KPICards: React.FC<KPICardsProps> = ({
         value: publishedVideos,
         icon: Video,
         accent: 'violet',
+        delta: { value: 0, isPositive: videosGrowthAbsolute >= 0, absoluteValue: videosGrowthAbsolute },
         sparklineData: videosSparkline,
         isIncreasing: calculateTrend(videosSparkline)
       },
@@ -422,6 +460,7 @@ const KPICards: React.FC<KPICardsProps> = ({
           value: `${engagementRate.toFixed(1)}%`,
           icon: Activity,
           accent: 'violet' as const,
+          delta: { value: 0, isPositive: engagementRateGrowthAbsolute >= 0, absoluteValue: engagementRateGrowthAbsolute },
           sparklineData: engagementSparkline,
           isIncreasing: calculateTrend(engagementSparkline)
         };
@@ -458,6 +497,7 @@ const KPICards: React.FC<KPICardsProps> = ({
         }
         
         const linkClicksSparkline = data;
+        const hasClicks = linkClicks.length > 0;
         return {
           id: 'link-clicks',
           label: 'Link Clicks',
@@ -466,6 +506,7 @@ const KPICards: React.FC<KPICardsProps> = ({
           accent: 'slate' as const,
           isEmpty: linkClicks.length === 0,
           ctaText: linkClicks.length === 0 ? 'Create link' : undefined,
+          delta: hasClicks ? { value: 0, isPositive: clicksGrowthAbsolute >= 0, absoluteValue: clicksGrowthAbsolute } : undefined,
           sparklineData: linkClicksSparkline,
           isIncreasing: calculateTrend(linkClicksSparkline)
         };
@@ -657,11 +698,7 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
       {/* Delta Indicator (top-right) */}
       {data.delta && data.delta.absoluteValue !== undefined && (
         <div className="absolute top-4 right-4">
-          <span className={`inline-flex items-center gap-0.5 px-2 py-1 rounded-full text-xs font-medium ${
-            data.delta.isPositive 
-              ? 'bg-white/10 text-white' 
-              : 'bg-white/10 text-white'
-          }`}>
+          <span className="inline-flex items-center gap-0.5 text-xs font-medium text-white">
             {data.delta.isPositive ? '+' : '-'}
             {formatDeltaNumber(data.delta.absoluteValue)}
           </span>
