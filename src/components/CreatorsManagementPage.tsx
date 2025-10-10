@@ -293,16 +293,9 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
             <Lottie animationData={userProfileAnimation} loop={true} />
           </div>
           <h3 className="text-lg font-medium text-white mb-2">No creators yet</h3>
-          <p className="text-gray-400 mb-6">
+          <p className="text-gray-400">
             Invite content creators to track their accounts and manage payouts
           </p>
-          <Button
-            onClick={() => setShowInviteModal(true)}
-            className="mx-auto"
-          >
-            <UserPlus className="w-4 h-4 mr-2" />
-            Invite Your First Creator
-          </Button>
         </div>
       ) : (
         <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg overflow-hidden">

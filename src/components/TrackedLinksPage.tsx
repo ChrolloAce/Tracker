@@ -1,6 +1,6 @@
 import { useState, useEffect, forwardRef, useImperativeHandle, useMemo } from 'react';
 import Lottie from 'lottie-react';
-import { Plus, Copy, ExternalLink, Trash2, BarChart, Edit2, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Copy, ExternalLink, Trash2, BarChart, Edit2, ArrowUp, ArrowDown, MousePointer, Users, TrendingUp } from 'lucide-react';
 import { TrackedLink, TrackedAccount } from '../types/firestore';
 import FirestoreDataService from '../services/FirestoreDataService';
 import CreateLinkModal from './CreateLinkModal';
@@ -384,7 +384,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         <div className="bg-zinc-900/60 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all duration-300 group">
           <div className="flex items-start justify-between mb-4">
             <div className="p-3 bg-gray-200 dark:bg-gray-800 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-              <BarChart className="w-6 h-6 text-gray-900 dark:text-white" />
+              <MousePointer className="w-6 h-6 text-gray-900 dark:text-white" />
             </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1">
@@ -469,7 +469,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         <div className="bg-zinc-900/60 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all duration-300 group">
           <div className="flex items-start justify-between mb-4">
             <div className="p-3 bg-gray-200 dark:bg-gray-800 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-              <BarChart className="w-6 h-6 text-gray-900 dark:text-white" />
+              <Users className="w-6 h-6 text-gray-900 dark:text-white" />
             </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1">
@@ -547,8 +547,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         {/* Avg CTR Card */}
         <div className="bg-zinc-900/60 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all duration-300 group">
           <div className="flex items-start justify-between mb-4">
-            <div className="p-3 bg-orange-500/10 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-              <BarChart className="w-6 h-6 text-orange-400" />
+            <div className="p-3 bg-gray-200 dark:bg-gray-800 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
+              <TrendingUp className="w-6 h-6 text-gray-900 dark:text-white" />
             </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1">
@@ -635,15 +635,6 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
             <p className="text-gray-500 dark:text-gray-400 mb-4">
               {searchQuery ? 'No links found matching your search' : 'Create your first tracked link to get started'}
             </p>
-            {!searchQuery && (
-              <button
-                onClick={() => setIsCreateModalOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-lg transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Create First Link
-              </button>
-            )}
           </div>
         ) : (
           <>
