@@ -432,7 +432,7 @@ export interface Creator {
     customSchedule?: string; // Custom schedule description
     notes?: string; // Additional payment notes
     updatedAt?: Timestamp;
-    // Structured payment rules for calculation
+    // Structured payment rules for calculation (legacy)
     paymentRules?: Array<{
       id: string;
       type: string;
@@ -452,6 +452,8 @@ export interface Creator {
       };
       description: string;
     }>;
+    // New tiered payment structure
+    tieredStructure?: any; // TieredPaymentStructure from payments.ts
   };
 }
 
