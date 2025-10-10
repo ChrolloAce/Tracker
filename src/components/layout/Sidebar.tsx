@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import ProjectSwitcher from '../ProjectSwitcher';
+import OrganizationSwitcher from '../OrganizationSwitcher';
 import CreateProjectModal from '../CreateProjectModal';
 import RefreshCountdown from '../RefreshCountdown';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -221,6 +222,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Refresh Countdown Timer */}
       {!isCollapsed && (
         <RefreshCountdown />
+      )}
+
+      {/* Organization Switcher at Bottom */}
+      {!isCollapsed && (
+        <OrganizationSwitcher />
       )}
 
     </div>

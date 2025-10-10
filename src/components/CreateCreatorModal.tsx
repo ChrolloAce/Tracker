@@ -125,24 +125,30 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
       setLoading(true);
       setError(null);
 
-      // Format payment rules into a string for storage
-      const paymentStructure = paymentRules.length > 0 
-        ? paymentRules.map(r => r.description).join(' + ')
-        : 'No payment structure set';
+      // Get organization details
+      const orgs = await OrganizationService.getUserOrganizations(user.uid);
+      const currentOrg = orgs.find(o => o.id === currentOrgId);
+      if (!currentOrg) {
+        throw new Error('Organization not found');
+      }
 
-      await TeamInvitationService.inviteCreator({
+      // Note: Payment rules, account linking, and other details will need to be handled
+      // after the creator accepts the invitation
+
+      // Create invitation using TeamInvitationService
+      await TeamInvitationService.createInvitation(
+        currentOrgId,
         email,
-        displayName,
-        role: 'creator',
-        organizationId: currentOrgId,
-        projectId: currentProjectId,
-        invitedBy: user.uid,
-        linkedAccountIds: selectedAccountIds,
-        isPaid,
-        paymentStructure,
-        paymentSchedule: isPaid ? paymentSchedule : undefined,
-        paymentNotes: isPaid && paymentNotes ? paymentNotes : undefined,
-      });
+        'creator',
+        user.uid,
+        user.displayName || user.email || 'Team Member',
+        user.email || '',
+        currentOrg.name,
+        currentProjectId
+      );
+
+      // Note: Account linking and payment details will need to be handled after creator accepts
+      // You might want to store these temporarily or handle them in a follow-up step
 
       handleClose();
       onSuccess();
