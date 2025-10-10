@@ -6,6 +6,8 @@ import CreatorLinksService from '../services/CreatorLinksService';
 import PayoutsService from '../services/PayoutsService';
 import FirestoreDataService from '../services/FirestoreDataService';
 import TieredPaymentService from '../services/TieredPaymentService';
+import { ContractService } from '../services/ContractService';
+import { ShareableContract } from '../types/contract';
 import { 
   ArrowLeft, 
   Link as LinkIcon, 
@@ -17,7 +19,12 @@ import {
   AlertCircle,
   User,
   Play,
-  Eye
+  Eye,
+  Copy,
+  ExternalLink,
+  Check,
+  Clock,
+  Plus
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -65,6 +72,8 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   const [editMode, setEditMode] = useState(false);
   const [showLinkAccountsModal, setShowLinkAccountsModal] = useState(false);
   const [calculatedTotalEarnings, setCalculatedTotalEarnings] = useState<number>(0);
+  const [contracts, setContracts] = useState<ShareableContract[]>([]);
+  const [loadingContracts, setLoadingContracts] = useState(false);
   const [timePeriod, setTimePeriod] = useState<'payment_period' | 'last_30' | 'last_7' | 'all_time'>('payment_period');
   
   // Tiered payment structure state
@@ -89,6 +98,13 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   useEffect(() => {
     loadData();
   }, [currentOrgId, currentProjectId, creator.userId]);
+
+  // Load contracts when contract tab is active
+  useEffect(() => {
+    if (activeTab === 'contract') {
+      loadContracts();
+    }
+  }, [activeTab, currentOrgId, currentProjectId, creator.userId]);
 
   // Calculate total earnings from videos using tiered payment structure
   useEffect(() => {
@@ -208,6 +224,24 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
 
     setCalculatedTotalEarnings(total);
   }, [recentVideos, creatorProfile, timePeriod, tieredPaymentStructure]);
+
+  const loadContracts = async () => {
+    if (!currentOrgId || !currentProjectId) return;
+
+    setLoadingContracts(true);
+    try {
+      const fetchedContracts = await ContractService.getContractsForCreator(
+        currentOrgId,
+        currentProjectId,
+        creator.userId
+      );
+      setContracts(fetchedContracts);
+    } catch (error) {
+      console.error('Error loading contracts:', error);
+    } finally {
+      setLoadingContracts(false);
+    }
+  };
 
   const loadData = async () => {
     if (!currentOrgId || !currentProjectId) return;
@@ -593,22 +627,12 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
           </div>
         )}
         {activeTab === 'contract' && (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center max-w-md">
-              <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-2">Contract Management</h3>
-              <p className="text-sm text-gray-400 mb-6">
-                Create and manage contracts for {creator.displayName || creator.email}
-              </p>
-              <Button
-                onClick={() => window.location.href = `/contract/edit/${creator.userId}`}
-                className="flex items-center gap-2"
-              >
-                <FileText className="w-4 h-4" />
-                Open Contract Editor
-              </Button>
-            </div>
-          </div>
+          <ContractTab
+            creator={creator}
+            contracts={contracts}
+            loading={loadingContracts}
+            onRefresh={loadContracts}
+          />
         )}
         {activeTab === 'payouts' && <PayoutsTab payouts={payouts} />}
       </div>
@@ -1172,6 +1196,283 @@ const AccountsTab: React.FC<{
 
 
 // Contract Tab Component
+const ContractTab: React.FC<{
+  creator: OrgMember;
+  contracts: ShareableContract[];
+  loading: boolean;
+  onRefresh: () => void;
+}> = ({ creator, contracts, loading, onRefresh }) => {
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [copiedLink, setCopiedLink] = React.useState<string | null>(null);
+  const itemsPerPage = 10;
+
+  const totalPages = Math.ceil(contracts.length / itemsPerPage);
+  const paginatedContracts = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return contracts.slice(startIndex, startIndex + itemsPerPage);
+  }, [contracts, currentPage, itemsPerPage]);
+
+  const handlePageChange = (page: number) => {
+    if (page > 0 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const handleCopyLink = async (link: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopiedLink(id);
+      setTimeout(() => setCopiedLink(null), 2000);
+    } catch (error) {
+      console.error('Error copying link:', error);
+    }
+  };
+
+  const getStatusBadge = (contract: ShareableContract) => {
+    const hasCreatorSigned = !!contract.creatorSignature;
+    const hasCompanySigned = !!contract.companySignature;
+
+    if (hasCreatorSigned && hasCompanySigned) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
+          <Check className="w-3 h-3" />
+          Fully Signed
+        </span>
+      );
+    }
+
+    if (!hasCreatorSigned && !hasCompanySigned) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-500/20 text-gray-400 border border-gray-500/30">
+          <Clock className="w-3 h-3" />
+          Awaiting Signatures
+        </span>
+      );
+    }
+
+    if (hasCreatorSigned) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400 border border-blue-500/30">
+          <Check className="w-3 h-3" />
+          Creator Signed
+        </span>
+      );
+    }
+
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400 border border-purple-500/30">
+        <Check className="w-3 h-3" />
+        Company Signed
+      </span>
+    );
+  };
+
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return 'N/A';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
+  const getContractName = (contract: ShareableContract) => {
+    return `Contract vs ${contract.creatorName}`;
+  };
+
+  return (
+    <div className="bg-[#161616] rounded-xl border border-gray-800 overflow-hidden">
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+            <FileText className="w-5 h-5 text-gray-400" />
+            Contracts ({contracts.length})
+          </h2>
+          <p className="text-sm text-gray-400 mt-1">Manage contracts for {creator.displayName || creator.email}</p>
+        </div>
+        <Button
+          onClick={() => window.location.href = `/contract/edit/${creator.userId}`}
+          className="flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Create Contract
+        </Button>
+      </div>
+
+      {/* Table */}
+      {loading ? (
+        <div className="p-12 text-center">
+          <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading contracts...</p>
+        </div>
+      ) : contracts.length === 0 ? (
+        <div className="p-12 text-center">
+          <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-white mb-2">No contracts yet</h3>
+          <p className="text-gray-400 mb-6">
+            Create your first contract for {creator.displayName || creator.email}
+          </p>
+          <Button
+            onClick={() => window.location.href = `/contract/edit/${creator.userId}`}
+            className="flex items-center gap-2 mx-auto"
+          >
+            <Plus className="w-4 h-4" />
+            Create Contract
+          </Button>
+        </div>
+      ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-800/50 border-b border-gray-800">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Contract
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Period
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Links
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Created
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-800">
+                {paginatedContracts.map((contract) => (
+                  <tr key={contract.id} className="hover:bg-gray-800/20 transition-colors">
+                    {/* Contract Name */}
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-medium text-white">{getContractName(contract)}</div>
+                      {contract.paymentStructureName && (
+                        <div className="text-xs text-gray-500 mt-0.5">{contract.paymentStructureName}</div>
+                      )}
+                    </td>
+
+                    {/* Status */}
+                    <td className="px-6 py-4">
+                      {getStatusBadge(contract)}
+                      <div className="text-xs text-gray-500 mt-1">
+                        {contract.creatorSignature && <div>✓ Creator signed</div>}
+                        {contract.companySignature && <div>✓ Company signed</div>}
+                      </div>
+                    </td>
+
+                    {/* Period */}
+                    <td className="px-6 py-4 text-sm text-gray-400 whitespace-nowrap">
+                      {formatDate(contract.contractStartDate)} - {formatDate(contract.contractEndDate)}
+                    </td>
+
+                    {/* Links */}
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        {/* Creator Link */}
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleCopyLink(contract.creatorLink, `creator-${contract.id}`)}
+                            className="p-1.5 hover:bg-blue-500/10 text-blue-400 rounded transition-colors"
+                            title="Copy Creator Link"
+                          >
+                            {copiedLink === `creator-${contract.id}` ? (
+                              <Check className="w-3.5 h-3.5" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                          <a
+                            href={contract.creatorLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 hover:bg-blue-500/10 text-blue-400 rounded transition-colors"
+                            title="Open Creator Link"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                          <span className="text-xs text-blue-400/60">Creator</span>
+                        </div>
+
+                        {/* Divider */}
+                        <div className="w-px h-6 bg-gray-700"></div>
+
+                        {/* Company Link */}
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleCopyLink(contract.companyLink, `company-${contract.id}`)}
+                            className="p-1.5 hover:bg-purple-500/10 text-purple-400 rounded transition-colors"
+                            title="Copy Company Link"
+                          >
+                            {copiedLink === `company-${contract.id}` ? (
+                              <Check className="w-3.5 h-3.5" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                          <a
+                            href={contract.companyLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 hover:bg-purple-500/10 text-purple-400 rounded transition-colors"
+                            title="Open Company Link"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                          <span className="text-xs text-purple-400/60">Company</span>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Created Date */}
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-400">
+                      {formatDate(contract.createdAt)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="px-6 py-4 border-t border-gray-800 flex items-center justify-between">
+              <div className="text-sm text-gray-400">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, contracts.length)} of {contracts.length} contracts
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  variant="secondary"
+                  className="px-3 py-1.5 text-sm"
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-gray-400">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  variant="secondary"
+                  className="px-3 py-1.5 text-sm"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
 // Payouts Tab Component
 const PayoutsTab: React.FC<{ payouts: Payout[] }> = ({ payouts }) => {
   const getStatusColor = (status: string) => {
