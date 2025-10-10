@@ -23,6 +23,8 @@ import { PlatformIcon } from './ui/PlatformIcon';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import { Timestamp } from 'firebase/firestore';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
+import PaymentRuleBuilder from './PaymentRuleBuilder';
+import { PaymentRule } from '../services/PaymentCalculationService';
 
 interface CreatorDetailsPageProps {
   creator: OrgMember;
@@ -50,7 +52,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   onUpdate,
 }) => {
   const { currentOrgId, currentProjectId } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'accounts' | 'payment' | 'payouts'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'accounts' | 'payment' | 'contract' | 'payouts'>('overview');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [creatorProfile, setCreatorProfile] = useState<Creator | null>(null);
@@ -62,6 +64,12 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   const [showLinkAccountsModal, setShowLinkAccountsModal] = useState(false);
   const [calculatedTotalEarnings, setCalculatedTotalEarnings] = useState<number>(0);
   const [timePeriod, setTimePeriod] = useState<'payment_period' | 'last_30' | 'last_7' | 'all_time'>('payment_period');
+  
+  // Payment rules state (new structured system)
+  const [paymentRules, setPaymentRules] = useState<PaymentRule[]>([]);
+  const [paymentSchedule, setPaymentSchedule] = useState<'weekly' | 'bi-weekly' | 'monthly' | 'custom'>('monthly');
+  const [customSchedule, setCustomSchedule] = useState('');
+  const [additionalNotes, setAdditionalNotes] = useState('');
   
   // Payment terms state
   const [selectedPaymentType, setSelectedPaymentType] = useState<PaymentTermType>('flat_fee');
@@ -212,6 +220,14 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
         setContractEndDate(profile.contractEndDate.toDate().toISOString().split('T')[0]);
       }
 
+      // Load payment rules from new system
+      if (profile?.paymentInfo) {
+        setPaymentRules((profile.paymentInfo.paymentRules as PaymentRule[]) || []);
+        setPaymentSchedule(profile.paymentInfo.schedule || 'monthly');
+        setCustomSchedule(profile.paymentInfo.customSchedule || '');
+        setAdditionalNotes(profile.paymentInfo.notes || '');
+      }
+
       // Load linked accounts
       console.log('🔍 Loading linked accounts for creator:', creator.userId);
       const links = await CreatorLinksService.getCreatorLinkedAccounts(
@@ -281,6 +297,35 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
       console.error('Failed to load creator data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSavePaymentRules = async () => {
+    if (!currentOrgId || !currentProjectId) return;
+
+    setSaving(true);
+    try {
+      await CreatorLinksService.updateCreatorPaymentInfo(
+        currentOrgId,
+        currentProjectId,
+        creator.userId,
+        {
+          isPaid: true,
+          paymentRules: paymentRules as any,
+          schedule: paymentSchedule,
+          customSchedule: paymentSchedule === 'custom' ? customSchedule : '',
+          notes: additionalNotes,
+          updatedAt: new Date()
+        }
+      );
+
+      await loadData();
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to save payment rules:', error);
+      alert('Failed to save payment rules');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -446,7 +491,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
 
         {/* Tabs */}
         <div className="flex gap-1 mt-6 bg-[#0A0A0A] rounded-lg p-1 border border-gray-800">
-          {(['overview', 'accounts', 'payment', 'payouts'] as const).map((tab) => (
+          {(['overview', 'accounts', 'payment', 'contract', 'payouts'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -456,7 +501,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               }`}
             >
-              {tab === 'payment' ? 'Payment Terms' : tab}
+              {tab === 'payment' ? 'Payment Terms' : tab === 'contract' ? 'Contract' : tab}
             </button>
           ))}
         </div>
@@ -485,38 +530,103 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
           />
         )}
         {activeTab === 'payment' && (
-          <PaymentTermsTab
-            editMode={editMode}
-            selectedType={selectedPaymentType}
-            onTypeChange={setSelectedPaymentType}
-            baseAmount={baseAmount}
-            onBaseAmountChange={setBaseAmount}
-            cpmRate={cpmRate}
-            onCpmRateChange={setCpmRate}
-            guaranteedViews={guaranteedViews}
-            onGuaranteedViewsChange={setGuaranteedViews}
-            cpcRate={cpcRate}
-            onCpcRateChange={setCpcRate}
-            cpaRate={cpaRate}
-            onCpaRateChange={setCpaRate}
-            revenueSharePercentage={revenueSharePercentage}
-            onRevenueSharePercentageChange={setRevenueSharePercentage}
-            retainerAmount={retainerAmount}
-            onRetainerAmountChange={setRetainerAmount}
-            dueDateType={dueDateType}
-            onDueDateTypeChange={setDueDateType}
-            fixedDueDate={fixedDueDate}
-            onFixedDueDateChange={setFixedDueDate}
-            daysAfterPosted={daysAfterPosted}
-            onDaysAfterPostedChange={setDaysAfterPosted}
-            viewsRequired={viewsRequired}
-            onViewsRequiredChange={setViewsRequired}
+          <div className="space-y-6">
+            {/* New Payment Rules System */}
+            <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-gray-400" />
+                  Payment Rules
+                </h2>
+                <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                  <span className="px-2 py-1 bg-white/10 rounded">💹 Auto-calculates earnings</span>
+                </div>
+              </div>
+
+              <PaymentRuleBuilder
+                rules={paymentRules}
+                onChange={setPaymentRules}
+              />
+
+              {/* Payment Schedule */}
+              <div className="mt-6">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Payment Schedule
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['weekly', 'bi-weekly', 'monthly', 'custom'].map((schedule) => (
+                    <button
+                      key={schedule}
+                      onClick={() => setPaymentSchedule(schedule as typeof paymentSchedule)}
+                      className={clsx(
+                        "px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium capitalize",
+                        paymentSchedule === schedule
+                          ? 'bg-white/10 border-white text-white'
+                          : 'bg-gray-800/50 border-gray-700/50 text-gray-400 hover:bg-gray-700/50'
+                      )}
+                    >
+                      {schedule === 'bi-weekly' ? 'Bi-Weekly' : schedule}
+                    </button>
+                  ))}
+                </div>
+                {paymentSchedule === 'custom' && (
+                  <input
+                    type="text"
+                    value={customSchedule}
+                    onChange={(e) => setCustomSchedule(e.target.value)}
+                    placeholder="E.g., Every 15 days, On the 1st and 15th of each month"
+                    className="mt-2 w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
+                  />
+                )}
+              </div>
+
+              {/* Additional Notes */}
+              <div className="mt-6">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Additional Notes (Optional)
+                </label>
+                <textarea
+                  value={additionalNotes}
+                  onChange={(e) => setAdditionalNotes(e.target.value)}
+                  placeholder="Any special terms, bonus structures, or other details..."
+                  rows={3}
+                  className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 resize-none text-sm"
+                />
+              </div>
+
+              {/* Save Button */}
+              <div className="flex justify-end mt-6">
+                <Button
+                  onClick={handleSavePaymentRules}
+                  disabled={saving}
+                  className="flex items-center gap-2"
+                >
+                  {saving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      Save Payment Rules
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+        {activeTab === 'contract' && (
+          <ContractTab
             contractNotes={contractNotes}
             onContractNotesChange={setContractNotes}
             contractStartDate={contractStartDate}
             onContractStartDateChange={setContractStartDate}
             contractEndDate={contractEndDate}
             onContractEndDateChange={setContractEndDate}
+            onSave={handleSavePaymentRules}
+            saving={saving}
           />
         )}
         {activeTab === 'payouts' && <PayoutsTab payouts={payouts} />}
@@ -1425,6 +1535,95 @@ const PaymentTermsTab: React.FC<{
               className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 disabled:opacity-50 transition-all"
               placeholder="Add any additional contract details, deliverables, or special terms..."
             />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Contract Tab Component
+const ContractTab: React.FC<{
+  contractNotes: string;
+  onContractNotesChange: (val: string) => void;
+  contractStartDate: string;
+  onContractStartDateChange: (val: string) => void;
+  contractEndDate: string;
+  onContractEndDateChange: (val: string) => void;
+  onSave: () => void;
+  saving: boolean;
+}> = (props) => {
+  return (
+    <div className="space-y-6">
+      <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
+        <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
+          <FileText className="w-5 h-5 text-gray-400" />
+          Contract Details
+        </h2>
+
+        <div className="space-y-6">
+          {/* Contract Dates */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Contract Start Date
+              </label>
+              <input
+                type="date"
+                value={props.contractStartDate}
+                onChange={(e) => props.onContractStartDateChange(e.target.value)}
+                className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Contract End Date
+              </label>
+              <input
+                type="date"
+                value={props.contractEndDate}
+                onChange={(e) => props.onContractEndDateChange(e.target.value)}
+                className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Contract Notes */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Contract Notes & Terms
+            </label>
+            <textarea
+              value={props.contractNotes}
+              onChange={(e) => props.onContractNotesChange(e.target.value)}
+              rows={8}
+              placeholder="Enter contract details, special terms, exclusivity clauses, etc..."
+              className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 resize-none transition-all"
+            />
+            <p className="mt-2 text-sm text-gray-400">
+              Document any special terms, exclusivity agreements, content rights, or other contractual obligations.
+            </p>
+          </div>
+
+          {/* Save Button */}
+          <div className="flex justify-end">
+            <Button
+              onClick={props.onSave}
+              disabled={props.saving}
+              className="flex items-center gap-2"
+            >
+              {props.saving ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Save Contract Details
+                </>
+              )}
+            </Button>
           </div>
         </div>
       </div>
