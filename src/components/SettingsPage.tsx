@@ -1,10 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, Crown, Upload, Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, Building2, User as UserIcon, Download, X, Users, Edit3 } from 'lucide-react';
+import { LogOut, Crown, Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, Building2, User as UserIcon, Download, X, Users, Edit3 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../services/firebase';
-import EmailService from '../services/EmailService';
 import OrganizationService from '../services/OrganizationService';
 import DeleteOrganizationModal from './DeleteOrganizationModal';
 import { OrgMember } from '../types/firestore';
@@ -23,7 +22,6 @@ const SettingsPage: React.FC = () => {
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [sendingEmail, setSendingEmail] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Organization management
@@ -126,33 +124,6 @@ const SettingsPage: React.FC = () => {
       alert('Failed to update profile. Please try again.');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleSendTestEmail = async () => {
-    if (!user?.email) {
-      alert('No email address found for your account.');
-      return;
-    }
-
-    if (!window.confirm(`Send a test email to ${user.email}?`)) {
-      return;
-    }
-
-    setSendingEmail(true);
-    try {
-      const result = await EmailService.sendTestEmail(user.email);
-      
-      if (result.success) {
-        alert(`✅ Test email sent successfully to ${user.email}!\n\nCheck your inbox (and spam folder) to verify.`);
-      } else {
-        alert(`❌ Failed to send test email:\n${result.message || result.error}`);
-      }
-    } catch (error) {
-      console.error('Failed to send test email:', error);
-      alert('Failed to send test email. Please try again.');
-    } finally {
-      setSendingEmail(false);
     }
   };
 
