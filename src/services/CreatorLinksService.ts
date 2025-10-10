@@ -297,6 +297,7 @@ class CreatorLinksService {
       isPaid: boolean;
       structure?: string;
       paymentRules?: any[];
+      tieredStructure?: any;
       schedule?: string;
       customSchedule?: string;
       notes?: string;
