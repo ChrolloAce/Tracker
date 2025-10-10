@@ -169,7 +169,7 @@ const TeamManagementPage: React.FC = () => {
       case 'owner':
         return <Crown className="w-4 h-4 text-yellow-500" />;
       case 'admin':
-        return <Shield className="w-4 h-4 text-blue-500" />;
+        return <Shield className="w-4 h-4 text-gray-900 dark:text-white" />;
       case 'member':
         return <User className="w-4 h-4 text-gray-500" />;
       default:
@@ -182,7 +182,7 @@ const TeamManagementPage: React.FC = () => {
       case 'owner':
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400';
       case 'admin':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400';
+        return 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
       case 'member':
         return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
       default:
@@ -318,7 +318,7 @@ const TeamManagementPage: React.FC = () => {
                               size="sm"
                               onClick={() => setEditingMember(member)}
                               disabled={actionLoading === member.userId}
-                              className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
+                              className="text-gray-900 dark:text-white hover:text-purple-300 hover:bg-gray-200 dark:bg-gray-800"
                               title="Manage Permissions"
                             >
                               <Settings className="w-4 h-4" />
@@ -424,7 +424,7 @@ const TeamManagementPage: React.FC = () => {
           <div className="px-6 py-4 border-b border-purple-500/30 bg-purple-900/20">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Mail className="w-5 h-5 text-purple-400" />
+                <Mail className="w-5 h-5 text-gray-900 dark:text-white" />
                 <div>
                   <h2 className="text-xl font-semibold text-white">
                     Invitations You've Received ({receivedInvitations.length})
@@ -443,7 +443,7 @@ const TeamManagementPage: React.FC = () => {
               return (
                 <div 
                   key={invitation.id}
-                  className="bg-gray-900/50 rounded-lg border border-purple-500/20 p-6 hover:border-purple-500/40 transition-colors"
+                  className="bg-gray-900/50 rounded-lg border border-gray-300 dark:border-gray-700 p-6 hover:border-purple-500/40 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-6">
                     {/* Invitation Details */}

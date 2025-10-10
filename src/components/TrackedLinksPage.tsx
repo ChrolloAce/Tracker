@@ -383,8 +383,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         {/* Total Clicks Card */}
         <div className="bg-zinc-900/60 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all duration-300 group">
           <div className="flex items-start justify-between mb-4">
-            <div className="p-3 bg-blue-500/10 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-              <BarChart className="w-6 h-6 text-blue-400" />
+            <div className="p-3 bg-gray-200 dark:bg-gray-800 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
+              <BarChart className="w-6 h-6 text-gray-900 dark:text-white" />
             </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1">
@@ -468,8 +468,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         {/* Unique Clicks Card */}
         <div className="bg-zinc-900/60 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all duration-300 group">
           <div className="flex items-start justify-between mb-4">
-            <div className="p-3 bg-purple-500/10 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-              <BarChart className="w-6 h-6 text-purple-400" />
+            <div className="p-3 bg-gray-200 dark:bg-gray-800 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
+              <BarChart className="w-6 h-6 text-gray-900 dark:text-white" />
             </div>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1">
@@ -638,7 +638,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
             {!searchQuery && (
               <button
                 onClick={() => setIsCreateModalOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-lg transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 Create First Link
@@ -724,7 +724,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                             </p>
                             <div className="flex items-center space-x-1 mt-1">
                               {linkedAccount && (
-                                <span className="text-xs text-blue-600 dark:text-blue-400 mr-2">
+                                <span className="text-xs text-gray-900 dark:text-white mr-2">
                                   @{linkedAccount.username}
                                 </span>
                               )}
@@ -790,7 +790,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => handleViewAnalytics(link)}
-                          className="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                          className="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-gray-900 dark:text-white transition-colors"
                           title="View Analytics"
                         >
                           <BarChart className="w-4 h-4" />
@@ -800,7 +800,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                             setEditingLink(link);
                             setIsCreateModalOpen(true);
                           }}
-                          className="p-1.5 text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+                          className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                           title="Edit Link"
                         >
                           <Edit2 className="w-4 h-4" />

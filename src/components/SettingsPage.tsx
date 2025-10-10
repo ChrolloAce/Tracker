@@ -146,7 +146,7 @@ const SettingsPage: React.FC = () => {
   const getRoleBadge = (role: string) => {
     const styles = {
       owner: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
-      admin: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
+      admin: 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
       member: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
       creator: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
     };

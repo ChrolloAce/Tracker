@@ -2589,9 +2589,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       {/* Attach to Creator Modal */}
       {showAttachCreatorModal && selectedAccount && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 dark:bg-zinc-900 rounded-2xl p-8 w-full max-w-md shadow-2xl border border-purple-500/20">
+          <div className="bg-zinc-900 dark:bg-zinc-900 rounded-2xl p-8 w-full max-w-md shadow-2xl border border-gray-300 dark:border-gray-700">
             <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-purple-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-gray-200 dark:bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Users className="w-8 h-8 text-purple-500" />
               </div>
               <h2 className="text-2xl font-bold text-white mb-2">Attach to Creator</h2>
@@ -2673,14 +2673,14 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
               ) : (
                 <>
                   <div className="bg-zinc-800/30 rounded-lg p-6 border border-zinc-700/50 text-center">
-                    <div className="w-12 h-12 bg-purple-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Users className="w-6 h-6 text-purple-400" />
+                    <div className="w-12 h-12 bg-gray-200 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Users className="w-6 h-6 text-gray-900 dark:text-white" />
                     </div>
                     <h3 className="text-white font-medium mb-2">No Creators Found</h3>
                     <p className="text-sm text-gray-400 mb-4">
                       You need to create a creator profile first before linking accounts
                     </p>
-                    <div className="inline-flex items-center gap-2 px-3 py-2 bg-purple-500/10 rounded-lg text-sm text-purple-300">
+                    <div className="inline-flex items-center gap-2 px-3 py-2 bg-gray-200 dark:bg-gray-800 rounded-lg text-sm text-purple-300">
                       <AlertCircle className="w-4 h-4" />
                       Go to <span className="font-semibold">Creators</span> tab to create one
                     </div>

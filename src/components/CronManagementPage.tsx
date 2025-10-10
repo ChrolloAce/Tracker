@@ -145,7 +145,7 @@ const CronManagementPage: React.FC = () => {
                 key={preset.value}
                 className={`bg-white/5 rounded-xl p-4 border ${
                   preset.value === currentSchedule.expression
-                    ? 'border-blue-500 bg-blue-500/10'
+                    ? 'border-blue-500 bg-gray-200 dark:bg-gray-800'
                     : 'border-white/10'
                 } cursor-pointer hover:bg-white/10 transition-colors`}
                 onClick={() => {
@@ -156,12 +156,12 @@ const CronManagementPage: React.FC = () => {
                   <div>
                     <div className="text-white font-semibold mb-1">{preset.label}</div>
                     <div className="text-gray-400 text-sm mb-2">{preset.description}</div>
-                    <code className="text-xs text-blue-400 bg-black/30 px-2 py-1 rounded">
+                    <code className="text-xs text-gray-900 dark:text-white bg-black/30 px-2 py-1 rounded">
                       {preset.value}
                     </code>
                   </div>
                   {preset.value === currentSchedule.expression && (
-                    <CheckCircle className="w-5 h-5 text-blue-500" />
+                    <CheckCircle className="w-5 h-5 text-gray-900 dark:text-white" />
                   )}
                 </div>
               </div>
@@ -179,7 +179,7 @@ const CronManagementPage: React.FC = () => {
               rel="noopener noreferrer"
               className="bg-gradient-to-br from-purple-600/20 to-blue-600/20 border border-purple-500/30 rounded-xl p-4 hover:from-purple-600/30 hover:to-blue-600/30 transition-colors"
             >
-              <div className="text-purple-400 font-semibold mb-1">📊 Status Dashboard</div>
+              <div className="text-gray-900 dark:text-white font-semibold mb-1">📊 Status Dashboard</div>
               <div className="text-gray-400 text-sm">View detailed status of all accounts</div>
             </a>
             <a
@@ -197,7 +197,7 @@ const CronManagementPage: React.FC = () => {
               rel="noopener noreferrer"
               className="bg-gradient-to-br from-blue-600/20 to-cyan-600/20 border border-blue-500/30 rounded-xl p-4 hover:from-blue-600/30 hover:to-cyan-600/30 transition-colors"
             >
-              <div className="text-blue-400 font-semibold mb-1">⚡ Vercel Dashboard</div>
+              <div className="text-gray-900 dark:text-white font-semibold mb-1">⚡ Vercel Dashboard</div>
               <div className="text-gray-400 text-sm">View execution logs and history</div>
             </a>
           </div>

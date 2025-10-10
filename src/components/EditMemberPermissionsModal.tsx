@@ -114,7 +114,7 @@ const EditMemberPermissionsModal: React.FC<EditMemberPermissionsModalProps> = ({
     <div className="bg-gray-800/50 rounded-lg border border-gray-700 overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-700 bg-gray-800/30">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-purple-900/30 flex items-center justify-center text-purple-400">
+          <div className="w-10 h-10 rounded-lg bg-purple-900/30 flex items-center justify-center text-gray-900 dark:text-white">
             {icon}
           </div>
           <div>

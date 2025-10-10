@@ -644,8 +644,8 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
       deltaBg: 'bg-pink-400/10 text-pink-300'
     },
     blue: {
-      icon: 'bg-blue-500/10 ring-blue-500/20',
-      iconColor: 'text-blue-400',
+      icon: 'bg-gray-200 dark:bg-gray-800 ring-blue-500/20',
+      iconColor: 'text-gray-900 dark:text-white',
       gradient: ['#3b82f6', '#3b82f600'],
       stroke: '#3b82f6',
       deltaBg: 'bg-blue-400/10 text-blue-300'

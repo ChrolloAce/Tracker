@@ -54,7 +54,7 @@ const TimePeriodSelector: React.FC<TimePeriodSelectorProps> = ({
                 key={option.value}
                 onClick={() => handlePeriodSelect(option.value as TimePeriodType)}
                 className={`w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                  selectedPeriod === option.value ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'
+                  selectedPeriod === option.value ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'
                 }`}
               >
                 <div className="font-medium">{option.label}</div>

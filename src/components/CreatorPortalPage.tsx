@@ -213,12 +213,12 @@ const DashboardTab: React.FC<{
       {/* Stats Cards with Gradient Backgrounds like Dashboard */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Linked Accounts */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-purple-500/10 via-purple-600/5 to-transparent rounded-xl border border-purple-500/20 p-6 hover:border-purple-500/40 transition-all duration-300 group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl group-hover:bg-purple-500/20 transition-all duration-300" />
+        <div className="relative overflow-hidden bg-gradient-to-br from-purple-500/10 via-purple-600/5 to-transparent rounded-xl border border-gray-300 dark:border-gray-700 p-6 hover:border-purple-500/40 transition-all duration-300 group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gray-200 dark:bg-gray-800 rounded-full blur-3xl group-hover:bg-gray-300 dark:hover:bg-gray-700 transition-all duration-300" />
           <div className="relative">
             <div className="flex items-center justify-between mb-4">
-              <div className="bg-purple-500/10 rounded-lg p-3 group-hover:bg-purple-500/20 transition-colors">
-                <UsersIcon className="w-6 h-6 text-purple-400" />
+              <div className="bg-gray-200 dark:bg-gray-800 rounded-lg p-3 group-hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors">
+                <UsersIcon className="w-6 h-6 text-gray-900 dark:text-white" />
               </div>
             </div>
             <div className="text-3xl font-bold text-white mb-1">
@@ -261,12 +261,12 @@ const DashboardTab: React.FC<{
         </div>
 
         {/* Total Videos */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-blue-500/10 via-blue-600/5 to-transparent rounded-xl border border-blue-500/20 p-6 hover:border-blue-500/40 transition-all duration-300 group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-500/20 transition-all duration-300" />
+        <div className="relative overflow-hidden bg-gradient-to-br from-blue-500/10 via-blue-600/5 to-transparent rounded-xl border border-gray-300 dark:border-gray-700 p-6 hover:border-blue-500/40 transition-all duration-300 group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gray-200 dark:bg-gray-800 rounded-full blur-3xl group-hover:bg-gray-300 dark:hover:bg-gray-700 transition-all duration-300" />
           <div className="relative">
             <div className="flex items-center justify-between mb-4">
-              <div className="bg-blue-500/10 rounded-lg p-3 group-hover:bg-blue-500/20 transition-colors">
-                <Video className="w-6 h-6 text-blue-400" />
+              <div className="bg-gray-200 dark:bg-gray-800 rounded-lg p-3 group-hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors">
+                <Video className="w-6 h-6 text-gray-900 dark:text-white" />
               </div>
             </div>
             <div className="text-3xl font-bold text-white mb-1">
@@ -397,7 +397,7 @@ const PayoutsTab: React.FC<{ payouts: Payout[] }> = ({ payouts }) => {
       case 'pending':
         return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
       case 'processing':
-        return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+        return 'bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-700';
       case 'failed':
         return 'bg-red-500/10 text-red-400 border-red-500/20';
       default:

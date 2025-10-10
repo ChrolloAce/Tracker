@@ -255,7 +255,7 @@ const LinkAnalyticsModal: React.FC<LinkAnalyticsModalProps> = ({ isOpen, onClose
                   href={link.originalUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-blue-600 dark:text-blue-400 hover:underline truncate max-w-md"
+                  className="text-sm text-blue-600 dark:text-gray-900 dark:text-white hover:underline truncate max-w-md"
                 >
                   {link.originalUrl}
                 </a>

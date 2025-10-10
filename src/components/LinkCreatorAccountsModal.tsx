@@ -174,7 +174,7 @@ const LinkCreatorAccountsModal: React.FC<LinkCreatorAccountsModalProps> = ({
               <div className="text-gray-400">
                 {selectedAccountIds.size} of {accounts.length} tracked accounts selected
                 {changesCount > 0 && (
-                  <span className="ml-2 text-purple-400">
+                  <span className="ml-2 text-gray-900 dark:text-white">
                     • {changesCount} change{changesCount !== 1 ? 's' : ''}
                   </span>
                 )}
@@ -222,7 +222,7 @@ const LinkCreatorAccountsModal: React.FC<LinkCreatorAccountsModalProps> = ({
                       onClick={() => handleToggleAccount(account.id)}
                       className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-colors ${
                         isSelected
-                          ? 'bg-purple-500/10 border-purple-500/30 hover:bg-purple-500/20'
+                          ? 'bg-gray-200 dark:bg-gray-800 border-purple-500/30 hover:bg-gray-300 dark:hover:bg-gray-700'
                           : 'bg-gray-700/50 border-gray-600 hover:bg-gray-700'
                       }`}
                     >

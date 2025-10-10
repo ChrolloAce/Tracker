@@ -213,7 +213,7 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
                     className="w-full flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     <span className="text-gray-500 dark:text-gray-400">None</span>
-                    {!linkedAccountId && <Check className="w-4 h-4 text-blue-500" />}
+                    {!linkedAccountId && <Check className="w-4 h-4 text-gray-900 dark:text-white" />}
                   </button>
                   {accounts.map(account => (
                     <button
@@ -244,7 +244,7 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
                           <PlatformIcon platform={account.platform} size="sm" />
                         </div>
                       </div>
-                      {linkedAccountId === account.id && <Check className="w-4 h-4 text-blue-500" />}
+                      {linkedAccountId === account.id && <Check className="w-4 h-4 text-gray-900 dark:text-white" />}
                     </button>
                   ))}
                 </div>

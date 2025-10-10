@@ -123,7 +123,7 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ isOpen, onClose, pr
         <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-              <Edit3 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <Edit3 className="w-5 h-5 text-blue-600 dark:text-gray-900 dark:text-white" />
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">

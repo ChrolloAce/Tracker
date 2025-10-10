@@ -238,13 +238,13 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
         {/* Total Creators */}
         <div className="bg-zinc-900/60 backdrop-blur-sm rounded-xl border border-white/10 p-6 hover:border-white/20 transition-all duration-300 group">
           <div className="flex items-center justify-between mb-4">
-            <div className="bg-purple-500/10 rounded-lg p-3 group-hover:bg-purple-500/20 transition-colors">
-              <UsersIcon className="w-6 h-6 text-purple-400" />
+            <div className="bg-gray-200 dark:bg-gray-800 rounded-lg p-3 group-hover:bg-gray-300 dark:group-hover:bg-gray-700 transition-colors">
+              <UsersIcon className="w-6 h-6 text-gray-900 dark:text-white" />
             </div>
             <Button
               onClick={() => setShowInviteModal(true)}
               size="sm"
-              className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border-purple-500/20"
+              className="bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-700"
             >
               <UserPlus className="w-4 h-4 mr-1" />
               Invite
@@ -259,8 +259,8 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
         {/* Linked Accounts */}
         <div className="bg-zinc-900/60 backdrop-blur-sm rounded-xl border border-white/10 p-6 hover:border-white/20 transition-all duration-300 group">
           <div className="flex items-center justify-between mb-4">
-            <div className="bg-blue-500/10 rounded-lg p-3 group-hover:bg-blue-500/20 transition-colors">
-              <LinkIcon className="w-6 h-6 text-blue-400" />
+            <div className="bg-gray-200 dark:bg-gray-800 rounded-lg p-3 group-hover:bg-gray-300 dark:group-hover:bg-gray-700 transition-colors">
+              <LinkIcon className="w-6 h-6 text-gray-900 dark:text-white" />
             </div>
           </div>
           <div className="text-3xl font-bold text-white mb-1">
@@ -411,7 +411,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
                           <button
                             onClick={() => setEditingCreator(creator)}
                             disabled={actionLoading === creator.userId}
-                            className="p-2 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 rounded-lg transition-colors disabled:opacity-50"
+                            className="p-2 text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
                             title="Edit Details"
                           >
                             <Edit3 className="w-4 h-4" />
@@ -419,7 +419,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
                           <button
                             onClick={() => setLinkingCreator(creator)}
                             disabled={actionLoading === creator.userId}
-                            className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-colors disabled:opacity-50"
+                            className="p-2 text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
                             title="Link Accounts"
                           >
                             <LinkIcon className="w-4 h-4" />

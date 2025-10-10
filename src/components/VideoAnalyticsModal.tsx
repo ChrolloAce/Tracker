@@ -510,8 +510,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                             </td>
                             <td className="px-4 py-3">
                               <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                snapshot.capturedBy === 'initial_upload' ? 'bg-blue-500/10 text-blue-400' :
-                                snapshot.capturedBy === 'manual_refresh' ? 'bg-purple-500/10 text-purple-400' :
+                                snapshot.capturedBy === 'initial_upload' ? 'bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white' :
+                                snapshot.capturedBy === 'manual_refresh' ? 'bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white' :
                                 snapshot.capturedBy === 'scheduled_refresh' ? 'bg-green-500/10 text-green-400' :
                                 'bg-gray-500/10 text-gray-400'
                               }`}>

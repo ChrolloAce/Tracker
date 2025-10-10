@@ -78,7 +78,7 @@ const OrganizationSwitcher: React.FC = () => {
       case 'owner':
         return <Crown className="w-3 h-3 text-yellow-500" />;
       case 'admin':
-        return <Shield className="w-3 h-3 text-blue-500" />;
+        return <Shield className="w-3 h-3 text-gray-900 dark:text-white" />;
       case 'member':
         return <User className="w-3 h-3 text-gray-500" />;
     }
