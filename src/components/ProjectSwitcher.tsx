@@ -108,15 +108,12 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-2 w-full bg-gradient-to-br from-[#121212] to-[#151515] rounded-xl shadow-2xl border border-white/10 z-50 overflow-hidden backdrop-blur-xl">
+        <div className="absolute top-full left-0 mt-2 w-80 bg-gradient-to-br from-[#121212] to-[#151515] rounded-xl shadow-2xl border border-white/10 z-50 overflow-hidden backdrop-blur-xl">
           {/* Header */}
           <div className="px-4 py-3 border-b border-white/10 bg-white/5">
             <h3 className="text-sm font-semibold text-white/90">
               Switch Project
             </h3>
-            <p className="text-xs text-white/60 mt-0.5">
-              {projects.length} project{projects.length !== 1 ? 's' : ''}
-            </p>
           </div>
 
           {/* Project List */}
@@ -170,11 +167,6 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
                       </button>
                     </div>
                   </div>
-                  {project.description && (
-                    <p className="text-xs text-white/50 truncate mt-0.5">
-                      {project.description}
-                    </p>
-                  )}
                 </div>
               </button>
             ))}
