@@ -4,10 +4,12 @@ import { TrackedAccount } from '../types/firestore';
 import FirestoreDataService from '../services/FirestoreDataService';
 import OrganizationService from '../services/OrganizationService';
 import TeamInvitationService from '../services/TeamInvitationService';
-import { X, Check, Mail, User as UserIcon, Link as LinkIcon, DollarSign, Search, Plus, Trash2 } from 'lucide-react';
+import { X, Check, Mail, User as UserIcon, Link as LinkIcon, DollarSign, Search, Copy, Lightbulb } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from './ui/Button';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { Modal } from './ui/Modal';
+import clsx from 'clsx';
 
 interface CreateCreatorModalProps {
   isOpen: boolean;
@@ -15,13 +17,32 @@ interface CreateCreatorModalProps {
   onSuccess: () => void;
 }
 
-interface PaymentRule {
-  id: string;
-  type: 'flat' | 'per-video' | 'cpm' | 'percentage' | 'custom';
-  amount: string;
-  condition: string; // e.g., "for 10 videos", "per 1000 views", "of revenue"
-  description: string; // Full readable description
-}
+const PAYMENT_TEMPLATES = [
+  {
+    title: 'Upfront + Milestone',
+    example: '$500 upfront for 10 videos, then $50 per video after that'
+  },
+  {
+    title: 'Tiered Views',
+    example: '$30 per video under 10k views, $50 per video for 10k-100k views, $100 per video over 100k views'
+  },
+  {
+    title: 'Hybrid Performance',
+    example: '$200 base per video + $10 CPM for views over 50k'
+  },
+  {
+    title: 'Revenue Share',
+    example: '20% of ad revenue + $5 per tracked link click'
+  },
+  {
+    title: 'Multi-Stage Bonus',
+    example: '$300 upfront for 10 videos, bonus $500 when reaching 100k total views, additional $1k at 1M views'
+  },
+  {
+    title: 'Custom Schedule',
+    example: '$1000/month retainer for 8 videos minimum, plus $75 for each additional video'
+  }
+];
 
 const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { user, currentOrgId, currentProjectId } = useAuth();
@@ -41,14 +62,11 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
 
   // Step 3: Payment Settings
   const [isPaid, setIsPaid] = useState(true);
-  const [paymentRules, setPaymentRules] = useState<PaymentRule[]>([]);
-  const [paymentNotes, setPaymentNotes] = useState('');
+  const [paymentStructure, setPaymentStructure] = useState('');
   const [paymentSchedule, setPaymentSchedule] = useState<'weekly' | 'bi-weekly' | 'monthly' | 'custom'>('monthly');
-
-  // New payment rule form
-  const [newRuleType, setNewRuleType] = useState<PaymentRule['type']>('flat');
-  const [newRuleAmount, setNewRuleAmount] = useState('');
-  const [newRuleCondition, setNewRuleCondition] = useState('');
+  const [customSchedule, setCustomSchedule] = useState('');
+  const [additionalNotes, setAdditionalNotes] = useState('');
+  const [showTemplates, setShowTemplates] = useState(false);
 
   const totalSteps = 3;
 
@@ -80,12 +98,11 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
     setSelectedAccountIds([]);
     setSearchQuery('');
     setIsPaid(true);
-    setPaymentRules([]);
-    setPaymentNotes('');
+    setPaymentStructure('');
     setPaymentSchedule('monthly');
-    setNewRuleType('flat');
-    setNewRuleAmount('');
-    setNewRuleCondition('');
+    setCustomSchedule('');
+    setAdditionalNotes('');
+    setShowTemplates(false);
     setError(null);
     onClose();
   };
@@ -132,7 +149,7 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
         throw new Error('Organization not found');
       }
 
-      // Note: Payment rules, account linking, and other details will need to be handled
+      // Note: Payment structure, account linking, and other details will need to be handled
       // after the creator accepts the invitation
 
       // Create invitation using TeamInvitationService
@@ -176,60 +193,18 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
   const canProceed = () => {
     if (step === 1) {
       const hasDisplayName = displayName.trim().length > 0;
-      const hasEmail = email.trim().length > 0;
-      const emailValid = !email.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-      return hasDisplayName && hasEmail && emailValid;
+      const emailValid = email.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      return hasDisplayName && emailValid;
     }
-    if (step === 2) {
-      return true; // Linking accounts is optional
-    }
-    if (step === 3) {
-      return true; // Payment settings are optional
-    }
-    return false;
+    return true;
   };
 
-  const addPaymentRule = () => {
-    if (!newRuleAmount.trim()) {
-      setError('Please enter an amount');
-      return;
-    }
-
-    const rule: PaymentRule = {
-      id: Date.now().toString(),
-      type: newRuleType,
-      amount: newRuleAmount,
-      condition: newRuleCondition,
-      description: buildRuleDescription(newRuleType, newRuleAmount, newRuleCondition)
-    };
-
-    setPaymentRules([...paymentRules, rule]);
-    setNewRuleAmount('');
-    setNewRuleCondition('');
-    setError(null);
+  const handleCopyTemplate = (example: string) => {
+    setPaymentStructure(example);
+    setShowTemplates(false);
   };
 
-  const removePaymentRule = (id: string) => {
-    setPaymentRules(paymentRules.filter(r => r.id !== id));
-  };
-
-  const buildRuleDescription = (type: PaymentRule['type'], amount: string, condition: string): string => {
-    switch (type) {
-      case 'flat':
-        return `Pay $${amount} flat fee${condition ? ` for ${condition} videos` : ''}`;
-      case 'per-video':
-        return `Pay $${amount} per video${condition ? ` (${condition})` : ''}`;
-      case 'cpm':
-        return `Pay $${amount} CPM${condition ? ` (per ${condition} views)` : ' (per 1000 views)'}`;
-      case 'percentage':
-        return `Pay ${amount}% of revenue${condition ? ` ${condition}` : ''}`;
-      case 'custom':
-        return condition || `Pay $${amount}`;
-      default:
-        return `Pay $${amount}`;
-    }
-  };
-
+  // Step 1: Basic Info
   const renderStep1 = () => (
     <div className="space-y-5">
       <div>
@@ -267,12 +242,13 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
 
       <div className="bg-gray-700/30 border border-gray-600/30 rounded-lg p-4">
         <p className="text-sm text-gray-300">
-          An invitation email will be sent to the creator with instructions to join your project.
+          An invitation will be sent to this email address.
         </p>
       </div>
     </div>
   );
 
+  // Step 2: Link Accounts
   const renderStep2 = () => (
     <div className="space-y-4">
       <div>
@@ -360,6 +336,7 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
     </div>
   );
 
+  // Step 3: Payment Settings
   const renderStep3 = () => (
     <div className="space-y-5">
       <div>
@@ -369,26 +346,28 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => setIsPaid(true)}
-            className={`p-4 rounded-lg border-2 transition-all ${
+            className={clsx(
+              "p-4 rounded-lg border-2 transition-all",
               isPaid
                 ? 'bg-white/10 border-white/50'
                 : 'bg-gray-800/50 border-gray-700/50 hover:bg-gray-700/50'
-            }`}
+            )}
           >
-            <DollarSign className={`w-6 h-6 mx-auto mb-2 ${isPaid ? 'text-white' : 'text-gray-400'}`} />
+            <DollarSign className={clsx("w-6 h-6 mx-auto mb-2", isPaid ? 'text-white' : 'text-gray-400')} />
             <div className="text-sm font-medium text-white">Paid Creator</div>
             <div className="text-xs text-gray-400 mt-1">Receives payments</div>
           </button>
 
           <button
             onClick={() => setIsPaid(false)}
-            className={`p-4 rounded-lg border-2 transition-all ${
+            className={clsx(
+              "p-4 rounded-lg border-2 transition-all",
               !isPaid
                 ? 'bg-white/10 border-white/50'
                 : 'bg-gray-800/50 border-gray-700/50 hover:bg-gray-700/50'
-            }`}
+            )}
           >
-            <UserIcon className={`w-6 h-6 mx-auto mb-2 ${!isPaid ? 'text-white' : 'text-gray-400'}`} />
+            <UserIcon className={clsx("w-6 h-6 mx-auto mb-2", !isPaid ? 'text-white' : 'text-gray-400')} />
             <div className="text-sm font-medium text-white">Unpaid Creator</div>
             <div className="text-xs text-gray-400 mt-1">No payments</div>
           </button>
@@ -397,103 +376,53 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
 
       {isPaid && (
         <>
-          {/* Payment Rule Builder */}
+          {/* Payment Structure - Freeform Text Area */}
           <div>
-            <label className="block text-sm font-medium text-white mb-3">
-              Payment Rules
-            </label>
-            
-            {/* Add New Rule Form */}
-            <div className="space-y-3 mb-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700/50">
-              <div className="grid grid-cols-5 gap-2">
-                <select
-                  value={newRuleType}
-                  onChange={(e) => setNewRuleType(e.target.value as PaymentRule['type'])}
-                  className="col-span-2 px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
-                >
-                  <option value="flat">Flat Fee</option>
-                  <option value="per-video">Per Video</option>
-                  <option value="cpm">CPM</option>
-                  <option value="percentage">% Revenue</option>
-                  <option value="custom">Custom</option>
-                </select>
-                
-                <div className="relative col-span-2">
-                  <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="text"
-                    value={newRuleAmount}
-                    onChange={(e) => setNewRuleAmount(e.target.value)}
-                    placeholder={newRuleType === 'percentage' ? '%' : 'Amount'}
-                    className="w-full pl-7 pr-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
-                  />
-                </div>
-
-                <button
-                  onClick={addPaymentRule}
-                  className="flex items-center justify-center bg-white hover:bg-gray-200 text-black rounded-lg transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
-
-              <input
-                type="text"
-                value={newRuleCondition}
-                onChange={(e) => setNewRuleCondition(e.target.value)}
-                placeholder={
-                  newRuleType === 'flat' ? 'e.g., "10" (for 10 videos)' :
-                  newRuleType === 'cpm' ? 'e.g., "1000" (per 1000 views)' :
-                  newRuleType === 'custom' ? 'Describe the payment rule...' :
-                  'Optional condition or details...'
-                }
-                className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
-              />
-
-              {/* Preview */}
-              {newRuleAmount && (
-                <div className="text-xs text-gray-300 italic">
-                  Preview: {buildRuleDescription(newRuleType, newRuleAmount, newRuleCondition)}
-                </div>
-              )}
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-white">
+                Payment Structure *
+              </label>
+              <button
+                onClick={() => setShowTemplates(!showTemplates)}
+                className="flex items-center gap-1 text-xs text-white/70 hover:text-white transition-colors"
+              >
+                <Lightbulb className="w-3.5 h-3.5" />
+                {showTemplates ? 'Hide' : 'Show'} Examples
+              </button>
             </div>
 
-            {/* Current Rules */}
-            {paymentRules.length > 0 && (
-              <div className="space-y-2">
-                {paymentRules.map((rule) => (
-                  <div
-                    key={rule.id}
-                    className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-lg"
+            {/* Template Examples */}
+            {showTemplates && (
+              <div className="mb-3 bg-gray-800/50 border border-gray-700/50 rounded-lg p-3 space-y-2 max-h-48 overflow-y-auto">
+                <p className="text-xs font-medium text-white/80 mb-2">Click to use a template:</p>
+                {PAYMENT_TEMPLATES.map((template, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleCopyTemplate(template.example)}
+                    className="w-full text-left p-2 rounded bg-gray-700/50 hover:bg-gray-700 transition-colors group"
                   >
-                    <div className="flex-1">
-                      <p className="text-sm text-white font-medium">{rule.description}</p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {rule.type === 'flat' && 'One-time or periodic flat payment'}
-                        {rule.type === 'per-video' && 'Payment per video published'}
-                        {rule.type === 'cpm' && 'Payment based on views (Cost Per Mille)'}
-                        {rule.type === 'percentage' && 'Percentage of revenue share'}
-                        {rule.type === 'custom' && 'Custom payment structure'}
-                      </p>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1">
+                        <div className="text-xs font-medium text-white/90 mb-1">{template.title}</div>
+                        <div className="text-xs text-gray-400">{template.example}</div>
+                      </div>
+                      <Copy className="w-3.5 h-3.5 text-gray-500 group-hover:text-white flex-shrink-0 mt-0.5" />
                     </div>
-                    <button
-                      onClick={() => removePaymentRule(rule.id)}
-                      className="ml-3 p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
 
-            {paymentRules.length === 0 && (
-              <div className="text-center py-6 bg-gray-800/30 rounded-lg border border-gray-700/30">
-                <DollarSign className="w-10 h-10 text-gray-600 mx-auto mb-2" />
-                <p className="text-sm text-gray-400">No payment rules added yet</p>
-                <p className="text-xs text-gray-500 mt-1">Add flexible payment rules above</p>
-              </div>
-            )}
+            <textarea
+              value={paymentStructure}
+              onChange={(e) => setPaymentStructure(e.target.value)}
+              placeholder="E.g., $500 upfront for 10 videos, then $50 per video + $10 CPM for views over 50k, bonus $1000 when reaching 100k total views"
+              rows={5}
+              className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 resize-none text-sm leading-relaxed"
+            />
+            <p className="text-xs text-gray-400 mt-2">
+              Describe your complete payment structure in plain English. Be as specific as possible.
+            </p>
           </div>
 
           {/* Payment Schedule */}
@@ -502,64 +431,53 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
               Payment Schedule
             </label>
             <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => setPaymentSchedule('weekly')}
-                className={`px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium ${
-                  paymentSchedule === 'weekly'
-                    ? 'bg-white/10 border-white text-white'
-                    : 'bg-gray-800/50 border-gray-700/50 text-gray-400 hover:bg-gray-700/50'
-                }`}
-              >
-                Weekly
-              </button>
-              <button
-                onClick={() => setPaymentSchedule('bi-weekly')}
-                className={`px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium ${
-                  paymentSchedule === 'bi-weekly'
-                    ? 'bg-white/10 border-white text-white'
-                    : 'bg-gray-800/50 border-gray-700/50 text-gray-400 hover:bg-gray-700/50'
-                }`}
-              >
-                Bi-weekly
-              </button>
-              <button
-                onClick={() => setPaymentSchedule('monthly')}
-                className={`px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium ${
-                  paymentSchedule === 'monthly'
-                    ? 'bg-white/10 border-white text-white'
-                    : 'bg-gray-800/50 border-gray-700/50 text-gray-400 hover:bg-gray-700/50'
-                }`}
-              >
-                Monthly
-              </button>
-              <button
-                onClick={() => setPaymentSchedule('custom')}
-                className={`px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium ${
-                  paymentSchedule === 'custom'
-                    ? 'bg-white/10 border-white text-white'
-                    : 'bg-gray-800/50 border-gray-700/50 text-gray-400 hover:bg-gray-700/50'
-                }`}
-              >
-                Custom
-              </button>
+              {['weekly', 'bi-weekly', 'monthly', 'custom'].map((schedule) => (
+                <button
+                  key={schedule}
+                  onClick={() => setPaymentSchedule(schedule as typeof paymentSchedule)}
+                  className={clsx(
+                    "px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium capitalize",
+                    paymentSchedule === schedule
+                      ? 'bg-white/10 border-white text-white'
+                      : 'bg-gray-800/50 border-gray-700/50 text-gray-400 hover:bg-gray-700/50'
+                  )}
+                >
+                  {schedule === 'bi-weekly' ? 'Bi-Weekly' : schedule}
+                </button>
+              ))}
             </div>
+            {paymentSchedule === 'custom' && (
+              <input
+                type="text"
+                value={customSchedule}
+                onChange={(e) => setCustomSchedule(e.target.value)}
+                placeholder="E.g., Every 15 days, On the 1st and 15th of each month"
+                className="mt-2 w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
+              />
+            )}
           </div>
 
-          {/* Payment Notes */}
+          {/* Additional Notes */}
           <div>
             <label className="block text-sm font-medium text-white mb-2">
               Additional Notes (Optional)
             </label>
             <textarea
-              value={paymentNotes}
-              onChange={(e) => setPaymentNotes(e.target.value)}
-              placeholder="Additional payment terms, conditions, or notes..."
+              value={additionalNotes}
+              onChange={(e) => setAdditionalNotes(e.target.value)}
+              placeholder="Any special terms, bonus structures, or other details..."
               rows={3}
-              className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 resize-none"
+              className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 resize-none text-sm"
             />
           </div>
         </>
       )}
+
+      <div className="bg-gray-700/30 border border-gray-600/30 rounded-lg p-4">
+        <p className="text-sm text-gray-300">
+          <strong>Note:</strong> Payment settings can be edited after the creator accepts the invitation.
+        </p>
+      </div>
     </div>
   );
 
@@ -579,38 +497,37 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="">
       <div className="space-y-6">
-        {/* Custom Header with Title, Steps, and Close Button in One Row */}
+        {/* Custom Header with Step Indicator */}
         <div className="flex items-center justify-between pb-4 border-b border-gray-700">
           <h2 className="text-xl font-semibold text-white">Invite Creator</h2>
-          
           <div className="flex items-center gap-4">
             {/* Step Indicator */}
             <div className="flex items-center gap-2">
               {[1, 2, 3].map((stepNum) => (
                 <div key={stepNum} className="flex items-center">
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors border-2 ${
+                    className={clsx(
+                      "w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors border-2",
                       stepNum === step
                         ? 'bg-white text-black border-white'
                         : stepNum < step
                         ? 'bg-gray-600 text-white border-gray-600'
                         : 'bg-transparent text-gray-500 border-gray-700'
-                    }`}
+                    )}
                   >
                     {stepNum < step ? <Check className="w-4 h-4" /> : stepNum}
                   </div>
                   {stepNum < totalSteps && (
                     <div
-                      className={`w-8 h-0.5 mx-1 ${
+                      className={clsx(
+                        "w-8 h-0.5 mx-1",
                         stepNum < step ? 'bg-gray-600' : 'bg-gray-700'
-                      }`}
+                      )}
                     />
                   )}
                 </div>
               ))}
             </div>
-            
-            {/* Close Button */}
             <button
               onClick={handleClose}
               className="text-gray-400 hover:text-white transition-colors"
@@ -619,8 +536,7 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
             </button>
           </div>
         </div>
-
-        {/* Step Title and Description */}
+        
         <div>
           <h3 className="text-lg font-medium text-white mb-1">
             {getStepTitle()}
@@ -645,17 +561,16 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
         </div>
 
         {/* Navigation Buttons */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-700">
-          {step > 1 && (
-            <Button
-              variant="ghost"
-              onClick={handleBack}
-              disabled={loading}
-              className="text-gray-400 hover:text-white"
-            >
-              Back
-            </Button>
-          )}
+        <div className="flex items-center justify-between gap-3 pt-4 border-t border-gray-700">
+          <Button
+            variant="ghost"
+            onClick={step === 1 ? handleClose : handleBack}
+            disabled={loading}
+            className="text-gray-400 hover:text-white"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            {step === 1 ? 'Cancel' : 'Back'}
+          </Button>
 
           {step < totalSteps ? (
             <Button
@@ -664,6 +579,7 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
               className="bg-white hover:bg-gray-200 text-black font-semibold"
             >
               Next
+              <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           ) : (
             <Button

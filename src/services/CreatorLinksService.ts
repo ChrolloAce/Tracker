@@ -285,6 +285,32 @@ class CreatorLinksService {
 
     await batch.commit();
   }
+
+  /**
+   * Update creator payment information
+   */
+  static async updateCreatorPaymentInfo(
+    orgId: string,
+    projectId: string,
+    creatorId: string,
+    paymentInfo: {
+      isPaid: boolean;
+      structure?: string;
+      schedule?: string;
+      customSchedule?: string;
+      notes?: string;
+      updatedAt: Date;
+    }
+  ): Promise<void> {
+    const creatorRef = doc(db, 'organizations', orgId, 'projects', projectId, 'creators', creatorId);
+    
+    await updateDoc(creatorRef, {
+      paymentInfo: {
+        ...paymentInfo,
+        updatedAt: Timestamp.fromDate(paymentInfo.updatedAt)
+      }
+    });
+  }
 }
 
 export default CreatorLinksService;

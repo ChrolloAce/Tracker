@@ -7,6 +7,7 @@ import CreatorLinksService from '../services/CreatorLinksService';
 import FirestoreDataService from '../services/FirestoreDataService';
 import { Link as LinkIcon, DollarSign, User, X, Edit3, Users as UsersIcon, TrendingUp } from 'lucide-react';
 import CreateCreatorModal from './CreateCreatorModal';
+import EditCreatorModal from './EditCreatorModal';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
 import CreatorDetailsPage from './CreatorDetailsPage';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
@@ -30,6 +31,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [linkingCreator, setLinkingCreator] = useState<OrgMember | null>(null);
   const [editingCreator, setEditingCreator] = useState<OrgMember | null>(null);
+  const [editingPaymentCreator, setEditingPaymentCreator] = useState<OrgMember | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
@@ -393,12 +395,12 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-end gap-2">
                           <button
-                            onClick={() => setEditingCreator(creator)}
+                            onClick={() => setEditingPaymentCreator(creator)}
                             disabled={actionLoading === creator.userId}
                             className="p-2 text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
-                            title="Edit Details"
+                            title="Edit Payment"
                           >
-                            <Edit3 className="w-4 h-4" />
+                            <DollarSign className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => setLinkingCreator(creator)}
@@ -407,6 +409,14 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
                             title="Link Accounts"
                           >
                             <LinkIcon className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setEditingCreator(creator)}
+                            disabled={actionLoading === creator.userId}
+                            className="p-2 text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
+                            title="View Full Details"
+                          >
+                            <Edit3 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleRemoveCreator(creator.userId)}
@@ -450,6 +460,19 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
           onClose={() => setLinkingCreator(null)}
           onSuccess={() => {
             setLinkingCreator(null);
+            loadData();
+          }}
+        />
+      )}
+
+      {/* Edit Creator Payment Modal */}
+      {editingPaymentCreator && (
+        <EditCreatorModal
+          isOpen={!!editingPaymentCreator}
+          creator={editingPaymentCreator}
+          onClose={() => setEditingPaymentCreator(null)}
+          onSuccess={() => {
+            setEditingPaymentCreator(null);
             loadData();
           }}
         />
