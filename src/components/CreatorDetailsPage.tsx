@@ -231,7 +231,14 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
         
         // Load tiered payment structure if it exists
         if ((profile.paymentInfo as any).tieredStructure) {
-          setTieredPaymentStructure((profile.paymentInfo as any).tieredStructure as TieredPaymentStructure);
+          const loadedStructure = (profile.paymentInfo as any).tieredStructure as TieredPaymentStructure;
+          
+          // Migrate old structure format - ensure tiers array exists
+          if (!loadedStructure.tiers || !Array.isArray(loadedStructure.tiers)) {
+            loadedStructure.tiers = [];
+          }
+          
+          setTieredPaymentStructure(loadedStructure);
           setPaymentSystemType('tiered');
         } else if (profile.paymentInfo.paymentRules && profile.paymentInfo.paymentRules.length > 0) {
           setPaymentSystemType('rules');

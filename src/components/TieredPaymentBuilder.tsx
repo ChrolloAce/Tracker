@@ -27,8 +27,23 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
   const [showTemplates, setShowTemplates] = useState(!value);
 
   useEffect(() => {
-    setStructure(value);
-    if (!value) {
+    // Migrate old structure format to new format
+    if (value) {
+      // Check if tiers is undefined or not an array (old format)
+      if (!value.tiers || !Array.isArray(value.tiers)) {
+        const migratedStructure: TieredPaymentStructure = {
+          ...value,
+          tiers: [] // Initialize with empty tiers array
+        };
+        setStructure(migratedStructure);
+        setShowTemplates(false);
+        setIsEditing(false);
+      } else {
+        setStructure(value);
+        setShowTemplates(false);
+      }
+    } else {
+      setStructure(null);
       setShowTemplates(true);
       setIsEditing(false);
     }
