@@ -50,6 +50,8 @@ export class ContractService {
       new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
     );
 
+    const baseUrl = window.location.origin;
+
     const contract: ShareableContract = {
       id: contractId,
       organizationId,
@@ -65,7 +67,9 @@ export class ContractService {
       createdAt: now,
       updatedAt: now,
       createdBy,
-      shareableLink: `${window.location.origin}/contract/${contractId}`,
+      shareableLink: `${baseUrl}/contract/${contractId}`, // Legacy - both can sign
+      creatorLink: `${baseUrl}/contract/${contractId}?role=creator`,
+      companyLink: `${baseUrl}/contract/${contractId}?role=company`,
       expiresAt,
     };
 
@@ -104,11 +108,15 @@ export class ContractService {
   ): Promise<void> {
     const contractRef = doc(db, this.CONTRACTS_COLLECTION, contractId);
     
-    const signature: ContractSignature = {
+    const signature: any = {
       name: creatorName,
       signedAt: Timestamp.now(),
-      signatureData,
     };
+    
+    // Only add signatureData if it's defined (Firestore doesn't allow undefined)
+    if (signatureData) {
+      signature.signatureData = signatureData;
+    }
 
     await updateDoc(contractRef, {
       creatorSignature: signature,
@@ -134,11 +142,15 @@ export class ContractService {
   ): Promise<void> {
     const contractRef = doc(db, this.CONTRACTS_COLLECTION, contractId);
     
-    const signature: ContractSignature = {
+    const signature: any = {
       name: companyRepName,
       signedAt: Timestamp.now(),
-      signatureData,
     };
+    
+    // Only add signatureData if it's defined (Firestore doesn't allow undefined)
+    if (signatureData) {
+      signature.signatureData = signatureData;
+    }
 
     await updateDoc(contractRef, {
       companySignature: signature,

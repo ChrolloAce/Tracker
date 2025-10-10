@@ -32,7 +32,9 @@ export interface ShareableContract {
   createdAt: Timestamp;
   updatedAt: Timestamp;
   createdBy: string;
-  shareableLink: string;
+  shareableLink: string; // Legacy - general link
+  creatorLink: string; // Link for creator to sign
+  companyLink: string; // Link for company to sign
   expiresAt?: Timestamp;
 }
 

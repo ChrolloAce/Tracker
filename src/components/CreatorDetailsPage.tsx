@@ -1258,12 +1258,8 @@ const ContractTab: React.FC<{
 
       await loadSharedContracts();
       
-      // Copy link to clipboard
-      await navigator.clipboard.writeText(contract.shareableLink);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 3000);
-      
-      alert(`Contract link created and copied to clipboard!\n\n${contract.shareableLink}`);
+      // Show success message with both links
+      alert(`Contract links created successfully!\n\n🎨 Creator Link:\n${contract.creatorLink}\n\n🏢 Company Link:\n${contract.companyLink}\n\nSend the creator link to ${contract.creatorName} and use the company link to sign as the company representative.`);
     } catch (error) {
       console.error('Error creating shareable contract:', error);
       alert('Failed to create shareable contract');
@@ -1471,9 +1467,9 @@ Example terms:
                 {sharedContracts.map((contract) => (
                   <div
                     key={contract.id}
-                    className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-lg"
+                    className="p-3 bg-white/5 border border-white/10 rounded-lg space-y-3"
                   >
-                    <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className={clsx(
                           'text-xs font-medium px-2 py-0.5 rounded',
@@ -1489,26 +1485,53 @@ Example terms:
                           Created {contract.createdAt?.toDate?.()?.toLocaleDateString() || 'N/A'}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1 truncate">
-                        {contract.shareableLink}
-                      </p>
                     </div>
-                    <div className="flex gap-2 ml-3">
+
+                    {/* Creator Link */}
+                    <div className="flex items-center gap-2 bg-white/5 rounded p-2">
+                      <span className="text-xs font-medium text-blue-400">🎨 Creator:</span>
+                      <p className="text-xs text-gray-500 truncate flex-1">
+                        {contract.creatorLink}
+                      </p>
                       <button
-                        onClick={() => handleCopyLink(contract.shareableLink)}
-                        className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                        title="Copy link"
+                        onClick={() => handleCopyLink(contract.creatorLink)}
+                        className="p-1 hover:bg-white/10 rounded transition-colors flex-shrink-0"
+                        title="Copy creator link"
                       >
-                        <Copy className="w-4 h-4 text-gray-400" />
+                        <Copy className="w-3 h-3 text-gray-400" />
                       </button>
                       <a
-                        href={contract.shareableLink}
+                        href={contract.creatorLink}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                        title="Open contract"
+                        className="p-1 hover:bg-white/10 rounded transition-colors flex-shrink-0"
+                        title="Open creator link"
                       >
-                        <ExternalLink className="w-4 h-4 text-gray-400" />
+                        <ExternalLink className="w-3 h-3 text-gray-400" />
+                      </a>
+                    </div>
+
+                    {/* Company Link */}
+                    <div className="flex items-center gap-2 bg-white/5 rounded p-2">
+                      <span className="text-xs font-medium text-purple-400">🏢 Company:</span>
+                      <p className="text-xs text-gray-500 truncate flex-1">
+                        {contract.companyLink}
+                      </p>
+                      <button
+                        onClick={() => handleCopyLink(contract.companyLink)}
+                        className="p-1 hover:bg-white/10 rounded transition-colors flex-shrink-0"
+                        title="Copy company link"
+                      >
+                        <Copy className="w-3 h-3 text-gray-400" />
+                      </button>
+                      <a
+                        href={contract.companyLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1 hover:bg-white/10 rounded transition-colors flex-shrink-0"
+                        title="Open company link"
+                      >
+                        <ExternalLink className="w-3 h-3 text-gray-400" />
                       </a>
                     </div>
                   </div>

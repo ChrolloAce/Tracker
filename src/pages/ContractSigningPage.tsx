@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { ContractService } from '../services/ContractService';
 import { ShareableContract } from '../types/contract';
 import { FileText, Check, Clock, AlertCircle, Loader2 } from 'lucide-react';
@@ -7,6 +7,9 @@ import { Button } from '../components/ui/Button';
 
 const ContractSigningPage: React.FC = () => {
   const { contractId } = useParams<{ contractId: string }>();
+  const [searchParams] = useSearchParams();
+  const roleFromUrl = searchParams.get('role') as 'creator' | 'company' | null;
+  
   const [contract, setContract] = useState<ShareableContract | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -298,7 +301,8 @@ const ContractSigningPage: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {canCreatorSign && (
+                  {/* Show only the role-specific button if role is in URL */}
+                  {(!roleFromUrl || roleFromUrl === 'creator') && canCreatorSign && (
                     <button
                       onClick={() => setSignAs('creator')}
                       className="w-full px-4 py-3 bg-white text-black hover:bg-gray-100 rounded-lg font-medium transition-colors"
@@ -307,7 +311,7 @@ const ContractSigningPage: React.FC = () => {
                     </button>
                   )}
 
-                  {canCompanySign && (
+                  {(!roleFromUrl || roleFromUrl === 'company') && canCompanySign && (
                     <button
                       onClick={() => setSignAs('company')}
                       className="w-full px-4 py-3 bg-white/10 text-white hover:bg-white/20 border border-white/10 rounded-lg font-medium transition-colors"
@@ -316,9 +320,22 @@ const ContractSigningPage: React.FC = () => {
                     </button>
                   )}
 
-                  {!canCreatorSign && !canCompanySign && (
+                  {/* Show message if the specific role has already signed */}
+                  {roleFromUrl === 'creator' && !canCreatorSign && (
                     <div className="text-center py-4 text-gray-400 text-sm">
-                      You have already signed this contract
+                      Creator has already signed this contract
+                    </div>
+                  )}
+                  
+                  {roleFromUrl === 'company' && !canCompanySign && (
+                    <div className="text-center py-4 text-gray-400 text-sm">
+                      Company has already signed this contract
+                    </div>
+                  )}
+
+                  {!roleFromUrl && !canCreatorSign && !canCompanySign && (
+                    <div className="text-center py-4 text-gray-400 text-sm">
+                      Both parties have already signed this contract
                     </div>
                   )}
                 </div>
