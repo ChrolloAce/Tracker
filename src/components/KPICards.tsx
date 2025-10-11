@@ -702,11 +702,11 @@ const KPISparkline: React.FC<{
   };
   
   return (
-    <ResponsiveContainer width="100%" height={56}>
+    <ResponsiveContainer width="100%" height={40}>
       <AreaChart data={data}>
         <defs>
           <linearGradient id={`gradient-${id}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={gradient[0]} stopOpacity={0.3} />
+            <stop offset="0%" stopColor={gradient[0]} stopOpacity={0.15} />
             <stop offset="100%" stopColor={gradient[1]} stopOpacity={0} />
           </linearGradient>
         </defs>
@@ -788,11 +788,11 @@ const KPISparkline: React.FC<{
           type="monotone"
           dataKey="value"
           stroke={stroke}
-          strokeWidth={2}
+          strokeWidth={1}
           fill={`url(#gradient-${id})`}
           isAnimationActive={false}
           dot={false}
-          activeDot={{ r: 4, fill: stroke, strokeWidth: 2, stroke: '#fff' }}
+          activeDot={{ r: 3, fill: stroke, strokeWidth: 1.5, stroke: '#fff' }}
         />
       </AreaChart>
     </ResponsiveContainer>
