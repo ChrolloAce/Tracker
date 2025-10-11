@@ -212,7 +212,7 @@ class TieredPaymentService {
     lines.push('');
     
     structure.tiers.forEach((tier, index) => {
-      lines.push(`Tier ${index + 1}: ${tier.name}`);
+      lines.push(`Tier ${index + 1}: ${tier.label}`);
       
       tier.components.forEach(comp => {
         const label = this.generateComponentLabel(comp);

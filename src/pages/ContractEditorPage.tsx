@@ -8,6 +8,7 @@ import CreatorLinksService from '../services/CreatorLinksService';
 import { OrgMember } from '../types/firestore';
 import { TieredPaymentStructure } from '../types/payments';
 import TieredPaymentService from '../services/TieredPaymentService';
+import { Timestamp } from 'firebase/firestore';
 import { 
   ArrowLeft, 
   FileText, 
@@ -192,7 +193,7 @@ ${formattedTerms}
           paymentInfo: {
             ...(profile?.paymentInfo || {}),
             tieredStructure: structure,
-            updatedAt: new Date()
+            updatedAt: Timestamp.now()
           }
         }
       );
@@ -269,7 +270,7 @@ ${formattedTerms}
         contractStartDate,
         contractEndDate || 'Indefinite',
         contractNotes,
-        creatorPaymentStructure?.name,
+        creatorPaymentStructure?.name || undefined,
         user.uid
       );
 
