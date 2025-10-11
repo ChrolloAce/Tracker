@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, FileText, Loader2, Handshake, Target, Crown, Video, Save } from 'lucide-react';
+import { X, FileText, Loader2, UserCheck, Target, Crown, Video, Save } from 'lucide-react';
 import { Button } from './ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import OrganizationService from '../services/OrganizationService';
@@ -10,7 +10,7 @@ import { CONTRACT_TEMPLATES } from '../types/contracts';
 // Icon mapping for contract templates
 const CONTRACT_ICON_MAP: Record<string, React.ComponentType<any>> = {
   FileText,
-  Handshake,
+  Handshake: UserCheck, // Using UserCheck as Handshake alternative
   Target,
   Crown,
   Video,
