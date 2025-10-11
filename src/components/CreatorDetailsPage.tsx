@@ -48,7 +48,21 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   onUpdate,
 }) => {
   const { currentOrgId, currentProjectId } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'accounts' | 'payment' | 'contract'>('overview');
+  
+  // Restore active tab from localStorage on mount
+  const [activeTab, setActiveTab] = useState<'overview' | 'accounts' | 'payment' | 'contract'>(() => {
+    const savedState = localStorage.getItem(`creatorDetailsState_${creator.userId}`);
+    if (savedState) {
+      try {
+        const { tab } = JSON.parse(savedState);
+        return tab || 'overview';
+      } catch {
+        return 'overview';
+      }
+    }
+    return 'overview';
+  });
+  
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [creatorProfile, setCreatorProfile] = useState<Creator | null>(null);
@@ -64,6 +78,11 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   
   // Tiered payment structure state
   const [tieredPaymentStructure, setTieredPaymentStructure] = useState<TieredPaymentStructure | null>(null);
+
+  // Save active tab to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem(`creatorDetailsState_${creator.userId}`, JSON.stringify({ tab: activeTab }));
+  }, [activeTab, creator.userId]);
 
   useEffect(() => {
     loadData();
