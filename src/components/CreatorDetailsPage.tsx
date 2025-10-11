@@ -24,7 +24,8 @@ import {
   Plus,
   Save,
   Trash2,
-  MoreVertical
+  MoreVertical,
+  Download
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -1091,6 +1092,56 @@ const ContractTab: React.FC<{
     }
   };
 
+  const handleDownloadContract = (contract: ShareableContract) => {
+    const contractContent = `
+CREATOR CONTRACT
+Content Creation Agreement
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PARTIES
+
+Creator: ${contract.creatorName}
+Company: ${contract.creatorName} (Representative)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CONTRACT PERIOD
+
+Start Date: ${new Date(contract.contractStartDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+${contract.contractEndDate && contract.contractEndDate !== 'Indefinite' ? `End Date: ${new Date(contract.contractEndDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}` : ''}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${contract.paymentStructureName ? `PAYMENT STRUCTURE\n\n${contract.paymentStructureName}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` : ''}TERMS & CONDITIONS
+
+${contract.contractNotes}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SIGNATURES
+
+Creator: ___________________________
+${contract.creatorName}
+
+Company Representative: ___________________________
+[Authorized Signatory]
+
+Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+    `.trim();
+
+    const blob = new Blob([contractContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Contract_${contract.creatorName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setOpenMenuId(null);
+  };
+
   const handleDeleteClick = (contract: ShareableContract) => {
     setContractToDelete(contract);
     setShowDeleteConfirm(true);
@@ -1340,6 +1391,13 @@ const ContractTab: React.FC<{
                             onClick={() => setOpenMenuId(null)}
                           />
                           <div className="absolute right-0 top-full mt-1 w-48 bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-xl z-50 py-1">
+                            <button
+                              onClick={() => handleDownloadContract(contract)}
+                              className="w-full px-4 py-2 text-left text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-2"
+                            >
+                              <Download className="w-4 h-4" />
+                              <span>Download Contract</span>
+                            </button>
                             <button
                               onClick={() => {
                                 setOpenMenuId(null);

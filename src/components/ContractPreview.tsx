@@ -64,17 +64,15 @@ const ContractPreview: React.FC<ContractPreviewProps> = ({
       </div>
 
       {/* Contract Period */}
-      {(contractStartDate || contractEndDate) && (
+      {contractStartDate && (
         <div className="mb-6">
           <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Contract Period</div>
           <div className="space-y-1">
-            {contractStartDate && (
-              <div>
-                <span className="text-sm text-gray-400">Start Date: </span>
-                <span className="text-base text-white">{formatDate(contractStartDate)}</span>
-              </div>
-            )}
-            {contractEndDate && (
+            <div>
+              <span className="text-sm text-gray-400">Start Date: </span>
+              <span className="text-base text-white">{formatDate(contractStartDate)}</span>
+            </div>
+            {contractEndDate && contractEndDate !== 'Indefinite' && (
               <div>
                 <span className="text-sm text-gray-400">End Date: </span>
                 <span className="text-base text-white">{formatDate(contractEndDate)}</span>

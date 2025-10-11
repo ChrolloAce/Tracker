@@ -38,7 +38,7 @@ const ContractEditorPage: React.FC = () => {
   const [contractEndDate, setContractEndDate] = useState('');
   const [contractNotes, setContractNotes] = useState('');
   const [initialContractNotes, setInitialContractNotes] = useState('');
-  const [companyName, setCompanyName] = useState('[Your Company Name]');
+  const [companyName, setCompanyName] = useState('');
   const [clientName, setClientName] = useState('');
   
   const [showChangeTemplateModal, setShowChangeTemplateModal] = useState(false);
@@ -76,12 +76,18 @@ const ContractEditorPage: React.FC = () => {
           setContractNotes(draft.contractNotes);
           setInitialContractNotes(draft.contractNotes);
         }
-        if (draft.companyName) setCompanyName(draft.companyName);
+        // Only load company name from draft if it's different from default
+        if (draft.companyName && draft.companyName !== '[Your Company Name]') {
+          setCompanyName(draft.companyName);
+        }
         if (draft.clientName) setClientName(draft.clientName);
       } catch (error) {
         console.error('Error loading contract draft:', error);
       }
-    } else {
+    }
+    
+    // Set default start date if no draft exists
+    if (!savedDraft) {
       const today = new Date();
       setContractStartDate(today.toISOString().split('T')[0]);
       setContractEndDate('');
@@ -118,7 +124,13 @@ const ContractEditorPage: React.FC = () => {
         return;
       }
 
-    try {
+      try {
+        // Load organization to get company name
+        const org = await OrganizationService.getOrganization(currentOrgId);
+        if (org && org.name && !companyName) {
+          setCompanyName(org.name);
+        }
+
       const members = await OrganizationService.getOrgMembers(currentOrgId);
         const foundCreator = members.find(
           (member: OrgMember) => member.userId === creatorId || member.email === creatorId
@@ -691,7 +703,7 @@ const ContractEditorPage: React.FC = () => {
                 <p className="text-xs text-gray-500 mt-2">
                   Send this link to <span className="text-white font-medium">{clientName}</span> to sign as the creator
                 </p>
-              </div>
+                </div>
 
               {/* Company Link */}
               <div>
