@@ -1,15 +1,14 @@
-import { 
-  collection, 
-  doc, 
-  getDoc, 
-  setDoc, 
-  updateDoc, 
-  deleteDoc,
-  Timestamp,
+import {
+  collection,
+  doc,
+  setDoc,
+  getDoc,
+  getDocs,
   query,
   where,
-  getDocs,
-  orderBy
+  orderBy,
+  Timestamp,
+  deleteDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -17,43 +16,71 @@ export interface ContractTemplate {
   id: string;
   name: string;
   description: string;
-  sections: string; // Contract terms/clauses
-  placeholders?: Record<string, string>; // e.g., {clientName: '', startDate: ''}
+  terms: string;
   source: 'system' | 'saved';
   organizationId?: string;
+  createdBy?: string;
+  createdAt?: Timestamp;
   updatedAt: Timestamp;
-  createdBy: string;
-  icon?: string;
 }
 
 export class TemplateService {
-  private static TEMPLATES_COLLECTION = 'templates';
+  private static TEMPLATES_COLLECTION = 'contractTemplates';
 
   /**
-   * Get all templates for an organization (includes system templates)
+   * Save a new contract template
    */
-  static async getTemplates(organizationId: string): Promise<ContractTemplate[]> {
+  static async saveTemplate(
+    organizationId: string,
+    name: string,
+    description: string,
+    terms: string,
+    createdBy: string
+  ): Promise<ContractTemplate> {
+    const templateId = `template-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const now = Timestamp.now();
+
+    const template: ContractTemplate = {
+      id: templateId,
+      name,
+      description,
+      terms,
+      source: 'saved',
+      organizationId,
+      createdBy,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const templateRef = doc(db, this.TEMPLATES_COLLECTION, templateId);
+    await setDoc(templateRef, template);
+
+    return template;
+  }
+
+  /**
+   * Get all saved templates for an organization
+   */
+  static async getSavedTemplates(organizationId: string): Promise<ContractTemplate[]> {
     try {
       const templatesRef = collection(db, this.TEMPLATES_COLLECTION);
       const q = query(
         templatesRef,
         where('organizationId', '==', organizationId),
+        where('source', '==', 'saved'),
         orderBy('updatedAt', 'desc')
       );
-      
+
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as ContractTemplate));
+      return snapshot.docs.map(doc => doc.data() as ContractTemplate);
     } catch (error) {
-      console.error('Error fetching templates:', error);
+      console.error('Error fetching saved templates:', error);
       return [];
     }
   }
 
   /**
-   * Get a single template by ID
+   * Get a specific template by ID
    */
   static async getTemplate(templateId: string): Promise<ContractTemplate | null> {
     try {
@@ -64,66 +91,10 @@ export class TemplateService {
         return null;
       }
 
-      return {
-        id: templateSnap.id,
-        ...templateSnap.data()
-      } as ContractTemplate;
+      return templateSnap.data() as ContractTemplate;
     } catch (error) {
       console.error('Error fetching template:', error);
       return null;
-    }
-  }
-
-  /**
-   * Create a new template
-   */
-  static async createTemplate(
-    organizationId: string,
-    name: string,
-    description: string,
-    sections: string,
-    createdBy: string,
-    icon?: string
-  ): Promise<string> {
-    try {
-      const templatesRef = collection(db, this.TEMPLATES_COLLECTION);
-      const newTemplateRef = doc(templatesRef);
-      
-      const template: Omit<ContractTemplate, 'id'> = {
-        name,
-        description,
-        sections,
-        source: 'saved',
-        organizationId,
-        updatedAt: Timestamp.now(),
-        createdBy,
-        icon
-      };
-
-      await setDoc(newTemplateRef, template);
-      return newTemplateRef.id;
-    } catch (error) {
-      console.error('Error creating template:', error);
-      throw new Error('Failed to create template');
-    }
-  }
-
-  /**
-   * Update an existing template
-   */
-  static async updateTemplate(
-    templateId: string,
-    updates: Partial<Omit<ContractTemplate, 'id' | 'createdBy' | 'organizationId'>>
-  ): Promise<void> {
-    try {
-      const templateRef = doc(db, this.TEMPLATES_COLLECTION, templateId);
-      await updateDoc(templateRef, {
-        ...updates,
-        updatedAt: Timestamp.now()
-      });
-    } catch (error) {
-      console.error('Error updating template:', error);
-      throw new Error('Failed to update template');
     }
   }
 
@@ -137,6 +108,25 @@ export class TemplateService {
     } catch (error) {
       console.error('Error deleting template:', error);
       throw new Error('Failed to delete template');
+    }
+  }
+
+  /**
+   * Update a template
+   */
+  static async updateTemplate(
+    templateId: string,
+    updates: Partial<ContractTemplate>
+  ): Promise<void> {
+    try {
+      const templateRef = doc(db, this.TEMPLATES_COLLECTION, templateId);
+      await setDoc(templateRef, {
+        ...updates,
+        updatedAt: Timestamp.now(),
+      }, { merge: true });
+    } catch (error) {
+      console.error('Error updating template:', error);
+      throw new Error('Failed to update template');
     }
   }
 }

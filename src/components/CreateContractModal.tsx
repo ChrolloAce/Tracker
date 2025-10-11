@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, FileText, Loader2, Save } from 'lucide-react';
+import { X, FileText, Loader2, Save, CheckCircle } from 'lucide-react';
 import { Button } from './ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import OrganizationService from '../services/OrganizationService';
@@ -20,6 +20,7 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
   const [contractStartDate, setContractStartDate] = useState('');
   const [contractEndDate, setContractEndDate] = useState('');
   const [contractNotes, setContractNotes] = useState('');
+  const [initialContractNotes, setInitialContractNotes] = useState('');
   const [paymentStructureName, setPaymentStructureName] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingCreators, setLoadingCreators] = useState(true);
@@ -28,6 +29,7 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
   const [templateName, setTemplateName] = useState('');
   const [templateDescription, setTemplateDescription] = useState('');
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
 
   useEffect(() => {
     loadCreators();
@@ -49,9 +51,9 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
     }
   };
 
-  const handleSelectTemplate = (template: { id: string; terms: string; name: string }) => {
-    setContractNotes(template.terms);
-    setShowChangeTemplateModal(false);
+  const handleSelectTemplate = (terms: string) => {
+    setContractNotes(terms);
+    setInitialContractNotes(terms);
   };
 
   const handleSaveTemplate = async () => {
@@ -62,16 +64,17 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
 
     setSavingTemplate(true);
     try {
-      await TemplateService.createTemplate(
+      await TemplateService.saveTemplate(
         currentOrgId,
         templateName.trim(),
-        templateDescription.trim() || 'Custom template',
+        templateDescription.trim() || 'Custom contract template',
         contractNotes,
         user.uid
       );
       
-      // Show success message
-      alert('Template saved successfully!');
+      // Show success toast
+      setShowSuccessToast(true);
+      setTimeout(() => setShowSuccessToast(false), 3000);
       
       // Reset modal
       setShowSaveTemplateModal(false);
@@ -84,6 +87,8 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
       setSavingTemplate(false);
     }
   };
+
+  const hasUnsavedChanges = contractNotes !== initialContractNotes && contractNotes.trim().length > 0;
 
   const handleCreate = async () => {
     if (!currentOrgId || !currentProjectId || !user || !selectedCreatorId) {
@@ -240,7 +245,7 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
                   className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 resize-none"
                 />
               </div>
-          </div>
+            </div>
         </div>
 
         {/* Footer */}
@@ -277,9 +282,9 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
                     <FileText className="w-4 h-4" />
                     Create Contract
                   </>
-                )}
-              </Button>
-            </div>
+              )}
+            </Button>
+          </div>
         </div>
 
         {/* Change Template Modal */}
@@ -287,6 +292,7 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
           <ChangeTemplateModal
             onClose={() => setShowChangeTemplateModal(false)}
             onSelectTemplate={handleSelectTemplate}
+            hasUnsavedChanges={hasUnsavedChanges}
           />
         )}
 
@@ -352,6 +358,16 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Success Toast */}
+        {showSuccessToast && (
+          <div className="fixed top-4 right-4 z-[110] animate-in slide-in-from-top-2 duration-300">
+            <div className="bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2">
+              <CheckCircle className="w-5 h-5" />
+              <span className="font-medium">Template saved successfully!</span>
             </div>
           </div>
         )}
