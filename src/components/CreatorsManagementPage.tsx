@@ -27,6 +27,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
   const [creators, setCreators] = useState<OrgMember[]>([]);
   const [creatorProfiles, setCreatorProfiles] = useState<Map<string, Creator>>(new Map());
   const [calculatedEarnings, setCalculatedEarnings] = useState<Map<string, number>>(new Map());
+  const [videoCounts, setVideoCounts] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [linkingCreator, setLinkingCreator] = useState<OrgMember | null>(null);
@@ -48,9 +49,9 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
     }
   }));
 
-  const calculateCreatorEarnings = async (creatorId: string, profile: Creator) => {
-    if (!currentOrgId || !currentProjectId || !profile.customPaymentTerms) {
-      return 0;
+  const calculateCreatorEarnings = async (creatorId: string, profile: Creator): Promise<{ earnings: number; videoCount: number }> => {
+    if (!currentOrgId || !currentProjectId) {
+      return { earnings: 0, videoCount: 0 };
     }
 
     try {
@@ -61,7 +62,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
         creatorId
       );
       
-      if (links.length === 0) return 0;
+      if (links.length === 0) return { earnings: 0, videoCount: 0 };
 
       const accountIds = links.map(link => link.accountId);
       
@@ -73,7 +74,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
       
       const linkedAccounts = projectAccounts.filter(acc => accountIds.includes(acc.id));
       
-      if (linkedAccounts.length === 0) return 0;
+      if (linkedAccounts.length === 0) return { earnings: 0, videoCount: 0 };
 
       // Load videos for each account
       const videosPromises = linkedAccounts.map(async (account) => {
@@ -91,8 +92,11 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
       });
       
       const allVideos = (await Promise.all(videosPromises)).flat();
+      const videoCount = allVideos.length;
       
-      if (allVideos.length === 0) return 0;
+      if (!profile.customPaymentTerms || allVideos.length === 0) {
+        return { earnings: 0, videoCount };
+      }
 
       // Calculate earnings
       const terms = profile.customPaymentTerms;
@@ -138,10 +142,10 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
         total += videoEarnings;
       });
 
-      return total;
+      return { earnings: total, videoCount };
     } catch (error) {
       console.error(`Failed to calculate earnings for creator ${creatorId}:`, error);
-      return 0;
+      return { earnings: 0, videoCount: 0 };
     }
   };
 
@@ -167,15 +171,18 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
       });
       setCreatorProfiles(creatorProfilesMap);
 
-      // Calculate real-time earnings for each creator
+      // Calculate real-time earnings and video counts for each creator
       const earningsMap = new Map<string, number>();
+      const videoCountsMap = new Map<string, number>();
       await Promise.all(
         creatorProfilesList.map(async (profile) => {
-          const earnings = await calculateCreatorEarnings(profile.id, profile);
+          const { earnings, videoCount } = await calculateCreatorEarnings(profile.id, profile);
           earningsMap.set(profile.id, earnings);
+          videoCountsMap.set(profile.id, videoCount);
         })
       );
       setCalculatedEarnings(earningsMap);
+      setVideoCounts(videoCountsMap);
     } catch (error) {
       console.error('Failed to load creators:', error);
     } finally {
@@ -229,56 +236,10 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
     return <PageLoadingSkeleton type="creators" />;
   }
 
-  const totalLinkedAccounts = Array.from(creatorProfiles.values()).reduce((sum, p) => sum + p.linkedAccountsCount, 0);
   const totalEarnings = Array.from(calculatedEarnings.values()).reduce((sum, earnings) => sum + earnings, 0);
 
   return (
     <div className="space-y-6">
-      {/* Stats Cards with Gradient Backgrounds */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Total Creators */}
-        <div className="bg-zinc-900/60 backdrop-blur-sm rounded-xl border border-white/10 p-6 hover:border-white/20 transition-all duration-300 group">
-          <div className="flex items-center justify-between mb-4">
-            <div className="bg-gray-200 dark:bg-gray-800 rounded-lg p-3 group-hover:bg-gray-300 dark:group-hover:bg-gray-700 transition-colors">
-              <UsersIcon className="w-6 h-6 text-gray-900 dark:text-white" />
-            </div>
-          </div>
-          <div className="text-3xl font-bold text-white mb-1">
-            {creators.length}
-          </div>
-          <div className="text-sm text-gray-400">Total Creators</div>
-        </div>
-
-        {/* Linked Accounts */}
-        <div className="bg-zinc-900/60 backdrop-blur-sm rounded-xl border border-white/10 p-6 hover:border-white/20 transition-all duration-300 group">
-          <div className="flex items-center justify-between mb-4">
-            <div className="bg-gray-200 dark:bg-gray-800 rounded-lg p-3 group-hover:bg-gray-300 dark:group-hover:bg-gray-700 transition-colors">
-              <LinkIcon className="w-6 h-6 text-gray-900 dark:text-white" />
-            </div>
-          </div>
-          <div className="text-3xl font-bold text-white mb-1">
-            {totalLinkedAccounts}
-          </div>
-          <div className="text-sm text-gray-400">Linked Accounts</div>
-        </div>
-
-        {/* Total Paid Out */}
-        <div className="bg-zinc-900/60 backdrop-blur-sm rounded-xl border border-white/10 p-6 hover:border-white/20 transition-all duration-300 group">
-          <div className="flex items-center justify-between mb-4">
-            <div className="bg-green-500/10 rounded-lg p-3 group-hover:bg-green-500/20 transition-colors">
-              <DollarSign className="w-6 h-6 text-green-400" />
-            </div>
-          </div>
-          <div className="text-3xl font-bold text-white mb-1">
-            ${totalEarnings.toFixed(2)}
-          </div>
-          <div className="flex items-center gap-1 text-sm text-gray-400">
-            <span>Total Earnings</span>
-            <TrendingUp className="w-3 h-3" />
-          </div>
-        </div>
-      </div>
-
       {/* Creators List - Dashboard Style */}
       {creators.length === 0 ? (
         <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-12 text-center">
@@ -293,13 +254,14 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
       ) : (
         <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg overflow-hidden">
           {/* Table Header */}
-          <div className="px-6 py-5 border-b border-white/5 bg-zinc-900/40">
+          <div className="px-6 py-5 border-b border-white/5 bg-zinc-900/40 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-white">
               All Creators ({creators.length})
             </h2>
-            <p className="text-sm text-gray-400 mt-1">
-              Manage creators, link accounts, and track performance
-            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-400">Total Earnings:</span>
+              <span className="text-lg font-bold text-white">${totalEarnings.toFixed(2)}</span>
+            </div>
           </div>
 
           {/* Table */}
@@ -314,13 +276,13 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
                     Linked Accounts
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                    Total Videos
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Total Earnings
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Joined
-                  </th>
-                  <th className="px-6 py-4 text-right text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                    Actions
                   </th>
                 </tr>
               </thead>
@@ -331,7 +293,8 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
                   return (
                     <tr 
                       key={creator.userId} 
-                      className="hover:bg-white/5 transition-colors group"
+                      onClick={() => setEditingCreator(creator)}
+                      className="hover:bg-white/5 transition-colors group cursor-pointer"
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -373,6 +336,11 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
                         )}
                       </td>
                       <td className="px-6 py-4">
+                        <div className="text-sm text-white font-medium">
+                          {videoCounts.get(creator.userId) || 0} {videoCounts.get(creator.userId) === 1 ? 'video' : 'videos'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <div className="text-sm font-semibold text-white">
                             ${(calculatedEarnings.get(creator.userId) || 0).toFixed(2)}
@@ -390,46 +358,6 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-400">
                           {formatDate(creator.joinedAt)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => setEditingPaymentCreator(creator)}
-                            disabled={actionLoading === creator.userId}
-                            className="p-2 text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
-                            title="Edit Payment"
-                          >
-                            <DollarSign className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setLinkingCreator(creator)}
-                            disabled={actionLoading === creator.userId}
-                            className="p-2 text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
-                            title="Link Accounts"
-                          >
-                            <LinkIcon className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setEditingCreator(creator)}
-                            disabled={actionLoading === creator.userId}
-                            className="p-2 text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
-                            title="View Full Details"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleRemoveCreator(creator.userId)}
-                            disabled={actionLoading === creator.userId}
-                            className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
-                            title="Remove Creator"
-                          >
-                            {actionLoading === creator.userId ? (
-                              <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                              <X className="w-4 h-4" />
-                            )}
-                          </button>
                         </div>
                       </td>
                     </tr>
