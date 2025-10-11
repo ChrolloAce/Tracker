@@ -45,6 +45,23 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
     loadData();
   }, [currentOrgId, currentProjectId, user, dateFilter]);
 
+  // Keyboard shortcut - Press Space to add creator
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Only trigger if Space is pressed and no input/textarea is focused
+      if (e.code === 'Space' && 
+          !showInviteModal && 
+          !(document.activeElement instanceof HTMLInputElement) && 
+          !(document.activeElement instanceof HTMLTextAreaElement)) {
+        e.preventDefault();
+        setShowInviteModal(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [showInviteModal]);
+
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
     openInviteModal: () => setShowInviteModal(true),
@@ -396,7 +413,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
       <button
         onClick={() => setShowInviteModal(true)}
         className="fixed bottom-8 right-8 w-14 h-14 bg-white text-black rounded-full shadow-2xl hover:bg-gray-100 transition-all duration-200 flex items-center justify-center z-40 hover:scale-110"
-        title="Add Creator"
+        title="Add Creator (Space)"
       >
         <Plus className="w-6 h-6" />
       </button>
