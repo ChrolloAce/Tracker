@@ -10,8 +10,7 @@ import {
   FileText, 
   Share2,
   Save,
-  CheckCircle,
-  Plus
+  CheckCircle
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import ContractPreview from '../components/ContractPreview';

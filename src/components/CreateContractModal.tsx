@@ -102,9 +102,16 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
     }
   };
 
-  const handleSelectTemplate = (terms: string) => {
-    setContractNotes(terms);
-    setInitialContractNotes(terms);
+  const handleSelectTemplate = (template: { 
+    terms: string; 
+    companyName?: string; 
+    contractStartDate?: string; 
+    contractEndDate?: string;
+  }) => {
+    setContractNotes(template.terms);
+    setInitialContractNotes(template.terms);
+    // Note: CreateContractModal doesn't have company/date fields like ContractEditorPage
+    // Templates will only apply the terms here
   };
 
   const handleSaveTemplate = async () => {
