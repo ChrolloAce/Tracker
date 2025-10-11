@@ -492,6 +492,27 @@ service cloud.firestore {
       // Only organization members can delete
       allow delete: if isSignedIn();
     }
+    
+    // ==================== CONTRACT TEMPLATES ====================
+    
+    // Contract templates for reusable contract terms
+    match /contractTemplates/{templateId} {
+      // All authenticated users can read templates
+      allow read: if isSignedIn();
+      
+      // Users can create templates for their organization
+      allow create: if isSignedIn() 
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.organizationId is string;
+      
+      // Users can update their own templates
+      allow update: if isSignedIn() 
+        && resource.data.createdBy == request.auth.uid;
+      
+      // Users can delete their own templates
+      allow delete: if isSignedIn() 
+        && resource.data.createdBy == request.auth.uid;
+    }
   }
 }
 

@@ -43,7 +43,7 @@ const ContractEditorPage: React.FC = () => {
     return `contract_editor_draft_${currentOrgId}_${currentProjectId}_${creatorId}`;
   };
 
-  // Load draft from localStorage on mount
+  // Load draft from localStorage on mount and set default dates
   useEffect(() => {
     const savedDraft = localStorage.getItem(getDraftKey());
     if (savedDraft) {
@@ -59,6 +59,15 @@ const ContractEditorPage: React.FC = () => {
       } catch (error) {
         console.error('Error loading contract draft:', error);
       }
+    } else {
+      // Set default dates if no draft exists
+      const today = new Date();
+      setContractStartDate(today.toISOString().split('T')[0]);
+      
+      // Set end date to 5 years from now (indefinite/long-term contract)
+      const endDate = new Date();
+      endDate.setFullYear(endDate.getFullYear() + 5);
+      setContractEndDate(endDate.toISOString().split('T')[0]);
     }
   }, [creatorId]);
 
