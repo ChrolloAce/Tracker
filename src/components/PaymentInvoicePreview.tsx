@@ -108,10 +108,7 @@ const PaymentInvoicePreview: React.FC<PaymentInvoicePreviewProps> = ({ structure
 
       {/* Footer */}
       <div className="mt-8 pt-6 border-t-2 border-white/20">
-        <div className="flex items-center justify-between text-sm">
-          <div className="text-gray-400">
-            {structure.tiers.length} payment stage{structure.tiers.length !== 1 ? 's' : ''}
-          </div>
+        <div className="flex items-center justify-end text-sm">
           <div className="text-gray-500 text-xs">
             {new Date().toLocaleDateString('en-US', { 
               year: 'numeric', 

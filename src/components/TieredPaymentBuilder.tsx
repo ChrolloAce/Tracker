@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit3, Check, X } from 'lucide-react';
+import { Plus, Trash2, Edit3, Check, X, DollarSign, TrendingUp, Target, BarChart3, Rocket, LineChart, Save } from 'lucide-react';
 import { 
   PaymentTier, 
   PaymentComponent,
@@ -7,6 +7,16 @@ import {
   TieredPaymentStructure, 
   PAYMENT_TIER_TEMPLATES 
 } from '../types/payments';
+
+// Icon mapping for templates
+const ICON_MAP: Record<string, React.ComponentType<any>> = {
+  DollarSign,
+  TrendingUp,
+  Target,
+  BarChart3,
+  Rocket,
+  LineChart,
+};
 
 interface TieredPaymentBuilderProps {
   value: TieredPaymentStructure | null;
@@ -26,6 +36,8 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
   const [structure, setStructure] = useState<TieredPaymentStructure | null>(value);
   const [isEditing, setIsEditing] = useState(alwaysEdit);
   const [showTemplates, setShowTemplates] = useState(!value && !alwaysEdit);
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+  const [templateName, setTemplateName] = useState('');
 
   useEffect(() => {
     // Migrate old structure format to new format
@@ -251,26 +263,31 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
         </div>
 
         <div className="grid grid-cols-1 gap-3">
-          {PAYMENT_TIER_TEMPLATES.map((template) => (
-            <button
-              key={template.id}
-              onClick={() => handleInitializeFromTemplate(template.id)}
-              className="p-4 bg-[#161616] hover:bg-[#1a1a1a] border border-gray-800 hover:border-gray-700 rounded-xl transition-all text-left group"
-            >
-              <div className="flex items-start gap-4">
-                <div className="text-3xl flex-shrink-0">{template.icon}</div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-white font-semibold text-base group-hover:text-white mb-1">{template.name}</h4>
-                  <p className="text-sm text-gray-400 mb-2">{template.description}</p>
-                  {template.example && (
-                    <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 mt-2">
-                      <p className="text-xs text-gray-300">{template.example}</p>
-                    </div>
-                  )}
+          {PAYMENT_TIER_TEMPLATES.map((template) => {
+            const IconComponent = ICON_MAP[template.icon || 'DollarSign'] || DollarSign;
+            return (
+              <button
+                key={template.id}
+                onClick={() => handleInitializeFromTemplate(template.id)}
+                className="p-4 bg-[#161616] hover:bg-[#1a1a1a] border border-gray-800 hover:border-gray-700 rounded-xl transition-all text-left group"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 p-3 bg-white/5 rounded-lg">
+                    <IconComponent className="w-6 h-6 text-white/80" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-white font-semibold text-base group-hover:text-white mb-1">{template.name}</h4>
+                    <p className="text-sm text-gray-400 mb-2">{template.description}</p>
+                    {template.example && (
+                      <div className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 mt-2">
+                        <p className="text-xs text-gray-300">{template.example}</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
 
         <div className="pt-4 border-t border-gray-800">
@@ -342,13 +359,22 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
               )}
             </div>
 
-            <button
-              onClick={() => setIsEditing(true)}
-              className="flex-shrink-0 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-              Edit
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowSaveTemplateModal(true)}
+                className="flex-shrink-0 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+              >
+                <Save className="w-3.5 h-3.5" />
+                Save as Template
+              </button>
+              <button
+                onClick={() => setIsEditing(true)}
+                className="flex-shrink-0 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                Edit
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -366,6 +392,13 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
             <p className="text-xs text-gray-400 mt-0.5">Build your payment stages and components</p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSaveTemplateModal(true)}
+              className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+            >
+              <Save className="w-3.5 h-3.5" />
+              Save as Template
+            </button>
             <button
               onClick={() => {
                 if (confirm('Switch to a different template? Current changes will be lost.')) {
@@ -544,6 +577,59 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
           <p className="text-xs text-gray-400">
             One payment stage per creator. Delete the existing stage to create a new one.
           </p>
+        </div>
+      )}
+
+      {/* Save Template Modal */}
+      {showSaveTemplateModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#161616] border border-gray-800 rounded-2xl max-w-md w-full p-6">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-white/5 rounded-full">
+                <Save className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-white mb-2">Save as Template</h3>
+                <p className="text-sm text-gray-400 mb-4">
+                  Give your payment structure a name to save it as a reusable template.
+                </p>
+                <input
+                  type="text"
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  placeholder="Enter template name..."
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/20 mb-4"
+                  autoFocus
+                />
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowSaveTemplateModal(false);
+                      setTemplateName('');
+                    }}
+                    className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (templateName.trim()) {
+                        // For now, just show an alert. In production, you'd save to localStorage or database
+                        alert(`Template "${templateName}" saved! (Note: This is a demo - implement actual save functionality)`);
+                        setShowSaveTemplateModal(false);
+                        setTemplateName('');
+                      }
+                    }}
+                    disabled={!templateName.trim()}
+                    className="flex-1 px-4 py-2 bg-white hover:bg-gray-200 text-black rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    <Save className="w-4 h-4" />
+                    Save Template
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -104,7 +104,7 @@ export const PAYMENT_TIER_TEMPLATES: PaymentTierTemplate[] = [
     id: 'flat_fee_simple',
     name: 'Flat Fee Per Video',
     description: 'Simple flat payment per video delivered',
-    icon: '💵',
+    icon: 'DollarSign',
     example: 'A video would earn $250',
     tiers: [
       {
@@ -128,7 +128,7 @@ export const PAYMENT_TIER_TEMPLATES: PaymentTierTemplate[] = [
     id: 'base_plus_cpm',
     name: 'Base + CPM After Threshold',
     description: 'Base payment + CPM after views threshold',
-    icon: '📈',
+    icon: 'TrendingUp',
     example: 'A video with 1M views: $250 + $10,000 = $10,250',
     tiers: [
       {
@@ -159,7 +159,7 @@ export const PAYMENT_TIER_TEMPLATES: PaymentTierTemplate[] = [
     id: 'performance_tiers',
     name: 'Performance Tiers',
     description: 'Different rates based on view ranges',
-    icon: '🎯',
+    icon: 'Target',
     example: 'A video with 1M views: $250 + $500 + $1,000 = $1,750',
     tiers: [
       {
@@ -221,7 +221,7 @@ export const PAYMENT_TIER_TEMPLATES: PaymentTierTemplate[] = [
     id: 'cpm_only',
     name: 'CPM Only',
     description: 'Simple CPM-based payment with optional cap',
-    icon: '📊',
+    icon: 'BarChart3',
     example: 'A video with 1M views: $10,000 (capped at $5,000)',
     tiers: [
       {
@@ -246,7 +246,7 @@ export const PAYMENT_TIER_TEMPLATES: PaymentTierTemplate[] = [
     id: 'hybrid_performance',
     name: 'Hybrid Performance',
     description: 'Base + CPM + milestone bonuses for viral content',
-    icon: '🚀',
+    icon: 'Rocket',
     example: 'A video with 1M views: $250 + $10,000 + $500 + $1,000 = $11,750',
     tiers: [
       {
@@ -314,7 +314,7 @@ export const PAYMENT_TIER_TEMPLATES: PaymentTierTemplate[] = [
     id: 'tiered_cpm',
     name: 'Tiered CPM Rates',
     description: 'Increasing CPM rates based on view thresholds',
-    icon: '📈',
+    icon: 'LineChart',
     example: 'A video with 1M views: $200 (0-10K) + $500 (10K-100K) + $9,000 (100K-1M) = $9,700',
     tiers: [
       {

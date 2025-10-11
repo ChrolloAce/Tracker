@@ -16,7 +16,7 @@ export const CONTRACT_TEMPLATES: ContractTemplate[] = [
     id: 'standard',
     name: 'Standard Creator Agreement',
     description: 'Basic agreement for content creators',
-    icon: '📄',
+    icon: 'FileText',
     terms: `1. SCOPE OF WORK
 • Creator agrees to produce original content as specified
 • All content must meet brand guidelines and quality standards
@@ -46,7 +46,7 @@ export const CONTRACT_TEMPLATES: ContractTemplate[] = [
     id: 'exclusive',
     name: 'Exclusive Partnership',
     description: 'Exclusive content creation with restrictions',
-    icon: '🤝',
+    icon: 'Handshake',
     terms: `1. EXCLUSIVITY AGREEMENT
 • Creator will work exclusively with Company in specified niche
 • No competing brand partnerships during contract period
@@ -82,7 +82,7 @@ export const CONTRACT_TEMPLATES: ContractTemplate[] = [
     id: 'campaign',
     name: 'Campaign-Based Contract',
     description: 'Short-term campaign or project',
-    icon: '🎯',
+    icon: 'Target',
     terms: `1. CAMPAIGN SCOPE
 • Specific campaign deliverables outlined below
 • Timeline: [Campaign Start] to [Campaign End]
@@ -118,7 +118,7 @@ export const CONTRACT_TEMPLATES: ContractTemplate[] = [
     id: 'ambassador',
     name: 'Brand Ambassador',
     description: 'Long-term brand representation',
-    icon: '👑',
+    icon: 'Crown',
     terms: `1. AMBASSADOR ROLE
 • Creator represents brand in all public appearances
 • Maintain professional image aligned with brand values
@@ -156,7 +156,7 @@ export const CONTRACT_TEMPLATES: ContractTemplate[] = [
     id: 'freelance',
     name: 'Freelance Per-Video',
     description: 'Pay per video with no commitment',
-    icon: '🎬',
+    icon: 'Video',
     terms: `1. PER-VIDEO AGREEMENT
 • Each video is a separate engagement
 • No ongoing commitment required
