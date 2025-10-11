@@ -4,6 +4,7 @@ import {
   getDoc, 
   setDoc, 
   updateDoc, 
+  deleteDoc,
   Timestamp,
   query,
   where,
@@ -230,6 +231,19 @@ export class ContractService {
       ...updates,
       updatedAt: Timestamp.now(),
     });
+  }
+
+  /**
+   * Delete contract
+   */
+  static async deleteContract(contractId: string): Promise<void> {
+    try {
+      const contractRef = doc(db, this.CONTRACTS_COLLECTION, contractId);
+      await deleteDoc(contractRef);
+    } catch (error) {
+      console.error('Error deleting contract:', error);
+      throw error;
+    }
   }
 }
 
