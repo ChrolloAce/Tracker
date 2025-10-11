@@ -3,6 +3,7 @@ import { FileText } from 'lucide-react';
 
 interface ContractPreviewProps {
   creatorName: string;
+  companyName?: string;
   contractStartDate: string;
   contractEndDate: string;
   contractNotes: string;
@@ -11,6 +12,7 @@ interface ContractPreviewProps {
 
 const ContractPreview: React.FC<ContractPreviewProps> = ({
   creatorName,
+  companyName,
   contractStartDate,
   contractEndDate,
   contractNotes,
@@ -56,7 +58,7 @@ const ContractPreview: React.FC<ContractPreviewProps> = ({
           </div>
           <div>
             <span className="text-sm text-gray-400">Company: </span>
-            <span className="text-base text-white font-semibold">[Your Company Name]</span>
+            <span className="text-base text-white font-semibold">{companyName || '[Your Company Name]'}</span>
           </div>
         </div>
       </div>

@@ -16,7 +16,9 @@ import {
   Save,
   CheckCircle,
   Plus,
-  X
+  X,
+  Copy,
+  Check
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import ContractPreview from '../components/ContractPreview';
@@ -45,6 +47,13 @@ const ContractEditorPage: React.FC = () => {
   const [templateDescription, setTemplateDescription] = useState('');
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
+  
+  // Share links modal
+  const [showShareLinksModal, setShowShareLinksModal] = useState(false);
+  const [creatorLink, setCreatorLink] = useState('');
+  const [companyLink, setCompanyLink] = useState('');
+  const [copiedCreatorLink, setCopiedCreatorLink] = useState(false);
+  const [copiedCompanyLink, setCopiedCompanyLink] = useState(false);
   
   // Payment structure state
   const [creatorPaymentStructure, setCreatorPaymentStructure] = useState<TieredPaymentStructure | null>(null);
@@ -103,14 +112,14 @@ const ContractEditorPage: React.FC = () => {
 
   // Load creator data and payment structure
   useEffect(() => {
-    const loadCreator = async () => {
+  const loadCreator = async () => {
       if (!currentOrgId || !creatorId) {
         setLoading(false);
         return;
       }
 
-      try {
-        const members = await OrganizationService.getOrgMembers(currentOrgId);
+    try {
+      const members = await OrganizationService.getOrgMembers(currentOrgId);
         const foundCreator = members.find(
           (member: OrgMember) => member.userId === creatorId || member.email === creatorId
         );
@@ -136,12 +145,12 @@ const ContractEditorPage: React.FC = () => {
             }
           }
         }
-      } catch (error) {
-        console.error('Error loading creator:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    } catch (error) {
+      console.error('Error loading creator:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
     loadCreator();
   }, [creatorId, currentOrgId, currentProjectId]);
@@ -163,15 +172,34 @@ const ContractEditorPage: React.FC = () => {
     if (!creatorPaymentStructure) return;
     
     const formattedTerms = TieredPaymentService.formatForContract(creatorPaymentStructure);
-    const highlightedTerms = `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 PAYMENT STRUCTURE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-${formattedTerms}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+    const insertedTerms = `\n\n${formattedTerms}\n\n`;
     
-    setContractNotes(contractNotes + highlightedTerms);
+    setContractNotes(contractNotes + insertedTerms);
+  };
+
+  const handleCopyCreatorLink = async () => {
+    try {
+      await navigator.clipboard.writeText(creatorLink);
+      setCopiedCreatorLink(true);
+      setTimeout(() => setCopiedCreatorLink(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const handleCopyCompanyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(companyLink);
+      setCopiedCompanyLink(true);
+      setTimeout(() => setCopiedCompanyLink(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const handleCloseShareModal = () => {
+    setShowShareLinksModal(false);
+    navigate(`/creators/${creatorId}?tab=contract`);
   };
 
   const handleSavePaymentStructure = async (structure: TieredPaymentStructure) => {
@@ -261,7 +289,7 @@ ${formattedTerms}
 
     setSharing(true);
     try {
-      await ContractService.createShareableContract(
+      const contract = await ContractService.createShareableContract(
         currentOrgId,
         currentProjectId,
         creator.userId,
@@ -277,8 +305,10 @@ ${formattedTerms}
       // Clear the draft on success
       localStorage.removeItem(getDraftKey());
       
-      alert('Contract shared successfully!');
-      navigate(`/creators/${creatorId}?tab=contract`);
+      // Set links and show modal
+      setCreatorLink(contract.creatorLink);
+      setCompanyLink(contract.companyLink);
+      setShowShareLinksModal(true);
     } catch (error) {
       console.error('Error sharing contract:', error);
       alert('Failed to share contract');
@@ -314,18 +344,18 @@ ${formattedTerms}
       <div className="border-b border-gray-800 bg-[#0A0A0A]/95 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
+          <div className="flex items-center gap-4">
+            <button
                 onClick={() => navigate(`/creators/${creatorId}?tab=contract`)}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5 text-gray-400" />
-              </button>
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 text-gray-400" />
+            </button>
               <div>
                 <h1 className="text-xl font-semibold text-white flex items-center gap-2">
                   <FileText className="w-5 h-5" />
                   New Contract
-                </h1>
+              </h1>
                 <p className="text-sm text-gray-400 mt-0.5">
                   For {creator.displayName || creator.email}
                 </p>
@@ -385,7 +415,7 @@ ${formattedTerms}
                     placeholder="Your Company Name"
                     className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50"
                   />
-                </div>
+              </div>
 
                 {/* Client Name */}
                 <div>
@@ -402,29 +432,29 @@ ${formattedTerms}
                 </div>
 
                 {/* Start Date */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Start Date *
-                  </label>
-                  <input
-                    type="date"
-                    value={contractStartDate}
-                    onChange={(e) => setContractStartDate(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Start Date *
+                    </label>
+                    <input
+                      type="date"
+                      value={contractStartDate}
+                      onChange={(e) => setContractStartDate(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50"
+                    />
+                  </div>
 
                 {/* End Date (Optional) */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
                     End Date (Optional)
-                  </label>
-                  <input
-                    type="date"
-                    value={contractEndDate}
-                    onChange={(e) => setContractEndDate(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50"
-                  />
+                    </label>
+                    <input
+                      type="date"
+                      value={contractEndDate}
+                      onChange={(e) => setContractEndDate(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50"
+                    />
                   <p className="text-xs text-gray-500 mt-1">
                     Leave blank for an indefinite contract
                   </p>
@@ -462,7 +492,7 @@ ${formattedTerms}
                       >
                         Edit payment structure
                       </button>
-                    </div>
+                  </div>
                   ) : (
                     <button
                       onClick={() => setShowPaymentModal(true)}
@@ -500,6 +530,7 @@ ${formattedTerms}
               <h2 className="text-lg font-semibold text-white mb-6">Preview</h2>
               <ContractPreview
                 creatorName={clientName}
+                companyName={companyName}
                 contractStartDate={contractStartDate}
                 contractEndDate={contractEndDate || 'Indefinite'}
                 contractNotes={contractNotes}
@@ -593,8 +624,8 @@ ${formattedTerms}
               >
                 <X className="w-5 h-5 text-gray-400" />
               </button>
-            </div>
-            
+                </div>
+
             <div className="p-6">
               <TieredPaymentBuilder
                 value={creatorPaymentStructure}
@@ -606,12 +637,116 @@ ${formattedTerms}
         </div>
       )}
 
+      {/* Share Links Modal */}
+      {showShareLinksModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#161616] rounded-xl border border-gray-800 w-full max-w-2xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+                  <CheckCircle className="w-6 h-6 text-green-500" />
+                  Contract Shared Successfully!
+                </h3>
+                <p className="text-sm text-gray-400 mt-1">Share these links with the respective parties to sign the contract</p>
+              </div>
+              <button
+                onClick={handleCloseShareModal}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Creator Link */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Creator Link
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={creatorLink}
+                    readOnly
+                    className="flex-1 px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50 font-mono text-sm"
+                  />
+                  <Button
+                    onClick={handleCopyCreatorLink}
+                    variant="secondary"
+                    className="flex items-center gap-2"
+                  >
+                    {copiedCreatorLink ? (
+                      <>
+                        <Check className="w-4 h-4" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        Copy
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Send this link to <span className="text-white font-medium">{clientName}</span> to sign as the creator
+                </p>
+              </div>
+
+              {/* Company Link */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Company Link
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={companyLink}
+                    readOnly
+                    className="flex-1 px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50 font-mono text-sm"
+                  />
+                  <Button
+                    onClick={handleCopyCompanyLink}
+                    variant="secondary"
+                    className="flex items-center gap-2"
+                  >
+                    {copiedCompanyLink ? (
+                      <>
+                        <Check className="w-4 h-4" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        Copy
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Use this link to sign as the company representative
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-6 border-t border-gray-800">
+              <Button
+                onClick={handleCloseShareModal}
+                className="w-full"
+              >
+                Done
+              </Button>
+            </div>
+            </div>
+          </div>
+        )}
+
       {/* Success Toast */}
       {showSuccessToast && (
         <div className="fixed bottom-8 right-8 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 z-50 animate-fade-in">
           <CheckCircle className="w-5 h-5" />
           <span className="font-medium">Saved successfully!</span>
-        </div>
+      </div>
       )}
     </div>
   );

@@ -207,7 +207,7 @@ class TieredPaymentService {
   static formatForContract(structure: TieredPaymentStructure): string {
     const lines: string[] = [];
     
-    lines.push(`Payment Structure: ${structure.name}`);
+    lines.push(`PAYMENT STRUCTURE: ${structure.name}`);
     lines.push(`Currency: ${structure.currency || 'USD'}`);
     lines.push('');
     
@@ -217,15 +217,15 @@ class TieredPaymentService {
       tier.components.forEach(comp => {
         const label = this.generateComponentLabel(comp);
         if (tier.appliesTo === 'per_video') {
-          lines.push(`  • ${label} (per video)`);
+          lines.push(`  - ${label} (per video)`);
         } else if (tier.appliesTo === 'milestone' && tier.milestoneCondition) {
           const threshold = tier.milestoneCondition.threshold;
           const thresholdStr = threshold >= 1000 
             ? `${(threshold / 1000).toFixed(0)}K` 
             : threshold.toString();
-          lines.push(`  • ${label} (when ${tier.milestoneCondition.type} reaches ${thresholdStr})`);
+          lines.push(`  - ${label} (when ${tier.milestoneCondition.type} reaches ${thresholdStr})`);
         } else if (tier.appliesTo === 'per_campaign') {
-          lines.push(`  • ${label} (per campaign)`);
+          lines.push(`  - ${label} (per campaign)`);
         }
       });
       
