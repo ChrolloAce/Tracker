@@ -191,7 +191,7 @@ ${formattedTerms}
         {
           ...profile,
           paymentInfo: {
-            ...(profile?.paymentInfo || {}),
+            ...(profile?.paymentInfo || { isPaid: false }),
             tieredStructure: structure,
             updatedAt: Timestamp.now()
           }
@@ -266,7 +266,7 @@ ${formattedTerms}
         currentProjectId,
         creator.userId,
         clientName,
-        creator.email,
+        creator.email || '',
         contractStartDate,
         contractEndDate || 'Indefinite',
         contractNotes,
