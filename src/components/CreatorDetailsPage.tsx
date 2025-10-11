@@ -1147,11 +1147,29 @@ const ContractTab: React.FC<{
     setOpenMenuId(null);
     
     try {
-      // Dynamically import PDF libraries
-      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
-        import('jspdf'),
-        import('html2canvas')
-      ]);
+      // Load PDF libraries from CDN if not already loaded
+      if (!(window as any).jspdf) {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      }
+      
+      if (!(window as any).html2canvas) {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      }
+      
+      const jsPDF = (window as any).jspdf.jsPDF;
+      const html2canvas = (window as any).html2canvas;
       
       // Create hidden container for PDF generation
       const container = document.createElement('div');
