@@ -234,7 +234,7 @@ export class ContractService {
   }
 
   /**
-   * Delete contract
+   * Delete contract by ID
    */
   static async deleteContract(contractId: string): Promise<void> {
     try {
@@ -242,7 +242,7 @@ export class ContractService {
       await deleteDoc(contractRef);
     } catch (error) {
       console.error('Error deleting contract:', error);
-      throw error;
+      throw new Error('Failed to delete contract');
     }
   }
 }

@@ -21,7 +21,8 @@ import {
   Check,
   Clock,
   Plus,
-  Save
+  Save,
+  Trash2
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -494,6 +495,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
             creator={creator}
             contracts={contracts}
             loading={loadingContracts}
+            onReload={loadContracts}
           />
         )}
       </div>
@@ -1044,9 +1046,13 @@ const ContractTab: React.FC<{
   creator: OrgMember;
   contracts: ShareableContract[];
   loading: boolean;
-}> = ({ creator, contracts, loading }) => {
+  onReload: () => void;
+}> = ({ creator, contracts, loading, onReload }) => {
   const [currentPage, setCurrentPage] = React.useState(1);
   const [copiedLink, setCopiedLink] = React.useState<string | null>(null);
+  const [deletingContractId, setDeletingContractId] = React.useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+  const [contractToDelete, setContractToDelete] = React.useState<ShareableContract | null>(null);
   const itemsPerPage = 10;
 
   const totalPages = Math.ceil(contracts.length / itemsPerPage);
@@ -1063,12 +1069,42 @@ const ContractTab: React.FC<{
 
   const handleCopyLink = async (link: string, id: string) => {
     try {
-      await navigator.clipboard.writeText(link);
+      // Ensure we have the full URL
+      const fullUrl = link.startsWith('http') ? link : `${window.location.origin}${link}`;
+      await navigator.clipboard.writeText(fullUrl);
       setCopiedLink(id);
       setTimeout(() => setCopiedLink(null), 2000);
     } catch (error) {
       console.error('Error copying link:', error);
+      alert('Failed to copy link. Please try again.');
     }
+  };
+
+  const handleDeleteClick = (contract: ShareableContract) => {
+    setContractToDelete(contract);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!contractToDelete) return;
+
+    setDeletingContractId(contractToDelete.id);
+    try {
+      await ContractService.deleteContract(contractToDelete.id);
+      setShowDeleteConfirm(false);
+      setContractToDelete(null);
+      await onReload();
+    } catch (error) {
+      console.error('Error deleting contract:', error);
+      alert('Failed to delete contract. Please try again.');
+    } finally {
+      setDeletingContractId(null);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteConfirm(false);
+    setContractToDelete(null);
   };
 
   const getStatusBadge = (contract: ShareableContract) => {
@@ -1175,7 +1211,7 @@ const ContractTab: React.FC<{
                     Contract
                 </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    Status
+                    Status & Signatures
                 </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Period
@@ -1185,6 +1221,9 @@ const ContractTab: React.FC<{
                 </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Created
+                </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Actions
                 </th>
               </tr>
             </thead>
@@ -1199,12 +1238,36 @@ const ContractTab: React.FC<{
                       )}
                   </td>
 
-                    {/* Status */}
+                    {/* Status & Signatures */}
                   <td className="px-6 py-4">
                       {getStatusBadge(contract)}
-                      <div className="text-xs text-gray-500 mt-1">
-                        {contract.creatorSignature && <div>✓ Creator signed</div>}
-                        {contract.companySignature && <div>✓ Company signed</div>}
+                      <div className="mt-2 space-y-1">
+                        {contract.creatorSignature && (
+                          <div className="flex items-center gap-2">
+                            <Check className="w-3 h-3 text-green-400" />
+                            <span className="text-xs text-gray-400">Creator: {contract.creatorSignature.name}</span>
+                            {contract.creatorSignature.signatureData && (
+                              <img 
+                                src={contract.creatorSignature.signatureData} 
+                                alt="Creator Signature"
+                                className="h-6 border border-gray-700 rounded bg-white/5 px-1"
+                              />
+                            )}
+                          </div>
+                        )}
+                        {contract.companySignature && (
+                          <div className="flex items-center gap-2">
+                            <Check className="w-3 h-3 text-green-400" />
+                            <span className="text-xs text-gray-400">Company: {contract.companySignature.name}</span>
+                            {contract.companySignature.signatureData && (
+                              <img 
+                                src={contract.companySignature.signatureData} 
+                                alt="Company Signature"
+                                className="h-6 border border-gray-700 rounded bg-white/5 px-1"
+                              />
+                            )}
+                          </div>
+                        )}
                     </div>
                   </td>
 
@@ -1275,6 +1338,22 @@ const ContractTab: React.FC<{
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-400">
                       {formatDate(contract.createdAt)}
                   </td>
+
+                    {/* Actions */}
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <button
+                        onClick={() => handleDeleteClick(contract)}
+                        disabled={deletingContractId === contract.id}
+                        className="p-2 hover:bg-red-500/10 text-red-400 rounded transition-colors disabled:opacity-50"
+                        title="Delete Contract"
+                      >
+                        {deletingContractId === contract.id ? (
+                          <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </button>
+                    </td>
                 </tr>
               ))}
             </tbody>
@@ -1311,6 +1390,59 @@ const ContractTab: React.FC<{
         </div>
           )}
         </>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && contractToDelete && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#161616] border border-gray-800 rounded-2xl max-w-md w-full p-6">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-red-500/10 rounded-full">
+                <Trash2 className="w-6 h-6 text-red-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-white mb-2">Delete Contract?</h3>
+                <p className="text-sm text-gray-400 mb-4">
+                  Are you sure you want to delete this contract? This action cannot be undone.
+                </p>
+                <div className="bg-gray-800/50 rounded-lg p-3 mb-4">
+                  <div className="text-xs text-gray-500 mb-1">Contract</div>
+                  <div className="text-sm font-medium text-white">{getContractName(contractToDelete)}</div>
+                  {contractToDelete.paymentStructureName && (
+                    <div className="text-xs text-gray-400 mt-1">{contractToDelete.paymentStructureName}</div>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <Button
+                    onClick={handleDeleteCancel}
+                    variant="secondary"
+                    className="flex-1"
+                    disabled={deletingContractId !== null}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleDeleteConfirm}
+                    className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+                    disabled={deletingContractId !== null}
+                  >
+                    {deletingContractId ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
