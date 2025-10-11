@@ -48,7 +48,6 @@ const ContractEditorPage: React.FC = () => {
   // Payment structure state
   const [creatorPaymentStructure, setCreatorPaymentStructure] = useState<TieredPaymentStructure | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [savingPaymentStructure, setSavingPaymentStructure] = useState(false);
 
   // Generate storage key for the draft
   const getDraftKey = () => {
@@ -177,7 +176,6 @@ ${formattedTerms}
   const handleSavePaymentStructure = async (structure: TieredPaymentStructure) => {
     if (!currentOrgId || !currentProjectId || !creatorId) return;
 
-    setSavingPaymentStructure(true);
     try {
       const profile = await CreatorLinksService.getCreatorProfile(
         currentOrgId,
@@ -208,8 +206,6 @@ ${formattedTerms}
     } catch (error) {
       console.error('Error saving payment structure:', error);
       alert('Failed to save payment structure');
-    } finally {
-      setSavingPaymentStructure(false);
     }
   };
 
@@ -257,10 +253,6 @@ ${formattedTerms}
       alert('Please select a start date');
       return;
     }
-    if (!companyName.trim() || companyName === '[Your Company Name]') {
-      alert('Please enter a company name');
-      return;
-    }
     if (!clientName.trim()) {
       alert('Please enter a client name');
       return;
@@ -268,16 +260,17 @@ ${formattedTerms}
 
     setSharing(true);
     try {
-      await ContractService.createContract(
+      await ContractService.createShareableContract(
         currentOrgId,
         currentProjectId,
-        user.uid,
         creator.userId,
-        contractNotes,
+        clientName,
+        creator.email,
         contractStartDate,
         contractEndDate || 'Indefinite',
-        companyName,
-        clientName
+        contractNotes,
+        creatorPaymentStructure?.name,
+        user.uid
       );
 
       // Clear the draft on success
@@ -505,11 +498,11 @@ ${formattedTerms}
             <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
               <h2 className="text-lg font-semibold text-white mb-6">Preview</h2>
               <ContractPreview
-                companyName={companyName}
-                clientName={clientName}
-                startDate={contractStartDate}
-                endDate={contractEndDate || 'Indefinite'}
-                terms={contractNotes}
+                creatorName={clientName}
+                contractStartDate={contractStartDate}
+                contractEndDate={contractEndDate || 'Indefinite'}
+                contractNotes={contractNotes}
+                paymentStructureName={creatorPaymentStructure?.name}
               />
             </div>
           </div>

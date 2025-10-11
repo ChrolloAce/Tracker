@@ -202,6 +202,42 @@ class TieredPaymentService {
   }
 
   /**
+   * Format payment structure for contract insertion
+   */
+  static formatForContract(structure: TieredPaymentStructure): string {
+    const lines: string[] = [];
+    
+    lines.push(`Payment Structure: ${structure.name}`);
+    lines.push(`Currency: ${structure.currency || 'USD'}`);
+    lines.push('');
+    
+    structure.tiers.forEach((tier, index) => {
+      lines.push(`Tier ${index + 1}: ${tier.name}`);
+      
+      tier.components.forEach(comp => {
+        const label = this.generateComponentLabel(comp);
+        if (tier.appliesTo === 'per_video') {
+          lines.push(`  • ${label} (per video)`);
+        } else if (tier.appliesTo === 'milestone' && tier.milestoneCondition) {
+          const threshold = tier.milestoneCondition.threshold;
+          const thresholdStr = threshold >= 1000 
+            ? `${(threshold / 1000).toFixed(0)}K` 
+            : threshold.toString();
+          lines.push(`  • ${label} (when ${tier.milestoneCondition.type} reaches ${thresholdStr})`);
+        } else if (tier.appliesTo === 'per_campaign') {
+          lines.push(`  • ${label} (per campaign)`);
+        }
+      });
+      
+      if (index < structure.tiers.length - 1) {
+        lines.push('');
+      }
+    });
+    
+    return lines.join('\n');
+  }
+
+  /**
    * Mark a milestone tier as paid
    */
   static markTierAsPaid(
