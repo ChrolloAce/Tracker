@@ -35,11 +35,11 @@ const CreatorDetailsPageWrapper = () => {
       setError(null);
 
       // Get all creators/members from the organization
-      const members = await OrganizationService.getOrganizationMembers(currentOrgId);
+      const members = await OrganizationService.getOrgMembers(currentOrgId);
       
       // Find the specific creator
       const foundCreator = members.find(
-        (member) => member.userId === creatorId || member.email === creatorId
+        (member: OrgMember) => member.userId === creatorId || member.email === creatorId
       );
 
       if (!foundCreator) {
