@@ -45,6 +45,31 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
     loadData();
   }, [currentOrgId, currentProjectId, user, dateFilter]);
 
+  // Restore selected creator from localStorage after creators are loaded
+  useEffect(() => {
+    if (creators.length > 0 && !editingCreator) {
+      const savedCreatorId = localStorage.getItem('selectedCreatorId');
+      if (savedCreatorId) {
+        const creator = creators.find(c => c.userId === savedCreatorId);
+        if (creator) {
+          setEditingCreator(creator);
+        } else {
+          // Creator not found, clear the saved ID
+          localStorage.removeItem('selectedCreatorId');
+        }
+      }
+    }
+  }, [creators]);
+
+  // Save selected creator ID to localStorage
+  useEffect(() => {
+    if (editingCreator) {
+      localStorage.setItem('selectedCreatorId', editingCreator.userId);
+    } else {
+      localStorage.removeItem('selectedCreatorId');
+    }
+  }, [editingCreator]);
+
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
     openInviteModal: () => setShowInviteModal(true),
