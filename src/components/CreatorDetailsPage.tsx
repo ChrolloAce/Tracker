@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import clsx from 'clsx';
 import { useAuth } from '../contexts/AuthContext';
 import { OrgMember, Creator, TrackedAccount, Payout } from '../types/firestore';
 import CreatorLinksService from '../services/CreatorLinksService';
@@ -379,21 +378,42 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-6 mt-8 border-b border-gray-800">
-          {(['overview', 'accounts', 'payment', 'contract'] as const).map((tab) => (
+        {/* Tabs and Time Period Selector */}
+        <div className="flex items-center justify-between mt-8 border-b border-gray-800">
+          <div className="flex gap-6">
+            {(['overview', 'accounts', 'payment', 'contract'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-1 py-4 border-b-2 font-medium text-sm transition-colors capitalize ${
+                className={`px-1 py-4 border-b-2 font-medium text-sm transition-colors capitalize ${
                 activeTab === tab
-                  ? 'border-white text-white'
-                  : 'border-transparent text-gray-400 hover:text-gray-300'
+                    ? 'border-white text-white'
+                    : 'border-transparent text-gray-400 hover:text-gray-300'
               }`}
             >
               {tab === 'payment' ? 'Payment Terms' : tab === 'contract' ? 'Contract' : tab}
             </button>
           ))}
+          </div>
+
+          {/* Time Period Dropdown - Only show in Overview */}
+          {activeTab === 'overview' && (
+            <div className="relative mb-4">
+              <select
+                value={timePeriod}
+                onChange={(e) => setTimePeriod(e.target.value as any)}
+                className="pl-3 pr-10 py-2 bg-white/5 border border-white/10 hover:border-white/20 rounded-lg text-sm font-medium text-white/90 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all appearance-none cursor-pointer"
+              >
+                <option value="payment_period" className="bg-[#161616]">Payment Period</option>
+                <option value="last_7" className="bg-[#161616]">Last 7 Days</option>
+                <option value="last_30" className="bg-[#161616]">Last 30 Days</option>
+                <option value="all_time" className="bg-[#161616]">All Time</option>
+              </select>
+              <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          )}
         </div>
       </div>
 
@@ -407,7 +427,6 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
             payouts={payouts}
             recentVideos={recentVideos}
             timePeriod={timePeriod}
-            onTimePeriodChange={setTimePeriod}
             tieredPaymentStructure={tieredPaymentStructure}
             calculatedTotalEarnings={calculatedTotalEarnings}
             totalPending={totalPending}
@@ -502,11 +521,10 @@ const OverviewTab: React.FC<{
   payouts: Payout[];
   recentVideos: any[];
   timePeriod: 'payment_period' | 'last_30' | 'last_7' | 'all_time';
-  onTimePeriodChange: (period: 'payment_period' | 'last_30' | 'last_7' | 'all_time') => void;
   tieredPaymentStructure: TieredPaymentStructure | null;
   calculatedTotalEarnings: number;
   totalPending: number;
-}> = ({ profile, linkedAccounts, payouts, recentVideos, timePeriod, onTimePeriodChange, tieredPaymentStructure, calculatedTotalEarnings, totalPending }) => {
+}> = ({ profile, linkedAccounts, payouts, recentVideos, timePeriod, tieredPaymentStructure, calculatedTotalEarnings, totalPending }) => {
   const [hoveredVideo, setHoveredVideo] = React.useState<string | null>(null);
   const [showTooltip, setShowTooltip] = React.useState(false);
   const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -705,134 +723,80 @@ const OverviewTab: React.FC<{
           <div className="flex items-center gap-2 mb-1">
             <LinkIcon className="w-4 h-4 text-gray-400" />
             <span className="text-xs text-gray-400">Linked Accounts</span>
-          </div>
+            </div>
           <div className="text-2xl font-bold text-white">
             {linkedAccounts.length}
           </div>
-        </div>
+              </div>
         <div className="bg-[#0A0A0A] border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-all duration-200">
           <div className="flex items-center gap-2 mb-1">
             <DollarSign className="w-4 h-4 text-gray-400" />
             <span className="text-xs text-gray-400">Total Earned</span>
-          </div>
+            </div>
           <div className="text-2xl font-bold text-white">
             ${calculatedTotalEarnings.toFixed(2)}
-          </div>
         </div>
+      </div>
         <div className="bg-[#0A0A0A] border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-all duration-200">
           <div className="flex items-center gap-2 mb-1">
             <AlertCircle className="w-4 h-4 text-gray-400" />
             <span className="text-xs text-gray-400">Pending</span>
-          </div>
+            </div>
           <div className="text-2xl font-bold text-white">
             ${totalPending.toFixed(2)}
-          </div>
-        </div>
+                  </div>
+                  </div>
         <div className="bg-[#0A0A0A] border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-all duration-200">
           <div className="flex items-center gap-2 mb-1">
             <FileText className="w-4 h-4 text-gray-400" />
             <span className="text-xs text-gray-400">Payouts</span>
-          </div>
+                </div>
           <div className="text-2xl font-bold text-white">
             {payouts.length}
-          </div>
-        </div>
-      </div>
-
-      {/* Time Period Selector */}
-      <div className="bg-[#161616] rounded-xl border border-gray-800 p-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-gray-400">Time Period</h3>
-          <div className="flex gap-2">
-            <button
-              onClick={() => onTimePeriodChange('payment_period')}
-              className={clsx(
-                'px-4 py-2 rounded-lg text-sm font-medium transition-all',
-                timePeriod === 'payment_period'
-                  ? 'bg-white text-black'
-                  : 'bg-[#0A0A0A] text-gray-400 hover:text-white border border-gray-800 hover:border-gray-700'
-              )}
-            >
-              Payment Period
-            </button>
-            <button
-              onClick={() => onTimePeriodChange('last_7')}
-              className={clsx(
-                'px-4 py-2 rounded-lg text-sm font-medium transition-all',
-                timePeriod === 'last_7'
-                  ? 'bg-white text-black'
-                  : 'bg-[#0A0A0A] text-gray-400 hover:text-white border border-gray-800 hover:border-gray-700'
-              )}
-            >
-              Last 7 Days
-            </button>
-            <button
-              onClick={() => onTimePeriodChange('last_30')}
-              className={clsx(
-                'px-4 py-2 rounded-lg text-sm font-medium transition-all',
-                timePeriod === 'last_30'
-                  ? 'bg-white text-black'
-                  : 'bg-[#0A0A0A] text-gray-400 hover:text-white border border-gray-800 hover:border-gray-700'
-              )}
-            >
-              Last 30 Days
-            </button>
-            <button
-              onClick={() => onTimePeriodChange('all_time')}
-              className={clsx(
-                'px-4 py-2 rounded-lg text-sm font-medium transition-all',
-                timePeriod === 'all_time'
-                  ? 'bg-white text-black'
-                  : 'bg-[#0A0A0A] text-gray-400 hover:text-white border border-gray-800 hover:border-gray-700'
-              )}
-            >
-              All Time
-            </button>
-            </div>
-          </div>
               </div>
+          </div>
+            </div>
 
       {/* Video Performance */}
-      <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-            <Play className="w-5 h-5 text-gray-400" />
-            Video Breakdown & Payouts
-            <span className="text-sm font-normal text-gray-400">({filteredVideos.length})</span>
+      <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg overflow-hidden">
+        {/* Table Header */}
+        <div className="px-6 py-5 border-b border-white/5 bg-zinc-900/40">
+          <h2 className="text-lg font-semibold text-white">
+            Video Breakdown & Payouts ({filteredVideos.length})
         </h2>
           </div>
         
         {filteredVideos.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
+          <div className="px-6 py-16 text-center">
             <Play className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <p className="text-sm">No videos found</p>
-            <p className="text-xs text-gray-500 mt-1">
+            <h3 className="text-lg font-semibold text-white mb-2">No videos found</h3>
+            <p className="text-gray-400 max-w-sm mx-auto">
               Link accounts and sync videos to see performance
             </p>
       </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead>
+              <thead className="bg-zinc-900/40">
                 <tr className="border-b border-white/5">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Video
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Preview
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Date
                   </th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-center text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Views
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-right text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Payout
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="bg-zinc-900/60 divide-y divide-white/5">
                 {filteredVideos.map((video: any) => {
                   // Get account info for profile picture
                   const account = linkedAccounts.find(acc => acc.id === video.accountId);
@@ -840,10 +804,10 @@ const OverviewTab: React.FC<{
                   return (
                     <tr 
                       key={video.videoId}
-                      className="hover:bg-white/5 transition-colors"
+                      className="hover:bg-white/[0.02] transition-colors"
                     >
                       {/* Video Info */}
-                      <td className="px-4 py-3">
+                      <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="relative flex-shrink-0">
                             {account?.profilePicture ? (
@@ -886,42 +850,42 @@ const OverviewTab: React.FC<{
                       </td>
                       
                       {/* Thumbnail */}
-                      <td className="px-4 py-3">
+                      <td className="px-6 py-4">
                         {video.thumbnail ? (
                           <img
                             src={video.thumbnail}
                             alt={video.videoTitle}
-                            className="w-16 h-12 object-cover rounded"
+                            className="w-20 h-14 object-cover rounded-lg"
                           />
                         ) : (
-                          <div className="w-16 h-12 bg-gray-900 rounded flex items-center justify-center">
-                            <Play className="w-4 h-4 text-gray-700" />
+                          <div className="w-20 h-14 bg-zinc-800 rounded-lg flex items-center justify-center">
+                            <Play className="w-5 h-5 text-gray-600" />
             </div>
           )}
                       </td>
                       
                       {/* Upload Date */}
-                      <td className="px-4 py-3">
+                      <td className="px-6 py-4">
                         <div className="text-sm text-gray-400">
                           {formatDate(video.uploadDate)}
                         </div>
                       </td>
                       
                       {/* Views */}
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex items-center justify-center gap-1 text-white">
-                          <Eye className="w-3 h-3 text-gray-400" />
-                          <span className="text-sm">{formatNumber(video.views)}</span>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <Eye className="w-4 h-4 text-gray-400" />
+                          <span className="text-sm font-medium text-white">{formatNumber(video.views)}</span>
         </div>
                       </td>
                       
                       {/* Payout */}
                       <td 
-                        className="px-4 py-3 text-right relative"
+                        className="px-6 py-4 text-right relative"
                         onMouseEnter={() => handleMouseEnter(video.videoId)}
                         onMouseLeave={handleMouseLeave}
                       >
-                        <div className="text-sm text-white">
+                        <div className="text-sm font-semibold text-white">
                           ${video.earnings.toFixed(2)}
       </div>
                         
@@ -945,6 +909,18 @@ const OverviewTab: React.FC<{
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {filteredVideos.length > 0 && (
+          <div className="px-6 py-4 border-t border-white/5 flex items-center justify-between">
+            <div className="text-sm text-gray-400">
+              Showing {filteredVideos.length} {filteredVideos.length === 1 ? 'video' : 'videos'}
+            </div>
+            <div className="text-xs text-gray-500">
+              Pagination coming soon
+            </div>
           </div>
         )}
       </div>
