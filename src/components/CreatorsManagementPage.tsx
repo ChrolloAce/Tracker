@@ -8,7 +8,7 @@ import CreatorLinksService from '../services/CreatorLinksService';
 import FirestoreDataService from '../services/FirestoreDataService';
 import DateFilterService from '../services/DateFilterService';
 import { DateFilterType } from './DateRangeFilter';
-import { User, TrendingUp } from 'lucide-react';
+import { User, TrendingUp, Plus } from 'lucide-react';
 import CreateCreatorModal from './CreateCreatorModal';
 import EditCreatorModal from './EditCreatorModal';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
@@ -391,6 +391,15 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
           }}
         />
       )}
+
+      {/* Floating Action Button - Add Creator */}
+      <button
+        onClick={() => setShowInviteModal(true)}
+        className="fixed bottom-8 right-8 w-14 h-14 bg-white text-black rounded-full shadow-2xl hover:bg-gray-100 transition-all duration-200 flex items-center justify-center z-40 hover:scale-110"
+        title="Add Creator"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
     </div>
   );
 });
