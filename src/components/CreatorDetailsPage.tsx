@@ -150,16 +150,16 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
     if (total === 0 && creatorProfile?.customPaymentTerms) {
       const terms = creatorProfile.customPaymentTerms;
 
-      filteredVideos.forEach((video: any) => {
-        let videoEarnings = 0;
+    filteredVideos.forEach((video: any) => {
+      let videoEarnings = 0;
 
-        switch (terms.type) {
-          case 'flat_fee':
-            videoEarnings = terms.baseAmount || 0;
-            break;
+      switch (terms.type) {
+        case 'flat_fee':
+          videoEarnings = terms.baseAmount || 0;
+          break;
 
-          case 'base_cpm':
-            const views = video.views || 0;
+        case 'base_cpm':
+          const views = video.views || 0;
           const cpmEarnings = (views / 1000) * (terms.cpmRate || 0);
           videoEarnings = (terms.baseAmount || 0) + cpmEarnings;
           break;
@@ -187,8 +187,8 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
           break;
       }
 
-        total += videoEarnings;
-      });
+      total += videoEarnings;
+    });
     }
 
     setCalculatedTotalEarnings(total);
@@ -346,7 +346,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   return (
     <div className="h-full flex flex-col bg-[#0A0A0A]">
       {/* Header */}
-      <div className="bg-[#161616] border-b border-gray-800 px-6 py-5">
+      <div className="px-6 pt-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
@@ -1100,7 +1100,7 @@ const ContractTab: React.FC<{
     const hasCompanySigned = !!contract.companySignature;
 
     if (hasCreatorSigned && hasCompanySigned) {
-      return (
+  return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
           <Check className="w-3 h-3" />
           Fully Signed
@@ -1153,10 +1153,10 @@ const ContractTab: React.FC<{
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+        <h2 className="text-xl font-semibold text-white flex items-center gap-2">
             <FileText className="w-5 h-5 text-gray-400" />
             Contracts ({contracts.length})
-          </h2>
+        </h2>
           <p className="text-sm text-gray-400 mt-1">Manage contracts for {creator.displayName || creator.email}</p>
         </div>
         <Button
@@ -1191,27 +1191,27 @@ const ContractTab: React.FC<{
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto">
-            <table className="w-full">
+        <div className="overflow-x-auto">
+          <table className="w-full">
               <thead className="bg-gray-800/50 border-b border-gray-800">
-                <tr>
+              <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Contract
-                  </th>
+                </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Status
-                  </th>
+                </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Period
-                  </th>
+                </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Links
-                  </th>
+                </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Created
-                  </th>
-                </tr>
-              </thead>
+                </th>
+              </tr>
+            </thead>
               <tbody className="divide-y divide-gray-800">
                 {paginatedContracts.map((contract) => (
                   <tr key={contract.id} className="hover:bg-gray-800/20 transition-colors">
@@ -1221,24 +1221,24 @@ const ContractTab: React.FC<{
                       {contract.paymentStructureName && (
                         <div className="text-xs text-gray-500 mt-0.5">{contract.paymentStructureName}</div>
                       )}
-                    </td>
+                  </td>
 
                     {/* Status */}
-                    <td className="px-6 py-4">
+                  <td className="px-6 py-4">
                       {getStatusBadge(contract)}
                       <div className="text-xs text-gray-500 mt-1">
                         {contract.creatorSignature && <div>✓ Creator signed</div>}
                         {contract.companySignature && <div>✓ Company signed</div>}
-                      </div>
-                    </td>
+                    </div>
+                  </td>
 
                     {/* Period */}
                     <td className="px-6 py-4 text-sm text-gray-400 whitespace-nowrap">
                       {formatDate(contract.contractStartDate)} - {formatDate(contract.contractEndDate)}
-                    </td>
+                  </td>
 
                     {/* Links */}
-                    <td className="px-6 py-4">
+                  <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         {/* Creator Link */}
                         <div className="flex items-center gap-1">
@@ -1293,16 +1293,16 @@ const ContractTab: React.FC<{
                           <span className="text-xs text-purple-400/60">Company</span>
                         </div>
                       </div>
-                    </td>
+                  </td>
 
                     {/* Created Date */}
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-400">
                       {formatDate(contract.createdAt)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
           </div>
 
           {/* Pagination */}
@@ -1332,7 +1332,7 @@ const ContractTab: React.FC<{
                   Next
                 </Button>
               </div>
-            </div>
+        </div>
           )}
         </>
       )}
