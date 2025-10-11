@@ -22,6 +22,10 @@ export interface ContractTemplate {
   createdBy?: string;
   createdAt?: Timestamp;
   updatedAt: Timestamp;
+  // Additional template fields
+  companyName?: string;
+  contractStartDate?: string;
+  contractEndDate?: string;
 }
 
 export class TemplateService {
@@ -35,7 +39,10 @@ export class TemplateService {
     name: string,
     description: string,
     terms: string,
-    createdBy: string
+    createdBy: string,
+    companyName?: string,
+    contractStartDate?: string,
+    contractEndDate?: string
   ): Promise<ContractTemplate> {
     const templateId = `template-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const now = Timestamp.now();
@@ -50,6 +57,9 @@ export class TemplateService {
       createdBy,
       createdAt: now,
       updatedAt: now,
+      companyName,
+      contractStartDate,
+      contractEndDate,
     };
 
     const templateRef = doc(db, this.TEMPLATES_COLLECTION, templateId);

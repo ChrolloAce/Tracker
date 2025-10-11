@@ -7,7 +7,12 @@ import { useAuth } from '../contexts/AuthContext';
 
 interface ChangeTemplateModalProps {
   onClose: () => void;
-  onSelectTemplate: (terms: string) => void;
+  onSelectTemplate: (template: { 
+    terms: string; 
+    companyName?: string; 
+    contractStartDate?: string; 
+    contractEndDate?: string;
+  }) => void;
   hasUnsavedChanges?: boolean;
 }
 
@@ -35,7 +40,12 @@ const ChangeTemplateModal: React.FC<ChangeTemplateModalProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'updated'>('updated');
   const [showConfirm, setShowConfirm] = useState(false);
-  const [pendingTemplate, setPendingTemplate] = useState<string | null>(null);
+  const [pendingTemplate, setPendingTemplate] = useState<{ 
+    terms: string; 
+    companyName?: string; 
+    contractStartDate?: string; 
+    contractEndDate?: string;
+  } | null>(null);
 
   useEffect(() => {
     if (activeTab === 'saved' && currentOrgId) {
@@ -62,12 +72,17 @@ const ChangeTemplateModal: React.FC<ChangeTemplateModalProps> = ({
     localStorage.setItem('lastTemplateTab', tab);
   };
 
-  const handleSelectTemplate = (terms: string) => {
+  const handleSelectTemplate = (template: { 
+    terms: string; 
+    companyName?: string; 
+    contractStartDate?: string; 
+    contractEndDate?: string;
+  }) => {
     if (hasUnsavedChanges) {
-      setPendingTemplate(terms);
+      setPendingTemplate(template);
       setShowConfirm(true);
     } else {
-      onSelectTemplate(terms);
+      onSelectTemplate(template);
       onClose();
     }
   };
@@ -256,7 +271,12 @@ const ChangeTemplateModal: React.FC<ChangeTemplateModalProps> = ({
                           )}
                         </div>
                         <Button
-                          onClick={() => handleSelectTemplate(template.terms)}
+                          onClick={() => handleSelectTemplate({
+                            terms: template.terms,
+                            companyName: template.companyName,
+                            contractStartDate: template.contractStartDate,
+                            contractEndDate: template.contractEndDate
+                          })}
                           className="flex-shrink-0"
                         >
                           Use

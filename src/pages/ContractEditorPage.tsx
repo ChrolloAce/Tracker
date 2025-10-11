@@ -114,9 +114,17 @@ const ContractEditorPage: React.FC = () => {
 
   const hasUnsavedChanges = contractNotes !== initialContractNotes && contractNotes.trim().length > 0;
 
-  const handleSelectTemplate = (terms: string) => {
-    setContractNotes(terms);
-    setInitialContractNotes(terms);
+  const handleSelectTemplate = (template: { 
+    terms: string; 
+    companyName?: string; 
+    contractStartDate?: string; 
+    contractEndDate?: string;
+  }) => {
+    setContractNotes(template.terms);
+    setInitialContractNotes(template.terms);
+    if (template.companyName) setCompanyName(template.companyName);
+    if (template.contractStartDate) setContractStartDate(template.contractStartDate);
+    if (template.contractEndDate !== undefined) setContractEndDate(template.contractEndDate);
     setShowChangeTemplateModal(false);
   };
 
@@ -133,7 +141,10 @@ const ContractEditorPage: React.FC = () => {
         templateName.trim(),
         templateDescription.trim() || 'Custom contract template',
         contractNotes,
-        user.uid
+        user.uid,
+        companyName,
+        contractStartDate,
+        contractEndDate
       );
       
       // Show success toast
