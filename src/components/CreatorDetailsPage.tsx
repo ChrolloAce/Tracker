@@ -1251,7 +1251,7 @@ const ContractTab: React.FC<{
                 ` : `
                   <div style="border-bottom: 1px solid #000000; height: 40px; margin-bottom: 4px;"></div>
                 `}
-                <div style="font-size: 12px; color: #666666;">[Authorized Signatory]</div>
+                <div style="font-size: 12px; color: #666666;">${contract.companySignature?.name || '[Authorized Signatory]'}</div>
                 ${contract.companySignature ? `
                   <div style="font-size: 10px; color: #999999; margin-top: 4px;">Signed: ${contract.companySignature.signedAt.toDate().toLocaleDateString()}</div>
                 ` : ''}

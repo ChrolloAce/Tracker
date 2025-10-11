@@ -1,5 +1,13 @@
 import React from 'react';
 import { FileText } from 'lucide-react';
+import { Timestamp } from 'firebase/firestore';
+
+interface ContractSignature {
+  name: string;
+  signedAt: Timestamp;
+  signatureData?: string;
+  ipAddress?: string;
+}
 
 interface ContractPreviewProps {
   creatorName: string;
@@ -8,6 +16,8 @@ interface ContractPreviewProps {
   contractEndDate: string;
   contractNotes: string;
   paymentStructureName?: string;
+  creatorSignature?: ContractSignature | null;
+  companySignature?: ContractSignature | null;
 }
 
 const ContractPreview: React.FC<ContractPreviewProps> = ({
@@ -16,7 +26,9 @@ const ContractPreview: React.FC<ContractPreviewProps> = ({
   contractStartDate,
   contractEndDate,
   contractNotes,
-  paymentStructureName
+  paymentStructureName,
+  creatorSignature,
+  companySignature
 }) => {
   const formatDate = (dateString: string) => {
     if (!dateString || dateString === 'Indefinite') return dateString || 'Not specified';
@@ -124,13 +136,49 @@ const ContractPreview: React.FC<ContractPreviewProps> = ({
       <div className="mt-6 pt-6 border-t border-white/10 grid grid-cols-2 gap-8">
         <div>
           <div className="text-xs text-gray-500 mb-2">Creator Signature</div>
-          <div className="border-b border-white/20 pb-1 mb-1"></div>
-          <div className="text-xs text-gray-400">{creatorName}</div>
+          {creatorSignature?.signatureData ? (
+            <>
+              <div className="mb-2">
+                <img 
+                  src={creatorSignature.signatureData} 
+                  alt="Creator Signature" 
+                  className="max-w-full h-auto max-h-16 bg-white rounded px-2 py-1"
+                />
+              </div>
+              <div className="text-xs text-gray-400">{creatorSignature.name}</div>
+              <div className="text-xs text-gray-500 mt-1">
+                Signed: {creatorSignature.signedAt.toDate().toLocaleDateString()}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="border-b border-white/20 pb-1 mb-1 h-12"></div>
+              <div className="text-xs text-gray-400">{creatorName}</div>
+            </>
+          )}
         </div>
         <div>
           <div className="text-xs text-gray-500 mb-2">Company Representative</div>
-          <div className="border-b border-white/20 pb-1 mb-1"></div>
-          <div className="text-xs text-gray-400">[Authorized Signatory]</div>
+          {companySignature?.signatureData ? (
+            <>
+              <div className="mb-2">
+                <img 
+                  src={companySignature.signatureData} 
+                  alt="Company Signature" 
+                  className="max-w-full h-auto max-h-16 bg-white rounded px-2 py-1"
+                />
+              </div>
+              <div className="text-xs text-gray-400">{companySignature.name}</div>
+              <div className="text-xs text-gray-500 mt-1">
+                Signed: {companySignature.signedAt.toDate().toLocaleDateString()}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="border-b border-white/20 pb-1 mb-1 h-12"></div>
+              <div className="text-xs text-gray-400">[Authorized Signatory]</div>
+            </>
+          )}
         </div>
       </div>
     </div>

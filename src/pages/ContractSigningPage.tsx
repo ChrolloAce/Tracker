@@ -197,11 +197,24 @@ const ContractSigningPage: React.FC = () => {
                     <div className="text-sm text-gray-400 mb-2">Creator Signature</div>
                     {contract.creatorSignature ? (
                       <div className="bg-white/5 border border-green-500/20 rounded-lg p-4">
-                        <Check className="w-5 h-5 text-green-500 mb-2" />
-                        <div className="text-white font-medium">{contract.creatorSignature.name}</div>
-                        <div className="text-xs text-gray-400 mt-1">
-                          Signed {contract.creatorSignature.signedAt.toDate().toLocaleDateString()}
+                        <div className="flex items-start gap-2 mb-3">
+                          <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-1" />
+                          <div className="flex-1">
+                            <div className="text-white font-medium">{contract.creatorSignature.name}</div>
+                            <div className="text-xs text-gray-400 mt-1">
+                              Signed {contract.creatorSignature.signedAt.toDate().toLocaleDateString()}
+                            </div>
+                          </div>
                         </div>
+                        {contract.creatorSignature.signatureData && (
+                          <div className="mt-3 pt-3 border-t border-white/10">
+                            <img 
+                              src={contract.creatorSignature.signatureData} 
+                              alt="Creator Signature" 
+                              className="max-w-full h-auto max-h-24 bg-white rounded px-2 py-1"
+                            />
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="bg-white/5 border border-dashed border-white/10 rounded-lg p-4">
@@ -216,11 +229,24 @@ const ContractSigningPage: React.FC = () => {
                     <div className="text-sm text-gray-400 mb-2">Company Representative</div>
                     {contract.companySignature ? (
                       <div className="bg-white/5 border border-green-500/20 rounded-lg p-4">
-                        <Check className="w-5 h-5 text-green-500 mb-2" />
-                        <div className="text-white font-medium">{contract.companySignature.name}</div>
-                        <div className="text-xs text-gray-400 mt-1">
-                          Signed {contract.companySignature.signedAt.toDate().toLocaleDateString()}
+                        <div className="flex items-start gap-2 mb-3">
+                          <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-1" />
+                          <div className="flex-1">
+                            <div className="text-white font-medium">{contract.companySignature.name}</div>
+                            <div className="text-xs text-gray-400 mt-1">
+                              Signed {contract.companySignature.signedAt.toDate().toLocaleDateString()}
+                            </div>
+                          </div>
                         </div>
+                        {contract.companySignature.signatureData && (
+                          <div className="mt-3 pt-3 border-t border-white/10">
+                            <img 
+                              src={contract.companySignature.signatureData} 
+                              alt="Company Signature" 
+                              className="max-w-full h-auto max-h-24 bg-white rounded px-2 py-1"
+                            />
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="bg-white/5 border border-dashed border-white/10 rounded-lg p-4">
