@@ -22,7 +22,8 @@ import {
   Clock,
   Plus,
   Save,
-  Trash2
+  Trash2,
+  MoreVertical
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -1053,6 +1054,7 @@ const ContractTab: React.FC<{
   const [deletingContractId, setDeletingContractId] = React.useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [contractToDelete, setContractToDelete] = React.useState<ShareableContract | null>(null);
+  const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
   const itemsPerPage = 10;
 
   const totalPages = Math.ceil(contracts.length / itemsPerPage);
@@ -1241,34 +1243,6 @@ const ContractTab: React.FC<{
                     {/* Status & Signatures */}
                   <td className="px-6 py-4">
                       {getStatusBadge(contract)}
-                      <div className="mt-2 space-y-1">
-                        {contract.creatorSignature && (
-                          <div className="flex items-center gap-2">
-                            <Check className="w-3 h-3 text-green-400" />
-                            <span className="text-xs text-gray-400">Creator: {contract.creatorSignature.name}</span>
-                            {contract.creatorSignature.signatureData && (
-                              <img 
-                                src={contract.creatorSignature.signatureData} 
-                                alt="Creator Signature"
-                                className="h-6 border border-gray-700 rounded bg-white/5 px-1"
-                              />
-                            )}
-                          </div>
-                        )}
-                        {contract.companySignature && (
-                          <div className="flex items-center gap-2">
-                            <Check className="w-3 h-3 text-green-400" />
-                            <span className="text-xs text-gray-400">Company: {contract.companySignature.name}</span>
-                            {contract.companySignature.signatureData && (
-                              <img 
-                                src={contract.companySignature.signatureData} 
-                                alt="Company Signature"
-                                className="h-6 border border-gray-700 rounded bg-white/5 px-1"
-                              />
-                            )}
-                          </div>
-                        )}
-                    </div>
                   </td>
 
                     {/* Period */}
@@ -1340,19 +1314,46 @@ const ContractTab: React.FC<{
                   </td>
 
                     {/* Actions */}
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <td className="px-6 py-4 whitespace-nowrap text-right relative">
                       <button
-                        onClick={() => handleDeleteClick(contract)}
-                        disabled={deletingContractId === contract.id}
-                        className="p-2 hover:bg-red-500/10 text-red-400 rounded transition-colors disabled:opacity-50"
-                        title="Delete Contract"
+                        onClick={() => setOpenMenuId(openMenuId === contract.id ? null : contract.id)}
+                        className="p-2 hover:bg-white/5 text-gray-400 hover:text-white rounded transition-colors"
+                        title="More Options"
                       >
-                        {deletingContractId === contract.id ? (
-                          <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <Trash2 className="w-4 h-4" />
-                        )}
+                        <MoreVertical className="w-4 h-4" />
                       </button>
+                      
+                      {/* Dropdown Menu */}
+                      {openMenuId === contract.id && (
+                        <>
+                          <div 
+                            className="fixed inset-0 z-40" 
+                            onClick={() => setOpenMenuId(null)}
+                          />
+                          <div className="absolute right-0 top-full mt-1 w-48 bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-xl z-50 py-1">
+                            <button
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                handleDeleteClick(contract);
+                              }}
+                              disabled={deletingContractId === contract.id}
+                              className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2 disabled:opacity-50"
+                            >
+                              {deletingContractId === contract.id ? (
+                                <>
+                                  <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                                  <span>Deleting...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Trash2 className="w-4 h-4" />
+                                  <span>Delete Contract</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </td>
                 </tr>
               ))}

@@ -241,62 +241,6 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
     return parts.join(', ');
   };
 
-  // Calculate example earnings for a video
-  const calculateExample = (views: number): { total: number; breakdown: string[] } => {
-    if (!structure || !structure.tiers) return { total: 0, breakdown: [] };
-
-    let total = 0;
-    const breakdown: string[] = [];
-
-    structure.tiers.forEach(tier => {
-      if (tier.appliesTo === 'per_video') {
-        tier.components.forEach(comp => {
-          let amount = 0;
-          let desc = '';
-
-          if (comp.type === 'flat_fee') {
-            amount = comp.amount;
-            desc = `$${amount} flat fee`;
-          } else if (comp.type === 'cpm') {
-            if (!comp.minViews || views >= comp.minViews) {
-              const eligibleViews = comp.minViews ? views - comp.minViews : views;
-              amount = (eligibleViews / 1000) * comp.amount;
-              // Apply cap if set
-              if (comp.maxAmount && amount > comp.maxAmount) {
-                amount = comp.maxAmount;
-                desc = `$${amount.toFixed(2)} (capped)`;
-              } else {
-                desc = `$${amount.toFixed(2)} (${(eligibleViews / 1000).toFixed(1)}K views × $${comp.amount} CPM)`;
-              }
-            }
-          } else if (comp.type === 'per_view') {
-            if (!comp.minViews || views >= comp.minViews) {
-              const eligibleViews = comp.minViews ? views - comp.minViews : views;
-              amount = eligibleViews * comp.amount;
-              desc = `$${amount.toFixed(2)} (${eligibleViews.toLocaleString()} views × $${comp.amount})`;
-            }
-          }
-
-          if (amount > 0) {
-            total += amount;
-            breakdown.push(desc);
-          }
-        });
-      } else if (tier.appliesTo === 'milestone' && tier.milestoneCondition) {
-        if (tier.milestoneCondition.type === 'views' && views >= tier.milestoneCondition.threshold) {
-          tier.components.forEach(comp => {
-            if (comp.type === 'bonus') {
-              total += comp.amount;
-              breakdown.push(`$${comp.amount} bonus (${(tier.milestoneCondition!.threshold / 1000).toFixed(0)}K milestone)`);
-            }
-          });
-        }
-      }
-    });
-
-    return { total, breakdown };
-  };
-
   // Template Selection View
   if (showTemplates && !structure) {
     return (
@@ -371,8 +315,6 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
   }
 
   const summary = generateSummary();
-  const example1M = calculateExample(1000000);
-  const example100K = calculateExample(100000);
 
   // Collapsed/Read-Only View
   if (!isEditing) {
@@ -409,41 +351,6 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
             </button>
           </div>
         </div>
-
-        {/* Example Calculations */}
-        {structure.tiers && structure.tiers.length > 0 && (
-          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-            <h4 className="text-xs font-medium text-gray-400 mb-3">Example Earnings</h4>
-            
-            <div className="space-y-3">
-              {/* 100K example */}
-              <div>
-                <div className="flex items-baseline justify-between mb-1">
-                  <span className="text-sm text-gray-300">Video with 100K views</span>
-                  <span className="text-lg font-bold text-white">${example100K.total.toLocaleString()}</span>
-                </div>
-                {example100K.breakdown.length > 0 && (
-                  <div className="text-xs text-gray-500">
-                    {example100K.breakdown.join(' + ')}
-                  </div>
-                )}
-              </div>
-
-              {/* 1M example */}
-              <div>
-                <div className="flex items-baseline justify-between mb-1">
-                  <span className="text-sm text-gray-300">Video with 1M views</span>
-                  <span className="text-lg font-bold text-white">${example1M.total.toLocaleString()}</span>
-                </div>
-                {example1M.breakdown.length > 0 && (
-                  <div className="text-xs text-gray-500">
-                    {example1M.breakdown.join(' + ')}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     );
   }
