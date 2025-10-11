@@ -401,11 +401,9 @@ const TieredPaymentBuilder: React.FC<TieredPaymentBuilderProps> = ({ value, onCh
             </button>
             <button
               onClick={() => {
-                if (confirm('Switch to a different template? Current changes will be lost.')) {
-                  setStructure(null);
-                  setShowTemplates(true);
-                  setIsEditing(false);
-                }
+                setStructure(null);
+                setShowTemplates(true);
+                setIsEditing(false);
               }}
               className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 rounded-lg text-sm font-medium transition-colors"
             >
