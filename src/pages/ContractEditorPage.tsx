@@ -2,16 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ContractService } from '../services/ContractService';
+import { TemplateService } from '../services/TemplateService';
 import OrganizationService from '../services/OrganizationService';
 import { OrgMember } from '../types/firestore';
-import { CONTRACT_TEMPLATES, ContractTemplate } from '../types/contracts';
 import { 
   ArrowLeft, 
   FileText, 
-  Share2
+  Share2,
+  Save,
+  CheckCircle
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import ContractPreview from '../components/ContractPreview';
+import ChangeTemplateModal from '../components/ChangeTemplateModal';
 
 const ContractEditorPage: React.FC = () => {
   const { creatorId } = useParams<{ creatorId: string }>();
@@ -25,9 +28,53 @@ const ContractEditorPage: React.FC = () => {
   const [contractStartDate, setContractStartDate] = useState('');
   const [contractEndDate, setContractEndDate] = useState('');
   const [contractNotes, setContractNotes] = useState('');
+  const [initialContractNotes, setInitialContractNotes] = useState('');
   const [paymentStructureName, setPaymentStructureName] = useState('');
   
-  const [showTemplates, setShowTemplates] = useState(true);
+  const [showChangeTemplateModal, setShowChangeTemplateModal] = useState(false);
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [templateDescription, setTemplateDescription] = useState('');
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+
+  // Generate storage key for the draft
+  const getDraftKey = () => {
+    return `contract_editor_draft_${currentOrgId}_${currentProjectId}_${creatorId}`;
+  };
+
+  // Load draft from localStorage on mount
+  useEffect(() => {
+    const savedDraft = localStorage.getItem(getDraftKey());
+    if (savedDraft) {
+      try {
+        const draft = JSON.parse(savedDraft);
+        if (draft.contractStartDate) setContractStartDate(draft.contractStartDate);
+        if (draft.contractEndDate) setContractEndDate(draft.contractEndDate);
+        if (draft.contractNotes) {
+          setContractNotes(draft.contractNotes);
+          setInitialContractNotes(draft.contractNotes);
+        }
+        if (draft.paymentStructureName) setPaymentStructureName(draft.paymentStructureName);
+      } catch (error) {
+        console.error('Error loading contract draft:', error);
+      }
+    }
+  }, [creatorId]);
+
+  // Save draft to localStorage whenever fields change
+  useEffect(() => {
+    if (contractStartDate || contractEndDate || contractNotes || paymentStructureName) {
+      const draft = {
+        contractStartDate,
+        contractEndDate,
+        contractNotes,
+        paymentStructureName,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem(getDraftKey(), JSON.stringify(draft));
+    }
+  }, [contractStartDate, contractEndDate, contractNotes, paymentStructureName]);
 
   useEffect(() => {
     loadCreator();
@@ -48,19 +95,44 @@ const ContractEditorPage: React.FC = () => {
     }
   };
 
-  const handleSelectTemplate = (template: ContractTemplate) => {
-    setContractNotes(template.terms);
-    
-    if (template.duration && !contractStartDate) {
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setMonth(endDate.getMonth() + template.duration.months);
-      
-      setContractStartDate(startDate.toISOString().split('T')[0]);
-      setContractEndDate(endDate.toISOString().split('T')[0]);
+  const hasUnsavedChanges = contractNotes !== initialContractNotes && contractNotes.trim().length > 0;
+
+  const handleSelectTemplate = (terms: string) => {
+    setContractNotes(terms);
+    setInitialContractNotes(terms);
+    setShowChangeTemplateModal(false);
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!currentOrgId || !user || !templateName.trim() || !contractNotes.trim()) {
+      alert('Please provide a template name and contract content');
+      return;
     }
-    
-    setShowTemplates(false);
+
+    setSavingTemplate(true);
+    try {
+      await TemplateService.saveTemplate(
+        currentOrgId,
+        templateName.trim(),
+        templateDescription.trim() || 'Custom contract template',
+        contractNotes,
+        user.uid
+      );
+      
+      // Show success toast
+      setShowSuccessToast(true);
+      setTimeout(() => setShowSuccessToast(false), 3000);
+      
+      // Reset modal
+      setShowSaveTemplateModal(false);
+      setTemplateName('');
+      setTemplateDescription('');
+    } catch (error) {
+      console.error('Error saving template:', error);
+      alert('Failed to save template. Please try again.');
+    } finally {
+      setSavingTemplate(false);
+    }
   };
 
   const handleShareContract = async () => {
@@ -88,6 +160,9 @@ const ContractEditorPage: React.FC = () => {
         paymentStructureName || undefined,
         user.uid
       );
+
+      // Clear the draft on success
+      localStorage.removeItem(getDraftKey());
 
       // Redirect back to creator details
       navigate(-1);
@@ -148,160 +223,205 @@ const ContractEditorPage: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto p-6">
-        {showTemplates && !contractNotes ? (
-          <div className="grid grid-cols-2 gap-6 h-[calc(100vh-200px)]">
-            <div className="bg-[#161616] rounded-xl border border-gray-800 p-6 overflow-y-auto">
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold text-white mb-2">Choose a Template</h2>
-                <p className="text-sm text-gray-400">Select a contract template to get started</p>
-              </div>
-
-              <div className="space-y-3 mb-6">
-                {CONTRACT_TEMPLATES.map((template) => (
-                  <button
-                    key={template.id}
-                    onClick={() => handleSelectTemplate(template)}
-                    className="w-full text-left p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg transition-all group"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="text-2xl">{template.icon}</div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-white font-medium text-sm group-hover:text-white/90">{template.name}</h4>
-                        <p className="text-xs text-gray-400 mt-0.5">{template.description}</p>
-                        {template.duration && (
-                          <p className="text-xs text-gray-500 mt-1">Duration: {template.duration.months} months</p>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              <button
-                onClick={() => setShowTemplates(false)}
-                className="w-full px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-white font-medium text-sm transition-all"
-              >
-                Start from Scratch
-              </button>
-            </div>
-
-            <div className="overflow-y-auto">
-              <ContractPreview
-                creatorName={creator.displayName || creator.email || 'Creator'}
-                contractStartDate={contractStartDate}
-                contractEndDate={contractEndDate}
-                contractNotes={contractNotes || 'Select a template to preview contract terms...'}
-                paymentStructureName={paymentStructureName}
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-6 h-[calc(100vh-200px)]">
-            {/* Left: Editor */}
-            <div className="bg-[#161616] rounded-xl border border-gray-800 p-6 overflow-y-auto">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-white">Contract Details</h2>
+        <div className="grid grid-cols-2 gap-6 h-[calc(100vh-200px)]">
+          {/* Left: Editor */}
+          <div className="bg-[#161616] rounded-xl border border-gray-800 p-6 overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-white">Contract Details</h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowChangeTemplateModal(true)}
+                  className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition-colors"
+                >
+                  Use Template
+                </button>
                 {contractNotes && (
                   <button
-                    onClick={() => setShowTemplates(true)}
-                    className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition-colors"
+                    onClick={() => setShowSaveTemplateModal(true)}
+                    className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
                   >
-                    Use Template
+                    <Save className="w-3.5 h-3.5" />
+                    Save as Template
                   </button>
                 )}
               </div>
+            </div>
 
-              <div className="space-y-6">
-                {/* Payment Structure Name */}
+            <div className="space-y-6">
+              {/* Payment Structure Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Payment Structure Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={paymentStructureName}
+                  onChange={(e) => setPaymentStructureName(e.target.value)}
+                  placeholder="e.g., Standard Creator Payment"
+                  className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50"
+                />
+              </div>
+
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Payment Structure Name (Optional)
+                    Start Date *
                   </label>
                   <input
-                    type="text"
-                    value={paymentStructureName}
-                    onChange={(e) => setPaymentStructureName(e.target.value)}
-                    placeholder="e.g., Standard Creator Payment"
-                    className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50"
+                    type="date"
+                    value={contractStartDate}
+                    onChange={(e) => setContractStartDate(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50"
                   />
                 </div>
-
-                {/* Dates */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Start Date *
-                    </label>
-                    <input
-                      type="date"
-                      value={contractStartDate}
-                      onChange={(e) => setContractStartDate(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      End Date *
-                    </label>
-                    <input
-                      type="date"
-                      value={contractEndDate}
-                      onChange={(e) => setContractEndDate(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50"
-                    />
-                  </div>
-                </div>
-
-                {/* Terms */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Contract Terms & Conditions *
+                    End Date *
                   </label>
-                  <textarea
-                    value={contractNotes}
-                    onChange={(e) => setContractNotes(e.target.value)}
-                    rows={15}
-                    placeholder="Enter contract terms..."
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 resize-none"
+                  <input
+                    type="date"
+                    value={contractEndDate}
+                    onChange={(e) => setContractEndDate(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50"
                   />
                 </div>
+              </div>
 
-                {/* Buttons */}
-                <div className="flex gap-3">
-                  <Button
-                    onClick={handleShareContract}
-                    disabled={sharing || !contractStartDate || !contractEndDate || !contractNotes}
-                    className="flex-1 flex items-center justify-center gap-2"
-                  >
-                    {sharing ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      <>
-                        <Share2 className="w-4 h-4" />
-                        Create & Share Contract
-                      </>
-                    )}
-                  </Button>
-                </div>
+              {/* Terms */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Contract Terms & Conditions *
+                </label>
+                <textarea
+                  value={contractNotes}
+                  onChange={(e) => setContractNotes(e.target.value)}
+                  rows={15}
+                  placeholder="Enter contract terms or use a template..."
+                  className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 resize-none"
+                />
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleShareContract}
+                  disabled={sharing || !contractStartDate || !contractEndDate || !contractNotes}
+                  className="flex-1 flex items-center justify-center gap-2"
+                >
+                  {sharing ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Share2 className="w-4 h-4" />
+                      Create & Share Contract
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
+          </div>
 
-            {/* Right: Preview */}
-            <div className="overflow-y-auto">
-              <ContractPreview
-                creatorName={creator.displayName || creator.email || 'Creator'}
-                contractStartDate={contractStartDate}
-                contractEndDate={contractEndDate}
-                contractNotes={contractNotes}
-                paymentStructureName={paymentStructureName}
-              />
+          {/* Right: Preview */}
+          <div className="overflow-y-auto">
+            <ContractPreview
+              creatorName={creator.displayName || creator.email || 'Creator'}
+              contractStartDate={contractStartDate}
+              contractEndDate={contractEndDate}
+              contractNotes={contractNotes || 'Enter contract terms to see preview...'}
+              paymentStructureName={paymentStructureName}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Change Template Modal */}
+      {showChangeTemplateModal && (
+        <ChangeTemplateModal
+          onClose={() => setShowChangeTemplateModal(false)}
+          onSelectTemplate={handleSelectTemplate}
+          hasUnsavedChanges={hasUnsavedChanges}
+        />
+      )}
+
+      {/* Save Template Modal */}
+      {showSaveTemplateModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <div className="bg-[#161616] border border-gray-800 rounded-2xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-white mb-4">Save as Template</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Template Name *
+                </label>
+                <input
+                  type="text"
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  placeholder="e.g., My Standard Contract"
+                  className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50"
+                  disabled={savingTemplate}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Description (Optional)
+                </label>
+                <textarea
+                  value={templateDescription}
+                  onChange={(e) => setTemplateDescription(e.target.value)}
+                  placeholder="Brief description of this template..."
+                  rows={3}
+                  className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 resize-none"
+                  disabled={savingTemplate}
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setShowSaveTemplateModal(false)}
+                  disabled={savingTemplate}
+                  className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveTemplate}
+                  disabled={savingTemplate || !templateName.trim()}
+                  className="flex-1 px-4 py-2.5 bg-white hover:bg-gray-100 text-black rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {savingTemplate ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      Save Template
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Success Toast */}
+      {showSuccessToast && (
+        <div className="fixed bottom-6 right-6 z-[110] animate-in slide-in-from-bottom">
+          <div className="bg-green-500/20 border border-green-500/50 rounded-lg px-6 py-3 flex items-center gap-3">
+            <CheckCircle className="w-5 h-5 text-green-400" />
+            <span className="text-white font-medium">Template saved successfully!</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
