@@ -5,7 +5,7 @@ import { OrgMember, Creator } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
 import CreatorLinksService from '../services/CreatorLinksService';
 import FirestoreDataService from '../services/FirestoreDataService';
-import { Link as LinkIcon, DollarSign, User, X, Edit3, Users as UsersIcon, TrendingUp } from 'lucide-react';
+import { User, TrendingUp } from 'lucide-react';
 import CreateCreatorModal from './CreateCreatorModal';
 import EditCreatorModal from './EditCreatorModal';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
@@ -33,7 +33,6 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
   const [linkingCreator, setLinkingCreator] = useState<OrgMember | null>(null);
   const [editingCreator, setEditingCreator] = useState<OrgMember | null>(null);
   const [editingPaymentCreator, setEditingPaymentCreator] = useState<OrgMember | null>(null);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -187,27 +186,6 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
       console.error('Failed to load creators:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleRemoveCreator = async (userId: string) => {
-    if (!currentOrgId || !currentProjectId || !user) return;
-    
-    if (!window.confirm('Are you sure you want to remove this creator from this project? This will unlink all their accounts in this project.')) {
-      return;
-    }
-
-    setActionLoading(userId);
-    try {
-      // Remove all creator links from THIS PROJECT
-      await CreatorLinksService.removeAllCreatorLinks(currentOrgId, currentProjectId, userId);
-      
-      await loadData();
-    } catch (error) {
-      console.error('Failed to remove creator:', error);
-      alert('Failed to remove creator from project');
-    } finally {
-      setActionLoading(null);
     }
   };
 
