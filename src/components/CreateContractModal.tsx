@@ -1,20 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { X, FileText, Loader2, UserCheck, Target, Crown, Video, Save } from 'lucide-react';
+import { X, FileText, Loader2, Save } from 'lucide-react';
 import { Button } from './ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import OrganizationService from '../services/OrganizationService';
 import { ContractService } from '../services/ContractService';
+import { TemplateService } from '../services/TemplateService';
 import { OrgMember } from '../types/firestore';
-import { CONTRACT_TEMPLATES } from '../types/contracts';
-
-// Icon mapping for contract templates
-const CONTRACT_ICON_MAP: Record<string, React.ComponentType<any>> = {
-  FileText,
-  Handshake: UserCheck, // Using UserCheck as Handshake alternative
-  Target,
-  Crown,
-  Video,
-};
+import ChangeTemplateModal from './ChangeTemplateModal';
 
 interface CreateContractModalProps {
   onClose: () => void;
@@ -31,9 +23,11 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
   const [paymentStructureName, setPaymentStructureName] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingCreators, setLoadingCreators] = useState(true);
-  const [showTemplates, setShowTemplates] = useState(true);
+  const [showChangeTemplateModal, setShowChangeTemplateModal] = useState(false);
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
   const [templateName, setTemplateName] = useState('');
+  const [templateDescription, setTemplateDescription] = useState('');
+  const [savingTemplate, setSavingTemplate] = useState(false);
 
   useEffect(() => {
     loadCreators();
@@ -55,22 +49,39 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
     }
   };
 
-  const handleSelectTemplate = (templateId: string) => {
-    const template = CONTRACT_TEMPLATES.find(t => t.id === templateId);
-    if (template) {
-      setContractNotes(template.terms);
+  const handleSelectTemplate = (template: { id: string; terms: string; name: string }) => {
+    setContractNotes(template.terms);
+    setShowChangeTemplateModal(false);
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!currentOrgId || !user || !templateName.trim() || !contractNotes.trim()) {
+      alert('Please provide a template name and contract content');
+      return;
+    }
+
+    setSavingTemplate(true);
+    try {
+      await TemplateService.createTemplate(
+        currentOrgId,
+        templateName.trim(),
+        templateDescription.trim() || 'Custom template',
+        contractNotes,
+        user.uid
+      );
       
-      // Set dates if template has duration
-      if (template.duration) {
-        const startDate = new Date();
-        const endDate = new Date();
-        endDate.setMonth(endDate.getMonth() + template.duration.months);
-        
-        setContractStartDate(startDate.toISOString().split('T')[0]);
-        setContractEndDate(endDate.toISOString().split('T')[0]);
-      }
+      // Show success message
+      alert('Template saved successfully!');
       
-      setShowTemplates(false);
+      // Reset modal
+      setShowSaveTemplateModal(false);
+      setTemplateName('');
+      setTemplateDescription('');
+    } catch (error) {
+      console.error('Error saving template:', error);
+      alert('Failed to save template. Please try again.');
+    } finally {
+      setSavingTemplate(false);
     }
   };
 
@@ -142,48 +153,7 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
-          {showTemplates ? (
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-lg font-medium text-white mb-2">Choose a Template</h3>
-                <p className="text-sm text-gray-400">Select a contract template to get started</p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3">
-                {CONTRACT_TEMPLATES.map((template) => {
-                  const IconComponent = CONTRACT_ICON_MAP[template.icon] || FileText;
-                  return (
-                    <button
-                      key={template.id}
-                      onClick={() => handleSelectTemplate(template.id)}
-                      className="text-left p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg transition-all group"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 p-2.5 bg-white/5 rounded-lg">
-                          <IconComponent className="w-5 h-5 text-white/80" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-white font-medium text-sm group-hover:text-white/90">{template.name}</h4>
-                          <p className="text-xs text-gray-400 mt-0.5">{template.description}</p>
-                          {template.duration && (
-                            <p className="text-xs text-gray-500 mt-1">Duration: {template.duration.months} months</p>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <button
-                onClick={() => setShowTemplates(false)}
-                className="w-full px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-white font-medium text-sm transition-all"
-              >
-                Start from Scratch
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-6">
+          <div className="space-y-6">
               {/* Creator Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -256,27 +226,25 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
                     Contract Terms & Conditions *
                   </label>
                   <button
-                    onClick={() => setShowTemplates(true)}
-                    className="text-xs text-gray-400 hover:text-white transition-colors"
+                    onClick={() => setShowChangeTemplateModal(true)}
+                    className="px-3 py-1.5 text-xs bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 rounded-lg transition-colors font-medium"
                   >
-                    Use Template
+                    Change Template
                   </button>
                 </div>
                 <textarea
                   value={contractNotes}
                   onChange={(e) => setContractNotes(e.target.value)}
                   rows={12}
-                  placeholder="Enter contract terms..."
+                  placeholder="Start from scratch or click 'Change Template' above..."
                   className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 resize-none"
                 />
               </div>
-            </div>
-          )}
+          </div>
         </div>
 
         {/* Footer */}
-        {!showTemplates && (
-          <div className="flex items-center justify-between p-6 border-t border-gray-800">
+        <div className="flex items-center justify-between p-6 border-t border-gray-800">
             <Button
               onClick={() => setShowSaveTemplateModal(true)}
               variant="secondary"
@@ -312,7 +280,14 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
                 )}
               </Button>
             </div>
-          </div>
+        </div>
+
+        {/* Change Template Modal */}
+        {showChangeTemplateModal && (
+          <ChangeTemplateModal
+            onClose={() => setShowChangeTemplateModal(false)}
+            onSelectTemplate={handleSelectTemplate}
+          />
         )}
 
         {/* Save Template Modal */}
@@ -324,42 +299,55 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
                   <Save className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-white mb-2">Save Contract as Template</h3>
+                  <h3 className="text-lg font-semibold text-white mb-2">Save as Template</h3>
                   <p className="text-sm text-gray-400 mb-4">
-                    Give your contract terms a name to save as a reusable template.
+                    Save this contract to your templates for future use
                   </p>
-                  <input
-                    type="text"
-                    value={templateName}
-                    onChange={(e) => setTemplateName(e.target.value)}
-                    placeholder="Enter template name..."
-                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/20 mb-4"
-                    autoFocus
-                  />
+                  <div className="space-y-3 mb-4">
+                    <input
+                      type="text"
+                      value={templateName}
+                      onChange={(e) => setTemplateName(e.target.value)}
+                      placeholder="Template name (required)..."
+                      className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/20"
+                      autoFocus
+                    />
+                    <input
+                      type="text"
+                      value={templateDescription}
+                      onChange={(e) => setTemplateDescription(e.target.value)}
+                      placeholder="Brief description (optional)..."
+                      className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/20"
+                    />
+                  </div>
                   <div className="flex gap-3">
                     <button
                       onClick={() => {
                         setShowSaveTemplateModal(false);
                         setTemplateName('');
+                        setTemplateDescription('');
                       }}
-                      className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg text-sm font-medium transition-colors"
+                      disabled={savingTemplate}
+                      className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                     >
                       Cancel
                     </button>
                     <button
-                      onClick={() => {
-                        if (templateName.trim()) {
-                          // For now, just show an alert. In production, you'd save to localStorage or database
-                          alert(`Contract template "${templateName}" saved! (Note: This is a demo - implement actual save functionality)`);
-                          setShowSaveTemplateModal(false);
-                          setTemplateName('');
-                        }
-                      }}
-                      disabled={!templateName.trim()}
+                      onClick={handleSaveTemplate}
+                      disabled={!templateName.trim() || savingTemplate}
                       className="flex-1 px-4 py-2 bg-white hover:bg-gray-200 text-black rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
-                      <Save className="w-4 h-4" />
-                      Save Template
+                      {savingTemplate ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4" />
+                          Save Template
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
