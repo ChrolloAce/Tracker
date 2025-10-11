@@ -8,8 +8,6 @@ import FirestoreDataService from '../services/FirestoreDataService';
 import TieredPaymentService from '../services/TieredPaymentService';
 import { ContractService } from '../services/ContractService';
 import { ShareableContract } from '../types/contract';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import { 
   ArrowLeft, 
   Link as LinkIcon, 
@@ -1148,123 +1146,131 @@ const ContractTab: React.FC<{
   const handleDownloadContract = async (contract: ShareableContract) => {
     setOpenMenuId(null);
     
-    // Create hidden container for PDF generation
-    const container = document.createElement('div');
-    container.style.position = 'fixed';
-    container.style.left = '-9999px';
-    container.style.width = '800px';
-    container.style.backgroundColor = '#ffffff';
-    container.style.padding = '40px';
-    container.style.fontFamily = 'Arial, sans-serif';
-    
-    // Build contract HTML
-    container.innerHTML = `
-      <div style="color: #000000;">
-        <div style="border-bottom: 2px solid #000000; padding-bottom: 20px; margin-bottom: 30px;">
-          <h1 style="font-size: 28px; font-weight: bold; margin: 0 0 8px 0;">CREATOR CONTRACT</h1>
-          <p style="font-size: 14px; color: #666666; margin: 0;">Content Creation Agreement</p>
-        </div>
+    try {
+      // Dynamically import PDF libraries
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import('jspdf'),
+        import('html2canvas')
+      ]);
+      
+      // Create hidden container for PDF generation
+      const container = document.createElement('div');
+      container.style.position = 'fixed';
+      container.style.left = '-9999px';
+      container.style.width = '800px';
+      container.style.backgroundColor = '#ffffff';
+      container.style.padding = '40px';
+      container.style.fontFamily = 'Arial, sans-serif';
+      
+      // Build contract HTML
+      container.innerHTML = `
+        <div style="color: #000000;">
+          <div style="border-bottom: 2px solid #000000; padding-bottom: 20px; margin-bottom: 30px;">
+            <h1 style="font-size: 28px; font-weight: bold; margin: 0 0 8px 0;">CREATOR CONTRACT</h1>
+            <p style="font-size: 14px; color: #666666; margin: 0;">Content Creation Agreement</p>
+          </div>
 
-        <div style="margin-bottom: 30px;">
-          <div style="font-size: 11px; color: #999999; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">PARTIES</div>
-          <div style="margin-bottom: 8px;">
-            <span style="color: #666666;">Creator: </span>
-            <span style="font-weight: 600;">${contract.creatorName}</span>
+          <div style="margin-bottom: 30px;">
+            <div style="font-size: 11px; color: #999999; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">PARTIES</div>
+            <div style="margin-bottom: 8px;">
+              <span style="color: #666666;">Creator: </span>
+              <span style="font-weight: 600;">${contract.creatorName}</span>
+            </div>
+            <div>
+              <span style="color: #666666;">Company: </span>
+              <span style="font-weight: 600;">${contract.creatorName} (Representative)</span>
+            </div>
           </div>
-          <div>
-            <span style="color: #666666;">Company: </span>
-            <span style="font-weight: 600;">${contract.creatorName} (Representative)</span>
-          </div>
-        </div>
 
-        ${contract.contractStartDate ? `
-        <div style="margin-bottom: 30px;">
-          <div style="font-size: 11px; color: #999999; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">CONTRACT PERIOD</div>
-          <div style="margin-bottom: 8px;">
-            <span style="color: #666666;">Start Date: </span>
-            <span>${formatDateForDisplay(contract.contractStartDate)}</span>
-          </div>
-          ${contract.contractEndDate && contract.contractEndDate !== 'Indefinite' ? `
-          <div>
-            <span style="color: #666666;">End Date: </span>
-            <span>${formatDateForDisplay(contract.contractEndDate)}</span>
+          ${contract.contractStartDate ? `
+          <div style="margin-bottom: 30px;">
+            <div style="font-size: 11px; color: #999999; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">CONTRACT PERIOD</div>
+            <div style="margin-bottom: 8px;">
+              <span style="color: #666666;">Start Date: </span>
+              <span>${formatDateForDisplay(contract.contractStartDate)}</span>
+            </div>
+            ${contract.contractEndDate && contract.contractEndDate !== 'Indefinite' ? `
+            <div>
+              <span style="color: #666666;">End Date: </span>
+              <span>${formatDateForDisplay(contract.contractEndDate)}</span>
+            </div>
+            ` : ''}
           </div>
           ` : ''}
-        </div>
-        ` : ''}
 
-        ${contract.paymentStructureName ? `
-        <div style="margin-bottom: 30px;">
-          <div style="font-size: 11px; color: #999999; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">PAYMENT STRUCTURE</div>
-          <div>${contract.paymentStructureName}</div>
-        </div>
-        ` : ''}
+          ${contract.paymentStructureName ? `
+          <div style="margin-bottom: 30px;">
+            <div style="font-size: 11px; color: #999999; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">PAYMENT STRUCTURE</div>
+            <div>${contract.paymentStructureName}</div>
+          </div>
+          ` : ''}
 
-        ${contract.contractNotes ? `
-        <div style="margin-bottom: 40px;">
-          <div style="font-size: 11px; color: #999999; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; border-bottom: 1px solid #e0e0e0; padding-bottom: 8px;">TERMS & CONDITIONS</div>
-          <div style="font-size: 14px; line-height: 1.8; white-space: pre-wrap;">${contract.contractNotes}</div>
-        </div>
-        ` : ''}
+          ${contract.contractNotes ? `
+          <div style="margin-bottom: 40px;">
+            <div style="font-size: 11px; color: #999999; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; border-bottom: 1px solid #e0e0e0; padding-bottom: 8px;">TERMS & CONDITIONS</div>
+            <div style="font-size: 14px; line-height: 1.8; white-space: pre-wrap;">${contract.contractNotes}</div>
+          </div>
+          ` : ''}
 
-        <div style="margin-top: 50px; padding-top: 30px; border-top: 2px solid #000000;">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px;">
-            <div>
-              <div style="font-size: 11px; color: #999999; margin-bottom: 8px;">Creator Signature</div>
-              ${contract.creatorSignature?.signatureData ? `
-                <img src="${contract.creatorSignature.signatureData}" alt="Creator Signature" style="max-width: 200px; height: auto; margin-bottom: 4px;" />
-              ` : `
-                <div style="border-bottom: 1px solid #000000; height: 40px; margin-bottom: 4px;"></div>
-              `}
-              <div style="font-size: 12px; color: #666666;">${contract.creatorName}</div>
-              ${contract.creatorSignature ? `
-                <div style="font-size: 10px; color: #999999; margin-top: 4px;">Signed: ${contract.creatorSignature.signedAt.toDate().toLocaleDateString()}</div>
-              ` : ''}
-            </div>
-            <div>
-              <div style="font-size: 11px; color: #999999; margin-bottom: 8px;">Company Representative</div>
-              ${contract.companySignature?.signatureData ? `
-                <img src="${contract.companySignature.signatureData}" alt="Company Signature" style="max-width: 200px; height: auto; margin-bottom: 4px;" />
-              ` : `
-                <div style="border-bottom: 1px solid #000000; height: 40px; margin-bottom: 4px;"></div>
-              `}
-              <div style="font-size: 12px; color: #666666;">[Authorized Signatory]</div>
-              ${contract.companySignature ? `
-                <div style="font-size: 10px; color: #999999; margin-top: 4px;">Signed: ${contract.companySignature.signedAt.toDate().toLocaleDateString()}</div>
-              ` : ''}
+          <div style="margin-top: 50px; padding-top: 30px; border-top: 2px solid #000000;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px;">
+              <div>
+                <div style="font-size: 11px; color: #999999; margin-bottom: 8px;">Creator Signature</div>
+                ${contract.creatorSignature?.signatureData ? `
+                  <img src="${contract.creatorSignature.signatureData}" alt="Creator Signature" style="max-width: 200px; height: auto; margin-bottom: 4px;" />
+                ` : `
+                  <div style="border-bottom: 1px solid #000000; height: 40px; margin-bottom: 4px;"></div>
+                `}
+                <div style="font-size: 12px; color: #666666;">${contract.creatorName}</div>
+                ${contract.creatorSignature ? `
+                  <div style="font-size: 10px; color: #999999; margin-top: 4px;">Signed: ${contract.creatorSignature.signedAt.toDate().toLocaleDateString()}</div>
+                ` : ''}
+              </div>
+              <div>
+                <div style="font-size: 11px; color: #999999; margin-bottom: 8px;">Company Representative</div>
+                ${contract.companySignature?.signatureData ? `
+                  <img src="${contract.companySignature.signatureData}" alt="Company Signature" style="max-width: 200px; height: auto; margin-bottom: 4px;" />
+                ` : `
+                  <div style="border-bottom: 1px solid #000000; height: 40px; margin-bottom: 4px;"></div>
+                `}
+                <div style="font-size: 12px; color: #666666;">[Authorized Signatory]</div>
+                ${contract.companySignature ? `
+                  <div style="font-size: 10px; color: #999999; margin-top: 4px;">Signed: ${contract.companySignature.signedAt.toDate().toLocaleDateString()}</div>
+                ` : ''}
+              </div>
             </div>
           </div>
+
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; text-align: center; font-size: 12px; color: #999999;">
+            Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+          </div>
         </div>
+      `;
 
-        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; text-align: center; font-size: 12px; color: #999999;">
-          Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-        </div>
-      </div>
-    `;
+      document.body.appendChild(container);
 
-    document.body.appendChild(container);
+      try {
+        // Generate canvas from HTML
+        const canvas = await html2canvas(container, {
+          scale: 2,
+          backgroundColor: '#ffffff',
+          logging: false
+        });
 
-    try {
-      // Generate canvas from HTML
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        backgroundColor: '#ffffff',
-        logging: false
-      });
+        // Create PDF
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const imgData = canvas.toDataURL('image/png');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-      // Create PDF
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgData = canvas.toDataURL('image/png');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Contract_${contract.creatorName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`Contract_${contract.creatorName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+      } finally {
+        document.body.removeChild(container);
+      }
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Failed to generate PDF. Please try again.');
-    } finally {
-      document.body.removeChild(container);
     }
   };
 

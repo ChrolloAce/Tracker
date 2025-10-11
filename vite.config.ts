@@ -8,20 +8,15 @@ export default defineConfig({
     global: 'globalThis',
   },
   optimizeDeps: {
-    include: ['apify-client', 'jspdf', 'html2canvas'],
+    include: ['apify-client'],
   },
   build: {
-    commonjsOptions: {
-      include: [/jspdf/, /html2canvas/, /node_modules/],
-      transformMixedEsModules: true,
-    },
     rollupOptions: {
       external: [],
       output: {
         manualChunks: {
           'apify-vendor': ['apify-client'],
           'chart-vendor': ['recharts'],
-          'pdf-vendor': ['jspdf', 'html2canvas'],
         },
       },
     },
