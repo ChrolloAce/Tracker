@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, FileText, UserCheck, Target, Crown, Video, Search, Clock, TrendingUp } from 'lucide-react';
+import { X, FileText, UserCheck, Target, Crown, Video, Search, Clock } from 'lucide-react';
 import { Button } from './ui/Button';
 import { CONTRACT_TEMPLATES } from '../types/contracts';
 import { TemplateService, ContractTemplate } from '../services/TemplateService';
