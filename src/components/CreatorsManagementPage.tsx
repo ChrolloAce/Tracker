@@ -5,6 +5,8 @@ import { OrgMember, Creator } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
 import CreatorLinksService from '../services/CreatorLinksService';
 import FirestoreDataService from '../services/FirestoreDataService';
+import DateFilterService from '../services/DateFilterService';
+import { DateFilterType } from './DateRangeFilter';
 import { User, TrendingUp } from 'lucide-react';
 import CreateCreatorModal from './CreateCreatorModal';
 import EditCreatorModal from './EditCreatorModal';
@@ -18,11 +20,16 @@ export interface CreatorsManagementPageRef {
   refreshData?: () => Promise<void>;
 }
 
+interface CreatorsManagementPageProps {
+  dateFilter?: DateFilterType;
+}
+
 /**
  * CreatorsManagementPage
  * Admin interface to manage creators, link accounts, and track payouts
  */
-const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props, ref) => {
+const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsManagementPageProps>((props, ref) => {
+  const { dateFilter = 'all' } = props;
   const { user, currentOrgId, currentProjectId } = useAuth();
   const [creators, setCreators] = useState<OrgMember[]>([]);
   const [creatorProfiles, setCreatorProfiles] = useState<Map<string, Creator>>(new Map());
@@ -36,7 +43,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
 
   useEffect(() => {
     loadData();
-  }, [currentOrgId, currentProjectId, user]);
+  }, [currentOrgId, currentProjectId, user, dateFilter]);
 
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
@@ -90,7 +97,19 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, {}>((_props
         }
       });
       
-      const allVideos = (await Promise.all(videosPromises)).flat();
+      let allVideos = (await Promise.all(videosPromises)).flat();
+      
+      // Apply date filter
+      if (dateFilter !== 'all') {
+        const dateRange = DateFilterService.getDateRange(dateFilter);
+        if (dateRange) {
+          allVideos = allVideos.filter((video: any) => {
+            const uploadDate = video.uploadDate?.toDate ? video.uploadDate.toDate() : new Date(video.uploadDate);
+            return uploadDate >= dateRange.startDate && uploadDate <= dateRange.endDate;
+          });
+        }
+      }
+      
       const videoCount = allVideos.length;
       
       if (!profile.customPaymentTerms || allVideos.length === 0) {

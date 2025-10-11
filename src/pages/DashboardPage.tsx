@@ -86,6 +86,8 @@ function DashboardPage() {
   const [linksDateFilter, setLinksDateFilter] = useState<DateFilterType>('last30days');
   const [linksCustomDateRange, setLinksCustomDateRange] = useState<DateRange | undefined>();
   
+  // Creators date filter state
+  const [creatorsDateFilter, setCreatorsDateFilter] = useState<DateFilterType>('all');
 
   // Save active tab to localStorage whenever it changes
   useEffect(() => {
@@ -764,6 +766,14 @@ function DashboardPage() {
               />
             </div>
           )}
+          {activeTab === 'creators' && (
+            <div className="flex items-center space-x-4">
+              <DateRangeFilter
+                selectedFilter={creatorsDateFilter}
+                onFilterChange={(filter) => setCreatorsDateFilter(filter)}
+              />
+            </div>
+          )}
         </div>
       </header>
 
@@ -844,7 +854,7 @@ function DashboardPage() {
 
           {/* Creators Tab - Show appropriate view based on role */}
           {activeTab === 'creators' && (
-            userRole === 'creator' ? <CreatorPortalPage /> : <CreatorsManagementPage ref={creatorsPageRef} />
+            userRole === 'creator' ? <CreatorPortalPage /> : <CreatorsManagementPage ref={creatorsPageRef} dateFilter={creatorsDateFilter} />
           )}
 
           {/* Other Tabs - Placeholder */}
