@@ -10,11 +10,13 @@ import {
   FileText, 
   Share2,
   Save,
-  CheckCircle
+  CheckCircle,
+  Plus
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import ContractPreview from '../components/ContractPreview';
 import ChangeTemplateModal from '../components/ChangeTemplateModal';
+import { PAYMENT_TIER_TEMPLATES } from '../types/payments';
 
 const ContractEditorPage: React.FC = () => {
   const { creatorId } = useParams<{ creatorId: string }>();
@@ -126,6 +128,17 @@ const ContractEditorPage: React.FC = () => {
     if (template.contractStartDate) setContractStartDate(template.contractStartDate);
     if (template.contractEndDate !== undefined) setContractEndDate(template.contractEndDate);
     setShowChangeTemplateModal(false);
+  };
+
+  const handleInsertPaymentTerms = (templateId: string) => {
+    const template = PAYMENT_TIER_TEMPLATES.find(t => t.id === templateId);
+    if (!template) return;
+
+    // Format the payment structure as text
+    const paymentText = `\n\n===== PAYMENT TERMS =====\n\n${template.name}\n${template.description}\n\n${template.example}\n\n`;
+    
+    // Insert at the end of the contract
+    setContractNotes(contractNotes + paymentText);
   };
 
   const handleSaveTemplate = async () => {
@@ -334,6 +347,32 @@ const ContractEditorPage: React.FC = () => {
                     className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50"
                   />
                 </div>
+              </div>
+
+              {/* Payment Terms Dropdown */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Add Payment Terms (Optional)
+                </label>
+                <select
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleInsertPaymentTerms(e.target.value);
+                      e.target.value = ''; // Reset dropdown
+                    }
+                  }}
+                  className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50"
+                >
+                  <option value="">Select payment structure to insert...</option>
+                  {PAYMENT_TIER_TEMPLATES.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Selecting a payment structure will add it to your contract terms
+                </p>
               </div>
 
               {/* Terms */}
