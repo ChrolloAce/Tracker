@@ -29,7 +29,8 @@ const ContractEditorPage: React.FC = () => {
   const [contractEndDate, setContractEndDate] = useState('');
   const [contractNotes, setContractNotes] = useState('');
   const [initialContractNotes, setInitialContractNotes] = useState('');
-  const [paymentStructureName, setPaymentStructureName] = useState('');
+  const [companyName, setCompanyName] = useState('[Your Company Name]');
+  const [clientName, setClientName] = useState('');
   
   const [showChangeTemplateModal, setShowChangeTemplateModal] = useState(false);
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
@@ -50,40 +51,47 @@ const ContractEditorPage: React.FC = () => {
       try {
         const draft = JSON.parse(savedDraft);
         if (draft.contractStartDate) setContractStartDate(draft.contractStartDate);
-        if (draft.contractEndDate) setContractEndDate(draft.contractEndDate);
+        if (draft.contractEndDate !== undefined) setContractEndDate(draft.contractEndDate);
         if (draft.contractNotes) {
           setContractNotes(draft.contractNotes);
           setInitialContractNotes(draft.contractNotes);
         }
-        if (draft.paymentStructureName) setPaymentStructureName(draft.paymentStructureName);
+        if (draft.companyName) setCompanyName(draft.companyName);
+        if (draft.clientName) setClientName(draft.clientName);
       } catch (error) {
         console.error('Error loading contract draft:', error);
       }
     } else {
-      // Set default dates if no draft exists
+      // Set default start date to today if no draft exists
       const today = new Date();
       setContractStartDate(today.toISOString().split('T')[0]);
       
-      // Set end date to 5 years from now (indefinite/long-term contract)
-      const endDate = new Date();
-      endDate.setFullYear(endDate.getFullYear() + 5);
-      setContractEndDate(endDate.toISOString().split('T')[0]);
+      // Leave end date empty (no default) - most contracts don't have an end date
+      setContractEndDate('');
     }
   }, [creatorId]);
 
+  // Pre-fill client name when creator is loaded
+  useEffect(() => {
+    if (creator && !clientName) {
+      setClientName(creator.displayName || creator.email || '');
+    }
+  }, [creator]);
+
   // Save draft to localStorage whenever fields change
   useEffect(() => {
-    if (contractStartDate || contractEndDate || contractNotes || paymentStructureName) {
+    if (contractStartDate || contractEndDate || contractNotes || companyName || clientName) {
       const draft = {
         contractStartDate,
         contractEndDate,
         contractNotes,
-        paymentStructureName,
+        companyName,
+        clientName,
         timestamp: Date.now(),
       };
       localStorage.setItem(getDraftKey(), JSON.stringify(draft));
     }
-  }, [contractStartDate, contractEndDate, contractNotes, paymentStructureName]);
+  }, [contractStartDate, contractEndDate, contractNotes, companyName, clientName]);
 
   useEffect(() => {
     loadCreator();
@@ -150,8 +158,13 @@ const ContractEditorPage: React.FC = () => {
       return;
     }
 
-    if (!contractStartDate || !contractEndDate || !contractNotes) {
-      alert('Please fill in all contract details');
+    if (!contractStartDate || !contractNotes) {
+      alert('Please fill in start date and contract terms');
+      return;
+    }
+
+    if (!companyName || !clientName) {
+      alert('Please fill in company name and client name');
       return;
     }
 
@@ -161,12 +174,12 @@ const ContractEditorPage: React.FC = () => {
         currentOrgId,
         currentProjectId,
         creator.userId,
-        creator.displayName || 'Creator',
+        clientName,
         creator.email || '',
         contractStartDate,
-        contractEndDate,
+        contractEndDate || 'Indefinite',
         contractNotes,
-        paymentStructureName || undefined,
+        undefined,
         user.uid
       );
 
@@ -257,18 +270,32 @@ const ContractEditorPage: React.FC = () => {
             </div>
 
             <div className="space-y-6">
-              {/* Payment Structure Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Payment Structure Name (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={paymentStructureName}
-                  onChange={(e) => setPaymentStructureName(e.target.value)}
-                  placeholder="e.g., Standard Creator Payment"
-                  className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50"
-                />
+              {/* Company and Client Names */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Company Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    placeholder="Your Company Name"
+                    className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Client Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={clientName}
+                    onChange={(e) => setClientName(e.target.value)}
+                    placeholder="Creator Name"
+                    className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50"
+                  />
+                </div>
               </div>
 
               {/* Dates */}
@@ -286,13 +313,14 @@ const ContractEditorPage: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    End Date *
+                    End Date (Optional)
                   </label>
                   <input
                     type="date"
                     value={contractEndDate}
                     onChange={(e) => setContractEndDate(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/50"
+                    placeholder="Leave empty for indefinite contract"
+                    className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50"
                   />
                 </div>
               </div>
@@ -315,7 +343,7 @@ const ContractEditorPage: React.FC = () => {
               <div className="flex gap-3">
                 <Button
                   onClick={handleShareContract}
-                  disabled={sharing || !contractStartDate || !contractEndDate || !contractNotes}
+                  disabled={sharing || !contractStartDate || !contractNotes || !companyName || !clientName}
                   className="flex-1 flex items-center justify-center gap-2"
                 >
                   {sharing ? (
@@ -337,11 +365,11 @@ const ContractEditorPage: React.FC = () => {
           {/* Right: Preview */}
           <div className="overflow-y-auto">
             <ContractPreview
-              creatorName={creator.displayName || creator.email || 'Creator'}
+              creatorName={clientName || creator?.displayName || creator?.email || 'Client Name'}
               contractStartDate={contractStartDate}
-              contractEndDate={contractEndDate}
+              contractEndDate={contractEndDate || 'Indefinite'}
               contractNotes={contractNotes || 'Enter contract terms to see preview...'}
-              paymentStructureName={paymentStructureName}
+              paymentStructureName={companyName}
             />
           </div>
         </div>
