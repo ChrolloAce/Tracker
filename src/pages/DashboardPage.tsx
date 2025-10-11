@@ -304,7 +304,7 @@ function DashboardPage() {
       if (isModalOpen || isTikTokSearchOpen || isAnalyticsModalOpen) return;
       
       // Only trigger on tabs where + button is visible
-      if (activeTab === 'settings' || activeTab === 'subscription' || activeTab === 'cron') {
+      if (activeTab === 'settings' || activeTab === 'subscription' || activeTab === 'cron' || activeTab === 'creators') {
         return;
       }
       
@@ -318,8 +318,6 @@ function DashboardPage() {
         accountsPageRef.current?.openAddModal();
       } else if (activeTab === 'analytics') {
         trackedLinksPageRef.current?.openCreateModal();
-      } else if (activeTab === 'creators') {
-        creatorsPageRef.current?.openInviteModal();
       }
     };
     
@@ -883,7 +881,7 @@ function DashboardPage() {
       />
 
       {/* Context-Aware Floating Action Button */}
-      {activeTab !== 'settings' && activeTab !== 'subscription' && activeTab !== 'cron' && activeTab !== 'team' && activeTab !== 'invitations' && (
+      {activeTab !== 'settings' && activeTab !== 'subscription' && activeTab !== 'cron' && activeTab !== 'team' && activeTab !== 'invitations' && activeTab !== 'creators' && (
         <button
           onClick={() => {
             if (activeTab === 'dashboard') {
@@ -892,8 +890,6 @@ function DashboardPage() {
               accountsPageRef.current?.openAddModal();
             } else if (activeTab === 'analytics') {
               trackedLinksPageRef.current?.openCreateModal();
-            } else if (activeTab === 'creators') {
-              creatorsPageRef.current?.openInviteModal();
             }
           }}
           className="fixed bottom-8 right-8 z-50 bg-gray-900 dark:bg-white hover:bg-black dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-full p-4 shadow-2xl transition-all duration-200 hover:scale-110 group"
@@ -901,7 +897,6 @@ function DashboardPage() {
             activeTab === 'dashboard' ? 'Add Video' :
             activeTab === 'accounts' ? 'Track Account' :
             activeTab === 'analytics' ? 'Create Link' :
-            activeTab === 'creators' ? 'Invite Creator' :
             'Add'
           }
         >
@@ -922,7 +917,6 @@ function DashboardPage() {
             {activeTab === 'dashboard' && 'Add Video'}
             {activeTab === 'accounts' && 'Track Account'}
             {activeTab === 'analytics' && 'Create Link'}
-            {activeTab === 'creators' && 'Invite Creator'}
           </span>
         </button>
       )}
