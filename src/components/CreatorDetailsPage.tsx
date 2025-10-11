@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { OrgMember, Creator, TrackedAccount, Payout } from '../types/firestore';
 import CreatorLinksService from '../services/CreatorLinksService';
@@ -48,21 +49,15 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   onUpdate,
 }) => {
   const { currentOrgId, currentProjectId } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   
-  // Restore active tab from localStorage on mount
-  const [activeTab, setActiveTab] = useState<'overview' | 'accounts' | 'payment' | 'contract'>(() => {
-    const savedState = localStorage.getItem(`creatorDetailsState_${creator.userId}`);
-    if (savedState) {
-      try {
-        const { tab } = JSON.parse(savedState);
-        return tab || 'overview';
-      } catch {
-        return 'overview';
-      }
-    }
-    return 'overview';
-  });
+  // Get active tab from URL or default to 'overview'
+  const activeTab = (searchParams.get('tab') as 'overview' | 'accounts' | 'payment' | 'contract') || 'overview';
   
+  // Function to change tab and update URL
+  const setActiveTab = (tab: 'overview' | 'accounts' | 'payment' | 'contract') => {
+    setSearchParams({ tab });
+  };
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [creatorProfile, setCreatorProfile] = useState<Creator | null>(null);
@@ -78,11 +73,6 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   
   // Tiered payment structure state
   const [tieredPaymentStructure, setTieredPaymentStructure] = useState<TieredPaymentStructure | null>(null);
-
-  // Save active tab to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem(`creatorDetailsState_${creator.userId}`, JSON.stringify({ tab: activeTab }));
-  }, [activeTab, creator.userId]);
 
   useEffect(() => {
     loadData();

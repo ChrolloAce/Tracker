@@ -198,17 +198,8 @@ const ContractSigningPage: React.FC = () => {
                     {contract.creatorSignature ? (
                       <div className="bg-white/5 border border-green-500/20 rounded-lg p-4">
                         <Check className="w-5 h-5 text-green-500 mb-2" />
-                        <div className="text-white font-medium mb-2">{contract.creatorSignature.name}</div>
-                        {contract.creatorSignature.signatureData && (
-                          <div className="mb-2 bg-white/10 rounded p-2 border border-white/20">
-                            <img 
-                              src={contract.creatorSignature.signatureData} 
-                              alt={`${contract.creatorSignature.name}'s signature`}
-                              className="w-full h-16 object-contain"
-                            />
-                          </div>
-                        )}
-                        <div className="text-xs text-gray-400">
+                        <div className="text-white font-medium">{contract.creatorSignature.name}</div>
+                        <div className="text-xs text-gray-400 mt-1">
                           Signed {contract.creatorSignature.signedAt.toDate().toLocaleDateString()}
                         </div>
                       </div>
@@ -226,17 +217,8 @@ const ContractSigningPage: React.FC = () => {
                     {contract.companySignature ? (
                       <div className="bg-white/5 border border-green-500/20 rounded-lg p-4">
                         <Check className="w-5 h-5 text-green-500 mb-2" />
-                        <div className="text-white font-medium mb-2">{contract.companySignature.name}</div>
-                        {contract.companySignature.signatureData && (
-                          <div className="mb-2 bg-white/10 rounded p-2 border border-white/20">
-                            <img 
-                              src={contract.companySignature.signatureData} 
-                              alt={`${contract.companySignature.name}'s signature`}
-                              className="w-full h-16 object-contain"
-                            />
-                          </div>
-                        )}
-                        <div className="text-xs text-gray-400">
+                        <div className="text-white font-medium">{contract.companySignature.name}</div>
+                        <div className="text-xs text-gray-400 mt-1">
                           Signed {contract.companySignature.signedAt.toDate().toLocaleDateString()}
                         </div>
                       </div>

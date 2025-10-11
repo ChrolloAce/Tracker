@@ -13,8 +13,7 @@ import {
   Search,
   Filter,
   ChevronLeft,
-  ChevronRight,
-  Trash2
+  ChevronRight
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import clsx from 'clsx';
@@ -29,9 +28,6 @@ const ContractsManagementPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
-  const [deletingContract, setDeletingContract] = useState<string | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [contractToDelete, setContractToDelete] = useState<ShareableContract | null>(null);
   
   const itemsPerPage = 10;
 
@@ -58,69 +54,13 @@ const ContractsManagementPage: React.FC = () => {
   };
 
   const handleCopyLink = async (link: string, linkId: string) => {
-    if (!link) {
-      alert('Invalid link');
-      return;
-    }
-
     try {
-      // Try modern clipboard API first
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(link);
-      } else {
-        // Fallback for older browsers or non-secure contexts
-        const textArea = document.createElement('textarea');
-        textArea.value = link;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-999999px';
-        textArea.style.top = '-999999px';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        
-        try {
-          document.execCommand('copy');
-          textArea.remove();
-        } catch (err) {
-          console.error('Fallback: Could not copy text: ', err);
-          textArea.remove();
-          throw err;
-        }
-      }
-      
+      await navigator.clipboard.writeText(link);
       setCopiedLink(linkId);
       setTimeout(() => setCopiedLink(null), 2000);
     } catch (error) {
       console.error('Error copying link:', error);
-      alert('Failed to copy link to clipboard. Please copy manually: ' + link);
     }
-  };
-
-  const handleDeleteClick = (contract: ShareableContract) => {
-    setContractToDelete(contract);
-    setShowDeleteConfirm(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!contractToDelete) return;
-
-    setDeletingContract(contractToDelete.id);
-    try {
-      await ContractService.deleteContract(contractToDelete.id);
-      await loadContracts();
-      setShowDeleteConfirm(false);
-      setContractToDelete(null);
-    } catch (error) {
-      console.error('Error deleting contract:', error);
-      alert('Failed to delete contract. Please try again.');
-    } finally {
-      setDeletingContract(null);
-    }
-  };
-
-  const handleDeleteCancel = () => {
-    setShowDeleteConfirm(false);
-    setContractToDelete(null);
   };
 
   const formatDate = (dateString: string) => {
@@ -272,8 +212,8 @@ const ContractsManagementPage: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="bg-[#161616] rounded-xl border border-gray-800 overflow-hidden overflow-x-auto">
-            <table className="w-full min-w-max">
+          <div className="bg-[#161616] rounded-xl border border-gray-800 overflow-hidden">
+            <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-800">
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
@@ -290,9 +230,6 @@ const ContractsManagementPage: React.FC = () => {
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Links
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    Actions
                   </th>
                 </tr>
               </thead>
@@ -323,10 +260,7 @@ const ContractsManagementPage: React.FC = () => {
                         {/* Creator Link */}
                         <div className="flex gap-1">
                           <button
-                            onClick={() => {
-                              const link = contract.creatorLink || `${window.location.origin}/contract/${contract.id}?role=creator`;
-                              handleCopyLink(link, `creator-${contract.id}`);
-                            }}
+                            onClick={() => handleCopyLink(contract.creatorLink, `creator-${contract.id}`)}
                             className="p-1.5 hover:bg-white/10 rounded transition-colors"
                             title="Copy creator link"
                           >
@@ -337,7 +271,7 @@ const ContractsManagementPage: React.FC = () => {
                             )}
                           </button>
                           <a
-                            href={contract.creatorLink || `${window.location.origin}/contract/${contract.id}?role=creator`}
+                            href={contract.creatorLink}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-1.5 hover:bg-white/10 rounded transition-colors"
@@ -350,10 +284,7 @@ const ContractsManagementPage: React.FC = () => {
                         {/* Company Link */}
                         <div className="flex gap-1 border-l border-gray-700 pl-2">
                           <button
-                            onClick={() => {
-                              const link = contract.companyLink || `${window.location.origin}/contract/${contract.id}?role=company`;
-                              handleCopyLink(link, `company-${contract.id}`);
-                            }}
+                            onClick={() => handleCopyLink(contract.companyLink, `company-${contract.id}`)}
                             className="p-1.5 hover:bg-white/10 rounded transition-colors"
                             title="Copy company link"
                           >
@@ -364,7 +295,7 @@ const ContractsManagementPage: React.FC = () => {
                             )}
                           </button>
                           <a
-                            href={contract.companyLink || `${window.location.origin}/contract/${contract.id}?role=company`}
+                            href={contract.companyLink}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-1.5 hover:bg-white/10 rounded transition-colors"
@@ -374,17 +305,6 @@ const ContractsManagementPage: React.FC = () => {
                           </a>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <button
-                        onClick={() => handleDeleteClick(contract)}
-                        disabled={deletingContract === contract.id}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-red-400 hover:text-red-300"
-                        title="Delete contract"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        <span className="text-xs font-medium">Delete</span>
-                      </button>
                     </td>
                   </tr>
                 ))}
@@ -442,54 +362,6 @@ const ContractsManagementPage: React.FC = () => {
             loadContracts();
           }}
         />
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && contractToDelete && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#161616] border border-gray-800 rounded-xl p-6 max-w-md w-full">
-            <div className="flex items-start gap-4 mb-4">
-              <div className="p-2 bg-red-500/10 rounded-lg">
-                <Trash2 className="w-6 h-6 text-red-500" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-white mb-2">Delete Contract</h3>
-                <p className="text-gray-400 text-sm">
-                  Are you sure you want to delete this contract for{' '}
-                  <span className="font-medium text-white">{contractToDelete.creatorName}</span>?
-                  This action cannot be undone.
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex gap-3 justify-end">
-              <Button
-                onClick={handleDeleteCancel}
-                variant="secondary"
-                disabled={!!deletingContract}
-              >
-                Cancel
-              </Button>
-              <button
-                onClick={handleDeleteConfirm}
-                disabled={!!deletingContract}
-                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {deletingContract ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                    Deleting...
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="w-4 h-4" />
-                    Delete Contract
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

@@ -1,4 +1,5 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Lottie from 'lottie-react';
 import { useAuth } from '../contexts/AuthContext';
 import { OrgMember, Creator } from '../types/firestore';
@@ -11,7 +12,6 @@ import { User, TrendingUp } from 'lucide-react';
 import CreateCreatorModal from './CreateCreatorModal';
 import EditCreatorModal from './EditCreatorModal';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
-import CreatorDetailsPage from './CreatorDetailsPage';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import userProfileAnimation from '../../public/lottie/User Profile.json';
 
@@ -31,6 +31,7 @@ interface CreatorsManagementPageProps {
 const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsManagementPageProps>((props, ref) => {
   const { dateFilter = 'all' } = props;
   const { user, currentOrgId, currentProjectId } = useAuth();
+  const navigate = useNavigate();
   const [creators, setCreators] = useState<OrgMember[]>([]);
   const [creatorProfiles, setCreatorProfiles] = useState<Map<string, Creator>>(new Map());
   const [calculatedEarnings, setCalculatedEarnings] = useState<Map<string, number>>(new Map());
@@ -38,37 +39,11 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [linkingCreator, setLinkingCreator] = useState<OrgMember | null>(null);
-  const [editingCreator, setEditingCreator] = useState<OrgMember | null>(null);
   const [editingPaymentCreator, setEditingPaymentCreator] = useState<OrgMember | null>(null);
 
   useEffect(() => {
     loadData();
   }, [currentOrgId, currentProjectId, user, dateFilter]);
-
-  // Restore selected creator from localStorage after creators are loaded
-  useEffect(() => {
-    if (creators.length > 0 && !editingCreator) {
-      const savedCreatorId = localStorage.getItem('selectedCreatorId');
-      if (savedCreatorId) {
-        const creator = creators.find(c => c.userId === savedCreatorId);
-        if (creator) {
-          setEditingCreator(creator);
-        } else {
-          // Creator not found, clear the saved ID
-          localStorage.removeItem('selectedCreatorId');
-        }
-      }
-    }
-  }, [creators]);
-
-  // Save selected creator ID to localStorage
-  useEffect(() => {
-    if (editingCreator) {
-      localStorage.setItem('selectedCreatorId', editingCreator.userId);
-    } else {
-      localStorage.removeItem('selectedCreatorId');
-    }
-  }, [editingCreator]);
 
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
@@ -243,17 +218,6 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
     });
   };
 
-  // Show creator details page if editing
-  if (editingCreator) {
-    return (
-      <CreatorDetailsPage
-        creator={editingCreator}
-        onBack={() => setEditingCreator(null)}
-        onUpdate={() => loadData()}
-      />
-    );
-  }
-
   if (loading) {
     return <PageLoadingSkeleton type="creators" />;
   }
@@ -315,7 +279,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
                   return (
                     <tr 
                       key={creator.userId} 
-                      onClick={() => setEditingCreator(creator)}
+                      onClick={() => navigate(`/creators/${creator.userId}`)}
                       className="hover:bg-white/5 transition-colors group cursor-pointer"
                     >
                       <td className="px-6 py-4">

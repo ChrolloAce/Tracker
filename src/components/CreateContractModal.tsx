@@ -16,41 +16,12 @@ interface CreateContractModalProps {
 const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSuccess }) => {
   const { currentOrgId, currentProjectId, user } = useAuth();
   const [creators, setCreators] = useState<OrgMember[]>([]);
-  
-  // Parse draft once and restore all fields
-  const loadDraft = () => {
-    try {
-      const draftStr = localStorage.getItem('contractDraft');
-      if (draftStr) {
-        const draft = JSON.parse(draftStr);
-        return {
-          selectedCreatorId: draft.selectedCreatorId || '',
-          contractStartDate: draft.contractStartDate || '',
-          contractEndDate: draft.contractEndDate || '',
-          contractNotes: draft.contractNotes || '',
-          paymentStructureName: draft.paymentStructureName || ''
-        };
-      }
-    } catch (error) {
-      console.error('Error loading draft:', error);
-    }
-    return {
-      selectedCreatorId: '',
-      contractStartDate: '',
-      contractEndDate: '',
-      contractNotes: '',
-      paymentStructureName: ''
-    };
-  };
-  
-  const draft = loadDraft();
-  const [selectedCreatorId, setSelectedCreatorId] = useState(draft.selectedCreatorId);
-  const [contractStartDate, setContractStartDate] = useState(draft.contractStartDate);
-  const [contractEndDate, setContractEndDate] = useState(draft.contractEndDate);
-  const [contractNotes, setContractNotes] = useState(draft.contractNotes);
+  const [selectedCreatorId, setSelectedCreatorId] = useState('');
+  const [contractStartDate, setContractStartDate] = useState('');
+  const [contractEndDate, setContractEndDate] = useState('');
+  const [contractNotes, setContractNotes] = useState('');
   const [initialContractNotes, setInitialContractNotes] = useState('');
-  const [paymentStructureName, setPaymentStructureName] = useState(draft.paymentStructureName);
-  
+  const [paymentStructureName, setPaymentStructureName] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingCreators, setLoadingCreators] = useState(true);
   const [showChangeTemplateModal, setShowChangeTemplateModal] = useState(false);
@@ -60,22 +31,60 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
 
+  // Generate storage key for the draft
+  const getDraftKey = () => {
+    return `contract_draft_${currentOrgId}_${currentProjectId}_${selectedCreatorId || 'new'}`;
+  };
+
+  // Load draft from localStorage on mount
+  useEffect(() => {
+    const savedDraft = localStorage.getItem(getDraftKey());
+    if (savedDraft) {
+      try {
+        const draft = JSON.parse(savedDraft);
+        if (draft.selectedCreatorId) setSelectedCreatorId(draft.selectedCreatorId);
+        if (draft.contractStartDate) setContractStartDate(draft.contractStartDate);
+        if (draft.contractEndDate) setContractEndDate(draft.contractEndDate);
+        if (draft.contractNotes) {
+          setContractNotes(draft.contractNotes);
+          setInitialContractNotes(draft.contractNotes);
+        }
+        if (draft.paymentStructureName) setPaymentStructureName(draft.paymentStructureName);
+      } catch (error) {
+        console.error('Error loading contract draft:', error);
+      }
+    }
+  }, []);
+
+  // Save draft to localStorage whenever fields change
+  useEffect(() => {
+    if (selectedCreatorId || contractStartDate || contractEndDate || contractNotes || paymentStructureName) {
+      const draft = {
+        selectedCreatorId,
+        contractStartDate,
+        contractEndDate,
+        contractNotes,
+        paymentStructureName,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem(getDraftKey(), JSON.stringify(draft));
+    }
+  }, [selectedCreatorId, contractStartDate, contractEndDate, contractNotes, paymentStructureName]);
+
+  // Clear draft when modal is closed
+  const handleClose = () => {
+    if (hasUnsavedChanges) {
+      const confirmClose = confirm('You have unsaved changes. Are you sure you want to close?');
+      if (!confirmClose) return;
+    }
+    // Clear the draft
+    localStorage.removeItem(getDraftKey());
+    onClose();
+  };
+
   useEffect(() => {
     loadCreators();
   }, [currentOrgId, currentProjectId]);
-  
-  // Save draft to localStorage whenever form data changes
-  useEffect(() => {
-    const draft = {
-      selectedCreatorId,
-      contractStartDate,
-      contractEndDate,
-      contractNotes,
-      paymentStructureName,
-      savedAt: new Date().toISOString()
-    };
-    localStorage.setItem('contractDraft', JSON.stringify(draft));
-  }, [selectedCreatorId, contractStartDate, contractEndDate, contractNotes, paymentStructureName]);
 
   const loadCreators = async () => {
     if (!currentOrgId || !currentProjectId) return;
@@ -164,8 +173,8 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
         user.uid
       );
 
-      // Clear draft from localStorage after successful creation
-      localStorage.removeItem('contractDraft');
+      // Clear the draft on success
+      localStorage.removeItem(getDraftKey());
       
       // Show success with links
       alert(`Contract created successfully!\n\n🎨 Creator Link:\n${contract.creatorLink}\n\n🏢 Company Link:\n${contract.companyLink}`);
@@ -190,16 +199,11 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
             </div>
             <div>
               <h2 className="text-xl font-semibold text-white">Create Contract</h2>
-              <p className="text-sm text-gray-400">
-                Generate a shareable contract for a creator
-                {(contractNotes || selectedCreatorId || contractStartDate || contractEndDate || paymentStructureName) && (
-                  <span className="ml-2 text-green-400 text-xs">• Draft auto-saved</span>
-                )}
-              </p>
+              <p className="text-sm text-gray-400">Generate a shareable contract for a creator</p>
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-2 hover:bg-white/10 rounded-lg transition-colors"
           >
             <X className="w-5 h-5 text-gray-400" />
@@ -300,36 +304,15 @@ const CreateContractModal: React.FC<CreateContractModalProps> = ({ onClose, onSu
 
         {/* Footer */}
         <div className="flex items-center justify-between p-6 border-t border-gray-800">
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={() => setShowSaveTemplateModal(true)}
-                variant="secondary"
-                disabled={loading || !contractNotes}
-                className="flex items-center gap-2"
-              >
-                <Save className="w-4 h-4" />
-                Save as Template
-              </Button>
-              {(contractNotes || selectedCreatorId || contractStartDate || contractEndDate || paymentStructureName) && (
-                <button
-                  onClick={() => {
-                    if (confirm('Are you sure you want to clear this draft? This action cannot be undone.')) {
-                      localStorage.removeItem('contractDraft');
-                      setSelectedCreatorId('');
-                      setContractStartDate('');
-                      setContractEndDate('');
-                      setContractNotes('');
-                      setPaymentStructureName('');
-                    }
-                  }}
-                  disabled={loading}
-                  className="px-3 py-2 text-xs text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
-                  title="Clear draft"
-                >
-                  Clear Draft
-                </button>
-              )}
-            </div>
+            <Button
+              onClick={() => setShowSaveTemplateModal(true)}
+              variant="secondary"
+              disabled={loading || !contractNotes}
+              className="flex items-center gap-2"
+            >
+              <Save className="w-4 h-4" />
+              Save as Template
+            </Button>
             <div className="flex items-center gap-3">
               <Button
                 onClick={onClose}
