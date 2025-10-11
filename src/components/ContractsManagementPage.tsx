@@ -272,8 +272,8 @@ const ContractsManagementPage: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="bg-[#161616] rounded-xl border border-gray-800 overflow-hidden">
-            <table className="w-full">
+          <div className="bg-[#161616] rounded-xl border border-gray-800 overflow-hidden overflow-x-auto">
+            <table className="w-full min-w-max">
               <thead>
                 <tr className="border-b border-gray-800">
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
@@ -291,7 +291,7 @@ const ContractsManagementPage: React.FC = () => {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Links
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -323,7 +323,10 @@ const ContractsManagementPage: React.FC = () => {
                         {/* Creator Link */}
                         <div className="flex gap-1">
                           <button
-                            onClick={() => handleCopyLink(contract.creatorLink, `creator-${contract.id}`)}
+                            onClick={() => {
+                              const link = contract.creatorLink || `${window.location.origin}/contract/${contract.id}?role=creator`;
+                              handleCopyLink(link, `creator-${contract.id}`);
+                            }}
                             className="p-1.5 hover:bg-white/10 rounded transition-colors"
                             title="Copy creator link"
                           >
@@ -334,7 +337,7 @@ const ContractsManagementPage: React.FC = () => {
                             )}
                           </button>
                           <a
-                            href={contract.creatorLink}
+                            href={contract.creatorLink || `${window.location.origin}/contract/${contract.id}?role=creator`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-1.5 hover:bg-white/10 rounded transition-colors"
@@ -347,7 +350,10 @@ const ContractsManagementPage: React.FC = () => {
                         {/* Company Link */}
                         <div className="flex gap-1 border-l border-gray-700 pl-2">
                           <button
-                            onClick={() => handleCopyLink(contract.companyLink, `company-${contract.id}`)}
+                            onClick={() => {
+                              const link = contract.companyLink || `${window.location.origin}/contract/${contract.id}?role=company`;
+                              handleCopyLink(link, `company-${contract.id}`);
+                            }}
                             className="p-1.5 hover:bg-white/10 rounded transition-colors"
                             title="Copy company link"
                           >
@@ -358,7 +364,7 @@ const ContractsManagementPage: React.FC = () => {
                             )}
                           </button>
                           <a
-                            href={contract.companyLink}
+                            href={contract.companyLink || `${window.location.origin}/contract/${contract.id}?role=company`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-1.5 hover:bg-white/10 rounded transition-colors"
@@ -369,14 +375,15 @@ const ContractsManagementPage: React.FC = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-4 text-center">
                       <button
                         onClick={() => handleDeleteClick(contract)}
                         disabled={deletingContract === contract.id}
-                        className="p-1.5 hover:bg-red-500/10 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-red-400 hover:text-red-300"
                         title="Delete contract"
                       >
-                        <Trash2 className="w-4 h-4 text-red-400" />
+                        <Trash2 className="w-4 h-4" />
+                        <span className="text-xs font-medium">Delete</span>
                       </button>
                     </td>
                   </tr>
