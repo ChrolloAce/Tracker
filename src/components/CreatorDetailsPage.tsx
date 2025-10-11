@@ -8,6 +8,8 @@ import FirestoreDataService from '../services/FirestoreDataService';
 import TieredPaymentService from '../services/TieredPaymentService';
 import { ContractService } from '../services/ContractService';
 import { ShareableContract } from '../types/contract';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { 
   ArrowLeft, 
   Link as LinkIcon, 
@@ -25,7 +27,9 @@ import {
   Save,
   Trash2,
   MoreVertical,
-  Download
+  Download,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -1065,13 +1069,54 @@ const ContractTab: React.FC<{
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [contractToDelete, setContractToDelete] = React.useState<ShareableContract | null>(null);
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
+  const [sortField, setSortField] = React.useState<'name' | 'status' | 'period' | 'created'>('created');
+  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('desc');
   const itemsPerPage = 10;
 
-  const totalPages = Math.ceil(contracts.length / itemsPerPage);
+  const handleSort = (field: 'name' | 'status' | 'period' | 'created') => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  const sortedContracts = React.useMemo(() => {
+    const sorted = [...contracts].sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortField) {
+        case 'name':
+          comparison = getContractName(a).localeCompare(getContractName(b));
+          break;
+        case 'status':
+          const statusOrder: Record<string, number> = {
+            'pending': 0,
+            'partial': 1,
+            'signed': 2,
+            'expired': 3
+          };
+          comparison = statusOrder[a.status] - statusOrder[b.status];
+          break;
+        case 'period':
+          comparison = new Date(a.contractStartDate).getTime() - new Date(b.contractStartDate).getTime();
+          break;
+        case 'created':
+          comparison = (a.createdAt as any).toMillis() - (b.createdAt as any).toMillis();
+          break;
+      }
+      
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+    return sorted;
+  }, [contracts, sortField, sortDirection]);
+
+  const totalPages = Math.ceil(sortedContracts.length / itemsPerPage);
   const paginatedContracts = React.useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
-    return contracts.slice(startIndex, startIndex + itemsPerPage);
-  }, [contracts, currentPage, itemsPerPage]);
+    return sortedContracts.slice(startIndex, startIndex + itemsPerPage);
+  }, [sortedContracts, currentPage, itemsPerPage]);
 
   const handlePageChange = (page: number) => {
     if (page > 0 && page <= totalPages) {
@@ -1092,54 +1137,135 @@ const ContractTab: React.FC<{
     }
   };
 
-  const handleDownloadContract = (contract: ShareableContract) => {
-    const contractContent = `
-CREATOR CONTRACT
-Content Creation Agreement
+  const formatDateForDisplay = (dateString: string) => {
+    if (!dateString || dateString === 'Indefinite') return dateString;
+    // Parse as local date to avoid timezone issues
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  };
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-PARTIES
-
-Creator: ${contract.creatorName}
-Company: ${contract.creatorName} (Representative)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-CONTRACT PERIOD
-
-Start Date: ${new Date(contract.contractStartDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-${contract.contractEndDate && contract.contractEndDate !== 'Indefinite' ? `End Date: ${new Date(contract.contractEndDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}` : ''}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-${contract.paymentStructureName ? `PAYMENT STRUCTURE\n\n${contract.paymentStructureName}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` : ''}TERMS & CONDITIONS
-
-${contract.contractNotes}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-SIGNATURES
-
-Creator: ___________________________
-${contract.creatorName}
-
-Company Representative: ___________________________
-[Authorized Signatory]
-
-Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-    `.trim();
-
-    const blob = new Blob([contractContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Contract_${contract.creatorName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const handleDownloadContract = async (contract: ShareableContract) => {
     setOpenMenuId(null);
+    
+    // Create hidden container for PDF generation
+    const container = document.createElement('div');
+    container.style.position = 'fixed';
+    container.style.left = '-9999px';
+    container.style.width = '800px';
+    container.style.backgroundColor = '#ffffff';
+    container.style.padding = '40px';
+    container.style.fontFamily = 'Arial, sans-serif';
+    
+    // Build contract HTML
+    container.innerHTML = `
+      <div style="color: #000000;">
+        <div style="border-bottom: 2px solid #000000; padding-bottom: 20px; margin-bottom: 30px;">
+          <h1 style="font-size: 28px; font-weight: bold; margin: 0 0 8px 0;">CREATOR CONTRACT</h1>
+          <p style="font-size: 14px; color: #666666; margin: 0;">Content Creation Agreement</p>
+        </div>
+
+        <div style="margin-bottom: 30px;">
+          <div style="font-size: 11px; color: #999999; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">PARTIES</div>
+          <div style="margin-bottom: 8px;">
+            <span style="color: #666666;">Creator: </span>
+            <span style="font-weight: 600;">${contract.creatorName}</span>
+          </div>
+          <div>
+            <span style="color: #666666;">Company: </span>
+            <span style="font-weight: 600;">${contract.creatorName} (Representative)</span>
+          </div>
+        </div>
+
+        ${contract.contractStartDate ? `
+        <div style="margin-bottom: 30px;">
+          <div style="font-size: 11px; color: #999999; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">CONTRACT PERIOD</div>
+          <div style="margin-bottom: 8px;">
+            <span style="color: #666666;">Start Date: </span>
+            <span>${formatDateForDisplay(contract.contractStartDate)}</span>
+          </div>
+          ${contract.contractEndDate && contract.contractEndDate !== 'Indefinite' ? `
+          <div>
+            <span style="color: #666666;">End Date: </span>
+            <span>${formatDateForDisplay(contract.contractEndDate)}</span>
+          </div>
+          ` : ''}
+        </div>
+        ` : ''}
+
+        ${contract.paymentStructureName ? `
+        <div style="margin-bottom: 30px;">
+          <div style="font-size: 11px; color: #999999; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">PAYMENT STRUCTURE</div>
+          <div>${contract.paymentStructureName}</div>
+        </div>
+        ` : ''}
+
+        ${contract.contractNotes ? `
+        <div style="margin-bottom: 40px;">
+          <div style="font-size: 11px; color: #999999; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; border-bottom: 1px solid #e0e0e0; padding-bottom: 8px;">TERMS & CONDITIONS</div>
+          <div style="font-size: 14px; line-height: 1.8; white-space: pre-wrap;">${contract.contractNotes}</div>
+        </div>
+        ` : ''}
+
+        <div style="margin-top: 50px; padding-top: 30px; border-top: 2px solid #000000;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px;">
+            <div>
+              <div style="font-size: 11px; color: #999999; margin-bottom: 8px;">Creator Signature</div>
+              ${contract.creatorSignature?.signatureData ? `
+                <img src="${contract.creatorSignature.signatureData}" alt="Creator Signature" style="max-width: 200px; height: auto; margin-bottom: 4px;" />
+              ` : `
+                <div style="border-bottom: 1px solid #000000; height: 40px; margin-bottom: 4px;"></div>
+              `}
+              <div style="font-size: 12px; color: #666666;">${contract.creatorName}</div>
+              ${contract.creatorSignature ? `
+                <div style="font-size: 10px; color: #999999; margin-top: 4px;">Signed: ${contract.creatorSignature.signedAt.toDate().toLocaleDateString()}</div>
+              ` : ''}
+            </div>
+            <div>
+              <div style="font-size: 11px; color: #999999; margin-bottom: 8px;">Company Representative</div>
+              ${contract.companySignature?.signatureData ? `
+                <img src="${contract.companySignature.signatureData}" alt="Company Signature" style="max-width: 200px; height: auto; margin-bottom: 4px;" />
+              ` : `
+                <div style="border-bottom: 1px solid #000000; height: 40px; margin-bottom: 4px;"></div>
+              `}
+              <div style="font-size: 12px; color: #666666;">[Authorized Signatory]</div>
+              ${contract.companySignature ? `
+                <div style="font-size: 10px; color: #999999; margin-top: 4px;">Signed: ${contract.companySignature.signedAt.toDate().toLocaleDateString()}</div>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; text-align: center; font-size: 12px; color: #999999;">
+          Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(container);
+
+    try {
+      // Generate canvas from HTML
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+
+      // Create PDF
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgData = canvas.toDataURL('image/png');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Contract_${contract.creatorName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      document.body.removeChild(container);
+    }
   };
 
   const handleDeleteClick = (contract: ShareableContract) => {
@@ -1269,20 +1395,56 @@ Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long',
           <table className="w-full">
               <thead className="bg-gray-800/50 border-b border-gray-800">
               <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th 
+                    onClick={() => handleSort('name')}
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors group"
+                  >
+                    <div className="flex items-center gap-2">
                     Contract
+                      <div className="flex flex-col opacity-50 group-hover:opacity-100">
+                        <ChevronUp className={`w-3 h-3 -mb-1 ${sortField === 'name' && sortDirection === 'asc' ? 'text-white' : ''}`} />
+                        <ChevronDown className={`w-3 h-3 ${sortField === 'name' && sortDirection === 'desc' ? 'text-white' : ''}`} />
+                      </div>
+                    </div>
                 </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    Status & Signatures
+                  <th 
+                    onClick={() => handleSort('status')}
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors group"
+                  >
+                    <div className="flex items-center gap-2">
+                      Status & Signatures
+                      <div className="flex flex-col opacity-50 group-hover:opacity-100">
+                        <ChevronUp className={`w-3 h-3 -mb-1 ${sortField === 'status' && sortDirection === 'asc' ? 'text-white' : ''}`} />
+                        <ChevronDown className={`w-3 h-3 ${sortField === 'status' && sortDirection === 'desc' ? 'text-white' : ''}`} />
+                      </div>
+                    </div>
                 </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th 
+                    onClick={() => handleSort('period')}
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors group"
+                  >
+                    <div className="flex items-center gap-2">
                     Period
+                      <div className="flex flex-col opacity-50 group-hover:opacity-100">
+                        <ChevronUp className={`w-3 h-3 -mb-1 ${sortField === 'period' && sortDirection === 'asc' ? 'text-white' : ''}`} />
+                        <ChevronDown className={`w-3 h-3 ${sortField === 'period' && sortDirection === 'desc' ? 'text-white' : ''}`} />
+                      </div>
+                    </div>
                 </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Links
                 </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th 
+                    onClick={() => handleSort('created')}
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors group"
+                  >
+                    <div className="flex items-center justify-end gap-2">
                     Created
+                      <div className="flex flex-col opacity-50 group-hover:opacity-100">
+                        <ChevronUp className={`w-3 h-3 -mb-1 ${sortField === 'created' && sortDirection === 'asc' ? 'text-white' : ''}`} />
+                        <ChevronDown className={`w-3 h-3 ${sortField === 'created' && sortDirection === 'desc' ? 'text-white' : ''}`} />
+                      </div>
+                    </div>
                 </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Actions
@@ -1421,7 +1583,7 @@ Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long',
                           </div>
                         </>
                       )}
-                    </td>
+                  </td>
                 </tr>
               ))}
             </tbody>
