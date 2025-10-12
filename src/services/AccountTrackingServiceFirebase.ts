@@ -484,7 +484,7 @@ export class AccountTrackingServiceFirebase {
       // Fetch videos from platform
       let videos: AccountVideo[];
       if (account.platform === 'instagram') {
-        videos = await this.syncInstagramVideos(orgId, account);
+        videos = await this.syncInstagramVideos(orgId, projectId, account);
       } else if (account.platform === 'tiktok') {
         videos = await this.syncTikTokVideos(orgId, account);
       } else if (account.platform === 'twitter') {
@@ -572,7 +572,7 @@ export class AccountTrackingServiceFirebase {
   /**
    * Sync Instagram videos - USING NEW WORKING SCRAPER!
    */
-  private static async syncInstagramVideos(orgId: string, account: TrackedAccount): Promise<AccountVideo[]> {
+  private static async syncInstagramVideos(orgId: string, projectId: string, account: TrackedAccount): Promise<AccountVideo[]> {
     console.log(`🔄 Fetching Instagram videos for @${account.username} using NEW Reels Scraper...`);
     
     const proxyUrl = `${window.location.origin}/api/apify-proxy`;
@@ -606,6 +606,51 @@ export class AccountTrackingServiceFirebase {
     if (!result.items || !Array.isArray(result.items)) {
       console.warn('⚠️ No items returned from NEW Instagram scraper');
       return [];
+    }
+
+    // Extract and update profile info from first item (NEW SCRAPER FORMAT)
+    if (result.items.length > 0) {
+      const firstItem = result.items[0];
+      const media = firstItem.media || firstItem;
+      
+      const profileFullName = media.user?.full_name || media.owner?.full_name;
+      const profilePicUrl = media.user?.profile_pic_url || media.owner?.profile_pic_url;
+      
+      if (profileFullName || profilePicUrl) {
+        console.log('👤 Updating Instagram profile from NEW scraper...');
+        
+        // Download and save profile picture if available
+        let uploadedProfilePic = account.profilePicture;
+        if (profilePicUrl) {
+          try {
+            console.log('📸 Downloading profile picture from NEW scraper...');
+            uploadedProfilePic = await FirebaseStorageService.downloadAndUpload(
+              orgId,
+              profilePicUrl,
+              `ig_profile_${account.username}`,
+              'profile'
+            );
+            console.log('✅ Profile picture uploaded to Firebase Storage');
+          } catch (error) {
+            console.warn('⚠️ Failed to upload profile picture:', error);
+            uploadedProfilePic = profilePicUrl; // Use original URL as fallback
+          }
+        }
+        
+        // Update account with profile data
+        const profileUpdates: any = {};
+        if (profileFullName) {
+          profileUpdates.displayName = profileFullName;
+        }
+        if (uploadedProfilePic && uploadedProfilePic !== account.profilePicture) {
+          profileUpdates.profilePicture = uploadedProfilePic;
+        }
+        
+        if (Object.keys(profileUpdates).length > 0) {
+          await FirestoreDataService.updateTrackedAccount(orgId, projectId, account.id, profileUpdates);
+          console.log('✅ Updated Instagram profile for @' + account.username);
+        }
+      }
     }
 
     const videos: AccountVideo[] = [];

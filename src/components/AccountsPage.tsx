@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import Lottie from 'lottie-react';
 import { 
@@ -656,31 +656,81 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     return sorted;
   }, [filteredAccounts, accounts, platformFilter, searchQuery, sortBy, sortOrder]);
 
-  // Load videos when account is selected or date filter changes
+  // REAL-TIME listener for selected account's videos
   useEffect(() => {
-    const loadVideos = async () => {
-      if (selectedAccount && currentOrgId && currentProjectId) {
-        await loadAccountVideos(selectedAccount.id);
-        setViewMode('details');
-        onViewModeChange('details');
-        
-        // Reset pagination when loading new account or filter changes
-        setCurrentPage(1);
-        
-        // Save selected account ID to localStorage for persistence
-        localStorage.setItem('selectedAccountId', selectedAccount.id);
-      } else {
-        setViewMode('table');
-        onViewModeChange('table');
-        setAccountVideos([]);
-        
-        // Clear selected account ID from localStorage
-        localStorage.removeItem('selectedAccountId');
-      }
-    };
+    if (!selectedAccount || !currentOrgId || !currentProjectId) {
+      setViewMode('table');
+      onViewModeChange('table');
+      setAccountVideos([]);
+      localStorage.removeItem('selectedAccountId');
+      return;
+    }
 
-    loadVideos();
-  }, [selectedAccount, currentOrgId, currentProjectId, onViewModeChange, dateFilter, loadAccountVideos]);
+    console.log(`👂 Setting up real-time listener for @${selectedAccount.username} videos...`);
+    setViewMode('details');
+    onViewModeChange('details');
+    localStorage.setItem('selectedAccountId', selectedAccount.id);
+    setCurrentPage(1);
+
+    // Set up real-time listener for videos
+    const videosRef = collection(
+      db, 
+      'organizations', currentOrgId, 
+      'projects', currentProjectId, 
+      'trackedAccounts', selectedAccount.id, 
+      'videos'
+    );
+    const videosQuery = query(videosRef, orderBy('uploadDate', 'desc'));
+
+    const unsubscribe = onSnapshot(videosQuery, async (snapshot) => {
+      console.log(`📥 Real-time videos update for @${selectedAccount.username}: ${snapshot.docs.length} videos`);
+      
+      const videos: AccountVideo[] = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          accountId: selectedAccount.id,
+          videoId: data.videoId || '',
+          url: data.url || '',
+          thumbnail: data.thumbnail || '',
+          caption: data.description || data.caption || data.title || '',
+          title: data.title || '',
+          uploadDate: data.uploadDate?.toDate() || new Date(),
+          views: data.views || 0,
+          viewsCount: data.views || 0,
+          likes: data.likes || 0,
+          likesCount: data.likes || 0,
+          comments: data.comments || 0,
+          commentsCount: data.comments || 0,
+          shares: data.shares || 0,
+          sharesCount: data.shares || 0,
+          duration: data.duration || 0,
+          isSponsored: data.isSponsored || false,
+          hashtags: data.hashtags || [],
+          mentions: data.mentions || []
+        } as AccountVideo;
+      });
+
+      // Apply rules filtering
+      const rulesFilteredVideos = await RulesService.filterVideosByRules(
+        currentOrgId,
+        currentProjectId,
+        selectedAccount.id,
+        selectedAccount.platform,
+        videos
+      );
+
+      console.log(`✅ After rules: ${rulesFilteredVideos.length}/${videos.length} videos displayed`);
+      setAccountVideos(rulesFilteredVideos);
+    }, (error) => {
+      console.error('❌ Videos listener error:', error);
+    });
+
+    return () => {
+      console.log(`👋 Cleaning up videos listener for @${selectedAccount.username}`);
+      unsubscribe();
+    };
+  }, [selectedAccount, currentOrgId, currentProjectId, onViewModeChange]);
 
   const handleSyncAccount = useCallback(async (accountId: string) => {
     if (!currentOrgId || !currentProjectId || !user) return;

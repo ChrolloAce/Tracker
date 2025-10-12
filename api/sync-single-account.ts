@@ -45,11 +45,6 @@ export default async function handler(
     return res.status(400).json({ error: 'Missing required parameters' });
   }
 
-  // Define base URL for API calls
-  const baseUrl = process.env.VERCEL_URL 
-    ? (process.env.VERCEL_URL.startsWith('http') ? process.env.VERCEL_URL : `https://${process.env.VERCEL_URL}`)
-    : 'https://tracker-red-zeta.vercel.app';
-
   console.log(`⚡ Immediate sync started for account: ${accountId}`);
 
   try {
@@ -211,118 +206,6 @@ export default async function handler(
       } catch (youtubeError) {
         console.error('YouTube fetch error:', youtubeError);
       }
-    } else if (account.platform === 'instagram') {
-      console.log(`🎬 Fetching Instagram reels for ${account.username}...`);
-      
-      try {
-        // Use Instagram Reels scraper with residential proxies
-        const instagramData = await runApifyActor({
-          actorId: 'scraper-engine/instagram-reels-scraper',
-          input: {
-            urls: [`https://www.instagram.com/${account.username}/`],
-            maxReels: 20,
-            sortOrder: 'newest',
-            maxComments: 0, // We don't need comments for now
-            proxyConfiguration: {
-              useApifyProxy: true,
-              apifyProxyGroups: ['RESIDENTIAL']
-            }
-          }
-        });
-
-        const reels = instagramData.items || [];
-        console.log(`✅ Fetched ${reels.length} Instagram reels`);
-        
-        // DEBUG: Log the structure of the first reel
-        if (reels.length > 0) {
-          console.log('🔍 RAW FIRST REEL STRUCTURE:', JSON.stringify(reels[0], null, 2).substring(0, 2000));
-        }
-
-        // Update profile with first reel data
-        if (reels.length > 0) {
-          const firstReel = reels[0];
-          // Handle nested reel_data.media structure
-          const media = firstReel.reel_data?.media || firstReel.media || firstReel;
-          
-          try {
-            await accountRef.update({
-              displayName: media.user?.full_name || media.owner?.full_name || media.caption?.user?.full_name || account.username,
-              profilePicture: media.user?.profile_pic_url || media.owner?.profile_pic_url || media.caption?.user?.profile_pic_url || '',
-              followerCount: media.user?.follower_count || media.owner?.follower_count || 0,
-              isVerified: media.user?.is_verified || media.owner?.is_verified || false,
-              lastSyncedAt: Timestamp.now()
-            });
-            console.log(`✅ Updated Instagram profile for @${account.username}`);
-          } catch (updateError) {
-            console.warn('⚠️ Could not update profile:', updateError);
-          }
-        }
-
-        // Transform Instagram reels to video format
-        videos = reels.map((reelData: any, index: number) => {
-          // Handle nested reel_data.media structure from scraper-engine/instagram-reels-scraper
-          const media = reelData.reel_data?.media || reelData.media || reelData;
-          
-          // DEBUG: Log first video's media object to understand structure
-          if (index === 0) {
-            console.log('🔍 MEDIA OBJECT KEYS:', Object.keys(media).join(', '));
-            console.log('🔍 CHECKING FOR COUNTS:');
-            console.log('  - media.play_count:', media.play_count);
-            console.log('  - media.ig_play_count:', media.ig_play_count);
-            console.log('  - media.like_count:', media.like_count);
-            console.log('  - media.comment_count:', media.comment_count);
-            console.log('  - media.code:', media.code);
-            console.log('  - media.pk:', media.pk);
-            console.log('  - media.caption?.text:', media.caption?.text?.substring(0, 100));
-          }
-          
-          // Extract reel ID
-          const reelId = media.code || media.pk || media.id || media.strong_id__ || `instagram_${Date.now()}_${index}`;
-          
-          // Extract metrics
-          const views = media.play_count || media.ig_play_count || 0;
-          const likes = media.like_count || 0;
-          const comments = media.comment_count || 0;
-          const shares = media.share_count || 0;
-          
-          // Extract caption
-          const caption = media.caption?.text || media.title || '';
-          
-          // Extract timestamp
-          const uploadDate = media.taken_at 
-            ? Timestamp.fromMillis(media.taken_at * 1000)
-            : Timestamp.now();
-          
-          // Extract thumbnail
-          let thumbnail = '';
-          if (media.image_versions2?.candidates && media.image_versions2.candidates.length > 0) {
-            thumbnail = media.image_versions2.candidates[0].url;
-          } else if (media.display_uri) {
-            thumbnail = media.display_uri;
-          }
-
-          return {
-            videoId: reelId,
-            videoTitle: caption.substring(0, 100) || 'Instagram Reel',
-            videoUrl: `https://www.instagram.com/reel/${reelId}/`,
-            platform: 'instagram',
-            thumbnail: thumbnail,
-            accountUsername: account.username,
-            accountDisplayName: media.user?.full_name || media.owner?.full_name || account.username,
-            uploadDate: uploadDate,
-            views: views,
-            likes: likes,
-            comments: comments,
-            shares: shares,
-            caption: caption,
-            videoDuration: media.video_duration || 0,
-            isVerified: media.user?.is_verified || media.owner?.is_verified || false
-          };
-        });
-      } catch (instagramError) {
-        console.error('Instagram fetch error:', instagramError);
-        throw instagramError;
-      }
     } else if (account.platform === 'twitter') {
       console.log(`🐦 Fetching tweets for ${account.username}...`);
       
@@ -432,18 +315,13 @@ export default async function handler(
     const batch = db.batch();
     let savedCount = 0;
 
-    // Log first video for debugging
-    if (videos.length > 0) {
-      console.log('📹 Sample video data being saved:', JSON.stringify(videos[0], null, 2));
-    }
-
     for (const video of videos) {
       const videoRef = db
         .collection('organizations')
         .doc(orgId)
         .collection('projects')
         .doc(projectId)
-        .collection('videoSubmissions')
+        .collection('videos')
         .doc();
 
       batch.set(videoRef, {
@@ -452,7 +330,6 @@ export default async function handler(
         projectId: projectId,
         trackedAccountId: accountId,
         platform: account.platform,
-        dateSubmitted: Timestamp.now(),
         dateAdded: Timestamp.now(),
         addedBy: account.syncRequestedBy || account.addedBy || 'system',
         lastRefreshed: Timestamp.now(),
@@ -499,12 +376,7 @@ export default async function handler(
         const userData = userDoc.data();
         
         if (userData?.email) {
-          // Ensure URL has https:// protocol
-          const vercelUrl = process.env.VERCEL_URL 
-            ? (process.env.VERCEL_URL.startsWith('http') ? process.env.VERCEL_URL : `https://${process.env.VERCEL_URL}`)
-            : 'https://tracker-red-zeta.vercel.app';
-          
-          await fetch(`${vercelUrl}/api/send-notification-email`, {
+          await fetch(`${process.env.VERCEL_URL || 'https://tracker-red-zeta.vercel.app'}/api/send-notification-email`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
