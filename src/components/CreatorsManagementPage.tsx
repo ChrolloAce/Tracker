@@ -2,13 +2,15 @@ import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Lottie from 'lottie-react';
 import { useAuth } from '../contexts/AuthContext';
-import { OrgMember, Creator } from '../types/firestore';
+import { OrgMember, Creator, TeamInvitation } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
 import CreatorLinksService from '../services/CreatorLinksService';
 import FirestoreDataService from '../services/FirestoreDataService';
 import DateFilterService from '../services/DateFilterService';
+import TeamInvitationService from '../services/TeamInvitationService';
 import { DateFilterType } from './DateRangeFilter';
-import { User, TrendingUp, Plus } from 'lucide-react';
+import { User, TrendingUp, Plus, Mail, Clock, X } from 'lucide-react';
+import { Button } from './ui/Button';
 import CreateCreatorModal from './CreateCreatorModal';
 import EditCreatorModal from './EditCreatorModal';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
@@ -36,10 +38,13 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   const [creatorProfiles, setCreatorProfiles] = useState<Map<string, Creator>>(new Map());
   const [calculatedEarnings, setCalculatedEarnings] = useState<Map<string, number>>(new Map());
   const [videoCounts, setVideoCounts] = useState<Map<string, number>>(new Map());
+  const [pendingInvitations, setPendingInvitations] = useState<TeamInvitation[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [linkingCreator, setLinkingCreator] = useState<OrgMember | null>(null);
   const [editingPaymentCreator, setEditingPaymentCreator] = useState<OrgMember | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -189,6 +194,10 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
 
     setLoading(true);
     try {
+      // Check if user is admin
+      const role = await OrganizationService.getUserRole(currentOrgId, user.uid);
+      setIsAdmin(role === 'owner' || role === 'admin');
+
       // Load creators for THIS PROJECT
       const creatorProfilesList = await CreatorLinksService.getAllCreators(currentOrgId, currentProjectId);
       
@@ -205,6 +214,13 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
         creatorProfilesMap.set(profile.id, profile);
       });
       setCreatorProfiles(creatorProfilesMap);
+
+      // Load pending creator invitations (only for admins)
+      if (role === 'owner' || role === 'admin') {
+        const invitesData = await TeamInvitationService.getOrgInvitations(currentOrgId);
+        const creatorInvitations = invitesData.filter(inv => inv.role === 'creator');
+        setPendingInvitations(creatorInvitations);
+      }
 
       // Calculate real-time earnings and video counts for each creator
       const earningsMap = new Map<string, number>();
@@ -233,6 +249,21 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
       day: 'numeric', 
       year: 'numeric' 
     });
+  };
+
+  const handleCancelInvitation = async (invitationId: string) => {
+    if (!currentOrgId) return;
+
+    setActionLoading(invitationId);
+    try {
+      await TeamInvitationService.cancelInvitation(invitationId, currentOrgId);
+      await loadData();
+    } catch (error) {
+      console.error('Failed to cancel invitation:', error);
+      alert('Failed to cancel invitation');
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   if (loading) {
@@ -366,6 +397,79 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
                     </tr>
                   );
                 })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Pending Creator Invitations */}
+      {isAdmin && pendingInvitations.length > 0 && (
+        <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg overflow-hidden">
+          <div className="px-6 py-4 border-b border-white/5 bg-zinc-900/40">
+            <h2 className="text-lg font-semibold text-white">
+              Pending Creator Invitations ({pendingInvitations.length})
+            </h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/5">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                    Email
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                    Invited By
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                    Sent
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {pendingInvitations.map((invitation) => (
+                  <tr key={invitation.id} className="hover:bg-white/5 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm text-white">{invitation.email}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                      {invitation.invitedByName || invitation.invitedByEmail || 'Unknown'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2 text-sm text-gray-400">
+                        <Clock className="w-4 h-4" />
+                        {formatDate(invitation.createdAt)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleCancelInvitation(invitation.id)}
+                        disabled={actionLoading === invitation.id}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                      >
+                        {actionLoading === invitation.id ? (
+                          <span className="flex items-center gap-2">
+                            <div className="w-3 h-3 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                            Canceling...
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-2">
+                            <X className="w-4 h-4" />
+                            Cancel
+                          </span>
+                        )}
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

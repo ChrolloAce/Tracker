@@ -40,9 +40,11 @@ const TeamManagementPage: React.FC = () => {
       setMembers(teamMembers);
 
       // Load pending invitations sent from this org (only for admins)
+      // Exclude creator invitations - they're managed in the Creators tab
       if (role === 'owner' || role === 'admin') {
         const invitesData = await TeamInvitationService.getOrgInvitations(currentOrgId);
-        setInvitations(invitesData);
+        const teamInvitations = invitesData.filter(inv => inv.role !== 'creator');
+        setInvitations(teamInvitations);
       }
 
       // Load invitations received by the current user
