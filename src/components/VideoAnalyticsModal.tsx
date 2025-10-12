@@ -114,7 +114,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       views: first.views > 0 ? ((last.views - first.views) / first.views) * 100 : 0,
       likes: first.likes > 0 ? ((last.likes - first.likes) / first.likes) * 100 : 0,
       comments: first.comments > 0 ? ((last.comments - first.comments) / first.comments) * 100 : 0,
-      shares: first.shares > 0 ? ((last.shares - first.shares) / first.shares) * 100 : 0
+      shares: (first.shares || 0) > 0 ? (((last.shares || 0) - (first.shares || 0)) / (first.shares || 0)) * 100 : 0
     };
   }, [video?.snapshots]);
 
