@@ -197,9 +197,9 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
 
                   {/* Animated Bar */}
                   <div className="ml-14 flex-1 relative">
-                    <div className="h-10 bg-white rounded-lg overflow-hidden">
+                    <div className="h-10 bg-gray-800 rounded-lg overflow-hidden">
                       <div 
-                        className="h-full bg-[#22c55e] relative transition-all duration-1000 ease-out group-hover:bg-[#16a34a]"
+                        className="h-full bg-white relative transition-all duration-1000 ease-out group-hover:bg-gray-100"
                         style={{
                           width: `${percentage}%`,
                           minWidth: '30%'
@@ -306,9 +306,9 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
 
                   {/* Animated Bar */}
                   <div className="ml-14 flex-1 relative">
-                    <div className="h-10 bg-white rounded-lg overflow-hidden">
+                    <div className="h-10 bg-gray-800 rounded-lg overflow-hidden">
                       <div 
-                        className="h-full bg-[#22c55e] relative transition-all duration-1000 ease-out group-hover:bg-[#16a34a]"
+                        className="h-full bg-white relative transition-all duration-1000 ease-out group-hover:bg-gray-100"
                         style={{
                           width: `${percentage}%`,
                           minWidth: '30%'
