@@ -2,7 +2,7 @@ import { VideoSubmission } from '../types';
 
 export class TrendCalculationService {
   /**
-   * Calculate 7-day trend data for a video's views
+   * Calculate 7-day trend data for a video's views (showing daily growth, not cumulative)
    */
   static getViewsTrend(video: VideoSubmission): number[] {
     if (!video.snapshots || video.snapshots.length === 0) {
@@ -23,29 +23,34 @@ export class TrendCalculationService {
       return [video.views];
     }
 
-    // If we have fewer than 7 data points, fill in with the earliest available data
+    // Calculate daily growth (difference from previous snapshot)
     const trendData: number[] = [];
     
     if (recentSnapshots.length === 1) {
       const snapshotValue = recentSnapshots[0].views;
       // Only show growth if there's actual change
       if (video.views !== snapshotValue) {
-        trendData.push(snapshotValue);
-        trendData.push(video.views);
+        trendData.push(snapshotValue); // First point is baseline
+        trendData.push(Math.max(0, video.views - snapshotValue)); // Second point is growth
       } else {
         // No change, return single point (flat line)
         return [video.views];
       }
     } else {
-      // Use all available snapshots
-      recentSnapshots.forEach(snapshot => {
-        trendData.push(snapshot.views);
-      });
+      // First snapshot shows absolute value (baseline)
+      trendData.push(recentSnapshots[0].views);
       
-      // Add current value if it's different from the last snapshot
+      // Subsequent snapshots show growth (difference from previous)
+      for (let i = 1; i < recentSnapshots.length; i++) {
+        const growth = Math.max(0, recentSnapshots[i].views - recentSnapshots[i - 1].views);
+        trendData.push(growth);
+      }
+      
+      // Add current value growth if it's different from the last snapshot
       const lastSnapshot = recentSnapshots[recentSnapshots.length - 1];
       if (lastSnapshot.views !== video.views) {
-        trendData.push(video.views);
+        const finalGrowth = Math.max(0, video.views - lastSnapshot.views);
+        trendData.push(finalGrowth);
       }
     }
 
@@ -53,7 +58,7 @@ export class TrendCalculationService {
   }
 
   /**
-   * Calculate 7-day trend data for a video's likes
+   * Calculate 7-day trend data for a video's likes (showing daily growth, not cumulative)
    */
   static getLikesTrend(video: VideoSubmission): number[] {
     if (!video.snapshots || video.snapshots.length === 0) {
@@ -71,25 +76,32 @@ export class TrendCalculationService {
       return [video.likes];
     }
 
+    // Calculate daily growth (difference from previous snapshot)
     const trendData: number[] = [];
     
     if (recentSnapshots.length === 1) {
       const snapshotValue = recentSnapshots[0].likes;
       // Only show growth if there's actual change
       if (video.likes !== snapshotValue) {
-        trendData.push(snapshotValue);
-        trendData.push(video.likes);
+        trendData.push(snapshotValue); // First point is baseline
+        trendData.push(Math.max(0, video.likes - snapshotValue)); // Second point is growth
       } else {
         return [video.likes];
       }
     } else {
-      recentSnapshots.forEach(snapshot => {
-        trendData.push(snapshot.likes);
-      });
+      // First snapshot shows absolute value (baseline)
+      trendData.push(recentSnapshots[0].likes);
+      
+      // Subsequent snapshots show growth (difference from previous)
+      for (let i = 1; i < recentSnapshots.length; i++) {
+        const growth = Math.max(0, recentSnapshots[i].likes - recentSnapshots[i - 1].likes);
+        trendData.push(growth);
+      }
       
       const lastSnapshot = recentSnapshots[recentSnapshots.length - 1];
       if (lastSnapshot.likes !== video.likes) {
-        trendData.push(video.likes);
+        const finalGrowth = Math.max(0, video.likes - lastSnapshot.likes);
+        trendData.push(finalGrowth);
       }
     }
 
@@ -97,30 +109,33 @@ export class TrendCalculationService {
   }
 
   /**
-   * Calculate trend percentage change
+   * Calculate trend percentage change (works with daily growth data)
+   * First value is baseline, subsequent values are daily growth
    */
   static getTrendPercentage(trendData: number[]): number {
     if (trendData.length < 2) return 0;
     
-    const firstValue = trendData[0];
-    const lastValue = trendData[trendData.length - 1];
+    const baseline = trendData[0];
+    // Sum all growth values (excluding baseline)
+    const totalGrowth = trendData.slice(1).reduce((sum, val) => sum + val, 0);
     
-    if (firstValue === 0) return lastValue > 0 ? 100 : 0;
+    if (baseline === 0) return totalGrowth > 0 ? 100 : 0;
     
-    return ((lastValue - firstValue) / firstValue) * 100;
+    return (totalGrowth / baseline) * 100;
   }
 
   /**
-   * Get trend direction as string
+   * Get trend direction as string (works with daily growth data)
+   * Looks at the most recent growth values to determine direction
    */
   static getTrendDirection(trendData: number[]): 'up' | 'down' | 'flat' {
     if (trendData.length < 2) return 'flat';
     
-    const firstValue = trendData[0];
-    const lastValue = trendData[trendData.length - 1];
+    // Sum all growth values (excluding baseline)
+    const totalGrowth = trendData.slice(1).reduce((sum, val) => sum + val, 0);
     
-    if (lastValue > firstValue) return 'up';
-    if (lastValue < firstValue) return 'down';
+    if (totalGrowth > 0) return 'up';
+    if (totalGrowth < 0) return 'down';
     return 'flat';
   }
 
