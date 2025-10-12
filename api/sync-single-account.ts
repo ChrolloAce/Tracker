@@ -232,6 +232,11 @@ export default async function handler(
 
         const reels = instagramData.items || [];
         console.log(`✅ Fetched ${reels.length} Instagram reels`);
+        
+        // DEBUG: Log the structure of the first reel
+        if (reels.length > 0) {
+          console.log('🔍 RAW FIRST REEL STRUCTURE:', JSON.stringify(reels[0], null, 2).substring(0, 2000));
+        }
 
         // Update profile with first reel data
         if (reels.length > 0) {
@@ -255,6 +260,19 @@ export default async function handler(
         // Transform Instagram reels to video format
         videos = reels.map((reelData: any, index: number) => {
           const media = reelData.media || reelData;
+          
+          // DEBUG: Log first video's media object to understand structure
+          if (index === 0) {
+            console.log('🔍 MEDIA OBJECT KEYS:', Object.keys(media).join(', '));
+            console.log('🔍 CHECKING FOR COUNTS:');
+            console.log('  - media.play_count:', media.play_count);
+            console.log('  - media.ig_play_count:', media.ig_play_count);
+            console.log('  - media.like_count:', media.like_count);
+            console.log('  - media.comment_count:', media.comment_count);
+            console.log('  - media.code:', media.code);
+            console.log('  - media.pk:', media.pk);
+            console.log('  - media.caption?.text:', media.caption?.text?.substring(0, 100));
+          }
           
           // Extract reel ID
           const reelId = media.code || media.pk || media.id || media.strong_id__ || `instagram_${Date.now()}_${index}`;
