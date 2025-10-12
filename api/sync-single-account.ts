@@ -219,12 +219,13 @@ export default async function handler(
         const instagramData = await runApifyActor({
           actorId: 'scraper-engine/instagram-reels-scraper',
           input: {
-            usernames: [account.username],
-            resultsLimit: 20, // Get last 20 reels
-            proxy: {
+            urls: [`https://www.instagram.com/${account.username}/`],
+            maxReels: 20,
+            sortOrder: 'newest',
+            maxComments: 0, // We don't need comments for now
+            proxyConfiguration: {
               useApifyProxy: true,
-              apifyProxyGroups: ['RESIDENTIAL'],
-              apifyProxyCountry: 'US'
+              apifyProxyGroups: ['RESIDENTIAL']
             }
           }
         });

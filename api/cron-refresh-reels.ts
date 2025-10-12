@@ -140,12 +140,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               try {
                 // Scrape latest reels using Apify with residential proxies
                 const run = await runApifyActor(INSTAGRAM_REELS_SCRAPER_ACTOR, {
-                  usernames: [username],
-                  resultsLimit: 20, // Get last 20 reels
-                  proxy: {
+                  urls: [`https://www.instagram.com/${username}/`],
+                  maxReels: 20,
+                  sortOrder: 'newest',
+                  maxComments: 0,
+                  proxyConfiguration: {
                     useApifyProxy: true,
-                    apifyProxyGroups: ['RESIDENTIAL'],
-                    apifyProxyCountry: 'US'
+                    apifyProxyGroups: ['RESIDENTIAL']
                   }
                 }, {
                   token: process.env.APIFY_TOKEN

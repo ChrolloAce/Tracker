@@ -33,12 +33,13 @@ class InstagramReelsApiService {
     try {
       // Run the Instagram Reels scraper actor with residential proxies
       const run = await this.apifyClient.runActor(this.INSTAGRAM_REELS_SCRAPER_ACTOR, {
-        directUrls: [instagramReelUrl],
-        resultsLimit: 1,
-        proxy: {
+        urls: [instagramReelUrl],
+        maxReels: 1,
+        sortOrder: 'newest',
+        maxComments: 0,
+        proxyConfiguration: {
           useApifyProxy: true,
-          apifyProxyGroups: ['RESIDENTIAL'],
-          apifyProxyCountry: 'US'
+          apifyProxyGroups: ['RESIDENTIAL']
         }
       });
 
@@ -87,12 +88,13 @@ class InstagramReelsApiService {
 
     try {
       const run = await this.apifyClient.runActor(this.INSTAGRAM_REELS_SCRAPER_ACTOR, {
-        usernames: [username],
-        resultsLimit: limit,
-        proxy: {
+        urls: [`https://www.instagram.com/${username}/`],
+        maxReels: limit,
+        sortOrder: 'newest',
+        maxComments: 0,
+        proxyConfiguration: {
           useApifyProxy: true,
-          apifyProxyGroups: ['RESIDENTIAL'],
-          apifyProxyCountry: 'US'
+          apifyProxyGroups: ['RESIDENTIAL']
         }
       });
 
@@ -262,12 +264,13 @@ class InstagramReelsApiService {
       console.log('🔄 Running test with URL:', testUrl);
       
       const run = await this.apifyClient.runActor(this.INSTAGRAM_REELS_SCRAPER_ACTOR, {
-        directUrls: [testUrl],
-        resultsLimit: 1,
-        proxy: {
+        urls: [testUrl],
+        maxReels: 1,
+        sortOrder: 'newest',
+        maxComments: 0,
+        proxyConfiguration: {
           useApifyProxy: true,
-          apifyProxyGroups: ['RESIDENTIAL'],
-          apifyProxyCountry: 'US'
+          apifyProxyGroups: ['RESIDENTIAL']
         }
       }, { timeout: 60000 });
 
