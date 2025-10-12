@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Calendar, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
-export type DateFilterType = 'today' | 'yesterday' | 'last7days' | 'last14days' | 'last30days' | 'mtd' | 'lastmonth' | 'ytd' | 'custom' | 'all';
+export type DateFilterType = 'today' | 'yesterday' | 'last7days' | 'last14days' | 'last30days' | 'last90days' | 'mtd' | 'lastmonth' | 'ytd' | 'custom' | 'all';
 
 interface DateRange {
   startDate: Date;
