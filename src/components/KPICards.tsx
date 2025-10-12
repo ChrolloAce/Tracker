@@ -115,7 +115,7 @@ const KPICards: React.FC<KPICardsProps> = ({
     if (dateRangeStart) {
       // For specific date ranges, calculate growth during the period from ALL videos
       submissions.forEach(video => {
-        const dateAdded = new Date(video.dateSubmitted || video.timestamp || video.uploadDate);
+        const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
         
         if (video.snapshots && video.snapshots.length > 0) {
           // Get the snapshot closest to (but before or at) the range start
@@ -166,14 +166,14 @@ const KPICards: React.FC<KPICardsProps> = ({
             const firstSnapshotInRange = sortedSnapshotsInRange[0];
             const lastSnapshotInRange = sortedSnapshotsInRange[sortedSnapshotsInRange.length - 1];
             
-            if (dateAdded >= dateRangeStart && dateAdded <= dateRangeEnd) {
-              // Video was added during this period - count full value from last snapshot
+            if (uploadDate >= dateRangeStart && uploadDate <= dateRangeEnd) {
+              // Video was uploaded during this period - count full value from last snapshot
               totalViews += lastSnapshotInRange.views || 0;
               totalLikes += lastSnapshotInRange.likes || 0;
               totalComments += lastSnapshotInRange.comments || 0;
               totalShares += lastSnapshotInRange.shares || 0;
             } else {
-              // Video was added BEFORE the period, but we only have snapshots from within the period
+              // Video was uploaded BEFORE the period, but we only have snapshots from within the period
               // Calculate growth from first to last snapshot in the range
               totalViews += Math.max(0, (lastSnapshotInRange.views || 0) - (firstSnapshotInRange.views || 0));
               totalLikes += Math.max(0, (lastSnapshotInRange.likes || 0) - (firstSnapshotInRange.likes || 0));
@@ -182,8 +182,8 @@ const KPICards: React.FC<KPICardsProps> = ({
             }
           } else if (!snapshotBeforeOrAtStart && !snapshotBeforeOrAtEnd) {
             // No snapshots before the range end at all
-            if (dateAdded >= dateRangeStart && dateAdded <= dateRangeEnd) {
-              // Video was added during the period - use current metrics
+            if (uploadDate >= dateRangeStart && uploadDate <= dateRangeEnd) {
+              // Video was uploaded during the period - use current metrics
               totalViews += video.views || 0;
               totalLikes += video.likes || 0;
               totalComments += video.comments || 0;
@@ -194,14 +194,14 @@ const KPICards: React.FC<KPICardsProps> = ({
           // it means there are no new snapshots during the period, so no growth to count
         } else {
           // No snapshots at all
-          if (dateAdded >= dateRangeStart && dateAdded <= dateRangeEnd) {
-            // Video was added during this period - count current metrics
+          if (uploadDate >= dateRangeStart && uploadDate <= dateRangeEnd) {
+            // Video was uploaded during this period - count current metrics
             totalViews += video.views || 0;
             totalLikes += video.likes || 0;
             totalComments += video.comments || 0;
             totalShares += video.shares || 0;
           }
-          // If video was added before the period and has no snapshots, we can't track growth
+          // If video was uploaded before the period and has no snapshots, we can't track growth
         }
       });
     } else {
@@ -250,7 +250,7 @@ const KPICards: React.FC<KPICardsProps> = ({
     
     if (ppDateRangeStart && ppDateRangeEnd) {
       submissions.forEach(video => {
-        const dateAdded = new Date(video.dateSubmitted || video.timestamp || video.uploadDate);
+        const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
         
         if (video.snapshots && video.snapshots.length > 0) {
           // Get the snapshot closest to (but before or at) the PP range start
@@ -297,14 +297,14 @@ const KPICards: React.FC<KPICardsProps> = ({
             const firstSnapshotInRange = sortedSnapshotsInRange[0];
             const lastSnapshotInRange = sortedSnapshotsInRange[sortedSnapshotsInRange.length - 1];
             
-            if (dateAdded >= ppDateRangeStart! && dateAdded <= ppDateRangeEnd!) {
-              // Video was added during PP - count full value from last snapshot
+            if (uploadDate >= ppDateRangeStart! && uploadDate <= ppDateRangeEnd!) {
+              // Video was uploaded during PP - count full value from last snapshot
               ppViews += lastSnapshotInRange.views || 0;
               ppLikes += lastSnapshotInRange.likes || 0;
               ppComments += lastSnapshotInRange.comments || 0;
               ppShares += lastSnapshotInRange.shares || 0;
             } else {
-              // Video was added BEFORE PP, but we only have snapshots from within PP
+              // Video was uploaded BEFORE PP, but we only have snapshots from within PP
               ppViews += Math.max(0, (lastSnapshotInRange.views || 0) - (firstSnapshotInRange.views || 0));
               ppLikes += Math.max(0, (lastSnapshotInRange.likes || 0) - (firstSnapshotInRange.likes || 0));
               ppComments += Math.max(0, (lastSnapshotInRange.comments || 0) - (firstSnapshotInRange.comments || 0));
@@ -312,7 +312,7 @@ const KPICards: React.FC<KPICardsProps> = ({
             }
           } else if (!snapshotBeforeOrAtStart && !snapshotBeforeOrAtEnd) {
             // No snapshots before the range end
-            if (dateAdded >= ppDateRangeStart! && dateAdded <= ppDateRangeEnd!) {
+            if (uploadDate >= ppDateRangeStart! && uploadDate <= ppDateRangeEnd!) {
               ppViews += video.views || 0;
               ppLikes += video.likes || 0;
               ppComments += video.comments || 0;
@@ -321,7 +321,7 @@ const KPICards: React.FC<KPICardsProps> = ({
           }
         } else {
           // No snapshots at all
-          if (dateAdded >= ppDateRangeStart! && dateAdded <= ppDateRangeEnd!) {
+          if (uploadDate >= ppDateRangeStart! && uploadDate <= ppDateRangeEnd!) {
             ppViews += video.views || 0;
             ppLikes += video.likes || 0;
             ppComments += video.comments || 0;
@@ -330,10 +330,10 @@ const KPICards: React.FC<KPICardsProps> = ({
         }
       });
       
-      // Count videos added in PP
+      // Count videos published in PP
       ppVideos = submissions.filter(v => {
-        const dateAdded = new Date(v.dateSubmitted || v.timestamp || v.uploadDate);
-        return dateAdded >= ppDateRangeStart! && dateAdded <= ppDateRangeEnd!;
+        const uploadDate = new Date(v.uploadDate || v.dateSubmitted);
+        return uploadDate >= ppDateRangeStart! && uploadDate <= ppDateRangeEnd!;
       }).length;
     }
 
@@ -464,11 +464,11 @@ const KPICards: React.FC<KPICardsProps> = ({
           let intervalValue = 0;
           
           submissions.forEach(video => {
-            const dateAdded = new Date(video.dateSubmitted || video.timestamp || video.uploadDate);
+            const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
             
             // Only process videos that are relevant to the date range we're analyzing
-            if (dateAdded < actualStartDate) {
-              // Video was added before our analysis period
+            if (uploadDate < actualStartDate) {
+              // Video was uploaded before our analysis period
               // Check if it has growth during this interval via snapshots
               if (video.snapshots && video.snapshots.length > 0) {
                 const snapshotAtStart = video.snapshots
@@ -484,8 +484,8 @@ const KPICards: React.FC<KPICardsProps> = ({
                   intervalValue += delta;
                 }
               }
-            } else if (dateAdded >= pointDate && dateAdded < nextPointDate) {
-              // Video was added during this interval
+            } else if (uploadDate >= pointDate && uploadDate < nextPointDate) {
+              // Video was uploaded during this interval
               // Use either the first snapshot or current value
               if (video.snapshots && video.snapshots.length > 0) {
                 const firstSnapshot = video.snapshots
@@ -495,8 +495,8 @@ const KPICards: React.FC<KPICardsProps> = ({
                 // No snapshots, use current value
                 intervalValue += video[metric] || 0;
               }
-            } else if (dateAdded >= nextPointDate) {
-              // Video was added after this interval, skip it
+            } else if (uploadDate >= nextPointDate) {
+              // Video was uploaded after this interval, skip it
               return;
             }
           });
@@ -671,11 +671,11 @@ const KPICards: React.FC<KPICardsProps> = ({
           let periodEngagement = 0;
           
           submissions.forEach(video => {
-            const dateAdded = new Date(video.dateSubmitted || video.timestamp || video.uploadDate);
+            const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
             
             // Only process videos that are relevant to the date range we're analyzing
-            if (dateAdded < actualStartDate) {
-              // Video was added before our analysis period
+            if (uploadDate < actualStartDate) {
+              // Video was uploaded before our analysis period
               // Check if it has growth during this interval via snapshots
               if (video.snapshots && video.snapshots.length > 0) {
                 const snapshotAtStart = video.snapshots
@@ -696,8 +696,8 @@ const KPICards: React.FC<KPICardsProps> = ({
                   periodEngagement += likesDelta + commentsDelta + sharesDelta;
                 }
               }
-            } else if (dateAdded >= pointDate && dateAdded < nextPointDate) {
-              // Video was added during this interval
+            } else if (uploadDate >= pointDate && uploadDate < nextPointDate) {
+              // Video was uploaded during this interval
               // Use either the first snapshot or current value
               if (video.snapshots && video.snapshots.length > 0) {
                 const firstSnapshot = video.snapshots
@@ -709,8 +709,8 @@ const KPICards: React.FC<KPICardsProps> = ({
                 periodViews += video.views || 0;
                 periodEngagement += (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
               }
-            } else if (dateAdded >= nextPointDate) {
-              // Video was added after this interval, skip it
+            } else if (uploadDate >= nextPointDate) {
+              // Video was uploaded after this interval, skip it
               return;
             }
           });

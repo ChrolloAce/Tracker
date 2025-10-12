@@ -116,18 +116,18 @@ class DateFilterService {
     console.log(`📅 Date range: ${dateRange.startDate.toLocaleDateString()} - ${dateRange.endDate.toLocaleDateString()}`);
     
     const filteredVideos = videos.filter(video => {
-      const dateAdded = video.dateSubmitted
-        ? new Date(video.dateSubmitted)
+      const uploadDate = video.uploadDate
+        ? new Date(video.uploadDate)
         : video.timestamp 
         ? new Date(video.timestamp)
-        : video.uploadDate 
-        ? new Date(video.uploadDate)
+        : video.dateSubmitted 
+        ? new Date(video.dateSubmitted)
         : new Date();
 
       // Video is in range if:
-      // 1. It was added during the period, OR
+      // 1. It was uploaded during the period, OR
       // 2. It has snapshots within the period
-      const addedInRange = dateAdded >= dateRange.startDate && dateAdded <= dateRange.endDate;
+      const uploadedInRange = uploadDate >= dateRange.startDate && uploadDate <= dateRange.endDate;
       
       // Check if video has any snapshots within the date range
       const hasSnapshotsInRange = video.snapshots && video.snapshots.some(snapshot => {
@@ -135,16 +135,16 @@ class DateFilterService {
         return snapshotDate >= dateRange.startDate && snapshotDate <= dateRange.endDate;
       });
       
-      const isInRange = addedInRange || hasSnapshotsInRange;
+      const isInRange = uploadedInRange || hasSnapshotsInRange;
       
       if (videos.length <= 10) { // Only log for small datasets to avoid spam
-        console.log(`📹 Video "${video.title.substring(0, 30)}..." added ${dateAdded.toLocaleDateString()} - ${isInRange ? '✅ Included' : '❌ Excluded'} ${hasSnapshotsInRange ? '(has snapshots in range)' : ''}`);
+        console.log(`📹 Video "${video.title.substring(0, 30)}..." uploaded ${uploadDate.toLocaleDateString()} - ${isInRange ? '✅ Included' : '❌ Excluded'} ${hasSnapshotsInRange ? '(has snapshots in range)' : ''}`);
       }
 
       return isInRange;
     });
 
-    console.log(`✅ Filtered to ${filteredVideos.length} videos (based on date added or snapshots in range)`);
+    console.log(`✅ Filtered to ${filteredVideos.length} videos (based on upload date or snapshots in range)`);
     return filteredVideos;
   }
 

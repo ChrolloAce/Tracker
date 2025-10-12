@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useSearchParams } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Link2, Slack, Chrome } from 'lucide-react';
 import blackLogo from '../components/blacklogo.png';
+import TeamInvitationService from '../services/TeamInvitationService';
 
 const LoginPage: React.FC = () => {
-  const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
+  const { user, signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -12,6 +15,48 @@ const LoginPage: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [processingInvite, setProcessingInvite] = useState(false);
+  
+  // Get invite parameters from URL
+  const inviteId = searchParams.get('invite');
+  const orgId = searchParams.get('org');
+
+  // Auto-accept invitation when user is authenticated
+  useEffect(() => {
+    const autoAcceptInvitation = async () => {
+      // Check if we have invite parameters and an authenticated user
+      if (!user || !inviteId || !orgId || processingInvite) return;
+      
+      console.log('🎯 Auto-accepting invitation...', { inviteId, orgId, user: user.email });
+      setProcessingInvite(true);
+      setError('');
+
+      try {
+        // Auto-accept the invitation
+        await TeamInvitationService.acceptInvitation(
+          inviteId,
+          orgId,
+          user.uid,
+          user.email!,
+          user.displayName || undefined
+        );
+
+        console.log('✅ Invitation accepted! Creator account created.');
+        
+        // Give Firebase a moment to propagate the changes
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Redirect to dashboard - the AuthContext will handle setting the right org/project
+        window.location.href = '/dashboard';
+      } catch (err: any) {
+        console.error('❌ Failed to accept invitation:', err);
+        setError(err.message || 'Failed to accept invitation. Please try again.');
+        setProcessingInvite(false);
+      }
+    };
+
+    autoAcceptInvitation();
+  }, [user, inviteId, orgId, processingInvite]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +88,28 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  // Show loading state if processing invitation
+  if (processingInvite) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-8">
+        <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-12 text-center">
+          <div className="mb-6">
+            <img src={blackLogo} alt="ViewTrack" className="h-10 w-auto mx-auto" />
+          </div>
+          <div className="flex items-center justify-center mb-6">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-black"></div>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Setting up your account...
+          </h2>
+          <p className="text-gray-500">
+            We're creating your creator profile. This will only take a moment!
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-8">
       <div className="max-w-6xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden grid md:grid-cols-2">
@@ -56,15 +123,28 @@ const LoginPage: React.FC = () => {
 
           {/* Title & Subtitle */}
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            {isSignUp ? 'Create your Account' : 'Log in to your Account'}
+            {inviteId ? 'Join the Team' : isSignUp ? 'Create your Account' : 'Log in to your Account'}
           </h1>
           <p className="text-gray-500 mb-8">
-            {isSignUp ? 'Get started with ViewTrack' : 'Welcome back! Select method to log in:'}
+            {inviteId 
+              ? 'Sign up or log in to accept your invitation' 
+              : isSignUp 
+              ? 'Get started with ViewTrack' 
+              : 'Welcome back! Select method to log in:'
+            }
           </p>
 
           {error && (
             <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
+
+          {inviteId && !error && (
+            <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-600">
+                🎉 You've been invited! Sign up or log in to get started.
+              </p>
             </div>
           )}
 
