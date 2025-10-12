@@ -21,6 +21,7 @@ interface KPICardsProps {
   submissions: VideoSubmission[];
   linkClicks?: LinkClick[];
   dateFilter?: DateFilterType;
+  customRange?: { startDate: Date; endDate: Date };
   timePeriod?: TimePeriodType;
   onCreateLink?: () => void;
   onDateFilterChange?: (filter: DateFilterType, customRange?: { startDate: Date; endDate: Date }) => void;
@@ -43,7 +44,8 @@ interface KPICardData {
 const KPICards: React.FC<KPICardsProps> = ({ 
   submissions, 
   linkClicks = [], 
-  dateFilter = 'all', 
+  dateFilter = 'all',
+  customRange,
   timePeriod = 'weeks', 
   onCreateLink,
   onDateFilterChange = () => {} 
@@ -67,7 +69,11 @@ const KPICards: React.FC<KPICardsProps> = ({
     let dateRangeStart: Date | null = null;
     let dateRangeEnd: Date = new Date(); // Always up to now
     
-    if (dateFilter === 'today') {
+    // Check for custom range first
+    if (dateFilter === 'custom' && customRange) {
+      dateRangeStart = new Date(customRange.startDate);
+      dateRangeEnd = new Date(customRange.endDate);
+    } else if (dateFilter === 'today') {
       dateRangeStart = new Date();
       dateRangeStart.setHours(0, 0, 0, 0);
     } else if (dateFilter === 'yesterday') {
@@ -818,7 +824,7 @@ const KPICards: React.FC<KPICardsProps> = ({
     ];
 
     return cards;
-  }, [submissions, linkClicks, dateFilter, timePeriod]);
+  }, [submissions, linkClicks, dateFilter, customRange, timePeriod]);
 
   return (
     <>
@@ -834,6 +840,7 @@ const KPICards: React.FC<KPICardsProps> = ({
         submissions={submissions}
         linkClicks={linkClicks}
         dateFilter={dateFilter}
+        customRange={customRange}
         onDateFilterChange={onDateFilterChange}
         initialMetric={selectedMetric}
       />

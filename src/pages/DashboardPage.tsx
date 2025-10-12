@@ -797,6 +797,7 @@ function DashboardPage() {
                   submissions={combinedSubmissions}
                   linkClicks={filteredLinkClicks}
                   dateFilter={dateFilter}
+                  customRange={customDateRange}
                   timePeriod="days"
                   onDateFilterChange={handleDateFilterChange}
                 />

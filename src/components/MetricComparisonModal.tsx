@@ -11,6 +11,7 @@ interface MetricComparisonModalProps {
   submissions: VideoSubmission[];
   linkClicks: LinkClick[];
   dateFilter: DateFilterType;
+  customRange?: { startDate: Date; endDate: Date };
   onDateFilterChange: (filter: DateFilterType, customRange?: { startDate: Date; endDate: Date }) => void;
   initialMetric?: 'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts' | 'engagement' | 'engagementRate' | 'linkClicks';
 }
@@ -41,6 +42,7 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
   submissions,
   linkClicks,
   dateFilter,
+  customRange,
   onDateFilterChange,
   initialMetric = 'views',
 }) => {
@@ -281,6 +283,7 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
             <div className="transform scale-90">
               <DateRangeFilter
                 selectedFilter={dateFilter}
+                customRange={customRange}
                 onFilterChange={onDateFilterChange}
               />
             </div>
