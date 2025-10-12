@@ -215,12 +215,17 @@ export default async function handler(
       console.log(`🎬 Fetching Instagram reels for ${account.username}...`);
       
       try {
-        // Use Instagram Reels scraper
+        // Use Instagram Reels scraper with residential proxies
         const instagramData = await runApifyActor({
           actorId: 'scraper-engine/instagram-reels-scraper',
           input: {
             usernames: [account.username],
             resultsLimit: 20, // Get last 20 reels
+            proxy: {
+              useApifyProxy: true,
+              apifyProxyGroups: ['RESIDENTIAL'],
+              apifyProxyCountry: 'US'
+            }
           }
         });
 

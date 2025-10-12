@@ -138,10 +138,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               console.log(`      👤 Refreshing reels for @${username}...`);
 
               try {
-                // Scrape latest reels using Apify
+                // Scrape latest reels using Apify with residential proxies
                 const run = await runApifyActor(INSTAGRAM_REELS_SCRAPER_ACTOR, {
                   usernames: [username],
                   resultsLimit: 20, // Get last 20 reels
+                  proxy: {
+                    useApifyProxy: true,
+                    apifyProxyGroups: ['RESIDENTIAL'],
+                    apifyProxyCountry: 'US'
+                  }
                 }, {
                   token: process.env.APIFY_TOKEN
                 });

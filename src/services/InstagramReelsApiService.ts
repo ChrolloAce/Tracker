@@ -31,10 +31,15 @@ class InstagramReelsApiService {
     console.log('📡 Calling Apify Instagram Reels scraper...');
 
     try {
-      // Run the Instagram Reels scraper actor
+      // Run the Instagram Reels scraper actor with residential proxies
       const run = await this.apifyClient.runActor(this.INSTAGRAM_REELS_SCRAPER_ACTOR, {
         directUrls: [instagramReelUrl],
         resultsLimit: 1,
+        proxy: {
+          useApifyProxy: true,
+          apifyProxyGroups: ['RESIDENTIAL'],
+          apifyProxyCountry: 'US'
+        }
       });
 
       console.log('🎯 Apify Reels scraper run completed:', run.id);
@@ -84,6 +89,11 @@ class InstagramReelsApiService {
       const run = await this.apifyClient.runActor(this.INSTAGRAM_REELS_SCRAPER_ACTOR, {
         usernames: [username],
         resultsLimit: limit,
+        proxy: {
+          useApifyProxy: true,
+          apifyProxyGroups: ['RESIDENTIAL'],
+          apifyProxyCountry: 'US'
+        }
       });
 
       if (run.status !== 'SUCCEEDED') {
@@ -254,6 +264,11 @@ class InstagramReelsApiService {
       const run = await this.apifyClient.runActor(this.INSTAGRAM_REELS_SCRAPER_ACTOR, {
         directUrls: [testUrl],
         resultsLimit: 1,
+        proxy: {
+          useApifyProxy: true,
+          apifyProxyGroups: ['RESIDENTIAL'],
+          apifyProxyCountry: 'US'
+        }
       }, { timeout: 60000 });
 
       console.log('✅ Test run completed:', run.id, 'Status:', run.status);
