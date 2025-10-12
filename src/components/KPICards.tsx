@@ -72,7 +72,9 @@ const KPICards: React.FC<KPICardsProps> = ({
     // Check for custom range first
     if (dateFilter === 'custom' && customRange) {
       dateRangeStart = new Date(customRange.startDate);
+      dateRangeStart.setHours(0, 0, 0, 0); // Start of day
       dateRangeEnd = new Date(customRange.endDate);
+      dateRangeEnd.setHours(23, 59, 59, 999); // End of day
     } else if (dateFilter === 'today') {
       dateRangeStart = new Date();
       dateRangeStart.setHours(0, 0, 0, 0);

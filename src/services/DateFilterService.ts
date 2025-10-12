@@ -77,7 +77,12 @@ class DateFilterService {
         
       case 'custom':
         if (customRange) {
-          return customRange;
+          // Normalize custom range to include full days
+          const startDate = new Date(customRange.startDate);
+          startDate.setHours(0, 0, 0, 0);
+          const endDate = new Date(customRange.endDate);
+          endDate.setHours(23, 59, 59, 999);
+          return { startDate, endDate };
         }
         // Fallback to all time if no custom range provided
         return {
