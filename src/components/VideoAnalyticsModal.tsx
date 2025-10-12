@@ -17,6 +17,11 @@ interface ChartDataPoint {
   comments: number;
   shares: number;
   timestamp: number;
+  // Cumulative totals (actual values at this snapshot)
+  cumulativeViews: number;
+  cumulativeLikes: number;
+  cumulativeComments: number;
+  cumulativeShares: number;
 }
 
 type MetricType = 'views' | 'likes' | 'comments' | 'shares';
@@ -40,7 +45,11 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         likes: video.likes,
         comments: video.comments,
         shares: video.shares || 0,
-        timestamp: new Date(video.timestamp || video.dateSubmitted).getTime()
+        timestamp: new Date(video.timestamp || video.dateSubmitted).getTime(),
+        cumulativeViews: video.views,
+        cumulativeLikes: video.likes,
+        cumulativeComments: video.comments,
+        cumulativeShares: video.shares || 0,
       }];
     }
 
@@ -62,7 +71,12 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
           likes: snapshot.likes,
           comments: snapshot.comments,
           shares: snapshot.shares || 0,
-          timestamp: new Date(snapshot.capturedAt).getTime()
+          timestamp: new Date(snapshot.capturedAt).getTime(),
+          // Store cumulative totals
+          cumulativeViews: snapshot.views,
+          cumulativeLikes: snapshot.likes,
+          cumulativeComments: snapshot.comments,
+          cumulativeShares: snapshot.shares || 0,
         };
       }
 
@@ -77,7 +91,12 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         likes: Math.max(0, snapshot.likes - prevSnapshot.likes),
         comments: Math.max(0, snapshot.comments - prevSnapshot.comments),
         shares: Math.max(0, (snapshot.shares || 0) - (prevSnapshot.shares || 0)),
-        timestamp: new Date(snapshot.capturedAt).getTime()
+        timestamp: new Date(snapshot.capturedAt).getTime(),
+        // Store cumulative totals (actual values at this snapshot)
+        cumulativeViews: snapshot.views,
+        cumulativeLikes: snapshot.likes,
+        cumulativeComments: snapshot.comments,
+        cumulativeShares: snapshot.shares || 0,
       };
     });
   }, [video?.id, video?.snapshots?.length]);
@@ -313,21 +332,38 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                 <Tooltip
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
+                      const data = payload[0]?.payload;
+                      
                       return (
                         <div className="bg-black/90 backdrop-blur-sm border border-white/10 px-3 py-2 rounded-lg shadow-xl">
-                          {payload.map((entry, index) => (
-                            <div key={index} className="flex items-center gap-2 mb-1 last:mb-0">
-                              <div 
-                                className="w-2 h-2 rounded-sm"
-                                style={{ backgroundColor: entry.color }}
-                              />
-                              <p className="text-xs font-medium text-white">
-                                {entry.name}: {entry.value?.toLocaleString()}
-                              </p>
-                            </div>
-                          ))}
+                          {payload.map((entry, index) => {
+                            // Get the metric name (views, likes, comments, shares)
+                            const metricName = entry.dataKey as MetricType;
+                            const growthValue = data[metricName];
+                            const cumulativeKey = `cumulative${metricName.charAt(0).toUpperCase() + metricName.slice(1)}` as keyof ChartDataPoint;
+                            const cumulativeValue = data[cumulativeKey] as number;
+                            
+                            return (
+                              <div key={index} className="flex items-center gap-2 mb-1 last:mb-0">
+                                <div 
+                                  className="w-2 h-2 rounded-sm"
+                                  style={{ backgroundColor: entry.color }}
+                                />
+                                <div className="flex items-baseline gap-1">
+                                  <span className="text-xs font-medium text-white">
+                                    {entry.name}: {cumulativeValue.toLocaleString()}
+                                  </span>
+                                  {growthValue > 0 && (
+                                    <span className="text-[10px] font-medium text-green-400">
+                                      +{growthValue.toLocaleString()}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
                           <p className="text-[10px] text-gray-400 mt-1">
-                            {payload[0]?.payload?.date}
+                            {data?.date}
                           </p>
                         </div>
                       );
