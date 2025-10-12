@@ -79,36 +79,100 @@ class InstagramApiService {
   private async transformApifyData(apifyData: any, originalUrl: string): Promise<InstagramVideoData> {
     console.log('🔄 Transforming Apify data to our format...');
     console.log('📋 Available fields:', Object.keys(apifyData));
-    console.log('🔍 RAW APIFY DATA:', JSON.stringify(apifyData, null, 2));
+    console.log('🔍 RAW APIFY DATA:', JSON.stringify(apifyData, null, 2).substring(0, 2000));
+    
+    // Handle media wrapper (some scrapers return { media: {...} })
+    const media = apifyData.media || apifyData;
+    console.log('📋 Media object keys:', Object.keys(media));
     
     // Extract ID from URL or use shortCode
     const urlMatch = originalUrl.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
-    const id = urlMatch ? urlMatch[1] : apifyData.shortCode || apifyData.id || 'unknown';
+    const id = urlMatch ? urlMatch[1] : 
+               media.code || media.shortCode || media.pk || media.id || 'unknown';
 
     // Try multiple possible field names for thumbnail
-    const thumbnailUrl = apifyData.displayUrl || apifyData.thumbnailUrl || apifyData.thumbnail || apifyData.imageUrl || '';
+    let thumbnailUrl = '';
+    if (media.image_versions2?.candidates && media.image_versions2.candidates.length > 0) {
+      thumbnailUrl = media.image_versions2.candidates[0].url;
+      console.log('📸 Found thumbnail from image_versions2');
+    } else if (media.displayUrl) {
+      thumbnailUrl = media.displayUrl;
+    } else if (media.display_uri) {
+      thumbnailUrl = media.display_uri;
+    } else if (media.thumbnailUrl) {
+      thumbnailUrl = media.thumbnailUrl;
+    } else if (media.thumbnail) {
+      thumbnailUrl = media.thumbnail;
+    } else if (media.imageUrl) {
+      thumbnailUrl = media.imageUrl;
+    }
     
     // Download and save thumbnail locally
     let localThumbnailUrl = '';
     if (thumbnailUrl) {
-      console.log('💾 Downloading thumbnail from:', thumbnailUrl);
+      console.log('💾 Downloading thumbnail from:', thumbnailUrl.substring(0, 100));
       localThumbnailUrl = await this.downloadThumbnail(thumbnailUrl, id);
     } else {
       console.warn('⚠️ No thumbnail URL found in Apify data');
     }
 
-    // Try multiple possible field names for each data point
-    const username = apifyData.ownerUsername || apifyData.owner?.username || apifyData.username || 'unknown_user';
-    const caption = apifyData.caption || apifyData.text || apifyData.description || 'No caption';
-    const likes = apifyData.likesCount || apifyData.likes || apifyData.likeCount || 0;
-    const comments = apifyData.commentsCount || apifyData.comments || apifyData.commentCount || 0;
-    const views = apifyData.videoViewCount || apifyData.videoPlayCount || apifyData.viewCount || apifyData.views || 0;
-    const timestamp = apifyData.timestamp || apifyData.takenAt || apifyData.createdTime || new Date().toISOString();
+    // Try multiple possible field names for username
+    const username = media.user?.username || 
+                    media.owner?.username || 
+                    media.caption?.user?.username ||
+                    media.ownerUsername || 
+                    media.username || 
+                    'unknown_user';
     
-    // Extract profile information
-    const profilePic = apifyData.ownerProfilePicUrl || apifyData.owner?.profilePicUrl || apifyData.profilePicUrl || '';
-    const displayName = apifyData.ownerFullName || apifyData.owner?.fullName || username;
-    const followerCount = apifyData.ownerFollowersCount || apifyData.owner?.followersCount || 0;
+    // Extract caption text - handle both string and object formats
+    let caption = 'No caption';
+    if (typeof media.caption === 'string') {
+      caption = media.caption;
+    } else if (media.caption?.text) {
+      caption = media.caption.text;
+    } else if (media.text) {
+      caption = media.text;
+    } else if (media.description) {
+      caption = media.description;
+    }
+    
+    const likes = media.like_count || media.likesCount || media.likes || media.likeCount || 0;
+    const comments = media.comment_count || media.commentsCount || media.comments || media.commentCount || 0;
+    const views = media.play_count || media.ig_play_count || media.videoViewCount || media.videoPlayCount || media.viewCount || media.views || 0;
+    
+    // Handle timestamp - check for Unix timestamps (seconds)
+    let timestamp = new Date().toISOString();
+    if (media.taken_at) {
+      timestamp = new Date(media.taken_at * 1000).toISOString();
+    } else if (media.takenAt) {
+      timestamp = new Date(media.takenAt * 1000).toISOString();
+    } else if (media.createdTime) {
+      timestamp = media.createdTime;
+    } else if (media.timestamp) {
+      timestamp = media.timestamp;
+    }
+    
+    // Extract profile information - check all possible locations
+    const profilePic = media.user?.profile_pic_url || 
+                      media.owner?.profile_pic_url || 
+                      media.caption?.user?.profile_pic_url ||
+                      media.ownerProfilePicUrl || 
+                      media.owner?.profilePicUrl || 
+                      media.profilePicUrl || 
+                      '';
+    
+    const displayName = media.user?.full_name || 
+                       media.owner?.full_name || 
+                       media.caption?.user?.full_name ||
+                       media.ownerFullName || 
+                       media.owner?.fullName || 
+                       username;
+    
+    const followerCount = media.user?.follower_count || 
+                         media.owner?.follower_count || 
+                         media.ownerFollowersCount || 
+                         media.owner?.followersCount || 
+                         0;
 
     const transformedData: InstagramVideoData = {
       id: id,
@@ -118,13 +182,14 @@ class InstagramApiService {
       like_count: likes,
       comment_count: comments,
       view_count: views,
-      timestamp: timestamp
+      timestamp: timestamp,
+      // Store profile metadata
+      profile_pic_url: profilePic,
+      display_name: displayName,
+      follower_count: followerCount,
+      video_duration: media.video_duration || 0,
+      is_verified: media.user?.is_verified || media.owner?.is_verified || false
     };
-    
-    // Store profile metadata
-    (transformedData as any).profile_pic_url = profilePic;
-    (transformedData as any).display_name = displayName;
-    (transformedData as any).follower_count = followerCount;
 
     console.log('✅ Data transformation completed with real values:', {
       id: transformedData.id,
@@ -139,6 +204,14 @@ class InstagramApiService {
       profilePic: profilePic ? '✓ Present' : '✗ Missing',
       followers: followerCount
     });
+    
+    console.log('🎯 Instagram Data Summary:');
+    console.log('   📱 Username:', username, '(' + displayName + ')');
+    console.log('   👁️ Views:', transformedData.view_count);
+    console.log('   ❤️ Likes:', transformedData.like_count);
+    console.log('   💬 Comments:', transformedData.comment_count);
+    console.log('   📸 Thumbnail URL:', thumbnailUrl ? thumbnailUrl.substring(0, 80) + '...' : 'None');
+    console.log('   🖼️ Profile Pic:', profilePic ? profilePic.substring(0, 80) + '...' : 'None');
 
     return transformedData;
   }

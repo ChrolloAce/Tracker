@@ -123,9 +123,12 @@ class InstagramReelsApiService {
 
   private async transformApifyReelsData(reelData: any, originalUrl: string): Promise<InstagramVideoData> {
     console.log('🔄 Transforming Apify Reels data to our format...');
+    console.log('🔍 RAW REEL DATA STRUCTURE:', JSON.stringify(reelData, null, 2).substring(0, 1000));
     
     // The scraper-engine/instagram-reels-scraper returns data in the "media" structure
     const media = reelData.media || reelData;
+    
+    console.log('📋 Media object keys:', Object.keys(media));
     
     // Extract ID from the data or URL as fallback
     let id = media.code || media.pk || media.id || media.strong_id__;
@@ -135,12 +138,26 @@ class InstagramReelsApiService {
       id = urlMatch ? urlMatch[1] : 'unknown';
     }
     
-    // Extract username - multiple possible paths
-    const username = media.user?.username || media.owner?.username || media.caption?.user?.username || 'unknown_user';
-    const displayName = media.user?.full_name || media.owner?.full_name || media.caption?.user?.full_name || username;
+    // Extract username - multiple possible paths including nested caption.user
+    const username = media.user?.username || 
+                    media.owner?.username || 
+                    media.caption?.user?.username || 
+                    'unknown_user';
     
-    // Extract caption text
-    const caption = media.caption?.text || media.title || media.caption || 'No caption';
+    const displayName = media.user?.full_name || 
+                       media.owner?.full_name || 
+                       media.caption?.user?.full_name || 
+                       username;
+    
+    // Extract caption text - handle both string and object formats
+    let caption = 'No caption';
+    if (typeof media.caption === 'string') {
+      caption = media.caption;
+    } else if (media.caption?.text) {
+      caption = media.caption.text;
+    } else if (media.title) {
+      caption = media.title;
+    }
     
     // Extract metrics - this scraper provides very detailed metrics
     const likes = media.like_count || media.likes_count || 0;
@@ -148,29 +165,43 @@ class InstagramReelsApiService {
     const views = media.play_count || media.ig_play_count || media.view_count || media.video_view_count || 0;
     const shares = media.share_count || 0;
     
-    // Extract timestamp
-    const timestamp = media.taken_at 
-      ? new Date(media.taken_at * 1000).toISOString() 
-      : media.created_at 
-      ? new Date(media.created_at * 1000).toISOString()
-      : new Date().toISOString();
+    // Extract timestamp - handle Unix timestamps (seconds)
+    let timestamp = new Date().toISOString();
+    if (media.taken_at) {
+      timestamp = new Date(media.taken_at * 1000).toISOString();
+    } else if (media.created_at) {
+      timestamp = new Date(media.created_at * 1000).toISOString();
+    } else if (media.caption?.created_at) {
+      timestamp = new Date(media.caption.created_at * 1000).toISOString();
+    }
     
-    // Extract thumbnail - multiple possible sources
+    // Extract thumbnail - multiple possible sources, prioritize high quality
     let thumbnailUrl = '';
     if (media.image_versions2?.candidates && media.image_versions2.candidates.length > 0) {
       // Get the best quality thumbnail (usually the first one)
       thumbnailUrl = media.image_versions2.candidates[0].url;
+      console.log('📸 Found thumbnail from image_versions2:', thumbnailUrl.substring(0, 100));
     } else if (media.display_uri) {
       thumbnailUrl = media.display_uri;
+      console.log('📸 Found thumbnail from display_uri');
+    } else if (media.display_url) {
+      thumbnailUrl = media.display_url;
+      console.log('📸 Found thumbnail from display_url');
     } else if (media.thumbnail_url) {
       thumbnailUrl = media.thumbnail_url;
+      console.log('📸 Found thumbnail from thumbnail_url');
     }
     
-    // Extract profile picture
-    const profilePic = media.user?.profile_pic_url || media.owner?.profile_pic_url || media.caption?.user?.profile_pic_url || '';
+    // Extract profile picture - check all possible locations
+    const profilePic = media.user?.profile_pic_url || 
+                      media.owner?.profile_pic_url || 
+                      media.caption?.user?.profile_pic_url || 
+                      '';
     
     // Extract follower count
-    const followerCount = media.user?.follower_count || media.owner?.follower_count || 0;
+    const followerCount = media.user?.follower_count || 
+                         media.owner?.follower_count || 
+                         0;
     
     // Download and save thumbnail locally
     let localThumbnailUrl = '';
@@ -189,18 +220,17 @@ class InstagramReelsApiService {
       like_count: likes,
       comment_count: comments,
       view_count: views,
-      timestamp: timestamp
+      timestamp: timestamp,
+      // Store additional metadata
+      profile_pic_url: profilePic,
+      display_name: displayName,
+      follower_count: followerCount,
+      share_count: shares,
+      video_duration: media.video_duration || 0,
+      is_verified: media.user?.is_verified || media.owner?.is_verified || false,
+      play_count: views,
+      ig_play_count: media.ig_play_count || views
     };
-    
-    // Store additional metadata
-    (transformedData as any).profile_pic_url = profilePic;
-    (transformedData as any).display_name = displayName;
-    (transformedData as any).follower_count = followerCount;
-    (transformedData as any).share_count = shares;
-    (transformedData as any).video_duration = media.video_duration || 0;
-    (transformedData as any).is_verified = media.user?.is_verified || media.owner?.is_verified || false;
-    (transformedData as any).play_count = views;
-    (transformedData as any).ig_play_count = media.ig_play_count || views;
 
     console.log('✅ Reel data transformation completed:', {
       id: transformedData.id,
@@ -217,6 +247,14 @@ class InstagramReelsApiService {
       followers: followerCount,
       verified: (transformedData as any).is_verified ? '✓' : '✗'
     });
+    
+    console.log('🎯 Instagram Reel Data Summary:');
+    console.log('   📱 Username:', username, '(' + displayName + ')');
+    console.log('   👁️ Views:', views);
+    console.log('   ❤️ Likes:', likes);
+    console.log('   💬 Comments:', comments);
+    console.log('   📸 Thumbnail URL:', thumbnailUrl ? thumbnailUrl.substring(0, 80) + '...' : 'None');
+    console.log('   🖼️ Profile Pic:', profilePic ? profilePic.substring(0, 80) + '...' : 'None');
 
     return transformedData;
   }

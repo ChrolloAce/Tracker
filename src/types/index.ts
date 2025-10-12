@@ -41,4 +41,13 @@ export interface InstagramVideoData {
   comment_count: number;
   view_count?: number;
   timestamp: string;
+  // Extended fields for richer data (like TikTok)
+  profile_pic_url?: string;
+  display_name?: string;
+  follower_count?: number;
+  share_count?: number;
+  video_duration?: number;
+  is_verified?: boolean;
+  play_count?: number;
+  ig_play_count?: number;
 }
