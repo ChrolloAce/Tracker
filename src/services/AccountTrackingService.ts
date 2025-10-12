@@ -449,8 +449,17 @@ export class AccountTrackingService {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              actorId: 'apify~instagram-scraper',
-              input: approach.input,
+              // NEW WORKING SCRAPER!
+              actorId: 'scraper-engine~instagram-reels-scraper',
+              input: {
+                urls: [`https://www.instagram.com/${account.username}/`],
+                sortOrder: "newest",
+                maxComments: 10,
+                maxReels: 100,
+                proxyConfiguration: {
+                  useApifyProxy: false
+                }
+              },
               action: 'run'
             }),
           });
@@ -503,32 +512,46 @@ export class AccountTrackingService {
         return [];
       }
 
-      // Extract and update profile information from the first item
+      // Extract and update profile information from the first item - NEW SCRAPER FORMAT
       if (result.items.length > 0) {
         const firstItem = result.items[0];
-        console.log('👤 Processing profile info from Instagram data...');
-        console.log('📋 First item owner info:', {
-          ownerFullName: firstItem.ownerFullName,
-          ownerUsername: firstItem.ownerUsername,
-          ownerId: firstItem.ownerId
+        const media = firstItem.media || firstItem; // NEW SCRAPER: nested under media
+        
+        console.log('👤 Processing profile info from NEW scraper data...');
+        console.log('📋 First item owner info from NEW scraper:', {
+          ownerFullName: media.user?.full_name || media.owner?.full_name,
+          ownerUsername: media.user?.username || media.owner?.username,
+          ownerId: media.user?.pk || media.owner?.pk
         });
         
-        if (firstItem.ownerFullName || firstItem.ownerUsername) {
-          console.log('👤 Updating profile info from Instagram data...');
+        const ownerFullName = media.user?.full_name || media.owner?.full_name;
+        const ownerUsername = media.user?.username || media.owner?.username;
+        const profilePicUrlFromAPI = media.user?.profile_pic_url || media.owner?.profile_pic_url;
+        
+        if (ownerFullName || ownerUsername || profilePicUrlFromAPI) {
+          console.log('👤 Updating profile info from NEW scraper data...');
           
-          // Extract profile picture from comments or tagged users
-          const profilePicUrl = await this.extractProfilePicture(result.items);
-          console.log('📸 Profile picture extraction result:', profilePicUrl ? 'Found and downloaded' : 'Not found');
+          // Download profile picture if available
+          let profilePicUrl: string | undefined = account.profilePicture;
+          if (profilePicUrlFromAPI) {
+            console.log('📸 Downloading profile picture from NEW scraper data...');
+            const downloadedPic = await this.downloadThumbnail(profilePicUrlFromAPI, `profile_${account.id}`);
+            if (downloadedPic) {
+              profilePicUrl = downloadedPic;
+            }
+          }
+          
+          console.log('📸 Profile picture result:', profilePicUrl ? 'Found and downloaded' : 'Not found');
           
           // Update account with profile data
           const updatedAccount = {
             ...account,
-            displayName: firstItem.ownerFullName || account.displayName,
+            displayName: ownerFullName || account.displayName,
             profilePicture: profilePicUrl || account.profilePicture,
             lastSynced: new Date()
           };
           
-          console.log('💾 Saving updated account with profile data:', {
+          console.log('💾 Saving updated account with profile data from NEW scraper:', {
             displayName: updatedAccount.displayName,
             hasProfilePicture: !!updatedAccount.profilePicture,
             profilePictureLength: updatedAccount.profilePicture?.length || 0
@@ -539,112 +562,125 @@ export class AccountTrackingService {
           const updatedAccounts = accounts.map(a => a.id === account.id ? updatedAccount : a);
           this.saveTrackedAccounts(updatedAccounts);
           
-          console.log('✅ Profile info updated successfully');
+          console.log('✅ Profile info updated successfully from NEW scraper');
         } else {
-          console.log('⚠️ No owner info found in first item');
+          console.log('⚠️ No owner info found in first item from NEW scraper');
         }
       } else {
         console.log('⚠️ No items found to extract profile info from');
       }
 
-      // Transform the Instagram data to AccountVideo format
+      // Transform the NEW SCRAPER Instagram data to AccountVideo format
       const accountVideos: AccountVideo[] = [];
       
       for (const item of result.items) {
-        console.log('📊 Processing Instagram item:', {
-          type: item.type,
-          shortCode: item.shortCode,
-          hasVideo: !!(item.videoViewCount || item.videoPlayCount),
-          fields: Object.keys(item)
+        // NEW SCRAPER: Data is nested under 'media'
+        const media = item.media || item;
+        
+        console.log('📊 Processing Instagram item from NEW scraper:', {
+          hasMedia: !!item.media,
+          code: media.code,
+          hasPlayCount: !!(media.play_count || media.ig_play_count),
+          fields: Object.keys(media).slice(0, 20) // Only show first 20 keys to avoid spam
         });
         
-        // More inclusive filtering for videos/reels
-        const hasVideoMetrics = !!(item.videoViewCount || item.videoPlayCount);
-        const hasVideoDuration = !!(item.videoDuration && item.videoDuration > 0);
-        const isVideoType = item.type === 'Video';
-        const isReelProduct = item.productType === 'clips';
-        const hasVideoUrl = !!(item.videoUrl);
+        // NEW SCRAPER: Filter for videos only
+        const hasVideoMetrics = !!(media.play_count || media.ig_play_count);
+        const hasVideoDuration = !!(media.video_duration && media.video_duration > 0);
         
         // Include if it has any video indicators
-        const shouldInclude = hasVideoMetrics || hasVideoDuration || isVideoType || isReelProduct || hasVideoUrl;
+        const shouldInclude = hasVideoMetrics || hasVideoDuration;
         
-        console.log('🔍 Video filtering check:', {
-          shortCode: item.shortCode,
-          type: item.type,
-          productType: item.productType,
+        console.log('🔍 NEW Scraper video filtering check:', {
+          code: media.code,
           hasVideoMetrics,
           hasVideoDuration,
-          isVideoType,
-          isReelProduct,
-          hasVideoUrl,
           shouldInclude
         });
         
         if (!shouldInclude) {
-          console.log('⏭️ Skipping non-video post:', item.shortCode);
+          console.log('⏭️ Skipping non-video post:', media.code);
           continue;
         }
         
-        console.log('✅ Including video/reel:', item.shortCode, 'Type:', item.type, 'ProductType:', item.productType, 'Views:', item.videoViewCount || item.videoPlayCount);
+        // NEW SCRAPER: Use 'code' field for ID
+        const videoCode = media.code || media.shortCode || media.id;
+        if (!videoCode) {
+          console.warn('⚠️ Video missing code/ID, skipping');
+          continue;
+        }
+        
+        // NEW SCRAPER: Thumbnail from image_versions2
+        let thumbnailUrl = '';
+        if (media.image_versions2?.candidates && media.image_versions2.candidates.length > 0) {
+          thumbnailUrl = media.image_versions2.candidates[0].url;
+        } else if (media.display_uri) {
+          thumbnailUrl = media.display_uri;
+        } else if (media.displayUrl) {
+          thumbnailUrl = media.displayUrl;
+        }
+        
+        console.log('✅ Including video/reel from NEW scraper:', videoCode, 'Views:', media.play_count || media.ig_play_count);
         
         // Download thumbnail locally
-        const localThumbnail = await this.downloadThumbnail(item.displayUrl, `ig_${item.shortCode}`);
+        const localThumbnail = await this.downloadThumbnail(thumbnailUrl, `ig_${videoCode}`);
+        
+        // NEW SCRAPER: Caption is nested under caption.text
+        const caption = media.caption?.text || (typeof media.caption === 'string' ? media.caption : '') || '';
+        
+        // NEW SCRAPER: Upload date from taken_at (Unix seconds)
+        const uploadDate = media.taken_at 
+          ? new Date(media.taken_at * 1000) 
+          : (media.takenAt ? new Date(media.takenAt * 1000) : new Date());
+
+        // NEW SCRAPER: Metrics with correct field names
+        const views = media.play_count || media.ig_play_count || 0;
+        const likes = media.like_count || 0;
+        const comments = media.comment_count || 0;
+        const duration = media.video_duration || 0;
         
         const accountVideo: AccountVideo = {
-          id: `${account.id}_${item.shortCode || item.id || Date.now()}`,
+          id: `${account.id}_${videoCode}`,
           accountId: account.id,
-          videoId: item.shortCode || item.id || '',
-          url: item.url || `https://www.instagram.com/p/${item.shortCode}/`,
-          thumbnail: localThumbnail || item.displayUrl || '',
-          caption: item.caption || '',
-          uploadDate: new Date(item.timestamp || Date.now()),
-          views: item.videoViewCount || item.videoPlayCount || 0,
-          likes: item.likesCount || 0,
-          comments: item.commentsCount || 0,
-          shares: 0, // Instagram doesn't provide share count
-          duration: item.videoDuration || 0,
-          isSponsored: item.isSponsored || false,
-          hashtags: item.hashtags || [],
-          mentions: item.mentions || [],
+          videoId: videoCode,
+          url: `https://www.instagram.com/reel/${videoCode}/`,
+          thumbnail: localThumbnail || thumbnailUrl,
+          caption: caption,
+          uploadDate: uploadDate,
+          views: views,
+          likes: likes,
+          comments: comments,
+          shares: 0, // Instagram doesn't provide share count via API
+          duration: duration,
+          isSponsored: false,
+          hashtags: [], // Could extract from caption if needed
+          mentions: [], // Could extract from caption if needed
           // Store the full original API data for reference
           rawData: {
-            id: item.id,
-            type: item.type,
-            shortCode: item.shortCode,
-            caption: item.caption,
-            hashtags: item.hashtags || [],
-            mentions: item.mentions || [],
-            url: item.url,
-            commentsCount: item.commentsCount,
-            dimensionsHeight: item.dimensionsHeight,
-            dimensionsWidth: item.dimensionsWidth,
-            images: item.images || [],
-            videoUrl: item.videoUrl,
-            likesCount: item.likesCount,
-            timestamp: item.timestamp,
-            ownerFullName: item.ownerFullName,
-            ownerUsername: item.ownerUsername,
-            ownerId: item.ownerId,
-            productType: item.productType,
-            isSponsored: item.isSponsored,
-            videoDuration: item.videoDuration,
-            inputUrl: item.inputUrl,
-            firstComment: item.firstComment,
-            latestComments: item.latestComments || [],
-            displayUrl: item.displayUrl,
-            alt: item.alt,
-            videoViewCount: item.videoViewCount,
-            videoPlayCount: item.videoPlayCount,
-            childPosts: item.childPosts || [],
-            musicInfo: item.musicInfo,
-            isCommentsDisabled: item.isCommentsDisabled
+            // NEW SCRAPER FIELDS
+            code: media.code,
+            id: media.id,
+            pk: media.pk,
+            taken_at: media.taken_at,
+            caption: media.caption,
+            like_count: media.like_count,
+            comment_count: media.comment_count,
+            play_count: media.play_count,
+            ig_play_count: media.ig_play_count,
+            video_duration: media.video_duration,
+            media_type: media.media_type,
+            product_type: media.product_type,
+            user: media.user,
+            owner: media.owner
           }
         };
         
-        console.log('✅ Added video to account:', {
+        console.log('✅ Added video to account from NEW scraper:', {
           videoId: accountVideo.videoId,
           views: accountVideo.views,
           likes: accountVideo.likes,
+          comments: accountVideo.comments,
+          duration: accountVideo.duration,
           thumbnail: accountVideo.thumbnail ? 'Downloaded locally' : 'Using original URL'
         });
         
@@ -834,65 +870,7 @@ export class AccountTrackingService {
     }
   }
 
-  // Extract profile picture from Instagram data
-  private static async extractProfilePicture(items: any[]): Promise<string | null> {
-    try {
-      console.log('🔍 Searching for profile picture in Instagram data...');
-      
-      // Look for profile picture in comments, tagged users, or coauthors
-      for (const item of items) {
-        console.log(`📊 Checking item ${item.shortCode} for profile picture...`);
-        
-        // Check comments for profile owner's picture
-        if (item.latestComments && Array.isArray(item.latestComments)) {
-          console.log(`💬 Checking ${item.latestComments.length} comments for profile picture...`);
-          for (const comment of item.latestComments) {
-            console.log(`👤 Comment by: ${comment.ownerUsername}, Target: ${item.ownerUsername}`);
-            if (comment.ownerUsername === item.ownerUsername && comment.ownerProfilePicUrl) {
-              console.log('📸 Found profile picture in comments!', comment.ownerProfilePicUrl);
-              return await this.downloadThumbnail(comment.ownerProfilePicUrl, `profile_${item.ownerUsername}`);
-            }
-          }
-        }
-
-        // Check tagged users
-        if (item.taggedUsers && Array.isArray(item.taggedUsers)) {
-          console.log(`🏷️ Checking ${item.taggedUsers.length} tagged users for profile picture...`);
-          for (const user of item.taggedUsers) {
-            console.log(`👤 Tagged user: ${user.username}, Target: ${item.ownerUsername}`);
-            if (user.username === item.ownerUsername && user.profile_pic_url) {
-              console.log('📸 Found profile picture in tagged users!', user.profile_pic_url);
-              return await this.downloadThumbnail(user.profile_pic_url, `profile_${item.ownerUsername}`);
-            }
-          }
-        }
-
-        // Check coauthors
-        if (item.coauthorProducers && Array.isArray(item.coauthorProducers)) {
-          console.log(`🤝 Checking ${item.coauthorProducers.length} coauthors for profile picture...`);
-          for (const coauthor of item.coauthorProducers) {
-            console.log(`👤 Coauthor: ${coauthor.username}, Target: ${item.ownerUsername}`);
-            if (coauthor.username === item.ownerUsername && coauthor.profile_pic_url) {
-              console.log('📸 Found profile picture in coauthors!', coauthor.profile_pic_url);
-              return await this.downloadThumbnail(coauthor.profile_pic_url, `profile_${item.ownerUsername}`);
-            }
-          }
-        }
-
-        // Also check if there's any owner profile pic directly on the item
-        if (item.ownerProfilePicUrl) {
-          console.log('📸 Found profile picture directly on item!', item.ownerProfilePicUrl);
-          return await this.downloadThumbnail(item.ownerProfilePicUrl, `profile_${item.ownerUsername}`);
-        }
-      }
-
-      console.log('⚠️ No profile picture found in Instagram data');
-      return null;
-    } catch (error) {
-      console.error('❌ Failed to extract profile picture:', error);
-      return null;
-    }
-  }
+  // NOTE: extractProfilePicture method removed - NEW scraper provides profile pics directly via media.user.profile_pic_url
 
   // Download and store thumbnail/image locally via proxy
   private static async downloadThumbnail(imageUrl: string, identifier: string): Promise<string | null> {

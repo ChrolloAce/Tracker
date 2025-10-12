@@ -570,12 +570,10 @@ export class AccountTrackingServiceFirebase {
   }
 
   /**
-   * Sync Instagram videos
+   * Sync Instagram videos - USING NEW WORKING SCRAPER!
    */
   private static async syncInstagramVideos(orgId: string, account: TrackedAccount): Promise<AccountVideo[]> {
-    // Implementation similar to original but using Firebase Storage for thumbnails
-    // This is a simplified version - you can expand based on your needs
-    console.log(`🔄 Fetching Instagram videos for @${account.username}...`);
+    console.log(`🔄 Fetching Instagram videos for @${account.username} using NEW Reels Scraper...`);
     
     const proxyUrl = `${window.location.origin}/api/apify-proxy`;
     
@@ -583,13 +581,16 @@ export class AccountTrackingServiceFirebase {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        actorId: 'apify~instagram-scraper',
+        // NEW WORKING SCRAPER!
+        actorId: 'scraper-engine~instagram-reels-scraper',
         input: {
-          directUrls: [`https://www.instagram.com/${account.username}/reels/`],
-          resultsType: 'posts',
-          resultsLimit: 100,
-          addParentData: true,
-          searchType: 'user'
+          urls: [`https://www.instagram.com/${account.username}/`],
+          sortOrder: "newest",
+          maxComments: 10,
+          maxReels: 100,
+          proxyConfiguration: {
+            useApifyProxy: false
+          }
         },
         action: 'run'
       }),
@@ -600,49 +601,106 @@ export class AccountTrackingServiceFirebase {
     }
 
     const result = await response.json();
+    console.log(`📊 NEW Scraper returned ${result.items?.length || 0} items`);
 
     if (!result.items || !Array.isArray(result.items)) {
+      console.warn('⚠️ No items returned from NEW Instagram scraper');
       return [];
     }
 
     const videos: AccountVideo[] = [];
 
     for (const item of result.items) {
-      // Filter for videos only
-      const isVideo = !!(item.videoViewCount || item.videoPlayCount || item.videoDuration);
-      if (!isVideo) continue;
+      // NEW SCRAPER: Data is nested under 'media'
+      const media = item.media || item;
+      
+      // Filter for videos only (check for play_count or video_duration)
+      const isVideo = !!(media.play_count || media.ig_play_count || media.video_duration);
+      if (!isVideo) {
+        console.log(`⏭️ Skipping non-video item (no play_count or video_duration)`);
+        continue;
+      }
 
-      // Upload thumbnail to Firebase Storage
-      let thumbnailUrl = item.displayUrl;
+      // NEW SCRAPER: Use 'code' field for ID
+      const videoCode = media.code || media.shortCode || media.id;
+      if (!videoCode) {
+        console.warn('⚠️ Video missing code/ID, skipping');
+        continue;
+      }
+
+      // NEW SCRAPER: Thumbnail from image_versions2
+      let thumbnailUrl = '';
+      if (media.image_versions2?.candidates && media.image_versions2.candidates.length > 0) {
+        thumbnailUrl = media.image_versions2.candidates[0].url;
+      } else if (media.display_uri) {
+        thumbnailUrl = media.display_uri;
+      } else if (media.displayUrl) {
+        thumbnailUrl = media.displayUrl;
+      }
+
+      // Upload thumbnail to Firebase Storage if we have one
+      let uploadedThumbnail = thumbnailUrl;
       if (thumbnailUrl) {
-        thumbnailUrl = await FirebaseStorageService.downloadAndUpload(
-          orgId,
-          thumbnailUrl,
-          `ig_${item.shortCode}`,
-          'thumbnail'
-        );
+        try {
+          uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
+            orgId,
+            thumbnailUrl,
+            `ig_${videoCode}`,
+            'thumbnail'
+          );
+        } catch (error) {
+          console.warn(`⚠️ Failed to upload thumbnail for ${videoCode}, using original URL:`, error);
+          uploadedThumbnail = thumbnailUrl;
+        }
+      }
+
+      // NEW SCRAPER: Caption is nested under caption.text
+      const caption = media.caption?.text || (typeof media.caption === 'string' ? media.caption : '') || '';
+      
+      // NEW SCRAPER: Upload date from taken_at (Unix seconds)
+      const uploadDate = media.taken_at 
+        ? new Date(media.taken_at * 1000) 
+        : (media.takenAt ? new Date(media.takenAt * 1000) : new Date());
+
+      // NEW SCRAPER: Metrics with correct field names
+      const views = media.play_count || media.ig_play_count || 0;
+      const likes = media.like_count || 0;
+      const comments = media.comment_count || 0;
+      const duration = media.video_duration || 0;
+
+      // Debug: Log first video
+      if (videos.length === 0) {
+        console.log('🔍 NEW Scraper first video:', {
+          code: videoCode,
+          caption: caption.substring(0, 50),
+          views,
+          likes,
+          comments,
+          duration,
+          uploadDate: uploadDate.toISOString()
+        });
       }
 
       videos.push({
-        id: `${account.id}_${item.shortCode}`,
+        id: `${account.id}_${videoCode}`,
         accountId: account.id,
-        videoId: item.shortCode || '',
-        url: item.url || `https://www.instagram.com/p/${item.shortCode}/`,
-        thumbnail: thumbnailUrl,
-        caption: item.caption || '',
-        uploadDate: new Date(item.timestamp || Date.now()),
-        views: item.videoViewCount || item.videoPlayCount || 0,
-        likes: item.likesCount || 0,
-        comments: item.commentsCount || 0,
-        shares: 0,
-        duration: item.videoDuration || 0,
-        isSponsored: item.isSponsored || false,
-        hashtags: item.hashtags || [],
-        mentions: item.mentions || []
+        videoId: videoCode,
+        url: `https://www.instagram.com/reel/${videoCode}/`,
+        thumbnail: uploadedThumbnail,
+        caption: caption,
+        uploadDate: uploadDate,
+        views: views,
+        likes: likes,
+        comments: comments,
+        shares: 0, // Instagram doesn't provide share count via API
+        duration: duration,
+        isSponsored: false,
+        hashtags: [], // Could extract from caption if needed
+        mentions: [] // Could extract from caption if needed
       });
     }
 
-    console.log(`✅ Fetched ${videos.length} Instagram videos`);
+    console.log(`✅ Fetched ${videos.length} Instagram videos using NEW scraper`);
     return videos;
   }
 
