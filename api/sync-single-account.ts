@@ -241,7 +241,8 @@ export default async function handler(
         // Update profile with first reel data
         if (reels.length > 0) {
           const firstReel = reels[0];
-          const media = firstReel.media || firstReel;
+          // Handle nested reel_data.media structure
+          const media = firstReel.reel_data?.media || firstReel.media || firstReel;
           
           try {
             await accountRef.update({
@@ -259,7 +260,8 @@ export default async function handler(
 
         // Transform Instagram reels to video format
         videos = reels.map((reelData: any, index: number) => {
-          const media = reelData.media || reelData;
+          // Handle nested reel_data.media structure from scraper-engine/instagram-reels-scraper
+          const media = reelData.reel_data?.media || reelData.media || reelData;
           
           // DEBUG: Log first video's media object to understand structure
           if (index === 0) {

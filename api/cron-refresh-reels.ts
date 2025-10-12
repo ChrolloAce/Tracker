@@ -161,7 +161,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                 // Process each reel
                 for (const reelData of reels) {
-                  const media = reelData.media || reelData;
+                  // Handle nested reel_data.media structure from scraper-engine/instagram-reels-scraper
+                  const media = reelData.reel_data?.media || reelData.media || reelData;
                   
                   // Extract reel ID
                   const reelId = media.code || media.pk || media.id || media.strong_id__;
