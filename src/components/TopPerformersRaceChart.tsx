@@ -196,14 +196,15 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                   </div>
 
                   {/* Animated Bar */}
-                  <div className="ml-5 flex-1 relative">
-                    <div className="h-10 bg-white/[0.03] rounded-r-lg overflow-hidden backdrop-blur-sm">
+                  <div className="ml-8 flex-1 relative">
+                    <div className="h-10 bg-white/[0.03] rounded-lg overflow-hidden backdrop-blur-sm">
                       <div 
-                        className="h-full bg-gradient-to-r from-emerald-600/40 via-emerald-500/35 to-teal-500/30 rounded-r-lg relative transition-all duration-1000 ease-out group-hover:from-emerald-500/50 group-hover:via-emerald-400/45 group-hover:to-teal-400/40"
+                        className="h-full rounded-lg relative transition-all duration-1000 ease-out group-hover:opacity-90"
                         style={{
                           width: `${percentage}%`,
                           minWidth: '30%',
-                          boxShadow: '0 0 12px rgba(16, 185, 129, 0.1)'
+                          background: 'linear-gradient(90deg, rgba(34, 197, 94, 0.5) 0%, rgba(34, 197, 94, 0) 100%)',
+                          boxShadow: '0 0 12px rgba(34, 197, 94, 0.15)'
                         }}
                       >
                         {/* Metric Value - Center Right */}
@@ -309,14 +310,15 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                   </div>
 
                   {/* Animated Bar */}
-                  <div className="ml-5 flex-1 relative">
-                    <div className="h-10 bg-white/[0.03] rounded-r-lg overflow-hidden backdrop-blur-sm">
+                  <div className="ml-8 flex-1 relative">
+                    <div className="h-10 bg-white/[0.03] rounded-lg overflow-hidden backdrop-blur-sm">
                       <div 
-                        className="h-full bg-gradient-to-r from-emerald-600/40 via-emerald-500/35 to-teal-500/30 rounded-r-lg relative transition-all duration-1000 ease-out group-hover:from-emerald-500/50 group-hover:via-emerald-400/45 group-hover:to-teal-400/40"
+                        className="h-full rounded-lg relative transition-all duration-1000 ease-out group-hover:opacity-90"
                         style={{
                           width: `${percentage}%`,
                           minWidth: '30%',
-                          boxShadow: '0 0 12px rgba(16, 185, 129, 0.1)'
+                          background: 'linear-gradient(90deg, rgba(34, 197, 94, 0.5) 0%, rgba(34, 197, 94, 0) 100%)',
+                          boxShadow: '0 0 12px rgba(34, 197, 94, 0.15)'
                         }}
                       >
                         {/* Metric Value - Center Right */}
