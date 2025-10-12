@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Play, RefreshCw, CheckCircle, XCircle, AlertCircle, Settings } from 'lucide-react';
+import { Clock, Play, RefreshCw, CheckCircle, XCircle, AlertCircle, Settings, Film } from 'lucide-react';
 
 const CronManagementPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [triggerResult, setTriggerResult] = useState<any>(null);
+  const [reelsRefreshResult, setReelsRefreshResult] = useState<any>(null);
+  const [loadingReels, setLoadingReels] = useState(false);
 
   // Current schedule info
   const currentSchedule = {
@@ -74,6 +76,33 @@ const CronManagementPage: React.FC = () => {
     }
   };
 
+  const triggerReelsRefresh = async () => {
+    if (!confirm('Trigger Instagram Reels refresh? This will fetch the latest reels for all tracked Instagram accounts.')) {
+      return;
+    }
+
+    setLoadingReels(true);
+    setReelsRefreshResult(null);
+    
+    try {
+      const response = await fetch('/api/cron-refresh-reels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ manual: true })
+      });
+      const result = await response.json();
+      setReelsRefreshResult(result);
+      setLastRefresh(new Date());
+    } catch (error: any) {
+      setReelsRefreshResult({
+        success: false,
+        error: error.message
+      });
+    } finally {
+      setLoadingReels(false);
+    }
+  };
+
   useEffect(() => {
     loadStatus();
   }, []);
@@ -135,6 +164,101 @@ const CronManagementPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Individual Cron Jobs */}
+        <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+          <h2 className="text-lg font-semibold text-white mb-4">Individual Cron Jobs</h2>
+          <div className="space-y-4">
+            {/* All Videos Refresh */}
+            <div className="bg-white/5 rounded-xl p-4 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <RefreshCw className="w-5 h-5 text-blue-400" />
+                <div>
+                  <div className="text-white font-medium">All Videos Refresh</div>
+                  <div className="text-gray-400 text-sm">Refresh all tracked videos (TikTok, Instagram, YouTube)</div>
+                </div>
+              </div>
+              <button
+                onClick={triggerManualRefresh}
+                disabled={loading}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center space-x-2 disabled:opacity-50"
+              >
+                <Play className="w-4 h-4" />
+                <span>Trigger</span>
+              </button>
+            </div>
+
+            {/* Instagram Reels Refresh */}
+            <div className="bg-white/5 rounded-xl p-4 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Film className="w-5 h-5 text-pink-400" />
+                <div>
+                  <div className="text-white font-medium">Instagram Reels Refresh</div>
+                  <div className="text-gray-400 text-sm">Fetch latest reels from tracked Instagram accounts</div>
+                </div>
+              </div>
+              <button
+                onClick={triggerReelsRefresh}
+                disabled={loadingReels}
+                className="px-4 py-2 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white rounded-lg transition-colors flex items-center space-x-2 disabled:opacity-50"
+              >
+                {loadingReels ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Play className="w-4 h-4" />
+                )}
+                <span>{loadingReels ? 'Running...' : 'Trigger'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Instagram Reels Refresh Result */}
+        {reelsRefreshResult && (
+          <div className={`rounded-2xl border p-6 ${
+            reelsRefreshResult.success
+              ? 'bg-green-500/10 border-green-500/30'
+              : 'bg-red-500/10 border-red-500/30'
+          }`}>
+            <div className="flex items-start space-x-3">
+              {reelsRefreshResult.success ? (
+                <CheckCircle className="w-6 h-6 text-green-400 flex-shrink-0 mt-0.5" />
+              ) : (
+                <XCircle className="w-6 h-6 text-red-400 flex-shrink-0 mt-0.5" />
+              )}
+              <div className="flex-1">
+                <h3 className={`font-semibold mb-2 ${
+                  reelsRefreshResult.success ? 'text-green-400' : 'text-red-400'
+                }`}>
+                  {reelsRefreshResult.success ? 'Instagram Reels Refresh Completed!' : 'Instagram Reels Refresh Failed'}
+                </h3>
+                {reelsRefreshResult.success && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                    <div>
+                      <div className="text-gray-400">Duration</div>
+                      <div className="text-white font-semibold">{reelsRefreshResult.durationSec}s</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-400">Accounts</div>
+                      <div className="text-white font-semibold">{reelsRefreshResult.accountsProcessed}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-400">Reels</div>
+                      <div className="text-white font-semibold">{reelsRefreshResult.reelsRefreshed}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-400">Failed</div>
+                      <div className="text-white font-semibold">{reelsRefreshResult.failedAccounts}</div>
+                    </div>
+                  </div>
+                )}
+                {reelsRefreshResult.error && (
+                  <div className="text-red-300 text-sm">{reelsRefreshResult.error}</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Schedule Presets */}
         <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-6">

@@ -26,12 +26,19 @@
     },
     "api/process-single-video.ts": {
       "maxDuration": 300
+    },
+    "api/cron-refresh-reels.ts": {
+      "maxDuration": 300
     }
   },
   "crons": [
     {
       "path": "/api/cron-refresh-videos",
       "schedule": "0 */12 * * *"
+    },
+    {
+      "path": "/api/cron-refresh-reels",
+      "schedule": "0 */6 * * *"
     }
   ],
   "routes": [
