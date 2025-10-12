@@ -273,7 +273,7 @@ export class AccountTrackingServiceFirebase {
    */
   private static async fetchInstagramProfile(orgId: string, username: string) {
     try {
-      console.log(`🔄 Fetching Instagram profile for @${username}...`);
+      console.log(`🔄 Fetching Instagram profile for @${username} using NEW scraper...`);
       
       const proxyUrl = `${window.location.origin}/api/apify-proxy`;
       
@@ -281,15 +281,16 @@ export class AccountTrackingServiceFirebase {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          actorId: 'apify~instagram-scraper',
+          // USE NEW WORKING SCRAPER!
+          actorId: 'scraper-engine~instagram-reels-scraper',
           input: {
-            directUrls: [`https://www.instagram.com/${username}/`],
-            resultsType: 'posts',
-            resultsLimit: 50,
-            addParentData: true,
-            searchType: 'user',
-            scrollWaitSecs: 2,
-            pageTimeout: 60
+            urls: [`https://www.instagram.com/${username}/`],
+            sortOrder: "newest",
+            maxComments: 10,
+            maxReels: 10, // Just need a few for profile info
+            proxyConfiguration: {
+              useApifyProxy: false
+            }
           },
           action: 'run'
         }),
@@ -300,7 +301,7 @@ export class AccountTrackingServiceFirebase {
       }
 
       const result = await response.json();
-      console.log(`📊 Instagram profile API response:`, result);
+      console.log(`📊 NEW scraper profile API response: ${result.items?.length || 0} items`);
 
       if (!result.items || result.items.length === 0) {
         return {
@@ -315,16 +316,15 @@ export class AccountTrackingServiceFirebase {
       }
 
       const firstItem = result.items[0];
+      // NEW SCRAPER: Data is nested under reel_data.media
+      const media = firstItem.reel_data?.media || firstItem.media || firstItem;
       
-      // Try multiple fields for profile picture (Instagram API varies)
-      let profilePictureUrl = firstItem.ownerProfilePicUrl || 
-                              firstItem.ownerProfilePicture ||
-                              firstItem.profilePicUrl ||
-                              firstItem.profilePicture ||
-                              (firstItem.owner && firstItem.owner.profilePicUrl) ||
-                              '';
+      console.log(`📊 Found ${result.items.length} videos/posts`);
       
-      console.log(`📸 Found Instagram profile picture URL:`, profilePictureUrl);
+      // NEW SCRAPER: Profile pic from media.user
+      let profilePictureUrl = media.user?.profile_pic_url || media.owner?.profile_pic_url || '';
+      
+      console.log(`📸 Found Instagram profile picture URL from NEW scraper:`, profilePictureUrl ? 'Yes' : 'No');
       
       let profilePicture = '';
       
@@ -341,21 +341,21 @@ export class AccountTrackingServiceFirebase {
           console.log(`✅ Successfully uploaded Instagram profile picture to Firebase Storage for @${username}`);
         } catch (error) {
           console.error(`❌ Failed to upload Instagram profile picture for @${username}:`, error);
-          // Leave empty - will show placeholder icon
-          profilePicture = '';
+          // Use original URL as fallback
+          profilePicture = profilePictureUrl;
         }
       } else {
         console.warn(`⚠️ No profile picture URL found for @${username} - will use placeholder`);
       }
 
       return {
-        displayName: firstItem.ownerFullName || username,
+        displayName: media.user?.full_name || media.owner?.full_name || username,
         profilePicture,
         followerCount: 0,
         followingCount: 0,
         postCount: result.items.length,
         bio: '',
-        isVerified: firstItem.isVerified || false,
+        isVerified: media.user?.is_verified || media.owner?.is_verified || false,
       };
     } catch (error) {
       console.error('❌ Failed to fetch Instagram profile:', error);
