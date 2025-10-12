@@ -132,6 +132,20 @@ const KPICards: React.FC<KPICardsProps> = ({
             totalLikes += Math.max(0, (snapshotBeforeOrAtEnd.likes || 0) - (snapshotBeforeOrAtStart.likes || 0));
             totalComments += Math.max(0, (snapshotBeforeOrAtEnd.comments || 0) - (snapshotBeforeOrAtStart.comments || 0));
             totalShares += Math.max(0, (snapshotBeforeOrAtEnd.shares || 0) - (snapshotBeforeOrAtStart.shares || 0));
+          } else if (snapshotBeforeOrAtStart && snapshotBeforeOrAtEnd && snapshotBeforeOrAtStart === snapshotBeforeOrAtEnd && snapshotsInRange.length > 0) {
+            // Both snapshots are the SAME (no new snapshot after period start), but we have snapshots WITHIN the period
+            // This can happen when the last snapshot was taken just before the period, and there are snapshots during the period
+            const sortedSnapshotsInRange = snapshotsInRange.sort((a, b) => 
+              new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+            );
+            
+            const lastSnapshotInRange = sortedSnapshotsInRange[sortedSnapshotsInRange.length - 1];
+            
+            // Calculate growth from the snapshot before the period to the last snapshot in the period
+            totalViews += Math.max(0, (lastSnapshotInRange.views || 0) - (snapshotBeforeOrAtStart.views || 0));
+            totalLikes += Math.max(0, (lastSnapshotInRange.likes || 0) - (snapshotBeforeOrAtStart.likes || 0));
+            totalComments += Math.max(0, (lastSnapshotInRange.comments || 0) - (snapshotBeforeOrAtStart.comments || 0));
+            totalShares += Math.max(0, (lastSnapshotInRange.shares || 0) - (snapshotBeforeOrAtStart.shares || 0));
           } else if (!snapshotBeforeOrAtStart && snapshotsInRange.length > 0) {
             // No snapshot before period start, but we have snapshots IN the period
             // This means either: video was uploaded during period, OR we're missing historical snapshots
@@ -253,6 +267,19 @@ const KPICards: React.FC<KPICardsProps> = ({
             ppLikes += Math.max(0, (snapshotBeforeOrAtEnd.likes || 0) - (snapshotBeforeOrAtStart.likes || 0));
             ppComments += Math.max(0, (snapshotBeforeOrAtEnd.comments || 0) - (snapshotBeforeOrAtStart.comments || 0));
             ppShares += Math.max(0, (snapshotBeforeOrAtEnd.shares || 0) - (snapshotBeforeOrAtStart.shares || 0));
+          } else if (snapshotBeforeOrAtStart && snapshotBeforeOrAtEnd && snapshotBeforeOrAtStart === snapshotBeforeOrAtEnd && snapshotsInRange.length > 0) {
+            // Both snapshots are the SAME, but we have snapshots WITHIN the PP period
+            const sortedSnapshotsInRange = snapshotsInRange.sort((a, b) => 
+              new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+            );
+            
+            const lastSnapshotInRange = sortedSnapshotsInRange[sortedSnapshotsInRange.length - 1];
+            
+            // Calculate growth from the snapshot before PP to the last snapshot in PP
+            ppViews += Math.max(0, (lastSnapshotInRange.views || 0) - (snapshotBeforeOrAtStart.views || 0));
+            ppLikes += Math.max(0, (lastSnapshotInRange.likes || 0) - (snapshotBeforeOrAtStart.likes || 0));
+            ppComments += Math.max(0, (lastSnapshotInRange.comments || 0) - (snapshotBeforeOrAtStart.comments || 0));
+            ppShares += Math.max(0, (lastSnapshotInRange.shares || 0) - (snapshotBeforeOrAtStart.shares || 0));
           } else if (!snapshotBeforeOrAtStart && snapshotsInRange.length > 0) {
             // No snapshot before period start, but we have snapshots IN the period
             const sortedSnapshotsInRange = snapshotsInRange.sort((a, b) => 
