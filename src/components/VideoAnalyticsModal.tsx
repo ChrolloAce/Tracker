@@ -22,6 +22,8 @@ interface ChartDataPoint {
   cumulativeLikes: number;
   cumulativeComments: number;
   cumulativeShares: number;
+  // Flag to indicate if this is the first (baseline) snapshot
+  isFirstSnapshot: boolean;
 }
 
 type MetricType = 'views' | 'likes' | 'comments' | 'shares';
@@ -50,6 +52,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         cumulativeLikes: video.likes,
         cumulativeComments: video.comments,
         cumulativeShares: video.shares || 0,
+        isFirstSnapshot: true,
       }];
     }
 
@@ -77,6 +80,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
           cumulativeLikes: snapshot.likes,
           cumulativeComments: snapshot.comments,
           cumulativeShares: snapshot.shares || 0,
+          isFirstSnapshot: true,
         };
       }
 
@@ -97,6 +101,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         cumulativeLikes: snapshot.likes,
         cumulativeComments: snapshot.comments,
         cumulativeShares: snapshot.shares || 0,
+        isFirstSnapshot: false,
       };
     });
   }, [video?.id, video?.snapshots?.length]);
@@ -333,6 +338,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const data = payload[0]?.payload;
+                      const isFirst = data?.isFirstSnapshot;
                       
                       return (
                         <div className="bg-black/90 backdrop-blur-sm border border-white/10 px-3 py-2 rounded-lg shadow-xl">
@@ -353,7 +359,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                                   <span className="text-xs font-medium text-white">
                                     {entry.name}: {cumulativeValue.toLocaleString()}
                                   </span>
-                                  {growthValue > 0 && (
+                                  {!isFirst && growthValue > 0 && (
                                     <span className="text-[10px] font-medium text-green-400">
                                       +{growthValue.toLocaleString()}
                                     </span>

@@ -247,9 +247,10 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
                           className={`
                             h-9 flex items-center justify-center text-sm font-medium rounded-lg
                             transition-all duration-150 relative
-                            ${!currentMonthDate ? 'text-white/20 cursor-not-allowed' : 'text-white/90 hover:bg-white/5 cursor-pointer'}
-                            ${inRange && !isStart && !isEnd ? 'bg-white/10' : ''}
-                            ${(isStart || isEnd) ? 'bg-white text-black font-semibold shadow-lg hover:bg-white/95' : ''}
+                            ${!currentMonthDate ? 'text-white/20 cursor-not-allowed' : 'cursor-pointer'}
+                            ${(isStart || isEnd) ? 'bg-white text-black font-semibold shadow-lg hover:bg-white/95' : 
+                              inRange && !isStart && !isEnd ? 'bg-white/10 text-white/90 hover:bg-white/5' : 
+                              'text-white/90 hover:bg-white/5'}
                           `}
                         >
                           {date.getDate()}
