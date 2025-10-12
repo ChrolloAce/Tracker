@@ -4,16 +4,18 @@ import ApifyBrowserClient from './ApifyBrowserClient';
 
 class InstagramApiService {
   private apifyClient: ApifyBrowserClient;
+  // NEW WORKING SCRAPER TOKEN
   private readonly APIFY_TOKEN = import.meta.env.VITE_APIFY_TOKEN || 'apify_api_7wvIrJjtEH6dTZktJZAtcIGAylH7cX2jRweu';
-  private readonly INSTAGRAM_SCRAPER_ACTOR = 'apify~instagram-scraper'; // Popular Instagram scraper actor
+  // NEW INSTAGRAM REELS SCRAPER - ACTUALLY WORKS!
+  private readonly INSTAGRAM_SCRAPER_ACTOR = 'scraper-engine~instagram-reels-scraper';
   
   constructor() {
-    console.log('🔧 Initializing browser-compatible Apify client with token:', this.APIFY_TOKEN ? '***' + this.APIFY_TOKEN.slice(-4) : 'No token');
+    console.log('🔧 Initializing NEW Instagram Reels Scraper with token:', this.APIFY_TOKEN ? '***' + this.APIFY_TOKEN.slice(-4) : 'No token');
     this.apifyClient = new ApifyBrowserClient(this.APIFY_TOKEN);
   }
   
   async fetchVideoData(instagramUrl: string): Promise<InstagramVideoData> {
-    console.log('🔄 Starting REAL Apify Instagram API fetch for URL:', instagramUrl);
+    console.log('🔄 Starting NEW Instagram Reels Scraper API fetch for URL:', instagramUrl);
     
     // Validate Instagram URL
     if (!this.isValidInstagramUrl(instagramUrl)) {
@@ -22,15 +24,18 @@ class InstagramApiService {
     }
 
     console.log('✅ URL validation passed');
-    console.log('📡 Calling Apify Instagram scraper...');
+    console.log('📡 Calling NEW Instagram Reels scraper...');
 
     try {
-      // Run the Instagram scraper actor
+      // Run the NEW Instagram Reels scraper actor
       const run = await this.apifyClient.runActor(this.INSTAGRAM_SCRAPER_ACTOR, {
-        directUrls: [instagramUrl],
-        resultsType: 'posts',
-        resultsLimit: 1,
-        // Remove searchType as it's not needed for direct URLs
+        urls: [instagramUrl],
+        sortOrder: "newest",
+        maxComments: 50,
+        maxReels: 30,
+        proxyConfiguration: {
+          useApifyProxy: false
+        }
       });
 
       console.log('🎯 Apify actor run completed:', run.id);
@@ -49,12 +54,12 @@ class InstagramApiService {
       }
 
       const instagramData = items[0];
-      console.log('🎬 Raw Instagram data:', instagramData);
+      console.log('🎬 Raw Instagram data from NEW scraper:', instagramData);
 
       // Transform Apify data to our format
       const transformedData = await this.transformApifyData(instagramData, instagramUrl);
       
-      console.log('✅ Successfully fetched REAL Instagram data:', {
+      console.log('✅ Successfully fetched REAL Instagram data from NEW scraper:', {
         id: transformedData.id,
         username: transformedData.username,
         likes: transformedData.like_count,
@@ -65,40 +70,39 @@ class InstagramApiService {
       return transformedData;
 
     } catch (error) {
-      console.error('❌ Apify API call failed:', error);
+      console.error('❌ NEW Scraper API call failed:', error);
       console.error('🔍 Error details:', error instanceof Error ? error.message : 'Unknown error');
       throw new Error(`Failed to fetch Instagram data: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   private isValidInstagramUrl(url: string): boolean {
-    const instagramRegex = /^https?:\/\/(www\.)?instagram\.com\/(p|reel|tv)\/[A-Za-z0-9_-]+/;
+    const instagramRegex = /^https?:\/\/(www\.)?instagram\.com\/(p|reel|tv|[A-Za-z0-9_.]+\/(p|reel|tv))\/[A-Za-z0-9_-]+/;
     return instagramRegex.test(url);
   }
 
   private async transformApifyData(apifyData: any, originalUrl: string): Promise<InstagramVideoData> {
-    console.log('🔄 Transforming Apify data to our format...');
+    console.log('🔄 Transforming NEW scraper data to our format...');
     console.log('📋 Available fields:', Object.keys(apifyData));
-    console.log('🔍 RAW APIFY DATA:', JSON.stringify(apifyData, null, 2).substring(0, 2000));
     
-    // Handle media wrapper (some scrapers return { media: {...} })
+    // NEW SCRAPER FORMAT: data is nested under 'media'
     const media = apifyData.media || apifyData;
     console.log('📋 Media object keys:', Object.keys(media));
+    console.log('🔍 RAW MEDIA DATA:', JSON.stringify(media, null, 2).substring(0, 3000));
     
-    // Extract ID from URL or use shortCode
+    // Extract ID - NEW scraper uses 'code' field
     const urlMatch = originalUrl.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
-    const id = urlMatch ? urlMatch[1] : 
-               media.code || media.shortCode || media.pk || media.id || 'unknown';
+    const id = media.code || urlMatch?.[1] || media.id || media.pk || 'unknown';
 
-    // Try multiple possible field names for thumbnail
+    // NEW SCRAPER: Thumbnail from image_versions2
     let thumbnailUrl = '';
     if (media.image_versions2?.candidates && media.image_versions2.candidates.length > 0) {
       thumbnailUrl = media.image_versions2.candidates[0].url;
       console.log('📸 Found thumbnail from image_versions2');
-    } else if (media.displayUrl) {
-      thumbnailUrl = media.displayUrl;
     } else if (media.display_uri) {
       thumbnailUrl = media.display_uri;
+    } else if (media.displayUrl) {
+      thumbnailUrl = media.displayUrl;
     } else if (media.thumbnailUrl) {
       thumbnailUrl = media.thumbnailUrl;
     } else if (media.thumbnail) {
@@ -113,66 +117,65 @@ class InstagramApiService {
       console.log('💾 Downloading thumbnail from:', thumbnailUrl.substring(0, 100));
       localThumbnailUrl = await this.downloadThumbnail(thumbnailUrl, id);
     } else {
-      console.warn('⚠️ No thumbnail URL found in Apify data');
+      console.warn('⚠️ No thumbnail URL found in NEW scraper data');
     }
 
-    // Try multiple possible field names for username
+    // NEW SCRAPER: Username from user or owner object
     const username = media.user?.username || 
                     media.owner?.username || 
                     media.caption?.user?.username ||
-                    media.ownerUsername || 
-                    media.username || 
                     'unknown_user';
     
-    // Extract caption text - handle both string and object formats
+    // NEW SCRAPER: Caption is an object with 'text' field
     let caption = 'No caption';
-    if (typeof media.caption === 'string') {
-      caption = media.caption;
-    } else if (media.caption?.text) {
+    if (media.caption?.text) {
       caption = media.caption.text;
+    } else if (typeof media.caption === 'string') {
+      caption = media.caption;
     } else if (media.text) {
       caption = media.text;
     } else if (media.description) {
       caption = media.description;
     }
     
-    const likes = media.like_count || media.likesCount || media.likes || media.likeCount || 0;
-    const comments = media.comment_count || media.commentsCount || media.comments || media.commentCount || 0;
-    const views = media.play_count || media.ig_play_count || media.videoViewCount || media.videoPlayCount || media.viewCount || media.views || 0;
+    // NEW SCRAPER: Metrics with correct field names
+    const likes = media.like_count || 0;
+    const comments = media.comment_count || 0;
+    // NEW SCRAPER: Uses 'play_count' and 'ig_play_count'
+    const views = media.play_count || media.ig_play_count || media.videoViewCount || 0;
     
-    // Handle timestamp - check for Unix timestamps (seconds)
+    // NEW SCRAPER: Timestamp is Unix timestamp in seconds (taken_at)
     let timestamp = new Date().toISOString();
     if (media.taken_at) {
       timestamp = new Date(media.taken_at * 1000).toISOString();
+      console.log('📅 Upload date from taken_at:', new Date(timestamp).toLocaleString());
     } else if (media.takenAt) {
       timestamp = new Date(media.takenAt * 1000).toISOString();
-    } else if (media.createdTime) {
-      timestamp = media.createdTime;
     } else if (media.timestamp) {
-      timestamp = media.timestamp;
+      timestamp = new Date(media.timestamp).toISOString();
     }
     
-    // Extract profile information - check all possible locations
+    // NEW SCRAPER: Profile information
     const profilePic = media.user?.profile_pic_url || 
                       media.owner?.profile_pic_url || 
                       media.caption?.user?.profile_pic_url ||
-                      media.ownerProfilePicUrl || 
-                      media.owner?.profilePicUrl || 
-                      media.profilePicUrl || 
                       '';
     
     const displayName = media.user?.full_name || 
                        media.owner?.full_name || 
                        media.caption?.user?.full_name ||
-                       media.ownerFullName || 
-                       media.owner?.fullName || 
                        username;
     
-    const followerCount = media.user?.follower_count || 
-                         media.owner?.follower_count || 
-                         media.ownerFollowersCount || 
-                         media.owner?.followersCount || 
-                         0;
+    const isVerified = media.user?.is_verified || 
+                      media.owner?.is_verified || 
+                      media.caption?.user?.is_verified ||
+                      false;
+    
+    // Follower count not typically in individual post data
+    const followerCount = 0;
+
+    // NEW SCRAPER: Video duration in seconds
+    const videoDuration = media.video_duration || 0;
 
     const transformedData: InstagramVideoData = {
       id: id,
@@ -187,11 +190,11 @@ class InstagramApiService {
       profile_pic_url: profilePic,
       display_name: displayName,
       follower_count: followerCount,
-      video_duration: media.video_duration || 0,
-      is_verified: media.user?.is_verified || media.owner?.is_verified || false
+      video_duration: videoDuration,
+      is_verified: isVerified
     };
 
-    console.log('✅ Data transformation completed with real values:', {
+    console.log('✅ NEW SCRAPER data transformation completed:', {
       id: transformedData.id,
       username: transformedData.username,
       displayName: displayName,
@@ -202,14 +205,17 @@ class InstagramApiService {
       uploadDate: new Date(transformedData.timestamp).toLocaleDateString(),
       thumbnail: transformedData.thumbnail_url ? '✓ Present' : '✗ Missing',
       profilePic: profilePic ? '✓ Present' : '✗ Missing',
-      followers: followerCount
+      duration: videoDuration + 's',
+      verified: isVerified ? '✓ Verified' : '✗ Not Verified'
     });
     
-    console.log('🎯 Instagram Data Summary:');
-    console.log('   📱 Username:', username, '(' + displayName + ')');
+    console.log('🎯 Instagram Data Summary from NEW SCRAPER:');
+    console.log('   📱 Username:', username, '(' + displayName + ')', isVerified ? '✓' : '');
     console.log('   👁️ Views:', transformedData.view_count);
     console.log('   ❤️ Likes:', transformedData.like_count);
     console.log('   💬 Comments:', transformedData.comment_count);
+    console.log('   ⏱️ Duration:', videoDuration + 's');
+    console.log('   📅 Upload Date:', new Date(timestamp).toLocaleDateString());
     console.log('   📸 Thumbnail URL:', thumbnailUrl ? thumbnailUrl.substring(0, 80) + '...' : 'None');
     console.log('   🖼️ Profile Pic:', profilePic ? profilePic.substring(0, 80) + '...' : 'None');
 
@@ -263,22 +269,25 @@ class InstagramApiService {
 
   // Test method to verify Apify connection
   async testApifyConnection(): Promise<boolean> {
-    console.log('🧪 Testing Apify connection...');
+    console.log('🧪 Testing NEW Instagram Reels Scraper connection...');
     try {
-      const testUrl = 'https://www.instagram.com/p/CyXample123/';
+      const testUrl = 'https://www.instagram.com/reel/CyXample123/';
       console.log('🔄 Running test with URL:', testUrl);
       
       const run = await this.apifyClient.runActor(this.INSTAGRAM_SCRAPER_ACTOR, {
-        directUrls: [testUrl],
-        resultsType: 'posts',
-        resultsLimit: 1,
-        // Remove searchType for direct URL scraping
+        urls: [testUrl],
+        sortOrder: "newest",
+        maxComments: 10,
+        maxReels: 1,
+        proxyConfiguration: {
+          useApifyProxy: false
+        }
       }, { timeout: 60000 }); // 1 minute timeout
 
       console.log('✅ Test run completed:', run.id, 'Status:', run.status);
       return run.status === 'SUCCEEDED';
     } catch (error) {
-      console.error('❌ Apify connection test failed:', error);
+      console.error('❌ NEW Scraper connection test failed:', error);
       return false;
     }
   }
