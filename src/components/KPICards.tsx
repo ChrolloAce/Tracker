@@ -262,55 +262,78 @@ const KPICards: React.FC<KPICardsProps> = ({
     const generateSparklineData = (metric: 'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts') => {
       const data = [];
       
-      // Determine number of data points based on dateFilter
+      // Calculate the actual date range and determine appropriate intervals
+      let actualStartDate: Date;
+      let actualEndDate: Date = new Date();
       let numPoints = 30;
       let intervalMs = 24 * 60 * 60 * 1000; // 1 day
       
-      // Match the number of points to the actual filtered range
-      if (dateFilter === 'today') {
-        numPoints = 24;
-        intervalMs = 60 * 60 * 1000; // 1 hour
-      } else if (dateFilter === 'yesterday') {
-        numPoints = 24;
-        intervalMs = 60 * 60 * 1000; // 1 hour
-      } else if (dateFilter === 'last7days') {
-        numPoints = 7;
-        intervalMs = 24 * 60 * 60 * 1000; // 1 day
-      } else if (dateFilter === 'last30days') {
+      if (dateRangeStart) {
+        actualStartDate = new Date(dateRangeStart);
+        actualEndDate = new Date(dateRangeEnd);
+        
+        // Calculate the range duration in days
+        const rangeDurationMs = actualEndDate.getTime() - actualStartDate.getTime();
+        const rangeDurationDays = rangeDurationMs / (24 * 60 * 60 * 1000);
+        
+        // Determine appropriate granularity based on range
+        if (rangeDurationDays <= 1) {
+          // For 1 day or less (today, yesterday), use hourly intervals
+          numPoints = 24;
+          intervalMs = 60 * 60 * 1000; // 1 hour
+        } else if (rangeDurationDays <= 7) {
+          // For up to 7 days, use daily intervals
+          numPoints = Math.ceil(rangeDurationDays);
+          intervalMs = 24 * 60 * 60 * 1000; // 1 day
+        } else if (rangeDurationDays <= 31) {
+          // For up to a month, use daily intervals
+          numPoints = Math.ceil(rangeDurationDays);
+          intervalMs = 24 * 60 * 60 * 1000; // 1 day
+        } else if (rangeDurationDays <= 90) {
+          // For up to 90 days, use daily intervals (might show many points)
+          numPoints = Math.ceil(rangeDurationDays);
+          intervalMs = 24 * 60 * 60 * 1000; // 1 day
+        } else if (rangeDurationDays <= 180) {
+          // For up to 180 days (6 months), use weekly intervals
+          numPoints = Math.ceil(rangeDurationDays / 7);
+          intervalMs = 7 * 24 * 60 * 60 * 1000; // 1 week
+        } else if (rangeDurationDays <= 365) {
+          // For up to a year, use weekly intervals
+          numPoints = Math.ceil(rangeDurationDays / 7);
+          intervalMs = 7 * 24 * 60 * 60 * 1000; // 1 week
+        } else {
+          // For more than a year, use monthly intervals
+          numPoints = Math.ceil(rangeDurationDays / 30);
+          intervalMs = 30 * 24 * 60 * 60 * 1000; // ~1 month
+        }
+        
+        // Cap numPoints to reasonable limits for display
+        if (numPoints > 90) {
+          // If we have too many points, adjust to weekly intervals
+          numPoints = Math.min(52, Math.ceil(rangeDurationDays / 7));
+          intervalMs = 7 * 24 * 60 * 60 * 1000;
+        }
+      } else {
+        // For 'all' time filter, use last 30 days as default
+        actualStartDate = new Date();
+        actualStartDate.setDate(actualStartDate.getDate() - 30);
         numPoints = 30;
-        intervalMs = 24 * 60 * 60 * 1000; // 1 day
-      } else if (dateFilter === 'last90days') {
-        numPoints = 90;
-        intervalMs = 24 * 60 * 60 * 1000; // 1 day
-      } else if (timePeriod === 'weeks') {
-        numPoints = 12;
-        intervalMs = 7 * 24 * 60 * 60 * 1000; // 1 week
-      } else if (timePeriod === 'months') {
-        numPoints = 12;
-        intervalMs = 30 * 24 * 60 * 60 * 1000; // ~1 month
+        intervalMs = 24 * 60 * 60 * 1000;
       }
       
       // Determine the starting point for data generation
-      let startTime: number;
-      if (dateFilter === 'yesterday') {
-        // Start from yesterday at midnight
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        yesterday.setHours(0, 0, 0, 0);
-        startTime = yesterday.getTime();
-      } else {
-        // Start from now and go backwards
-        startTime = Date.now() - ((numPoints - 1) * intervalMs);
-      }
+      let startTime: number = actualStartDate.getTime();
       
       // Generate trend showing growth over time
       for (let i = 0; i < numPoints; i++) {
         const pointDate = new Date(startTime + (i * intervalMs));
+        const nextPointDate = new Date(startTime + ((i + 1) * intervalMs));
         const timestamp = pointDate.getTime();
         
         // For hourly data, calculate previous day's same hour value for comparison
         let previousValue: number | undefined;
-        if (timePeriod === 'hours' && metric !== 'videos' && metric !== 'accounts') {
+        if (intervalMs === 60 * 60 * 1000 && metric !== 'videos' && metric !== 'accounts') {
+          // This is hourly data
           const previousDayDate = new Date(timestamp - (24 * 60 * 60 * 1000));
           let prevDayValue = 0;
           
@@ -330,52 +353,58 @@ const KPICards: React.FC<KPICardsProps> = ({
         
         if (metric === 'videos') {
           // For published videos: count how many videos were published IN THIS INTERVAL
-          const nextPointDate = new Date(startTime + ((i + 1) * intervalMs));
           const videosPublishedInInterval = submissions.filter(v => {
             const uploadDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
-            return uploadDate > pointDate && uploadDate <= nextPointDate;
+            return uploadDate >= pointDate && uploadDate < nextPointDate;
           });
           data.push({ value: videosPublishedInInterval.length, timestamp, previousValue });
         } else if (metric === 'accounts') {
           // For active accounts: count unique accounts that were active IN THIS INTERVAL
-          const nextPointDate = new Date(startTime + ((i + 1) * intervalMs));
           const videosInInterval = submissions.filter(v => {
             const uploadDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
-            return uploadDate > pointDate && uploadDate <= nextPointDate;
+            return uploadDate >= pointDate && uploadDate < nextPointDate;
           });
           const uniqueAccountsInInterval = new Set(videosInInterval.map(v => v.uploaderHandle)).size;
           data.push({ value: uniqueAccountsInInterval, timestamp, previousValue });
         } else {
-          // Show per-day/per-hour values (NOT cumulative)
-          const nextPointDate = new Date(startTime + ((i + 1) * intervalMs));
-          
-          // Calculate metrics for videos in this specific time interval
+          // Show per-interval values (NOT cumulative)
           let intervalValue = 0;
           
           submissions.forEach(video => {
             const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
             
-            if (video.snapshots && video.snapshots.length > 0) {
-              // Get snapshot at the start and end of this interval
-              const snapshotAtStart = video.snapshots
-                .filter(s => new Date(s.capturedAt) <= pointDate)
-                .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-              
-              const snapshotAtEnd = video.snapshots
-                .filter(s => new Date(s.capturedAt) <= nextPointDate)
-                .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-              
-              if (snapshotAtStart && snapshotAtEnd) {
-                // Calculate the delta for this interval
-                const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - (snapshotAtStart[metric] || 0));
-                intervalValue += delta;
-              } else if (snapshotAtEnd && uploadDate > pointDate && uploadDate <= nextPointDate) {
-                // Video was uploaded in this interval
-                intervalValue += snapshotAtEnd[metric] || 0;
+            // Only process videos that are relevant to the date range we're analyzing
+            if (uploadDate < actualStartDate) {
+              // Video was uploaded before our analysis period
+              // Check if it has growth during this interval via snapshots
+              if (video.snapshots && video.snapshots.length > 0) {
+                const snapshotAtStart = video.snapshots
+                  .filter(s => new Date(s.capturedAt) <= pointDate)
+                  .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
+                
+                const snapshotAtEnd = video.snapshots
+                  .filter(s => new Date(s.capturedAt) <= nextPointDate)
+                  .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
+                
+                if (snapshotAtStart && snapshotAtEnd && snapshotAtStart !== snapshotAtEnd) {
+                  const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - (snapshotAtStart[metric] || 0));
+                  intervalValue += delta;
+                }
               }
-            } else if (uploadDate > pointDate && uploadDate <= nextPointDate) {
-              // Video was uploaded in this interval, no snapshots
-              intervalValue += video[metric] || 0;
+            } else if (uploadDate >= pointDate && uploadDate < nextPointDate) {
+              // Video was uploaded during this interval
+              // Use either the first snapshot or current value
+              if (video.snapshots && video.snapshots.length > 0) {
+                const firstSnapshot = video.snapshots
+                  .sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime())[0];
+                intervalValue += firstSnapshot[metric] || 0;
+              } else {
+                // No snapshots, use current value
+                intervalValue += video[metric] || 0;
+              }
+            } else if (uploadDate >= nextPointDate) {
+              // Video was uploaded after this interval, skip it
+              return;
             }
           });
           
@@ -485,75 +514,111 @@ const KPICards: React.FC<KPICardsProps> = ({
         isIncreasing: true // Default to green for accounts (no delta calculated)
       },
       (() => {
-        // Generate engagement rate sparkline data (per-day, not cumulative)
+        // Generate engagement rate sparkline data (per-interval, not cumulative)
+        let actualStartDate: Date;
+        let actualEndDate: Date = new Date();
         let numPoints = 30;
         let intervalMs = 24 * 60 * 60 * 1000; // 1 day
         
-        if (dateFilter === 'today') {
-          numPoints = 24;
-          intervalMs = 60 * 60 * 1000;
-        } else if (dateFilter === 'yesterday') {
-          numPoints = 24;
-          intervalMs = 60 * 60 * 1000;
-        } else if (dateFilter === 'last7days') {
-          numPoints = 7;
-        } else if (dateFilter === 'last90days') {
-          numPoints = 90;
+        if (dateRangeStart) {
+          actualStartDate = new Date(dateRangeStart);
+          actualEndDate = new Date(dateRangeEnd);
+          
+          // Calculate the range duration in days
+          const rangeDurationMs = actualEndDate.getTime() - actualStartDate.getTime();
+          const rangeDurationDays = rangeDurationMs / (24 * 60 * 60 * 1000);
+          
+          // Determine appropriate granularity based on range (same as other metrics)
+          if (rangeDurationDays <= 1) {
+            numPoints = 24;
+            intervalMs = 60 * 60 * 1000; // 1 hour
+          } else if (rangeDurationDays <= 7) {
+            numPoints = Math.ceil(rangeDurationDays);
+            intervalMs = 24 * 60 * 60 * 1000; // 1 day
+          } else if (rangeDurationDays <= 31) {
+            numPoints = Math.ceil(rangeDurationDays);
+            intervalMs = 24 * 60 * 60 * 1000; // 1 day
+          } else if (rangeDurationDays <= 90) {
+            numPoints = Math.ceil(rangeDurationDays);
+            intervalMs = 24 * 60 * 60 * 1000; // 1 day
+          } else if (rangeDurationDays <= 180) {
+            numPoints = Math.ceil(rangeDurationDays / 7);
+            intervalMs = 7 * 24 * 60 * 60 * 1000; // 1 week
+          } else if (rangeDurationDays <= 365) {
+            numPoints = Math.ceil(rangeDurationDays / 7);
+            intervalMs = 7 * 24 * 60 * 60 * 1000; // 1 week
+          } else {
+            numPoints = Math.ceil(rangeDurationDays / 30);
+            intervalMs = 30 * 24 * 60 * 60 * 1000; // ~1 month
+          }
+          
+          // Cap numPoints to reasonable limits for display
+          if (numPoints > 90) {
+            numPoints = Math.min(52, Math.ceil(rangeDurationDays / 7));
+            intervalMs = 7 * 24 * 60 * 60 * 1000;
+          }
+        } else {
+          // For 'all' time filter, use last 30 days as default
+          actualStartDate = new Date();
+          actualStartDate.setDate(actualStartDate.getDate() - 30);
+          numPoints = 30;
+          intervalMs = 24 * 60 * 60 * 1000;
         }
         
         // Determine the starting point for data generation
-        let startTime: number;
-        if (dateFilter === 'yesterday') {
-          // Start from yesterday at midnight
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
-          yesterday.setHours(0, 0, 0, 0);
-          startTime = yesterday.getTime();
-        } else {
-          // Start from now and go backwards
-          startTime = Date.now() - ((numPoints - 1) * intervalMs);
-        }
+        let startTime: number = actualStartDate.getTime();
         
         const data = [];
         for (let i = 0; i < numPoints; i++) {
           const pointDate = new Date(startTime + (i * intervalMs));
           const nextPointDate = new Date(startTime + ((i + 1) * intervalMs));
           
-          // Calculate engagement rate for ONLY this specific day/period
+          // Calculate engagement rate for ONLY this specific interval
           let periodViews = 0;
           let periodEngagement = 0;
           
           submissions.forEach(video => {
             const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
             
-            if (video.snapshots && video.snapshots.length > 0) {
-              // Get snapshots at start and end of interval
-              const snapshotAtStart = video.snapshots
-                .filter(s => new Date(s.capturedAt) <= pointDate)
-                .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-              
-              const snapshotAtEnd = video.snapshots
-                .filter(s => new Date(s.capturedAt) <= nextPointDate)
-                .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-              
-              if (snapshotAtStart && snapshotAtEnd) {
-                // Calculate delta for this interval
-                const viewsDelta = Math.max(0, (snapshotAtEnd.views || 0) - (snapshotAtStart.views || 0));
-                const likesDelta = Math.max(0, (snapshotAtEnd.likes || 0) - (snapshotAtStart.likes || 0));
-                const commentsDelta = Math.max(0, (snapshotAtEnd.comments || 0) - (snapshotAtStart.comments || 0));
-                const sharesDelta = Math.max(0, (snapshotAtEnd.shares || 0) - (snapshotAtStart.shares || 0));
+            // Only process videos that are relevant to the date range we're analyzing
+            if (uploadDate < actualStartDate) {
+              // Video was uploaded before our analysis period
+              // Check if it has growth during this interval via snapshots
+              if (video.snapshots && video.snapshots.length > 0) {
+                const snapshotAtStart = video.snapshots
+                  .filter(s => new Date(s.capturedAt) <= pointDate)
+                  .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
                 
-                periodViews += viewsDelta;
-                periodEngagement += likesDelta + commentsDelta + sharesDelta;
-              } else if (snapshotAtEnd && uploadDate > pointDate && uploadDate <= nextPointDate) {
-                // Video uploaded in this interval
-                periodViews += snapshotAtEnd.views || 0;
-                periodEngagement += (snapshotAtEnd.likes || 0) + (snapshotAtEnd.comments || 0) + (snapshotAtEnd.shares || 0);
+                const snapshotAtEnd = video.snapshots
+                  .filter(s => new Date(s.capturedAt) <= nextPointDate)
+                  .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
+                
+                if (snapshotAtStart && snapshotAtEnd && snapshotAtStart !== snapshotAtEnd) {
+                  const viewsDelta = Math.max(0, (snapshotAtEnd.views || 0) - (snapshotAtStart.views || 0));
+                  const likesDelta = Math.max(0, (snapshotAtEnd.likes || 0) - (snapshotAtStart.likes || 0));
+                  const commentsDelta = Math.max(0, (snapshotAtEnd.comments || 0) - (snapshotAtStart.comments || 0));
+                  const sharesDelta = Math.max(0, (snapshotAtEnd.shares || 0) - (snapshotAtStart.shares || 0));
+                  
+                  periodViews += viewsDelta;
+                  periodEngagement += likesDelta + commentsDelta + sharesDelta;
+                }
               }
-            } else if (uploadDate > pointDate && uploadDate <= nextPointDate) {
-              // Video uploaded in this interval, no snapshots
-              periodViews += video.views || 0;
-              periodEngagement += (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
+            } else if (uploadDate >= pointDate && uploadDate < nextPointDate) {
+              // Video was uploaded during this interval
+              // Use either the first snapshot or current value
+              if (video.snapshots && video.snapshots.length > 0) {
+                const firstSnapshot = video.snapshots
+                  .sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime())[0];
+                periodViews += firstSnapshot.views || 0;
+                periodEngagement += (firstSnapshot.likes || 0) + (firstSnapshot.comments || 0) + (firstSnapshot.shares || 0);
+              } else {
+                // No snapshots, use current value
+                periodViews += video.views || 0;
+                periodEngagement += (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
+              }
+            } else if (uploadDate >= nextPointDate) {
+              // Video was uploaded after this interval, skip it
+              return;
             }
           });
           
@@ -579,33 +644,58 @@ const KPICards: React.FC<KPICardsProps> = ({
       })(),
       (() => {
         // Generate link clicks sparkline data
+        let actualStartDate: Date;
+        let actualEndDate: Date = new Date();
         let numPoints = 30;
         let intervalMs = 24 * 60 * 60 * 1000; // 1 day
         
-        if (dateFilter === 'today') {
-          numPoints = 24;
-          intervalMs = 60 * 60 * 1000;
-        } else if (dateFilter === 'yesterday') {
-          numPoints = 24;
-          intervalMs = 60 * 60 * 1000;
-        } else if (dateFilter === 'last7days') {
-          numPoints = 7;
-        } else if (dateFilter === 'last90days') {
-          numPoints = 90;
+        if (dateRangeStart) {
+          actualStartDate = new Date(dateRangeStart);
+          actualEndDate = new Date(dateRangeEnd);
+          
+          // Calculate the range duration in days
+          const rangeDurationMs = actualEndDate.getTime() - actualStartDate.getTime();
+          const rangeDurationDays = rangeDurationMs / (24 * 60 * 60 * 1000);
+          
+          // Determine appropriate granularity based on range (same as other metrics)
+          if (rangeDurationDays <= 1) {
+            numPoints = 24;
+            intervalMs = 60 * 60 * 1000; // 1 hour
+          } else if (rangeDurationDays <= 7) {
+            numPoints = Math.ceil(rangeDurationDays);
+            intervalMs = 24 * 60 * 60 * 1000; // 1 day
+          } else if (rangeDurationDays <= 31) {
+            numPoints = Math.ceil(rangeDurationDays);
+            intervalMs = 24 * 60 * 60 * 1000; // 1 day
+          } else if (rangeDurationDays <= 90) {
+            numPoints = Math.ceil(rangeDurationDays);
+            intervalMs = 24 * 60 * 60 * 1000; // 1 day
+          } else if (rangeDurationDays <= 180) {
+            numPoints = Math.ceil(rangeDurationDays / 7);
+            intervalMs = 7 * 24 * 60 * 60 * 1000; // 1 week
+          } else if (rangeDurationDays <= 365) {
+            numPoints = Math.ceil(rangeDurationDays / 7);
+            intervalMs = 7 * 24 * 60 * 60 * 1000; // 1 week
+          } else {
+            numPoints = Math.ceil(rangeDurationDays / 30);
+            intervalMs = 30 * 24 * 60 * 60 * 1000; // ~1 month
+          }
+          
+          // Cap numPoints to reasonable limits for display
+          if (numPoints > 90) {
+            numPoints = Math.min(52, Math.ceil(rangeDurationDays / 7));
+            intervalMs = 7 * 24 * 60 * 60 * 1000;
+          }
+        } else {
+          // For 'all' time filter, use last 30 days as default
+          actualStartDate = new Date();
+          actualStartDate.setDate(actualStartDate.getDate() - 30);
+          numPoints = 30;
+          intervalMs = 24 * 60 * 60 * 1000;
         }
         
         // Determine the starting point for data generation
-        let startTime: number;
-        if (dateFilter === 'yesterday') {
-          // Start from yesterday at midnight
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
-          yesterday.setHours(0, 0, 0, 0);
-          startTime = yesterday.getTime();
-        } else {
-          // Start from now and go backwards
-          startTime = Date.now() - ((numPoints - 1) * intervalMs);
-        }
+        let startTime: number = actualStartDate.getTime();
         
         const data = [];
         for (let i = 0; i < numPoints; i++) {
@@ -702,11 +792,11 @@ const KPISparkline: React.FC<{
   };
   
   return (
-    <ResponsiveContainer width="100%" height={40}>
+    <ResponsiveContainer width="100%" height={56}>
       <AreaChart data={data}>
         <defs>
           <linearGradient id={`gradient-${id}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={gradient[0]} stopOpacity={0.15} />
+            <stop offset="0%" stopColor={gradient[0]} stopOpacity={0.3} />
             <stop offset="100%" stopColor={gradient[1]} stopOpacity={0} />
           </linearGradient>
         </defs>
@@ -788,11 +878,11 @@ const KPISparkline: React.FC<{
           type="monotone"
           dataKey="value"
           stroke={stroke}
-          strokeWidth={1}
+          strokeWidth={2}
           fill={`url(#gradient-${id})`}
           isAnimationActive={false}
           dot={false}
-          activeDot={{ r: 3, fill: stroke, strokeWidth: 1.5, stroke: '#fff' }}
+          activeDot={{ r: 4, fill: stroke, strokeWidth: 2, stroke: '#fff' }}
         />
       </AreaChart>
     </ResponsiveContainer>
