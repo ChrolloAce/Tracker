@@ -298,6 +298,96 @@ export default async function handler(
           caption: tweetText
         };
       });
+    } else if (account.platform === 'instagram') {
+      console.log(`📸 Fetching Instagram reels for ${account.username} using NEW scraper...`);
+      
+      try {
+        // Call NEW Instagram Reels Scraper (working!)
+        const data = await runApifyActor({
+          actorId: 'scraper-engine~instagram-reels-scraper',
+          input: {
+            urls: [`https://www.instagram.com/${account.username}/`],
+            sortOrder: "newest",
+            maxComments: 10,
+            maxReels: 100,
+            proxyConfiguration: {
+              useApifyProxy: false
+            }
+          }
+        });
+
+        const instagramItems = data.items || [];
+        console.log(`✅ NEW scraper returned ${instagramItems.length} items`);
+        
+        // Extract and update profile info from first item (NEW SCRAPER FORMAT)
+        if (instagramItems.length > 0) {
+          const firstItem = instagramItems[0];
+          const media = firstItem.reel_data?.media || firstItem.media || firstItem;
+          
+          const profileFullName = media.user?.full_name || media.owner?.full_name;
+          const profilePicUrl = media.user?.profile_pic_url || media.owner?.profile_pic_url;
+          const isVerified = media.user?.is_verified || media.owner?.is_verified || false;
+          
+          if (profileFullName || profilePicUrl) {
+            const profileUpdates: any = {};
+            if (profileFullName) profileUpdates.displayName = profileFullName;
+            if (profilePicUrl) profileUpdates.profilePicture = profilePicUrl;
+            if (isVerified) profileUpdates.isVerified = isVerified;
+            
+            await accountRef.update(profileUpdates);
+            console.log(`✅ Updated Instagram profile for @${account.username}`);
+          }
+        }
+        
+        // Transform Instagram data to video format
+        for (const item of instagramItems) {
+          const media = item.reel_data?.media || item.media || item;
+          
+          // Only process video content (media_type: 2 = video)
+          if (media.media_type !== 2 && media.product_type !== 'clips') {
+            continue;
+          }
+          
+          const videoCode = media.code || media.shortCode || media.id;
+          if (!videoCode) {
+            console.warn('⚠️ Skipping item - no video code found');
+            continue;
+          }
+          
+          const views = media.play_count || media.ig_play_count || 0;
+          const likes = media.like_count || 0;
+          const comments = media.comment_count || 0;
+          const caption = media.caption?.text || (typeof media.caption === 'string' ? media.caption : '') || '';
+          const uploadDate = media.taken_at ? Timestamp.fromMillis(media.taken_at * 1000) : Timestamp.now();
+          const thumbnailUrl = media.image_versions2?.candidates?.[0]?.url || 
+                             media.thumbnail_url || 
+                             '';
+          const duration = media.video_duration || 0;
+          
+          videos.push({
+            videoId: videoCode,
+            videoTitle: caption.substring(0, 100) + (caption.length > 100 ? '...' : '') || 'Instagram Reel',
+            videoUrl: `https://www.instagram.com/reel/${videoCode}/`,
+            platform: 'instagram',
+            thumbnail: thumbnailUrl,
+            accountUsername: account.username,
+            accountDisplayName: media.user?.full_name || media.owner?.full_name || account.username,
+            uploadDate: uploadDate,
+            views: views,
+            likes: likes,
+            comments: comments,
+            shares: 0, // Instagram API doesn't provide share count
+            caption: caption,
+            duration: duration,
+            isVerified: media.user?.is_verified || media.owner?.is_verified || false
+          });
+        }
+        
+        console.log(`✅ Fetched ${videos.length} Instagram reels`);
+      } catch (instagramError) {
+        console.error('Instagram fetch error:', instagramError);
+        throw instagramError;
+      }
     }
 
     console.log(`📊 Found ${videos.length} videos/posts`);
@@ -311,11 +401,12 @@ export default async function handler(
       }
     });
 
-    // Save videos to Firestore
+    // Save videos to Firestore (BOTH locations for compatibility)
     const batch = db.batch();
     let savedCount = 0;
 
     for (const video of videos) {
+      // Save to main videos collection (for dashboard)
       const videoRef = db
         .collection('organizations')
         .doc(orgId)
@@ -336,6 +427,41 @@ export default async function handler(
         status: 'active',
         isSingular: false
       });
+
+      // ALSO save to tracked account's videos subcollection (for real-time listener)
+      const accountVideoRef = db
+        .collection('organizations')
+        .doc(orgId)
+        .collection('projects')
+        .doc(projectId)
+        .collection('trackedAccounts')
+        .doc(accountId)
+        .collection('videos')
+        .doc(video.videoId); // Use videoId as doc ID to avoid duplicates
+
+      batch.set(accountVideoRef, {
+        id: video.videoId,
+        accountId: accountId,
+        videoId: video.videoId,
+        url: video.videoUrl,
+        thumbnail: video.thumbnail,
+        description: video.caption,
+        caption: video.caption,
+        title: video.videoTitle,
+        uploadDate: video.uploadDate,
+        views: video.views || 0,
+        viewsCount: video.views || 0,
+        likes: video.likes || 0,
+        likesCount: video.likes || 0,
+        comments: video.comments || 0,
+        commentsCount: video.comments || 0,
+        shares: video.shares || 0,
+        sharesCount: video.shares || 0,
+        duration: video.duration || 0,
+        isSponsored: false,
+        hashtags: [],
+        mentions: []
+      }, { merge: true }); // Use merge to avoid overwriting existing data
 
       savedCount++;
 
