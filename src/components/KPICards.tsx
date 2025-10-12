@@ -98,58 +98,67 @@ const KPICards: React.FC<KPICardsProps> = ({
     // For 'all' time, dateRangeStart remains null
     
     // Calculate metrics based on date filter
+    // KEY: Show ALL activity during the period, regardless of when videos were uploaded
     let totalViews = 0;
     let totalLikes = 0;
     let totalComments = 0;
     let totalShares = 0;
     
     if (dateRangeStart) {
-      // For specific date ranges (today, yesterday, etc.), use snapshot data within the range
+      // For specific date ranges, calculate growth during the period from ALL videos
       submissions.forEach(video => {
         const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
         
         if (video.snapshots && video.snapshots.length > 0) {
-          // Find snapshots at the start and end of the date range
-          const snapshotsInRange = video.snapshots.filter(s => {
-            const capturedDate = new Date(s.capturedAt);
-            return capturedDate >= dateRangeStart! && capturedDate <= dateRangeEnd;
-          }).sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime());
+          // Get the snapshot closest to (but before or at) the range start
+          const snapshotBeforeOrAtStart = video.snapshots
+            .filter(s => new Date(s.capturedAt) <= dateRangeStart!)
+            .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
           
-          if (snapshotsInRange.length > 0) {
-            // Get the first snapshot before or at range start
-            const snapshotBeforeRange = video.snapshots
-              .filter(s => new Date(s.capturedAt) <= dateRangeStart!)
-              .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-            
-            // Get the last snapshot in the range
-            const lastSnapshotInRange = snapshotsInRange[snapshotsInRange.length - 1];
-            
-            if (snapshotBeforeRange && lastSnapshotInRange) {
-              // Calculate delta between start and end of period
-              totalViews += Math.max(0, (lastSnapshotInRange.views || 0) - (snapshotBeforeRange.views || 0));
-              totalLikes += Math.max(0, (lastSnapshotInRange.likes || 0) - (snapshotBeforeRange.likes || 0));
-              totalComments += Math.max(0, (lastSnapshotInRange.comments || 0) - (snapshotBeforeRange.comments || 0));
-              totalShares += Math.max(0, (lastSnapshotInRange.shares || 0) - (snapshotBeforeRange.shares || 0));
-            } else if (uploadDate >= dateRangeStart! && uploadDate <= dateRangeEnd) {
-              // Video was uploaded during this period
-              totalViews += lastSnapshotInRange.views || 0;
-              totalLikes += lastSnapshotInRange.likes || 0;
-              totalComments += lastSnapshotInRange.comments || 0;
-              totalShares += lastSnapshotInRange.shares || 0;
+          // Get the snapshot closest to (but before or at) the range end
+          const snapshotBeforeOrAtEnd = video.snapshots
+            .filter(s => new Date(s.capturedAt) <= dateRangeEnd)
+            .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
+          
+          if (snapshotBeforeOrAtStart && snapshotBeforeOrAtEnd) {
+            // Both snapshots exist - calculate growth between them
+            totalViews += Math.max(0, (snapshotBeforeOrAtEnd.views || 0) - (snapshotBeforeOrAtStart.views || 0));
+            totalLikes += Math.max(0, (snapshotBeforeOrAtEnd.likes || 0) - (snapshotBeforeOrAtStart.likes || 0));
+            totalComments += Math.max(0, (snapshotBeforeOrAtEnd.comments || 0) - (snapshotBeforeOrAtStart.comments || 0));
+            totalShares += Math.max(0, (snapshotBeforeOrAtEnd.shares || 0) - (snapshotBeforeOrAtStart.shares || 0));
+          } else if (!snapshotBeforeOrAtStart && snapshotBeforeOrAtEnd) {
+            // No snapshot before range start, but one before/at end
+            // This means video was uploaded during the period
+            if (uploadDate >= dateRangeStart && uploadDate <= dateRangeEnd) {
+              // Count the full value from the snapshot
+              totalViews += snapshotBeforeOrAtEnd.views || 0;
+              totalLikes += snapshotBeforeOrAtEnd.likes || 0;
+              totalComments += snapshotBeforeOrAtEnd.comments || 0;
+              totalShares += snapshotBeforeOrAtEnd.shares || 0;
             }
-          } else if (uploadDate >= dateRangeStart! && uploadDate <= dateRangeEnd) {
-            // Video uploaded in range but no snapshots in range, use current metrics
+          } else if (!snapshotBeforeOrAtStart && !snapshotBeforeOrAtEnd) {
+            // No snapshots before the range end
+            // Video might have been uploaded during the period, or snapshots are only in the future
+            if (uploadDate >= dateRangeStart && uploadDate <= dateRangeEnd) {
+              // Video was uploaded during the period - use current metrics
+              totalViews += video.views || 0;
+              totalLikes += video.likes || 0;
+              totalComments += video.comments || 0;
+              totalShares += video.shares || 0;
+            }
+          }
+          // If snapshotBeforeOrAtStart exists but not snapshotBeforeOrAtEnd, 
+          // it means there are no new snapshots during the period, so no growth to count
+        } else {
+          // No snapshots at all
+          if (uploadDate >= dateRangeStart && uploadDate <= dateRangeEnd) {
+            // Video was uploaded during this period - count current metrics
             totalViews += video.views || 0;
             totalLikes += video.likes || 0;
             totalComments += video.comments || 0;
             totalShares += video.shares || 0;
           }
-        } else if (uploadDate >= dateRangeStart! && uploadDate <= dateRangeEnd) {
-          // No snapshots, video uploaded in range
-          totalViews += video.views || 0;
-          totalLikes += video.likes || 0;
-          totalComments += video.comments || 0;
-          totalShares += video.shares || 0;
+          // If video was uploaded before the period and has no snapshots, we can't track growth
         }
       });
     } else {
@@ -189,6 +198,7 @@ const KPICards: React.FC<KPICardsProps> = ({
     }
     
     // Calculate PP metrics using the same logic as CP
+    // Show ALL activity during the previous period, regardless of when videos were uploaded
     let ppViews = 0;
     let ppLikes = 0;
     let ppComments = 0;
@@ -200,40 +210,47 @@ const KPICards: React.FC<KPICardsProps> = ({
         const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
         
         if (video.snapshots && video.snapshots.length > 0) {
-          const snapshotsInRange = video.snapshots.filter(s => {
-            const capturedDate = new Date(s.capturedAt);
-            return capturedDate >= ppDateRangeStart! && capturedDate <= ppDateRangeEnd!;
-          }).sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime());
+          // Get the snapshot closest to (but before or at) the PP range start
+          const snapshotBeforeOrAtStart = video.snapshots
+            .filter(s => new Date(s.capturedAt) <= ppDateRangeStart!)
+            .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
           
-          if (snapshotsInRange.length > 0) {
-            const snapshotBeforeRange = video.snapshots
-              .filter(s => new Date(s.capturedAt) <= ppDateRangeStart!)
-              .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-            
-            const lastSnapshotInRange = snapshotsInRange[snapshotsInRange.length - 1];
-            
-            if (snapshotBeforeRange && lastSnapshotInRange) {
-              ppViews += Math.max(0, (lastSnapshotInRange.views || 0) - (snapshotBeforeRange.views || 0));
-              ppLikes += Math.max(0, (lastSnapshotInRange.likes || 0) - (snapshotBeforeRange.likes || 0));
-              ppComments += Math.max(0, (lastSnapshotInRange.comments || 0) - (snapshotBeforeRange.comments || 0));
-              ppShares += Math.max(0, (lastSnapshotInRange.shares || 0) - (snapshotBeforeRange.shares || 0));
-            } else if (uploadDate >= ppDateRangeStart! && uploadDate <= ppDateRangeEnd!) {
-              ppViews += lastSnapshotInRange.views || 0;
-              ppLikes += lastSnapshotInRange.likes || 0;
-              ppComments += lastSnapshotInRange.comments || 0;
-              ppShares += lastSnapshotInRange.shares || 0;
+          // Get the snapshot closest to (but before or at) the PP range end
+          const snapshotBeforeOrAtEnd = video.snapshots
+            .filter(s => new Date(s.capturedAt) <= ppDateRangeEnd!)
+            .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
+          
+          if (snapshotBeforeOrAtStart && snapshotBeforeOrAtEnd) {
+            // Both snapshots exist - calculate growth between them
+            ppViews += Math.max(0, (snapshotBeforeOrAtEnd.views || 0) - (snapshotBeforeOrAtStart.views || 0));
+            ppLikes += Math.max(0, (snapshotBeforeOrAtEnd.likes || 0) - (snapshotBeforeOrAtStart.likes || 0));
+            ppComments += Math.max(0, (snapshotBeforeOrAtEnd.comments || 0) - (snapshotBeforeOrAtStart.comments || 0));
+            ppShares += Math.max(0, (snapshotBeforeOrAtEnd.shares || 0) - (snapshotBeforeOrAtStart.shares || 0));
+          } else if (!snapshotBeforeOrAtStart && snapshotBeforeOrAtEnd) {
+            // No snapshot before range start, but one before/at end
+            if (uploadDate >= ppDateRangeStart! && uploadDate <= ppDateRangeEnd!) {
+              ppViews += snapshotBeforeOrAtEnd.views || 0;
+              ppLikes += snapshotBeforeOrAtEnd.likes || 0;
+              ppComments += snapshotBeforeOrAtEnd.comments || 0;
+              ppShares += snapshotBeforeOrAtEnd.shares || 0;
             }
-          } else if (uploadDate >= ppDateRangeStart! && uploadDate <= ppDateRangeEnd!) {
+          } else if (!snapshotBeforeOrAtStart && !snapshotBeforeOrAtEnd) {
+            // No snapshots before the range end
+            if (uploadDate >= ppDateRangeStart! && uploadDate <= ppDateRangeEnd!) {
+              ppViews += video.views || 0;
+              ppLikes += video.likes || 0;
+              ppComments += video.comments || 0;
+              ppShares += video.shares || 0;
+            }
+          }
+        } else {
+          // No snapshots at all
+          if (uploadDate >= ppDateRangeStart! && uploadDate <= ppDateRangeEnd!) {
             ppViews += video.views || 0;
             ppLikes += video.likes || 0;
             ppComments += video.comments || 0;
             ppShares += video.shares || 0;
           }
-        } else if (uploadDate >= ppDateRangeStart! && uploadDate <= ppDateRangeEnd!) {
-          ppViews += video.views || 0;
-          ppLikes += video.likes || 0;
-          ppComments += video.comments || 0;
-          ppShares += video.shares || 0;
         }
       });
       

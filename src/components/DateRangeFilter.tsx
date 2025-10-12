@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Calendar, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export type DateFilterType = 'today' | 'yesterday' | 'last7days' | 'last14days' | 'last30days' | 'last90days' | 'mtd' | 'lastmonth' | 'ytd' | 'custom' | 'all';
@@ -21,9 +21,112 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [tempStartDate, setTempStartDate] = useState<Date | null>(customRange?.startDate || null);
-  const [tempEndDate, setTempEndDate] = useState<Date | null>(customRange?.endDate || null);
   const [isSelectingRange, setIsSelectingRange] = useState(false);
+  
+  // Helper function to get preset date range (defined early so it can be used in initialization)
+  const getPresetDateRange = (filterType: DateFilterType): DateRange | null => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch (filterType) {
+      case 'today':
+        return {
+          startDate: today,
+          endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
+        };
+        
+      case 'yesterday': {
+        const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+        return {
+          startDate: yesterday,
+          endDate: new Date(yesterday.getTime() + 24 * 60 * 60 * 1000 - 1)
+        };
+      }
+        
+      case 'last7days':
+        return {
+          startDate: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000),
+          endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
+        };
+        
+      case 'last14days':
+        return {
+          startDate: new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000),
+          endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
+        };
+        
+      case 'last30days':
+        return {
+          startDate: new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000),
+          endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
+        };
+        
+      case 'last90days':
+        return {
+          startDate: new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000),
+          endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
+        };
+        
+      case 'mtd': // Month to Date
+        return {
+          startDate: new Date(now.getFullYear(), now.getMonth(), 1),
+          endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
+        };
+        
+      case 'lastmonth': {
+        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+        lastMonthEnd.setHours(23, 59, 59, 999);
+        return {
+          startDate: lastMonthStart,
+          endDate: lastMonthEnd
+        };
+      }
+        
+      case 'ytd': // Year to Date
+        return {
+          startDate: new Date(now.getFullYear(), 0, 1),
+          endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
+        };
+        
+      default:
+        return null;
+    }
+  };
+  
+  // Initialize temp dates based on selected filter or custom range
+  const initializeTempDates = () => {
+    if (selectedFilter === 'custom' && customRange) {
+      return { start: customRange.startDate, end: customRange.endDate };
+    } else {
+      const presetRange = getPresetDateRange(selectedFilter);
+      if (presetRange) {
+        return { start: presetRange.startDate, end: presetRange.endDate };
+      }
+    }
+    return { start: null, end: null };
+  };
+  
+  const initialDates = initializeTempDates();
+  const [tempStartDate, setTempStartDate] = useState<Date | null>(initialDates.start);
+  const [tempEndDate, setTempEndDate] = useState<Date | null>(initialDates.end);
+
+  // Update temp dates when selectedFilter or customRange changes
+  useEffect(() => {
+    if (selectedFilter === 'custom' && customRange) {
+      setTempStartDate(customRange.startDate);
+      setTempEndDate(customRange.endDate);
+    } else {
+      const presetRange = getPresetDateRange(selectedFilter);
+      if (presetRange) {
+        setTempStartDate(presetRange.startDate);
+        setTempEndDate(presetRange.endDate);
+      } else {
+        setTempStartDate(null);
+        setTempEndDate(null);
+      }
+    }
+  }, [selectedFilter, customRange]);
 
   const presetOptions = [
     { value: 'today', label: 'Today' },
@@ -47,8 +150,15 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
   const handlePresetSelect = (filterType: DateFilterType) => {
     onFilterChange(filterType);
     setIsOpen(false);
-    setTempStartDate(null);
-    setTempEndDate(null);
+    // Don't clear temp dates - instead set them to the preset range for visual feedback
+    const presetRange = getPresetDateRange(filterType);
+    if (presetRange) {
+      setTempStartDate(presetRange.startDate);
+      setTempEndDate(presetRange.endDate);
+    } else {
+      setTempStartDate(null);
+      setTempEndDate(null);
+    }
     setIsSelectingRange(false);
   };
 
