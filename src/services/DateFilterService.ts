@@ -21,10 +21,24 @@ class DateFilterService {
           endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1) // End of today
         };
         
+      case 'yesterday': {
+        const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+        return {
+          startDate: yesterday,
+          endDate: new Date(yesterday.getTime() + 24 * 60 * 60 * 1000 - 1)
+        };
+      }
+        
       case 'last7days':
         return {
           startDate: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000),
           endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1) // End of today
+        };
+        
+      case 'last14days':
+        return {
+          startDate: new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000),
+          endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
         };
         
       case 'last30days':
@@ -44,6 +58,16 @@ class DateFilterService {
           startDate: new Date(now.getFullYear(), now.getMonth(), 1),
           endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
         };
+        
+      case 'lastmonth': { // Last Month
+        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+        lastMonthEnd.setHours(23, 59, 59, 999);
+        return {
+          startDate: lastMonthStart,
+          endDate: lastMonthEnd
+        };
+      }
         
       case 'ytd': // Year to Date
         return {
