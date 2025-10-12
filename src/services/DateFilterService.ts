@@ -111,8 +111,6 @@ class DateFilterService {
     console.log(`📅 Date range: ${dateRange.startDate.toLocaleDateString()} - ${dateRange.endDate.toLocaleDateString()}`);
     
     const filteredVideos = videos.filter(video => {
-      // Filter ONLY by upload date (when video was posted on the platform)
-      // NOT by refresh date or date added
       const uploadDate = video.uploadDate
         ? new Date(video.uploadDate)
         : video.timestamp 
@@ -121,17 +119,27 @@ class DateFilterService {
         ? new Date(video.dateSubmitted)
         : new Date();
 
-      // Video is in range if uploaded during the period
-      const isInRange = uploadDate >= dateRange.startDate && uploadDate <= dateRange.endDate;
+      // Video is in range if:
+      // 1. It was uploaded during the period, OR
+      // 2. It has snapshots within the period
+      const uploadedInRange = uploadDate >= dateRange.startDate && uploadDate <= dateRange.endDate;
+      
+      // Check if video has any snapshots within the date range
+      const hasSnapshotsInRange = video.snapshots && video.snapshots.some(snapshot => {
+        const snapshotDate = new Date(snapshot.capturedAt);
+        return snapshotDate >= dateRange.startDate && snapshotDate <= dateRange.endDate;
+      });
+      
+      const isInRange = uploadedInRange || hasSnapshotsInRange;
       
       if (videos.length <= 10) { // Only log for small datasets to avoid spam
-        console.log(`📹 Video "${video.title.substring(0, 30)}..." uploaded ${uploadDate.toLocaleDateString()} - ${isInRange ? '✅ Included' : '❌ Excluded'}`);
+        console.log(`📹 Video "${video.title.substring(0, 30)}..." uploaded ${uploadDate.toLocaleDateString()} - ${isInRange ? '✅ Included' : '❌ Excluded'} ${hasSnapshotsInRange ? '(has snapshots in range)' : ''}`);
       }
 
       return isInRange;
     });
 
-    console.log(`✅ Filtered to ${filteredVideos.length} videos based on upload date`);
+    console.log(`✅ Filtered to ${filteredVideos.length} videos (based on upload date or snapshots in range)`);
     return filteredVideos;
   }
 
