@@ -611,7 +611,8 @@ export class AccountTrackingServiceFirebase {
     // Extract and update profile info from first item (NEW SCRAPER FORMAT)
     if (result.items.length > 0) {
       const firstItem = result.items[0];
-      const media = firstItem.media || firstItem;
+      // NEW SCRAPER: Data is nested under reel_data.media
+      const media = firstItem.reel_data?.media || firstItem.media || firstItem;
       
       const profileFullName = media.user?.full_name || media.owner?.full_name;
       const profilePicUrl = media.user?.profile_pic_url || media.owner?.profile_pic_url;
@@ -656,8 +657,8 @@ export class AccountTrackingServiceFirebase {
     const videos: AccountVideo[] = [];
 
     for (const item of result.items) {
-      // NEW SCRAPER: Data is nested under 'media'
-      const media = item.media || item;
+      // NEW SCRAPER: Data is nested under 'reel_data.media'
+      const media = item.reel_data?.media || item.media || item;
       
       // Filter for videos only (check for play_count or video_duration)
       const isVideo = !!(media.play_count || media.ig_play_count || media.video_duration);

@@ -515,7 +515,8 @@ export class AccountTrackingService {
       // Extract and update profile information from the first item - NEW SCRAPER FORMAT
       if (result.items.length > 0) {
         const firstItem = result.items[0];
-        const media = firstItem.media || firstItem; // NEW SCRAPER: nested under media
+        // NEW SCRAPER: Data is nested under reel_data.media
+        const media = firstItem.reel_data?.media || firstItem.media || firstItem;
         
         console.log('👤 Processing profile info from NEW scraper data...');
         console.log('📋 First item owner info from NEW scraper:', {
@@ -574,8 +575,8 @@ export class AccountTrackingService {
       const accountVideos: AccountVideo[] = [];
       
       for (const item of result.items) {
-        // NEW SCRAPER: Data is nested under 'media'
-        const media = item.media || item;
+        // NEW SCRAPER: Data is nested under 'reel_data.media'
+        const media = item.reel_data?.media || item.media || item;
         
         console.log('📊 Processing Instagram item from NEW scraper:', {
           hasMedia: !!item.media,
