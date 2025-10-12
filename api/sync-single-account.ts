@@ -412,13 +412,18 @@ export default async function handler(
     const batch = db.batch();
     let savedCount = 0;
 
+    // Log first video for debugging
+    if (videos.length > 0) {
+      console.log('📹 Sample video data being saved:', JSON.stringify(videos[0], null, 2));
+    }
+
     for (const video of videos) {
       const videoRef = db
         .collection('organizations')
         .doc(orgId)
         .collection('projects')
         .doc(projectId)
-        .collection('videos')
+        .collection('videoSubmissions')
         .doc();
 
       batch.set(videoRef, {
@@ -427,6 +432,7 @@ export default async function handler(
         projectId: projectId,
         trackedAccountId: accountId,
         platform: account.platform,
+        dateSubmitted: Timestamp.now(),
         dateAdded: Timestamp.now(),
         addedBy: account.syncRequestedBy || account.addedBy || 'system',
         lastRefreshed: Timestamp.now(),
