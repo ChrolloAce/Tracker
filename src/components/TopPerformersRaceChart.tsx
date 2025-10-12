@@ -163,7 +163,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
         </div>
 
         {/* Race Bars */}
-        <div className="space-y-5">
+        <div className="space-y-3">
           {topVideos.map((video, index) => {
             const value = getMetricValue(video, videosMetric);
             const percentage = maxVideoValue > 0 ? (value / maxVideoValue) * 100 : 0;
@@ -177,10 +177,10 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                 }}
               >
                 {/* Bar Container */}
-                <div className="relative h-14 flex items-center">
+                <div className="relative h-10 flex items-center">
                   {/* Profile Icon (Spearhead) */}
                   <div className="absolute left-0 z-10 flex-shrink-0">
-                    <div className="w-14 h-14 rounded-lg overflow-hidden border-2 border-white/10 bg-gray-800/50 backdrop-blur-sm shadow-lg">
+                    <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/10 bg-gray-800/50 backdrop-blur-sm">
                       {video.thumbnail ? (
                         <img 
                           src={video.thumbnail} 
@@ -189,32 +189,32 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-700/50 to-gray-800/50">
-                          <PlatformIcon platform={video.platform} className="w-7 h-7 opacity-60" />
+                          <PlatformIcon platform={video.platform} className="w-5 h-5 opacity-60" />
                         </div>
                       )}
                     </div>
                   </div>
 
                   {/* Animated Bar */}
-                  <div className="ml-7 flex-1 relative">
-                    <div className="h-14 bg-white/5 rounded-r-lg overflow-hidden backdrop-blur-sm">
+                  <div className="ml-5 flex-1 relative">
+                    <div className="h-10 bg-white/[0.03] rounded-r-lg overflow-hidden backdrop-blur-sm">
                       <div 
-                        className="h-full bg-gradient-to-r from-emerald-600/80 via-emerald-500/70 to-teal-500/60 rounded-r-lg relative transition-all duration-1000 ease-out group-hover:from-emerald-500/90 group-hover:via-emerald-400/80 group-hover:to-teal-400/70 shadow-lg"
+                        className="h-full bg-gradient-to-r from-emerald-600/40 via-emerald-500/35 to-teal-500/30 rounded-r-lg relative transition-all duration-1000 ease-out group-hover:from-emerald-500/50 group-hover:via-emerald-400/45 group-hover:to-teal-400/40"
                         style={{
                           width: `${percentage}%`,
-                          minWidth: '35%',
-                          boxShadow: '0 0 20px rgba(16, 185, 129, 0.2)'
+                          minWidth: '30%',
+                          boxShadow: '0 0 12px rgba(16, 185, 129, 0.1)'
                         }}
                       >
                         {/* Metric Value - Center Right */}
-                        <div className="absolute inset-0 flex items-center justify-end pr-6">
-                          <span className="text-2xl font-bold text-white/90 tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
+                        <div className="absolute inset-0 flex items-center justify-end pr-4">
+                          <span className="text-lg font-semibold text-white/80 tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
                             {formatNumber(value, videosMetric)}
                           </span>
                         </div>
 
                         {/* Subtle shine effect */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                       </div>
                     </div>
                   </div>
@@ -269,7 +269,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
         </div>
 
         {/* Race Bars */}
-        <div className="space-y-5">
+        <div className="space-y-3">
           {topAccounts.map((account, index) => {
             const value = accountsMetric === 'views' ? account.totalViews
               : accountsMetric === 'likes' ? account.totalLikes
@@ -290,10 +290,10 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                 }}
               >
                 {/* Bar Container */}
-                <div className="relative h-14 flex items-center">
+                <div className="relative h-10 flex items-center">
                   {/* Profile Icon (Spearhead) */}
                   <div className="absolute left-0 z-10 flex-shrink-0">
-                    <div className="w-14 h-14 rounded-lg overflow-hidden border-2 border-white/10 bg-gray-800/50 backdrop-blur-sm shadow-lg">
+                    <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/10 bg-gray-800/50 backdrop-blur-sm">
                       {account.profileImage ? (
                         <img 
                           src={account.profileImage} 
@@ -301,7 +301,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-700/50 to-gray-800/50 text-white/70 font-bold text-xl">
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-700/50 to-gray-800/50 text-white/70 font-semibold text-sm">
                           {account.displayName.charAt(0).toUpperCase()}
                         </div>
                       )}
@@ -309,25 +309,25 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                   </div>
 
                   {/* Animated Bar */}
-                  <div className="ml-7 flex-1 relative">
-                    <div className="h-14 bg-white/5 rounded-r-lg overflow-hidden backdrop-blur-sm">
+                  <div className="ml-5 flex-1 relative">
+                    <div className="h-10 bg-white/[0.03] rounded-r-lg overflow-hidden backdrop-blur-sm">
                       <div 
-                        className="h-full bg-gradient-to-r from-emerald-600/80 via-emerald-500/70 to-teal-500/60 rounded-r-lg relative transition-all duration-1000 ease-out group-hover:from-emerald-500/90 group-hover:via-emerald-400/80 group-hover:to-teal-400/70 shadow-lg"
+                        className="h-full bg-gradient-to-r from-emerald-600/40 via-emerald-500/35 to-teal-500/30 rounded-r-lg relative transition-all duration-1000 ease-out group-hover:from-emerald-500/50 group-hover:via-emerald-400/45 group-hover:to-teal-400/40"
                         style={{
                           width: `${percentage}%`,
-                          minWidth: '35%',
-                          boxShadow: '0 0 20px rgba(16, 185, 129, 0.2)'
+                          minWidth: '30%',
+                          boxShadow: '0 0 12px rgba(16, 185, 129, 0.1)'
                         }}
                       >
                         {/* Metric Value - Center Right */}
-                        <div className="absolute inset-0 flex items-center justify-end pr-6">
-                          <span className="text-2xl font-bold text-white/90 tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
+                        <div className="absolute inset-0 flex items-center justify-end pr-4">
+                          <span className="text-lg font-semibold text-white/80 tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
                             {formatNumber(value, accountsMetric)}
                           </span>
                         </div>
 
                         {/* Subtle shine effect */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                       </div>
                     </div>
                   </div>
