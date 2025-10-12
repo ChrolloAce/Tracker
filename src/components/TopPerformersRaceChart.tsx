@@ -196,26 +196,21 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                   </div>
 
                   {/* Animated Bar */}
-                  <div className="ml-8 flex-1 relative">
-                    <div className="h-10 bg-white/[0.03] rounded-lg overflow-hidden backdrop-blur-sm">
+                  <div className="ml-14 flex-1 relative">
+                    <div className="h-10 bg-white rounded-lg overflow-hidden">
                       <div 
-                        className="h-full rounded-lg relative transition-all duration-1000 ease-out group-hover:opacity-90"
+                        className="h-full bg-[#22c55e] relative transition-all duration-1000 ease-out group-hover:bg-[#16a34a]"
                         style={{
                           width: `${percentage}%`,
-                          minWidth: '30%',
-                          background: 'linear-gradient(90deg, rgba(34, 197, 94, 0.5) 0%, rgba(34, 197, 94, 0) 100%)',
-                          boxShadow: '0 0 12px rgba(34, 197, 94, 0.15)'
+                          minWidth: '30%'
                         }}
                       >
                         {/* Metric Value - Center Right */}
                         <div className="absolute inset-0 flex items-center justify-end pr-4">
-                          <span className="text-lg font-semibold text-white/80 tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
+                          <span className="text-lg font-semibold text-black tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
                             {formatNumber(value, videosMetric)}
                           </span>
                         </div>
-
-                        {/* Subtle shine effect */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                       </div>
                     </div>
                   </div>
@@ -310,26 +305,21 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                   </div>
 
                   {/* Animated Bar */}
-                  <div className="ml-8 flex-1 relative">
-                    <div className="h-10 bg-white/[0.03] rounded-lg overflow-hidden backdrop-blur-sm">
+                  <div className="ml-14 flex-1 relative">
+                    <div className="h-10 bg-white rounded-lg overflow-hidden">
                       <div 
-                        className="h-full rounded-lg relative transition-all duration-1000 ease-out group-hover:opacity-90"
+                        className="h-full bg-[#22c55e] relative transition-all duration-1000 ease-out group-hover:bg-[#16a34a]"
                         style={{
                           width: `${percentage}%`,
-                          minWidth: '30%',
-                          background: 'linear-gradient(90deg, rgba(34, 197, 94, 0.5) 0%, rgba(34, 197, 94, 0) 100%)',
-                          boxShadow: '0 0 12px rgba(34, 197, 94, 0.15)'
+                          minWidth: '30%'
                         }}
                       >
                         {/* Metric Value - Center Right */}
                         <div className="absolute inset-0 flex items-center justify-end pr-4">
-                          <span className="text-lg font-semibold text-white/80 tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
+                          <span className="text-lg font-semibold text-black tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
                             {formatNumber(value, accountsMetric)}
                           </span>
                         </div>
-
-                        {/* Subtle shine effect */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                       </div>
                     </div>
                   </div>
