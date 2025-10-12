@@ -49,44 +49,66 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       (a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
     );
 
-    return sortedSnapshots.map(snapshot => ({
-      date: new Date(snapshot.capturedAt).toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric'
-      }),
-      views: snapshot.views,
-      likes: snapshot.likes,
-      comments: snapshot.comments,
-      shares: snapshot.shares || 0,
-      timestamp: new Date(snapshot.capturedAt).getTime()
-    }));
+    // Calculate growth (difference from previous snapshot) for each data point
+    return sortedSnapshots.map((snapshot, index) => {
+      // First snapshot shows absolute values
+      if (index === 0) {
+        return {
+          date: new Date(snapshot.capturedAt).toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric'
+          }),
+          views: snapshot.views,
+          likes: snapshot.likes,
+          comments: snapshot.comments,
+          shares: snapshot.shares || 0,
+          timestamp: new Date(snapshot.capturedAt).getTime()
+        };
+      }
+
+      // Subsequent snapshots show growth (difference from previous)
+      const prevSnapshot = sortedSnapshots[index - 1];
+      return {
+        date: new Date(snapshot.capturedAt).toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric'
+        }),
+        views: Math.max(0, snapshot.views - prevSnapshot.views),
+        likes: Math.max(0, snapshot.likes - prevSnapshot.likes),
+        comments: Math.max(0, snapshot.comments - prevSnapshot.comments),
+        shares: Math.max(0, (snapshot.shares || 0) - (prevSnapshot.shares || 0)),
+        timestamp: new Date(snapshot.capturedAt).getTime()
+      };
+    });
   }, [video?.id, video?.snapshots?.length]);
 
-  // Calculate total growth
+  // Calculate total growth (sum of all daily growth)
   const totalGrowth = useMemo(() => {
-    if (chartData.length < 2) {
+    if (chartData.length === 0) {
       return { views: 0, likes: 0, comments: 0, shares: 0 };
     }
 
-    const first = chartData[0];
-    const last = chartData[chartData.length - 1];
-
-    return {
-      views: last.views - first.views,
-      likes: last.likes - first.likes,
-      comments: last.comments - first.comments,
-      shares: last.shares - first.shares
-    };
+    // Since chartData now shows daily growth, sum all values
+    return chartData.reduce((acc, dataPoint) => ({
+      views: acc.views + dataPoint.views,
+      likes: acc.likes + dataPoint.likes,
+      comments: acc.comments + dataPoint.comments,
+      shares: acc.shares + dataPoint.shares
+    }), { views: 0, likes: 0, comments: 0, shares: 0 });
   }, [chartData]);
 
-  // Calculate growth percentages
+  // Calculate growth percentages using actual snapshot values (not daily differences)
   const growthPercentages = useMemo(() => {
-    if (chartData.length < 2) {
+    if (!video?.snapshots || video.snapshots.length < 2) {
       return { views: 0, likes: 0, comments: 0, shares: 0 };
     }
 
-    const first = chartData[0];
-    const last = chartData[chartData.length - 1];
+    const sortedSnapshots = [...video.snapshots].sort(
+      (a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+    );
+    
+    const first = sortedSnapshots[0];
+    const last = sortedSnapshots[sortedSnapshots.length - 1];
 
     return {
       views: first.views > 0 ? ((last.views - first.views) / first.views) * 100 : 0,
@@ -94,7 +116,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       comments: first.comments > 0 ? ((last.comments - first.comments) / first.comments) * 100 : 0,
       shares: first.shares > 0 ? ((last.shares - first.shares) / first.shares) * 100 : 0
     };
-  }, [chartData]);
+  }, [video?.snapshots]);
 
   // Early return AFTER all hooks
   if (!isOpen || !video) return null;
