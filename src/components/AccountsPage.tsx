@@ -821,24 +821,19 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const handleAddAccount = useCallback(async () => {
     if (!currentOrgId || !currentProjectId || !user) return;
 
-    // Collect all valid accounts from inputs
+    // Collect all valid accounts from ALL inputs (including first one)
     const accountsToAdd: Array<{url: string; username: string; platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter'}> = [];
     
-    // Check first input (uses newAccountUrl state)
-    if (newAccountUrl.trim() && detectedPlatform) {
-      const username = extractUsernameFromUrl(newAccountUrl.trim(), detectedPlatform);
-      if (username) {
-        accountsToAdd.push({ url: newAccountUrl.trim(), username, platform: detectedPlatform });
-      }
-    }
-    
-    // Check additional inputs
-    for (let i = 1; i < accountInputs.length; i++) {
+    // Check ALL inputs using accountInputs array
+    for (let i = 0; i < accountInputs.length; i++) {
       const input = accountInputs[i];
-      if (input.url.trim() && input.platform) {
-        const username = extractUsernameFromUrl(input.url.trim(), input.platform);
+      const url = (i === 0 ? newAccountUrl : input.url).trim();
+      const platform = i === 0 ? detectedPlatform : input.platform;
+      
+      if (url && platform) {
+        const username = extractUsernameFromUrl(url, platform);
         if (username) {
-          accountsToAdd.push({ url: input.url.trim(), username, platform: input.platform });
+          accountsToAdd.push({ url, username, platform });
         }
       }
     }
@@ -2267,6 +2262,13 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                       onChange={(e) => {
                         if (index === 0) {
                           handleUrlChange(e.target.value);
+                          // Also update accountInputs[0] for consistency
+                          const newInputs = [...accountInputs];
+                          newInputs[0].url = e.target.value;
+                          const result = UrlParserService.parseUrl(e.target.value);
+                          newInputs[0].platform = result.platform || null;
+                          newInputs[0].error = !result.isValid && e.target.value.trim() ? 'Invalid URL' : null;
+                          setAccountInputs(newInputs);
                         } else {
                           const newInputs = [...accountInputs];
                           newInputs[index].url = e.target.value;
