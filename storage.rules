@@ -73,9 +73,11 @@ service firebase.storage {
       // ==================== PROFILE PICTURES ====================
       
       // Profile pictures: organizations/{orgId}/profiles/{accountId}.jpg
+      // NOTE: Profile pictures are public so they can be displayed in the UI without auth
+      // (They're uploaded from Instagram/TikTok/Twitter which are already public)
       match /profiles/{accountId} {
-        // Any authenticated user can read profile pictures
-        allow read: if isSignedIn();
+        // Public read for profile pictures (not sensitive data)
+        allow read: if true;
         
         // Only org members can upload profile pictures
         allow write: if isOrgPath(orgId) 
