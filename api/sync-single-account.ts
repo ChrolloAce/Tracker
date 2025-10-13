@@ -440,6 +440,63 @@ export default async function handler(
         };
       });
     } else if (account.platform === 'instagram') {
+      console.log(`👤 Fetching profile data for ${account.username}...`);
+      
+      // STEP 1: Fetch Instagram Profile Data (for follower count)
+      try {
+        const profileData = await runApifyActor({
+          actorId: 'apify/instagram-profile-scraper',
+          input: {
+            usernames: [account.username],
+            proxyConfiguration: {
+              useApifyProxy: true,
+              apifyProxyGroups: ['RESIDENTIAL'],
+              apifyProxyCountry: 'US'
+            }
+          }
+        });
+
+        const profiles = profileData.items || [];
+        if (profiles.length > 0) {
+          const profile = profiles[0];
+          console.log(`📊 Instagram profile fetched: ${profile.followersCount || 0} followers`);
+          
+          const profileUpdates: any = {
+            displayName: profile.fullName || account.username,
+            followerCount: profile.followersCount || 0,
+            followingCount: profile.followsCount || 0,
+            isVerified: profile.verified || false
+          };
+
+          // Download and upload Instagram profile pic to Firebase Storage
+          if (profile.profilePicUrlHD || profile.profilePicUrl) {
+            try {
+              const profilePicUrl = profile.profilePicUrlHD || profile.profilePicUrl;
+              console.log(`📸 Downloading Instagram profile pic (HD) for @${account.username}...`);
+              const uploadedProfilePic = await downloadAndUploadImage(
+                profilePicUrl,
+                orgId,
+                `instagram_profile_${account.username}.jpg`,
+                'profile'
+              );
+              
+              if (uploadedProfilePic && uploadedProfilePic.includes('storage.googleapis.com')) {
+                profileUpdates.profilePicture = uploadedProfilePic;
+                console.log(`✅ Instagram profile picture uploaded to Firebase Storage`);
+              }
+            } catch (uploadError) {
+              console.error(`❌ Error uploading Instagram profile picture:`, uploadError);
+            }
+          }
+
+          await accountRef.update(profileUpdates);
+          console.log(`✅ Updated Instagram profile for @${account.username}:`, profileUpdates);
+        }
+      } catch (profileError) {
+        console.error('❌ Instagram profile fetch error:', profileError);
+      }
+
+      // STEP 2: Fetch Instagram Reels/Videos
       console.log(`📸 Fetching Instagram reels for ${account.username} using NEW scraper...`);
       
       try {
@@ -464,71 +521,7 @@ export default async function handler(
         });
 
         const instagramItems = data.items || [];
-        console.log(`✅ NEW scraper returned ${instagramItems.length} items`);
-        
-        // Extract and update profile info from first item (NEW SCRAPER FORMAT)
-        if (instagramItems.length > 0) {
-          const firstItem = instagramItems[0];
-          const media = firstItem.reel_data?.media || firstItem.media || firstItem;
-          
-          const profileFullName = media.user?.full_name || media.owner?.full_name;
-          
-          // Get HD profile picture (best quality) with fallbacks
-          const profilePicUrl = media.user?.hd_profile_pic_url_info?.url ||      // HD version (925x925)
-                                media.owner?.hd_profile_pic_url_info?.url ||     // HD version from owner
-                                media.user?.profile_pic_url ||                   // Standard version (150x150)
-                                media.owner?.profile_pic_url ||                  // Standard from owner
-                                '';
-          
-          const isVerified = media.user?.is_verified || media.owner?.is_verified || false;
-          
-          console.log(`📸 Instagram profile data for @${account.username}:`, {
-            hasFullName: !!profileFullName,
-            hasProfilePic: !!profilePicUrl,
-            profilePicUrl: profilePicUrl ? profilePicUrl.substring(0, 100) + '...' : 'NONE',
-            isVerified: isVerified
-          });
-          
-          if (profileFullName || profilePicUrl) {
-            const profileUpdates: any = {};
-            if (profileFullName) profileUpdates.displayName = profileFullName;
-            
-            // Download and upload Instagram profile pic to Firebase Storage
-            if (profilePicUrl) {
-              try {
-                console.log(`📸 Downloading Instagram profile pic (HD) for @${account.username}...`);
-                console.log(`🔗 Profile pic URL: ${profilePicUrl}`);
-                const uploadedProfilePic = await downloadAndUploadImage(
-                  profilePicUrl,
-                  orgId,
-                  `instagram_profile_${account.username}.jpg`,
-                  'profile'
-                );
-                
-                // Only update if we got a Firebase Storage URL (not the original URL)
-                if (uploadedProfilePic && uploadedProfilePic.includes('storage.googleapis.com')) {
-                  profileUpdates.profilePicture = uploadedProfilePic;
-                  console.log(`✅ Instagram profile picture uploaded to Firebase Storage: ${uploadedProfilePic}`);
-                } else {
-                  console.warn(`⚠️ Failed to upload Instagram profile pic, got fallback URL: ${uploadedProfilePic}`);
-                  // Don't set profilePicture if upload failed - let it be empty rather than use expired URL
-                }
-              } catch (uploadError) {
-                console.error(`❌ Error uploading Instagram profile picture for @${account.username}:`, uploadError);
-                // Don't set profilePicture on error
-              }
-            } else {
-              console.warn(`⚠️ No profile picture URL found for @${account.username}`);
-            }
-            
-            if (isVerified) profileUpdates.isVerified = isVerified;
-            
-            await accountRef.update(profileUpdates);
-            console.log(`✅ Updated Instagram profile for @${account.username}`, profileUpdates);
-          } else {
-            console.warn(`⚠️ No profile data found for @${account.username}`);
-          }
-        }
+        console.log(`✅ Fetched ${instagramItems.length} Instagram reels`);
         
         // Transform Instagram data to video format
         for (const item of instagramItems) {
