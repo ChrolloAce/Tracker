@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react';
+import { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle, useRef } from 'react';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import Lottie from 'lottie-react';
@@ -122,6 +122,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
   const [filteredAccounts, setFilteredAccounts] = useState<AccountWithFilteredStats[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<TrackedAccount | null>(null);
+  
+  // Track if we've already done the initial restoration from localStorage
+  const hasRestoredFromLocalStorage = useRef(false);
   const [accountVideos, setAccountVideos] = useState<AccountVideo[]>([]);
   const [activeRulesCount, setActiveRulesCount] = useState(0);
   const [viewMode, setViewMode] = useState<'table' | 'details'>('table');
@@ -266,6 +269,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     setAccountVideos([]);
     setViewMode('table');
     onViewModeChange('table');
+    // Clear localStorage so we don't accidentally restore this account later
+    localStorage.removeItem('selectedAccountId');
   }, [onViewModeChange]);
 
   // Load videos for a specific account
@@ -427,14 +432,18 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       setAccounts(loadedAccounts);
       console.log(`✅ Updated ${loadedAccounts.length} accounts`);
 
-      // Restore or update selected account from localStorage
-      const savedSelectedAccountId = localStorage.getItem('selectedAccountId');
-      if (savedSelectedAccountId && loadedAccounts.length > 0) {
-        const savedAccount = loadedAccounts.find(a => a.id === savedSelectedAccountId);
-        if (savedAccount) {
-          console.log('🔄 Updating selected account:', savedAccount.username);
-          setSelectedAccount(savedAccount);
+      // Only restore from localStorage on INITIAL load, not on every update
+      // This prevents unwanted navigation when accounts sync completes
+      if (!hasRestoredFromLocalStorage.current && loadedAccounts.length > 0) {
+        const savedSelectedAccountId = localStorage.getItem('selectedAccountId');
+        if (savedSelectedAccountId) {
+          const savedAccount = loadedAccounts.find(a => a.id === savedSelectedAccountId);
+          if (savedAccount) {
+            console.log('🔄 Restoring selected account from localStorage:', savedAccount.username);
+            setSelectedAccount(savedAccount);
+          }
         }
+        hasRestoredFromLocalStorage.current = true;
       }
       
       setLoading(false);
@@ -446,6 +455,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     return () => {
       console.log('👋 Cleaning up accounts listener');
       unsubscribe();
+      // Reset the restoration flag when org/project changes so it can restore for new context
+      hasRestoredFromLocalStorage.current = false;
     };
   }, [currentOrgId, currentProjectId]);
 
