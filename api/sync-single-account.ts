@@ -21,7 +21,7 @@ if (!getApps().length) {
 
     initializeApp({ 
       credential: cert(serviceAccount as any),
-      storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'tracker-4a29f.appspot.com'
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'trackview-6a3a5.appspot.com'
     });
   } catch (error) {
     console.error('Failed to initialize Firebase Admin:', error);
