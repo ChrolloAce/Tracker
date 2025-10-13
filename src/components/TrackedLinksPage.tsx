@@ -418,6 +418,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                     </linearGradient>
                   </defs>
                   <Tooltip
+                    position={{ y: -60 }}
+                    offset={40}
                     content={({ active, payload }) => {
                       if (active && payload && payload.length) {
                         const data = payload[0].payload;
@@ -437,12 +439,12 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                         };
                         
                         return (
-                          <div className="bg-gray-900/80 backdrop-blur-md text-white px-4 py-2.5 rounded-lg shadow-xl text-sm space-y-1.5 min-w-[220px] border border-white/10">
-                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">
-                              total: {stats.totalClicks.toLocaleString()} CLICKS
+                          <div className="bg-[#1a1a1a] backdrop-blur-xl text-white px-5 py-3 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] text-sm space-y-2 min-w-[240px] border border-white/10">
+                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+                              {formatDate(timestamp)}
                             </p>
-                            <p className="text-sm text-gray-200 font-medium">
-                              {formatDate(timestamp)}: <span className="text-white font-semibold">{formatNumber(value)} clicks</span>
+                            <p className="text-lg text-white font-bold">
+                              {formatNumber(value)} clicks
                             </p>
                           </div>
                         );
@@ -497,6 +499,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                     </linearGradient>
                   </defs>
                   <Tooltip
+                    position={{ y: -60 }}
+                    offset={40}
                     content={({ active, payload }) => {
                       if (active && payload && payload.length) {
                         const data = payload[0].payload;
@@ -516,12 +520,12 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                         };
                         
                         return (
-                          <div className="bg-gray-900/80 backdrop-blur-md text-white px-4 py-2.5 rounded-lg shadow-xl text-sm space-y-1.5 min-w-[220px] border border-white/10">
-                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">
-                              total: {stats.uniqueClicks.toLocaleString()} UNIQUE CLICKS
+                          <div className="bg-[#1a1a1a] backdrop-blur-xl text-white px-5 py-3 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] text-sm space-y-2 min-w-[240px] border border-white/10">
+                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+                              {formatDate(timestamp)}
                             </p>
-                            <p className="text-sm text-gray-200 font-medium">
-                              {formatDate(timestamp)}: <span className="text-white font-semibold">{formatNumber(value)} unique</span>
+                            <p className="text-lg text-white font-bold">
+                              {formatNumber(value)} unique
                             </p>
                           </div>
                         );
@@ -576,6 +580,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                     </linearGradient>
                   </defs>
                   <Tooltip
+                    position={{ y: -60 }}
+                    offset={40}
                     content={({ active, payload }) => {
                       if (active && payload && payload.length) {
                         const data = payload[0].payload;
@@ -588,19 +594,13 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                           return `${months[date.getMonth()]} ${date.getDate()}`;
                         };
                         
-                        const formatNumber = (num: number): string => {
-                          if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-                          if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-                          return num.toLocaleString();
-                        };
-                        
                         return (
-                          <div className="bg-gray-900/80 backdrop-blur-md text-white px-4 py-2.5 rounded-lg shadow-xl text-sm space-y-1.5 min-w-[220px] border border-white/10">
-                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">
-                              avg: {stats.avgCTR}% CTR
+                          <div className="bg-[#1a1a1a] backdrop-blur-xl text-white px-5 py-3 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] text-sm space-y-2 min-w-[240px] border border-white/10">
+                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+                              {formatDate(timestamp)}
                             </p>
-                            <p className="text-sm text-gray-200 font-medium">
-                              {formatDate(timestamp)}: <span className="text-white font-semibold">{formatNumber(value)} unique</span>
+                            <p className="text-lg text-white font-bold">
+                              {value.toFixed(1)}% ctr
                             </p>
                           </div>
                         );
