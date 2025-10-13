@@ -437,6 +437,16 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       setAccounts(loadedAccounts);
       console.log(`✅ Updated ${loadedAccounts.length} accounts`);
 
+      // Auto-cleanup: Remove from processing if account now exists in real list
+      setProcessingAccounts(prev => {
+        const accountUsernames = new Set(loadedAccounts.map(acc => acc.username));
+        const remaining = prev.filter(proc => !accountUsernames.has(proc.username));
+        if (remaining.length < prev.length) {
+          console.log(`🧹 Auto-removed ${prev.length - remaining.length} accounts from processing (now in accounts list)`);
+        }
+        return remaining;
+      });
+
       // Only restore from localStorage on INITIAL load, not on every update
       // This prevents unwanted navigation when accounts sync completes
       if (!hasRestoredFromLocalStorage.current && loadedAccounts.length > 0) {
@@ -876,24 +886,24 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     );
 
     // Wait for all to complete
-    const results = await Promise.all(addPromises);
+    await Promise.all(addPromises);
     
-    // Reload accounts after all are added
-    try {
-      const updatedAccounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
-      setAccounts(updatedAccounts);
-      
-      // Now remove from processing - accounts should be in the list now
-      const addedUsernames = results.filter(r => r.success).map(r => r.username);
-      setProcessingAccounts(prev => prev.filter(acc => !addedUsernames.includes(acc.username)));
-      
-      console.log(`⏳ ${accountsToAdd.length} account(s) queued for background sync. Check your email in 5-10 minutes!`);
-    } catch (error) {
-      console.error('Failed to reload accounts:', error);
-      // Remove all on error
+    // Note: Real-time listener will automatically update accounts and clean up processing state
+    // No need to manually reload - this prevents flickering
+    console.log(`⏳ ${accountsToAdd.length} account(s) added. Real-time listener will update the list.`);
+    console.log(`📧 You'll receive an email in 5-10 minutes when video scraping completes!`);
+    
+    // Safety cleanup: Remove from processing after 10 seconds if real-time listener hasn't already
+    setTimeout(() => {
       const usernames = accountsToAdd.map(acc => acc.username);
-      setProcessingAccounts(prev => prev.filter(acc => !usernames.includes(acc.username)));
-    }
+      setProcessingAccounts(prev => {
+        const filtered = prev.filter(acc => !usernames.includes(acc.username));
+        if (filtered.length < prev.length) {
+          console.log('⏰ Safety cleanup: Removed accounts from processing after 10s');
+        }
+        return filtered;
+      });
+    }, 10000);
   }, [newAccountUrl, detectedPlatform, accountInputs, currentOrgId, currentProjectId, user, postsToScrape]);
 
   // Helper to generate short code for links
@@ -1505,9 +1515,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                           'transition-colors',
                           {
                             'bg-gray-200 dark:bg-gray-800': selectedAccount?.id === account.id && !isAccountSyncing,
-                            'bg-yellow-900/10 dark:bg-yellow-900/10 animate-pulse': isAccountSyncing,
+                            'bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-blue-500/5 dark:from-blue-500/10 dark:via-purple-500/10 dark:to-blue-500/10 border-l-4 border-blue-500 animate-pulse-slow': isAccountSyncing,
                             'hover:bg-white/5 dark:hover:bg-white/5 cursor-pointer': !isAccountSyncing,
-                            'cursor-not-allowed opacity-60 pointer-events-none': isAccountSyncing,
                           }
                         )}
                         onClick={() => !isAccountSyncing && setSelectedAccount(account)}
@@ -1541,9 +1550,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                 </div>
                                 {isAccountSyncing && (
                                   <div className="flex items-center gap-1.5">
-                                    <RefreshCw className="w-3.5 h-3.5 text-yellow-500 animate-spin" />
-                                    <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">
-                                      Syncing...
+                                    <span className="inline-block w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse"></span>
+                                    <RefreshCw className="w-3.5 h-3.5 text-blue-400 animate-spin" />
+                                    <span className="text-xs text-blue-400 font-medium">
+                                      Syncing videos...
                                     </span>
                                   </div>
                                 )}
