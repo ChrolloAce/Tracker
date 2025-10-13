@@ -22,7 +22,8 @@ import {
   Circle,
   Link as LinkIcon,
   X,
-  ChevronDown
+  ChevronDown,
+  MoreVertical
   } from 'lucide-react';
 import pricingPlansAnimation from '../../public/lottie/Pricing Plans.json';
 import { AccountVideo } from '../types/accounts';
@@ -134,10 +135,14 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [isVideoAnalyticsModalOpen, setIsVideoAnalyticsModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState<string | null>(null);
+  const [accountInputs, setAccountInputs] = useState<Array<{id: string; url: string; platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter' | null; error: string | null}>>([
+    { id: '1', url: '', platform: null, error: null }
+  ]);
   const [newAccountUrl, setNewAccountUrl] = useState('');
   const [detectedPlatform, setDetectedPlatform] = useState<'instagram' | 'tiktok' | 'youtube' | 'twitter' | null>(null);
   const [urlValidationError, setUrlValidationError] = useState<string | null>(null);
   const [postsToScrape, setPostsToScrape] = useState<number>(10);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<'username' | 'followers' | 'videos' | 'views' | 'likes' | 'comments' | 'dateAdded'>('dateAdded');
@@ -814,55 +819,81 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   }, []);
 
   const handleAddAccount = useCallback(async () => {
-    if (!newAccountUrl.trim() || !currentOrgId || !currentProjectId || !user || !detectedPlatform) return;
+    if (!currentOrgId || !currentProjectId || !user) return;
 
-    const url = newAccountUrl.trim();
-    const platform = detectedPlatform;
+    // Collect all valid accounts from inputs
+    const accountsToAdd: Array<{url: string; username: string; platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter'}> = [];
     
-    // Extract username from URL
-    const username = extractUsernameFromUrl(url, platform);
+    // Check first input (uses newAccountUrl state)
+    if (newAccountUrl.trim() && detectedPlatform) {
+      const username = extractUsernameFromUrl(newAccountUrl.trim(), detectedPlatform);
+      if (username) {
+        accountsToAdd.push({ url: newAccountUrl.trim(), username, platform: detectedPlatform });
+      }
+    }
     
-    if (!username) {
-      setUrlValidationError('Could not extract username from URL. Please check the URL format.');
+    // Check additional inputs
+    for (let i = 1; i < accountInputs.length; i++) {
+      const input = accountInputs[i];
+      if (input.url.trim() && input.platform) {
+        const username = extractUsernameFromUrl(input.url.trim(), input.platform);
+        if (username) {
+          accountsToAdd.push({ url: input.url.trim(), username, platform: input.platform });
+        }
+      }
+    }
+    
+    if (accountsToAdd.length === 0) {
+      setUrlValidationError('Please enter at least one valid account URL.');
       return;
     }
 
-    // Add to processing accounts immediately with timestamp
-    setProcessingAccounts(prev => [...prev, { username, platform, startedAt: Date.now() }]);
+    // Add all to processing accounts immediately
+    setProcessingAccounts(prev => [
+      ...prev,
+      ...accountsToAdd.map(acc => ({ username: acc.username, platform: acc.platform, startedAt: Date.now() }))
+    ]);
     
     // Close modal and reset form immediately
     setNewAccountUrl('');
     setDetectedPlatform(null);
     setUrlValidationError(null);
+    setAccountInputs([{ id: '1', url: '', platform: null, error: null }]);
     setIsAddModalOpen(false);
 
+    // Process each account
+    for (const account of accountsToAdd) {
+      try {
+        await AccountTrackingServiceFirebase.addAccount(
+          currentOrgId,
+          currentProjectId,
+          user.uid,
+          account.username,
+          account.platform,
+          'my', // Default to 'my' account type
+          postsToScrape // Pass the user's selected video count
+        );
+        
+        console.log(`✅ Added account @${account.username}`);
+        
+        // Remove from processing accounts
+        setProcessingAccounts(prev => prev.filter(acc => acc.username !== account.username));
+      } catch (error) {
+        console.error(`Failed to add account @${account.username}:`, error);
+        // Remove from processing accounts on error
+        setProcessingAccounts(prev => prev.filter(acc => acc.username !== account.username));
+      }
+    }
+    
+    // Reload accounts after all are added
     try {
-      await AccountTrackingServiceFirebase.addAccount(
-        currentOrgId,
-        currentProjectId,
-        user.uid,
-        username,
-        platform,
-        'my', // Default to 'my' account type
-        postsToScrape // Pass the user's selected video count
-      );
-      
-      // Reload accounts
       const updatedAccounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
       setAccounts(updatedAccounts);
-      
-      console.log(`✅ Added account @${username}`);
-      console.log(`⏳ Account queued for background sync. Check your email in 5-10 minutes!`);
-      
-      // Remove from processing accounts
-      setProcessingAccounts(prev => prev.filter(acc => acc.username !== username));
+      console.log(`⏳ ${accountsToAdd.length} account(s) queued for background sync. Check your email in 5-10 minutes!`);
     } catch (error) {
-      console.error('Failed to add account:', error);
-      alert('Failed to add account. Please check the URL and try again.');
-      // Remove from processing accounts on error
-      setProcessingAccounts(prev => prev.filter(acc => acc.username !== username));
+      console.error('Failed to reload accounts:', error);
     }
-  }, [newAccountUrl, detectedPlatform, currentOrgId, currentProjectId, user, handleSyncAccount]);
+  }, [newAccountUrl, detectedPlatform, accountInputs, currentOrgId, currentProjectId, user, postsToScrape]);
 
   // Helper to generate short code for links
   const generateShortCode = (length: number = 6): string => {
@@ -1557,18 +1588,44 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
 
                         {/* Actions Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex items-center justify-end space-x-2">
+                          <div className="flex items-center justify-end space-x-2 relative">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleRemoveAccount(account.id);
+                                setOpenDropdownId(openDropdownId === account.id ? null : account.id);
                               }}
                               disabled={isAccountSyncing}
-                              className="text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                              title={isAccountSyncing ? "Account is syncing..." : "Remove account"}
+                              className="text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed p-1 hover:bg-white/5 rounded"
+                              title="More options"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <MoreVertical className="w-4 h-4" />
                             </button>
+                            
+                            {/* Dropdown Menu */}
+                            {openDropdownId === account.id && (
+                              <>
+                                <div 
+                                  className="fixed inset-0 z-10" 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenDropdownId(null);
+                                  }}
+                                />
+                                <div className="absolute right-0 top-8 mt-1 w-48 bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-xl z-20 py-1">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenDropdownId(null);
+                                      handleRemoveAccount(account.id);
+                                    }}
+                                    className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                    Remove Account
+                                  </button>
+                                </div>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -2191,6 +2248,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                   setDetectedPlatform(null);
                   setUrlValidationError(null);
                   setPostsToScrape(10);
+                  setAccountInputs([{ id: '1', url: '', platform: null, error: null }]);
                 }}
                 className="text-white/80 hover:text-white transition-colors p-1"
               >
@@ -2198,51 +2256,74 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
               </button>
             </div>
             
-            {/* Input Fields */}
-            <div className="space-y-3 mb-6">
-              <div className="flex gap-2 items-start">
-                <div className="relative flex-1">
-                  <input
-                    type="text"
-                    value={newAccountUrl}
-                    onChange={(e) => handleUrlChange(e.target.value)}
-                    placeholder="Enter TikTok, YouTube, or Instagram URL"
-                    className="w-full pl-4 pr-10 py-2.5 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-white/20 focus:border-white/20 text-sm"
-                  />
-                  {detectedPlatform ? (
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                      <PlatformIcon platform={detectedPlatform} size="sm" />
+            {/* Input Fields - Multiple */}
+            <div className="space-y-3 mb-6 max-h-[400px] overflow-y-auto">
+              {accountInputs.map((input, index) => (
+                <div key={input.id} className="flex gap-2 items-start">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={index === 0 ? newAccountUrl : input.url}
+                      onChange={(e) => {
+                        if (index === 0) {
+                          handleUrlChange(e.target.value);
+                        } else {
+                          const newInputs = [...accountInputs];
+                          newInputs[index].url = e.target.value;
+                          // Detect platform
+                          const result = UrlParserService.parseUrl(e.target.value);
+                          newInputs[index].platform = result.platform || null;
+                          newInputs[index].error = !result.isValid && e.target.value.trim() ? 'Invalid URL' : null;
+                          setAccountInputs(newInputs);
+                        }
+                      }}
+                      placeholder="Enter TikTok, YouTube, Instagram, or X URL"
+                      className="w-full pl-4 pr-10 py-2.5 bg-[#1E1E20] border border-gray-700/50 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-white/20 focus:border-white/20 text-sm"
+                    />
+                    {(index === 0 ? detectedPlatform : input.platform) ? (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <PlatformIcon platform={index === 0 ? detectedPlatform! : input.platform!} size="sm" />
+                      </div>
+                    ) : (
+                      <LinkIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-600" />
+                    )}
+                  </div>
+                  
+                  {index === 0 && (
+                    <div className="relative">
+                      <select
+                        value={postsToScrape}
+                        onChange={(e) => setPostsToScrape(Number(e.target.value))}
+                        className="appearance-none pl-3 pr-8 py-2.5 bg-[#1E1E20] border border-gray-700/50 rounded-full text-white text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20 whitespace-nowrap"
+                      >
+                        <option value={10}>10 videos</option>
+                        <option value={25}>25 videos</option>
+                        <option value={50}>50 videos</option>
+                        <option value={100}>100 videos</option>
+                        <option value={250}>250 videos</option>
+                        <option value={500}>500 videos</option>
+                        <option value={1000}>1000 videos</option>
+                        <option value={2000}>2000 videos</option>
+                      </select>
+                      <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
                     </div>
-                  ) : (
-                    <LinkIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-600" />
+                  )}
+
+                  {index > 0 && (
+                    <button
+                      onClick={() => {
+                        setAccountInputs(prev => prev.filter(i => i.id !== input.id));
+                      }}
+                      className="p-2.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+                    </button>
+                  )}
+                  {index === 0 && accountInputs.length === 1 && (
+                    <div className="w-10" /> 
                   )}
                 </div>
-                
-                <div className="relative">
-                  <select
-                    value={postsToScrape}
-                    onChange={(e) => setPostsToScrape(Number(e.target.value))}
-                    className="appearance-none pl-3 pr-8 py-2.5 bg-[#1E1E20] border border-gray-700/50 rounded-full text-white text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20 whitespace-nowrap"
-                  >
-                    <option value={10}>10 videos</option>
-                    <option value={25}>25 videos</option>
-                    <option value={50}>50 videos</option>
-                    <option value={100}>100 videos</option>
-                    <option value={250}>250 videos</option>
-                    <option value={500}>500 videos</option>
-                    <option value={1000}>1000 videos</option>
-                    <option value={2000}>2000 videos</option>
-                  </select>
-                  <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
-                </div>
-
-                <button
-                  className="p-2.5 text-gray-500 hover:text-gray-300 hover:bg-white/5 rounded-lg transition-colors opacity-30 cursor-not-allowed"
-                  disabled
-                >
-                  <Trash2 className="w-4 h-4" strokeWidth={1.5} />
-                </button>
-              </div>
+              ))}
 
               {/* Show validation error */}
               {urlValidationError && (
@@ -2264,16 +2345,21 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
-                    // Add more functionality (currently disabled since we only support 1 input)
+                    // Add another input field
+                    setAccountInputs(prev => [...prev, { 
+                      id: Date.now().toString(), 
+                      url: '', 
+                      platform: null, 
+                      error: null 
+                    }]);
                   }}
-                  className="px-4 py-2 text-sm font-medium text-gray-400 border border-gray-700 rounded-full hover:border-gray-600 hover:text-gray-300 transition-colors opacity-50 cursor-not-allowed"
-                  disabled
+                  className="px-4 py-2 text-sm font-medium text-gray-300 border border-gray-700 rounded-full hover:border-gray-600 hover:text-white transition-colors"
                 >
                   Add More
                 </button>
                 <button
                   onClick={handleAddAccount}
-                  disabled={!newAccountUrl.trim() || !detectedPlatform}
+                  disabled={!newAccountUrl.trim() && !accountInputs.slice(1).some(input => input.url.trim() && input.platform)}
                   className="px-4 py-2 text-sm font-bold text-black bg-white rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
                 >
                   Track Accounts
