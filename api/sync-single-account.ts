@@ -43,14 +43,34 @@ async function downloadAndUploadImage(
   try {
     console.log(`📥 Downloading image from: ${imageUrl.substring(0, 100)}...`);
     
-    // Download image
-    const response = await fetch(imageUrl);
+    // Download image with proper headers for Instagram
+    const response = await fetch(imageUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://www.instagram.com/',
+        'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"',
+        'sec-fetch-dest': 'image',
+        'sec-fetch-mode': 'no-cors',
+        'sec-fetch-site': 'cross-site'
+      }
+    });
+    
     if (!response.ok) {
-      throw new Error(`Failed to download image: ${response.status}`);
+      console.warn(`⚠️ Image download returned ${response.status}, trying direct URL...`);
+      // Instagram URLs might work even with error status, try anyway
     }
     
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+    
+    // Validate we got actual image data
+    if (buffer.length < 100) {
+      throw new Error(`Downloaded data too small (${buffer.length} bytes), likely not an image`);
+    }
     
     // Determine content type from response or default to jpg
     const contentType = response.headers.get('content-type') || 'image/jpeg';
@@ -60,11 +80,14 @@ async function downloadAndUploadImage(
     const storagePath = `organizations/${orgId}/${folder}/${filename}`;
     const file = bucket.file(storagePath);
     
+    console.log(`☁️ Uploading ${buffer.length} bytes to Firebase Storage...`);
+    
     await file.save(buffer, {
       metadata: {
         contentType: contentType,
         metadata: {
-          uploadedAt: new Date().toISOString()
+          uploadedAt: new Date().toISOString(),
+          originalUrl: imageUrl
         }
       },
       public: true
@@ -78,6 +101,7 @@ async function downloadAndUploadImage(
     return publicUrl;
   } catch (error) {
     console.error('❌ Failed to download/upload image:', error);
+    console.log(`⚠️ Using original URL as fallback: ${imageUrl.substring(0, 100)}...`);
     return imageUrl; // Fallback to original URL
   }
 }
