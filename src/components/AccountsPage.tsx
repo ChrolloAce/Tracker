@@ -749,8 +749,41 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         videos
       );
 
-      console.log(`✅ After rules: ${rulesFilteredVideos.length}/${videos.length} videos displayed`);
-      setAccountVideos(rulesFilteredVideos);
+      // Apply date filtering
+      const videoSubmissions: VideoSubmission[] = rulesFilteredVideos.map(v => ({
+        id: v.id || v.videoId || '',
+        url: v.url || '',
+        platform: selectedAccount.platform,
+        thumbnail: v.thumbnail || '',
+        title: v.caption || v.title || '',
+        caption: v.caption || v.title || '',
+        uploader: selectedAccount.displayName || selectedAccount.username,
+        uploaderHandle: selectedAccount.username,
+        uploaderProfilePicture: selectedAccount.profilePicture,
+        status: 'approved' as const,
+        views: v.views || 0,
+        likes: v.likes || 0,
+        comments: v.comments || 0,
+        shares: v.shares || 0,
+        dateSubmitted: v.uploadDate || new Date(),
+        uploadDate: v.uploadDate || new Date(),
+        snapshots: []
+      }));
+
+      const dateFilteredSubmissions = DateFilterService.filterVideosByDateRange(
+        videoSubmissions,
+        dateFilter,
+        undefined
+      );
+
+      // Convert back to AccountVideo
+      const finalFilteredVideos: AccountVideo[] = dateFilteredSubmissions.map(sub => {
+        const originalVideo = rulesFilteredVideos.find(v => (v.id || v.videoId) === sub.id);
+        return originalVideo || sub as any;
+      });
+
+      console.log(`✅ After rules + date filter: ${finalFilteredVideos.length}/${videos.length} videos displayed (date: ${dateFilter})`);
+      setAccountVideos(finalFilteredVideos);
     }, (error) => {
       console.error('❌ Videos listener error:', error);
     });
@@ -759,7 +792,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       console.log(`👋 Cleaning up videos listener for @${selectedAccount.username}`);
       unsubscribe();
     };
-  }, [selectedAccount, currentOrgId, currentProjectId, onViewModeChange]);
+  }, [selectedAccount, currentOrgId, currentProjectId, onViewModeChange, dateFilter]);
 
   const handleSyncAccount = useCallback(async (accountId: string) => {
     if (!currentOrgId || !currentProjectId || !user) return;
