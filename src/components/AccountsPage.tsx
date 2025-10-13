@@ -843,10 +843,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       return;
     }
 
-    // Add all to processing accounts immediately
+    // Add all to processing accounts immediately AT THE TOP
     setProcessingAccounts(prev => [
-      ...prev,
-      ...accountsToAdd.map(acc => ({ username: acc.username, platform: acc.platform, startedAt: Date.now() }))
+      ...accountsToAdd.map(acc => ({ username: acc.username, platform: acc.platform, startedAt: Date.now() })),
+      ...prev
     ]);
     
     // Close modal and reset form immediately
@@ -856,37 +856,43 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     setAccountInputs([{ id: '1', url: '', platform: null, error: null }]);
     setIsAddModalOpen(false);
 
-    // Process each account
-    for (const account of accountsToAdd) {
-      try {
-        await AccountTrackingServiceFirebase.addAccount(
-          currentOrgId,
-          currentProjectId,
-          user.uid,
-          account.username,
-          account.platform,
-          'my', // Default to 'my' account type
-          postsToScrape // Pass the user's selected video count
-        );
-        
+    // Process all accounts in PARALLEL
+    const addPromises = accountsToAdd.map(account => 
+      AccountTrackingServiceFirebase.addAccount(
+        currentOrgId,
+        currentProjectId,
+        user.uid,
+        account.username,
+        account.platform,
+        'my', // Default to 'my' account type
+        postsToScrape // Pass the user's selected video count
+      ).then(() => {
         console.log(`✅ Added account @${account.username}`);
-        
-        // Remove from processing accounts
-        setProcessingAccounts(prev => prev.filter(acc => acc.username !== account.username));
-      } catch (error) {
+        return { success: true, username: account.username };
+      }).catch(error => {
         console.error(`Failed to add account @${account.username}:`, error);
-        // Remove from processing accounts on error
-        setProcessingAccounts(prev => prev.filter(acc => acc.username !== account.username));
-      }
-    }
+        return { success: false, username: account.username };
+      })
+    );
+
+    // Wait for all to complete
+    const results = await Promise.all(addPromises);
     
     // Reload accounts after all are added
     try {
       const updatedAccounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
       setAccounts(updatedAccounts);
+      
+      // Now remove from processing - accounts should be in the list now
+      const addedUsernames = results.filter(r => r.success).map(r => r.username);
+      setProcessingAccounts(prev => prev.filter(acc => !addedUsernames.includes(acc.username)));
+      
       console.log(`⏳ ${accountsToAdd.length} account(s) queued for background sync. Check your email in 5-10 minutes!`);
     } catch (error) {
       console.error('Failed to reload accounts:', error);
+      // Remove all on error
+      const usernames = accountsToAdd.map(acc => acc.username);
+      setProcessingAccounts(prev => prev.filter(acc => !usernames.includes(acc.username)));
     }
   }, [newAccountUrl, detectedPlatform, accountInputs, currentOrgId, currentProjectId, user, postsToScrape]);
 
@@ -1408,22 +1414,26 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                   {processingAccounts.map((procAccount, index) => (
                     <tr 
                       key={`processing-${index}`}
-                      className="bg-gradient-to-r from-gray-500/10 via-gray-600/10 to-gray-500/10 dark:from-gray-400/20 dark:via-gray-500/20 dark:to-gray-400/20 border-l-4 border-gray-900 dark:border-white"
+                      className="bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-blue-500/5 dark:from-blue-500/10 dark:via-purple-500/10 dark:to-blue-500/10 border-l-4 border-blue-500 animate-pulse-slow"
                     >
                       {/* Username Column */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center space-x-3">
                           <div className="relative w-10 h-10">
-                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center animate-spin">
-                              <RefreshCw className="w-5 h-5 text-white" />
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center relative overflow-hidden">
+                              {/* Animated gradient background */}
+                              <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 animate-spin-slow"></div>
+                              <div className="absolute inset-[2px] bg-[#0A0A0A] rounded-full"></div>
+                              <RefreshCw className="w-5 h-5 text-blue-400 animate-spin relative z-10" />
                             </div>
                           </div>
                           <div>
-                            <div className="text-sm font-medium text-gray-900 dark:text-white">
+                            <div className="text-sm font-bold text-white">
                               @{procAccount.username}
                             </div>
-                            <div className="text-sm text-gray-400 dark:text-gray-400 font-medium animate-pulse">
-                              ⏳ Account processing...
+                            <div className="text-xs text-blue-400 font-medium flex items-center gap-1">
+                              <span className="inline-block w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse"></span>
+                              Adding account...
                             </div>
                           </div>
                         </div>
@@ -1433,28 +1443,28 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center space-x-2">
                           <PlatformIcon platform={procAccount.platform as any} size="sm" />
-                          <span className="text-sm text-gray-900 dark:text-white capitalize">{procAccount.platform}</span>
+                          <span className="text-sm text-white font-medium capitalize">{procAccount.platform}</span>
                         </div>
                       </td>
 
                       {/* Other columns with loading placeholders */}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 dark:text-gray-500">
-                        <div className="w-16 h-4 bg-gray-300 dark:bg-white/10 rounded animate-pulse"></div>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        <div className="w-16 h-4 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full animate-pulse"></div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 dark:text-gray-500">
-                        <div className="w-12 h-4 bg-gray-300 dark:bg-white/10 rounded animate-pulse"></div>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        <div className="w-12 h-4 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 dark:text-gray-500">
-                        <div className="w-12 h-4 bg-gray-300 dark:bg-white/10 rounded animate-pulse"></div>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        <div className="w-12 h-4 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 dark:text-gray-500">
-                        <div className="w-16 h-4 bg-gray-300 dark:bg-white/10 rounded animate-pulse"></div>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        <div className="w-16 h-4 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 dark:text-gray-500">
-                        <div className="w-12 h-4 bg-gray-300 dark:bg-white/10 rounded animate-pulse"></div>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        <div className="w-12 h-4 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 dark:text-gray-500">
-                        <div className="w-12 h-4 bg-gray-300 dark:bg-white/10 rounded animate-pulse"></div>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        <div className="w-12 h-4 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
                       </td>
 
                       {/* Actions Column */}
@@ -1465,7 +1475,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                               setProcessingAccounts(prev => prev.filter((_, i) => i !== index));
                               console.log(`🗑️ Manually removed stuck account: @${procAccount.username}`);
                             }}
-                            className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                            className="px-3 py-1.5 text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-md transition-colors"
                             title="Cancel processing"
                           >
                             Cancel
