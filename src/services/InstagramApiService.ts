@@ -27,15 +27,21 @@ class InstagramApiService {
     console.log('📡 Calling NEW Instagram Reels scraper...');
 
     try {
-      // Run the NEW Instagram Reels scraper actor
+      // Run the NEW Instagram Reels scraper actor with RESIDENTIAL proxies
       const run = await this.apifyClient.runActor(this.INSTAGRAM_SCRAPER_ACTOR, {
         urls: [instagramUrl],
         sortOrder: "newest",
         maxComments: 50,
         maxReels: 30,
         proxyConfiguration: {
-          useApifyProxy: true  // Use Apify proxy for better reliability
-        }
+          useApifyProxy: true,
+          apifyProxyGroups: ['RESIDENTIAL'],  // 🔑 Use RESIDENTIAL proxies to avoid Instagram 429 blocks
+          apifyProxyCountry: 'US'  // Use US proxies for better compatibility
+        },
+        // Additional anti-blocking measures
+        maxRequestRetries: 5,  // Retry failed requests
+        requestHandlerTimeoutSecs: 300,  // 5 minute timeout
+        maxConcurrency: 1  // Reduce concurrency to avoid rate limits
       });
 
       console.log('🎯 Apify actor run completed:', run.id);
@@ -280,8 +286,14 @@ class InstagramApiService {
         maxComments: 10,
         maxReels: 1,
         proxyConfiguration: {
-          useApifyProxy: true  // Use Apify proxy for better reliability
-        }
+          useApifyProxy: true,
+          apifyProxyGroups: ['RESIDENTIAL'],  // 🔑 Use RESIDENTIAL proxies to avoid Instagram 429 blocks
+          apifyProxyCountry: 'US'  // Use US proxies for better compatibility
+        },
+        // Additional anti-blocking measures
+        maxRequestRetries: 5,  // Retry failed requests
+        requestHandlerTimeoutSecs: 300,  // 5 minute timeout
+        maxConcurrency: 1  // Reduce concurrency to avoid rate limits
       }, { timeout: 60000 }); // 1 minute timeout
 
       console.log('✅ Test run completed:', run.id, 'Status:', run.status);

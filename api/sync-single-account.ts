@@ -390,7 +390,7 @@ export default async function handler(
       console.log(`📸 Fetching Instagram reels for ${account.username} using NEW scraper...`);
       
       try {
-        // Call NEW Instagram Reels Scraper (working!)
+        // Call NEW Instagram Reels Scraper with RESIDENTIAL proxies (prevents 429 errors)
         const data = await runApifyActor({
           actorId: 'scraper-engine~instagram-reels-scraper',
           input: {
@@ -399,8 +399,14 @@ export default async function handler(
             maxComments: 10,
             maxReels: 100,
             proxyConfiguration: {
-              useApifyProxy: true  // Use Apify proxy for better reliability
-            }
+              useApifyProxy: true,
+              apifyProxyGroups: ['RESIDENTIAL'],  // 🔑 Use RESIDENTIAL proxies to avoid Instagram 429 blocks
+              apifyProxyCountry: 'US'  // Use US proxies for better compatibility
+            },
+            // Additional anti-blocking measures
+            maxRequestRetries: 5,  // Retry failed requests
+            requestHandlerTimeoutSecs: 300,  // 5 minute timeout
+            maxConcurrency: 1  // Reduce concurrency to avoid rate limits
           }
         });
 

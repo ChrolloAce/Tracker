@@ -449,7 +449,7 @@ export class AccountTrackingService {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              // NEW WORKING SCRAPER!
+              // NEW WORKING SCRAPER with RESIDENTIAL proxies!
               actorId: 'scraper-engine~instagram-reels-scraper',
               input: {
                 urls: [`https://www.instagram.com/${account.username}/`],
@@ -457,8 +457,14 @@ export class AccountTrackingService {
                 maxComments: 10,
                 maxReels: 100,
                 proxyConfiguration: {
-                  useApifyProxy: true  // Use Apify proxy for better reliability
-                }
+                  useApifyProxy: true,
+                  apifyProxyGroups: ['RESIDENTIAL'],  // 🔑 Use RESIDENTIAL proxies to avoid Instagram 429 blocks
+                  apifyProxyCountry: 'US'  // Use US proxies for better compatibility
+                },
+                // Additional anti-blocking measures
+                maxRequestRetries: 5,
+                requestHandlerTimeoutSecs: 300,
+                maxConcurrency: 1
               },
               action: 'run'
             }),
