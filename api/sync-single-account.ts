@@ -164,19 +164,33 @@ export default async function handler(
         // Get profile data from first video (if available)
         if (tiktokVideos.length > 0 && tiktokVideos[0]) {
           const firstVideo = tiktokVideos[0];
-          const profilePicture = firstVideo['authorMeta.avatar'] || firstVideo.authorMeta?.avatar || '';
+          const profilePictureUrl = firstVideo['authorMeta.avatar'] || firstVideo.authorMeta?.avatar || '';
           const followerCount = firstVideo['authorMeta.fans'] || firstVideo.authorMeta?.fans || 0;
           const displayName = firstVideo['authorMeta.nickName'] || firstVideo.authorMeta?.nickName || firstVideo['authorMeta.name'] || firstVideo.authorMeta?.name || account.username;
           
           // Update account profile if we have new data
-          if (profilePicture || followerCount > 0) {
+          if (profilePictureUrl || followerCount > 0) {
             try {
-              await accountRef.update({
+              const profileUpdates: any = {
                 displayName: displayName,
-                profilePicture: profilePicture,
                 followerCount: followerCount,
                 isVerified: firstVideo['authorMeta.verified'] || firstVideo.authorMeta?.verified || false
-              });
+              };
+              
+              // Download and upload TikTok profile pic to Firebase Storage
+              if (profilePictureUrl) {
+                console.log(`📸 Downloading TikTok profile pic for @${account.username}...`);
+                const uploadedProfilePic = await downloadAndUploadImage(
+                  profilePictureUrl,
+                  orgId,
+                  `tiktok_profile_${account.username}.jpg`,
+                  'profile'
+                );
+                profileUpdates.profilePicture = uploadedProfilePic;
+                console.log(`✅ TikTok profile picture uploaded to Firebase Storage`);
+              }
+              
+              await accountRef.update(profileUpdates);
               console.log(`✅ Updated TikTok profile: ${followerCount} followers`);
             } catch (updateError) {
               console.warn('⚠️ Could not update profile:', updateError);
@@ -214,7 +228,8 @@ export default async function handler(
             likes: item.diggCount || item.likes || 0,
             comments: item.commentCount || item.comments || 0,
             shares: item.shareCount || item.shares || 0,
-            caption: item.text || ''
+            caption: item.text || '',
+            duration: getField('videoMeta.duration', ['videoMeta', 'duration']) || 0
           };
         });
       } catch (tiktokError) {
@@ -254,7 +269,8 @@ export default async function handler(
             likes: video.likes || video.likeCount || 0,
             comments: video.comments || video.commentCount || 0,
             shares: 0,
-            caption: video.description || ''
+            caption: video.description || '',
+            duration: video.duration || 0
           }));
         } else {
           console.error(`YouTube API returned ${response.status}`);
@@ -281,13 +297,28 @@ export default async function handler(
         const firstTweet = profileData.items?.[0];
         
         if (firstTweet?.author) {
-          await accountRef.update({
+          const profileUpdates: any = {
             displayName: firstTweet.author.name || account.username,
-            profilePicture: firstTweet.author.profilePicture || '',
             followerCount: firstTweet.author.followers || 0,
             followingCount: firstTweet.author.following || 0,
             isVerified: firstTweet.author.isVerified || firstTweet.author.isBlueVerified || false
-          });
+          };
+          
+          // Download and upload Twitter profile pic to Firebase Storage
+          const profilePictureUrl = firstTweet.author.profilePicture || '';
+          if (profilePictureUrl) {
+            console.log(`📸 Downloading Twitter profile pic for @${account.username}...`);
+            const uploadedProfilePic = await downloadAndUploadImage(
+              profilePictureUrl,
+              orgId,
+              `twitter_profile_${account.username}.jpg`,
+              'profile'
+            );
+            profileUpdates.profilePicture = uploadedProfilePic;
+            console.log(`✅ Twitter profile picture uploaded to Firebase Storage`);
+          }
+          
+          await accountRef.update(profileUpdates);
           console.log(`✅ Updated profile data for @${account.username}`);
         } else {
           console.warn(`⚠️ No author data found in first tweet for ${account.username}`);
@@ -351,7 +382,8 @@ export default async function handler(
           likes: tweet.likeCount || 0,
           comments: tweet.replyCount || 0,
           shares: tweet.retweetCount || 0,
-          caption: tweetText
+          caption: tweetText,
+          duration: 0 // Twitter doesn't provide video duration
         };
       });
     } else if (account.platform === 'instagram') {
