@@ -895,7 +895,8 @@ const KPISparkline: React.FC<{
           </linearGradient>
         </defs>
         <Tooltip
-          offset={15}
+          position={{ y: -60 }}
+          offset={40}
           allowEscapeViewBox={{ x: false, y: true }}
           wrapperStyle={{ 
             zIndex: 99999,
@@ -940,24 +941,24 @@ const KPISparkline: React.FC<{
                 : null;
               
               return (
-                <div className="bg-gray-900/95 backdrop-blur-md text-white px-4 py-2.5 rounded-lg shadow-2xl text-sm space-y-1.5 min-w-[220px] border border-white/20 pointer-events-none" style={{ zIndex: 999999, position: 'relative' }}>
+                <div className="bg-[#1a1a1a] backdrop-blur-xl text-white px-5 py-3 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] text-sm space-y-2 min-w-[240px] border border-white/10 pointer-events-none" style={{ zIndex: 999999, position: 'relative' }}>
                   {/* Always show total if available */}
                   {totalDisplay && (
-                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
                       {totalDisplay}
                     </p>
                   )}
                   {/* Show date and per-day value */}
                   {dateStr ? (
-                    <p className="text-sm text-gray-200 font-medium">
-                      {dateStr}: <span className="text-white font-semibold">{displayValue} {metricLabel?.toLowerCase()}</span>
+                    <p className="text-sm text-gray-300 font-medium">
+                      {dateStr}: <span className="text-white font-bold">{displayValue} {metricLabel?.toLowerCase()}</span>
                     </p>
                   ) : (
-                    <p className="font-semibold text-lg">{displayValue}</p>
+                    <p className="font-bold text-lg">{displayValue}</p>
                   )}
                   {/* Show trend comparison if available */}
                   {showComparison && trendText && (
-                    <p className={`text-xs font-medium ${diff >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    <p className={`text-xs font-semibold ${diff >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {trendText}
                     </p>
                   )}
