@@ -262,7 +262,7 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
                 )}
               >
                 <div className={clsx(
-                  'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
+                  'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0',
                   selectedAccountIds.includes(account.id)
                     ? 'bg-white border-white'
                     : 'border-gray-500'
@@ -271,6 +271,29 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
                     <Check className="w-3 h-3 text-black" />
                   )}
                 </div>
+                
+                {/* Profile Picture */}
+                <div className="flex-shrink-0">
+                  {account.profilePicture ? (
+                    <img
+                      src={account.profilePicture}
+                      alt={account.username}
+                      className="w-10 h-10 rounded-full object-cover"
+                      onError={(e) => {
+                        // Fallback to icon if image fails to load
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                  ) : null}
+                  <div className={clsx(
+                    "w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center",
+                    account.profilePicture ? 'hidden' : ''
+                  )}>
+                    <UserIcon className="w-5 h-5 text-gray-400" />
+                  </div>
+                </div>
+                
                 <PlatformIcon platform={account.platform} size="sm" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white truncate">

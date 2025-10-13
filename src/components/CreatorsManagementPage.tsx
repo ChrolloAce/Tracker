@@ -203,10 +203,29 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
       
       // Load member data for each creator
       const membersData = await OrganizationService.getOrgMembers(currentOrgId);
+      
+      // Create a combined list:
+      // 1. Creators with member accounts (accepted invitations)
       const creatorMembers = membersData.filter(m => 
         creatorProfilesList.some(p => p.id === m.userId)
       );
-      setCreators(creatorMembers);
+      
+      // 2. Creators without member accounts (pending, added without email)
+      const pendingCreators = creatorProfilesList
+        .filter(profile => !membersData.some(m => m.userId === profile.id))
+        .map(profile => ({
+          userId: profile.id,
+          displayName: profile.displayName,
+          email: profile.email || '',
+          photoURL: profile.photoURL,
+          joinedAt: profile.createdAt,
+          role: 'creator' as const,
+          status: 'invited' as const
+        }));
+      
+      // Combine both lists
+      const allCreators = [...creatorMembers, ...pendingCreators];
+      setCreators(allCreators);
 
       // Store creator profiles
       const creatorProfilesMap = new Map<string, Creator>();
@@ -352,10 +371,20 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
                             </div>
                           </div>
                           <div className="min-w-0">
-                            <div className="text-sm font-semibold text-white truncate">
-                              {creator.displayName || 'Unknown Creator'}
+                            <div className="flex items-center gap-2">
+                              <div className="text-sm font-semibold text-white truncate">
+                                {creator.displayName || 'Unknown Creator'}
+                              </div>
+                              {!creator.email && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 flex-shrink-0">
+                                  <Clock className="w-3 h-3 mr-1" />
+                                  Pending
+                                </span>
+                              )}
                             </div>
-                            <div className="text-xs text-gray-400 truncate">{creator.email}</div>
+                            <div className="text-xs text-gray-400 truncate">
+                              {creator.email || 'No email provided'}
+                            </div>
                           </div>
                         </div>
                       </td>

@@ -416,6 +416,7 @@ export interface Creator {
   payoutsEnabled: boolean;
   createdAt: Timestamp;
   lastPayoutAt?: Timestamp;
+  status?: string; // Status of the creator (e.g., 'pending', 'active')
   
   // Payment terms
   paymentTermPresetId?: string; // Reference to selected preset
