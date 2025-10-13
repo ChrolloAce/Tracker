@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle, useRef } from 'react';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import Lottie from 'lottie-react';
 import { 
@@ -510,15 +510,35 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     const accountsRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts');
     const syncingQuery = query(accountsRef, where('syncStatus', 'in', ['pending', 'syncing']));
 
-    const unsubscribe = onSnapshot(syncingQuery, (snapshot) => {
+    const unsubscribe = onSnapshot(syncingQuery, async (snapshot) => {
       const syncingIds = new Set<string>();
       const previousSize = syncingAccounts.size;
+      const now = Date.now();
+      const SYNC_TIMEOUT = 15 * 60 * 1000; // 15 minutes
       
-      snapshot.docs.forEach((doc) => {
-        syncingIds.add(doc.id);
-        const data = doc.data();
-        console.log(`🔄 Account syncing: ${data.username} - ${data.syncStatus}`);
-      });
+      for (const docSnapshot of snapshot.docs) {
+        const data = docSnapshot.data();
+        const lastSyncedAt = data.lastSyncedAt?.toDate?.() || data.dateAdded?.toDate?.();
+        const syncAge = lastSyncedAt ? now - lastSyncedAt.getTime() : 0;
+        
+        // Auto-cancel if stuck for more than 15 minutes
+        if (syncAge > SYNC_TIMEOUT) {
+          console.log(`⏰ Auto-cancelling stuck sync for ${data.username} (stuck for ${Math.round(syncAge / 60000)} minutes)`);
+          try {
+            const accountRef = doc(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts', docSnapshot.id);
+            await updateDoc(accountRef, {
+              syncStatus: 'completed',
+              lastSyncedAt: new Date(),
+              syncError: 'Auto-cancelled after 15 minutes timeout'
+            });
+          } catch (error) {
+            console.error(`Failed to auto-cancel sync for ${data.username}:`, error);
+          }
+        } else {
+          syncingIds.add(docSnapshot.id);
+          console.log(`🔄 Account syncing: ${data.username} - ${data.syncStatus}`);
+        }
+      }
 
       setSyncingAccounts(syncingIds);
 
@@ -1585,12 +1605,37 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                   {account.displayName || account.username}
                                 </div>
                                 {isAccountSyncing && (
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="inline-block w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse"></span>
-                                    <RefreshCw className="w-3.5 h-3.5 text-blue-400 animate-spin" />
-                                    <span className="text-xs text-blue-400 font-medium">
-                                      Syncing videos...
-                                    </span>
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="inline-block w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse"></span>
+                                      <RefreshCw className="w-3.5 h-3.5 text-blue-400 animate-spin" />
+                                      <span className="text-xs text-blue-400 font-medium">
+                                        Syncing videos...
+                                      </span>
+                                    </div>
+                                    <button
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        if (window.confirm(`Cancel sync for @${account.username}? This will clear the syncing state.`)) {
+                                          try {
+                                            const accountRef = doc(db, 'organizations', currentOrgId!, 'projects', currentProjectId!, 'trackedAccounts', account.id);
+                                            await updateDoc(accountRef, {
+                                              syncStatus: 'completed',
+                                              lastSyncedAt: new Date(),
+                                              syncError: 'Manually cancelled by user'
+                                            });
+                                            console.log(`🚫 Cancelled sync for @${account.username}`);
+                                          } catch (error) {
+                                            console.error('Failed to cancel sync:', error);
+                                            alert('Failed to cancel sync');
+                                          }
+                                        }
+                                      }}
+                                      className="px-2 py-0.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
+                                      title="Cancel sync"
+                                    >
+                                      Cancel
+                                    </button>
                                   </div>
                                 )}
                               </div>

@@ -105,7 +105,8 @@ class DateFilterService {
   static filterVideosByDateRange(
     videos: VideoSubmission[], 
     filterType: DateFilterType, 
-    customRange?: DateRange
+    customRange?: DateRange,
+    strictMode: boolean = true // Strict mode: only filter by upload date
   ): VideoSubmission[] {
     if (filterType === 'all') {
       return videos;
@@ -124,9 +125,18 @@ class DateFilterService {
         ? new Date(video.dateSubmitted)
         : new Date();
 
-      // Video is in range if:
-      // 1. It was uploaded during the period, OR
-      // 2. It has snapshots within the period
+      // Strict mode (for KPI cards): Only filter by upload date
+      if (strictMode) {
+        const isInRange = uploadDate >= dateRange.startDate && uploadDate <= dateRange.endDate;
+        
+        if (videos.length <= 10) { // Only log for small datasets to avoid spam
+          console.log(`📹 Video "${video.title.substring(0, 30)}..." uploaded ${uploadDate.toLocaleDateString()} - ${isInRange ? '✅ Included' : '❌ Excluded'}`);
+        }
+        
+        return isInRange;
+      }
+      
+      // Non-strict mode: Video is in range if uploaded OR has snapshots in period
       const uploadedInRange = uploadDate >= dateRange.startDate && uploadDate <= dateRange.endDate;
       
       // Check if video has any snapshots within the date range
@@ -144,7 +154,7 @@ class DateFilterService {
       return isInRange;
     });
 
-    console.log(`✅ Filtered to ${filteredVideos.length} videos (based on upload date or snapshots in range)`);
+    console.log(`✅ Filtered to ${filteredVideos.length} videos (strict mode: ${strictMode})`);
     return filteredVideos;
   }
 
