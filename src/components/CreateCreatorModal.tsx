@@ -109,11 +109,8 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
         setError('Please enter a display name');
         return;
       }
-      if (!email.trim()) {
-        setError('Please enter an email address');
-        return;
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      // Email is optional, but if provided, must be valid
+      if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         setError('Please enter a valid email address');
         return;
       }
