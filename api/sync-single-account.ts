@@ -41,7 +41,8 @@ async function downloadAndUploadImage(
   folder: string = 'profile'
 ): Promise<string> {
   try {
-    console.log(`📥 Downloading image from: ${imageUrl.substring(0, 100)}...`);
+    const isInstagram = imageUrl.includes('cdninstagram') || imageUrl.includes('fbcdn');
+    console.log(`📥 Downloading ${isInstagram ? 'Instagram' : 'image'} from: ${imageUrl.substring(0, 100)}...`);
     
     // Download image with proper headers for Instagram
     const response = await fetch(imageUrl, {
@@ -49,7 +50,7 @@ async function downloadAndUploadImage(
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
-        'Referer': 'https://www.instagram.com/',
+        'Referer': isInstagram ? 'https://www.instagram.com/' : undefined,
         'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120"',
         'sec-ch-ua-mobile': '?0',
         'sec-ch-ua-platform': '"Windows"',
@@ -59,13 +60,17 @@ async function downloadAndUploadImage(
       }
     });
     
+    console.log(`📊 Response status: ${response.status} ${response.statusText}`);
+    
     if (!response.ok) {
-      console.warn(`⚠️ Image download returned ${response.status}, trying direct URL...`);
+      console.warn(`⚠️ Image download returned ${response.status}, trying anyway...`);
       // Instagram URLs might work even with error status, try anyway
     }
     
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+    
+    console.log(`📦 Downloaded ${buffer.length} bytes`);
     
     // Validate we got actual image data
     if (buffer.length < 100) {
@@ -74,13 +79,14 @@ async function downloadAndUploadImage(
     
     // Determine content type from response or default to jpg
     const contentType = response.headers.get('content-type') || 'image/jpeg';
+    console.log(`📋 Content type: ${contentType}`);
     
     // Upload to Firebase Storage
     const bucket = storage.bucket();
     const storagePath = `organizations/${orgId}/${folder}/${filename}`;
     const file = bucket.file(storagePath);
     
-    console.log(`☁️ Uploading ${buffer.length} bytes to Firebase Storage...`);
+    console.log(`☁️ Uploading ${buffer.length} bytes to Firebase Storage at: ${storagePath}`);
     
     await file.save(buffer, {
       metadata: {
@@ -101,8 +107,18 @@ async function downloadAndUploadImage(
     return publicUrl;
   } catch (error) {
     console.error('❌ Failed to download/upload image:', error);
-    console.log(`⚠️ Using original URL as fallback: ${imageUrl.substring(0, 100)}...`);
-    return imageUrl; // Fallback to original URL
+    console.log(`⚠️ Image download/upload failed for: ${imageUrl.substring(0, 100)}...`);
+    
+    // For Instagram, DON'T return the original URL since it expires quickly
+    // Better to have no profile pic than a broken one
+    if (imageUrl.includes('cdninstagram') || imageUrl.includes('fbcdn')) {
+      console.log(`🚫 Instagram URL detected, returning empty string (URLs expire quickly)`);
+      throw error; // Throw error so caller knows it failed
+    }
+    
+    // For other platforms, return original URL as fallback
+    console.log(`📷 Using original URL as fallback for non-Instagram: ${imageUrl.substring(0, 100)}...`);
+    return imageUrl;
   }
 }
 
@@ -470,15 +486,28 @@ export default async function handler(
             
             // Download and upload Instagram profile pic to Firebase Storage
             if (profilePicUrl) {
-              console.log(`📸 Downloading Instagram profile pic (HD) for @${account.username}...`);
-              const uploadedProfilePic = await downloadAndUploadImage(
-                profilePicUrl,
-                orgId,
-                `instagram_profile_${account.username}.jpg`,
-                'profile'
-              );
-              profileUpdates.profilePicture = uploadedProfilePic;
-              console.log(`✅ Instagram profile picture uploaded to Firebase Storage: ${uploadedProfilePic}`);
+              try {
+                console.log(`📸 Downloading Instagram profile pic (HD) for @${account.username}...`);
+                console.log(`🔗 Profile pic URL: ${profilePicUrl}`);
+                const uploadedProfilePic = await downloadAndUploadImage(
+                  profilePicUrl,
+                  orgId,
+                  `instagram_profile_${account.username}.jpg`,
+                  'profile'
+                );
+                
+                // Only update if we got a Firebase Storage URL (not the original URL)
+                if (uploadedProfilePic && uploadedProfilePic.includes('storage.googleapis.com')) {
+                  profileUpdates.profilePicture = uploadedProfilePic;
+                  console.log(`✅ Instagram profile picture uploaded to Firebase Storage: ${uploadedProfilePic}`);
+                } else {
+                  console.warn(`⚠️ Failed to upload Instagram profile pic, got fallback URL: ${uploadedProfilePic}`);
+                  // Don't set profilePicture if upload failed - let it be empty rather than use expired URL
+                }
+              } catch (uploadError) {
+                console.error(`❌ Error uploading Instagram profile picture for @${account.username}:`, uploadError);
+                // Don't set profilePicture on error
+              }
             } else {
               console.warn(`⚠️ No profile picture URL found for @${account.username}`);
             }
