@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 import { runApifyActor } from './apify-client.js';
 
 // Initialize Firebase Admin (same as cron job)
@@ -18,13 +19,68 @@ if (!getApps().length) {
       privateKey: privateKey,
     };
 
-    initializeApp({ credential: cert(serviceAccount as any) });
+    initializeApp({ 
+      credential: cert(serviceAccount as any),
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'tracker-4a29f.appspot.com'
+    });
   } catch (error) {
     console.error('Failed to initialize Firebase Admin:', error);
   }
 }
 
 const db = getFirestore();
+const storage = getStorage();
+
+/**
+ * Download image from URL and upload to Firebase Storage
+ */
+async function downloadAndUploadImage(
+  imageUrl: string, 
+  orgId: string, 
+  filename: string,
+  folder: string = 'profile'
+): Promise<string> {
+  try {
+    console.log(`📥 Downloading image from: ${imageUrl.substring(0, 100)}...`);
+    
+    // Download image
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to download image: ${response.status}`);
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    // Determine content type from response or default to jpg
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    
+    // Upload to Firebase Storage
+    const bucket = storage.bucket();
+    const storagePath = `organizations/${orgId}/${folder}/${filename}`;
+    const file = bucket.file(storagePath);
+    
+    await file.save(buffer, {
+      metadata: {
+        contentType: contentType,
+        metadata: {
+          uploadedAt: new Date().toISOString()
+        }
+      },
+      public: true
+    });
+    
+    // Make file public and get URL
+    await file.makePublic();
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
+    
+    console.log(`✅ Uploaded image to Firebase Storage: ${publicUrl}`);
+    return publicUrl;
+  } catch (error) {
+    console.error('❌ Failed to download/upload image:', error);
+    return imageUrl; // Fallback to original URL
+  }
+}
 
 /**
  * Sync Single Account - Immediately processes one account
@@ -331,7 +387,20 @@ export default async function handler(
           if (profileFullName || profilePicUrl) {
             const profileUpdates: any = {};
             if (profileFullName) profileUpdates.displayName = profileFullName;
-            if (profilePicUrl) profileUpdates.profilePicture = profilePicUrl;
+            
+            // Download and upload Instagram profile pic to Firebase Storage
+            if (profilePicUrl) {
+              console.log(`📸 Downloading Instagram profile pic for @${account.username}...`);
+              const uploadedProfilePic = await downloadAndUploadImage(
+                profilePicUrl,
+                orgId,
+                `instagram_profile_${account.username}.jpg`,
+                'profile'
+              );
+              profileUpdates.profilePicture = uploadedProfilePic;
+              console.log(`✅ Profile picture uploaded to Firebase Storage`);
+            }
+            
             if (isVerified) profileUpdates.isVerified = isVerified;
             
             await accountRef.update(profileUpdates);
