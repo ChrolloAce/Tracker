@@ -409,7 +409,7 @@ export interface Creator {
   orgId: string;
   projectId: string; // NEW: Project-scoped
   displayName: string;
-  email: string;
+  email?: string; // Optional - can be added later
   photoURL?: string;
   linkedAccountsCount: number;
   totalEarnings: number;

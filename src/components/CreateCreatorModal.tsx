@@ -4,6 +4,8 @@ import { TrackedAccount } from '../types/firestore';
 import FirestoreDataService from '../services/FirestoreDataService';
 import OrganizationService from '../services/OrganizationService';
 import TeamInvitationService from '../services/TeamInvitationService';
+import { db } from '../services/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 import { X, Check, Mail, User as UserIcon, Link as LinkIcon, DollarSign, Search, Copy, Lightbulb } from 'lucide-react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Button } from './ui/Button';
@@ -143,29 +145,61 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
         throw new Error('Organization not found');
       }
 
-      // Note: Payment structure, account linking, and other details will need to be handled
-      // after the creator accepts the invitation
+      if (email.trim()) {
+        // If email is provided, send invitation as before
+        await TeamInvitationService.createInvitation(
+          currentOrgId,
+          email,
+          'creator',
+          user.uid,
+          user.displayName || user.email || 'Team Member',
+          user.email || '',
+          currentOrg.name,
+          currentProjectId
+        );
+      } else {
+        // If no email, create creator directly without sending invitation
+        const creatorId = `creator_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const creatorData = {
+          id: creatorId,
+          orgId: currentOrgId,
+          projectId: currentProjectId,
+          displayName: displayName.trim(),
+          email: undefined,
+          linkedAccountsCount: selectedAccountIds.length,
+          totalEarnings: 0,
+          payoutsEnabled: false,
+          createdAt: new Date(),
+          isPaid: isPaid,
+          paymentStructure: paymentStructure.trim() || undefined,
+          status: 'pending' // Pending until they claim their account with email
+        };
 
-      // Create invitation using TeamInvitationService
-      await TeamInvitationService.createInvitation(
-        currentOrgId,
-        email,
-        'creator',
-        user.uid,
-        user.displayName || user.email || 'Team Member',
-        user.email || '',
-        currentOrg.name,
-        currentProjectId
-      );
+        // Create creator document
+        const creatorRef = doc(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'creators', creatorId);
+        await setDoc(creatorRef, creatorData);
 
-      // Note: Account linking and payment details will need to be handled after creator accepts
-      // You might want to store these temporarily or handle them in a follow-up step
+        // Link selected accounts to this creator
+        for (const accountId of selectedAccountIds) {
+          const linkId = `${creatorId}_${accountId}`;
+          const linkRef = doc(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'creatorLinks', linkId);
+          await setDoc(linkRef, {
+            id: linkId,
+            orgId: currentOrgId,
+            projectId: currentProjectId,
+            creatorId: creatorId,
+            accountId: accountId,
+            createdAt: new Date(),
+            createdBy: user.uid
+          });
+        }
+      }
 
       handleClose();
       onSuccess();
     } catch (error: any) {
-      console.error('Failed to create creator invitation:', error);
-      setError(error.message || 'Failed to send invitation');
+      console.error('Failed to create creator:', error);
+      setError(error.message || 'Failed to create creator');
     } finally {
       setLoading(false);
     }
@@ -187,7 +221,8 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
   const canProceed = () => {
     if (step === 1) {
       const hasDisplayName = displayName.trim().length > 0;
-      const emailValid = email.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      // Email is now optional, but if provided, must be valid
+      const emailValid = !email.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
       return hasDisplayName && emailValid;
     }
     return true;
@@ -220,7 +255,7 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
 
       <div>
         <label className="block text-sm font-medium text-white mb-2">
-          Email Address *
+          Email Address <span className="text-gray-400 font-normal">(Optional)</span>
         </label>
         <div className="relative">
           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -236,7 +271,9 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
 
       <div className="bg-gray-700/30 border border-gray-600/30 rounded-lg p-4">
         <p className="text-sm text-gray-300">
-          An invitation will be sent to this email address.
+          {email.trim() 
+            ? "An invitation will be sent to this email address." 
+            : "Without an email, the creator will be added directly. You can add their email later."}
         </p>
       </div>
     </div>
