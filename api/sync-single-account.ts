@@ -442,12 +442,12 @@ export default async function handler(
     } else if (account.platform === 'instagram') {
       console.log(`👤 Fetching profile data for ${account.username}...`);
       
-      // STEP 1: Fetch Instagram Profile Data (for follower count)
+      // STEP 1: Fetch Instagram Profile Data (follower count, bio, etc.)
       try {
         const profileData = await runApifyActor({
-          actorId: 'apify/instagram-profile-scraper',
+          actorId: 'coderx/instagram-profile-scraper-bio-posts',
           input: {
-            usernames: [account.username],
+            username: account.username,
             proxyConfiguration: {
               useApifyProxy: true,
               apifyProxyGroups: ['RESIDENTIAL'],
@@ -459,19 +459,25 @@ export default async function handler(
         const profiles = profileData.items || [];
         if (profiles.length > 0) {
           const profile = profiles[0];
-          console.log(`📊 Instagram profile fetched: ${profile.followersCount || 0} followers`);
+          console.log(`📊 Instagram profile fetched: ${profile.followersCount || profile.followers || 0} followers`);
           
           const profileUpdates: any = {
-            displayName: profile.fullName || account.username,
-            followerCount: profile.followersCount || 0,
-            followingCount: profile.followsCount || 0,
-            isVerified: profile.verified || false
+            displayName: profile.fullName || profile.name || account.username,
+            followerCount: profile.followersCount || profile.followers || 0,
+            followingCount: profile.followsCount || profile.following || 0,
+            isVerified: profile.verified || profile.isVerified || false
           };
 
+          // Add bio if available
+          if (profile.bio || profile.biography) {
+            profileUpdates.bio = profile.bio || profile.biography;
+            console.log(`📝 Bio: ${(profile.bio || profile.biography).substring(0, 50)}...`);
+          }
+
           // Download and upload Instagram profile pic to Firebase Storage
-          if (profile.profilePicUrlHD || profile.profilePicUrl) {
+          const profilePicUrl = profile.profilePicUrlHD || profile.profilePicUrl || profile.profilePic || profile.profile_pic_url;
+          if (profilePicUrl) {
             try {
-              const profilePicUrl = profile.profilePicUrlHD || profile.profilePicUrl;
               console.log(`📸 Downloading Instagram profile pic (HD) for @${account.username}...`);
               const uploadedProfilePic = await downloadAndUploadImage(
                 profilePicUrl,
