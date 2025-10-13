@@ -42,15 +42,14 @@ async function downloadAndUploadImage(
 ): Promise<string> {
   try {
     const isInstagram = imageUrl.includes('cdninstagram') || imageUrl.includes('fbcdn');
-    console.log(`📥 Downloading ${isInstagram ? 'Instagram' : 'image'} from: ${imageUrl.substring(0, 100)}...`);
+    console.log(`📥 Downloading ${isInstagram ? 'Instagram' : 'image'} from: ${imageUrl.substring(0, 150)}...`);
     
     // Download image with proper headers for Instagram
-    const response = await fetch(imageUrl, {
+    const fetchOptions: any = {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
-        'Referer': isInstagram ? 'https://www.instagram.com/' : undefined,
         'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120"',
         'sec-ch-ua-mobile': '?0',
         'sec-ch-ua-platform': '"Windows"',
@@ -58,13 +57,23 @@ async function downloadAndUploadImage(
         'sec-fetch-mode': 'no-cors',
         'sec-fetch-site': 'cross-site'
       }
-    });
+    };
+    
+    // Add Referer for Instagram
+    if (isInstagram) {
+      fetchOptions.headers['Referer'] = 'https://www.instagram.com/';
+    }
+    
+    console.log(`🔧 Using headers:`, JSON.stringify(fetchOptions.headers, null, 2));
+    
+    const response = await fetch(imageUrl, fetchOptions);
     
     console.log(`📊 Response status: ${response.status} ${response.statusText}`);
+    console.log(`📊 Response headers:`, JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
     
     if (!response.ok) {
-      console.warn(`⚠️ Image download returned ${response.status}, trying anyway...`);
-      // Instagram URLs might work even with error status, try anyway
+      console.error(`❌ Image download failed with status ${response.status}`);
+      throw new Error(`Failed to download image: ${response.status} ${response.statusText}`);
     }
     
     const arrayBuffer = await response.arrayBuffer();
