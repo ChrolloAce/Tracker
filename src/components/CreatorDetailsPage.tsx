@@ -55,12 +55,18 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Get active tab from URL or default to 'overview'
-  const activeTab = (searchParams.get('tab') as 'overview' | 'accounts' | 'payment' | 'contract') || 'overview';
+  const activeTab = (searchParams.get('tab') as 'overview' | 'accounts' | 'payment' | 'contract' | 'settings') || 'overview';
   
   // Function to change tab and update URL
-  const setActiveTab = (tab: 'overview' | 'accounts' | 'payment' | 'contract') => {
+  const setActiveTab = (tab: 'overview' | 'accounts' | 'payment' | 'contract' | 'settings') => {
     setSearchParams({ tab });
   };
+  
+  // Settings state
+  const [editingName, setEditingName] = useState(false);
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [tempName, setTempName] = useState('');
+  const [tempEmail, setTempEmail] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [creatorProfile, setCreatorProfile] = useState<Creator | null>(null);
@@ -286,7 +292,12 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
               { trackedAccountId: account.id }
             );
             console.log(`✅ Found ${videos.length} videos for ${account.username}`);
-            return videos.map(v => ({ ...v, accountInfo: account }));
+            // Ensure platform is set from account data
+            return videos.map(v => ({ 
+              ...v, 
+              accountInfo: account,
+              platform: v.platform || account.platform // Use account platform as fallback
+            }));
           } catch (error) {
             console.error(`❌ Failed to load videos for account ${account.id}:`, error);
             return [];
@@ -395,7 +406,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
         {/* Tabs and Time Period Selector */}
         <div className="flex items-center justify-between mt-8 border-b border-gray-800">
           <div className="flex gap-6">
-            {(['overview', 'accounts', 'payment', 'contract'] as const).map((tab) => (
+            {(['overview', 'accounts', 'payment', 'contract', 'settings'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -509,6 +520,21 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
             contracts={contracts}
             loading={loadingContracts}
             onReload={loadContracts}
+          />
+        )}
+        {activeTab === 'settings' && (
+          <SettingsTab
+            creator={creator}
+            profile={creatorProfile}
+            editingName={editingName}
+            setEditingName={setEditingName}
+            editingEmail={editingEmail}
+            setEditingEmail={setEditingEmail}
+            tempName={tempName}
+            setTempName={setTempName}
+            tempEmail={tempEmail}
+            setTempEmail={setTempEmail}
+            onUpdate={loadData}
           />
         )}
       </div>
@@ -806,6 +832,12 @@ const OverviewTab: React.FC<{
                   <th className="px-6 py-4 text-center text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Views
                   </th>
+                  <th className="px-6 py-4 text-center text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                    Likes
+                  </th>
+                  <th className="px-6 py-4 text-center text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                    Comments
+                  </th>
                   <th className="px-6 py-4 text-right text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Payout
                   </th>
@@ -828,7 +860,7 @@ const OverviewTab: React.FC<{
                             {account?.profilePicture ? (
                               <img
                                 src={account.profilePicture}
-                                alt={video.accountUsername}
+                                alt={account.username}
                                 className="w-10 h-10 rounded-full object-cover ring-2 ring-white/10"
                                 onError={(e) => {
                                   const target = e.target as HTMLImageElement;
@@ -837,7 +869,7 @@ const OverviewTab: React.FC<{
                                   if (parent) {
                                     const fallback = document.createElement('div');
                                     fallback.className = 'w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center ring-2 ring-white/10';
-                                    fallback.innerHTML = `<span class="text-sm font-bold text-white">${video.accountUsername.charAt(0).toUpperCase()}</span>`;
+                                    fallback.innerHTML = `<span class="text-sm font-bold text-white">${(account.username || 'U').charAt(0).toUpperCase()}</span>`;
                                     parent.appendChild(fallback);
                                   }
                                 }}
@@ -845,20 +877,20 @@ const OverviewTab: React.FC<{
                             ) : (
                               <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center ring-2 ring-white/10">
                                 <span className="text-sm font-bold text-white">
-                                  {video.accountUsername.charAt(0).toUpperCase()}
+                                  {(account?.username || 'U').charAt(0).toUpperCase()}
                                 </span>
-            </div>
-          )}
+                              </div>
+                            )}
                             <div className="absolute -bottom-1 -right-1">
                               <PlatformIcon platform={video.platform} size="sm" />
-        </div>
-      </div>
+                            </div>
+                          </div>
                           <div className="min-w-0 flex-1">
                             <div className="text-sm font-medium text-white line-clamp-2">
-                              {video.videoTitle}
+                              {video.title}
                             </div>
                             <div className="text-xs text-gray-400 mt-0.5">
-                              @{video.accountUsername}
+                              @{account?.username || 'Unknown'}
                             </div>
                           </div>
                         </div>
@@ -891,7 +923,21 @@ const OverviewTab: React.FC<{
                         <div className="flex items-center justify-center gap-1.5">
                           <Eye className="w-4 h-4 text-gray-400" />
                           <span className="text-sm font-medium text-white">{formatNumber(video.views)}</span>
-        </div>
+                        </div>
+                      </td>
+                      
+                      {/* Likes */}
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <span className="text-sm font-medium text-white">{formatNumber(video.likes || 0)}</span>
+                        </div>
+                      </td>
+                      
+                      {/* Comments */}
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <span className="text-sm font-medium text-white">{formatNumber(video.comments || 0)}</span>
+                        </div>
                       </td>
                       
                       {/* Payout */}
@@ -950,7 +996,30 @@ const AccountsTab: React.FC<{
   creator: OrgMember;
   onUpdate: () => void;
   onOpenLinkModal: () => void;
-}> = ({ linkedAccounts, onOpenLinkModal }) => {
+}> = ({ linkedAccounts, creator, onUpdate, onOpenLinkModal }) => {
+  const { currentOrgId, currentProjectId } = useAuth();
+  const [unlinking, setUnlinking] = React.useState<string | null>(null);
+
+  const handleUnlink = async (accountId: string) => {
+    if (!currentOrgId || !currentProjectId) return;
+    if (!confirm('Are you sure you want to unlink this account from the creator?')) return;
+
+    setUnlinking(accountId);
+    try {
+      await CreatorLinksService.unlinkCreatorFromAccount(
+        currentOrgId,
+        currentProjectId,
+        creator.userId,
+        accountId
+      );
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to unlink account:', error);
+      alert('Failed to unlink account');
+    } finally {
+      setUnlinking(null);
+    }
+  };
   return (
     <div className="space-y-6">
       <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
@@ -994,13 +1063,16 @@ const AccountsTab: React.FC<{
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Followers
                   </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-700/30">
                 {linkedAccounts.map((account) => (
                   <tr
                     key={account.id}
-                    className="hover:bg-white/5 transition-colors cursor-pointer"
+                    className="hover:bg-white/5 transition-colors"
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -1041,6 +1113,26 @@ const AccountsTab: React.FC<{
                     </td>
                     <td className="px-6 py-4 text-sm text-white font-medium">
                       {(account.followerCount || 0).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <Button
+                        onClick={() => handleUnlink(account.id)}
+                        disabled={unlinking === account.id}
+                        variant="ghost"
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                      >
+                        {unlinking === account.id ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin mr-2" />
+                            Unlinking...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Unlink
+                          </>
+                        )}
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -1719,6 +1811,195 @@ const ContractTab: React.FC<{
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// Settings Tab Component
+const SettingsTab: React.FC<{
+  creator: OrgMember;
+  profile: Creator | null;
+  editingName: boolean;
+  setEditingName: (value: boolean) => void;
+  editingEmail: boolean;
+  setEditingEmail: (value: boolean) => void;
+  tempName: string;
+  setTempName: (value: string) => void;
+  tempEmail: string;
+  setTempEmail: (value: string) => void;
+  onUpdate: () => void;
+}> = ({
+  creator,
+  profile,
+  editingName,
+  setEditingName,
+  editingEmail,
+  setEditingEmail,
+  tempName,
+  setTempName,
+  tempEmail,
+  setTempEmail,
+  onUpdate,
+}) => {
+  const { currentOrgId, currentProjectId } = useAuth();
+  const [saving, setSaving] = React.useState(false);
+
+  const handleEditName = () => {
+    setTempName(profile?.displayName || creator.displayName || '');
+    setEditingName(true);
+  };
+
+  const handleEditEmail = () => {
+    setTempEmail(profile?.email || creator.email || '');
+    setEditingEmail(true);
+  };
+
+  const handleSaveName = async () => {
+    if (!currentOrgId || !currentProjectId || !tempName.trim()) return;
+
+    setSaving(true);
+    try {
+      await CreatorLinksService.updateCreatorProfile(
+        currentOrgId,
+        currentProjectId,
+        creator.userId,
+        { displayName: tempName.trim() }
+      );
+      setEditingName(false);
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to update name:', error);
+      alert('Failed to update name');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveEmail = async () => {
+    if (!currentOrgId || !currentProjectId) return;
+
+    // Validate email if provided
+    if (tempEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(tempEmail)) {
+      alert('Please enter a valid email address');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const emailValue = tempEmail.trim() || undefined;
+      await CreatorLinksService.updateCreatorProfile(
+        currentOrgId,
+        currentProjectId,
+        creator.userId,
+        { email: emailValue }
+      );
+      setEditingEmail(false);
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to update email:', error);
+      alert('Failed to update email');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      <div className="bg-[#161616] rounded-xl border border-gray-800 p-6">
+        <h2 className="text-xl font-semibold text-white mb-6">Creator Settings</h2>
+        
+        {/* Display Name */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-400 mb-2">
+            Display Name
+          </label>
+          {editingName ? (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={tempName}
+                onChange={(e) => setTempName(e.target.value)}
+                className="flex-1 px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50"
+                autoFocus
+              />
+              <Button
+                onClick={handleSaveName}
+                disabled={saving || !tempName.trim()}
+                className="bg-white hover:bg-gray-200 text-black"
+              >
+                {saving ? 'Saving...' : 'Save'}
+              </Button>
+              <Button
+                onClick={() => setEditingName(false)}
+                disabled={saving}
+                variant="secondary"
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between px-4 py-2 bg-gray-700/20 rounded-lg border border-gray-700">
+              <span className="text-white">{profile?.displayName || creator.displayName || 'Not set'}</span>
+              <Button
+                onClick={handleEditName}
+                variant="ghost"
+                className="text-gray-400 hover:text-white"
+              >
+                Edit
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Email */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-400 mb-2">
+            Email Address
+          </label>
+          {editingEmail ? (
+            <div className="flex gap-2">
+              <input
+                type="email"
+                value={tempEmail}
+                onChange={(e) => setTempEmail(e.target.value)}
+                placeholder="creator@example.com (optional)"
+                className="flex-1 px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50"
+                autoFocus
+              />
+              <Button
+                onClick={handleSaveEmail}
+                disabled={saving}
+                className="bg-white hover:bg-gray-200 text-black"
+              >
+                {saving ? 'Saving...' : 'Save'}
+              </Button>
+              <Button
+                onClick={() => setEditingEmail(false)}
+                disabled={saving}
+                variant="secondary"
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between px-4 py-2 bg-gray-700/20 rounded-lg border border-gray-700">
+              <span className="text-white">{profile?.email || creator.email || 'No email provided'}</span>
+              <Button
+                onClick={handleEditEmail}
+                variant="ghost"
+                className="text-gray-400 hover:text-white"
+              >
+                Edit
+              </Button>
+            </div>
+          )}
+          {(!profile?.email && !creator.email) && (
+            <p className="text-xs text-gray-400 mt-2">
+              No email set. The creator can't receive invitations or notifications.
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
