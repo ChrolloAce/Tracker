@@ -65,14 +65,16 @@ function extractUsernameFromUrl(url: string, platform: string): string | null {
     const cleanPath = pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
     
     if (platform === 'instagram') {
-      // Instagram: https://www.instagram.com/username/
-      const match = cleanPath.match(/^\/([^\/]+)\/?$/);
+      // Instagram: Extract first path segment (username), ignore extras like /reels/, /p/, /reel/
+      // Examples: /username/ → username, /username/reels/ → username, /username/p/ABC123/ → username
+      const match = cleanPath.match(/^\/([^\/]+)/);
       return match ? match[1] : null;
     }
     
     if (platform === 'tiktok') {
-      // TikTok: https://www.tiktok.com/@username
-      const match = cleanPath.match(/^\/@?([^\/]+)\/?$/);
+      // TikTok: Extract @username from first segment, ignore extras like /video/123
+      // Examples: /@username → username, /@username/video/123 → username
+      const match = cleanPath.match(/^\/@?([^\/]+)/);
       return match ? match[1] : null;
     }
     
@@ -85,8 +87,9 @@ function extractUsernameFromUrl(url: string, platform: string): string | null {
     }
     
     if (platform === 'twitter') {
-      // Twitter/X: https://twitter.com/username or https://x.com/username
-      const match = cleanPath.match(/^\/([^\/]+)\/?$/);
+      // Twitter/X: Extract username from first segment, ignore extras like /status/123
+      // Examples: /username → username, /username/status/123 → username
+      const match = cleanPath.match(/^\/([^\/]+)/);
       return match ? match[1] : null;
     }
     
