@@ -119,6 +119,10 @@ export default async function handler(
     }
 
     const account = accountDoc.data() as any;
+    
+    // Get maxVideos from account settings, default to 100 if not set
+    const maxVideos = account.maxVideos || 100;
+    console.log(`📊 Will scrape up to ${maxVideos} videos for @${account.username}`);
 
     // Update to syncing status
     await accountRef.update({
@@ -151,7 +155,7 @@ export default async function handler(
           actorId: 'clockworks~tiktok-scraper',
           input: {
             profiles: [account.username],
-            resultsPerPage: 100,
+            resultsPerPage: maxVideos, // Use user's preference
             proxy: {
               useApifyProxy: true
             }
@@ -333,7 +337,7 @@ export default async function handler(
         actorId: 'apidojo/tweet-scraper',
         input: {
           twitterHandles: [account.username],
-          maxItems: 100,
+          maxItems: maxVideos, // Use user's preference
           sort: 'Latest',
           onlyImage: false,
           onlyVideo: false,
@@ -397,7 +401,7 @@ export default async function handler(
             urls: [`https://www.instagram.com/${account.username}/`],
             sortOrder: "newest",
             maxComments: 10,
-            maxReels: 100,
+            maxReels: maxVideos, // Use user's preference
             proxyConfiguration: {
               useApifyProxy: true,
               apifyProxyGroups: ['RESIDENTIAL'],  // 🔑 Use RESIDENTIAL proxies to avoid Instagram 429 blocks

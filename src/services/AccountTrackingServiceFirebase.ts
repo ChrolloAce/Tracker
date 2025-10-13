@@ -67,10 +67,11 @@ export class AccountTrackingServiceFirebase {
     userId: string,
     username: string,
     platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter',
-    accountType: 'my' | 'competitor' = 'my'
+    accountType: 'my' | 'competitor' = 'my',
+    maxVideos: number = 100 // Default to 100 if not specified
   ): Promise<string> {
     try {
-      console.log(`⚡ Quick-adding ${accountType} account @${username} on ${platform} (background sync)`);
+      console.log(`⚡ Quick-adding ${accountType} account @${username} on ${platform} (background sync, max ${maxVideos} videos)`);
       
       // Add to Firestore immediately with minimal data
       // The cron job will fetch profile data and videos in the background
@@ -79,7 +80,8 @@ export class AccountTrackingServiceFirebase {
         platform,
         accountType,
         displayName: username, // Use username as placeholder
-        isActive: true
+        isActive: true,
+        maxVideos: maxVideos // Store the user's preference for how many videos to scrape
       };
       
       const accountId = await FirestoreDataService.addTrackedAccount(orgId, projectId, userId, accountData);
@@ -585,6 +587,10 @@ export class AccountTrackingServiceFirebase {
   private static async syncInstagramVideos(orgId: string, projectId: string, account: TrackedAccount): Promise<AccountVideo[]> {
     console.log(`🔄 Fetching Instagram videos for @${account.username} using NEW Reels Scraper...`);
     
+    // Use account's maxVideos preference, default to 100 if not set
+    const maxReels = (account as any).maxVideos || 100;
+    console.log(`📊 Scraping up to ${maxReels} Instagram reels for @${account.username}`);
+    
     const proxyUrl = `${window.location.origin}/api/apify-proxy`;
     
     const response = await fetch(proxyUrl, {
@@ -597,7 +603,7 @@ export class AccountTrackingServiceFirebase {
           urls: [`https://www.instagram.com/${account.username}/`],
           sortOrder: "newest",
           maxComments: 10,
-          maxReels: 100,
+          maxReels: maxReels, // Use user's preference
           proxyConfiguration: {
             useApifyProxy: true,
             apifyProxyGroups: ['RESIDENTIAL'],  // 🔑 Use RESIDENTIAL proxies to avoid Instagram 429 blocks

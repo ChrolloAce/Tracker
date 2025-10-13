@@ -380,6 +380,10 @@ export class AccountTrackingService {
     try {
       console.log(`🔄 Fetching Instagram reels for @${account.username}...`);
       
+      // Use account's maxVideos preference, default to 100 if not set
+      const maxReels = (account as any).maxVideos || 100;
+      console.log(`📊 Scraping up to ${maxReels} Instagram reels for @${account.username}`);
+      
       // Prioritize direct reels endpoint as requested by user
       const approachesToTry = [
         {
@@ -455,7 +459,7 @@ export class AccountTrackingService {
                 urls: [`https://www.instagram.com/${account.username}/`],
                 sortOrder: "newest",
                 maxComments: 10,
-                maxReels: 100,
+                maxReels: maxReels, // Use user's preference
                 proxyConfiguration: {
                   useApifyProxy: true,
                   apifyProxyGroups: ['RESIDENTIAL'],  // 🔑 Use RESIDENTIAL proxies to avoid Instagram 429 blocks

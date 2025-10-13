@@ -843,7 +843,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         user.uid,
         username,
         platform,
-        'my' // Default to 'my' account type
+        'my', // Default to 'my' account type
+        postsToScrape // Pass the user's selected video count
       );
       
       // Reload accounts
