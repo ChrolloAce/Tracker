@@ -131,10 +131,30 @@ const ContractEditorPage: React.FC = () => {
           setCompanyName(org.name);
         }
 
-      const members = await OrganizationService.getOrgMembers(currentOrgId);
-        const foundCreator = members.find(
+        // First, try to find in members collection (accepted invitations)
+        const members = await OrganizationService.getOrgMembers(currentOrgId);
+        let foundCreator = members.find(
           (member: OrgMember) => member.userId === creatorId || member.email === creatorId
         );
+
+        // If not found in members, check project creators (pending, no email)
+        if (!foundCreator && currentProjectId) {
+          const projectCreators = await CreatorLinksService.getAllCreators(currentOrgId, currentProjectId);
+          const creatorProfile = projectCreators.find(c => c.id === creatorId);
+          
+          if (creatorProfile) {
+            // Convert Creator profile to OrgMember format for compatibility
+            foundCreator = {
+              userId: creatorProfile.id,
+              displayName: creatorProfile.displayName,
+              email: creatorProfile.email || '',
+              photoURL: creatorProfile.photoURL,
+              joinedAt: creatorProfile.createdAt,
+              role: 'creator' as const,
+              status: 'invited' as const
+            };
+          }
+        }
 
         if (foundCreator) {
           setCreator(foundCreator);
