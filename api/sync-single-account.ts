@@ -390,7 +390,7 @@ export default async function handler(
       console.log(`📸 Fetching Instagram reels for ${account.username} using NEW scraper...`);
       
       try {
-        // Call NEW Instagram Reels Scraper (with authentication)
+        // Call NEW Instagram Reels Scraper (working!)
         const data = await runApifyActor({
           actorId: 'scraper-engine~instagram-reels-scraper',
           input: {
@@ -398,8 +398,6 @@ export default async function handler(
             sortOrder: "newest",
             maxComments: 10,
             maxReels: 100,
-            // Instagram authentication - required for API access
-            sessionid: process.env.INSTAGRAM_SESSION_ID || '',
             proxyConfiguration: {
               useApifyProxy: true  // Use Apify proxy for better reliability
             }
@@ -415,8 +413,22 @@ export default async function handler(
           const media = firstItem.reel_data?.media || firstItem.media || firstItem;
           
           const profileFullName = media.user?.full_name || media.owner?.full_name;
-          const profilePicUrl = media.user?.profile_pic_url || media.owner?.profile_pic_url;
+          
+          // Get HD profile picture (best quality) with fallbacks
+          const profilePicUrl = media.user?.hd_profile_pic_url_info?.url ||      // HD version (925x925)
+                                media.owner?.hd_profile_pic_url_info?.url ||     // HD version from owner
+                                media.user?.profile_pic_url ||                   // Standard version (150x150)
+                                media.owner?.profile_pic_url ||                  // Standard from owner
+                                '';
+          
           const isVerified = media.user?.is_verified || media.owner?.is_verified || false;
+          
+          console.log(`📸 Instagram profile data for @${account.username}:`, {
+            hasFullName: !!profileFullName,
+            hasProfilePic: !!profilePicUrl,
+            profilePicUrl: profilePicUrl ? profilePicUrl.substring(0, 100) + '...' : 'NONE',
+            isVerified: isVerified
+          });
           
           if (profileFullName || profilePicUrl) {
             const profileUpdates: any = {};
@@ -424,7 +436,7 @@ export default async function handler(
             
             // Download and upload Instagram profile pic to Firebase Storage
             if (profilePicUrl) {
-              console.log(`📸 Downloading Instagram profile pic for @${account.username}...`);
+              console.log(`📸 Downloading Instagram profile pic (HD) for @${account.username}...`);
               const uploadedProfilePic = await downloadAndUploadImage(
                 profilePicUrl,
                 orgId,
@@ -432,13 +444,17 @@ export default async function handler(
                 'profile'
               );
               profileUpdates.profilePicture = uploadedProfilePic;
-              console.log(`✅ Profile picture uploaded to Firebase Storage`);
+              console.log(`✅ Instagram profile picture uploaded to Firebase Storage: ${uploadedProfilePic}`);
+            } else {
+              console.warn(`⚠️ No profile picture URL found for @${account.username}`);
             }
             
             if (isVerified) profileUpdates.isVerified = isVerified;
             
             await accountRef.update(profileUpdates);
-            console.log(`✅ Updated Instagram profile for @${account.username}`);
+            console.log(`✅ Updated Instagram profile for @${account.username}`, profileUpdates);
+          } else {
+            console.warn(`⚠️ No profile data found for @${account.username}`);
           }
         }
         

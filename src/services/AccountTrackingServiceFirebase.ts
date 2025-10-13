@@ -321,10 +321,14 @@ export class AccountTrackingServiceFirebase {
       
       console.log(`📊 Found ${result.items.length} videos/posts`);
       
-      // NEW SCRAPER: Profile pic from media.user
-      let profilePictureUrl = media.user?.profile_pic_url || media.owner?.profile_pic_url || '';
+      // NEW SCRAPER: Get HD profile picture (best quality) with fallbacks
+      let profilePictureUrl = media.user?.hd_profile_pic_url_info?.url ||      // HD version (925x925)
+                              media.owner?.hd_profile_pic_url_info?.url ||     // HD version from owner
+                              media.user?.profile_pic_url ||                   // Standard version (150x150)
+                              media.owner?.profile_pic_url ||                  // Standard from owner
+                              '';
       
-      console.log(`📸 Found Instagram profile picture URL from NEW scraper:`, profilePictureUrl ? 'Yes' : 'No');
+      console.log(`📸 Found Instagram profile picture URL from NEW scraper (HD):`, profilePictureUrl ? 'Yes' : 'No');
       
       let profilePicture = '';
       
@@ -615,7 +619,13 @@ export class AccountTrackingServiceFirebase {
       const media = firstItem.reel_data?.media || firstItem.media || firstItem;
       
       const profileFullName = media.user?.full_name || media.owner?.full_name;
-      const profilePicUrl = media.user?.profile_pic_url || media.owner?.profile_pic_url;
+      
+      // Get HD profile picture (best quality) with fallbacks
+      const profilePicUrl = media.user?.hd_profile_pic_url_info?.url ||      // HD version (925x925)
+                            media.owner?.hd_profile_pic_url_info?.url ||     // HD version from owner
+                            media.user?.profile_pic_url ||                   // Standard version (150x150)
+                            media.owner?.profile_pic_url ||                  // Standard from owner
+                            '';
       
       if (profileFullName || profilePicUrl) {
         console.log('👤 Updating Instagram profile from NEW scraper...');
