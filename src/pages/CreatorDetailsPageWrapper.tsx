@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { OrgMember } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
+import CreatorLinksService from '../services/CreatorLinksService';
 import CreatorDetailsPage from '../components/CreatorDetailsPage';
 import { PageLoadingSkeleton } from '../components/ui/LoadingSkeleton';
 
@@ -34,13 +35,30 @@ const CreatorDetailsPageWrapper = () => {
       setLoading(true);
       setError(null);
 
-      // Get all creators/members from the organization
+      // First, try to find in members collection (accepted invitations)
       const members = await OrganizationService.getOrgMembers(currentOrgId);
-      
-      // Find the specific creator
-      const foundCreator = members.find(
+      let foundCreator = members.find(
         (member: OrgMember) => member.userId === creatorId || member.email === creatorId
       );
+
+      // If not found in members, check project creators (pending, no email)
+      if (!foundCreator) {
+        const projectCreators = await CreatorLinksService.getAllCreators(currentOrgId, currentProjectId);
+        const creatorProfile = projectCreators.find(c => c.id === creatorId);
+        
+        if (creatorProfile) {
+          // Convert Creator profile to OrgMember format for compatibility
+          foundCreator = {
+            userId: creatorProfile.id,
+            displayName: creatorProfile.displayName,
+            email: creatorProfile.email || '',
+            photoURL: creatorProfile.photoURL,
+            joinedAt: creatorProfile.createdAt,
+            role: 'creator' as const,
+            status: 'invited' as const
+          };
+        }
+      }
 
       if (!foundCreator) {
         setError('Creator not found');
