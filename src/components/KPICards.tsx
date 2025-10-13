@@ -859,7 +859,7 @@ const KPISparkline: React.FC<{
   timePeriod?: TimePeriodType;
   totalValue?: string | number;
   metricLabel?: string;
-}> = ({ data, id, gradient, stroke, timePeriod = 'days', totalValue, metricLabel }) => {
+}> = ({ data, id, gradient, stroke, timePeriod = 'days', totalValue: _totalValue, metricLabel }) => {
   
   const formatTooltipDate = (timestamp?: number) => {
     if (!timestamp) return '';
@@ -935,27 +935,18 @@ const KPISparkline: React.FC<{
                 ? `${value?.toLocaleString()}%` 
                 : formatDisplayNumber(value);
               
-              // Format the total value with metric label (uppercase)
-              const totalDisplay = totalValue && metricLabel 
-                ? `total: ${totalValue} ${metricLabel.toUpperCase()}` 
-                : null;
-              
               return (
                 <div className="bg-[#1a1a1a] backdrop-blur-xl text-white px-5 py-3 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] text-sm space-y-2 min-w-[240px] border border-white/10 pointer-events-none" style={{ zIndex: 999999, position: 'relative' }}>
-                  {/* Always show total if available */}
-                  {totalDisplay && (
+                  {/* Show date at top */}
+                  {dateStr && (
                     <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
-                      {totalDisplay}
+                      {dateStr}
                     </p>
                   )}
-                  {/* Show date and per-day value */}
-                  {dateStr ? (
-                    <p className="text-sm text-gray-300 font-medium">
-                      {dateStr}: <span className="text-white font-bold">{displayValue} {metricLabel?.toLowerCase()}</span>
-                    </p>
-                  ) : (
-                    <p className="font-bold text-lg">{displayValue}</p>
-                  )}
+                  {/* Show value prominently */}
+                  <p className="text-lg text-white font-bold">
+                    {displayValue} {metricLabel?.toLowerCase()}
+                  </p>
                   {/* Show trend comparison if available */}
                   {showComparison && trendText && (
                     <p className={`text-xs font-semibold ${diff >= 0 ? 'text-green-400' : 'text-red-400'}`}>
