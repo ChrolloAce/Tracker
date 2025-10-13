@@ -289,7 +289,7 @@ export class AccountTrackingServiceFirebase {
             maxComments: 10,
             maxReels: 10, // Just need a few for profile info
             proxyConfiguration: {
-              useApifyProxy: false
+              useApifyProxy: true  // Use Apify proxy for better reliability
             }
           },
           action: 'run'
@@ -321,23 +321,10 @@ export class AccountTrackingServiceFirebase {
       
       console.log(`📊 Found ${result.items.length} videos/posts`);
       
-      // Try multiple sources for profile data
-      const user = media.user || media.owner || firstItem.user || firstItem.owner || {};
+      // NEW SCRAPER: Profile pic from media.user
+      let profilePictureUrl = media.user?.profile_pic_url || media.owner?.profile_pic_url || '';
       
-      // Try MULTIPLE profile pic locations (Instagram API is inconsistent)
-      let profilePictureUrl = user.hd_profile_pic_url_info?.url ||  // HD version (best quality)
-                             user.profile_pic_url ||                 // Standard version
-                             user.profile_pic_url_hd ||              // Alternative HD
-                             media.user?.profile_pic_url ||          // Nested in media.user
-                             media.owner?.profile_pic_url ||         // Nested in media.owner
-                             firstItem.profile_pic_url ||            // Top-level in firstItem
-                             '';
-      
-      console.log(`🔍 Instagram profile data:`, {
-        username,
-        hasProfilePic: !!profilePictureUrl,
-        profilePicUrl: profilePictureUrl ? profilePictureUrl.substring(0, 100) + '...' : 'None'
-      });
+      console.log(`📸 Found Instagram profile picture URL from NEW scraper:`, profilePictureUrl ? 'Yes' : 'No');
       
       let profilePicture = '';
       
@@ -362,13 +349,13 @@ export class AccountTrackingServiceFirebase {
       }
 
       return {
-        displayName: user.full_name || user.fullName || username,
+        displayName: media.user?.full_name || media.owner?.full_name || username,
         profilePicture,
         followerCount: 0,
         followingCount: 0,
         postCount: result.items.length,
         bio: '',
-        isVerified: user.is_verified || user.verified || false,
+        isVerified: media.user?.is_verified || media.owner?.is_verified || false,
       };
     } catch (error) {
       console.error('❌ Failed to fetch Instagram profile:', error);
@@ -602,7 +589,7 @@ export class AccountTrackingServiceFirebase {
           maxComments: 10,
           maxReels: 100,
           proxyConfiguration: {
-            useApifyProxy: false
+            useApifyProxy: true  // Use Apify proxy for better reliability
           }
         },
         action: 'run'
@@ -627,26 +614,8 @@ export class AccountTrackingServiceFirebase {
       // NEW SCRAPER: Data is nested under reel_data.media
       const media = firstItem.reel_data?.media || firstItem.media || firstItem;
       
-      // Try multiple sources for profile data
-      const user = media.user || media.owner || firstItem.user || firstItem.owner || {};
-      
-      const profileFullName = user.full_name || user.fullName;
-      
-      // Try MULTIPLE profile pic locations (Instagram API is inconsistent)
-      const profilePicUrl = user.hd_profile_pic_url_info?.url ||  // HD version (best quality)
-                           user.profile_pic_url ||                 // Standard version
-                           user.profile_pic_url_hd ||              // Alternative HD
-                           media.user?.profile_pic_url ||          // Nested in media.user
-                           media.owner?.profile_pic_url ||         // Nested in media.owner
-                           firstItem.profile_pic_url ||            // Top-level in firstItem
-                           '';
-      
-      console.log(`🔍 Instagram sync profile data:`, {
-        username: account.username,
-        hasFullName: !!profileFullName,
-        hasProfilePic: !!profilePicUrl,
-        profilePicUrl: profilePicUrl ? profilePicUrl.substring(0, 100) + '...' : 'None'
-      });
+      const profileFullName = media.user?.full_name || media.owner?.full_name;
+      const profilePicUrl = media.user?.profile_pic_url || media.owner?.profile_pic_url;
       
       if (profileFullName || profilePicUrl) {
         console.log('👤 Updating Instagram profile from NEW scraper...');
@@ -662,13 +631,11 @@ export class AccountTrackingServiceFirebase {
               `ig_profile_${account.username}`,
               'profile'
             );
-            console.log(`✅ Profile picture uploaded to Firebase Storage: ${uploadedProfilePic}`);
+            console.log('✅ Profile picture uploaded to Firebase Storage');
           } catch (error) {
             console.warn('⚠️ Failed to upload profile picture:', error);
             uploadedProfilePic = profilePicUrl; // Use original URL as fallback
           }
-        } else {
-          console.warn(`⚠️ No profile picture URL found for @${account.username} during sync`);
         }
         
         // Update account with profile data
@@ -684,8 +651,6 @@ export class AccountTrackingServiceFirebase {
           await FirestoreDataService.updateTrackedAccount(orgId, projectId, account.id, profileUpdates);
           console.log('✅ Updated Instagram profile for @' + account.username);
         }
-      } else {
-        console.warn(`⚠️ No profile data found for @${account.username} during sync`);
       }
     }
 

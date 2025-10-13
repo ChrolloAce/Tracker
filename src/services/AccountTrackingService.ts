@@ -457,7 +457,7 @@ export class AccountTrackingService {
                 maxComments: 10,
                 maxReels: 100,
                 proxyConfiguration: {
-                  useApifyProxy: false
+                  useApifyProxy: true  // Use Apify proxy for better reliability
                 }
               },
               action: 'run'

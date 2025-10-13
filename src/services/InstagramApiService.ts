@@ -34,7 +34,7 @@ class InstagramApiService {
         maxComments: 50,
         maxReels: 30,
         proxyConfiguration: {
-          useApifyProxy: false
+          useApifyProxy: true  // Use Apify proxy for better reliability
         }
       });
 
@@ -280,7 +280,7 @@ class InstagramApiService {
         maxComments: 10,
         maxReels: 1,
         proxyConfiguration: {
-          useApifyProxy: false
+          useApifyProxy: true  // Use Apify proxy for better reliability
         }
       }, { timeout: 60000 }); // 1 minute timeout
 
