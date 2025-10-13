@@ -412,9 +412,29 @@ export default async function handler(
           const firstItem = instagramItems[0];
           const media = firstItem.reel_data?.media || firstItem.media || firstItem;
           
-          const profileFullName = media.user?.full_name || media.owner?.full_name;
-          const profilePicUrl = media.user?.profile_pic_url || media.owner?.profile_pic_url;
-          const isVerified = media.user?.is_verified || media.owner?.is_verified || false;
+          // Try multiple sources for profile data
+          const user = media.user || media.owner || firstItem.user || firstItem.owner || {};
+          
+          const profileFullName = user.full_name || user.fullName || account.username;
+          
+          // Try MULTIPLE profile pic locations (Instagram API is inconsistent)
+          const profilePicUrl = user.hd_profile_pic_url_info?.url ||  // HD version (best quality)
+                               user.profile_pic_url ||                 // Standard version
+                               user.profile_pic_url_hd ||              // Alternative HD
+                               media.user?.profile_pic_url ||          // Nested in media.user
+                               media.owner?.profile_pic_url ||         // Nested in media.owner
+                               firstItem.profile_pic_url ||            // Top-level in firstItem
+                               '';
+          
+          const isVerified = user.is_verified || user.verified || false;
+          
+          console.log(`🔍 Instagram profile data found:`, {
+            username: account.username,
+            fullName: profileFullName,
+            hasProfilePic: !!profilePicUrl,
+            profilePicUrl: profilePicUrl ? profilePicUrl.substring(0, 100) + '...' : 'None',
+            isVerified: isVerified
+          });
           
           if (profileFullName || profilePicUrl) {
             const profileUpdates: any = {};
@@ -430,13 +450,17 @@ export default async function handler(
                 'profile'
               );
               profileUpdates.profilePicture = uploadedProfilePic;
-              console.log(`✅ Profile picture uploaded to Firebase Storage`);
+              console.log(`✅ Profile picture uploaded to Firebase Storage: ${uploadedProfilePic}`);
+            } else {
+              console.warn(`⚠️ No profile picture URL found for @${account.username}`);
             }
             
             if (isVerified) profileUpdates.isVerified = isVerified;
             
             await accountRef.update(profileUpdates);
             console.log(`✅ Updated Instagram profile for @${account.username}`);
+          } else {
+            console.warn(`⚠️ No profile data found for @${account.username}`);
           }
         }
         
