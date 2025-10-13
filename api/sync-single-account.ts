@@ -390,7 +390,7 @@ export default async function handler(
       console.log(`📸 Fetching Instagram reels for ${account.username} using NEW scraper...`);
       
       try {
-        // Call NEW Instagram Reels Scraper (working!)
+        // Call NEW Instagram Reels Scraper (with authentication)
         const data = await runApifyActor({
           actorId: 'scraper-engine~instagram-reels-scraper',
           input: {
@@ -398,6 +398,8 @@ export default async function handler(
             sortOrder: "newest",
             maxComments: 10,
             maxReels: 100,
+            // Instagram authentication - required for API access
+            sessionid: process.env.INSTAGRAM_SESSION_ID || '',
             proxyConfiguration: {
               useApifyProxy: true  // Use Apify proxy for better reliability
             }
