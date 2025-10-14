@@ -138,13 +138,12 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [isVideoAnalyticsModalOpen, setIsVideoAnalyticsModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState<string | null>(null);
-  const [accountInputs, setAccountInputs] = useState<Array<{id: string; url: string; platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter' | null; error: string | null}>>([
-    { id: '1', url: '', platform: null, error: null }
+  const [accountInputs, setAccountInputs] = useState<Array<{id: string; url: string; platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter' | null; error: string | null; videoCount: number}>>([
+    { id: '1', url: '', platform: null, error: null, videoCount: 10 }
   ]);
   const [newAccountUrl, setNewAccountUrl] = useState('');
   const [detectedPlatform, setDetectedPlatform] = useState<'instagram' | 'tiktok' | 'youtube' | 'twitter' | null>(null);
   const [urlValidationError, setUrlValidationError] = useState<string | null>(null);
-  const [postsToScrape, setPostsToScrape] = useState<number>(10);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -414,7 +413,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       setNewAccountUrl('');
       setDetectedPlatform(null);
       setUrlValidationError(null);
-      setPostsToScrape(10);
+      setAccountInputs([{ id: '1', url: '', platform: null, error: null, videoCount: 10 }]);
     }
   }, [isAddModalOpen]);
 
@@ -887,19 +886,20 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const handleAddAccount = useCallback(async () => {
     if (!currentOrgId || !currentProjectId || !user) return;
 
-    // Collect all valid accounts from ALL inputs (including first one)
-    const accountsToAdd: Array<{url: string; username: string; platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter'}> = [];
+    // Collect all valid accounts from ALL inputs (including first one) with their specific video counts
+    const accountsToAdd: Array<{url: string; username: string; platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter'; videoCount: number}> = [];
     
     // Check ALL inputs using accountInputs array
     for (let i = 0; i < accountInputs.length; i++) {
       const input = accountInputs[i];
       const url = (i === 0 ? newAccountUrl : input.url).trim();
       const platform = i === 0 ? detectedPlatform : input.platform;
+      const videoCount = input.videoCount; // Each input has its own video count
       
       if (url && platform) {
         const username = extractUsernameFromUrl(url, platform);
         if (username) {
-          accountsToAdd.push({ url, username, platform });
+          accountsToAdd.push({ url, username, platform, videoCount });
         }
       }
     }
@@ -919,10 +919,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     setNewAccountUrl('');
     setDetectedPlatform(null);
     setUrlValidationError(null);
-    setAccountInputs([{ id: '1', url: '', platform: null, error: null }]);
+    setAccountInputs([{ id: '1', url: '', platform: null, error: null, videoCount: 10 }]);
     setIsAddModalOpen(false);
 
-    // Process all accounts in PARALLEL
+    // Process all accounts in PARALLEL, each with its own video count
     const addPromises = accountsToAdd.map(account => 
       AccountTrackingServiceFirebase.addAccount(
         currentOrgId,
@@ -931,9 +931,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         account.username,
         account.platform,
         'my', // Default to 'my' account type
-        postsToScrape // Pass the user's selected video count
+        account.videoCount // Pass each account's specific video count
       ).then(() => {
-        console.log(`✅ Added account @${account.username}`);
+        console.log(`✅ Added account @${account.username} with ${account.videoCount} videos`);
         return { success: true, username: account.username };
       }).catch(error => {
         console.error(`Failed to add account @${account.username}:`, error);
@@ -960,7 +960,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         return filtered;
       });
     }, 10000);
-  }, [newAccountUrl, detectedPlatform, accountInputs, currentOrgId, currentProjectId, user, postsToScrape]);
+  }, [newAccountUrl, detectedPlatform, accountInputs, currentOrgId, currentProjectId, user]);
 
   // Helper to generate short code for links
   const generateShortCode = (length: number = 6): string => {
@@ -2343,8 +2343,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                   setNewAccountUrl('');
                   setDetectedPlatform(null);
                   setUrlValidationError(null);
-                  setPostsToScrape(10);
-                  setAccountInputs([{ id: '1', url: '', platform: null, error: null }]);
+                  setAccountInputs([{ id: '1', url: '', platform: null, error: null, videoCount: 10 }]);
                 }}
                 className="text-white/80 hover:text-white transition-colors p-1"
               >
@@ -2392,26 +2391,30 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                     )}
                   </div>
                   
-                  {index === 0 && (
-                    <div className="relative">
-                      <select
-                        value={postsToScrape}
-                        onChange={(e) => setPostsToScrape(Number(e.target.value))}
-                        className="appearance-none pl-3 pr-8 py-2.5 bg-[#1E1E20] border border-gray-700/50 rounded-full text-white text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20 whitespace-nowrap"
-                      >
-                        <option value={10}>10 videos</option>
-                        <option value={25}>25 videos</option>
-                        <option value={50}>50 videos</option>
-                        <option value={100}>100 videos</option>
-                        <option value={250}>250 videos</option>
-                        <option value={500}>500 videos</option>
-                        <option value={1000}>1000 videos</option>
-                        <option value={2000}>2000 videos</option>
-                      </select>
-                      <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
-                    </div>
-                  )}
+                  {/* Video count selector for each input */}
+                  <div className="relative">
+                    <select
+                      value={input.videoCount}
+                      onChange={(e) => {
+                        const newInputs = [...accountInputs];
+                        newInputs[index].videoCount = Number(e.target.value);
+                        setAccountInputs(newInputs);
+                      }}
+                      className="appearance-none pl-3 pr-8 py-2.5 bg-[#1E1E20] border border-gray-700/50 rounded-full text-white text-sm font-medium cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/20 whitespace-nowrap"
+                    >
+                      <option value={10}>10 videos</option>
+                      <option value={25}>25 videos</option>
+                      <option value={50}>50 videos</option>
+                      <option value={100}>100 videos</option>
+                      <option value={250}>250 videos</option>
+                      <option value={500}>500 videos</option>
+                      <option value={1000}>1000 videos</option>
+                      <option value={2000}>2000 videos</option>
+                    </select>
+                    <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                  </div>
 
+                  {/* Delete button for additional inputs */}
                   {index > 0 && (
                     <button
                       onClick={() => {
@@ -2422,6 +2425,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                       <Trash2 className="w-4 h-4" strokeWidth={1.5} />
                     </button>
                   )}
+                  {/* Spacer for first input when alone */}
                   {index === 0 && accountInputs.length === 1 && (
                     <div className="w-10" /> 
                   )}
@@ -2448,13 +2452,18 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
-                    // Add another input field
-                    setAccountInputs(prev => [...prev, { 
-                      id: Date.now().toString(), 
-                      url: '', 
-                      platform: null, 
-                      error: null 
-                    }]);
+                    // Add another input field, copying videoCount from the last input
+                    setAccountInputs(prev => {
+                      const lastInput = prev[prev.length - 1];
+                      const videoCountToCopy = lastInput?.videoCount || 10;
+                      return [...prev, { 
+                        id: Date.now().toString(), 
+                        url: '', 
+                        platform: null, 
+                        error: null,
+                        videoCount: videoCountToCopy 
+                      }];
+                    });
                   }}
                   className="px-4 py-2 text-sm font-medium text-gray-300 border border-gray-700 rounded-full hover:border-gray-600 hover:text-white transition-colors"
                 >
