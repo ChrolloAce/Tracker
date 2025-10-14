@@ -334,8 +334,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     
     const dateFilteredSubmissions = DateFilterService.filterVideosByDateRange(
       videoSubmissions,
-      dateFilter,
-      undefined
+      dateFilter
     );
     
     // Convert back to AccountVideo
@@ -608,8 +607,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
 
           const dateAndRulesFiltered = DateFilterService.filterVideosByDateRange(
             videoSubmissions,
-            dateFilter,
-            undefined
+            dateFilter
           );
 
           // Calculate stats from filtered videos
@@ -791,8 +789,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
 
       const dateFilteredSubmissions = DateFilterService.filterVideosByDateRange(
         videoSubmissions,
-        dateFilter,
-        undefined
+        dateFilter
       );
 
       // Convert back to AccountVideo
