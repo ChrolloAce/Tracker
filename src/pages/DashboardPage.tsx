@@ -423,9 +423,9 @@ function DashboardPage() {
     setCustomDateRange(customRange);
   }, []);
 
-  const handleVideoClick = useCallback((video: VideoSubmission) => {
-    setSelectedVideoForAnalytics(video);
-    setIsAnalyticsModalOpen(true);
+  const handleVideoClick = useCallback((_video: VideoSubmission) => {
+    // Don't do anything - let VideoSubmissionsTable handle video clicks with its own player
+    // This prevents the row click from interfering with thumbnail clicks
   }, []);
 
   const handleCloseAnalyticsModal = useCallback(() => {

@@ -78,6 +78,17 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
     <div 
       className="fixed inset-0 w-full h-full z-[9999] flex items-center justify-center backdrop-blur-2xl bg-black/30"
       onClick={onClose}
+      style={{ 
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100vh',
+        margin: 0,
+        padding: 0
+      }}
     >
       {/* Close button - top right corner */}
       <button
