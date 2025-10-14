@@ -76,51 +76,49 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 backdrop-blur-md"
+      className="fixed inset-0 w-full h-full z-[9999] flex items-center justify-center backdrop-blur-2xl bg-black/30"
       onClick={onClose}
     >
       {/* Close button - top right corner */}
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 z-[10000] p-3 rounded-full bg-black/50 hover:bg-black/70 border border-white/10 transition-all text-white hover:scale-110"
+        className="absolute top-6 right-6 z-[10000] p-2.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 transition-all text-white hover:scale-110"
       >
-        <X className="w-6 h-6" strokeWidth={2.5} />
+        <X className="w-5 h-5" strokeWidth={2.5} />
       </button>
 
       {/* Video Container */}
       <div 
-        className="relative w-full h-full max-w-[95vw] max-h-[95vh] flex flex-col items-center justify-center p-8"
+        className="relative flex flex-col items-center justify-center gap-3"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Title */}
         {title && (
-          <div className="mb-4 text-center">
-            <h3 className="text-xl font-bold text-white">
+          <div className="text-center px-4">
+            <h3 className="text-lg font-semibold text-white drop-shadow-lg">
               {title}
             </h3>
           </div>
         )}
 
-        {/* Video Player - Takes up available space */}
-        <div className="relative w-full flex-1 flex items-center justify-center">
-          <div className="relative w-full h-full max-w-[600px] max-h-[85vh] bg-black rounded-2xl overflow-hidden shadow-2xl">
-            <iframe
-              src={embedUrl}
-              className="absolute inset-0 w-full h-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              style={{ border: 'none' }}
-            />
-          </div>
+        {/* Video Player - Compact size */}
+        <div className="relative w-[380px] h-[680px] bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10">
+          <iframe
+            src={embedUrl}
+            className="absolute inset-0 w-full h-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            style={{ border: 'none' }}
+          />
         </div>
 
         {/* Footer Link */}
-        <div className="mt-4 text-center">
+        <div className="text-center">
           <a
             href={videoUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-gray-300 hover:text-white transition-all"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-sm text-white transition-all"
           >
             Open in {platform ? platform.charAt(0).toUpperCase() + platform.slice(1) : 'Platform'} →
           </a>
