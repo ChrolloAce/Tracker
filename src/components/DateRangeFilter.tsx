@@ -134,9 +134,10 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
     { value: 'last7days', label: 'Last 7 days' },
     { value: 'last14days', label: 'Last 14 days' },
     { value: 'last30days', label: 'Last 30 days' },
+    { value: 'last90days', label: 'Last 90 days' },
     { value: 'mtd', label: 'Month to date' },
-    { value: 'lastmonth', label: 'Last month' },
     { value: 'ytd', label: 'Year to date' },
+    { value: 'all', label: 'All Time' },
   ] as const;
 
   const getFilterLabel = () => {
