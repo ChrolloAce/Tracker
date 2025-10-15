@@ -599,25 +599,33 @@ class FirestoreDataService {
     orgId: string,
     projectId: string,
     linkId: string,
-    clickData: Omit<LinkClick, 'id' | 'linkId' | 'timestamp'>
+    clickData: Omit<LinkClick, 'id' | 'linkId' | 'timestamp' | 'linkTitle' | 'linkUrl' | 'shortCode'>
   ): Promise<void> {
     const batch = writeBatch(db);
     
-    // Add click record
-    const clickRef = doc(collection(db, 'organizations', orgId, 'projects', projectId, 'links', linkId, 'clicks'));
-    const fullClickData: LinkClick = {
+    // Get link details first
+    const linkRef = doc(db, 'organizations', orgId, 'projects', projectId, 'links', linkId);
+    const linkDoc = await getDoc(linkRef);
+    const linkData = linkDoc.data();
+    
+    // Add click record to project-level linkClicks collection for easy querying
+    const clickRef = doc(collection(db, 'organizations', orgId, 'projects', projectId, 'linkClicks'));
+    const fullClickData = {
       ...clickData,
       id: clickRef.id,
       linkId,
+      linkTitle: linkData?.title || 'Unknown',
+      linkUrl: linkData?.originalUrl || '',
+      shortCode: linkData?.shortCode || '',
       timestamp: Timestamp.now()
     };
     
     batch.set(clickRef, fullClickData);
     
     // Update link analytics
-    const linkRef = doc(db, 'organizations', orgId, 'projects', projectId, 'links', linkId);
     batch.update(linkRef, {
       totalClicks: increment(1),
+      uniqueClicks: increment(1), // Simplified for now - could be improved with better uniqueness tracking
       lastClickedAt: Timestamp.now()
     });
     
