@@ -263,7 +263,7 @@ function DashboardPage() {
     // Real-time listener for NEW link clicks only (old clicks are loaded above)
     const clicksRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'linkClicks');
     
-    const unsubClicks = onSnapshot(clicksRef, async (snapshot) => {
+    const unsubClicks = onSnapshot(clicksRef, async () => {
       // On any change to new clicks collection, reload ALL clicks to stay in sync
       const allClicks = await LinkClicksService.getProjectLinkClicks(currentOrgId, currentProjectId);
       setLinkClicks(allClicks);
