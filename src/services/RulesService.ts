@@ -248,7 +248,8 @@ class RulesService {
    * Evaluate a single condition against a video
    */
   private static evaluateCondition(video: AccountVideo, condition: RuleCondition): boolean {
-    const originalDescription = video.caption || '';
+    // Check both caption (Instagram) and title (TikTok) fields
+    const originalDescription = video.caption || video.title || '';
     const description = condition.caseSensitive ? originalDescription : originalDescription.toLowerCase();
     
     switch (condition.type) {
