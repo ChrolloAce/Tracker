@@ -9,12 +9,13 @@ import FirestoreDataService from '../services/FirestoreDataService';
 import DateFilterService from '../services/DateFilterService';
 import TeamInvitationService from '../services/TeamInvitationService';
 import { DateFilterType } from './DateRangeFilter';
-import { User, TrendingUp, Plus, Mail, Clock, X } from 'lucide-react';
+import { User, TrendingUp, Plus, Mail, Clock, X, FileText } from 'lucide-react';
 import { Button } from './ui/Button';
 import CreateCreatorModal from './CreateCreatorModal';
 import EditCreatorModal from './EditCreatorModal';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
+import ContractsManagementPage from './ContractsManagementPage';
 import userProfileAnimation from '../../public/lottie/User Profile.json';
 
 export interface CreatorsManagementPageRef {
@@ -34,6 +35,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   const { dateFilter = 'all' } = props;
   const { user, currentOrgId, currentProjectId } = useAuth();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'accounts' | 'contracts'>('accounts');
   const [creators, setCreators] = useState<OrgMember[]>([]);
   const [creatorProfiles, setCreatorProfiles] = useState<Map<string, Creator>>(new Map());
   const [calculatedEarnings, setCalculatedEarnings] = useState<Map<string, number>>(new Map());
@@ -293,8 +295,42 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
 
   return (
     <div className="space-y-6">
-      {/* Creators List - Dashboard Style */}
-      {creators.length === 0 ? (
+      {/* Tab Navigation */}
+      <div className="flex items-center gap-4 border-b border-white/5 pb-3">
+        <button
+          onClick={() => setActiveTab('accounts')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${
+            activeTab === 'accounts'
+              ? 'bg-white text-black'
+              : 'text-gray-400 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <User className="w-4 h-4" />
+          Creators
+        </button>
+        <button
+          onClick={() => setActiveTab('contracts')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${
+            activeTab === 'contracts'
+              ? 'bg-white text-black'
+              : 'text-gray-400 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          Contracts
+        </button>
+      </div>
+
+      {/* Contracts Tab */}
+      {activeTab === 'contracts' && (
+        <ContractsManagementPage />
+      )}
+
+      {/* Accounts Tab */}
+      {activeTab === 'accounts' && (
+        <>
+          {/* Creators List - Dashboard Style */}
+          {creators.length === 0 ? (
         <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-12 text-center">
           <div className="w-64 h-64 mx-auto mb-4">
             <Lottie animationData={userProfileAnimation} loop={true} />
@@ -542,14 +578,16 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
         />
       )}
 
-      {/* Floating Action Button - Add Creator */}
-      <button
-        onClick={() => setShowInviteModal(true)}
-        className="fixed bottom-8 right-8 w-14 h-14 bg-white text-black rounded-full shadow-2xl hover:bg-gray-100 transition-all duration-200 flex items-center justify-center z-40 hover:scale-110"
-        title="Add Creator (Space)"
-      >
-        <Plus className="w-6 h-6" />
-      </button>
+          {/* Floating Action Button - Add Creator (only on Accounts tab) */}
+          <button
+            onClick={() => setShowInviteModal(true)}
+            className="fixed bottom-8 right-8 w-14 h-14 bg-white text-black rounded-full shadow-2xl hover:bg-gray-100 transition-all duration-200 flex items-center justify-center z-40 hover:scale-110"
+            title="Add Creator (Space)"
+          >
+            <Plus className="w-6 h-6" />
+          </button>
+        </>
+      )}
     </div>
   );
 });
