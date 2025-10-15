@@ -4,7 +4,6 @@ import FirebaseStorageService from './FirebaseStorageService';
 import OutlierDetectionService from './OutlierDetectionService';
 import YoutubeAccountService from './YoutubeAccountService';
 import TwitterApiService from './TwitterApiService';
-import RulesService from './RulesService';
 import { Timestamp } from 'firebase/firestore';
 
 /**
@@ -506,17 +505,10 @@ export class AccountTrackingServiceFirebase {
         videos = await this.syncYoutubeShorts(orgId, account);
       }
 
-      // Apply tracking rules to filter videos
-      console.log(`📋 Checking for tracking rules...`);
-      const filteredVideos = await RulesService.filterVideosByRules(
-        orgId,
-        projectId,
-        accountId,
-        account.platform,
-        videos
-      );
+      console.log(`📹 Fetched ${videos.length} videos from platform`);
 
-      console.log(`✅ After rules: ${filteredVideos.length}/${videos.length} videos will be tracked`);
+      // NOTE: Rules are applied during DISPLAY, not during sync
+      // All videos are saved to Firestore, rules filter what's shown in the UI
 
       // Sync to Firestore
       await FirestoreDataService.syncAccountVideos(
@@ -524,7 +516,7 @@ export class AccountTrackingServiceFirebase {
         projectId,
         accountId,
         userId,
-        filteredVideos.map(v => ({
+        videos.map(v => ({
           videoId: v.videoId || '',
           url: v.url || '',
           thumbnail: v.thumbnail || '',
@@ -573,8 +565,8 @@ export class AccountTrackingServiceFirebase {
         }
       });
 
-      console.log(`✅ Synced ${filteredVideos.length} videos for @${account.username}`);
-      return filteredVideos.length;
+      console.log(`✅ Synced ${videos.length} videos for @${account.username}`);
+      return videos.length;
     } catch (error) {
       console.error('❌ Failed to sync account videos:', error);
       throw error;

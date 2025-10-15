@@ -35,7 +35,7 @@ import { TrackingRule, RuleCondition, RuleConditionType } from '../types/rules';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { clsx } from 'clsx';
 import { useAuth } from '../contexts/AuthContext';
-import { PageLoadingSkeleton, NumberSkeleton } from './ui/LoadingSkeleton';
+import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import { MiniTrendChart } from './ui/MiniTrendChart';
 import { TrendCalculationService } from '../services/TrendCalculationService';
 import { VideoSubmission } from '../types';
@@ -225,6 +225,15 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     uploadDate: true
     };
   });
+
+  // Helper function to count how many rules are applied to an account
+  const getRulesCountForAccount = useCallback((accountId: string) => {
+    return allRules.filter(rule => {
+      if (!rule.isActive) return false;
+      const { accountIds } = rule.appliesTo;
+      return accountIds && accountIds.length > 0 && accountIds.includes(accountId);
+    }).length;
+  }, [allRules]);
 
   // Save column preferences when they change
   useEffect(() => {
@@ -497,6 +506,24 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     };
 
     loadLinksAndClicks();
+  }, [currentOrgId, currentProjectId]);
+
+  // Load all rules for the project
+  useEffect(() => {
+    const loadRules = async () => {
+      if (!currentOrgId || !currentProjectId) return;
+
+      try {
+        console.log('📋 Loading all rules for project...');
+        const rules = await RulesService.getRules(currentOrgId, currentProjectId);
+        setAllRules(rules);
+        console.log(`✅ Loaded ${rules.length} rules`);
+      } catch (error) {
+        console.error('❌ Failed to load rules:', error);
+      }
+    };
+
+    loadRules();
   }, [currentOrgId, currentProjectId]);
 
   // Real-time listener for syncing accounts
@@ -1228,20 +1255,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     }).format(date);
   };
 
-  // Check if account data is still loading
-  const isAccountDataLoading = (account: TrackedAccount): boolean => {
-    // Data is loading if:
-    // 1. Account has never been synced
-    // 2. Account is currently syncing
-    // 3. Account has no lastSynced date but has a sync status
-    return (
-      !account.lastSynced || 
-      account.syncStatus === 'syncing' || 
-      account.syncStatus === 'pending' ||
-      (account.totalVideos === 0 && !account.lastSynced)
-    );
-  };
-
   // Sorting handler
   const handleSort = (column: 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'uploadDate') => {
     if (sortColumn === column) {
@@ -1376,6 +1389,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Platform
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
+                      Rules
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Last post
@@ -1523,6 +1539,11 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                         </div>
                       </td>
 
+                      {/* Rules Column - placeholder */}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        <div className="w-12 h-4 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full animate-pulse"></div>
+                      </td>
+
                       {/* Other columns with loading placeholders */}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                         <div className="w-16 h-4 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full animate-pulse"></div>
@@ -1662,6 +1683,21 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                           </div>
                         </td>
 
+                        {/* Rules Column */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {(() => {
+                            const rulesCount = getRulesCountForAccount(account.id);
+                            return rulesCount > 0 ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900/30 text-blue-400 border border-blue-500/30">
+                                <Filter className="w-3 h-3 mr-1" />
+                                {rulesCount} {rulesCount === 1 ? 'rule' : 'rules'}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-500 dark:text-gray-600">—</span>
+                            );
+                          })()}
+                        </td>
+
                         {/* Last Post Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                           {account.lastSynced ? formatDate(account.lastSynced.toDate()) : 'Never'}
@@ -1674,38 +1710,22 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
 
                         {/* Posts Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {isAccountDataLoading(account) ? (
-                            <NumberSkeleton width="w-12" />
-                          ) : (
-                            formatNumber('filteredTotalVideos' in account ? (account as AccountWithFilteredStats).filteredTotalVideos : account.totalVideos)
-                          )}
+                          {formatNumber('filteredTotalVideos' in account ? (account as AccountWithFilteredStats).filteredTotalVideos : account.totalVideos)}
                         </td>
 
                         {/* Views Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white dark:text-white">
-                          {isAccountDataLoading(account) ? (
-                            <NumberSkeleton width="w-16" />
-                          ) : (
-                            formatNumber('filteredTotalViews' in account ? (account as AccountWithFilteredStats).filteredTotalViews : account.totalViews)
-                          )}
+                          {formatNumber('filteredTotalViews' in account ? (account as AccountWithFilteredStats).filteredTotalViews : account.totalViews)}
                         </td>
 
                         {/* Likes Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {isAccountDataLoading(account) ? (
-                            <NumberSkeleton width="w-14" />
-                          ) : (
-                            formatNumber('filteredTotalLikes' in account ? (account as AccountWithFilteredStats).filteredTotalLikes : account.totalLikes)
-                          )}
+                          {formatNumber('filteredTotalLikes' in account ? (account as AccountWithFilteredStats).filteredTotalLikes : account.totalLikes)}
                         </td>
 
                         {/* Comments Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {isAccountDataLoading(account) ? (
-                            <NumberSkeleton width="w-12" />
-                          ) : (
-                            formatNumber('filteredTotalComments' in account ? (account as AccountWithFilteredStats).filteredTotalComments : account.totalComments)
-                          )}
+                          {formatNumber('filteredTotalComments' in account ? (account as AccountWithFilteredStats).filteredTotalComments : account.totalComments)}
                         </td>
 
                         {/* Actions Column */}
