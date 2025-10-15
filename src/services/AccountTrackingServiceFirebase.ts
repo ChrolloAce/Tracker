@@ -974,7 +974,7 @@ export class AccountTrackingServiceFirebase {
       const videos = await FirestoreDataService.getAccountVideos(orgId, projectId, accountId);
       
       // Convert to AccountVideo format
-      return videos.map(v => ({
+      const mappedVideos = videos.map(v => ({
         id: v.id,
         accountId: v.trackedAccountId || '',
         videoId: v.videoId || '',
@@ -992,6 +992,19 @@ export class AccountTrackingServiceFirebase {
         hashtags: v.hashtags || [],
         mentions: []
       }));
+      
+      // Debug: Log first video caption to verify it's loaded
+      if (mappedVideos.length > 0) {
+        console.log('🔍 First video loaded from Firestore:', {
+          videoId: mappedVideos[0].videoId,
+          caption: mappedVideos[0].caption?.substring(0, 100),
+          title: mappedVideos[0].title?.substring(0, 100),
+          hasCaption: !!mappedVideos[0].caption,
+          hasTitle: !!mappedVideos[0].title
+        });
+      }
+      
+      return mappedVideos;
     } catch (error) {
       console.error('❌ Failed to load account videos:', error);
       return [];

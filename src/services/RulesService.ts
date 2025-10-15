@@ -252,6 +252,19 @@ class RulesService {
     const originalDescription = video.caption || video.title || '';
     const description = condition.caseSensitive ? originalDescription : originalDescription.toLowerCase();
     
+    // Debug: Log what we're checking for description rules
+    if ((condition.type === 'description_contains' || condition.type === 'description_not_contains') && 
+        Math.random() < 0.1) { // Log 10% of checks to avoid spam
+      console.log('🔍 Rule evaluation:', {
+        videoId: video.videoId,
+        conditionType: condition.type,
+        searchValue: condition.value,
+        hasCaption: !!video.caption,
+        hasTitle: !!video.title,
+        descriptionPreview: originalDescription.substring(0, 50)
+      });
+    }
+    
     switch (condition.type) {
       case 'description_contains': {
         const searchValue = condition.caseSensitive 
