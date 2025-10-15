@@ -147,6 +147,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingAccountDetail, setLoadingAccountDetail] = useState(false);
   const [sortBy, setSortBy] = useState<'username' | 'followers' | 'videos' | 'views' | 'likes' | 'comments' | 'dateAdded'>('dateAdded');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -297,6 +298,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     const account = accounts.find(a => a.id === accountId);
     if (!account) return;
     
+    setLoadingAccountDetail(true);
+    
     console.log('📱 Loading videos for account:', account.username);
     const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, currentProjectId, accountId);
     console.log('📹 Loaded videos from Firestore:', videos.length);
@@ -367,6 +370,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     
     console.log(`✅ Date + Rules filtered: ${finalFilteredVideos.length}/${videos.length} videos (${accountRules.length} rules, ${dateFilter} date range)`);
     setAccountVideos(finalFilteredVideos);
+    setLoadingAccountDetail(false);
   }, [currentOrgId, currentProjectId, accounts, dateFilter]);
 
   // Expose handleBackToTable and openAddModal to parent component
@@ -1859,6 +1863,38 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       ) : (
         /* Account Details View */
         selectedAccount && (
+          loadingAccountDetail ? (
+            /* Loading Skeleton */
+            <div className="space-y-6 animate-pulse">
+              {/* Profile Card Skeleton */}
+              <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 p-8">
+                <div className="flex items-center space-x-6">
+                  <div className="w-24 h-24 bg-zinc-800 rounded-2xl"></div>
+                  <div className="flex-1 space-y-3">
+                    <div className="h-8 bg-zinc-800 rounded w-1/3"></div>
+                    <div className="h-4 bg-zinc-800 rounded w-1/2"></div>
+                  </div>
+                </div>
+              </div>
+              {/* KPI Cards Skeleton */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 p-6">
+                    <div className="h-4 bg-zinc-800 rounded w-1/2 mb-4"></div>
+                    <div className="h-8 bg-zinc-800 rounded w-full"></div>
+                  </div>
+                ))}
+              </div>
+              {/* Videos Table Skeleton */}
+              <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 p-6">
+                <div className="space-y-4">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="h-16 bg-zinc-800 rounded"></div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
           <div className="space-y-6">
             {/* Account Profile Card */}
             <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 p-8">
@@ -2442,6 +2478,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
               )}
             </div>
           </div>
+          )
         )
       )}
 
