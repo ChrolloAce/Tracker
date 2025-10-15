@@ -31,6 +31,7 @@ import { TrackedAccount } from '../types/firestore';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import FirestoreDataService from '../services/FirestoreDataService';
 import RulesService from '../services/RulesService';
+import CreatorLinksService from '../services/CreatorLinksService';
 import { TrackingRule, RuleCondition, RuleConditionType } from '../types/rules';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { clsx } from 'clsx';
@@ -159,6 +160,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [showColumnToggle, setShowColumnToggle] = useState(false);
   const [trackedLinks, setTrackedLinks] = useState<FirestoreTrackedLink[]>([]);
   const [linkClicks, setLinkClicks] = useState<LinkClick[]>([]);
+  const [accountCreatorNames, setAccountCreatorNames] = useState<Map<string, string>>(new Map());
   const [processingAccounts, setProcessingAccounts] = useState<Array<{username: string; platform: string; startedAt: number}>>(() => {
     // Restore from localStorage and clean up old entries (> 5 minutes old)
     const saved = localStorage.getItem('processingAccounts');
@@ -485,6 +487,33 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     };
   }, [currentOrgId, currentProjectId]);
 
+  // Load creator names for each account
+  useEffect(() => {
+    const loadCreatorNames = async () => {
+      if (!currentOrgId || !currentProjectId || accounts.length === 0) return;
+
+      const creatorNamesMap = new Map<string, string>();
+
+      // Load creator name for each account
+      await Promise.all(
+        accounts.map(async (account) => {
+          const creatorName = await CreatorLinksService.getCreatorNameForAccount(
+            currentOrgId,
+            currentProjectId,
+            account.id
+          );
+          if (creatorName) {
+            creatorNamesMap.set(account.id, creatorName);
+          }
+        })
+      );
+
+      setAccountCreatorNames(creatorNamesMap);
+    };
+
+    loadCreatorNames();
+  }, [currentOrgId, currentProjectId, accounts]);
+
   // Load links and link clicks
   useEffect(() => {
     const loadLinksAndClicks = async () => {
@@ -744,24 +773,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     onViewModeChange('details');
     localStorage.setItem('selectedAccountId', selectedAccount.id);
     setCurrentPage(1);
-
-    // Load and set active rules count for this account
-    const loadRulesCount = async () => {
-      try {
-        const accountRules = await RulesService.getRulesForAccount(
-          currentOrgId,
-          currentProjectId,
-          selectedAccount.id,
-          selectedAccount.platform
-        );
-        setActiveRulesCount(accountRules.length);
-        console.log(`📋 Loaded ${accountRules.length} rules for @${selectedAccount.username}`);
-      } catch (error) {
-        console.error('Failed to load rules count:', error);
-        setActiveRulesCount(0);
-      }
-    };
-    loadRulesCount();
 
     // Set up real-time listener for videos
     const videosRef = collection(
@@ -1111,7 +1122,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         selectedAccount.platform
       );
       setAccountRules(appliedRules.map(r => r.id));
-      setActiveRulesCount(appliedRules.length); // Update the count for the detail view
     } catch (error) {
       console.error('Failed to load rules:', error);
     } finally {
@@ -1412,6 +1422,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
                       Rules
                     </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
+                      Creator
+                    </th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Last post
                     </th>
@@ -1710,6 +1723,21 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900/30 text-blue-400 border border-blue-500/30">
                                 <Filter className="w-3 h-3 mr-1" />
                                 {rulesCount} {rulesCount === 1 ? 'rule' : 'rules'}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-500 dark:text-gray-600">—</span>
+                            );
+                          })()}
+                        </td>
+
+                        {/* Creator Column */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {(() => {
+                            const creatorName = accountCreatorNames.get(account.id);
+                            return creatorName ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-900/30 text-purple-400 border border-purple-500/30">
+                                <Users className="w-3 h-3 mr-1" />
+                                {creatorName}
                               </span>
                             ) : (
                               <span className="text-xs text-gray-500 dark:text-gray-600">—</span>

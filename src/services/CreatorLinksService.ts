@@ -313,6 +313,33 @@ class CreatorLinksService {
       }
     });
   }
+
+  /**
+   * Get creator name for an account
+   * Returns the creator's display name if the account is linked to a creator
+   */
+  static async getCreatorNameForAccount(
+    orgId: string,
+    projectId: string,
+    accountId: string
+  ): Promise<string | null> {
+    try {
+      const links = await this.getAccountLinkedCreators(orgId, projectId, accountId);
+      
+      if (links.length === 0) {
+        return null;
+      }
+
+      // Get the first creator (accounts typically have one creator)
+      const creatorId = links[0].creatorId;
+      const creator = await this.getCreatorProfile(orgId, projectId, creatorId);
+      
+      return creator?.displayName || null;
+    } catch (error) {
+      console.error('Error getting creator name for account:', error);
+      return null;
+    }
+  }
 }
 
 export default CreatorLinksService;
