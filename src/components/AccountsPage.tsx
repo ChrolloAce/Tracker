@@ -426,6 +426,18 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     }
   }, [isAddModalOpen]);
 
+  // Load videos and rules when an account is selected
+  useEffect(() => {
+    if (selectedAccount && currentOrgId && currentProjectId) {
+      console.log('🔍 Account selected, loading videos and rules...');
+      loadAccountVideos(selectedAccount.id);
+      setViewMode('details');
+      onViewModeChange('details');
+      // Save to localStorage for restoration
+      localStorage.setItem('selectedAccountId', selectedAccount.id);
+    }
+  }, [selectedAccount?.id, currentOrgId, currentProjectId]);
+
   // Real-time listener for accounts
   useEffect(() => {
     if (!currentOrgId || !currentProjectId) {
@@ -1896,15 +1908,28 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                       className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-medium rounded-lg transition-colors border border-white/10"
                     >
                       <Plus className="w-3 h-3" />
-                      {activeRulesCount > 0 ? 'Manage Rules' : 'Add Rule'}
+                      {activeRulesCount > 0 ? `Manage Rules (${activeRulesCount})` : 'Add Rule'}
                     </button>
-                    <button
-                      onClick={() => setShowAttachCreatorModal(true)}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 dark:bg-white hover:bg-purple-700 text-white dark:text-gray-900 text-xs font-medium rounded-lg transition-colors"
-                    >
-                      <Plus className="w-3 h-3" />
-                      Attach to Creator
-                    </button>
+                    {(() => {
+                      const creatorName = accountCreatorNames.get(selectedAccount.id);
+                      return creatorName ? (
+                        <button
+                          onClick={() => setShowAttachCreatorModal(true)}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-purple-900/30 hover:bg-purple-900/50 text-purple-400 text-xs font-medium rounded-lg transition-colors border border-purple-500/30"
+                        >
+                          <Users className="w-3 h-3" />
+                          {creatorName}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setShowAttachCreatorModal(true)}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 dark:bg-white hover:bg-purple-700 text-white dark:text-gray-900 text-xs font-medium rounded-lg transition-colors"
+                        >
+                          <Plus className="w-3 h-3" />
+                          Attach to Creator
+                        </button>
+                      );
+                    })()}
                   </div>
                   <div className="flex items-center space-x-6 text-sm text-gray-600 dark:text-gray-400">
                     <div className="flex items-center space-x-2">
