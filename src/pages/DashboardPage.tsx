@@ -249,22 +249,24 @@ function DashboardPage() {
     });
     unsubscribers.push(unsubRules);
     
-    // Real-time listener for link clicks
+    // Load ALL link clicks (from both old and new locations) on initial load
+    const loadAllClicks = async () => {
+      try {
+        const allClicks = await LinkClicksService.getProjectLinkClicks(currentOrgId, currentProjectId);
+        setLinkClicks(allClicks);
+      } catch (error) {
+        console.error('Failed to load link clicks:', error);
+      }
+    };
+    loadAllClicks();
+    
+    // Real-time listener for NEW link clicks only (old clicks are loaded above)
     const clicksRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'linkClicks');
     
-    const unsubClicks = onSnapshot(clicksRef, (snapshot) => {
-      const clicks: LinkClick[] = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          // Convert Firestore Timestamp to Date
-          timestamp: data.timestamp?.toDate?.() || data.timestamp
-        } as LinkClick;
-      });
-      
-      console.log(`📊 Real-time update: ${clicks.length} link clicks`);
-      setLinkClicks(clicks);
+    const unsubClicks = onSnapshot(clicksRef, async (snapshot) => {
+      // On any change to new clicks collection, reload ALL clicks to stay in sync
+      const allClicks = await LinkClicksService.getProjectLinkClicks(currentOrgId, currentProjectId);
+      setLinkClicks(allClicks);
     }, (error) => {
       console.error('❌ Link clicks listener error:', error);
     });

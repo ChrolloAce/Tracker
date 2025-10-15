@@ -358,14 +358,6 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
 
   // Calculate stats from filtered clicks
   const stats = useMemo(() => {
-    console.log('🔍 TrackedLinksPage Stats Debug:', {
-      rawLinkClicksCount: linkClicks.length,
-      filteredClicksCount: filteredClicks.length,
-      dateFilter,
-      sampleRawClick: linkClicks[0],
-      sampleFilteredClick: filteredClicks[0]
-    });
-    
     const totalClicks = filteredClicks.length;
     const uniqueClicks = new Set(
       filteredClicks.map(c => `${c.userAgent}-${c.deviceType}`)
@@ -374,10 +366,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       ? ((uniqueClicks / links.length) * 0.1).toFixed(1) 
       : '0.0';
     
-    console.log('📊 Final Stats:', { totalClicks, uniqueClicks, avgCTR });
-    
     return { totalClicks, uniqueClicks, avgCTR };
-  }, [filteredClicks, links, linkClicks, dateFilter]);
+  }, [filteredClicks, links]);
 
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {

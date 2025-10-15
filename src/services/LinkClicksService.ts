@@ -58,7 +58,6 @@ class LinkClicksService {
             referrer: clickData.referrer || 'Direct',
           });
         });
-        console.log(`📊 Loaded ${newClicksSnapshot.size} clicks from NEW location`);
       } catch (error) {
         console.error('Error loading from new location:', error);
       }
@@ -96,7 +95,6 @@ class LinkClicksService {
             });
           });
         }
-        console.log(`📊 Total clicks including OLD location: ${clicks.length}`);
       } catch (error) {
         console.error('Error loading from old location:', error);
       }
