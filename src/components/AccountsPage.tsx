@@ -745,6 +745,24 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     localStorage.setItem('selectedAccountId', selectedAccount.id);
     setCurrentPage(1);
 
+    // Load and set active rules count for this account
+    const loadRulesCount = async () => {
+      try {
+        const accountRules = await RulesService.getRulesForAccount(
+          currentOrgId,
+          currentProjectId,
+          selectedAccount.id,
+          selectedAccount.platform
+        );
+        setActiveRulesCount(accountRules.length);
+        console.log(`📋 Loaded ${accountRules.length} rules for @${selectedAccount.username}`);
+      } catch (error) {
+        console.error('Failed to load rules count:', error);
+        setActiveRulesCount(0);
+      }
+    };
+    loadRulesCount();
+
     // Set up real-time listener for videos
     const videosRef = collection(
       db, 
@@ -1093,6 +1111,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         selectedAccount.platform
       );
       setAccountRules(appliedRules.map(r => r.id));
+      setActiveRulesCount(appliedRules.length); // Update the count for the detail view
     } catch (error) {
       console.error('Failed to load rules:', error);
     } finally {
