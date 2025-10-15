@@ -50,7 +50,6 @@ import ColumnPreferencesService from '../services/ColumnPreferencesService';
 import KPICards from './KPICards';
 import DateFilterService from '../services/DateFilterService';
 import CreateLinkModal from './CreateLinkModal';
-import CreatorLinksService from '../services/CreatorLinksService';
 import LinkClicksService, { LinkClick } from '../services/LinkClicksService';
 import { Creator, TrackedLink as FirestoreTrackedLink } from '../types/firestore';
 
