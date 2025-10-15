@@ -35,7 +35,7 @@ import { TrackingRule, RuleCondition, RuleConditionType } from '../types/rules';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { clsx } from 'clsx';
 import { useAuth } from '../contexts/AuthContext';
-import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
+import { PageLoadingSkeleton, NumberSkeleton } from './ui/LoadingSkeleton';
 import { MiniTrendChart } from './ui/MiniTrendChart';
 import { TrendCalculationService } from '../services/TrendCalculationService';
 import { VideoSubmission } from '../types';
@@ -1228,6 +1228,20 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     }).format(date);
   };
 
+  // Check if account data is still loading
+  const isAccountDataLoading = (account: TrackedAccount): boolean => {
+    // Data is loading if:
+    // 1. Account has never been synced
+    // 2. Account is currently syncing
+    // 3. Account has no lastSynced date but has a sync status
+    return (
+      !account.lastSynced || 
+      account.syncStatus === 'syncing' || 
+      account.syncStatus === 'pending' ||
+      (account.totalVideos === 0 && !account.lastSynced)
+    );
+  };
+
   // Sorting handler
   const handleSort = (column: 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'uploadDate') => {
     if (sortColumn === column) {
@@ -1660,22 +1674,38 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
 
                         {/* Posts Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatNumber('filteredTotalVideos' in account ? (account as AccountWithFilteredStats).filteredTotalVideos : account.totalVideos)}
+                          {isAccountDataLoading(account) ? (
+                            <NumberSkeleton width="w-12" />
+                          ) : (
+                            formatNumber('filteredTotalVideos' in account ? (account as AccountWithFilteredStats).filteredTotalVideos : account.totalVideos)
+                          )}
                         </td>
 
                         {/* Views Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white dark:text-white">
-                          {formatNumber('filteredTotalViews' in account ? (account as AccountWithFilteredStats).filteredTotalViews : account.totalViews)}
+                          {isAccountDataLoading(account) ? (
+                            <NumberSkeleton width="w-16" />
+                          ) : (
+                            formatNumber('filteredTotalViews' in account ? (account as AccountWithFilteredStats).filteredTotalViews : account.totalViews)
+                          )}
                         </td>
 
                         {/* Likes Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatNumber('filteredTotalLikes' in account ? (account as AccountWithFilteredStats).filteredTotalLikes : account.totalLikes)}
+                          {isAccountDataLoading(account) ? (
+                            <NumberSkeleton width="w-14" />
+                          ) : (
+                            formatNumber('filteredTotalLikes' in account ? (account as AccountWithFilteredStats).filteredTotalLikes : account.totalLikes)
+                          )}
                         </td>
 
                         {/* Comments Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatNumber('filteredTotalComments' in account ? (account as AccountWithFilteredStats).filteredTotalComments : account.totalComments)}
+                          {isAccountDataLoading(account) ? (
+                            <NumberSkeleton width="w-12" />
+                          ) : (
+                            formatNumber('filteredTotalComments' in account ? (account as AccountWithFilteredStats).filteredTotalComments : account.totalComments)
+                          )}
                         </td>
 
                         {/* Actions Column */}
