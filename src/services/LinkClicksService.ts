@@ -27,35 +27,29 @@ class LinkClicksService {
   
   /**
    * Get all link clicks for a project
+   * Reads from BOTH old (subcollection) and new (project-level) locations for backward compatibility
    */
   static async getProjectLinkClicks(orgId: string, projectId: string): Promise<LinkClick[]> {
     try {
       const clicks: LinkClick[] = [];
       
-      // Get all links for the project (correct path)
-      const linksSnapshot = await getDocs(
-        collection(db, 'organizations', orgId, 'projects', projectId, 'links')
-      );
-      
-      // For each link, get its clicks
-      for (const linkDoc of linksSnapshot.docs) {
-        const linkData = linkDoc.data();
-        
-        const clicksSnapshot = await getDocs(
+      // 1. Read from NEW project-level linkClicks collection
+      try {
+        const newClicksSnapshot = await getDocs(
           query(
-            collection(db, 'organizations', orgId, 'projects', projectId, 'links', linkDoc.id, 'clicks'),
+            collection(db, 'organizations', orgId, 'projects', projectId, 'linkClicks'),
             orderBy('timestamp', 'desc')
           )
         );
         
-        clicksSnapshot.docs.forEach(clickDoc => {
+        newClicksSnapshot.docs.forEach(clickDoc => {
           const clickData = clickDoc.data();
           clicks.push({
             id: clickDoc.id,
-            linkId: linkDoc.id,
-            linkTitle: linkData.title || 'Untitled Link',
-            linkUrl: linkData.url || '',
-            shortCode: linkData.shortCode || '',
+            linkId: clickData.linkId || '',
+            linkTitle: clickData.linkTitle || 'Untitled Link',
+            linkUrl: clickData.linkUrl || '',
+            shortCode: clickData.shortCode || '',
             timestamp: clickData.timestamp?.toDate() || new Date(),
             userAgent: clickData.userAgent || 'Unknown',
             deviceType: clickData.deviceType || 'desktop',
@@ -64,6 +58,47 @@ class LinkClicksService {
             referrer: clickData.referrer || 'Direct',
           });
         });
+        console.log(`📊 Loaded ${newClicksSnapshot.size} clicks from NEW location`);
+      } catch (error) {
+        console.error('Error loading from new location:', error);
+      }
+      
+      // 2. Read from OLD subcollection location (for backward compatibility)
+      try {
+        const linksSnapshot = await getDocs(
+          collection(db, 'organizations', orgId, 'projects', projectId, 'links')
+        );
+        
+        for (const linkDoc of linksSnapshot.docs) {
+          const linkData = linkDoc.data();
+          
+          const oldClicksSnapshot = await getDocs(
+            query(
+              collection(db, 'organizations', orgId, 'projects', projectId, 'links', linkDoc.id, 'clicks'),
+              orderBy('timestamp', 'desc')
+            )
+          );
+          
+          oldClicksSnapshot.docs.forEach(clickDoc => {
+            const clickData = clickDoc.data();
+            clicks.push({
+              id: `old_${clickDoc.id}`, // Prefix to avoid ID collisions
+              linkId: linkDoc.id,
+              linkTitle: linkData.title || 'Untitled Link',
+              linkUrl: linkData.originalUrl || '',
+              shortCode: linkData.shortCode || '',
+              timestamp: clickData.timestamp?.toDate() || new Date(),
+              userAgent: clickData.userAgent || 'Unknown',
+              deviceType: clickData.deviceType || 'desktop',
+              browser: clickData.browser || 'Unknown',
+              os: clickData.os || 'Unknown',
+              referrer: clickData.referrer || 'Direct',
+            });
+          });
+        }
+        console.log(`📊 Total clicks including OLD location: ${clicks.length}`);
+      } catch (error) {
+        console.error('Error loading from old location:', error);
       }
       
       // Sort by timestamp descending
