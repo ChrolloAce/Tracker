@@ -882,7 +882,7 @@ const OverviewTab: React.FC<{
                               </div>
                             )}
                             <div className="absolute -bottom-1 -right-1">
-                              <PlatformIcon platform={video.platform} size="sm" />
+                              <PlatformIcon platform={account?.platform || video.platform || 'instagram'} size="sm" />
                             </div>
                           </div>
                           <div className="min-w-0 flex-1">
@@ -901,14 +901,31 @@ const OverviewTab: React.FC<{
                         {video.thumbnail ? (
                           <img
                             src={video.thumbnail}
-                            alt={video.videoTitle}
+                            alt={video.title || 'Video thumbnail'}
                             className="w-20 h-14 object-cover rounded-lg"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              // Try proxy as fallback
+                              if (!target.src.includes('/api/image-proxy')) {
+                                target.src = `/api/image-proxy?url=${encodeURIComponent(video.thumbnail)}`;
+                              } else {
+                                // If proxy also fails, show placeholder
+                                target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent) {
+                                  const fallback = document.createElement('div');
+                                  fallback.className = 'w-20 h-14 bg-zinc-800 rounded-lg flex items-center justify-center';
+                                  fallback.innerHTML = '<svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
+                                  parent.appendChild(fallback);
+                                }
+                              }
+                            }}
                           />
                         ) : (
                           <div className="w-20 h-14 bg-zinc-800 rounded-lg flex items-center justify-center">
                             <Play className="w-5 h-5 text-gray-600" />
-            </div>
-          )}
+                          </div>
+                        )}
                       </td>
                       
                       {/* Upload Date */}
