@@ -1093,7 +1093,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       
       // Update rule in Firestore
       await RulesService.updateRule(currentOrgId, currentProjectId, ruleId, {
-        ...rule,
         appliesTo: {
           ...rule.appliesTo,
           accountIds: updatedAccountIds // Keep as array even if empty (empty = not applied to any account)

@@ -83,7 +83,6 @@ const RulesPage = forwardRef<RulesPageRef, {}>((_, ref) => {
     try {
       const ruleData = {
         name: ruleName.trim(),
-        description: '',
         conditions: conditions.filter(c => c.value !== ''),
         isActive,
         appliesTo: {

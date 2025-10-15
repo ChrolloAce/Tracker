@@ -130,11 +130,37 @@ class RulesService {
     try {
       const ruleRef = doc(db, 'organizations', orgId, 'projects', projectId, 'trackingRules', ruleId);
       
-      // Clean undefined values from updates to prevent Firestore errors
-      const cleanedUpdates: any = { ...updates };
+      // Helper function to remove undefined values recursively
+      const removeUndefined = (obj: any): any => {
+        if (obj === null || obj === undefined) {
+          return undefined;
+        }
+        
+        if (Array.isArray(obj)) {
+          return obj;
+        }
+        
+        if (typeof obj === 'object' && !(obj instanceof Date)) {
+          const cleaned: any = {};
+          for (const [key, value] of Object.entries(obj)) {
+            if (value !== undefined) {
+              const cleanedValue = removeUndefined(value);
+              if (cleanedValue !== undefined) {
+                cleaned[key] = cleanedValue;
+              }
+            }
+          }
+          return Object.keys(cleaned).length > 0 ? cleaned : undefined;
+        }
+        
+        return obj;
+      };
       
-      // Special handling for appliesTo to remove undefined values (but keep empty arrays)
-      if (cleanedUpdates.appliesTo) {
+      // Clean undefined values from updates to prevent Firestore errors
+      const cleanedUpdates: any = removeUndefined(updates);
+      
+      // Special handling for appliesTo to ensure proper structure
+      if (cleanedUpdates?.appliesTo) {
         cleanedUpdates.appliesTo = {
           ...(cleanedUpdates.appliesTo.platforms !== undefined 
             ? { platforms: cleanedUpdates.appliesTo.platforms } 
@@ -143,6 +169,12 @@ class RulesService {
             ? { accountIds: cleanedUpdates.appliesTo.accountIds } 
             : {}),
         };
+      }
+      
+      // If cleanedUpdates is empty or undefined, don't proceed
+      if (!cleanedUpdates || Object.keys(cleanedUpdates).length === 0) {
+        console.warn('⚠️ No valid updates to apply');
+        return;
       }
       
       await updateDoc(ruleRef, {
