@@ -293,7 +293,10 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       : new Date();
     
     return linkClicks.filter(click => {
-      const clickDate = click.timestamp;
+      // Convert Firestore Timestamp to Date if necessary
+      const clickDate = click.timestamp instanceof Date 
+        ? click.timestamp 
+        : (click.timestamp as any)?.toDate?.() || new Date(click.timestamp);
       return clickDate >= startDate && clickDate <= endDate;
     });
   }, [linkClicks, dateFilter, customDateRange]);
@@ -322,9 +325,13 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         const pointDate = new Date(now.getTime() - i * intervalMs);
         const nextPointDate = new Date(pointDate.getTime() + intervalMs);
         
-        const clicksInPeriod = filteredClicks.filter(click => 
-          click.timestamp >= pointDate && click.timestamp < nextPointDate
-        );
+        const clicksInPeriod = filteredClicks.filter(click => {
+          // Convert Firestore Timestamp to Date if necessary
+          const clickDate = click.timestamp instanceof Date 
+            ? click.timestamp 
+            : (click.timestamp as any)?.toDate?.() || new Date(click.timestamp);
+          return clickDate >= pointDate && clickDate < nextPointDate;
+        });
         
         let value = 0;
         if (metric === 'total') {

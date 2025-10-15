@@ -253,10 +253,15 @@ function DashboardPage() {
     const clicksRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'linkClicks');
     
     const unsubClicks = onSnapshot(clicksRef, (snapshot) => {
-      const clicks: LinkClick[] = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as LinkClick));
+      const clicks: LinkClick[] = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          // Convert Firestore Timestamp to Date
+          timestamp: data.timestamp?.toDate?.() || data.timestamp
+        } as LinkClick;
+      });
       
       console.log(`📊 Real-time update: ${clicks.length} link clicks`);
       setLinkClicks(clicks);
