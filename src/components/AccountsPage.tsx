@@ -1186,15 +1186,15 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       );
       setActiveRulesCount(appliedRules.length);
       
-      // Reload videos with updated rules by triggering the useEffect
-      setSelectedAccount({ ...selectedAccount });
+      // Reload videos with updated rules
+      await loadAccountVideos(selectedAccount.id);
       
-      console.log(`✅ Toggled rule "${rule.name}" for @${selectedAccount.username}`);
+      console.log(`✅ Toggled rule "${rule.name}" for @${selectedAccount.username} - Reloading videos...`);
     } catch (error) {
       console.error('Failed to toggle rule:', error);
       alert('Failed to update rule. Please try again.');
     }
-  }, [currentOrgId, currentProjectId, selectedAccount, allRules, accountRules]);
+  }, [currentOrgId, currentProjectId, selectedAccount, allRules, accountRules, loadAccountVideos]);
 
   // Rule creation functions
   const handleShowCreateForm = useCallback(() => {
@@ -1903,13 +1903,15 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                         <Edit2 className="w-3 h-3 text-gray-400 dark:text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </button>
                     )}
-                    <button
-                      onClick={handleOpenRuleModal}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-medium rounded-lg transition-colors border border-white/10"
-                    >
-                      <Plus className="w-3 h-3" />
-                      {activeRulesCount > 0 ? `Manage Rules (${activeRulesCount})` : 'Add Rule'}
-                    </button>
+                    {activeRulesCount === 0 && (
+                      <button
+                        onClick={handleOpenRuleModal}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-medium rounded-lg transition-colors border border-white/10"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Add Rule
+                      </button>
+                    )}
                     {(() => {
                       const creatorName = accountCreatorNames.get(selectedAccount.id);
                       return creatorName ? (
@@ -3032,12 +3034,40 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                       Cancel
                     </button>
                     <button
-                      onClick={() => {
-                        if (selectedCreatorId) {
-                          // TODO: Implement creator attachment logic
-                          console.log('Attaching account to creator:', selectedCreatorId);
-                          setShowAttachCreatorModal(false);
-                          setSelectedCreatorId('');
+                      onClick={async () => {
+                        if (selectedCreatorId && user && currentOrgId && currentProjectId) {
+                          try {
+                            console.log('Attaching account to creator:', selectedCreatorId);
+                            await CreatorLinksService.linkCreatorToAccounts(
+                              currentOrgId,
+                              currentProjectId,
+                              selectedCreatorId,
+                              [selectedAccount.id],
+                              user.uid
+                            );
+                            
+                            // Reload creator names to update UI
+                            const creatorName = await CreatorLinksService.getCreatorNameForAccount(
+                              currentOrgId,
+                              currentProjectId,
+                              selectedAccount.id
+                            );
+                            
+                            if (creatorName) {
+                              setAccountCreatorNames(prev => {
+                                const updated = new Map(prev);
+                                updated.set(selectedAccount.id, creatorName);
+                                return updated;
+                              });
+                            }
+                            
+                            console.log('✅ Account attached to creator successfully');
+                            setShowAttachCreatorModal(false);
+                            setSelectedCreatorId('');
+                          } catch (error) {
+                            console.error('Failed to attach account to creator:', error);
+                            alert('Failed to attach account. Please try again.');
+                          }
                         }
                       }}
                       disabled={!selectedCreatorId}
