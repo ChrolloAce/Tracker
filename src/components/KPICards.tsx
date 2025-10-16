@@ -1031,13 +1031,13 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
           </div>
         </div>
 
-        {/* Delta Badge (if exists) - Tighter "+" alignment */}
+        {/* Delta Badge (if exists) - Tighter "+/-" alignment */}
         {data.delta && data.delta.absoluteValue !== undefined && (
           <div className="absolute bottom-3 right-5">
             <span className={`inline-flex items-baseline text-xs font-semibold px-2 py-1 rounded ${
               data.delta.isPositive ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'
             }`} style={{ letterSpacing: '-0.02em' }}>
-              <span className="mr-0">{data.delta.isPositive ? '+' : ''}</span>
+              <span className="mr-0">{data.delta.isPositive ? '+' : '−'}</span>
               {data.delta.isPercentage 
                 ? `${data.delta.absoluteValue.toFixed(1)}%`
                 : formatDeltaNumber(data.delta.absoluteValue)}
