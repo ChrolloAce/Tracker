@@ -1016,34 +1016,33 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
             {data.label}
           </div>
 
-          {/* Value - Pushed up, smaller font */}
-          <div className="flex flex-col -mt-1">
+          {/* Value Row - Number + Delta Badge aligned horizontally */}
+          <div className="flex items-baseline gap-3 -mt-1">
             <span className={`text-3xl lg:text-4xl font-bold tracking-tight ${data.isEmpty ? 'text-zinc-600' : 'text-white'}`}>
               {data.value}
             </span>
-            {/* Period/Subtitle */}
-            {data.period && (
-              <span className="text-xs text-zinc-500 mt-1.5 flex items-center gap-1">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-zinc-700"></span>
-                {data.period}
+            
+            {/* Delta Badge (if exists) - Aligned with number baseline */}
+            {data.delta && data.delta.absoluteValue !== undefined && (
+              <span className={`inline-flex items-baseline text-xs font-semibold px-2 py-1 rounded ${
+                data.delta.isPositive ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'
+              }`} style={{ letterSpacing: '-0.02em' }}>
+                <span className="mr-0">{data.delta.isPositive ? '+' : '−'}</span>
+                {data.delta.isPercentage 
+                  ? `${data.delta.absoluteValue.toFixed(1)}%`
+                  : formatDeltaNumber(data.delta.absoluteValue)}
               </span>
             )}
           </div>
-        </div>
 
-        {/* Delta Badge (if exists) - Tighter "+/-" alignment */}
-        {data.delta && data.delta.absoluteValue !== undefined && (
-          <div className="absolute bottom-3 right-5">
-            <span className={`inline-flex items-baseline text-xs font-semibold px-2 py-1 rounded ${
-              data.delta.isPositive ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'
-            }`} style={{ letterSpacing: '-0.02em' }}>
-              <span className="mr-0">{data.delta.isPositive ? '+' : '−'}</span>
-              {data.delta.isPercentage 
-                ? `${data.delta.absoluteValue.toFixed(1)}%`
-                : formatDeltaNumber(data.delta.absoluteValue)}
+          {/* Period/Subtitle */}
+          {data.period && (
+            <span className="text-xs text-zinc-500 mt-1.5 flex items-center gap-1">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-zinc-700"></span>
+              {data.period}
             </span>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* CTA Button (if exists) */}
         {!data.delta && data.ctaText && (
@@ -1085,6 +1084,50 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
                     <stop offset="100%" stopColor={colors.stroke} stopOpacity={0} />
                   </linearGradient>
                 </defs>
+                <Tooltip
+                  position={{ y: -80 }}
+                  offset={20}
+                  allowEscapeViewBox={{ x: false, y: true }}
+                  wrapperStyle={{ 
+                    zIndex: 99999,
+                    position: 'fixed'
+                  }}
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      const point = payload[0].payload;
+                      const value = point.value;
+                      const timestamp = point.timestamp;
+                      
+                      // Format date
+                      const date = timestamp ? new Date(timestamp) : null;
+                      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                      const dateStr = date ? `${monthNames[date.getMonth()]} ${date.getDate()}` : '';
+                      
+                      // Format value based on metric type
+                      const formatDisplayNumber = (num: number): string => {
+                        if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+                        if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+                        return num.toLocaleString();
+                      };
+                      
+                      const displayValue = typeof value === 'number' ? formatDisplayNumber(value) : value;
+                      
+                      return (
+                        <div className="bg-[#1a1a1a] backdrop-blur-xl text-white px-4 py-2.5 rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.6)] text-sm border border-white/10 pointer-events-none" style={{ zIndex: 999999 }}>
+                          {dateStr && (
+                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1">
+                              {dateStr}
+                            </p>
+                          )}
+                          <p className="text-base text-white font-bold">
+                            {displayValue}
+                          </p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
                 <Area
                   type="monotoneX"
                   dataKey="value"
