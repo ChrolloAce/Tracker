@@ -1221,14 +1221,27 @@ const KPICard: React.FC<{
             // Filter videos for this specific day
             const dayStart = date ? new Date(date) : null;
             const dayEnd = date ? new Date(date) : null;
-            if (dayStart) dayStart.setHours(0, 0, 0, 0);
+            if (dayStart) {
+              dayStart.setHours(0, 0, 0, 0);
+              console.log('📅 Tooltip Date:', dateStr);
+              console.log('📅 Day Range:', { start: dayStart, end: dayEnd, timestamp });
+            }
             if (dayEnd) dayEnd.setHours(23, 59, 59, 999);
             
             const videosOnDay = submissions.filter((video: VideoSubmission) => {
-              const videoDate = video.dateSubmitted ? new Date(video.dateSubmitted) : null;
-              if (!videoDate || !dayStart || !dayEnd) return false;
-              return videoDate >= dayStart && videoDate <= dayEnd;
+              if (!video.dateSubmitted) return false;
+              
+              const videoDate = new Date(video.dateSubmitted);
+              if (!dayStart || !dayEnd) return false;
+              
+              const matches = videoDate >= dayStart && videoDate <= dayEnd;
+              
+              return matches;
             }).sort((a: VideoSubmission, b: VideoSubmission) => (b.views || 0) - (a.views || 0)).slice(0, 5); // Top 5 videos
+            
+            if (dayStart) {
+              console.log(`📹 Found ${videosOnDay.length} videos for ${dateStr}`, videosOnDay.map(v => ({ title: v.title, date: v.dateSubmitted })));
+            }
             
             return (
               <>
