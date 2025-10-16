@@ -1088,21 +1088,12 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
                   cursor={false}
                   isAnimationActive={false}
                   animationDuration={0}
-                  position={{ y: -60 }}
-                  offset={10}
-                  allowEscapeViewBox={{ x: true, y: true }}
                   wrapperStyle={{ 
                     zIndex: 9999999,
-                    position: 'fixed',
-                    pointerEvents: 'none',
-                    isolation: 'isolate'
+                    pointerEvents: 'none'
                   }}
-                  contentStyle={{
-                    zIndex: 9999999,
-                    position: 'fixed'
-                  }}
-                  content={({ active, payload, coordinate }) => {
-                    if (active && payload && payload.length && coordinate) {
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
                       const point = payload[0].payload;
                       const value = point.value;
                       const timestamp = point.timestamp;
@@ -1125,11 +1116,7 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
                         <div 
                           className="bg-[#1a1a1a] backdrop-blur-xl text-white px-4 py-2.5 rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.6)] text-sm border border-white/10 pointer-events-none" 
                           style={{ 
-                            position: 'fixed',
-                            zIndex: 9999999,
-                            transform: 'translate(-50%, -100%)',
-                            marginTop: '-10px',
-                            isolation: 'isolate'
+                            zIndex: 9999999
                           }}
                         >
                           {dateStr && (
