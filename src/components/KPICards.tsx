@@ -1020,6 +1020,39 @@ const KPICard: React.FC<{
     <div 
       ref={cardRef}
       onClick={onClick}
+      onMouseMove={(e) => {
+        if (!data.sparklineData || data.sparklineData.length === 0 || !cardRef.current) return;
+        
+        const cardRect = cardRef.current.getBoundingClientRect();
+        
+        // Calculate X position within the card
+        const x = e.clientX - cardRect.left;
+        const percentage = x / cardRect.width;
+        
+        // Calculate X position relative to the card (for full-height line)
+        const lineX = x;
+        
+        // Clamp percentage between 0 and 1
+        const clampedPercentage = Math.max(0, Math.min(1, percentage));
+        
+        // Get nearest data point
+        const dataIndex = Math.max(0, Math.min(
+          data.sparklineData.length - 1,
+          Math.round(clampedPercentage * (data.sparklineData.length - 1))
+        ));
+        
+        const point = data.sparklineData[dataIndex];
+        
+        if (point) {
+          setTooltipData({
+            x: e.clientX,
+            y: e.clientY,
+            point: point,
+            lineX: lineX // Store X position relative to card for full-height line
+          });
+        }
+      }}
+      onMouseLeave={() => setTooltipData(null)}
       className="group relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 cursor-pointer"
       style={{ minHeight: '180px', overflow: 'visible' }}
     >
@@ -1112,42 +1145,7 @@ const KPICard: React.FC<{
           
           {/* Line Chart - More vertical space for amplitude */}
           <div className="absolute inset-0" style={{ padding: '0' }}>
-            <div 
-              onMouseMove={(e) => {
-                if (!data.sparklineData || data.sparklineData.length === 0 || !cardRef.current) return;
-                
-                const rect = e.currentTarget.getBoundingClientRect();
-                const cardRect = cardRef.current.getBoundingClientRect();
-                
-                const x = e.clientX - rect.left;
-                const percentage = x / rect.width;
-                
-                // Calculate X position relative to the card (for full-height line)
-                const lineX = e.clientX - cardRect.left;
-                
-                // Clamp percentage between 0 and 1
-                const clampedPercentage = Math.max(0, Math.min(1, percentage));
-                
-                // Get nearest data point
-                const dataIndex = Math.max(0, Math.min(
-                  data.sparklineData.length - 1,
-                  Math.round(clampedPercentage * (data.sparklineData.length - 1))
-                ));
-                
-                const point = data.sparklineData[dataIndex];
-                
-                if (point) {
-                  setTooltipData({
-                    x: e.clientX,
-                    y: e.clientY,
-                    point: point,
-                    lineX: lineX // Store X position relative to card for full-height line
-                  });
-                }
-              }}
-              onMouseLeave={() => setTooltipData(null)}
-              style={{ width: '100%', height: '100%', position: 'relative' }}
-            >
+            <div style={{ width: '100%', height: '100%', position: 'relative' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart 
                   data={data.sparklineData}
@@ -1197,8 +1195,8 @@ const KPICard: React.FC<{
           style={{ 
             position: 'fixed',
             left: `${tooltipData.x}px`,
-            top: `${tooltipData.y - 80}px`,
-            transform: 'translate(-50%, -100%)',
+            top: `${tooltipData.y + 20}px`,
+            transform: 'translate(-50%, 0)',
             zIndex: 999999999,
             width: '400px',
             maxHeight: '500px',
