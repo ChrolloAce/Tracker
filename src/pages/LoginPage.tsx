@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useSearchParams } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, Link2, Slack, Chrome } from 'lucide-react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Mail, Lock, Eye, EyeOff, Link2, Slack, Chrome, ChevronLeft } from 'lucide-react';
 import blackLogo from '../components/blacklogo.png';
 import TeamInvitationService from '../services/TeamInvitationService';
 
 const LoginPage: React.FC = () => {
   const { user, signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -115,9 +116,18 @@ const LoginPage: React.FC = () => {
       <div className="max-w-6xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden grid md:grid-cols-2">
         
         {/* Left Column - Login Form */}
-        <div className="p-12">
+        <div className="p-12 relative">
+          {/* Back Button */}
+          <button
+            onClick={() => navigate('/')}
+            className="absolute top-6 left-6 p-2 hover:bg-gray-100 rounded-full transition-colors group"
+            aria-label="Go back"
+          >
+            <ChevronLeft className="w-6 h-6 text-gray-600 group-hover:text-gray-900" />
+          </button>
+
           {/* Logo & Branding */}
-          <div className="mb-8">
+          <div className="mb-8 mt-4">
             <img src={blackLogo} alt="ViewTrack" className="h-10 w-auto mb-2" />
           </div>
 
