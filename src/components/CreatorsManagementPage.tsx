@@ -9,8 +9,9 @@ import FirestoreDataService from '../services/FirestoreDataService';
 import DateFilterService from '../services/DateFilterService';
 import TeamInvitationService from '../services/TeamInvitationService';
 import { DateFilterType } from './DateRangeFilter';
-import { User, TrendingUp, Plus, Mail, Clock, X, FileText } from 'lucide-react';
+import { User, TrendingUp, Plus, Mail, Clock, X, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from './ui/Button';
+import clsx from 'clsx';
 import CreateCreatorModal from './CreateCreatorModal';
 import EditCreatorModal from './EditCreatorModal';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
@@ -47,6 +48,10 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   const [linkingCreator, setLinkingCreator] = useState<OrgMember | null>(null);
   const [editingPaymentCreator, setEditingPaymentCreator] = useState<OrgMember | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     loadData();
@@ -292,6 +297,11 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   }
 
   const totalEarnings = Array.from(calculatedEarnings.values()).reduce((sum, earnings) => sum + earnings, 0);
+  
+  // Pagination calculations
+  const totalPages = Math.ceil(creators.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedCreators = creators.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <div className="space-y-6">
@@ -376,7 +386,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {creators.map((creator) => {
+                {paginatedCreators.map((creator) => {
                   const profile = creatorProfiles.get(creator.userId);
                   
                   return (
@@ -459,6 +469,45 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="border-t border-white/5 px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-400">
+                  Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, creators.length)} of {creators.length} creators
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className={clsx(
+                      'px-3 py-2 rounded-lg transition-colors flex items-center gap-2',
+                      currentPage === 1
+                        ? 'bg-zinc-800/50 text-gray-600 cursor-not-allowed'
+                        : 'bg-zinc-800 text-white hover:bg-zinc-700'
+                    )}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className={clsx(
+                      'px-3 py-2 rounded-lg transition-colors flex items-center gap-2',
+                      currentPage === totalPages
+                        ? 'bg-zinc-800/50 text-gray-600 cursor-not-allowed'
+                        : 'bg-zinc-800 text-white hover:bg-zinc-700'
+                    )}
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
