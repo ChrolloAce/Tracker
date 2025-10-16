@@ -1187,21 +1187,31 @@ const KPICard: React.FC<{
       )}
 
       {/* Portal Tooltip - Rendered at document.body level */}
-      {tooltipData && createPortal(
-        <div 
-          className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10" 
-          style={{ 
-            position: 'fixed',
-            left: `${tooltipData.x}px`,
-            top: `${tooltipData.y + 20}px`,
-            transform: 'translate(-50%, 0)',
-            zIndex: 999999999,
-            width: '400px',
-            maxHeight: '500px',
-            pointerEvents: 'none'
-          }}
-        >
-          {(() => {
+      {tooltipData && (() => {
+        // Smart positioning: left by default, flip to right if too close to left edge
+        const tooltipWidth = 400;
+        const margin = 20;
+        const shouldFlipRight = tooltipData.x < (tooltipWidth + margin);
+        
+        const leftPosition = shouldFlipRight 
+          ? tooltipData.x + margin  // Position to the right
+          : tooltipData.x - tooltipWidth - margin;  // Position to the left
+        
+        return createPortal(
+          <div 
+            className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10" 
+            style={{ 
+              position: 'fixed',
+              left: `${leftPosition}px`,
+              top: `${tooltipData.y}px`,
+              transform: 'translateY(-50%)',
+              zIndex: 999999999,
+              width: '400px',
+              maxHeight: '500px',
+              pointerEvents: 'none'
+            }}
+          >
+            {(() => {
             const point = tooltipData.point;
             const value = point.value;
             const timestamp = point.timestamp;
@@ -1228,6 +1238,7 @@ const KPICard: React.FC<{
               dayStart.setHours(0, 0, 0, 0);
               console.log('📅 Tooltip Date:', dateStr);
               console.log('📅 Day Range:', { start: dayStart, end: dayEnd, timestamp });
+              console.log('📅 Date object:', date);
             }
             if (dayEnd) dayEnd.setHours(23, 59, 59, 999);
             
@@ -1237,13 +1248,33 @@ const KPICard: React.FC<{
               const videoDate = new Date(video.dateSubmitted);
               if (!dayStart || !dayEnd) return false;
               
+              // Check if video date is within the day range
               const matches = videoDate >= dayStart && videoDate <= dayEnd;
+              
+              // Also check upload date as a fallback
+              if (!matches && video.uploadDate) {
+                const uploadDate = new Date(video.uploadDate);
+                return uploadDate >= dayStart && uploadDate <= dayEnd;
+              }
               
               return matches;
             }).sort((a: VideoSubmission, b: VideoSubmission) => (b.views || 0) - (a.views || 0)).slice(0, 5); // Top 5 videos
             
             if (dayStart) {
-              console.log(`📹 Found ${videosOnDay.length} videos for ${dateStr}`, videosOnDay.map(v => ({ title: v.title, date: v.dateSubmitted })));
+              console.log(`📹 Found ${videosOnDay.length} videos for ${dateStr}`);
+              console.log('📹 All submissions count:', submissions.length);
+              console.log('📹 Sample video dates:', submissions.slice(0, 3).map(v => ({ 
+                title: v.title?.substring(0, 30), 
+                dateSubmitted: v.dateSubmitted,
+                uploadDate: v.uploadDate 
+              })));
+              if (videosOnDay.length > 0) {
+                console.log('📹 Matched videos:', videosOnDay.map(v => ({ 
+                  title: v.title?.substring(0, 30), 
+                  date: v.dateSubmitted,
+                  views: v.views 
+                })));
+              }
             }
             
             return (
@@ -1342,9 +1373,10 @@ const KPICard: React.FC<{
               </>
             );
           })()}
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body
+        );
+      })()}
     </div>
   );
 };
