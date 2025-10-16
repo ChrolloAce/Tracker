@@ -1092,14 +1092,17 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
                   offset={10}
                   allowEscapeViewBox={{ x: true, y: true }}
                   wrapperStyle={{ 
-                    zIndex: 999999,
-                    pointerEvents: 'none'
+                    zIndex: 9999999,
+                    position: 'fixed',
+                    pointerEvents: 'none',
+                    isolation: 'isolate'
                   }}
                   contentStyle={{
-                    zIndex: 999999
+                    zIndex: 9999999,
+                    position: 'fixed'
                   }}
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
+                  content={({ active, payload, coordinate }) => {
+                    if (active && payload && payload.length && coordinate) {
                       const point = payload[0].payload;
                       const value = point.value;
                       const timestamp = point.timestamp;
@@ -1122,8 +1125,11 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
                         <div 
                           className="bg-[#1a1a1a] backdrop-blur-xl text-white px-4 py-2.5 rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.6)] text-sm border border-white/10 pointer-events-none" 
                           style={{ 
-                            zIndex: 999999,
-                            position: 'relative'
+                            position: 'fixed',
+                            zIndex: 9999999,
+                            transform: 'translate(-50%, -100%)',
+                            marginTop: '-10px',
+                            isolation: 'isolate'
                           }}
                         >
                           {dateStr && (
@@ -1131,7 +1137,7 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
                               {dateStr}
                             </p>
                           )}
-                          <p className="text-base text-white font-bold">
+                          <p className="text-base text-white font-bold whitespace-nowrap">
                             {displayValue}
                           </p>
                         </div>
