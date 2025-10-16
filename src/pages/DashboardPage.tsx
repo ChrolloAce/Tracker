@@ -791,8 +791,8 @@ function DashboardPage() {
           'ml-64': !isSidebarCollapsed,
           'ml-16': isSidebarCollapsed,
         }
-      )}>
-        <div className="max-w-7xl mx-auto px-6 py-8">
+      )} style={{ overflowX: 'hidden', overflowY: 'auto' }}>
+        <div className="max-w-7xl mx-auto px-6 py-8" style={{ overflow: 'visible' }}>
           {/* Dashboard Tab */}
           <div className={activeTab === 'dashboard' ? '' : 'hidden'}>
             {isLoadingData ? (
