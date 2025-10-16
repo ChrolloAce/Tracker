@@ -994,7 +994,7 @@ const KPICard: React.FC<{
   onDateFilterChange?: (filter: DateFilterType, customRange?: { startDate: Date; endDate: Date }) => void;
 }> = ({ data, onClick, submissions = [], onDateFilterChange }) => {
   // Tooltip state for Portal rendering
-  const [tooltipData, setTooltipData] = useState<{ x: number; y: number; point: any } | null>(null);
+  const [tooltipData, setTooltipData] = useState<{ x: number; y: number; point: any; lineX: number } | null>(null);
   
   const formatDeltaNumber = (num: number): string => {
     const absNum = Math.abs(num);
@@ -1096,22 +1096,51 @@ const KPICard: React.FC<{
           <div className="absolute inset-0" style={{ padding: '0' }}>
             <div 
               onMouseMove={(e) => {
+                if (!data.sparklineData || data.sparklineData.length === 0) return;
+                
                 const rect = e.currentTarget.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const percentage = x / rect.width;
-                const dataIndex = Math.floor(percentage * (data.sparklineData?.length || 0));
                 
-                if (data.sparklineData && data.sparklineData[dataIndex]) {
+                // Clamp percentage between 0 and 1
+                const clampedPercentage = Math.max(0, Math.min(1, percentage));
+                
+                // Get nearest data point
+                const dataIndex = Math.max(0, Math.min(
+                  data.sparklineData.length - 1,
+                  Math.round(clampedPercentage * (data.sparklineData.length - 1))
+                ));
+                
+                const point = data.sparklineData[dataIndex];
+                
+                if (point) {
                   setTooltipData({
                     x: e.clientX,
                     y: e.clientY,
-                    point: data.sparklineData[dataIndex]
+                    point: point,
+                    lineX: x // Store relative X position for the vertical line
                   });
                 }
               }}
               onMouseLeave={() => setTooltipData(null)}
-              style={{ width: '100%', height: '100%' }}
+              style={{ width: '100%', height: '100%', position: 'relative' }}
             >
+              {/* Vertical cursor line */}
+              {tooltipData && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: `${tooltipData.lineX}px`,
+                    top: 0,
+                    bottom: 0,
+                    width: '2px',
+                    background: `linear-gradient(to bottom, ${colors.stroke}60 0%, ${colors.stroke}40 50%, ${colors.stroke}20 100%)`,
+                    pointerEvents: 'none',
+                    zIndex: 10
+                  }}
+                />
+              )}
+              
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart 
                   data={data.sparklineData}
