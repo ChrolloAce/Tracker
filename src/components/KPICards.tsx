@@ -1024,12 +1024,12 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
             
             {/* Delta Badge (if exists) - Aligned with number baseline */}
             {data.delta && data.delta.absoluteValue !== undefined && (
-              <span className={`inline-flex items-baseline text-xs font-semibold px-2 py-1 rounded ${
-                data.delta.isPositive ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'
+              <span className={`inline-flex items-baseline text-xs font-semibold ${
+                data.delta.isPositive ? 'text-green-400' : 'text-red-400'
               }`} style={{ letterSpacing: '-0.02em' }}>
                 <span className="mr-0">{data.delta.isPositive ? '+' : '−'}</span>
                 {data.delta.isPercentage 
-                  ? `${data.delta.absoluteValue.toFixed(1)}%`
+                  ? `${Math.abs(data.delta.absoluteValue).toFixed(1)}%`
                   : formatDeltaNumber(data.delta.absoluteValue)}
               </span>
             )}
@@ -1085,12 +1085,18 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
                   </linearGradient>
                 </defs>
                 <Tooltip
-                  position={{ y: -80 }}
-                  offset={20}
-                  allowEscapeViewBox={{ x: false, y: true }}
+                  cursor={false}
+                  isAnimationActive={false}
+                  animationDuration={0}
+                  position={{ y: -60 }}
+                  offset={10}
+                  allowEscapeViewBox={{ x: true, y: true }}
                   wrapperStyle={{ 
-                    zIndex: 99999,
-                    position: 'fixed'
+                    zIndex: 999999,
+                    pointerEvents: 'none'
+                  }}
+                  contentStyle={{
+                    zIndex: 999999
                   }}
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
@@ -1113,7 +1119,13 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
                       const displayValue = typeof value === 'number' ? formatDisplayNumber(value) : value;
                       
                       return (
-                        <div className="bg-[#1a1a1a] backdrop-blur-xl text-white px-4 py-2.5 rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.6)] text-sm border border-white/10 pointer-events-none" style={{ zIndex: 999999 }}>
+                        <div 
+                          className="bg-[#1a1a1a] backdrop-blur-xl text-white px-4 py-2.5 rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.6)] text-sm border border-white/10 pointer-events-none" 
+                          style={{ 
+                            zIndex: 999999,
+                            position: 'relative'
+                          }}
+                        >
                           {dateStr && (
                             <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1">
                               {dateStr}
