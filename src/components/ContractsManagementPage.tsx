@@ -11,12 +11,10 @@ import {
   Clock, 
   X,
   Search,
-  Filter,
-  ChevronLeft,
-  ChevronRight
+  Filter
 } from 'lucide-react';
 import { Button } from './ui/Button';
-import clsx from 'clsx';
+import Pagination from './ui/Pagination';
 import CreateContractModal from './CreateContractModal';
 
 const ContractsManagementPage: React.FC = () => {
@@ -26,10 +24,9 @@ const ContractsManagementPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'signed' | 'expired'>('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
-  
-  const itemsPerPage = 10;
 
   useEffect(() => {
     loadContracts();
@@ -136,29 +133,10 @@ const ContractsManagementPage: React.FC = () => {
       {/* Header */}
       <div className="flex-shrink-0 border-b border-gray-800 bg-[#0A0A0A]">
         <div className="px-6 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-                <FileText className="w-6 h-6" />
-                Contracts
-              </h1>
-              <p className="text-sm text-gray-400 mt-1">
-                Manage creator contracts and track signatures
-              </p>
-            </div>
-            <Button
-              onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Create Contract
-            </Button>
-          </div>
-
           {/* Filters */}
           <div className="flex gap-3">
             {/* Search */}
-            <div className="flex-1 relative">
+            <div className="relative w-80">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
@@ -172,18 +150,19 @@ const ContractsManagementPage: React.FC = () => {
               />
             </div>
 
-            {/* Status Filter */}
+            {/* Status Filter - Icon Only */}
             <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none z-10" />
               <select
                 value={statusFilter}
                 onChange={(e) => {
                   setStatusFilter(e.target.value as any);
                   setCurrentPage(1);
                 }}
-                className="pl-10 pr-8 py-2 bg-[#161616] border border-gray-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/20 appearance-none cursor-pointer"
+                className="pl-10 pr-3 py-2 bg-[#161616] border border-gray-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/20 appearance-none cursor-pointer"
+                title="Filter by status"
               >
-                <option value="all">All Status</option>
+                <option value="all">All</option>
                 <option value="pending">Pending</option>
                 <option value="signed">Signed</option>
                 <option value="expired">Expired</option>
@@ -315,43 +294,29 @@ const ContractsManagementPage: React.FC = () => {
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex-shrink-0 border-t border-gray-800 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-400">
-              Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredContracts.length)} of {filteredContracts.length} contracts
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className={clsx(
-                  'px-3 py-2 rounded-lg transition-colors flex items-center gap-2',
-                  currentPage === 1
-                    ? 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
-                    : 'bg-[#161616] text-white hover:bg-white/10'
-                )}
-              >
-                <ChevronLeft className="w-4 h-4" />
-                Previous
-              </button>
-              <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className={clsx(
-                  'px-3 py-2 rounded-lg transition-colors flex items-center gap-2',
-                  currentPage === totalPages
-                    ? 'bg-gray-800/50 text-gray-600 cursor-not-allowed'
-                    : 'bg-[#161616] text-white hover:bg-white/10'
-                )}
-              >
-                Next
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={filteredContracts.length}
+        itemsPerPage={itemsPerPage}
+        onPageChange={(page) => {
+          setCurrentPage(page);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        onItemsPerPageChange={(newItemsPerPage) => {
+          setItemsPerPage(newItemsPerPage);
+          setCurrentPage(1);
+        }}
+      />
+
+      {/* Floating Action Button - Create Contract */}
+      <button
+        onClick={() => setShowCreateModal(true)}
+        className="fixed bottom-8 right-8 w-14 h-14 bg-white text-black rounded-full shadow-2xl hover:bg-gray-100 transition-all duration-200 flex items-center justify-center z-40 hover:scale-110"
+        title="Create Contract"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
 
       {/* Create Contract Modal */}
       {showCreateModal && (
