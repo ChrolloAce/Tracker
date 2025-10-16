@@ -76,8 +76,19 @@ const ContractsManagementPage: React.FC = () => {
   };
 
   const handleDownloadContract = (contract: ShareableContract) => {
-    // Just open the contract in a new tab - user can save as PDF from browser
-    window.open(contract.creatorLink, '_blank');
+    // Open contract in new window with print parameter
+    const printUrl = `${contract.creatorLink}${contract.creatorLink.includes('?') ? '&' : '?'}print=true`;
+    const printWindow = window.open(printUrl, '_blank');
+    
+    if (printWindow) {
+      // Wait for the page to fully load, then trigger print
+      printWindow.addEventListener('load', () => {
+        setTimeout(() => {
+          printWindow.print();
+        }, 500); // Small delay to ensure all content (images, signatures) are rendered
+      });
+    }
+    
     setOpenMenuId(null);
   };
 

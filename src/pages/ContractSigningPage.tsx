@@ -10,6 +10,7 @@ const ContractSigningPage: React.FC = () => {
   const { contractId } = useParams<{ contractId: string }>();
   const [searchParams] = useSearchParams();
   const roleFromUrl = searchParams.get('role') as 'creator' | 'company' | null;
+  const printMode = searchParams.get('print') === 'true';
   
   const [contract, setContract] = useState<ShareableContract | null>(null);
   const [loading, setLoading] = useState(true);
@@ -22,6 +23,15 @@ const ContractSigningPage: React.FC = () => {
   useEffect(() => {
     loadContract();
   }, [contractId]);
+
+  // Auto-trigger print dialog when in print mode
+  useEffect(() => {
+    if (printMode && contract && !loading) {
+      setTimeout(() => {
+        window.print();
+      }, 500);
+    }
+  }, [printMode, contract, loading]);
 
   const loadContract = async () => {
     if (!contractId) {
@@ -115,9 +125,46 @@ const ContractSigningPage: React.FC = () => {
   const canCompanySign = !contract.companySignature;
 
   return (
+    <>
+      {/* Print Styles */}
+      <style>{`
+        @media print {
+          body {
+            background: white !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+          .print-contract {
+            background: white !important;
+            color: black !important;
+            padding: 40px !important;
+            max-width: 100% !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
+          .print-contract * {
+            color: black !important;
+            background: transparent !important;
+          }
+          .print-contract h1, .print-contract h2, .print-contract h3 {
+            color: black !important;
+          }
+          .print-contract img {
+            max-height: 80px !important;
+            display: block !important;
+          }
+          .signature-image {
+            background: white !important;
+            border: 1px solid #ddd !important;
+            padding: 8px !important;
+          }
+        }
+      `}</style>
+
     <div className="min-h-screen bg-black">
       {/* Header */}
-      <div className="bg-[#161616] border-b border-gray-800">
+      <div className="bg-[#161616] border-b border-gray-800 no-print">
         <div className="max-w-6xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -144,7 +191,7 @@ const ContractSigningPage: React.FC = () => {
       <div className="max-w-6xl mx-auto p-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Contract Document */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 print-contract">
             <div className="bg-[#161616] border border-gray-800 rounded-xl p-8 text-white">
               {/* Contract Header */}
               <div className="border-b-2 border-white/20 pb-4 mb-6">
@@ -211,7 +258,7 @@ const ContractSigningPage: React.FC = () => {
                             <img 
                               src={contract.creatorSignature.signatureData} 
                               alt="Creator Signature" 
-                              className="max-w-full h-auto max-h-24 bg-black rounded px-2 py-1"
+                              className="max-w-full h-auto max-h-24 bg-black rounded px-2 py-1 signature-image"
                             />
                           </div>
                         )}
@@ -243,7 +290,7 @@ const ContractSigningPage: React.FC = () => {
                             <img 
                               src={contract.companySignature.signatureData} 
                               alt="Company Signature" 
-                              className="max-w-full h-auto max-h-24 bg-black rounded px-2 py-1"
+                              className="max-w-full h-auto max-h-24 bg-black rounded px-2 py-1 signature-image"
                             />
                           </div>
                         )}
@@ -266,7 +313,7 @@ const ContractSigningPage: React.FC = () => {
           </div>
 
           {/* Signing Panel */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 no-print">
             <div className="bg-[#161616] border border-gray-800 rounded-xl p-6 sticky top-6">
               <h3 className="text-lg font-semibold text-white mb-4">Sign Contract</h3>
 
@@ -403,6 +450,7 @@ const ContractSigningPage: React.FC = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 
