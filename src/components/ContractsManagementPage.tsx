@@ -13,7 +13,6 @@ import {
   Search,
   Filter
 } from 'lucide-react';
-import { Button } from './ui/Button';
 import Pagination from './ui/Pagination';
 import CreateContractModal from './CreateContractModal';
 
@@ -129,112 +128,109 @@ const ContractsManagementPage: React.FC = () => {
   }
 
   return (
-    <div className="h-full flex flex-col bg-[#0A0A0A]">
-      {/* Header */}
-      <div className="flex-shrink-0 border-b border-gray-800 bg-[#0A0A0A]">
-        <div className="px-6 py-4">
-          {/* Filters */}
-          <div className="flex gap-3">
-            {/* Search */}
-            <div className="relative w-80">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search by creator name or email..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="w-full pl-10 pr-4 py-2 bg-[#161616] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/20"
-              />
-            </div>
+    <>
+      {/* Filters Bar */}
+      <div className="flex gap-3 mb-6">
+        {/* Search */}
+        <div className="relative w-80">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by creator name or email..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full pl-10 pr-4 py-2 bg-[#161616] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/20"
+          />
+        </div>
 
-            {/* Status Filter - Icon Only */}
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none z-10" />
-              <select
-                value={statusFilter}
-                onChange={(e) => {
-                  setStatusFilter(e.target.value as any);
-                  setCurrentPage(1);
-                }}
-                className="pl-10 pr-3 py-2 bg-[#161616] border border-gray-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/20 appearance-none cursor-pointer"
-                title="Filter by status"
-              >
-                <option value="all">All</option>
-                <option value="pending">Pending</option>
-                <option value="signed">Signed</option>
-                <option value="expired">Expired</option>
-              </select>
-            </div>
-          </div>
+        {/* Status Filter - Icon Only */}
+        <div className="relative">
+          <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none z-10" />
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value as any);
+              setCurrentPage(1);
+            }}
+            className="pl-10 pr-3 py-2 bg-[#161616] border border-gray-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-white/20 appearance-none cursor-pointer"
+            title="Filter by status"
+          >
+            <option value="all">All</option>
+            <option value="pending">Pending</option>
+            <option value="signed">Signed</option>
+            <option value="expired">Expired</option>
+          </select>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="flex-1 overflow-auto px-6 py-4">
-        {paginatedContracts.length === 0 ? (
-          <div className="text-center py-12">
-            <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-white mb-2">No contracts found</h3>
-            <p className="text-gray-400 text-sm mb-4">
-              {searchTerm || statusFilter !== 'all'
-                ? 'Try adjusting your filters'
-                : 'Create your first contract to get started'}
-            </p>
-            {!searchTerm && statusFilter === 'all' && (
-              <Button onClick={() => setShowCreateModal(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Contract
-              </Button>
-            )}
+      {/* Contracts List - Dashboard Style */}
+      {filteredContracts.length === 0 ? (
+        <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-12 text-center">
+          <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-white mb-2">No contracts found</h3>
+          <p className="text-gray-400">
+            {searchTerm || statusFilter !== 'all'
+              ? 'Try adjusting your filters'
+              : 'Create your first contract to get started'}
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg overflow-hidden">
+          {/* Table Header */}
+          <div className="px-6 py-5 border-b border-white/5 bg-zinc-900/40 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-white">
+              All Contracts ({filteredContracts.length})
+            </h2>
           </div>
-        ) : (
-          <div className="bg-[#161616] rounded-xl border border-gray-800 overflow-hidden">
+
+          {/* Table */}
+          <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-800">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                <tr className="border-b border-white/5">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Creator
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Contract Period
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Created
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Links
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800">
+              <tbody className="divide-y divide-white/5">
                 {paginatedContracts.map((contract) => (
-                  <tr key={contract.id} className="hover:bg-white/5 transition-colors">
-                    <td className="px-4 py-4">
+                  <tr key={contract.id} className="hover:bg-white/5 transition-colors group cursor-pointer">
+                    <td className="px-6 py-4">
                       <div>
-                        <div className="text-sm font-medium text-white">{contract.creatorName}</div>
+                        <div className="text-sm font-semibold text-white">{contract.creatorName}</div>
                         <div className="text-xs text-gray-400">{contract.creatorEmail}</div>
                       </div>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-6 py-4">
                       {getStatusBadge(contract.status)}
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-6 py-4">
                       <div className="text-sm text-white">
                         {formatDate(contract.contractStartDate)} - {formatDate(contract.contractEndDate)}
                       </div>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-6 py-4">
                       <div className="text-sm text-gray-400">
                         {contract.createdAt?.toDate?.()?.toLocaleDateString() || 'N/A'}
                       </div>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-6 py-4">
                       <div className="flex gap-2">
                         {/* Creator Link */}
                         <div className="flex gap-1">
@@ -290,24 +286,24 @@ const ContractsManagementPage: React.FC = () => {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
-
-      {/* Pagination */}
-      <Pagination
-        currentPage={currentPage}
-        totalPages={totalPages}
-        totalItems={filteredContracts.length}
-        itemsPerPage={itemsPerPage}
-        onPageChange={(page) => {
-          setCurrentPage(page);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
-        onItemsPerPageChange={(newItemsPerPage) => {
-          setItemsPerPage(newItemsPerPage);
-          setCurrentPage(1);
-        }}
-      />
+          
+          {/* Pagination - Inside Container */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredContracts.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={(page) => {
+              setCurrentPage(page);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            onItemsPerPageChange={(newItemsPerPage) => {
+              setItemsPerPage(newItemsPerPage);
+              setCurrentPage(1);
+            }}
+          />
+        </div>
+      )}
 
       {/* Floating Action Button - Create Contract */}
       <button
@@ -328,7 +324,7 @@ const ContractsManagementPage: React.FC = () => {
           }}
         />
       )}
-    </div>
+    </>
   );
 };
 
