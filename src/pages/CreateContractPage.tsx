@@ -19,6 +19,7 @@ const CreateContractPage: React.FC = () => {
   const [contractNotes, setContractNotes] = useState('');
   const [initialContractNotes, setInitialContractNotes] = useState('');
   const [paymentStructureName, setPaymentStructureName] = useState('');
+  const [companyName, setCompanyName] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingCreators, setLoadingCreators] = useState(true);
   const [showChangeTemplateModal, setShowChangeTemplateModal] = useState(false);
@@ -47,6 +48,7 @@ const CreateContractPage: React.FC = () => {
           setInitialContractNotes(draft.contractNotes);
         }
         if (draft.paymentStructureName) setPaymentStructureName(draft.paymentStructureName);
+        if (draft.companyName) setCompanyName(draft.companyName);
       } catch (error) {
         console.error('Error loading contract draft:', error);
       }
@@ -55,18 +57,19 @@ const CreateContractPage: React.FC = () => {
 
   // Save draft to localStorage whenever fields change
   useEffect(() => {
-    if (selectedCreatorId || contractStartDate || contractEndDate || contractNotes || paymentStructureName) {
+    if (selectedCreatorId || contractStartDate || contractEndDate || contractNotes || paymentStructureName || companyName) {
       const draft = {
         selectedCreatorId,
         contractStartDate,
         contractEndDate,
         contractNotes,
         paymentStructureName,
+        companyName,
         timestamp: Date.now(),
       };
       localStorage.setItem(getDraftKey(), JSON.stringify(draft));
     }
-  }, [selectedCreatorId, contractStartDate, contractEndDate, contractNotes, paymentStructureName]);
+  }, [selectedCreatorId, contractStartDate, contractEndDate, contractNotes, paymentStructureName, companyName]);
 
   useEffect(() => {
     loadCreators();
@@ -224,7 +227,7 @@ const CreateContractPage: React.FC = () => {
             </div>
             <Button
               onClick={handleCreate}
-              disabled={loading || !selectedCreatorId || !contractStartDate || !contractEndDate || !contractNotes}
+              disabled={loading || !selectedCreatorId || !contractStartDate || !contractNotes || !companyName}
               className="flex items-center gap-2"
             >
               {loading ? (
@@ -253,6 +256,19 @@ const CreateContractPage: React.FC = () => {
               <h2 className="text-lg font-semibold mb-4">Contract Details</h2>
               
               <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Company Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    placeholder="Your company name"
+                    className="w-full px-4 py-2.5 bg-[#161616] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/20"
+                  />
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Select Creator *
@@ -348,12 +364,78 @@ const CreateContractPage: React.FC = () => {
           </div>
 
           {/* Right Column - Preview */}
-          <div className="bg-zinc-900/60 backdrop-blur border border-white/5 rounded-xl p-6">
-            <h2 className="text-lg font-semibold mb-4">Preview</h2>
-            <div className="prose prose-invert prose-sm max-w-none">
-              <div className="text-gray-300 whitespace-pre-wrap">
-                {contractNotes || <span className="text-gray-500">Contract preview will appear here...</span>}
+          <div className="bg-zinc-900/60 backdrop-blur border border-white/5 rounded-xl p-6 h-fit sticky top-24">
+            <h2 className="text-lg font-semibold mb-4">Contract Preview</h2>
+            <div className="bg-white text-black p-8 rounded-lg shadow-lg min-h-[600px]">
+              {/* Contract Header */}
+              <div className="mb-8 pb-6 border-b-2 border-gray-300">
+                <h1 className="text-2xl font-bold mb-4">
+                  {companyName || '[Company Name]'}
+                </h1>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="font-semibold">Contract With:</span>
+                    <span>{creators.find(c => c.userId === selectedCreatorId)?.displayName || '[Creator Name]'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-semibold">Date Created:</span>
+                    <span>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-semibold">Start Date:</span>
+                    <span>{contractStartDate ? new Date(contractStartDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '[Start Date]'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-semibold">End Date:</span>
+                    <span>{contractEndDate ? new Date(contractEndDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Until further notice'}</span>
+                  </div>
+                  {paymentStructureName && (
+                    <div className="flex justify-between">
+                      <span className="font-semibold">Payment Structure:</span>
+                      <span>{paymentStructureName}</span>
+                    </div>
+                  )}
+                </div>
               </div>
+
+              {/* Contract Terms */}
+              <div className="prose prose-sm max-w-none">
+                {contractNotes ? (
+                  <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
+                    {contractNotes}
+                  </div>
+                ) : (
+                  <div className="text-gray-400 italic">
+                    Contract terms and conditions will appear here...
+                  </div>
+                )}
+              </div>
+
+              {/* Signature Section Preview */}
+              {contractNotes && (
+                <div className="mt-12 pt-6 border-t-2 border-gray-300">
+                  <div className="grid grid-cols-2 gap-8">
+                    <div>
+                      <p className="text-sm font-semibold mb-4">Creator Signature:</p>
+                      <div className="border-t-2 border-gray-400 pt-2">
+                        <p className="text-xs text-gray-600">Signature</p>
+                      </div>
+                      <div className="mt-4 border-t border-gray-400 pt-2">
+                        <p className="text-xs text-gray-600">Date</p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold mb-4">Company Representative:</p>
+                      <div className="border-t-2 border-gray-400 pt-2">
+                        <p className="text-xs text-gray-600">Signature</p>
+                      </div>
+                      <div className="mt-4 border-t border-gray-400 pt-2">
+                        <p className="text-xs text-gray-600">Date</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
