@@ -76,19 +76,10 @@ const ContractsManagementPage: React.FC = () => {
   };
 
   const handleDownloadContract = (contract: ShareableContract) => {
-    // Open contract in new window with print parameter
+    // Open contract page with auto-print enabled
+    // The ContractSigningPage already has print optimization built in
     const printUrl = `${contract.creatorLink}${contract.creatorLink.includes('?') ? '&' : '?'}print=true`;
-    const printWindow = window.open(printUrl, '_blank');
-    
-    if (printWindow) {
-      // Wait for the page to fully load, then trigger print
-      printWindow.addEventListener('load', () => {
-        setTimeout(() => {
-          printWindow.print();
-        }, 500); // Small delay to ensure all content (images, signatures) are rendered
-      });
-    }
-    
+    window.open(printUrl, '_blank');
     setOpenMenuId(null);
   };
 
