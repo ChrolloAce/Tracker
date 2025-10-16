@@ -449,16 +449,30 @@ const KPICards: React.FC<KPICardsProps> = ({
         
         if (metric === 'videos') {
           // For published videos: count how many videos were published IN THIS INTERVAL
+          // Use local date comparison to avoid timezone offset issues
           const videosPublishedInInterval = submissions.filter(v => {
             const uploadDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
-            return uploadDate >= pointDate && uploadDate < nextPointDate;
+            
+            // Normalize to local date (strip time) for accurate day comparison
+            const uploadDateLocal = new Date(uploadDate.getFullYear(), uploadDate.getMonth(), uploadDate.getDate());
+            const pointDateLocal = new Date(pointDate.getFullYear(), pointDate.getMonth(), pointDate.getDate());
+            const nextPointDateLocal = new Date(nextPointDate.getFullYear(), nextPointDate.getMonth(), nextPointDate.getDate());
+            
+            return uploadDateLocal >= pointDateLocal && uploadDateLocal < nextPointDateLocal;
           });
           data.push({ value: videosPublishedInInterval.length, timestamp, previousValue });
         } else if (metric === 'accounts') {
           // For active accounts: count unique accounts that were active IN THIS INTERVAL
+          // Use local date comparison to avoid timezone offset issues
           const videosInInterval = submissions.filter(v => {
             const uploadDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
-            return uploadDate >= pointDate && uploadDate < nextPointDate;
+            
+            // Normalize to local date (strip time) for accurate day comparison
+            const uploadDateLocal = new Date(uploadDate.getFullYear(), uploadDate.getMonth(), uploadDate.getDate());
+            const pointDateLocal = new Date(pointDate.getFullYear(), pointDate.getMonth(), pointDate.getDate());
+            const nextPointDateLocal = new Date(nextPointDate.getFullYear(), nextPointDate.getMonth(), nextPointDate.getDate());
+            
+            return uploadDateLocal >= pointDateLocal && uploadDateLocal < nextPointDateLocal;
           });
           const uniqueAccountsInInterval = new Set(videosInInterval.map(v => v.uploaderHandle)).size;
           data.push({ value: uniqueAccountsInInterval, timestamp, previousValue });
@@ -469,8 +483,14 @@ const KPICards: React.FC<KPICardsProps> = ({
           submissions.forEach(video => {
             const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
             
+            // Normalize dates to local date (strip time) for accurate day comparison
+            const uploadDateLocal = new Date(uploadDate.getFullYear(), uploadDate.getMonth(), uploadDate.getDate());
+            const actualStartDateLocal = new Date(actualStartDate.getFullYear(), actualStartDate.getMonth(), actualStartDate.getDate());
+            const pointDateLocal = new Date(pointDate.getFullYear(), pointDate.getMonth(), pointDate.getDate());
+            const nextPointDateLocal = new Date(nextPointDate.getFullYear(), nextPointDate.getMonth(), nextPointDate.getDate());
+            
             // Only process videos that are relevant to the date range we're analyzing
-            if (uploadDate < actualStartDate) {
+            if (uploadDateLocal < actualStartDateLocal) {
               // Video was uploaded before our analysis period
               // Check if it has growth during this interval via snapshots
               if (video.snapshots && video.snapshots.length > 0) {
@@ -487,7 +507,7 @@ const KPICards: React.FC<KPICardsProps> = ({
                   intervalValue += delta;
                 }
               }
-            } else if (uploadDate >= pointDate && uploadDate < nextPointDate) {
+            } else if (uploadDateLocal >= pointDateLocal && uploadDateLocal < nextPointDateLocal) {
               // Video was uploaded during this interval
               // Use either the first snapshot or current value
               if (video.snapshots && video.snapshots.length > 0) {
@@ -498,7 +518,7 @@ const KPICards: React.FC<KPICardsProps> = ({
                 // No snapshots, use current value
                 intervalValue += video[metric] || 0;
               }
-            } else if (uploadDate >= nextPointDate) {
+            } else if (uploadDateLocal >= nextPointDateLocal) {
               // Video was uploaded after this interval, skip it
               return;
             }
@@ -676,8 +696,14 @@ const KPICards: React.FC<KPICardsProps> = ({
           submissions.forEach(video => {
             const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
             
+            // Normalize dates to local date (strip time) for accurate day comparison
+            const uploadDateLocal = new Date(uploadDate.getFullYear(), uploadDate.getMonth(), uploadDate.getDate());
+            const actualStartDateLocal = new Date(actualStartDate.getFullYear(), actualStartDate.getMonth(), actualStartDate.getDate());
+            const pointDateLocal = new Date(pointDate.getFullYear(), pointDate.getMonth(), pointDate.getDate());
+            const nextPointDateLocal = new Date(nextPointDate.getFullYear(), nextPointDate.getMonth(), nextPointDate.getDate());
+            
             // Only process videos that are relevant to the date range we're analyzing
-            if (uploadDate < actualStartDate) {
+            if (uploadDateLocal < actualStartDateLocal) {
               // Video was uploaded before our analysis period
               // Check if it has growth during this interval via snapshots
               if (video.snapshots && video.snapshots.length > 0) {
@@ -699,7 +725,7 @@ const KPICards: React.FC<KPICardsProps> = ({
                   periodEngagement += likesDelta + commentsDelta + sharesDelta;
                 }
               }
-            } else if (uploadDate >= pointDate && uploadDate < nextPointDate) {
+            } else if (uploadDateLocal >= pointDateLocal && uploadDateLocal < nextPointDateLocal) {
               // Video was uploaded during this interval
               // Use either the first snapshot or current value
               if (video.snapshots && video.snapshots.length > 0) {
@@ -712,7 +738,7 @@ const KPICards: React.FC<KPICardsProps> = ({
                 periodViews += video.views || 0;
                 periodEngagement += (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
               }
-            } else if (uploadDate >= nextPointDate) {
+            } else if (uploadDateLocal >= nextPointDateLocal) {
               // Video was uploaded after this interval, skip it
               return;
             }
