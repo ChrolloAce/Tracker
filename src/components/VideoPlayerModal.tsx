@@ -76,7 +76,7 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 w-full h-full z-[9999] flex items-center justify-center backdrop-blur-2xl bg-black/30"
+      className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-sm"
       onClick={onClose}
       style={{ 
         position: 'fixed',
@@ -85,41 +85,41 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
         right: 0,
         bottom: 0,
         width: '100vw',
-        height: '100vh',
-        margin: 0,
-        padding: 0
+        height: '100vh'
       }}
     >
       {/* Close button - top right corner */}
       <button
         onClick={onClose}
-        className="absolute top-6 right-6 z-[10000] p-2.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 transition-all text-white hover:scale-110"
+        className="absolute top-6 right-6 z-[100000] p-2.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 transition-all text-white hover:scale-110"
+        aria-label="Close video"
       >
         <X className="w-5 h-5" strokeWidth={2.5} />
       </button>
 
       {/* Video Container */}
       <div 
-        className="relative flex flex-col items-center justify-center gap-3"
+        className="relative flex flex-col items-center justify-center gap-4 max-w-full max-h-full p-4"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Title */}
         {title && (
-          <div className="text-center px-4">
-            <h3 className="text-lg font-semibold text-white drop-shadow-lg">
+          <div className="text-center px-4 max-w-md">
+            <h3 className="text-lg font-semibold text-white drop-shadow-lg line-clamp-2">
               {title}
             </h3>
           </div>
         )}
 
-        {/* Video Player - Compact size */}
-        <div className="relative w-[380px] h-[680px] bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10">
+        {/* Video Player - Responsive size */}
+        <div className="relative w-[90vw] max-w-[380px] aspect-[9/16] bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/20">
           <iframe
             src={embedUrl}
             className="absolute inset-0 w-full h-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
             style={{ border: 'none' }}
+            title={title || 'Video player'}
           />
         </div>
 
@@ -129,7 +129,7 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             href={videoUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-sm text-white transition-all"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-sm text-white transition-all hover:scale-105"
           >
             Open in {platform ? platform.charAt(0).toUpperCase() + platform.slice(1) : 'Platform'} →
           </a>
