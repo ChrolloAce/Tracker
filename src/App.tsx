@@ -9,6 +9,7 @@ import DashboardPage from './pages/DashboardPage';
 import LinkRedirect from './components/LinkRedirect';
 import ContractSigningPage from './pages/ContractSigningPage';
 import ContractEditorPage from './pages/ContractEditorPage';
+import CreateContractPage from './pages/CreateContractPage';
 import CreatorDetailsPageWrapper from './pages/CreatorDetailsPageWrapper';
 import { useEffect, useState } from 'react';
 import { AlertCircle } from 'lucide-react';
@@ -178,6 +179,20 @@ function App() {
             <Navigate to="/login" replace />
           ) : (
             <ContractEditorPage />
+          )
+        } 
+      />
+
+      {/* Contract creation route - requires authentication */}
+      <Route 
+        path="/contracts/create" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : !currentOrgId || !currentProjectId ? (
+            <LoadingSkeleton />
+          ) : (
+            <CreateContractPage />
           )
         } 
       />

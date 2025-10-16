@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ContractService } from '../services/ContractService';
 import { ShareableContract } from '../types/contract';
@@ -18,9 +19,9 @@ import {
   Trash2
 } from 'lucide-react';
 import Pagination from './ui/Pagination';
-import CreateContractModal from './CreateContractModal';
 
 const ContractsManagementPage: React.FC = () => {
+  const navigate = useNavigate();
   const { currentOrgId, currentProjectId } = useAuth();
   const [contracts, setContracts] = useState<ShareableContract[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +29,6 @@ const ContractsManagementPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'signed' | 'expired'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -420,23 +420,12 @@ const ContractsManagementPage: React.FC = () => {
 
       {/* Floating Action Button - Create Contract */}
       <button
-        onClick={() => setShowCreateModal(true)}
+        onClick={() => navigate('/contracts/create')}
         className="fixed bottom-8 right-8 w-14 h-14 bg-white text-black rounded-full shadow-2xl hover:bg-gray-100 transition-all duration-200 flex items-center justify-center z-40 hover:scale-110"
         title="Create Contract"
       >
         <Plus className="w-6 h-6" />
       </button>
-
-      {/* Create Contract Modal */}
-      {showCreateModal && (
-        <CreateContractModal
-          onClose={() => setShowCreateModal(false)}
-          onSuccess={() => {
-            setShowCreateModal(false);
-            loadContracts();
-          }}
-        />
-      )}
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmId && (
