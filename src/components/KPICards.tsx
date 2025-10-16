@@ -1088,7 +1088,7 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
                   cursor={false}
                   isAnimationActive={false}
                   animationDuration={0}
-                  position={{ y: -20 }}
+                  position={{ y: -80 }}
                   wrapperStyle={{ 
                     zIndex: 9999999,
                     pointerEvents: 'none'

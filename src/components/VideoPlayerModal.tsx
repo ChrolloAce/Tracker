@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 interface VideoPlayerModalProps {
@@ -21,60 +22,109 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
   title,
   platform 
 }) => {
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+  
   if (!isOpen) return null;
 
   // Convert video URLs to embed URLs
   const getEmbedUrl = (url: string, platform?: string): string => {
+    console.log('🎬 Converting video URL:', { url, platform });
+    
     try {
       // TikTok
       if (url.includes('tiktok.com') || platform === 'tiktok') {
         // Extract video ID from various TikTok URL formats
         const videoIdMatch = url.match(/video\/(\d+)/);
         if (videoIdMatch) {
-          return `https://www.tiktok.com/embed/v2/${videoIdMatch[1]}`;
+          const embedUrl = `https://www.tiktok.com/embed/v2/${videoIdMatch[1]}`;
+          console.log('✅ TikTok embed URL:', embedUrl);
+          return embedUrl;
         }
-        return url; // Return original if can't parse
+        console.warn('⚠️ Could not parse TikTok video ID from:', url);
+        return url;
       }
       
-      // Instagram
+      // Instagram - needs to be a post/reel URL
       if (url.includes('instagram.com') || platform === 'instagram') {
-        // Convert Instagram URL to embed URL
-        let embedUrl = url;
-        if (!url.includes('/embed')) {
-          embedUrl = url.replace(/\/$/, '') + '/embed';
+        // Extract the post/reel code from the URL
+        const postMatch = url.match(/instagram\.com\/(p|reel|reels)\/([^\/\?]+)/);
+        if (postMatch) {
+          const type = postMatch[1] === 'reels' ? 'reel' : postMatch[1]; // Normalize 'reels' to 'reel'
+          const code = postMatch[2];
+          const embedUrl = `https://www.instagram.com/${type}/${code}/embed`;
+          console.log('✅ Instagram embed URL:', embedUrl);
+          return embedUrl;
         }
+        
+        // Fallback: if URL already has /embed, use it
+        if (url.includes('/embed')) {
+          console.log('✅ Using existing Instagram embed URL:', url);
+          return url;
+        }
+        
+        // Last resort: try appending /embed
+        const embedUrl = url.replace(/\/$/, '') + '/embed';
+        console.log('⚠️ Fallback Instagram embed URL:', embedUrl);
         return embedUrl;
       }
       
       // YouTube Shorts or watch URLs
       if (url.includes('youtube.com') || url.includes('youtu.be') || platform === 'youtube') {
         const shortsMatch = url.match(/shorts\/([a-zA-Z0-9_-]+)/);
-        if (shortsMatch) return `https://www.youtube.com/embed/${shortsMatch[1]}`;
+        if (shortsMatch) {
+          const embedUrl = `https://www.youtube.com/embed/${shortsMatch[1]}`;
+          console.log('✅ YouTube Shorts embed URL:', embedUrl);
+          return embedUrl;
+        }
+        
         const youtuMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
-        if (youtuMatch) return `https://www.youtube.com/embed/${youtuMatch[1]}`;
+        if (youtuMatch) {
+          const embedUrl = `https://www.youtube.com/embed/${youtuMatch[1]}`;
+          console.log('✅ YouTube embed URL:', embedUrl);
+          return embedUrl;
+        }
+        
         try {
           const u = new URL(url);
           const v = u.searchParams.get('v');
-          if (v) return `https://www.youtube.com/embed/${v}`;
-        } catch {}
+          if (v) {
+            const embedUrl = `https://www.youtube.com/embed/${v}`;
+            console.log('✅ YouTube watch embed URL:', embedUrl);
+            return embedUrl;
+          }
+        } catch (e) {
+          console.error('Error parsing YouTube URL:', e);
+        }
       }
       
       // Twitter/X
       if (url.includes('twitter.com') || url.includes('x.com') || platform === 'twitter') {
-        // Twitter videos are opened externally, no embed
+        console.log('ℹ️ Twitter video - opening externally');
         return url;
       }
       
+      console.log('⚠️ Using original URL:', url);
       return url;
     } catch (error) {
-      console.error('Error converting video URL:', error);
+      console.error('❌ Error converting video URL:', error);
       return url;
     }
   };
 
   const embedUrl = getEmbedUrl(videoUrl, platform);
 
-  return (
+  const modalContent = (
     <div 
       className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-sm"
       onClick={onClose}
@@ -137,6 +187,8 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
       </div>
     </div>
   );
+  
+  return createPortal(modalContent, document.body);
 };
 
 export default VideoPlayerModal;
