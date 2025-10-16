@@ -1164,9 +1164,7 @@ const KPICard: React.FC<{
                     strokeWidth={2}
                     fill={`url(#bottom-gradient-${data.id})`}
                     dot={false}
-                    isAnimationActive={true}
-                    animationDuration={800}
-                    animationEasing="ease-in-out"
+                    isAnimationActive={false}
                   />
                 </AreaChart>
               </ResponsiveContainer>
