@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { 
   Play, 
   Heart, 
@@ -1015,8 +1014,8 @@ const KPICard: React.FC<{
   return (
     <div 
       onClick={onClick}
-      className="group relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 cursor-pointer overflow-hidden"
-      style={{ minHeight: '180px' }}
+      className="group relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 cursor-pointer"
+      style={{ minHeight: '180px', overflow: 'visible' }}
     >
       {/* Upper Solid Portion - 75% (reduced to give more space to graph) */}
       <div className="relative px-5 pt-5 pb-2" style={{ height: '75%' }}>
@@ -1072,10 +1071,12 @@ const KPICard: React.FC<{
       {/* Bottom Graph Layer - 25% (expanded from 20%) */}
       {data.sparklineData && data.sparklineData.length > 0 && (
         <div 
-          className="relative w-full"
+          className="relative w-full overflow-hidden"
           style={{ 
             height: '25%',
-            background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 100%)'
+            background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 100%)',
+            borderBottomLeftRadius: '1rem',
+            borderBottomRightRadius: '1rem'
           }}
         >
           {/* Atmospheric Gradient Overlay */}
@@ -1104,16 +1105,19 @@ const KPICard: React.FC<{
                   cursor={false}
                   isAnimationActive={false}
                   animationDuration={0}
+                  allowEscapeViewBox={{ x: true, y: true }}
+                  position={{ y: -80 }}
                   wrapperStyle={{ 
                     zIndex: 9999999,
-                    position: 'fixed',
-                    pointerEvents: 'auto'
+                    isolation: 'isolate'
                   }}
                   contentStyle={{
-                    display: 'none' // Hide default wrapper
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    padding: 0
                   }}
-                  content={({ active, payload, coordinate }) => {
-                    if (!active || !payload || !payload.length || !coordinate) return null;
+                  content={({ active, payload }) => {
+                    if (!active || !payload || !payload.length) return null;
                     
                     const point = payload[0].payload;
                     const value = point.value;
@@ -1146,19 +1150,10 @@ const KPICard: React.FC<{
                       return videoDate >= dayStart && videoDate <= dayEnd;
                     }).sort((a: VideoSubmission, b: VideoSubmission) => (b.views || 0) - (a.views || 0)).slice(0, 5); // Top 5 videos
                     
-                    // Calculate position relative to viewport
-                    const tooltipX = coordinate.x;
-                    const tooltipY = coordinate.y - 80; // 80px above cursor
-                    
-                    const tooltipContent = (
+                    return (
                       <div 
                         className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10" 
                         style={{ 
-                          position: 'fixed',
-                          left: `${tooltipX}px`,
-                          top: `${tooltipY}px`,
-                          transform: 'translate(-50%, -100%)',
-                          zIndex: 9999999,
                           width: '400px',
                           maxHeight: '500px',
                           pointerEvents: 'auto'
@@ -1255,8 +1250,6 @@ const KPICard: React.FC<{
                         )}
                       </div>
                     );
-                    
-                    return createPortal(tooltipContent, document.body);
                   }}
                 />
                 <Area
@@ -1279,10 +1272,12 @@ const KPICard: React.FC<{
       {/* Fallback if no sparkline data */}
       {(!data.sparklineData || data.sparklineData.length === 0) && (
         <div 
-          className="relative w-full"
+          className="relative w-full overflow-hidden"
           style={{ 
             height: '25%',
-            background: 'linear-gradient(to top, rgba(0,0,0,0.2) 0%, transparent 100%)'
+            background: 'linear-gradient(to top, rgba(0,0,0,0.2) 0%, transparent 100%)',
+            borderBottomLeftRadius: '1rem',
+            borderBottomRightRadius: '1rem'
           }}
         />
       )}
