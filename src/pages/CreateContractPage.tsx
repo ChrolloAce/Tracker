@@ -82,7 +82,13 @@ const CreateContractPage: React.FC = () => {
     setLoadingCreators(true);
     try {
       const members = await OrganizationService.getOrgMembers(currentOrgId);
-      const creatorMembers = members.filter((m: OrgMember) => m.role === 'creator');
+      // Filter to only show creators who have access to this specific project
+      const creatorMembers = members.filter((m: OrgMember) => {
+        if (m.role !== 'creator') return false;
+        // Check if this creator has access to the current project
+        const creatorProjectIds = (m as any).creatorProjectIds || [];
+        return creatorProjectIds.includes(currentProjectId);
+      });
       setCreators(creatorMembers);
     } catch (error) {
       console.error('Error loading creators:', error);
@@ -154,7 +160,7 @@ const CreateContractPage: React.FC = () => {
       return;
     }
 
-    if (!contractStartDate || !contractEndDate || !contractNotes) {
+    if (!contractStartDate || !contractNotes) {
       alert('Please fill in all contract details');
       return;
     }
