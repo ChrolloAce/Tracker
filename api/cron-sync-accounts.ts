@@ -324,24 +324,13 @@ export default async function handler(
           await batch.commit();
         }
 
-        // Calculate aggregate stats from synced videos
-        const totalViews = videos.reduce((sum, v) => sum + (v.views || 0), 0);
-        const totalLikes = videos.reduce((sum, v) => sum + (v.likes || 0), 0);
-        const totalComments = videos.reduce((sum, v) => sum + (v.comments || 0), 0);
-        const totalShares = videos.reduce((sum, v) => sum + (v.shares || 0), 0);
-
-        // Mark as completed and update aggregate stats
+        // Mark as completed
         await accountRef.update({
           syncStatus: 'completed',
           lastSyncAt: Timestamp.now(),
           lastSynced: Timestamp.now(),
           lastSyncError: null,
           syncRetryCount: 0,
-          totalVideos: savedCount,
-          totalViews: totalViews,
-          totalLikes: totalLikes,
-          totalComments: totalComments,
-          totalShares: totalShares,
           syncProgress: {
             current: 100,
             total: 100,

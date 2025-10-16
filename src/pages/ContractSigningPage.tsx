@@ -211,7 +211,7 @@ const ContractSigningPage: React.FC = () => {
                             <img 
                               src={contract.creatorSignature.signatureData} 
                               alt="Creator Signature" 
-                              className="max-w-full h-auto max-h-24 bg-white rounded px-2 py-1"
+                              className="max-w-full h-auto max-h-24 bg-black rounded px-2 py-1"
                             />
                           </div>
                         )}
@@ -243,7 +243,7 @@ const ContractSigningPage: React.FC = () => {
                             <img 
                               src={contract.companySignature.signatureData} 
                               alt="Company Signature" 
-                              className="max-w-full h-auto max-h-24 bg-white rounded px-2 py-1"
+                              className="max-w-full h-auto max-h-24 bg-black rounded px-2 py-1"
                             />
                           </div>
                         )}

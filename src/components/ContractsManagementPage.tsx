@@ -76,8 +76,13 @@ const ContractsManagementPage: React.FC = () => {
   };
 
   const handleDownloadContract = (contract: ShareableContract) => {
-    // Open the contract signing page in a new window and trigger print
-    window.open(contract.creatorLink, '_blank');
+    // Open contract in new window and trigger print dialog
+    const printWindow = window.open(contract.creatorLink, '_blank');
+    if (printWindow) {
+      printWindow.onload = () => {
+        printWindow.print();
+      };
+    }
     setOpenMenuId(null);
   };
 

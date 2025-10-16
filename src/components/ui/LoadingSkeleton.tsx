@@ -157,15 +157,6 @@ export const TeamMemberRowSkeleton: React.FC = () => {
   );
 };
 
-// Inline Number Skeleton (for table cells)
-export const NumberSkeleton: React.FC<{ width?: string }> = ({ width = 'w-12' }) => {
-  return (
-    <div className="inline-block">
-      <LoadingSkeleton className={`${width} h-5`} variant="text" />
-    </div>
-  );
-};
-
 // Full Page Loading State
 export const PageLoadingSkeleton: React.FC<{ type?: 'dashboard' | 'accounts' | 'links' | 'creators' | 'team' }> = ({ 
   type = 'dashboard' 
