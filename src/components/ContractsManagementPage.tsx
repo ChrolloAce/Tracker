@@ -76,13 +76,8 @@ const ContractsManagementPage: React.FC = () => {
   };
 
   const handleDownloadContract = (contract: ShareableContract) => {
-    // Open contract in new window and trigger print dialog
-    const printWindow = window.open(contract.creatorLink, '_blank');
-    if (printWindow) {
-      printWindow.onload = () => {
-        printWindow.print();
-      };
-    }
+    // Just open the contract in a new tab - user can save as PDF from browser
+    window.open(contract.creatorLink, '_blank');
     setOpenMenuId(null);
   };
 

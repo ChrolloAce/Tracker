@@ -3,16 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, FileText, Loader2, Save, CheckCircle } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
-import OrganizationService from '../services/OrganizationService';
 import { ContractService } from '../services/ContractService';
 import { TemplateService } from '../services/TemplateService';
-import { OrgMember } from '../types/firestore';
+import CreatorLinksService from '../services/CreatorLinksService';
 import ChangeTemplateModal from '../components/ChangeTemplateModal';
+
+interface CreatorOption {
+  userId: string;
+  displayName: string;
+  email?: string;
+}
 
 const CreateContractPage: React.FC = () => {
   const navigate = useNavigate();
   const { currentOrgId, currentProjectId, user } = useAuth();
-  const [creators, setCreators] = useState<OrgMember[]>([]);
+  const [creators, setCreators] = useState<CreatorOption[]>([]);
   const [selectedCreatorId, setSelectedCreatorId] = useState('');
   const [contractStartDate, setContractStartDate] = useState('');
   const [contractEndDate, setContractEndDate] = useState('');
@@ -81,14 +86,17 @@ const CreateContractPage: React.FC = () => {
 
     setLoadingCreators(true);
     try {
-      const members = await OrganizationService.getOrgMembers(currentOrgId);
-      // Filter to only show creators who have access to this specific project
-      const creatorMembers = members.filter((m: OrgMember) => {
-        if (m.role !== 'creator') return false;
-        // Check if this creator has access to the current project
-        const creatorProjectIds = (m as any).creatorProjectIds || [];
-        return creatorProjectIds.includes(currentProjectId);
-      });
+      // Get ALL creators from this project directly
+      const projectCreators = await CreatorLinksService.getAllCreators(currentOrgId, currentProjectId);
+      
+      // Map to the format expected by the dropdown (same as OrgMember structure)
+      const creatorMembers = projectCreators.map(creator => ({
+        userId: creator.id,
+        displayName: creator.displayName,
+        email: creator.email,
+        role: 'creator' as const,
+      }));
+      
       setCreators(creatorMembers);
     } catch (error) {
       console.error('Error loading creators:', error);
