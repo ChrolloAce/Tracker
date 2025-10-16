@@ -1002,42 +1002,42 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
       className="group relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 cursor-pointer overflow-hidden"
       style={{ minHeight: '180px' }}
     >
-      {/* Upper Solid Portion - 80% */}
-      <div className="relative px-5 pt-5 pb-4" style={{ height: '80%' }}>
+      {/* Upper Solid Portion - 75% (reduced to give more space to graph) */}
+      <div className="relative px-5 pt-5 pb-2" style={{ height: '75%' }}>
         {/* Icon (top-right) */}
         <div className="absolute top-4 right-4">
           <Icon className="w-5 h-5 text-gray-400 opacity-60" />
         </div>
 
-        {/* Metric Content */}
-        <div className="flex flex-col h-full justify-between">
-          {/* Label */}
-          <div className="text-sm font-medium text-zinc-400 tracking-wide">
+        {/* Metric Content - Pushed Higher */}
+        <div className="flex flex-col h-full justify-start pt-1">
+          {/* Label - Smaller */}
+          <div className="text-xs font-medium text-zinc-400 tracking-wide mb-2">
             {data.label}
           </div>
 
-          {/* Value */}
-          <div className="flex flex-col">
-            <span className={`text-4xl lg:text-5xl font-bold tracking-tight ${data.isEmpty ? 'text-zinc-600' : 'text-white'}`}>
+          {/* Value - Pushed up, smaller font */}
+          <div className="flex flex-col -mt-1">
+            <span className={`text-3xl lg:text-4xl font-bold tracking-tight ${data.isEmpty ? 'text-zinc-600' : 'text-white'}`}>
               {data.value}
             </span>
             {/* Period/Subtitle */}
             {data.period && (
-              <span className="text-xs text-zinc-500 mt-1 flex items-center gap-1">
-                <span className="inline-block w-2 h-2 rounded-full bg-zinc-700"></span>
+              <span className="text-xs text-zinc-500 mt-1.5 flex items-center gap-1">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-zinc-700"></span>
                 {data.period}
               </span>
             )}
           </div>
         </div>
 
-        {/* Delta Badge (if exists) */}
+        {/* Delta Badge (if exists) - Tighter "+" alignment */}
         {data.delta && data.delta.absoluteValue !== undefined && (
-          <div className="absolute bottom-4 right-5">
-            <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-1 rounded ${
+          <div className="absolute bottom-3 right-5">
+            <span className={`inline-flex items-baseline text-xs font-semibold px-2 py-1 rounded ${
               data.delta.isPositive ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'
-            }`}>
-              {data.delta.isPositive ? '+' : ''}
+            }`} style={{ letterSpacing: '-0.02em' }}>
+              <span className="mr-0">{data.delta.isPositive ? '+' : ''}</span>
               {data.delta.isPercentage 
                 ? `${data.delta.absoluteValue.toFixed(1)}%`
                 : formatDeltaNumber(data.delta.absoluteValue)}
@@ -1047,19 +1047,19 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
 
         {/* CTA Button (if exists) */}
         {!data.delta && data.ctaText && (
-          <button className="absolute bottom-4 right-5 inline-flex items-center gap-0.5 rounded-full px-2.5 py-1 text-xs text-zinc-400 bg-white/5 hover:bg-white/10 transition-colors">
+          <button className="absolute bottom-3 right-5 inline-flex items-center gap-0.5 rounded-full px-2.5 py-1 text-xs text-zinc-400 bg-white/5 hover:bg-white/10 transition-colors">
             {data.ctaText}
             <ChevronRight className="w-3 h-3" />
           </button>
         )}
       </div>
 
-      {/* Bottom Graph Layer - 20% */}
+      {/* Bottom Graph Layer - 25% (expanded from 20%) */}
       {data.sparklineData && data.sparklineData.length > 0 && (
         <div 
           className="relative w-full"
           style={{ 
-            height: '20%',
+            height: '25%',
             background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 100%)'
           }}
         >
@@ -1072,12 +1072,12 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
             }}
           />
           
-          {/* Line Chart */}
+          {/* Line Chart - More vertical space for amplitude */}
           <div className="absolute inset-0" style={{ padding: '0' }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart 
                 data={data.sparklineData}
-                margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+                margin={{ top: 2, right: 0, bottom: 2, left: 0 }}
               >
                 <defs>
                   <linearGradient id={`bottom-gradient-${data.id}`} x1="0" y1="0" x2="0" y2="1">
@@ -1107,7 +1107,7 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
         <div 
           className="relative w-full"
           style={{ 
-            height: '20%',
+            height: '25%',
             background: 'linear-gradient(to top, rgba(0,0,0,0.2) 0%, transparent 100%)'
           }}
         />
