@@ -129,35 +129,100 @@ const ContractSigningPage: React.FC = () => {
       {/* Print Styles */}
       <style>{`
         @media print {
+          @page {
+            margin: 0.75in;
+            size: letter;
+          }
+          
           body {
             background: white !important;
+            margin: 0;
+            padding: 0;
           }
+          
           .no-print {
             display: none !important;
           }
+          
           .print-contract {
             background: white !important;
             color: black !important;
-            padding: 40px !important;
+            padding: 0 !important;
             max-width: 100% !important;
             border: none !important;
             box-shadow: none !important;
+            border-radius: 0 !important;
           }
-          .print-contract * {
+          
+          .print-contract > div {
+            background: white !important;
+            border: none !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+          }
+          
+          .print-contract h1, 
+          .print-contract h2, 
+          .print-contract h3,
+          .print-contract p,
+          .print-contract div {
             color: black !important;
             background: transparent !important;
+            border-color: black !important;
           }
-          .print-contract h1, .print-contract h2, .print-contract h3 {
-            color: black !important;
+          
+          .print-contract .border-white\\/20,
+          .print-contract .border-white\\/10,
+          .print-contract .border-gray-800 {
+            border-color: black !important;
           }
-          .print-contract img {
-            max-height: 80px !important;
-            display: block !important;
+          
+          .print-contract .text-gray-400,
+          .print-contract .text-gray-500 {
+            color: #666 !important;
           }
+          
+          .print-contract .text-gray-300 {
+            color: #333 !important;
+          }
+          
+          /* Signature images - make them visible */
           .signature-image {
             background: white !important;
-            border: 1px solid #ddd !important;
+            border: 2px solid #000 !important;
             padding: 8px !important;
+            display: block !important;
+            max-height: 60px !important;
+            margin-top: 8px !important;
+            filter: contrast(1.2) !important;
+          }
+          
+          /* Remove colored backgrounds and borders */
+          .print-contract .bg-white\\/5,
+          .print-contract .bg-green-500\\/20,
+          .print-contract .border-green-500\\/20 {
+            background: transparent !important;
+            border: 2px solid #ddd !important;
+            padding: 12px !important;
+          }
+          
+          .print-contract .border-dashed {
+            border-style: dashed !important;
+          }
+          
+          /* Page break control */
+          .print-contract .mb-8,
+          .print-contract .mb-6 {
+            page-break-inside: avoid;
+          }
+          
+          .print-contract .pt-6 {
+            page-break-before: avoid;
+          }
+          
+          /* Ensure signatures don't break across pages */
+          .print-contract .grid-cols-2 {
+            page-break-inside: avoid;
           }
         }
       `}</style>
@@ -195,8 +260,8 @@ const ContractSigningPage: React.FC = () => {
             <div className="bg-[#161616] border border-gray-800 rounded-xl p-8 text-white">
               {/* Contract Header */}
               <div className="border-b-2 border-white/20 pb-4 mb-6">
-                <h2 className="text-2xl font-bold text-white mb-1">CREATOR CONTRACT</h2>
-                <p className="text-sm text-gray-400">Content Creation Agreement</p>
+                <h2 className="text-2xl font-bold text-white mb-1">{contract.contractTitle?.toUpperCase() || 'CREATOR CONTRACT'}</h2>
+                <p className="text-sm text-gray-400">{contract.contractTitle || 'Content Creation Agreement'}</p>
               </div>
 
               {/* Parties */}
@@ -205,7 +270,7 @@ const ContractSigningPage: React.FC = () => {
                 <div className="text-base text-white space-y-1">
                   <p>Creator: <span className="font-semibold">{contract.creatorName}</span></p>
                   <p className="text-sm text-gray-400">{contract.creatorEmail}</p>
-                  <p className="mt-2">Company: <span className="font-semibold">[Your Company Name]</span></p>
+                  <p className="mt-2">Company: <span className="font-semibold">{contract.companyName || '[Your Company Name]'}</span></p>
                 </div>
               </div>
 

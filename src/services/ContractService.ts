@@ -41,7 +41,9 @@ export class ContractService {
     contractEndDate: string,
     contractNotes: string,
     paymentStructureName: string | undefined,
-    createdBy: string
+    createdBy: string,
+    contractTitle?: string,
+    companyName?: string
   ): Promise<ShareableContract> {
     const contractId = this.generateContractId();
     const now = Timestamp.now();
@@ -73,9 +75,15 @@ export class ContractService {
       expiresAt,
     };
 
-    // Only add paymentStructureName if it's defined (Firestore doesn't allow undefined)
+    // Only add optional fields if they're defined (Firestore doesn't allow undefined)
     if (paymentStructureName) {
       contract.paymentStructureName = paymentStructureName;
+    }
+    if (contractTitle) {
+      contract.contractTitle = contractTitle;
+    }
+    if (companyName) {
+      contract.companyName = companyName;
     }
 
     const contractRef = doc(db, this.CONTRACTS_COLLECTION, contractId);

@@ -16,6 +16,8 @@ export interface ShareableContract {
   creatorEmail: string;
   
   // Contract details
+  contractTitle?: string;
+  companyName?: string;
   contractStartDate: string;
   contractEndDate: string;
   contractNotes: string;

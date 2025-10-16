@@ -19,6 +19,7 @@ const CreateContractPage: React.FC = () => {
   const { currentOrgId, currentProjectId, user } = useAuth();
   const [creators, setCreators] = useState<CreatorOption[]>([]);
   const [selectedCreatorId, setSelectedCreatorId] = useState('');
+  const [contractTitle, setContractTitle] = useState('Content Creation Agreement');
   const [contractStartDate, setContractStartDate] = useState('');
   const [contractEndDate, setContractEndDate] = useState('');
   const [contractNotes, setContractNotes] = useState('');
@@ -168,7 +169,7 @@ const CreateContractPage: React.FC = () => {
       return;
     }
 
-    if (!contractStartDate || !contractNotes) {
+    if (!companyName || !contractTitle || !contractStartDate || !contractNotes) {
       alert('Please fill in all contract details');
       return;
     }
@@ -191,7 +192,9 @@ const CreateContractPage: React.FC = () => {
         contractEndDate,
         contractNotes,
         paymentStructureName || undefined,
-        user.uid
+        user.uid,
+        contractTitle,
+        companyName
       );
 
       // Clear the draft on success
@@ -279,6 +282,19 @@ const CreateContractPage: React.FC = () => {
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     placeholder="Your company name"
+                    className="w-full px-4 py-2.5 bg-[#161616] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Contract Title *
+                  </label>
+                  <input
+                    type="text"
+                    value={contractTitle}
+                    onChange={(e) => setContractTitle(e.target.value)}
+                    placeholder="e.g., Content Creation Agreement"
                     className="w-full px-4 py-2.5 bg-[#161616] border border-gray-800 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/20"
                   />
                 </div>
