@@ -12,7 +12,7 @@ interface MetricComparisonModalProps {
   linkClicks: LinkClick[];
   dateFilter: DateFilterType;
   customRange?: { startDate: Date; endDate: Date };
-  onDateFilterChange: (filter: DateFilterType, customRange?: { startDate: Date; endDate: Date }) => void;
+  onDateFilterChange?: (filter: DateFilterType, customRange?: { startDate: Date; endDate: Date }) => void;
   initialMetric?: 'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts' | 'engagement' | 'engagementRate' | 'linkClicks';
 }
 
@@ -280,13 +280,15 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
         <div className="flex items-center justify-between px-8 py-6 border-b border-gray-800/30">
           <h2 className="text-2xl font-bold text-white tracking-tight">Metrics</h2>
           <div className="flex items-center space-x-3">
-            <div className="transform scale-90">
-              <DateRangeFilter
-                selectedFilter={dateFilter}
-                customRange={customRange}
-                onFilterChange={onDateFilterChange}
-              />
-            </div>
+            {onDateFilterChange && (
+              <div className="transform scale-90">
+                <DateRangeFilter
+                  selectedFilter={dateFilter}
+                  customRange={customRange}
+                  onFilterChange={onDateFilterChange}
+                />
+              </div>
+            )}
             <button
               onClick={onClose}
               className="p-2 hover:bg-gray-800/50 rounded-xl transition-all duration-200"

@@ -9,8 +9,7 @@ import {
   Video, 
   Share2,
   ChevronRight,
-  Link as LinkIcon,
-  Calendar
+  Link as LinkIcon
 } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { LinkClick } from '../services/LinkClicksService';
@@ -27,7 +26,6 @@ interface KPICardsProps {
   customRange?: { startDate: Date; endDate: Date };
   timePeriod?: TimePeriodType;
   onCreateLink?: () => void;
-  onDateFilterChange?: (filter: DateFilterType, customRange?: { startDate: Date; endDate: Date }) => void;
 }
 
 interface KPICardData {
@@ -50,8 +48,7 @@ const KPICards: React.FC<KPICardsProps> = ({
   dateFilter = 'all',
   customRange,
   timePeriod = 'weeks', 
-  onCreateLink,
-  onDateFilterChange = () => {} 
+  onCreateLink
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedMetric, setSelectedMetric] = useState<'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts' | 'engagement' | 'engagementRate' | 'linkClicks'>('views');
@@ -867,7 +864,6 @@ const KPICards: React.FC<KPICardsProps> = ({
             onClick={() => handleCardClick(card.id)} 
             timePeriod={timePeriod}
             submissions={submissions}
-            onDateFilterChange={onDateFilterChange}
           />
         ))}
       </div>
@@ -879,7 +875,6 @@ const KPICards: React.FC<KPICardsProps> = ({
         linkClicks={linkClicks}
         dateFilter={dateFilter}
         customRange={customRange}
-        onDateFilterChange={onDateFilterChange}
         initialMetric={selectedMetric}
       />
     </>
@@ -1017,8 +1012,7 @@ const KPICard: React.FC<{
   onClick?: () => void; 
   timePeriod?: TimePeriodType;
   submissions?: VideoSubmission[];
-  onDateFilterChange?: (filter: DateFilterType, customRange?: { startDate: Date; endDate: Date }) => void;
-}> = ({ data, onClick, submissions = [], onDateFilterChange }) => {
+}> = ({ data, onClick, submissions = [] }) => {
   // Tooltip state for Portal rendering
   const [tooltipData, setTooltipData] = useState<{ x: number; y: number; point: any; lineX: number } | null>(null);
   const cardRef = React.useRef<HTMLDivElement>(null);
@@ -1246,7 +1240,6 @@ const KPICard: React.FC<{
             const date = timestamp ? new Date(timestamp) : null;
             const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
             const dateStr = date ? `${monthNames[date.getMonth()]} ${date.getDate()}${date.getDate() === 1 ? 'st' : date.getDate() === 2 ? 'nd' : date.getDate() === 3 ? 'rd' : 'th'}, ${date.getFullYear()}` : '';
-            const filterDateStr = date ? `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}/${date.getFullYear()}` : '';
             
             // Format value based on metric type
             const formatDisplayNumber = (num: number): string => {
@@ -1268,6 +1261,7 @@ const KPICard: React.FC<{
             }
             if (dayEnd) dayEnd.setHours(23, 59, 59, 999);
             
+            // Filter and sort based on the metric type
             const videosOnDay = submissions.filter((video: VideoSubmission) => {
               if (!video.dateSubmitted) return false;
               
@@ -1284,24 +1278,65 @@ const KPICard: React.FC<{
               }
               
               return matches;
-            }).sort((a: VideoSubmission, b: VideoSubmission) => (b.views || 0) - (a.views || 0)).slice(0, 5); // Top 5 videos
+            });
+            
+            // Sort by the relevant metric
+            let sortedItems: any[] = [];
+            if (data.id === 'accounts') {
+              // For accounts: group by uploaderHandle and sum total views
+              const accountsMap = new Map<string, { handle: string; platform: string; totalViews: number; videoCount: number }>();
+              videosOnDay.forEach(video => {
+                const handle = video.uploaderHandle || 'Unknown';
+                if (accountsMap.has(handle)) {
+                  const existing = accountsMap.get(handle)!;
+                  existing.totalViews += video.views || 0;
+                  existing.videoCount += 1;
+                } else {
+                  accountsMap.set(handle, {
+                    handle,
+                    platform: video.platform,
+                    totalViews: video.views || 0,
+                    videoCount: 1
+                  });
+                }
+              });
+              sortedItems = Array.from(accountsMap.values())
+                .sort((a, b) => b.totalViews - a.totalViews)
+                .slice(0, 5);
+            } else {
+              // For other metrics: sort videos by the relevant metric
+              const metricKey = data.id === 'views' ? 'views' 
+                : data.id === 'likes' ? 'likes'
+                : data.id === 'comments' ? 'comments'
+                : data.id === 'shares' ? 'shares'
+                : 'views'; // default to views
+              
+              sortedItems = videosOnDay
+                .sort((a: VideoSubmission, b: VideoSubmission) => ((b as any)[metricKey] || 0) - ((a as any)[metricKey] || 0))
+                .slice(0, 5);
+            }
             
             if (dayStart) {
-              console.log(`📹 Found ${videosOnDay.length} videos for ${dateStr}`);
+              console.log(`📹 Found ${videosOnDay.length} items for ${dateStr} (${data.label})`);
               console.log('📹 All submissions count:', submissions.length);
-              console.log('📹 Sample video dates:', submissions.slice(0, 3).map(v => ({ 
-                title: v.title?.substring(0, 30), 
-                dateSubmitted: v.dateSubmitted,
-                uploadDate: v.uploadDate 
-              })));
-              if (videosOnDay.length > 0) {
-                console.log('📹 Matched videos:', videosOnDay.map(v => ({ 
-                  title: v.title?.substring(0, 30), 
-                  date: v.dateSubmitted,
-                  views: v.views 
-                })));
+              if (sortedItems.length > 0) {
+                console.log('📹 Top items:', sortedItems.slice(0, 3));
               }
             }
+            
+            // Get the metric label and key for display
+            const metricLabel = data.id === 'views' ? 'Views'
+              : data.id === 'likes' ? 'Likes'
+              : data.id === 'comments' ? 'Comments'
+              : data.id === 'shares' ? 'Shares'
+              : data.id === 'accounts' ? 'Total Views'
+              : 'Views';
+            
+            const metricKey = data.id === 'views' ? 'views'
+              : data.id === 'likes' ? 'likes'
+              : data.id === 'comments' ? 'comments'
+              : data.id === 'shares' ? 'shares'
+              : 'views';
             
             return (
               <>
@@ -1318,84 +1353,102 @@ const KPICard: React.FC<{
                 {/* Divider */}
                 <div className="border-t border-white/10 mx-5"></div>
                 
-                {/* Video List */}
-                {videosOnDay.length > 0 ? (
+                {/* Content List - Accounts or Videos */}
+                {sortedItems.length > 0 ? (
                   <div className="overflow-y-auto px-5 py-3" style={{ maxHeight: '320px' }}>
-                    {videosOnDay.map((video: VideoSubmission, idx: number) => (
-                      <div 
-                        key={`${video.id}-${idx}`}
-                        className="flex items-center gap-3 py-2.5 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
-                      >
-                        {/* Thumbnail */}
-                        <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-800">
-                          {video.thumbnail ? (
-                            <img 
-                              src={video.thumbnail} 
-                              alt={video.title || 'Video'} 
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                              }}
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Play className="w-5 h-5 text-gray-600" />
+                    {data.id === 'accounts' ? (
+                      // Render Accounts
+                      sortedItems.map((account: any, idx: number) => (
+                        <div 
+                          key={`${account.handle}-${idx}`}
+                          className="flex items-center gap-3 py-2.5 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                        >
+                          {/* Account Icon */}
+                          <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-800 flex items-center justify-center">
+                            <div className="w-6 h-6">
+                              <PlatformIcon platform={account.platform} size="sm" />
                             </div>
-                          )}
-                        </div>
-                        
-                        {/* Metadata */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-white font-medium truncate leading-tight mb-1">
-                            {video.title || 'Untitled Video'}
-                          </p>
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-4 h-4">
-                              <PlatformIcon platform={video.platform} size="sm" />
+                          </div>
+                          
+                          {/* Metadata */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-white font-medium truncate leading-tight mb-1">
+                              {account.handle}
+                            </p>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs text-gray-400">
+                                {account.videoCount} {account.videoCount === 1 ? 'video' : 'videos'}
+                              </span>
                             </div>
-                            <span className="text-xs text-gray-400 lowercase">
-                              {video.uploaderHandle || video.platform}
-                            </span>
+                          </div>
+                          
+                          {/* Total Views */}
+                          <div className="flex-shrink-0 text-right">
+                            <p className="text-sm font-bold text-white">
+                              {formatDisplayNumber(account.totalViews)}
+                            </p>
+                            <p className="text-xs text-gray-500">{metricLabel}</p>
                           </div>
                         </div>
-                        
-                        {/* Views */}
-                        <div className="flex-shrink-0 text-right">
-                          <p className="text-sm font-bold text-white">
-                            {formatDisplayNumber(video.views || 0)}
-                          </p>
+                      ))
+                    ) : (
+                      // Render Videos
+                      sortedItems.map((video: VideoSubmission, idx: number) => (
+                        <div 
+                          key={`${video.id}-${idx}`}
+                          className="flex items-center gap-3 py-2.5 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                        >
+                          {/* Thumbnail */}
+                          <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-800">
+                            {video.thumbnail ? (
+                              <img 
+                                src={video.thumbnail} 
+                                alt={video.title || 'Video'} 
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Play className="w-5 h-5 text-gray-600" />
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Metadata */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-white font-medium truncate leading-tight mb-1">
+                              {video.title || 'Untitled Video'}
+                            </p>
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-4 h-4">
+                                <PlatformIcon platform={video.platform} size="sm" />
+                              </div>
+                              <span className="text-xs text-gray-400 lowercase">
+                                {video.uploaderHandle || video.platform}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {/* Metric Value */}
+                          <div className="flex-shrink-0 text-right">
+                            <p className="text-sm font-bold text-white">
+                              {formatDisplayNumber((video as any)[metricKey] || 0)}
+                            </p>
+                            <p className="text-xs text-gray-500">{metricLabel}</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 ) : (
                   <div className="px-5 py-6 text-center">
                     <Video className="w-8 h-8 text-gray-600 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">No videos for this date</p>
+                    <p className="text-sm text-gray-500">No data for this date</p>
                   </div>
                 )}
                 
-                {/* Footer Button */}
-                {date && onDateFilterChange && (
-                  <div className="px-5 pb-4 pt-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const customRange = {
-                          startDate: dayStart!,
-                          endDate: dayEnd!
-                        };
-                        onDateFilterChange('custom', customRange);
-                        setTooltipData(null); // Close tooltip after click
-                      }}
-                      className="w-full px-4 py-2.5 bg-white/10 hover:bg-white/15 border border-white/20 rounded-lg text-xs font-semibold text-white transition-colors flex items-center justify-center gap-2"
-                      style={{ pointerEvents: 'auto' }}
-                    >
-                      <Calendar className="w-3.5 h-3.5" />
-                      Set page date filter to {filterDateStr}
-                    </button>
-                  </div>
-                )}
               </>
             );
           })()}

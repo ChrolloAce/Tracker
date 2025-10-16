@@ -806,7 +806,6 @@ function DashboardPage() {
                   dateFilter={dateFilter}
                   customRange={customDateRange}
                   timePeriod="days"
-                  onDateFilterChange={handleDateFilterChange}
                 />
                 
                 {/* Top Performers Race Chart */}
@@ -832,7 +831,6 @@ function DashboardPage() {
             <AccountsPage 
               ref={accountsPageRef}
               dateFilter={accountsDateFilter}
-              onDateFilterChange={(filter) => setAccountsDateFilter(filter)}
               platformFilter={accountsPlatformFilter}
               searchQuery={accountsSearchQuery}
               onViewModeChange={setAccountsViewMode}
