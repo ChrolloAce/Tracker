@@ -850,8 +850,9 @@ const KPICards: React.FC<KPICardsProps> = ({
   );
 };
 
-// Separate component to handle sparkline rendering consistently
-const KPISparkline: React.FC<{
+// Separate component to handle sparkline rendering consistently (kept for reference)
+// @ts-ignore - Keeping for potential future use
+const _KPISparkline: React.FC<{
   data: Array<{ value: number; timestamp?: number; previousValue?: number }>;
   id: string;
   gradient: string[];
@@ -975,7 +976,7 @@ const KPISparkline: React.FC<{
   );
 };
 
-const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: TimePeriodType }> = ({ data, onClick, timePeriod = 'days' }) => {
+const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: TimePeriodType }> = ({ data, onClick }) => {
   const formatDeltaNumber = (num: number): string => {
     const absNum = Math.abs(num);
     if (absNum >= 1000000) return `${(absNum / 1000000).toFixed(1)}M`;
@@ -998,62 +999,119 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
   return (
     <div 
       onClick={onClick}
-      className="group relative min-h-[8rem] rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 p-4 lg:p-5 cursor-pointer">
-      
-      {/* Delta Indicator (top-right) */}
-      {data.delta && data.delta.absoluteValue !== undefined && (
+      className="group relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 cursor-pointer overflow-hidden"
+      style={{ minHeight: '180px' }}
+    >
+      {/* Upper Solid Portion - 80% */}
+      <div className="relative px-5 pt-5 pb-4" style={{ height: '80%' }}>
+        {/* Icon (top-right) */}
         <div className="absolute top-4 right-4">
-          <span className="inline-flex items-center gap-0.5 text-xs font-medium text-white">
-            {data.delta.isPositive ? '+' : '-'}
-            {data.delta.isPercentage 
-              ? `${Math.abs(data.delta.absoluteValue).toFixed(2)}%`
-              : formatDeltaNumber(data.delta.absoluteValue)}
-          </span>
+          <Icon className="w-5 h-5 text-gray-400 opacity-60" />
         </div>
-      )}
 
-      {/* CTA Button (top-right, if no delta) */}
-      {!data.delta && data.ctaText && (
-        <button className="absolute top-4 right-4 inline-flex items-center gap-0.5 rounded-full px-2.5 py-1 text-xs text-zinc-300/90 bg-white/5 hover:bg-white/10 transition-colors">
-          {data.ctaText}
-          <ChevronRight className="w-3 h-3" />
-        </button>
-      )}
+        {/* Metric Content */}
+        <div className="flex flex-col h-full justify-between">
+          {/* Label */}
+          <div className="text-sm font-medium text-zinc-400 tracking-wide">
+            {data.label}
+          </div>
 
-      <div className="flex items-start justify-between h-full">
-        {/* Left: Text Stack */}
-        <div className="flex-1 flex flex-col justify-between min-h-full">
-          <div>
-            {/* Icon + Label */}
-            <div className="flex items-center gap-2.5 mb-3">
-              <Icon className={`w-5 h-5 ${colors.iconColor}`} />
-              <span className="text-sm font-medium text-zinc-300">{data.label}</span>
-            </div>
-
-            {/* Value */}
-            <div className="flex items-baseline gap-2 mb-1">
-              <span className={`text-3xl font-bold ${data.isEmpty ? 'text-zinc-500' : 'text-white'}`}>
-                {data.value}
+          {/* Value */}
+          <div className="flex flex-col">
+            <span className={`text-4xl lg:text-5xl font-bold tracking-tight ${data.isEmpty ? 'text-zinc-600' : 'text-white'}`}>
+              {data.value}
+            </span>
+            {/* Period/Subtitle */}
+            {data.period && (
+              <span className="text-xs text-zinc-500 mt-1 flex items-center gap-1">
+                <span className="inline-block w-2 h-2 rounded-full bg-zinc-700"></span>
+                {data.period}
               </span>
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Right: Sparkline */}
-        {data.sparklineData && (
-          <div className="w-[40%] h-full flex items-center ml-2">
-            <KPISparkline
-              data={data.sparklineData}
-              id={data.id}
-              gradient={colors.gradient}
-              stroke={colors.stroke}
-              timePeriod={timePeriod}
-              totalValue={data.value}
-              metricLabel={data.label}
-            />
+        {/* Delta Badge (if exists) */}
+        {data.delta && data.delta.absoluteValue !== undefined && (
+          <div className="absolute bottom-4 right-5">
+            <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-1 rounded ${
+              data.delta.isPositive ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'
+            }`}>
+              {data.delta.isPositive ? '+' : ''}
+              {data.delta.isPercentage 
+                ? `${data.delta.absoluteValue.toFixed(1)}%`
+                : formatDeltaNumber(data.delta.absoluteValue)}
+            </span>
           </div>
         )}
+
+        {/* CTA Button (if exists) */}
+        {!data.delta && data.ctaText && (
+          <button className="absolute bottom-4 right-5 inline-flex items-center gap-0.5 rounded-full px-2.5 py-1 text-xs text-zinc-400 bg-white/5 hover:bg-white/10 transition-colors">
+            {data.ctaText}
+            <ChevronRight className="w-3 h-3" />
+          </button>
+        )}
       </div>
+
+      {/* Bottom Graph Layer - 20% */}
+      {data.sparklineData && data.sparklineData.length > 0 && (
+        <div 
+          className="relative w-full"
+          style={{ 
+            height: '20%',
+            background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 100%)'
+          }}
+        >
+          {/* Atmospheric Gradient Overlay */}
+          <div 
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: `linear-gradient(to top, ${colors.stroke}15 0%, transparent 80%)`,
+              mixBlendMode: 'soft-light'
+            }}
+          />
+          
+          {/* Line Chart */}
+          <div className="absolute inset-0" style={{ padding: '0' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart 
+                data={data.sparklineData}
+                margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+              >
+                <defs>
+                  <linearGradient id={`bottom-gradient-${data.id}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={colors.stroke} stopOpacity={0.2} />
+                    <stop offset="100%" stopColor={colors.stroke} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <Area
+                  type="monotoneX"
+                  dataKey="value"
+                  stroke={colors.stroke}
+                  strokeWidth={2}
+                  fill={`url(#bottom-gradient-${data.id})`}
+                  dot={false}
+                  isAnimationActive={true}
+                  animationDuration={800}
+                  animationEasing="ease-in-out"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* Fallback if no sparkline data */}
+      {(!data.sparklineData || data.sparklineData.length === 0) && (
+        <div 
+          className="relative w-full"
+          style={{ 
+            height: '20%',
+            background: 'linear-gradient(to top, rgba(0,0,0,0.2) 0%, transparent 100%)'
+          }}
+        />
+      )}
     </div>
   );
 };
