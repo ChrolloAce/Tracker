@@ -11,7 +11,11 @@ import {
   Clock, 
   X,
   Search,
-  Filter
+  Filter,
+  MoreVertical,
+  Download,
+  Mail,
+  Trash2
 } from 'lucide-react';
 import Pagination from './ui/Pagination';
 import CreateContractModal from './CreateContractModal';
@@ -26,6 +30,9 @@ const ContractsManagementPage: React.FC = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadContracts();
@@ -66,6 +73,40 @@ const ContractsManagementPage: React.FC = () => {
       month: 'short',
       day: 'numeric',
     });
+  };
+
+  const handleDownloadContract = (contract: ShareableContract) => {
+    // Open the contract signing page in a new window and trigger print
+    window.open(contract.creatorLink, '_blank');
+    setOpenMenuId(null);
+  };
+
+  const handleSendCopyToCreator = async (contract: ShareableContract) => {
+    if (!contract.creatorEmail) return;
+    
+    try {
+      // TODO: Implement email sending via EmailService
+      alert(`Sending contract to ${contract.creatorEmail}...`);
+      setOpenMenuId(null);
+    } catch (error) {
+      console.error('Error sending contract:', error);
+      alert('Failed to send contract. Please try again.');
+    }
+  };
+
+  const handleDeleteContract = async (contractId: string) => {
+    setIsDeleting(true);
+    try {
+      await ContractService.deleteContract(contractId);
+      await loadContracts();
+      setDeleteConfirmId(null);
+      setOpenMenuId(null);
+    } catch (error) {
+      console.error('Error deleting contract:', error);
+      alert('Failed to delete contract. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // Filter contracts
@@ -206,11 +247,14 @@ const ContractsManagementPage: React.FC = () => {
                   <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Links
                   </th>
+                  <th className="px-6 py-4 text-right text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {paginatedContracts.map((contract) => (
-                  <tr key={contract.id} className="hover:bg-white/5 transition-colors group cursor-pointer">
+                  <tr key={contract.id} className="hover:bg-white/5 transition-colors group">
                     <td className="px-6 py-4">
                       <div>
                         <div className="text-sm font-semibold text-white">{contract.creatorName}</div>
@@ -281,6 +325,70 @@ const ContractsManagementPage: React.FC = () => {
                         </div>
                       </div>
                     </td>
+                    <td className="px-6 py-4">
+                      <div className="flex justify-end relative">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenuId(openMenuId === contract.id ? null : contract.id);
+                          }}
+                          className="p-1.5 hover:bg-white/10 rounded transition-colors"
+                          title="More actions"
+                        >
+                          <MoreVertical className="w-4 h-4 text-gray-400" />
+                        </button>
+
+                        {/* Dropdown Menu */}
+                        {openMenuId === contract.id && (
+                          <>
+                            {/* Backdrop to close menu */}
+                            <div 
+                              className="fixed inset-0 z-10"
+                              onClick={() => setOpenMenuId(null)}
+                            />
+                            
+                            {/* Menu */}
+                            <div className="absolute right-0 top-8 w-48 bg-zinc-800 border border-white/10 rounded-lg shadow-xl z-20 overflow-hidden">
+                              {/* Download */}
+                              <button
+                                onClick={() => handleDownloadContract(contract)}
+                                className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-3"
+                              >
+                                <Download className="w-4 h-4 text-blue-400" />
+                                Download Contract
+                              </button>
+
+                              {/* Send Copy */}
+                              <button
+                                onClick={() => handleSendCopyToCreator(contract)}
+                                disabled={!contract.creatorEmail}
+                                className={`w-full px-4 py-2.5 text-left text-sm transition-colors flex items-center gap-3 ${
+                                  contract.creatorEmail
+                                    ? 'text-white hover:bg-white/10'
+                                    : 'text-gray-500 cursor-not-allowed opacity-50'
+                                }`}
+                                title={!contract.creatorEmail ? 'No email available' : 'Send copy to creator'}
+                              >
+                                <Mail className="w-4 h-4 text-purple-400" />
+                                Send Copy to Creator
+                              </button>
+
+                              {/* Delete */}
+                              <button
+                                onClick={() => {
+                                  setDeleteConfirmId(contract.id);
+                                  setOpenMenuId(null);
+                                }}
+                                className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-red-500/20 transition-colors flex items-center gap-3 border-t border-white/5"
+                              >
+                                <Trash2 className="w-4 h-4 text-red-400" />
+                                Delete Contract
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -323,6 +431,54 @@ const ContractsManagementPage: React.FC = () => {
             loadContracts();
           }}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-900 rounded-2xl border border-white/10 max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
+                <Trash2 className="w-6 h-6 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">Delete Contract</h3>
+                <p className="text-sm text-gray-400">This action cannot be undone</p>
+              </div>
+            </div>
+            
+            <p className="text-gray-300 mb-6">
+              Are you sure you want to delete this contract? All associated data will be permanently removed.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteContract(deleteConfirmId)}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Delete Contract
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
