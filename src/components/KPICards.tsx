@@ -995,6 +995,7 @@ const KPICard: React.FC<{
 }> = ({ data, onClick, submissions = [], onDateFilterChange }) => {
   // Tooltip state for Portal rendering
   const [tooltipData, setTooltipData] = useState<{ x: number; y: number; point: any; lineX: number } | null>(null);
+  const cardRef = React.useRef<HTMLDivElement>(null);
   
   const formatDeltaNumber = (num: number): string => {
     const absNum = Math.abs(num);
@@ -1017,10 +1018,27 @@ const KPICard: React.FC<{
 
   return (
     <div 
+      ref={cardRef}
       onClick={onClick}
       className="group relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 cursor-pointer"
       style={{ minHeight: '180px', overflow: 'visible' }}
     >
+      {/* Full-height vertical cursor line */}
+      {tooltipData && (
+        <div
+          style={{
+            position: 'absolute',
+            left: `${tooltipData.lineX}px`,
+            top: 0,
+            bottom: 0,
+            width: '2px',
+            background: `linear-gradient(to bottom, ${colors.stroke}00 0%, ${colors.stroke}80 15%, ${colors.stroke}60 50%, ${colors.stroke}40 85%, ${colors.stroke}00 100%)`,
+            pointerEvents: 'none',
+            zIndex: 50
+          }}
+        />
+      )}
+
       {/* Upper Solid Portion - 75% (reduced to give more space to graph) */}
       <div className="relative px-5 pt-5 pb-2" style={{ height: '75%' }}>
         {/* Icon (top-right) */}
@@ -1096,11 +1114,16 @@ const KPICard: React.FC<{
           <div className="absolute inset-0" style={{ padding: '0' }}>
             <div 
               onMouseMove={(e) => {
-                if (!data.sparklineData || data.sparklineData.length === 0) return;
+                if (!data.sparklineData || data.sparklineData.length === 0 || !cardRef.current) return;
                 
                 const rect = e.currentTarget.getBoundingClientRect();
+                const cardRect = cardRef.current.getBoundingClientRect();
+                
                 const x = e.clientX - rect.left;
                 const percentage = x / rect.width;
+                
+                // Calculate X position relative to the card (for full-height line)
+                const lineX = e.clientX - cardRect.left;
                 
                 // Clamp percentage between 0 and 1
                 const clampedPercentage = Math.max(0, Math.min(1, percentage));
@@ -1118,29 +1141,13 @@ const KPICard: React.FC<{
                     x: e.clientX,
                     y: e.clientY,
                     point: point,
-                    lineX: x // Store relative X position for the vertical line
+                    lineX: lineX // Store X position relative to card for full-height line
                   });
                 }
               }}
               onMouseLeave={() => setTooltipData(null)}
               style={{ width: '100%', height: '100%', position: 'relative' }}
             >
-              {/* Vertical cursor line */}
-              {tooltipData && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: `${tooltipData.lineX}px`,
-                    top: 0,
-                    bottom: 0,
-                    width: '2px',
-                    background: `linear-gradient(to bottom, ${colors.stroke}60 0%, ${colors.stroke}40 50%, ${colors.stroke}20 100%)`,
-                    pointerEvents: 'none',
-                    zIndex: 10
-                  }}
-                />
-              )}
-              
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart 
                   data={data.sparklineData}
