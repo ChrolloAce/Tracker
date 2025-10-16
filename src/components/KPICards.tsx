@@ -864,6 +864,7 @@ const KPICards: React.FC<KPICardsProps> = ({
             onClick={() => handleCardClick(card.id)} 
             timePeriod={timePeriod}
             submissions={submissions}
+            linkClicks={linkClicks}
           />
         ))}
       </div>
@@ -1012,7 +1013,8 @@ const KPICard: React.FC<{
   onClick?: () => void; 
   timePeriod?: TimePeriodType;
   submissions?: VideoSubmission[];
-}> = ({ data, onClick, submissions = [] }) => {
+  linkClicks?: LinkClick[];
+}> = ({ data, onClick, submissions = [], linkClicks = [] }) => {
   // Tooltip state for Portal rendering
   const [tooltipData, setTooltipData] = useState<{ x: number; y: number; point: any; lineX: number } | null>(null);
   const cardRef = React.useRef<HTMLDivElement>(null);
@@ -1118,12 +1120,12 @@ const KPICard: React.FC<{
                 data.delta.isPositive ? 'text-green-400' : 'text-red-400'
               }`} style={{ letterSpacing: '-0.02em' }}>
                 <span className="mr-0">{data.delta.isPositive ? '+' : '−'}</span>
-                {data.delta.isPercentage 
+            {data.delta.isPercentage 
                   ? `${Math.abs(data.delta.absoluteValue).toFixed(1)}%`
-                  : formatDeltaNumber(data.delta.absoluteValue)}
-              </span>
+              : formatDeltaNumber(data.delta.absoluteValue)}
+          </span>
             )}
-          </div>
+        </div>
 
           {/* Period/Subtitle */}
           {data.period && (
@@ -1135,12 +1137,12 @@ const KPICard: React.FC<{
         </div>
 
         {/* CTA Button (if exists) */}
-        {!data.delta && data.ctaText && (
+      {!data.delta && data.ctaText && (
           <button className="absolute bottom-3 right-5 inline-flex items-center gap-0.5 rounded-full px-2.5 py-1 text-xs text-zinc-400 bg-white/5 hover:bg-white/10 transition-colors">
-            {data.ctaText}
-            <ChevronRight className="w-3 h-3" />
-          </button>
-        )}
+          {data.ctaText}
+          <ChevronRight className="w-3 h-3" />
+        </button>
+      )}
       </div>
 
       {/* Bottom Graph Layer - 25% (expanded from 20%) */}
@@ -1284,7 +1286,7 @@ const KPICard: React.FC<{
             let sortedItems: any[] = [];
             if (data.id === 'accounts') {
               // For accounts: group by uploaderHandle and sum total views
-              const accountsMap = new Map<string, { handle: string; platform: string; totalViews: number; videoCount: number }>();
+              const accountsMap = new Map<string, { handle: string; platform: string; totalViews: number; videoCount: number; profilePicture?: string }>();
               videosOnDay.forEach(video => {
                 const handle = video.uploaderHandle || 'Unknown';
                 if (accountsMap.has(handle)) {
@@ -1296,12 +1298,44 @@ const KPICard: React.FC<{
                     handle,
                     platform: video.platform,
                     totalViews: video.views || 0,
-                    videoCount: 1
+                    videoCount: 1,
+                    profilePicture: video.uploaderProfilePicture || undefined
                   });
                 }
               });
               sortedItems = Array.from(accountsMap.values())
                 .sort((a, b) => b.totalViews - a.totalViews)
+                .slice(0, 5);
+            } else if (data.id === 'linkClicks') {
+              // For link clicks: show links clicked that day
+              const clicksOnDay = linkClicks.filter((click: LinkClick) => {
+                const clickDate = new Date(click.timestamp);
+                if (!dayStart || !dayEnd) return false;
+                return clickDate >= dayStart && clickDate <= dayEnd;
+              });
+              
+              // Group by linkId and count clicks
+              const linksMap = new Map<string, { linkId: string; title: string; url: string; shortCode: string; clicks: number; accountHandle?: string; accountProfilePicture?: string; accountPlatform?: string }>();
+              clicksOnDay.forEach((click: LinkClick) => {
+                if (linksMap.has(click.linkId)) {
+                  const existing = linksMap.get(click.linkId)!;
+                  existing.clicks += 1;
+                } else {
+                  linksMap.set(click.linkId, {
+                    linkId: click.linkId,
+                    title: click.linkTitle || click.shortCode || 'Untitled Link',
+                    url: click.linkUrl || '',
+                    shortCode: click.shortCode || '',
+                    clicks: 1,
+                    accountHandle: click.accountHandle,
+                    accountProfilePicture: click.accountProfilePicture,
+                    accountPlatform: click.accountPlatform
+                  });
+                }
+              });
+              
+              sortedItems = Array.from(linksMap.values())
+                .sort((a, b) => b.clicks - a.clicks)
                 .slice(0, 5);
             } else {
               // For other metrics: sort videos by the relevant metric
@@ -1348,7 +1382,7 @@ const KPICard: React.FC<{
                   <p className="text-2xl font-bold text-white">
                     {displayValue}
                   </p>
-                </div>
+            </div>
                 
                 {/* Divider */}
                 <div className="border-t border-white/10 mx-5"></div>
@@ -1357,19 +1391,38 @@ const KPICard: React.FC<{
                 {sortedItems.length > 0 ? (
                   <div className="overflow-y-auto px-5 py-3" style={{ maxHeight: '320px' }}>
                     {data.id === 'accounts' ? (
-                      // Render Accounts
+                      // Render Accounts with Profile Pictures
                       sortedItems.map((account: any, idx: number) => (
                         <div 
                           key={`${account.handle}-${idx}`}
                           className="flex items-center gap-3 py-2.5 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
                         >
-                          {/* Account Icon */}
-                          <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-800 flex items-center justify-center">
-                            <div className="w-6 h-6">
-                              <PlatformIcon platform={account.platform} size="sm" />
+                          {/* Profile Picture with Platform Icon */}
+                          <div className="flex-shrink-0 w-12 h-12 relative">
+                            <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-800">
+                              {account.profilePicture ? (
+                                <img 
+                                  src={account.profilePicture} 
+                                  alt={account.handle} 
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <AtSign className="w-6 h-6 text-gray-600" />
+                                </div>
+                              )}
                             </div>
-                          </div>
-                          
+                            {/* Platform Icon Badge */}
+                            <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-[#1a1a1a] border-2 border-[#1a1a1a] flex items-center justify-center">
+                              <div className="w-3.5 h-3.5">
+                                <PlatformIcon platform={account.platform} size="sm" />
+                              </div>
+          </div>
+        </div>
+
                           {/* Metadata */}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-white font-medium truncate leading-tight mb-1">
@@ -1378,9 +1431,9 @@ const KPICard: React.FC<{
                             <div className="flex items-center gap-1.5">
                               <span className="text-xs text-gray-400">
                                 {account.videoCount} {account.videoCount === 1 ? 'video' : 'videos'}
-                              </span>
-                            </div>
-                          </div>
+              </span>
+            </div>
+          </div>
                           
                           {/* Total Views */}
                           <div className="flex-shrink-0 text-right">
@@ -1388,6 +1441,75 @@ const KPICard: React.FC<{
                               {formatDisplayNumber(account.totalViews)}
                             </p>
                             <p className="text-xs text-gray-500">{metricLabel}</p>
+        </div>
+                        </div>
+                      ))
+                    ) : data.id === 'linkClicks' ? (
+                      // Render Link Clicks with Account Profile Pictures
+                      sortedItems.map((link: any, idx: number) => (
+                        <div 
+                          key={`${link.linkId}-${idx}`}
+                          className="flex items-center gap-3 py-2.5 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                        >
+                          {/* Account Profile Picture (if attached) */}
+                          {link.accountHandle ? (
+                            <div className="flex-shrink-0 w-12 h-12 relative">
+                              <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-800">
+                                {link.accountProfilePicture ? (
+                                  <img 
+                                    src={link.accountProfilePicture} 
+                                    alt={link.accountHandle} 
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <AtSign className="w-6 h-6 text-gray-600" />
+                                  </div>
+                                )}
+                              </div>
+                              {/* Platform Icon Badge */}
+                              {link.accountPlatform && (
+                                <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-[#1a1a1a] border-2 border-[#1a1a1a] flex items-center justify-center">
+                                  <div className="w-3.5 h-3.5">
+                                    <PlatformIcon platform={link.accountPlatform} size="sm" />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-800 flex items-center justify-center">
+                              <LinkIcon className="w-6 h-6 text-gray-600" />
+                            </div>
+                          )}
+                          
+                          {/* Link Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-white font-medium truncate leading-tight mb-1">
+                              {link.title}
+                            </p>
+                            <div className="flex items-center gap-1.5">
+                              {link.accountHandle && (
+                                <span className="text-xs text-gray-400">
+                                  {link.accountHandle}
+                                </span>
+                              )}
+                              {link.shortCode && (
+                                <span className="text-xs text-gray-500">
+                                  • {link.shortCode}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Click Count */}
+                          <div className="flex-shrink-0 text-right">
+                            <p className="text-sm font-bold text-white">
+                              {formatDisplayNumber(link.clicks)}
+                            </p>
+                            <p className="text-xs text-gray-500">{link.clicks === 1 ? 'click' : 'clicks'}</p>
                           </div>
                         </div>
                       ))
@@ -1412,9 +1534,9 @@ const KPICard: React.FC<{
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
                                 <Play className="w-5 h-5 text-gray-600" />
-                              </div>
-                            )}
-                          </div>
+          </div>
+        )}
+      </div>
                           
                           {/* Metadata */}
                           <div className="flex-1 min-w-0">

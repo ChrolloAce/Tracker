@@ -18,6 +18,9 @@ export interface LinkClick {
   browser: string;
   os: string;
   referrer: string;
+  accountHandle?: string;
+  accountProfilePicture?: string;
+  accountPlatform?: string;
 }
 
 /**
