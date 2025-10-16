@@ -8,7 +8,8 @@ import {
   Video, 
   Share2,
   ChevronRight,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Calendar
 } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { LinkClick } from '../services/LinkClicksService';
@@ -16,6 +17,7 @@ import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
 import { DateFilterType } from './DateRangeFilter';
 import { TimePeriodType } from './TimePeriodSelector';
 import MetricComparisonModal from './MetricComparisonModal';
+import { PlatformIcon } from './ui/PlatformIcon';
 
 interface KPICardsProps {
   submissions: VideoSubmission[];
@@ -832,7 +834,14 @@ const KPICards: React.FC<KPICardsProps> = ({
     <>
       <div className="grid gap-4 md:gap-5 xl:gap-6 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {kpiData.map((card) => (
-          <KPICard key={card.id} data={card} onClick={() => handleCardClick(card.id)} timePeriod={timePeriod} />
+          <KPICard 
+            key={card.id} 
+            data={card} 
+            onClick={() => handleCardClick(card.id)} 
+            timePeriod={timePeriod}
+            submissions={submissions}
+            onDateFilterChange={onDateFilterChange}
+          />
         ))}
       </div>
 
@@ -976,7 +985,13 @@ const _KPISparkline: React.FC<{
   );
 };
 
-const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: TimePeriodType }> = ({ data, onClick }) => {
+const KPICard: React.FC<{ 
+  data: KPICardData; 
+  onClick?: () => void; 
+  timePeriod?: TimePeriodType;
+  submissions?: VideoSubmission[];
+  onDateFilterChange?: (filter: DateFilterType, customRange?: { startDate: Date; endDate: Date }) => void;
+}> = ({ data, onClick, submissions = [], onDateFilterChange }) => {
   const formatDeltaNumber = (num: number): string => {
     const absNum = Math.abs(num);
     if (absNum >= 1000000) return `${(absNum / 1000000).toFixed(1)}M`;
@@ -1091,7 +1106,7 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
                   position={{ y: -80 }}
                   wrapperStyle={{ 
                     zIndex: 9999999,
-                    pointerEvents: 'none'
+                    pointerEvents: 'auto'
                   }}
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
@@ -1101,33 +1116,130 @@ const KPICard: React.FC<{ data: KPICardData; onClick?: () => void; timePeriod?: 
                       
                       // Format date
                       const date = timestamp ? new Date(timestamp) : null;
-                      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                      const dateStr = date ? `${monthNames[date.getMonth()]} ${date.getDate()}` : '';
+                      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+                      const dateStr = date ? `${monthNames[date.getMonth()]} ${date.getDate()}${date.getDate() === 1 ? 'st' : date.getDate() === 2 ? 'nd' : date.getDate() === 3 ? 'rd' : 'th'}, ${date.getFullYear()}` : '';
+                      const filterDateStr = date ? `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}/${date.getFullYear()}` : '';
                       
                       // Format value based on metric type
                       const formatDisplayNumber = (num: number): string => {
-                        if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-                        if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+                        if (num >= 1000000) return `${(num / 1000000).toFixed(1)} M`;
+                        if (num >= 1000) return `${(num / 1000).toFixed(1)} k`;
                         return num.toLocaleString();
                       };
                       
                       const displayValue = typeof value === 'number' ? formatDisplayNumber(value) : value;
                       
+                      // Filter videos for this specific day
+                      const dayStart = date ? new Date(date) : null;
+                      const dayEnd = date ? new Date(date) : null;
+                      if (dayStart) dayStart.setHours(0, 0, 0, 0);
+                      if (dayEnd) dayEnd.setHours(23, 59, 59, 999);
+                      
+                      const videosOnDay = submissions.filter((video: VideoSubmission) => {
+                        const videoDate = video.dateSubmitted ? new Date(video.dateSubmitted) : null;
+                        if (!videoDate || !dayStart || !dayEnd) return false;
+                        return videoDate >= dayStart && videoDate <= dayEnd;
+                      }).sort((a: VideoSubmission, b: VideoSubmission) => (b.views || 0) - (a.views || 0)).slice(0, 5); // Top 5 videos
+                      
                       return (
                         <div 
-                          className="bg-[#1a1a1a] backdrop-blur-xl text-white px-4 py-2.5 rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.6)] text-sm border border-white/10 pointer-events-none" 
+                          className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10" 
                           style={{ 
-                            zIndex: 9999999
+                            zIndex: 9999999,
+                            width: '400px',
+                            maxHeight: '500px',
+                            pointerEvents: 'auto'
                           }}
                         >
-                          {dateStr && (
-                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1">
+                          {/* Header */}
+                          <div className="flex items-center justify-between px-5 pt-4 pb-3">
+                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
                               {dateStr}
                             </p>
+                            <p className="text-2xl font-bold text-white">
+                              {displayValue}
+                            </p>
+                          </div>
+                          
+                          {/* Divider */}
+                          <div className="border-t border-white/10 mx-5"></div>
+                          
+                          {/* Video List */}
+                          {videosOnDay.length > 0 ? (
+                            <div className="overflow-y-auto px-5 py-3" style={{ maxHeight: '320px' }}>
+                              {videosOnDay.map((video: VideoSubmission, idx: number) => (
+                                <div 
+                                  key={`${video.id}-${idx}`}
+                                  className="flex items-center gap-3 py-2.5 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                                >
+                                  {/* Thumbnail */}
+                                  <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-800">
+                                    {video.thumbnail ? (
+                                      <img 
+                                        src={video.thumbnail} 
+                                        alt={video.title || 'Video'} 
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          e.currentTarget.style.display = 'none';
+                                        }}
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center">
+                                        <Play className="w-5 h-5 text-gray-600" />
+                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Metadata */}
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm text-white font-medium truncate leading-tight mb-1">
+                                      {video.title || 'Untitled Video'}
+                                    </p>
+                                    <div className="flex items-center gap-1.5">
+                                      <div className="w-4 h-4">
+                                        <PlatformIcon platform={video.platform} size="sm" />
+                                      </div>
+                      <span className="text-xs text-gray-400 lowercase">
+                        {video.uploaderHandle || video.platform}
+                      </span>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Views */}
+                                  <div className="flex-shrink-0 text-right">
+                                    <p className="text-sm font-bold text-white">
+                                      {formatDisplayNumber(video.views || 0)}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="px-5 py-6 text-center">
+                              <Video className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+                              <p className="text-sm text-gray-500">No videos for this date</p>
+                            </div>
                           )}
-                          <p className="text-base text-white font-bold whitespace-nowrap">
-                            {displayValue}
-                          </p>
+                          
+                          {/* Footer Button */}
+                          {date && onDateFilterChange && (
+                            <div className="px-5 pb-4 pt-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const customRange = {
+                                    startDate: dayStart!,
+                                    endDate: dayEnd!
+                                  };
+                                  onDateFilterChange('custom', customRange);
+                                }}
+                                className="w-full px-4 py-2.5 bg-white/10 hover:bg-white/15 border border-white/20 rounded-lg text-xs font-semibold text-white transition-colors flex items-center justify-center gap-2"
+                              >
+                                <Calendar className="w-3.5 h-3.5" />
+                                Set page date filter to {filterDateStr}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       );
                     }
