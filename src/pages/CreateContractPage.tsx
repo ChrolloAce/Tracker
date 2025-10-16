@@ -320,7 +320,7 @@ const CreateContractPage: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                      End Date *
+                      End Date <span className="text-gray-500">(Optional)</span>
                     </label>
                     <input
                       type="date"
@@ -365,77 +365,53 @@ const CreateContractPage: React.FC = () => {
 
           {/* Right Column - Preview */}
           <div className="bg-zinc-900/60 backdrop-blur border border-white/5 rounded-xl p-6 h-fit sticky top-24">
-            <h2 className="text-lg font-semibold mb-4">Contract Preview</h2>
-            <div className="bg-white text-black p-8 rounded-lg shadow-lg min-h-[600px]">
-              {/* Contract Header */}
-              <div className="mb-8 pb-6 border-b-2 border-gray-300">
-                <h1 className="text-2xl font-bold mb-4">
-                  {companyName || '[Company Name]'}
-                </h1>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="font-semibold">Contract With:</span>
-                    <span>{creators.find(c => c.userId === selectedCreatorId)?.displayName || '[Creator Name]'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-semibold">Date Created:</span>
-                    <span>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-semibold">Start Date:</span>
-                    <span>{contractStartDate ? new Date(contractStartDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '[Start Date]'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="font-semibold">End Date:</span>
-                    <span>{contractEndDate ? new Date(contractEndDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Until further notice'}</span>
-                  </div>
-                  {paymentStructureName && (
-                    <div className="flex justify-between">
-                      <span className="font-semibold">Payment Structure:</span>
-                      <span>{paymentStructureName}</span>
-                    </div>
-                  )}
+            <h2 className="text-lg font-semibold mb-6">Contract Preview</h2>
+            <div className="space-y-6">
+              {/* Contract Info Cards */}
+              <div className="space-y-3">
+                <div className="bg-black/40 border border-white/10 rounded-lg p-4">
+                  <div className="text-xs text-gray-400 mb-1">Company Name</div>
+                  <div className="text-white font-medium">{companyName || '[Not Set]'}</div>
                 </div>
-              </div>
+                
+                <div className="bg-black/40 border border-white/10 rounded-lg p-4">
+                  <div className="text-xs text-gray-400 mb-1">Creator</div>
+                  <div className="text-white font-medium">{creators.find(c => c.userId === selectedCreatorId)?.displayName || '[Not Selected]'}</div>
+                </div>
 
-              {/* Contract Terms */}
-              <div className="prose prose-sm max-w-none">
-                {contractNotes ? (
-                  <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
-                    {contractNotes}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-black/40 border border-white/10 rounded-lg p-4">
+                    <div className="text-xs text-gray-400 mb-1">Start Date</div>
+                    <div className="text-white text-sm">{contractStartDate ? new Date(contractStartDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '[Not Set]'}</div>
                   </div>
-                ) : (
-                  <div className="text-gray-400 italic">
-                    Contract terms and conditions will appear here...
+                  
+                  <div className="bg-black/40 border border-white/10 rounded-lg p-4">
+                    <div className="text-xs text-gray-400 mb-1">End Date</div>
+                    <div className="text-white text-sm">{contractEndDate ? new Date(contractEndDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Until further notice'}</div>
+                  </div>
+                </div>
+
+                {paymentStructureName && (
+                  <div className="bg-black/40 border border-white/10 rounded-lg p-4">
+                    <div className="text-xs text-gray-400 mb-1">Payment Structure</div>
+                    <div className="text-white font-medium">{paymentStructureName}</div>
                   </div>
                 )}
               </div>
 
-              {/* Signature Section Preview */}
-              {contractNotes && (
-                <div className="mt-12 pt-6 border-t-2 border-gray-300">
-                  <div className="grid grid-cols-2 gap-8">
-                    <div>
-                      <p className="text-sm font-semibold mb-4">Creator Signature:</p>
-                      <div className="border-t-2 border-gray-400 pt-2">
-                        <p className="text-xs text-gray-600">Signature</p>
-                      </div>
-                      <div className="mt-4 border-t border-gray-400 pt-2">
-                        <p className="text-xs text-gray-600">Date</p>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold mb-4">Company Representative:</p>
-                      <div className="border-t-2 border-gray-400 pt-2">
-                        <p className="text-xs text-gray-600">Signature</p>
-                      </div>
-                      <div className="mt-4 border-t border-gray-400 pt-2">
-                        <p className="text-xs text-gray-600">Date</p>
-                      </div>
-                    </div>
+              {/* Contract Terms Preview */}
+              <div className="bg-black/40 border border-white/10 rounded-lg p-6">
+                <div className="text-xs text-gray-400 mb-3">CONTRACT TERMS</div>
+                {contractNotes ? (
+                  <div className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto">
+                    {contractNotes}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="text-gray-500 text-sm italic">
+                    Contract terms will appear here...
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
