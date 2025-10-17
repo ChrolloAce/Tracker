@@ -364,14 +364,43 @@ class FirestoreDataService {
           const existingDoc = await getDoc(videoRef);
           
           if (existingDoc.exists()) {
-            // Update existing video metrics
-            batch.update(videoRef, {
+            // Update existing video - INCLUDING url, caption, and thumbnail
+            // This ensures that if these fields were missing, they get populated on refresh
+            const updateData: any = {
               views: video.views,
               likes: video.likes,
               comments: video.comments,
               shares: video.shares || 0,
               lastRefreshed: Timestamp.now()
-            });
+            };
+            
+            // CRITICAL: Always update URL if provided (fixes missing URLs)
+            if (video.url && video.url.trim() !== '') {
+              updateData.url = video.url;
+            }
+            
+            // CRITICAL: Always update caption/description if provided (fixes missing captions)
+            if (video.caption && video.caption.trim() !== '') {
+              updateData.description = video.caption;
+              updateData.title = video.caption.substring(0, 100) || '';
+            }
+            
+            // CRITICAL: Always update thumbnail if provided
+            if (video.thumbnail && video.thumbnail.trim() !== '') {
+              updateData.thumbnail = video.thumbnail;
+            }
+            
+            // Debug log for first video update
+            if (batchVideos.indexOf(video) === 0) {
+              console.log('🔄 Updating existing video:', {
+                videoId: video.videoId,
+                hasUrl: !!video.url,
+                hasCaption: !!video.caption,
+                hasThumbnail: !!video.thumbnail
+              });
+            }
+            
+            batch.update(videoRef, updateData);
           } else {
             // Debug: Log first video being saved
             if (batchVideos.indexOf(video) === 0 && video.caption) {
