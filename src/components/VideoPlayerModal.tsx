@@ -122,7 +122,21 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
     }
   };
 
+  // Validate video URL before processing
+  if (!videoUrl || videoUrl.trim() === '') {
+    console.error('❌ VideoPlayerModal: Empty or invalid video URL');
+    return null;
+  }
+
   const embedUrl = getEmbedUrl(videoUrl, platform);
+  
+  // Double-check that we got a valid embed URL
+  if (!embedUrl || embedUrl === '' || embedUrl === window.location.href) {
+    console.error('❌ VideoPlayerModal: Invalid embed URL generated:', embedUrl);
+    return null;
+  }
+
+  console.log('✅ VideoPlayerModal: Opening video:', { videoUrl, embedUrl, platform });
 
   const modalContent = (
     <div 
@@ -170,6 +184,7 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
             allowFullScreen
             style={{ border: 'none' }}
             title={title || 'Video player'}
+            sandbox="allow-scripts allow-same-origin allow-presentation"
           />
         </div>
 

@@ -2310,8 +2310,23 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                  
+                                  console.log('🎬 Opening video player:', {
+                                    videoId: video.videoId,
+                                    url: video.url,
+                                    platform: selectedAccount.platform,
+                                    hasUrl: !!video.url
+                                  });
+                                  
+                                  // Validate URL before opening player
+                                  if (!video.url || video.url.trim() === '') {
+                                    console.error('❌ Video URL is empty, cannot open player');
+                                    alert('This video has no URL. Please refresh the account to sync video data.');
+                                    return;
+                                  }
+                                  
                                   setSelectedVideoForPlayer({
-                                    url: video.url || '',
+                                    url: video.url,
                                     title: video.caption || video.title || 'No caption',
                                     platform: selectedAccount.platform
                                   });

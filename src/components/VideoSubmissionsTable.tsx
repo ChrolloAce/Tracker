@@ -605,6 +605,21 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
+                          
+                          console.log('🎬 Opening video player:', {
+                            videoId: submission.id,
+                            url: submission.url,
+                            platform: submission.platform,
+                            hasUrl: !!submission.url
+                          });
+                          
+                          // Validate URL before opening player
+                          if (!submission.url || submission.url.trim() === '') {
+                            console.error('❌ Video URL is empty, cannot open player');
+                            alert('This video has no URL. Please try refreshing the page.');
+                            return;
+                          }
+                          
                           setSelectedVideoForPlayer(submission);
                           setVideoPlayerOpen(true);
                         }}
