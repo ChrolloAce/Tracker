@@ -643,86 +643,87 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     };
   }, [currentOrgId, currentProjectId, syncingAccounts.size, selectedAccount, loadAccountVideos]);
 
-  // Calculate filtered stats for all accounts (for table view)
+  // Fast stats calculation - Load all videos at once, then group by account
   useEffect(() => {
     const calculateFilteredStats = async () => {
       if (!currentOrgId || !currentProjectId || accounts.length === 0 || viewMode !== 'table') {
         return;
       }
 
-      console.log('📊 Calculating filtered stats for table view...');
-      const accountsWithStats: AccountWithFilteredStats[] = [];
+      console.log('⚡ Fast loading filtered stats for table view...');
+      const startTime = performance.now();
+      
+      // IMMEDIATELY show table with basic stats (no delay!)
+      const accountsWithBasicStats: AccountWithFilteredStats[] = accounts.map(account => ({
+        ...account,
+        filteredTotalVideos: account.totalVideos || 0,
+        filteredTotalViews: account.totalViews || 0,
+        filteredTotalLikes: account.totalLikes || 0,
+        filteredTotalComments: account.totalComments || 0
+      }));
+      setFilteredAccounts(accountsWithBasicStats);
 
-      for (const account of accounts) {
-        try {
-          // Load videos for this account
-          const videos = await AccountTrackingServiceFirebase.getAccountVideos(
-            currentOrgId,
-            currentProjectId,
-            account.id
-          );
+      // Load filtered stats in background (much faster - single query!)
+      try {
+        // Load ALL videos from main collection at once (ONE query instead of N queries!)
+        const videosRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'videos');
+        const videosQuery = query(videosRef, orderBy('uploadDate', 'desc'));
+        const videosSnapshot = await getDocs(videosQuery);
+        
+        // Group videos by account
+        const videosByAccount = new Map<string, any[]>();
+        videosSnapshot.docs.forEach(doc => {
+          const video = { id: doc.id, ...doc.data() } as any;
+          const accountId = video.trackedAccountId;
+          if (accountId) {
+            if (!videosByAccount.has(accountId)) {
+              videosByAccount.set(accountId, []);
+            }
+            videosByAccount.get(accountId)!.push(video);
+          }
+        });
 
-          // Apply rules filtering
-          const rulesFilteredVideos = await RulesService.filterVideosByRules(
-            currentOrgId,
-            currentProjectId,
-            account.id,
-            account.platform,
-            videos
-          );
+        // Calculate filtered stats for each account
+        const accountsWithStats: AccountWithFilteredStats[] = accounts.map(account => {
+          const accountVideos = videosByAccount.get(account.id) || [];
 
-          // Apply date filtering
-          const videoSubmissions: VideoSubmission[] = rulesFilteredVideos.map(video => ({
-            id: video.id || video.videoId || '',
-            url: video.url || '',
+          // Convert to submissions and apply date filtering
+          const videoSubmissions: VideoSubmission[] = accountVideos.map(video => ({
+            id: video.id || '',
+            url: video.videoUrl || video.url || '',
             platform: account.platform,
             thumbnail: video.thumbnail || '',
-            title: video.caption || video.title || 'No caption',
+            title: video.videoTitle || video.caption || '',
             uploader: account.displayName || account.username,
             uploaderHandle: account.username,
             status: 'approved' as const,
-            views: video.viewsCount || video.views || 0,
-            likes: video.likesCount || video.likes || 0,
-            comments: video.commentsCount || video.comments || 0,
-            shares: video.sharesCount || video.shares || 0,
-            dateSubmitted: video.uploadDate || new Date(),
-            uploadDate: video.uploadDate || new Date(),
+            views: video.views || 0,
+            likes: video.likes || 0,
+            comments: video.comments || 0,
+            shares: video.shares || 0,
+            dateSubmitted: video.uploadDate?.toDate?.() || new Date(),
+            uploadDate: video.uploadDate?.toDate?.() || new Date(),
             snapshots: []
           }));
 
-          const dateAndRulesFiltered = DateFilterService.filterVideosByDateRange(
-            videoSubmissions,
-            dateFilter
-          );
+          const dateFiltered = DateFilterService.filterVideosByDateRange(videoSubmissions, dateFilter);
 
-          // Calculate stats from filtered videos
-          const filteredTotalVideos = dateAndRulesFiltered.length;
-          const filteredTotalViews = dateAndRulesFiltered.reduce((sum, v) => sum + v.views, 0);
-          const filteredTotalLikes = dateAndRulesFiltered.reduce((sum, v) => sum + v.likes, 0);
-          const filteredTotalComments = dateAndRulesFiltered.reduce((sum, v) => sum + v.comments, 0);
+          return {
+            ...account,
+            filteredTotalVideos: dateFiltered.length,
+            filteredTotalViews: dateFiltered.reduce((sum, v) => sum + v.views, 0),
+            filteredTotalLikes: dateFiltered.reduce((sum, v) => sum + v.likes, 0),
+            filteredTotalComments: dateFiltered.reduce((sum, v) => sum + v.comments, 0)
+          };
+        });
 
-          accountsWithStats.push({
-            ...account,
-            filteredTotalVideos,
-            filteredTotalViews,
-            filteredTotalLikes,
-            filteredTotalComments
-          });
-        } catch (error) {
-          console.error(`Failed to calculate stats for ${account.username}:`, error);
-          // Fallback to original stats
-          accountsWithStats.push({
-            ...account,
-            filteredTotalVideos: account.totalVideos,
-            filteredTotalViews: account.totalViews,
-            filteredTotalLikes: account.totalLikes,
-            filteredTotalComments: account.totalComments
-          });
-        }
+        const endTime = performance.now();
+        console.log(`⚡ Calculated filtered stats for ${accountsWithStats.length} accounts in ${Math.round(endTime - startTime)}ms`);
+        setFilteredAccounts(accountsWithStats);
+      } catch (error) {
+        console.error('❌ Failed to calculate filtered stats:', error);
+        // Keep showing basic stats on error
       }
-
-      console.log(`✅ Calculated filtered stats for ${accountsWithStats.length} accounts`);
-      setFilteredAccounts(accountsWithStats);
     };
 
     calculateFilteredStats();
