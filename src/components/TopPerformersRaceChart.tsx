@@ -48,7 +48,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
       .slice(0, topVideosCount);
   }, [submissions, videosMetric, topVideosCount]);
 
-  // Get top accounts (aggregate by uploader handle)
+  // Get top accounts (aggregate by uploader handle + platform)
   const topAccounts = useMemo(() => {
     const accountMap = new Map<string, {
       handle: string;
@@ -64,8 +64,10 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
 
     submissions.forEach(video => {
       const handle = video.uploaderHandle || 'unknown';
-      if (!accountMap.has(handle)) {
-        accountMap.set(handle, {
+      // Use both platform and handle to uniquely identify accounts
+      const accountKey = `${video.platform}_${handle}`;
+      if (!accountMap.has(accountKey)) {
+        accountMap.set(accountKey, {
           handle,
           displayName: video.uploader || handle,
           platform: video.platform,
@@ -78,7 +80,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
         });
       }
 
-      const account = accountMap.get(handle)!;
+      const account = accountMap.get(accountKey)!;
       account.totalViews += video.views || 0;
       account.totalLikes += video.likes || 0;
       account.totalComments += video.comments || 0;
@@ -278,13 +280,19 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                 <div className="relative h-10 flex items-center">
                   {/* Profile Icon (Spearhead) */}
                   <div className="absolute left-0 z-10 flex-shrink-0">
-                    <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/10 bg-gray-800/50 backdrop-blur-sm">
+                    <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/10 bg-gray-800/50 backdrop-blur-sm relative">
                       {video.thumbnail ? (
-                        <img 
-                          src={video.thumbnail} 
-                          alt=""
-                          className="w-full h-full object-cover"
-                        />
+                        <>
+                          <img 
+                            src={video.thumbnail} 
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                          {/* Platform Logo Badge */}
+                          <div className="absolute bottom-0 right-0 w-4 h-4 bg-black/80 backdrop-blur-sm rounded-tl-md flex items-center justify-center">
+                            <PlatformIcon platform={video.platform} size="sm" className="w-3 h-3" />
+                          </div>
+                        </>
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-700/50 to-gray-800/50">
                           <PlatformIcon platform={video.platform} className="w-5 h-5 opacity-60" />
@@ -422,17 +430,29 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                 <div className="relative h-10 flex items-center">
                   {/* Profile Icon (Spearhead) */}
                   <div className="absolute left-0 z-10 flex-shrink-0">
-                    <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/10 bg-gray-800/50 backdrop-blur-sm">
+                    <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/10 bg-gray-800/50 backdrop-blur-sm relative">
                       {account.profileImage ? (
-                        <img 
-                          src={account.profileImage} 
-                          alt=""
-                          className="w-full h-full object-cover"
-                        />
+                        <>
+                          <img 
+                            src={account.profileImage} 
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                          {/* Platform Logo Badge */}
+                          <div className="absolute bottom-0 right-0 w-4 h-4 bg-black/80 backdrop-blur-sm rounded-tl-md flex items-center justify-center">
+                            <PlatformIcon platform={account.platform} size="sm" className="w-3 h-3" />
+                          </div>
+                        </>
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-700/50 to-gray-800/50 text-white/70 font-semibold text-sm">
-                          {account.displayName.charAt(0).toUpperCase()}
-                        </div>
+                        <>
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-700/50 to-gray-800/50 text-white/70 font-semibold text-sm">
+                            {account.displayName.charAt(0).toUpperCase()}
+                          </div>
+                          {/* Platform Logo Badge */}
+                          <div className="absolute bottom-0 right-0 w-4 h-4 bg-black/80 backdrop-blur-sm rounded-tl-md flex items-center justify-center">
+                            <PlatformIcon platform={account.platform} size="sm" className="w-3 h-3" />
+                          </div>
+                        </>
                       )}
                     </div>
                   </div>
