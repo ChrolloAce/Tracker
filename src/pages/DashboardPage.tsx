@@ -128,6 +128,7 @@ function DashboardPage() {
   // Dashboard rule filter state
   const [selectedRuleId, setSelectedRuleId] = useState<string>(() => {
     const saved = localStorage.getItem('dashboardSelectedRuleId');
+    console.log('🔧 Loading rule from localStorage:', saved || 'all');
     return saved || 'all';
   });
   
@@ -187,7 +188,13 @@ function DashboardPage() {
 
   useEffect(() => {
     localStorage.setItem('dashboardSelectedRuleId', selectedRuleId);
-  }, [selectedRuleId]);
+    if (selectedRuleId !== 'all') {
+      const rule = allRules.find(r => r.id === selectedRuleId);
+      console.log(`🎯 Rule filter active: "${rule?.name || 'Unknown'}" (ID: ${selectedRuleId})`);
+    } else {
+      console.log('🎯 Rule filter: All Videos');
+    }
+  }, [selectedRuleId, allRules]);
 
   // Save accounts page filters to localStorage
   useEffect(() => {
@@ -1197,7 +1204,7 @@ function DashboardPage() {
                 {/* Top Performers Race Chart */}
                 <div className="mt-6">
                   <TopPerformersRaceChart 
-                    submissions={combinedSubmissions} 
+                    submissions={filteredSubmissions} 
                     onVideoClick={handleVideoClick}
                     onAccountClick={handleAccountClick}
                   />
