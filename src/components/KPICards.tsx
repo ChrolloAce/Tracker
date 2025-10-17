@@ -541,14 +541,22 @@ const KPICards: React.FC<KPICardsProps> = ({
       // Count clicks in Current Period (CP)
       cpClicks = linkClicks.filter(click => {
         const clickDate = new Date(click.timestamp);
-        return clickDate >= dateRangeStart! && clickDate <= dateRangeEnd;
+        // Normalize to local date for accurate day matching
+        const clickDateLocal = new Date(clickDate.getFullYear(), clickDate.getMonth(), clickDate.getDate());
+        const rangeStartLocal = new Date(dateRangeStart!.getFullYear(), dateRangeStart!.getMonth(), dateRangeStart!.getDate());
+        const rangeEndLocal = new Date(dateRangeEnd.getFullYear(), dateRangeEnd.getMonth(), dateRangeEnd.getDate());
+        return clickDateLocal >= rangeStartLocal && clickDateLocal <= rangeEndLocal;
       }).length;
       
       // Count clicks in Previous Period (PP)
       if (ppDateRangeStart && ppDateRangeEnd) {
         ppClicks = linkClicks.filter(click => {
           const clickDate = new Date(click.timestamp);
-          return clickDate >= ppDateRangeStart! && clickDate <= ppDateRangeEnd!;
+          // Normalize to local date for accurate day matching
+          const clickDateLocal = new Date(clickDate.getFullYear(), clickDate.getMonth(), clickDate.getDate());
+          const ppStartLocal = new Date(ppDateRangeStart!.getFullYear(), ppDateRangeStart!.getMonth(), ppDateRangeStart!.getDate());
+          const ppEndLocal = new Date(ppDateRangeEnd!.getFullYear(), ppDateRangeEnd!.getMonth(), ppDateRangeEnd!.getDate());
+          return clickDateLocal >= ppStartLocal && clickDateLocal <= ppEndLocal;
         }).length;
       }
     } else {
@@ -821,10 +829,15 @@ const KPICards: React.FC<KPICardsProps> = ({
           const pointDate = new Date(startTime + (i * intervalMs));
           const nextPointDate = new Date(startTime + ((i + 1) * intervalMs));
           
+          // Normalize dates to local time (strip time component)
+          const pointDateLocal = new Date(pointDate.getFullYear(), pointDate.getMonth(), pointDate.getDate());
+          const nextPointDateLocal = new Date(nextPointDate.getFullYear(), nextPointDate.getMonth(), nextPointDate.getDate());
+          
           // Count clicks in this time period
           const clicksInPeriod = linkClicks.filter(click => {
             const clickDate = new Date(click.timestamp);
-            return clickDate >= pointDate && clickDate < nextPointDate;
+            const clickDateLocal = new Date(clickDate.getFullYear(), clickDate.getMonth(), clickDate.getDate());
+            return clickDateLocal >= pointDateLocal && clickDateLocal < nextPointDateLocal;
           });
           
           data.push({
@@ -1051,9 +1064,6 @@ const KPICard: React.FC<{
         const x = e.clientX - cardRect.left;
         const percentage = x / cardRect.width;
         
-        // Calculate X position relative to the card (for full-height line)
-        const lineX = x;
-        
         // Clamp percentage between 0 and 1
         const clampedPercentage = Math.max(0, Math.min(1, percentage));
         
@@ -1066,11 +1076,15 @@ const KPICard: React.FC<{
         const point = data.sparklineData[dataIndex];
         
         if (point) {
+          // Calculate the SNAPPED X position based on the actual data point index
+          const snappedPercentage = dataIndex / (data.sparklineData.length - 1);
+          const snappedLineX = snappedPercentage * cardRect.width;
+          
           setTooltipData({
             x: e.clientX,
             y: e.clientY,
             point: point,
-            lineX: lineX // Store X position relative to card for full-height line
+            lineX: snappedLineX // Snapped to data point, not mouse position
           });
         }
       }}
@@ -1311,7 +1325,13 @@ const KPICard: React.FC<{
               const clicksOnDay = linkClicks.filter((click: LinkClick) => {
                 const clickDate = new Date(click.timestamp);
                 if (!dayStart || !dayEnd) return false;
-                return clickDate >= dayStart && clickDate <= dayEnd;
+                
+                // Normalize click date to local date (strip time) for accurate day matching
+                const clickDateLocal = new Date(clickDate.getFullYear(), clickDate.getMonth(), clickDate.getDate());
+                const dayStartLocal = new Date(dayStart.getFullYear(), dayStart.getMonth(), dayStart.getDate());
+                const dayEndLocal = new Date(dayEnd.getFullYear(), dayEnd.getMonth(), dayEnd.getDate());
+                
+                return clickDateLocal >= dayStartLocal && clickDateLocal <= dayEndLocal;
               });
               
               console.log(`🔗 Link Clicks Tooltip: Found ${clicksOnDay.length} clicks on ${dateStr}`);
