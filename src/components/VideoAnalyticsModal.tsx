@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { X, ExternalLink, Eye, Heart, MessageCircle, Share2, TrendingUp, Percent } from 'lucide-react';
+import { X, ExternalLink, Eye, Heart, MessageCircle, Share2, TrendingUp, Bookmark, Clock, Flame } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { ResponsiveContainer, AreaChart, Area, Tooltip } from 'recharts';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -21,6 +21,40 @@ interface ChartDataPoint {
 }
 
 const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose }) => {
+  // Extract title without hashtags and separate hashtags
+  const { cleanTitle, hashtags } = useMemo(() => {
+    if (!video) return { cleanTitle: '', hashtags: [] };
+    
+    const fullText = video.title || video.caption || '';
+    
+    // Extract hashtags
+    const hashtagMatches = fullText.match(/#[\w\u00C0-\u017F]+/g) || [];
+    const uniqueHashtags = [...new Set(hashtagMatches)];
+    
+    // Remove hashtags from title
+    const cleanText = fullText.replace(/#[\w\u00C0-\u017F]+/g, '').trim();
+    
+    return {
+      cleanTitle: cleanText || '(No caption)',
+      hashtags: uniqueHashtags
+    };
+  }, [video?.title, video?.caption]);
+
+  // Calculate virality factor (likes + comments + shares relative to views)
+  const viralityFactor = useMemo(() => {
+    if (!video || video.views === 0) return 0;
+    const totalEngagement = video.likes + video.comments + (video.shares || 0);
+    return (totalEngagement / video.views) * 100;
+  }, [video?.views, video?.likes, video?.comments, video?.shares]);
+
+  // Format duration from seconds to MM:SS
+  const formatDuration = (seconds: number): string => {
+    if (!seconds) return 'N/A';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   // Prepare chart data from snapshots
   const chartData = useMemo((): ChartDataPoint[] => {
     if (!video) return [];
@@ -177,20 +211,15 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       value: chartData[chartData.length - 1]?.engagementRate || 0,
       isPercentage: true,
     },
+    {
+      key: 'likes' as const, // Reusing likes key for bookmarks
+      label: 'Bookmarks',
+      icon: Bookmark,
+      color: '#FF8A5B',
+      value: 0, // Bookmarks data not available yet
+      showNA: true,
+    },
   ];
-
-  // Calculate total engagement for the 6th metric
-  const totalEngagement = (chartData[chartData.length - 1]?.likes || 0) + 
-                         (chartData[chartData.length - 1]?.comments || 0) + 
-                         (chartData[chartData.length - 1]?.shares || 0);
-
-  metrics.push({
-    key: 'likes' as const, // Reusing likes key but will show total engagement
-    label: 'Total Engagement',
-    icon: Percent,
-    color: '#FF8A5B',
-    value: totalEngagement,
-  });
 
   return (
     <div 
@@ -261,31 +290,57 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
 
         {/* Main Content - 2 Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6">
-          {/* Left: Video Embed */}
-          <div className="relative rounded-2xl border border-white/5 shadow-lg p-4 overflow-hidden" style={{ backgroundColor: '#121214' }}>
-            {/* Depth Gradient Overlay */}
-            <div 
-              className="absolute inset-0 pointer-events-none z-0"
-              style={{
-                background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
-              }}
-            />
-            
-            <div className="relative w-full aspect-[9/16] bg-black rounded-lg overflow-hidden border border-white/10 z-10">
-              <iframe
-                src={embedUrl}
-                className="absolute inset-0 w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-                style={{ border: 'none' }}
-                title={video.title || video.caption || 'Video'}
-                sandbox="allow-scripts allow-same-origin allow-presentation"
+          {/* Left: Video Embed (FIXED) */}
+          <div className="lg:sticky lg:top-0 lg:self-start">
+            <div className="relative rounded-2xl border border-white/5 shadow-lg p-4 overflow-hidden" style={{ backgroundColor: '#121214' }}>
+              {/* Depth Gradient Overlay */}
+              <div 
+                className="absolute inset-0 pointer-events-none z-0"
+                style={{
+                  background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
+                }}
               />
+              
+              <div className="relative w-full aspect-[9/16] bg-black rounded-lg overflow-hidden border border-white/10 z-10">
+                <iframe
+                  src={embedUrl}
+                  className="absolute inset-0 w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  style={{ border: 'none' }}
+                  title={video.title || video.caption || 'Video'}
+                  sandbox="allow-scripts allow-same-origin allow-presentation"
+                />
+              </div>
+
+              {/* Duration & Virality Info */}
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-white/5 p-3" style={{ backgroundColor: '#0a0a0b' }}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className="w-4 h-4 text-gray-400" />
+                    <span className="text-xs text-gray-400">Duration</span>
+                  </div>
+                  <div className="text-lg font-bold text-white">
+                    {formatDuration(video.duration || 0)}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-white/5 p-3" style={{ backgroundColor: '#0a0a0b' }}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Flame className="w-4 h-4 text-orange-400" />
+                    <span className="text-xs text-gray-400">Virality</span>
+                  </div>
+                  <div className="text-lg font-bold text-white">
+                    {viralityFactor.toFixed(2)}x
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Right: 6 Metric Charts in 2x3 Grid */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Right: SCROLLABLE Content */}
+          <div className="space-y-6">
+            {/* 6 Metric Charts in 2x3 Grid */}
+            <div className="grid grid-cols-2 gap-4">
             {metrics.map((metric) => {
               // Calculate if metric is increasing (comparing first to last data point)
               const isIncreasing = chartData.length > 1 
@@ -326,9 +381,11 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                       {/* Value */}
                       <div className="flex items-baseline gap-3 -mt-1">
                         <span className="text-3xl lg:text-4xl font-bold tracking-tight text-white">
-                          {metric.isPercentage 
-                            ? `${metric.value.toFixed(1)}%` 
-                            : formatNumber(metric.value)
+                          {(metric as any).showNA
+                            ? 'N/A'
+                            : metric.isPercentage 
+                              ? `${metric.value.toFixed(1)}%` 
+                              : formatNumber(metric.value)
                           }
                         </span>
               </div>
@@ -424,6 +481,54 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
           </div>
               );
             })}
+            </div>
+
+            {/* Video Title & Hashtags Section */}
+            <div className="space-y-4">
+              {/* Video Title */}
+              <div className="rounded-2xl border border-white/5 shadow-lg p-5" style={{ backgroundColor: '#121214' }}>
+                <div className="flex items-start gap-3 mb-2">
+                  <div className="p-2 rounded-lg" style={{ backgroundColor: '#0a0a0b' }}>
+                    <MessageCircle className="w-4 h-4 text-gray-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                      Video Caption
+                    </h3>
+                    <p className="text-base text-white leading-relaxed">
+                      {cleanTitle}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Hashtags */}
+              {hashtags.length > 0 && (
+                <div className="rounded-2xl border border-white/5 shadow-lg p-5" style={{ backgroundColor: '#121214' }}>
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg" style={{ backgroundColor: '#0a0a0b' }}>
+                      <span className="text-sm text-gray-400">#</span>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                        Hashtags
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {hashtags.map((tag, index) => (
+                          <span
+                            key={index}
+                            className="px-3 py-1.5 rounded-lg text-sm font-medium text-white/80 border border-white/10 hover:border-white/20 transition-colors"
+                            style={{ backgroundColor: '#0a0a0b' }}
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

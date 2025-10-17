@@ -24,6 +24,7 @@ export interface VideoSubmission {
   likes: number;
   comments: number;
   shares?: number; // TikTok specific
+  duration?: number; // Video duration in seconds
   dateSubmitted: Date;
   uploadDate: Date; // When the video was originally uploaded to the platform
   timestamp?: string; // Original upload timestamp (legacy)
