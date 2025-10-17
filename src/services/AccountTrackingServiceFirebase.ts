@@ -589,25 +589,22 @@ export class AccountTrackingServiceFirebase {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        // Use official Apify Instagram scraper (more reliable, better maintained)
-        actorId: 'apify/instagram-scraper',
+        // NEW WORKING SCRAPER with RESIDENTIAL proxies!
+        actorId: 'scraper-engine~instagram-reels-scraper',
         input: {
-          directUrls: [`https://www.instagram.com/${account.username}/`],
-          resultsType: 'posts', // Get posts/reels
-          resultsLimit: maxReels,
-          searchType: 'user',
-          searchLimit: 1,
-          addParentData: false,
-          // Use residential proxies to avoid blocks
-          proxy: {
+          urls: [`https://www.instagram.com/${account.username}/`],
+          sortOrder: "newest",
+          maxComments: 10,
+          maxReels: maxReels, // Use user's preference
+          proxyConfiguration: {
             useApifyProxy: true,
-            apifyProxyGroups: ['RESIDENTIAL'],
-            apifyProxyCountry: 'US'
+            apifyProxyGroups: ['RESIDENTIAL'],  // 🔑 Use RESIDENTIAL proxies to avoid Instagram 429 blocks
+            apifyProxyCountry: 'US'  // Use US proxies for better compatibility
           },
-          // Anti-blocking measures
-          extendOutputFunction: '',
-          extendScraperFunction: '',
-          customData: {}
+          // Additional anti-blocking measures
+          maxRequestRetries: 5,
+          requestHandlerTimeoutSecs: 300,
+          maxConcurrency: 1
         },
         action: 'run'
       }),
@@ -618,51 +615,36 @@ export class AccountTrackingServiceFirebase {
     }
 
     const result = await response.json();
-    console.log(`📊 Official Apify scraper returned ${result.items?.length || 0} items`);
-
-    // DEBUG: Log first item structure to see actual field names
-    if (result.items && result.items.length > 0) {
-      console.log('🔍 DEBUG: First item structure from Apify scraper:', {
-        availableFields: Object.keys(result.items[0]),
-        sampleData: {
-          type: result.items[0].type,
-          shortCode: result.items[0].shortCode,
-          id: result.items[0].id,
-          caption: result.items[0].caption,
-          text: result.items[0].text,
-          displayUrl: result.items[0].displayUrl,
-          url: result.items[0].url,
-          videoPlayCount: result.items[0].videoPlayCount,
-          videoViewCount: result.items[0].videoViewCount,
-          likesCount: result.items[0].likesCount,
-          commentsCount: result.items[0].commentsCount,
-        }
-      });
-    }
+    console.log(`📊 NEW Scraper returned ${result.items?.length || 0} items`);
 
     if (!result.items || !Array.isArray(result.items)) {
-      console.warn('⚠️ No items returned from Instagram scraper');
+      console.warn('⚠️ No items returned from NEW Instagram scraper');
       return [];
     }
 
-    // Update profile info from first item if available (OFFICIAL APIFY FORMAT)
+    // Extract and update profile info from first item (NEW SCRAPER FORMAT)
     if (result.items.length > 0) {
       const firstItem = result.items[0];
+      // NEW SCRAPER: Data is nested under reel_data.media
+      const media = firstItem.reel_data?.media || firstItem.media || firstItem;
       
-      const profileFullName = firstItem.ownerFullName;
-      const profileUsername = firstItem.ownerUsername;
+      const profileFullName = media.user?.full_name || media.owner?.full_name;
       
-      // Profile picture URL from displayUrl (high quality)
-      const profilePicUrl = firstItem.displayUrl;
+      // Get HD profile picture (best quality) with fallbacks
+      const profilePicUrl = media.user?.hd_profile_pic_url_info?.url ||      // HD version (925x925)
+                            media.owner?.hd_profile_pic_url_info?.url ||     // HD version from owner
+                            media.user?.profile_pic_url ||                   // Standard version (150x150)
+                            media.owner?.profile_pic_url ||                  // Standard from owner
+                            '';
       
       if (profileFullName || profilePicUrl) {
-        console.log('👤 Updating Instagram profile from official scraper...');
+        console.log('👤 Updating Instagram profile from NEW scraper...');
         
         // Download and save profile picture if available
         let uploadedProfilePic = account.profilePicture;
         if (profilePicUrl) {
           try {
-            console.log('📸 Downloading profile picture from official scraper...');
+            console.log('📸 Downloading profile picture from NEW scraper...');
             uploadedProfilePic = await FirebaseStorageService.downloadAndUpload(
               orgId,
               profilePicUrl,
@@ -681,9 +663,6 @@ export class AccountTrackingServiceFirebase {
         if (profileFullName) {
           profileUpdates.displayName = profileFullName;
         }
-        if (profileUsername && profileUsername !== account.username) {
-          profileUpdates.username = profileUsername;
-        }
         if (uploadedProfilePic && uploadedProfilePic !== account.profilePicture) {
           profileUpdates.profilePicture = uploadedProfilePic;
         }
@@ -698,27 +677,31 @@ export class AccountTrackingServiceFirebase {
     const videos: AccountVideo[] = [];
 
     for (const item of result.items) {
-      // OFFICIAL APIFY FORMAT: Direct access to fields
-      // Filter for videos only (type must be "Video" and have videoPlayCount)
-      const isVideo = item.type === 'Video' && (item.videoPlayCount || item.videoViewCount);
-      if (!isVideo) {
-        console.log(`⏭️ Skipping non-video item (type: ${item.type})`);
-        continue;
-      }
-
-      // Use shortCode as video ID
-      const videoCode = item.shortCode || item.id;
-      if (!videoCode) {
-        console.warn('⚠️ Video missing shortCode/ID, skipping');
-        continue;
-      }
-
-      // Thumbnail from displayUrl (high quality)
-      let thumbnailUrl = item.displayUrl || '';
+      // NEW SCRAPER: Data is nested under 'reel_data.media'
+      const media = item.reel_data?.media || item.media || item;
       
-      // If displayUrl is not available, try images array
-      if (!thumbnailUrl && item.images && item.images.length > 0) {
-        thumbnailUrl = item.images[0];
+      // Filter for videos only (check for play_count or video_duration)
+      const isVideo = !!(media.play_count || media.ig_play_count || media.video_duration);
+      if (!isVideo) {
+        console.log(`⏭️ Skipping non-video item (no play_count or video_duration)`);
+        continue;
+      }
+
+      // NEW SCRAPER: Use 'code' field for ID
+      const videoCode = media.code || media.shortCode || media.id;
+      if (!videoCode) {
+        console.warn('⚠️ Video missing code/ID, skipping');
+        continue;
+      }
+
+      // NEW SCRAPER: Thumbnail from image_versions2
+      let thumbnailUrl = '';
+      if (media.image_versions2?.candidates && media.image_versions2.candidates.length > 0) {
+        thumbnailUrl = media.image_versions2.candidates[0].url;
+      } else if (media.display_uri) {
+        thumbnailUrl = media.display_uri;
+      } else if (media.displayUrl) {
+        thumbnailUrl = media.displayUrl;
       }
 
       // Upload thumbnail to Firebase Storage if we have one
@@ -737,39 +720,38 @@ export class AccountTrackingServiceFirebase {
         }
       }
 
-      // Caption from caption field - try multiple possible field names
-      const caption = item.caption || item.text || item.title || item.alt || '';
+      // NEW SCRAPER: Caption is nested under caption.text
+      const caption = media.caption?.text || (typeof media.caption === 'string' ? media.caption : '') || '';
       
-      // Upload date from timestamp (ISO string)
-      const uploadDate = item.timestamp ? new Date(item.timestamp) : new Date();
+      // NEW SCRAPER: Upload date from taken_at (Unix seconds)
+      const uploadDate = media.taken_at 
+        ? new Date(media.taken_at * 1000) 
+        : (media.takenAt ? new Date(media.takenAt * 1000) : new Date());
 
-      // Metrics from official scraper fields
-      const views = item.videoPlayCount || item.videoViewCount || item.playCount || item.viewCount || 0;
-      const likes = item.likesCount || item.likeCount || 0;
-      const comments = item.commentsCount || item.commentCount || 0;
-      const duration = item.videoDuration || item.duration || 0;
+      // NEW SCRAPER: Metrics with correct field names
+      const views = media.play_count || media.ig_play_count || 0;
+      const likes = media.like_count || 0;
+      const comments = media.comment_count || 0;
+      const duration = media.video_duration || 0;
 
-      // Extract hashtags and mentions
-      const hashtags = item.hashtags || [];
-      const mentions = item.mentions || [];
-
-      // Debug: Log EVERY video to see what we're getting
-      console.log(`🔍 Parsing video ${videos.length + 1}:`, {
-        videoCode,
-        hasCaption: !!caption,
-        captionPreview: caption ? caption.substring(0, 50) : 'NO CAPTION',
-        captionField: item.caption ? 'caption' : (item.text ? 'text' : (item.title ? 'title' : 'none')),
-        url: item.url || `https://www.instagram.com/p/${videoCode}/`,
-        views,
-        likes,
-        hasUrl: !!item.url
-      });
+      // Debug: Log first video
+      if (videos.length === 0) {
+        console.log('🔍 NEW Scraper first video:', {
+          code: videoCode,
+          caption: caption.substring(0, 50),
+          views,
+          likes,
+          comments,
+          duration,
+          uploadDate: uploadDate.toISOString()
+        });
+      }
 
       videos.push({
         id: `${account.id}_${videoCode}`,
         accountId: account.id,
         videoId: videoCode,
-        url: item.url || `https://www.instagram.com/p/${videoCode}/`,
+        url: `https://www.instagram.com/reel/${videoCode}/`,
         thumbnail: uploadedThumbnail,
         caption: caption,
         uploadDate: uploadDate,
@@ -779,12 +761,12 @@ export class AccountTrackingServiceFirebase {
         shares: 0, // Instagram doesn't provide share count via API
         duration: duration,
         isSponsored: false,
-        hashtags: hashtags,
-        mentions: mentions
+        hashtags: [], // Could extract from caption if needed
+        mentions: [] // Could extract from caption if needed
       });
     }
 
-    console.log(`✅ Fetched ${videos.length} Instagram videos using official Apify scraper`);
+    console.log(`✅ Fetched ${videos.length} Instagram videos using NEW scraper`);
     return videos;
   }
 

@@ -497,100 +497,77 @@ export default async function handler(
       }
 
       // STEP 2: Fetch Instagram Reels/Videos
-      console.log(`📸 Fetching Instagram content for ${account.username} using OFFICIAL Apify scraper...`);
+      console.log(`📸 Fetching Instagram reels for ${account.username} using NEW scraper...`);
       
       try {
-        // Use OFFICIAL Apify Instagram Scraper (much more reliable than third-party)
+        // Call NEW Instagram Reels Scraper with RESIDENTIAL proxies (prevents 429 errors)
         const data = await runApifyActor({
-          actorId: 'apify/instagram-scraper',
+          actorId: 'scraper-engine~instagram-reels-scraper',
           input: {
-            directUrls: [`https://www.instagram.com/${account.username}/`],
-            resultsType: 'posts', // Get posts/reels
-            resultsLimit: maxVideos, // Use user's preference
-            searchType: 'user',
-            searchLimit: 1,
-            addParentData: false,
-            // Use residential proxies to avoid blocks
-            proxy: {
+            urls: [`https://www.instagram.com/${account.username}/`],
+            sortOrder: "newest",
+            maxComments: 10,
+            maxReels: maxVideos, // Use user's preference
+            proxyConfiguration: {
               useApifyProxy: true,
-              apifyProxyGroups: ['RESIDENTIAL'],
-              apifyProxyCountry: 'US'
+              apifyProxyGroups: ['RESIDENTIAL'],  // 🔑 Use RESIDENTIAL proxies to avoid Instagram 429 blocks
+              apifyProxyCountry: 'US'  // Use US proxies for better compatibility
             },
-            // Anti-blocking measures
-            maxRequestRetries: 5,
-            requestHandlerTimeoutSecs: 300,
-            maxConcurrency: 1
+            // Additional anti-blocking measures
+            maxRequestRetries: 5,  // Retry failed requests
+            requestHandlerTimeoutSecs: 300,  // 5 minute timeout
+            maxConcurrency: 1  // Reduce concurrency to avoid rate limits
           }
         });
 
         const instagramItems = data.items || [];
-        console.log(`✅ Official Apify scraper returned ${instagramItems.length} items`);
+        console.log(`✅ Fetched ${instagramItems.length} Instagram reels`);
         
-        // DEBUG: Log first item structure
-        if (instagramItems.length > 0) {
-          console.log('🔍 DEBUG Backend: First item structure:', {
-            availableFields: Object.keys(instagramItems[0]),
-            type: instagramItems[0].type,
-            shortCode: instagramItems[0].shortCode,
-            caption: instagramItems[0].caption,
-            videoPlayCount: instagramItems[0].videoPlayCount,
-            url: instagramItems[0].url
-          });
-        }
-        
-        // Transform Instagram data to video format (OFFICIAL APIFY FORMAT)
+        // Transform Instagram data to video format
         for (const item of instagramItems) {
-          // Filter for videos only (type must be "Video" and have videoPlayCount)
-          const isVideo = item.type === 'Video' && (item.videoPlayCount || item.videoViewCount);
-          if (!isVideo) {
-            console.log(`⏭️ Skipping non-video item (type: ${item.type})`);
+          const media = item.reel_data?.media || item.media || item;
+          
+          // Only process video content (media_type: 2 = video)
+          if (media.media_type !== 2 && media.product_type !== 'clips') {
             continue;
           }
-
-          const videoCode = item.shortCode || item.id;
+          
+          const videoCode = media.code || media.shortCode || media.id;
           if (!videoCode) {
             console.warn('⚠️ Skipping item - no video code found');
             continue;
           }
           
-          // Caption from official scraper field
-          const caption = item.caption || item.text || item.title || '';
-          
-          // Upload date from timestamp (ISO string)
-          const uploadDate = item.timestamp ? Timestamp.fromDate(new Date(item.timestamp)) : Timestamp.now();
-          
-          // Metrics
-          const views = item.videoPlayCount || item.videoViewCount || 0;
-          const likes = item.likesCount || 0;
-          const comments = item.commentsCount || 0;
-          const duration = item.videoDuration || 0;
-          
-          // Hashtags and mentions
-          const hashtags = item.hashtags || [];
-          const mentions = item.mentions || [];
-          
-          console.log(`✅ Backend parsing video ${videos.length + 1}: ${videoCode}, caption: ${caption ? caption.substring(0, 50) : 'NO CAPTION'}`);
+          const views = media.play_count || media.ig_play_count || 0;
+          const likes = media.like_count || 0;
+          const comments = media.comment_count || 0;
+          const caption = media.caption?.text || (typeof media.caption === 'string' ? media.caption : '') || '';
+          const uploadDate = media.taken_at ? Timestamp.fromMillis(media.taken_at * 1000) : Timestamp.now();
+          const thumbnailUrl = media.image_versions2?.candidates?.[0]?.url || 
+                             media.thumbnail_url || 
+                             '';
+          const duration = media.video_duration || 0;
           
           videos.push({
             videoId: videoCode,
             videoTitle: caption.substring(0, 100) + (caption.length > 100 ? '...' : '') || 'Instagram Reel',
-            videoUrl: item.url || `https://www.instagram.com/p/${videoCode}/`,
+            videoUrl: `https://www.instagram.com/reel/${videoCode}/`,
             platform: 'instagram',
-            thumbnail: item.displayUrl || '',
+            thumbnail: thumbnailUrl,
             accountUsername: account.username,
-            accountDisplayName: item.ownerFullName || item.ownerUsername || account.username,
+            accountDisplayName: media.user?.full_name || media.owner?.full_name || account.username,
             uploadDate: uploadDate,
             views: views,
             likes: likes,
             comments: comments,
-            shares: 0, // Instagram doesn't provide share count
+            shares: 0, // Instagram API doesn't provide share count
             caption: caption,
             duration: duration,
-            isVerified: false
+            isVerified: media.user?.is_verified || media.owner?.is_verified || false
           });
         }
         
-        console.log(`✅ Backend processed ${videos.length} Instagram videos with captions`);
+        console.log(`✅ Fetched ${videos.length} Instagram reels`);
       } catch (instagramError) {
         console.error('Instagram fetch error:', instagramError);
         throw instagramError;
@@ -709,12 +686,7 @@ export default async function handler(
         const userData = userDoc.data();
         
         if (userData?.email) {
-          // Ensure URL has protocol (VERCEL_URL doesn't include https://)
-          const baseUrl = process.env.VERCEL_URL 
-            ? `https://${process.env.VERCEL_URL}` 
-            : 'https://tracker-red-zeta.vercel.app';
-          
-          await fetch(`${baseUrl}/api/send-notification-email`, {
+          await fetch(`${process.env.VERCEL_URL || 'https://tracker-red-zeta.vercel.app'}/api/send-notification-email`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -724,7 +696,7 @@ export default async function handler(
                 username: account.username,
                 platform: account.platform,
                 videosAdded: savedCount,
-                dashboardUrl: baseUrl
+                dashboardUrl: 'https://tracker-red-zeta.vercel.app'
               }
             })
           }).catch(err => console.error('Failed to send notification email:', err));
