@@ -6,11 +6,13 @@ import { ChevronDown, TrendingUp, TrendingDown, Calendar, Eye, Play } from 'luci
 
 interface TopPerformersRaceChartProps {
   submissions: VideoSubmission[];
+  onVideoClick?: (video: VideoSubmission) => void;
+  onAccountClick?: (username: string) => void;
 }
 
 type MetricType = 'views' | 'likes' | 'comments' | 'shares' | 'engagement';
 
-const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submissions }) => {
+const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submissions, onVideoClick, onAccountClick }) => {
   const [topVideosCount, setTopVideosCount] = useState(5);
   const [topAccountsCount, setTopAccountsCount] = useState(5);
   const [videosMetric, setVideosMetric] = useState<MetricType>('views');
@@ -192,7 +194,17 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
       {/* Top Videos */}
-      <div className="bg-gradient-to-br from-[#121212] to-[#151515] rounded-xl p-6 shadow-2xl">
+      <div className="relative rounded-2xl border border-white/5 p-6 shadow-lg overflow-hidden" style={{ backgroundColor: '#121214' }}>
+        {/* Depth Gradient Overlay */}
+        <div 
+          className="absolute inset-0 pointer-events-none z-0"
+          style={{
+            background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
+          }}
+        />
+        
+        {/* Content Layer */}
+        <div className="relative z-10">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-lg font-semibold text-white/90">Top Videos</h2>
@@ -241,6 +253,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                 style={{
                   animation: `raceSlideIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) ${index * 0.12}s both`
                 }}
+                onClick={() => onVideoClick?.(video)}
                 onMouseEnter={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   setHoveredVideo({
@@ -248,8 +261,18 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                     x: rect.left + rect.width / 2,
                     y: rect.top
                   });
+                  const barElement = e.currentTarget.querySelector('.race-bar') as HTMLElement;
+                  if (barElement) {
+                    barElement.style.background = 'linear-gradient(to right, #E5E7EB, #F9FAFB)';
+                  }
                 }}
-                onMouseLeave={() => setHoveredVideo(null)}
+                onMouseLeave={(e) => {
+                  setHoveredVideo(null);
+                  const barElement = e.currentTarget.querySelector('.race-bar') as HTMLElement;
+                  if (barElement) {
+                    barElement.style.background = 'linear-gradient(to right, #52525B, #3F3F46)';
+                  }
+                }}
               >
                 {/* Bar Container */}
                 <div className="relative h-10 flex items-center">
@@ -271,29 +294,23 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                   </div>
 
                   {/* Animated Bar */}
-                  <div className="ml-14 flex-1 relative">
-                    <div className="h-10 bg-gray-800 rounded-lg overflow-hidden">
+                  <div className="ml-14 flex-1 relative flex items-center">
+                    <div className="h-10 rounded-lg overflow-hidden flex-1">
                       <div 
-                        className="h-full relative transition-all duration-1000 ease-out"
+                        className="race-bar h-full relative transition-all duration-300 ease-out rounded-lg"
                         style={{
                           width: `${percentage}%`,
-                          minWidth: '30%',
-                          background: 'linear-gradient(to right, #4A9AFF, #7BB5FF, #A0CFFF)'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = 'linear-gradient(to right, #267DFF, #5AA8FF, #8BC5FF)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'linear-gradient(to right, #4A9AFF, #7BB5FF, #A0CFFF)';
+                          minWidth: '8%',
+                          background: 'linear-gradient(to right, #52525B, #3F3F46)'
                         }}
                       >
-                        {/* Metric Value - Center Right */}
-                        <div className="absolute inset-0 flex items-center justify-end pr-4">
-                          <span className="text-lg font-semibold text-white tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
-                            {formatNumber(value, videosMetric)}
-                          </span>
-                        </div>
                       </div>
+                    </div>
+                    {/* Metric Value - Always on Right */}
+                    <div className="ml-4 min-w-[100px] text-right">
+                      <span className="text-lg font-semibold text-white/90 tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
+                        {formatNumber(value, videosMetric)}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -307,10 +324,21 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
             <p className="text-sm">No videos found</p>
           </div>
         )}
+        </div>
       </div>
 
       {/* Top Accounts */}
-      <div className="bg-gradient-to-br from-[#121212] to-[#151515] rounded-xl p-6 shadow-2xl">
+      <div className="relative rounded-2xl border border-white/5 p-6 shadow-lg overflow-hidden" style={{ backgroundColor: '#121214' }}>
+        {/* Depth Gradient Overlay */}
+        <div 
+          className="absolute inset-0 pointer-events-none z-0"
+          style={{
+            background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
+          }}
+        />
+        
+        {/* Content Layer */}
+        <div className="relative z-10">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-lg font-semibold text-white/90">Top Accounts</h2>
@@ -362,9 +390,13 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
             return (
               <div 
                 key={account.handle} 
-                className="group relative cursor-pointer"
+                className="group relative cursor-pointer hover:opacity-90 transition-opacity"
                 style={{
                   animation: `raceSlideIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) ${index * 0.12}s both`
+                }}
+                onClick={() => {
+                  console.log('🎯 Account clicked:', account.handle);
+                  onAccountClick?.(account.handle);
                 }}
                 onMouseEnter={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
@@ -373,8 +405,18 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                     x: rect.left + rect.width / 2,
                     y: rect.top
                   });
+                  const barElement = e.currentTarget.querySelector('.race-bar') as HTMLElement;
+                  if (barElement) {
+                    barElement.style.background = 'linear-gradient(to right, #E5E7EB, #F9FAFB)';
+                  }
                 }}
-                onMouseLeave={() => setHoveredAccount(null)}
+                onMouseLeave={(e) => {
+                  setHoveredAccount(null);
+                  const barElement = e.currentTarget.querySelector('.race-bar') as HTMLElement;
+                  if (barElement) {
+                    barElement.style.background = 'linear-gradient(to right, #52525B, #3F3F46)';
+                  }
+                }}
               >
                 {/* Bar Container */}
                 <div className="relative h-10 flex items-center">
@@ -396,29 +438,23 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                   </div>
 
                   {/* Animated Bar */}
-                  <div className="ml-14 flex-1 relative">
-                    <div className="h-10 bg-gray-800 rounded-lg overflow-hidden">
+                  <div className="ml-14 flex-1 relative flex items-center">
+                    <div className="h-10 rounded-lg overflow-hidden flex-1">
                       <div 
-                        className="h-full relative transition-all duration-1000 ease-out"
+                        className="race-bar h-full relative transition-all duration-300 ease-out rounded-lg"
                         style={{
                           width: `${percentage}%`,
-                          minWidth: '30%',
-                          background: 'linear-gradient(to right, #4A9AFF, #7BB5FF, #A0CFFF)'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = 'linear-gradient(to right, #267DFF, #5AA8FF, #8BC5FF)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'linear-gradient(to right, #4A9AFF, #7BB5FF, #A0CFFF)';
+                          minWidth: '8%',
+                          background: 'linear-gradient(to right, #52525B, #3F3F46)'
                         }}
                       >
-                        {/* Metric Value - Center Right */}
-                        <div className="absolute inset-0 flex items-center justify-end pr-4">
-                          <span className="text-lg font-semibold text-white tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
-                            {formatNumber(value, accountsMetric)}
-                          </span>
-                        </div>
                       </div>
+                    </div>
+                    {/* Metric Value - Always on Right */}
+                    <div className="ml-4 min-w-[100px] text-right">
+                      <span className="text-lg font-semibold text-white/90 tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
+                        {formatNumber(value, accountsMetric)}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -432,6 +468,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
             <p className="text-sm">No accounts found</p>
           </div>
         )}
+        </div>
       </div>
 
       {/* Video Tooltip */}
@@ -462,7 +499,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="text-sm font-semibold text-white line-clamp-2 leading-tight">
-                  {hoveredVideo.video.title || 'Untitled Video'}
+                  {hoveredVideo.video.title || hoveredVideo.video.caption || '(No caption)'}
                 </h3>
                 <div className="flex items-center gap-1.5 mt-1">
                   <div className="w-3.5 h-3.5">
@@ -619,7 +656,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-white font-medium line-clamp-2 leading-tight mb-1">
-                        {video.title || 'Untitled Video'}
+                        {video.title || video.caption || '(No caption)'}
                       </p>
                       <div className="flex items-center gap-2 text-xs">
                         <span className="text-gray-400">

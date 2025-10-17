@@ -16,7 +16,7 @@ import { LinkClick } from '../services/LinkClicksService';
 import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
 import { DateFilterType } from './DateRangeFilter';
 import { TimePeriodType } from './TimePeriodSelector';
-import MetricComparisonModal from './MetricComparisonModal';
+import DayVideosModal from './DayVideosModal';
 import { PlatformIcon } from './ui/PlatformIcon';
 
 interface KPICardsProps {
@@ -26,6 +26,7 @@ interface KPICardsProps {
   customRange?: { startDate: Date; endDate: Date };
   timePeriod?: TimePeriodType;
   onCreateLink?: () => void;
+  onVideoClick?: (video: VideoSubmission) => void;
 }
 
 interface KPICardData {
@@ -48,20 +49,59 @@ const KPICards: React.FC<KPICardsProps> = ({
   dateFilter = 'all',
   customRange,
   timePeriod = 'weeks', 
-  onCreateLink
+  onCreateLink,
+  onVideoClick
 }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedMetric, setSelectedMetric] = useState<'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts' | 'engagement' | 'engagementRate' | 'linkClicks'>('views');
+  // Day Videos Modal state
+  const [isDayModalOpen, setIsDayModalOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDayVideos, setSelectedDayVideos] = useState<VideoSubmission[]>([]);
+  const [dayModalMetric, setDayModalMetric] = useState<string>('');
+  const [hoveredDate, setHoveredDate] = useState<Date | null>(null);
 
-  const handleCardClick = (metricId: string) => {
+  const handleCardClick = (metricId: string, metricLabel: string) => {
     // If it's link clicks and there are no links, trigger create link callback
     if (metricId === 'link-clicks' && linkClicks.length === 0 && onCreateLink) {
       onCreateLink();
       return;
     }
     
-    setSelectedMetric(metricId as any);
-    setIsModalOpen(true);
+    // Open Day Videos Modal with hovered date or most recent date
+    if (submissions.length > 0) {
+      // Use hovered date if available, otherwise find the most recent date
+      let targetDate: Date;
+      
+      if (hoveredDate) {
+        targetDate = hoveredDate;
+        console.log('🎯 Using hovered date:', targetDate);
+      } else {
+        const sortedSubmissions = [...submissions].sort((a, b) => 
+          new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime()
+        );
+        targetDate = new Date(sortedSubmissions[0].uploadDate);
+        console.log('🎯 Using most recent date:', targetDate);
+      }
+      
+      // Filter videos for that date
+      const dayStart = new Date(targetDate);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(targetDate);
+      dayEnd.setHours(23, 59, 59, 999);
+      
+      const videosForDay = submissions.filter(video => {
+        const videoDate = new Date(video.uploadDate);
+        return videoDate >= dayStart && videoDate <= dayEnd;
+      });
+      
+      console.log('🎯 Card clicked - Opening Day Videos Modal');
+      console.log('   Date:', targetDate.toDateString());
+      console.log('   Videos for that day:', videosForDay.length);
+      
+      setSelectedDate(targetDate);
+      setSelectedDayVideos(videosForDay);
+      setDayModalMetric(metricLabel);
+      setIsDayModalOpen(true);
+    }
   };
 
   const kpiData = useMemo(() => {
@@ -874,7 +914,8 @@ const KPICards: React.FC<KPICardsProps> = ({
           <KPICard 
             key={card.id} 
             data={card} 
-            onClick={() => handleCardClick(card.id)} 
+            onClick={() => handleCardClick(card.id, card.label)}
+            onHover={setHoveredDate}
             timePeriod={timePeriod}
             submissions={submissions}
             linkClicks={linkClicks}
@@ -882,15 +923,18 @@ const KPICards: React.FC<KPICardsProps> = ({
         ))}
       </div>
 
-      <MetricComparisonModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        submissions={submissions}
-        linkClicks={linkClicks}
-        dateFilter={dateFilter}
-        customRange={customRange}
-        initialMetric={selectedMetric}
-      />
+      {/* Old Metrics Modal Removed - Now using Day Videos Modal */}
+
+      {selectedDate && (
+        <DayVideosModal
+          isOpen={isDayModalOpen}
+          onClose={() => setIsDayModalOpen(false)}
+          date={selectedDate}
+          videos={selectedDayVideos}
+          metricLabel={dayModalMetric}
+          onVideoClick={onVideoClick}
+        />
+      )}
     </>
   );
 };
@@ -1023,11 +1067,12 @@ const _KPISparkline: React.FC<{
 
 const KPICard: React.FC<{ 
   data: KPICardData; 
-  onClick?: () => void; 
+  onClick?: () => void;
+  onHover?: (date: Date | null) => void;
   timePeriod?: TimePeriodType;
   submissions?: VideoSubmission[];
   linkClicks?: LinkClick[];
-}> = ({ data, onClick, submissions = [], linkClicks = [] }) => {
+}> = ({ data, onClick, onHover, submissions = [], linkClicks = [] }) => {
   // Tooltip state for Portal rendering
   const [tooltipData, setTooltipData] = useState<{ x: number; y: number; point: any; lineX: number } | null>(null);
   const cardRef = React.useRef<HTMLDivElement>(null);
@@ -1086,12 +1131,28 @@ const KPICard: React.FC<{
             point: point,
             lineX: snappedLineX // Snapped to data point, not mouse position
           });
+          
+          // Update hovered date
+          if (onHover && point.timestamp) {
+            onHover(new Date(point.timestamp));
+          }
         }
       }}
-      onMouseLeave={() => setTooltipData(null)}
-      className="group relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 cursor-pointer"
-      style={{ minHeight: '180px', overflow: 'visible' }}
+      onMouseLeave={() => {
+        setTooltipData(null);
+        if (onHover) onHover(null);
+      }}
+      className="group relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 cursor-pointer overflow-hidden"
+      style={{ minHeight: '180px' }}
     >
+      {/* Depth Gradient Overlay */}
+      <div 
+        className="absolute inset-0 pointer-events-none z-0"
+        style={{
+          background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
+        }}
+      />
+      
       {/* Full-height vertical cursor line */}
       {tooltipData && (
         <div
@@ -1109,7 +1170,7 @@ const KPICard: React.FC<{
       )}
 
       {/* Upper Solid Portion - 75% (reduced to give more space to graph) */}
-      <div className="relative px-5 pt-5 pb-2" style={{ height: '75%' }}>
+      <div className="relative px-5 pt-5 pb-2 z-10" style={{ height: '75%' }}>
         {/* Icon (top-right) */}
         <div className="absolute top-4 right-4">
           <Icon className="w-5 h-5 text-gray-400 opacity-60" />
@@ -1162,7 +1223,7 @@ const KPICard: React.FC<{
       {/* Bottom Graph Layer - 25% (expanded from 20%) */}
       {data.sparklineData && data.sparklineData.length > 0 && (
         <div 
-          className="relative w-full overflow-hidden"
+          className="relative w-full overflow-hidden z-10"
           style={{ 
             height: '25%',
             background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 100%)',
@@ -1548,7 +1609,7 @@ const KPICard: React.FC<{
                             {video.thumbnail ? (
                               <img 
                                 src={video.thumbnail} 
-                                alt={video.title || 'Video'} 
+                                alt={video.title || video.caption || 'Video'} 
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none';
@@ -1564,7 +1625,7 @@ const KPICard: React.FC<{
                           {/* Metadata */}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-white font-medium truncate leading-tight mb-1">
-                              {video.title || 'Untitled Video'}
+                              {video.title || video.caption || '(No caption)'}
                             </p>
                             <div className="flex items-center gap-1.5">
                               <div className="w-4 h-4">

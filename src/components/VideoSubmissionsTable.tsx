@@ -169,6 +169,17 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   console.log('🎬 VideoSubmissionsTable rendered with', submissions.length, 'videos');
   console.log('📅 Sample submission uploadDate check:', submissions[0]?.uploadDate);
   
+  // Debug: Check captions on first video
+  if (submissions.length > 0) {
+    const first = submissions[0];
+    console.log('🔍 VideoSubmissionsTable - First video:');
+    console.log('   ID:', first.id);
+    console.log('   Title:', first.title || '(EMPTY)');
+    console.log('   Caption:', first.caption || '(EMPTY)');
+    console.log('   Title length:', first.title?.length || 0);
+    console.log('   Caption length:', first.caption?.length || 0);
+  }
+  
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(() => {
@@ -403,9 +414,17 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   };
 
   return (
-    <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg overflow-hidden">
+    <div className="relative rounded-2xl border border-white/5 shadow-lg overflow-hidden" style={{ backgroundColor: '#121214' }}>
+      {/* Depth Gradient Overlay */}
+      <div 
+        className="absolute inset-0 pointer-events-none z-0"
+        style={{
+          background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
+        }}
+      />
+      
       {/* Table Header */}
-      <div className="px-6 py-5 border-b border-white/5 bg-zinc-900/40">
+      <div className="relative px-6 py-5 border-b border-white/5 z-10" style={{ backgroundColor: 'rgba(18, 18, 20, 0.6)' }}>
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Activity</h2>
@@ -458,12 +477,12 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto z-10">
         <table className="w-full min-w-max">
           <thead>
             <tr className="border-b border-white/5">
               {visibleColumns.video && (
-                <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider sticky left-0 bg-zinc-900/60 backdrop-blur z-10 min-w-[280px]">
+                <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider sticky left-0 z-20 min-w-[280px]" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}>
                   Video
                 </th>
               )}
@@ -525,7 +544,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
               <th className="w-12 px-6 py-4 text-left"></th>
             </tr>
           </thead>
-          <tbody className="bg-zinc-900/60 divide-y divide-white/5">
+          <tbody className="divide-y divide-white/5">
             {paginatedSubmissions.map((submission) => {
               const engagementRate = calculateEngagementRate(submission);
               const isLoading = (submission as any).isLoading;
@@ -545,9 +564,10 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       'bg-yellow-900/10 animate-pulse cursor-not-allowed pointer-events-none': isLoading
                     }
                   )}
+                  style={{ backgroundColor: isLoading ? undefined : '#121214' }}
                 >
                   {visibleColumns.video && (
-                    <td className="px-6 py-5 sticky left-0 bg-zinc-900/60 backdrop-blur z-10 group-hover:bg-white/5">
+                    <td className="px-6 py-5 sticky left-0 z-20 group-hover:bg-white/5" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}>
                       <div className="flex items-center space-x-4">
                         <div className="relative">
                           {submission.uploaderProfilePicture ? (
@@ -581,10 +601,13 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={submission.title}>
-                              {submission.title && submission.title.length > 15 
-                                ? `${submission.title.substring(0, 15)}...` 
-                                : submission.title}
+                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={submission.title || submission.caption || ''}>
+                              {(() => {
+                                const displayText = submission.title || submission.caption || '(No caption)';
+                                return displayText.length > 15 
+                                  ? `${displayText.substring(0, 15)}...` 
+                                  : displayText;
+                              })()}
                             </p>
                             {isLoading && (
                               <svg className="animate-spin h-3 w-3 text-yellow-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -792,19 +815,21 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
 
       {/* Pagination */}
       {filteredAndSortedSubmissions.length > 0 && (
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          itemsPerPage={itemsPerPage}
-          totalItems={filteredAndSortedSubmissions.length}
-          onPageChange={handlePageChange}
-          onItemsPerPageChange={handleItemsPerPageChange}
-        />
+        <div className="relative z-10">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            itemsPerPage={itemsPerPage}
+            totalItems={filteredAndSortedSubmissions.length}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
+        </div>
       )}
 
       {/* Empty State */}
       {submissions.length === 0 && (
-        <div className="px-6 py-16 text-center">
+        <div className="relative px-6 py-16 text-center z-10">
           <div className="w-64 h-64 mx-auto mb-6">
             <Lottie animationData={videoMaterialAnimation} loop={true} />
           </div>

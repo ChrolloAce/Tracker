@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle, useRef } from 'react';
-import { collection, query, where, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import Lottie from 'lottie-react';
 import { 
@@ -28,6 +28,7 @@ import {
 import pricingPlansAnimation from '../../public/lottie/Pricing Plans.json';
 import { AccountVideo } from '../types/accounts';
 import { TrackedAccount } from '../types/firestore';
+import { VideoSubmissionsTable } from './VideoSubmissionsTable';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import FirestoreDataService from '../services/FirestoreDataService';
 import RulesService from '../services/RulesService';
@@ -453,8 +454,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     const accountsRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts');
     const accountsQuery = query(accountsRef);
 
-    const unsubscribe = onSnapshot(accountsQuery, (snapshot) => {
-      console.log('📥 Real-time accounts update received');
+    (async () => {
+      try {
+        const snapshot = await getDocs(accountsQuery);
+      console.log('📥 Accounts loaded');
       const loadedAccounts: TrackedAccount[] = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -488,17 +491,11 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       }
       
       setLoading(false);
-    }, (error) => {
-      console.error('❌ Accounts listener error:', error);
-      setLoading(false);
-    });
-
-    return () => {
-      console.log('👋 Cleaning up accounts listener');
-      unsubscribe();
-      // Reset the restoration flag when org/project changes so it can restore for new context
-      hasRestoredFromLocalStorage.current = false;
-    };
+      } catch (error) {
+        console.error('❌ Failed to load accounts:', error);
+        setLoading(false);
+      }
+    })();
   }, [currentOrgId, currentProjectId]);
 
   // Load creator names for each account
@@ -573,11 +570,13 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   useEffect(() => {
     if (!currentOrgId || !currentProjectId) return;
 
-    console.log('👂 Setting up real-time sync status listener...');
+    console.log('👂 Checking sync status (removed real-time monitoring)...');
 
-    const accountsRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts');
-    const syncingQuery = query(accountsRef, where('syncStatus', 'in', ['pending', 'syncing']));
-
+    // Removed real-time sync listener - no longer monitoring in real-time
+    // User can refresh page to see updated sync status
+    setSyncingAccounts(new Set<string>());
+    return;
+    /* OLD CODE:
     const unsubscribe = onSnapshot(syncingQuery, async (snapshot) => {
       const syncingIds = new Set<string>();
       const previousSize = syncingAccounts.size;
@@ -626,7 +625,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       console.log('👋 Cleaning up sync status listener');
       unsubscribe();
     };
-  }, [currentOrgId, currentProjectId, syncingAccounts.size, selectedAccount]);
+    END OLD CODE */
+  }, [currentOrgId, currentProjectId]);
 
   // Calculate filtered stats for all accounts (for table view)
   useEffect(() => {
@@ -788,29 +788,36 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     localStorage.setItem('selectedAccountId', selectedAccount.id);
     setCurrentPage(1);
 
-    // Set up real-time listener for videos
+    // Load videos from the MAIN videos collection, filtered by trackedAccountId
     const videosRef = collection(
       db, 
       'organizations', currentOrgId, 
       'projects', currentProjectId, 
-      'trackedAccounts', selectedAccount.id, 
       'videos'
     );
-    const videosQuery = query(videosRef, orderBy('uploadDate', 'desc'));
+    const videosQuery = query(
+      videosRef, 
+      where('trackedAccountId', '==', selectedAccount.id),
+      orderBy('uploadDate', 'desc')
+    );
 
-    const unsubscribe = onSnapshot(videosQuery, async (snapshot) => {
-      console.log(`📥 Real-time videos update for @${selectedAccount.username}: ${snapshot.docs.length} videos`);
+    // One-time load for videos (replaced real-time listener)
+    (async () => {
+      try {
+        const snapshot = await getDocs(videosQuery);
+      console.log(`📥 Videos loaded for @${selectedAccount.username}: ${snapshot.docs.length} videos`);
       
       const videos: AccountVideo[] = snapshot.docs.map(doc => {
         const data = doc.data();
+        
         return {
           id: doc.id,
           accountId: selectedAccount.id,
           videoId: data.videoId || '',
-          url: data.url || '',
+          url: data.videoUrl || data.url || '',
           thumbnail: data.thumbnail || '',
-          caption: data.description || data.caption || data.title || '',
-          title: data.title || '',
+          caption: data.caption || data.videoTitle || '',
+          title: data.videoTitle || data.caption || '',
           uploadDate: data.uploadDate?.toDate() || new Date(),
           views: data.views || 0,
           viewsCount: data.views || 0,
@@ -870,14 +877,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
 
       console.log(`✅ After rules + date filter: ${finalFilteredVideos.length}/${videos.length} videos displayed (date: ${dateFilter})`);
       setAccountVideos(finalFilteredVideos);
-    }, (error) => {
-      console.error('❌ Videos listener error:', error);
-    });
-
-    return () => {
-      console.log(`👋 Cleaning up videos listener for @${selectedAccount.username}`);
-      unsubscribe();
-    };
+      } catch (error) {
+        console.error('❌ Failed to load videos:', error);
+      }
+    })();
   }, [selectedAccount, currentOrgId, currentProjectId, onViewModeChange, dateFilter]);
 
   const handleSyncAccount = useCallback(async (accountId: string) => {
@@ -2033,8 +2036,44 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
               );
               })()}
 
-            {/* Videos Table */}
-            <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg overflow-hidden">
+            {/* Videos Table - Using VideoSubmissionsTable for consistent styling */}
+            {(() => {
+              // Convert sorted videos to VideoSubmissions for the table
+              const videoSubmissions: VideoSubmission[] = sortedVideos.map(video => ({
+                id: video.id || video.videoId || '',
+                url: video.url || '',
+                platform: selectedAccount!.platform,
+                thumbnail: video.thumbnail || '',
+                title: video.caption || video.title || '',
+                caption: video.caption || video.title || '',
+                uploader: selectedAccount!.displayName || selectedAccount!.username,
+                uploaderHandle: selectedAccount!.username,
+                uploaderProfilePicture: selectedAccount!.profilePicture,
+                status: 'approved' as const,
+                views: video.viewsCount || video.views || 0,
+                likes: video.likesCount || video.likes || 0,
+                comments: video.commentsCount || video.comments || 0,
+                shares: video.sharesCount || video.shares || 0,
+                dateSubmitted: video.uploadDate || new Date(),
+                uploadDate: video.uploadDate || new Date(),
+                snapshots: []
+              }));
+
+              return (
+                <div className="mt-6">
+                  <VideoSubmissionsTable 
+                    submissions={videoSubmissions}
+                    onVideoClick={(video) => {
+                      setSelectedVideoForPlayer(video);
+                      setVideoPlayerOpen(true);
+                    }}
+                  />
+                </div>
+              );
+            })()}
+
+            {/* OLD Videos Table - HIDDEN via CSS */}
+            <div style={{ display: 'none' }} className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg overflow-hidden">
               <div className="px-6 py-5 border-b border-white/5 bg-zinc-900/40">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-semibold text-white">Recent Videos</h2>

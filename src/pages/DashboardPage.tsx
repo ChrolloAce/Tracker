@@ -9,6 +9,7 @@ import KPICards from '../components/KPICards';
 import DateRangeFilter, { DateFilterType } from '../components/DateRangeFilter';
 import VideoAnalyticsModal from '../components/VideoAnalyticsModal';
 import TopPerformersRaceChart from '../components/TopPerformersRaceChart';
+import DayVideosModal from '../components/DayVideosModal';
 import AccountsPage, { AccountsPageRef } from '../components/AccountsPage';
 import SettingsPage from '../components/SettingsPage';
 import SubscriptionPage from '../components/SubscriptionPage';
@@ -27,7 +28,7 @@ import LinkClicksService, { LinkClick } from '../services/LinkClicksService';
 import RulesService from '../services/RulesService';
 import { cssVariables } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
-import { Timestamp, collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
+import { Timestamp, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { fixVideoPlatforms } from '../services/FixVideoPlatform';
 import { TrackedAccount } from '../types/firestore';
@@ -58,6 +59,11 @@ function DashboardPage() {
   const [selectedVideoForAnalytics, setSelectedVideoForAnalytics] = useState<VideoSubmission | null>(null);
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  
+  // Day Videos Modal state (for account clicks from race chart)
+  const [isDayVideosModalOpen, setIsDayVideosModalOpen] = useState(false);
+  const [selectedAccountFilter, setSelectedAccountFilter] = useState<string | undefined>();
+  const [dayVideosDate, setDayVideosDate] = useState<Date>(new Date());
   const [activeTab, setActiveTab] = useState(() => {
     // Restore active tab from localStorage on mount
     const savedTab = localStorage.getItem('activeTab');
@@ -138,13 +144,13 @@ function DashboardPage() {
     loadUserRole();
   }, [user, currentOrgId]);
 
-  // Real-time data loading with Firestore listeners
+  // One-time data loading (no real-time listeners)
   useEffect(() => {
     if (!user || !currentOrgId || !currentProjectId) {
       return;
     }
 
-    console.log('🎯 ViewTrack Dashboard - Setting up real-time listeners');
+    console.log('🎯 ViewTrack Dashboard - Loading data');
     console.log('📁 Organization ID:', currentOrgId);
     console.log('📁 Project ID:', currentProjectId);
     
@@ -153,132 +159,113 @@ function DashboardPage() {
     
     setIsLoadingData(true);
     
-    const unsubscribers: Array<() => void> = [];
-    
-    // Real-time listener for tracked accounts
+    // Async IIFE to load all data
+    (async () => {
+      // One-time load for tracked accounts
     const accountsRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts');
     const accountsQuery = query(accountsRef, orderBy('dateAdded', 'desc'));
     
-    const unsubAccounts = onSnapshot(accountsQuery, (snapshot) => {
-      const accounts: TrackedAccount[] = snapshot.docs.map(doc => ({
+    try {
+      const accountsSnapshot = await getDocs(accountsQuery);
+      const accounts: TrackedAccount[] = accountsSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       } as TrackedAccount));
       
-      console.log(`👥 Real-time update: ${accounts.length} tracked accounts`);
+      console.log(`👥 Loaded ${accounts.length} tracked accounts`);
       setTrackedAccounts(accounts);
-    }, (error) => {
-      console.error('❌ Accounts listener error:', error);
-    });
-    unsubscribers.push(unsubAccounts);
+    } catch (error) {
+      console.error('❌ Failed to load accounts:', error);
+    }
     
-    // Real-time listener for videos
+    // One-time load for videos
     const videosRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'videos');
     const videosQuery = query(videosRef, orderBy('dateAdded', 'desc'), limit(1000));
     
-    const unsubVideos = onSnapshot(videosQuery, async (snapshot) => {
-      try {
-        // Get current accounts for mapping
-        const accounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
-        const accountsMap = new Map(accounts.map(acc => [acc.id, acc]));
+    try {
+      const videosSnapshot = await getDocs(videosQuery);
+      
+      // Get current accounts for mapping
+      const accounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
+      const accountsMap = new Map(accounts.map(acc => [acc.id, acc]));
+      
+      // Get video IDs for snapshot fetching
+      const videoIds = videosSnapshot.docs.map(doc => doc.id);
+      
+      // Fetch snapshots for all videos in parallel
+      const snapshotsMap = await FirestoreDataService.getVideoSnapshotsBatch(
+        currentOrgId, 
+        currentProjectId, 
+        videoIds
+      );
+      
+      const allSubmissions: VideoSubmission[] = videosSnapshot.docs.map(doc => {
+        const video = { id: doc.id, ...doc.data() } as any;
+        const account = video.trackedAccountId ? accountsMap.get(video.trackedAccountId) : null;
+        const snapshots = snapshotsMap.get(video.id) || [];
         
-        // Get video IDs for snapshot fetching
-        const videoIds = snapshot.docs.map(doc => doc.id);
+        // Load caption from Firestore fields - use actual field names from Firestore
+        const caption = video.caption || video.videoTitle || '';
+        const title = video.videoTitle || video.caption || '';
         
-        // Fetch snapshots for all videos in parallel
-        const snapshotsMap = await FirestoreDataService.getVideoSnapshotsBatch(
-          currentOrgId, 
-          currentProjectId, 
-          videoIds
-        );
-        
-        const allSubmissions: VideoSubmission[] = snapshot.docs.map(doc => {
-          const video = { id: doc.id, ...doc.data() } as any;
-          const account = video.trackedAccountId ? accountsMap.get(video.trackedAccountId) : null;
-          const snapshots = snapshotsMap.get(video.id) || [];
-          
-          return {
-            id: video.id,
-            url: video.url || '',
-            platform: video.platform as 'instagram' | 'tiktok' | 'youtube',
-            thumbnail: video.thumbnail || '',
-            title: video.title || '',
-            caption: video.description || '',
-            uploader: account?.displayName || account?.username || '',
-            uploaderHandle: account?.username || '',
-            uploaderProfilePicture: account?.profilePicture,
-            status: video.status === 'archived' ? 'rejected' : 'approved',
-            views: video.views || 0,
-            likes: video.likes || 0,
-            comments: video.comments || 0,
-            shares: video.shares || 0,
-            dateSubmitted: video.dateAdded?.toDate?.() || new Date(),
-            uploadDate: video.uploadDate?.toDate?.() || new Date(),
-            lastRefreshed: video.lastRefreshed?.toDate?.(),
-            snapshots: snapshots
-          };
-        });
-        
-        console.log(`🎬 Real-time update: ${allSubmissions.length} videos`);
-        console.log(`📸 Videos with snapshots: ${allSubmissions.filter(v => v.snapshots && v.snapshots.length > 0).length}`);
-        setSubmissions(allSubmissions);
-        setIsLoadingData(false);
-      } catch (error) {
-        console.error('❌ Error processing videos snapshot:', error);
-        setIsLoadingData(false);
-      }
-    }, (error) => {
-      console.error('❌ Videos listener error:', error);
+        return {
+          id: video.id,
+          url: video.videoUrl || video.url || '',
+          platform: video.platform as 'instagram' | 'tiktok' | 'youtube',
+          thumbnail: video.thumbnail || '',
+          title: title,
+          caption: caption,
+          uploader: account?.displayName || account?.username || '',
+          uploaderHandle: account?.username || '',
+          uploaderProfilePicture: account?.profilePicture,
+          status: video.status === 'archived' ? 'rejected' : 'approved',
+          views: video.views || 0,
+          likes: video.likes || 0,
+          comments: video.comments || 0,
+          shares: video.shares || 0,
+          dateSubmitted: video.dateAdded?.toDate?.() || new Date(),
+          uploadDate: video.uploadDate?.toDate?.() || new Date(),
+          lastRefreshed: video.lastRefreshed?.toDate?.(),
+          snapshots: snapshots
+        };
+      });
+      
+      console.log(`🎬 Loaded ${allSubmissions.length} videos`);
+      console.log(`📸 Videos with snapshots: ${allSubmissions.filter(v => v.snapshots && v.snapshots.length > 0).length}`);
+      setSubmissions(allSubmissions);
       setIsLoadingData(false);
-    });
-    unsubscribers.push(unsubVideos);
+    } catch (error) {
+      console.error('❌ Error loading videos:', error);
+      setIsLoadingData(false);
+    }
     
-    // Real-time listener for rules
+    // One-time load for rules
     const rulesRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'rules');
     
-    const unsubRules = onSnapshot(rulesRef, (snapshot) => {
-      const rules = snapshot.docs.map(doc => ({
+    try {
+      const rulesSnapshot = await getDocs(rulesRef);
+      const rules = rulesSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
       
-      console.log(`📋 Real-time update: ${rules.length} tracking rules`);
+      console.log(`📋 Loaded ${rules.length} tracking rules`);
       setAllRules(rules);
-    }, (error) => {
-      console.error('❌ Rules listener error:', error);
-    });
-    unsubscribers.push(unsubRules);
+    } catch (error) {
+      console.error('❌ Failed to load rules:', error);
+    }
     
-    // Load ALL link clicks (from both old and new locations) on initial load
-    const loadAllClicks = async () => {
-      try {
-        const allClicks = await LinkClicksService.getProjectLinkClicks(currentOrgId, currentProjectId);
-        setLinkClicks(allClicks);
-      } catch (error) {
-        console.error('Failed to load link clicks:', error);
-      }
-    };
-    loadAllClicks();
-    
-    // Real-time listener for NEW link clicks only (old clicks are loaded above)
-    const clicksRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'linkClicks');
-    
-    const unsubClicks = onSnapshot(clicksRef, async () => {
-      // On any change to new clicks collection, reload ALL clicks to stay in sync
+    // One-time load for link clicks
+    try {
       const allClicks = await LinkClicksService.getProjectLinkClicks(currentOrgId, currentProjectId);
       setLinkClicks(allClicks);
-    }, (error) => {
-      console.error('❌ Link clicks listener error:', error);
-    });
-    unsubscribers.push(unsubClicks);
+      console.log(`🔗 Loaded ${allClicks.length} link clicks`);
+    } catch (error) {
+      console.error('❌ Failed to load link clicks:', error);
+    }
     
-    console.log('✅ Real-time listeners active');
-    
-    // Cleanup function
-    return () => {
-      console.log('🧹 Cleaning up real-time listeners');
-      unsubscribers.forEach(unsub => unsub());
-    };
+    console.log('✅ All data loaded');
+    })(); // End of async IIFE
   }, [user, currentOrgId, currentProjectId]); // Reload when project changes!
 
   // Apply CSS variables to the root and expose fix function
@@ -405,7 +392,20 @@ function DashboardPage() {
 
   // Combine real submissions with pending videos for immediate UI feedback
   const combinedSubmissions = useMemo(() => {
-    return [...pendingVideos, ...filteredSubmissions];
+    const combined = [...pendingVideos, ...filteredSubmissions];
+    
+    // Debug: Check first video in combined submissions
+    if (combined.length > 0) {
+      const first = combined[0];
+      console.log('🔍 DashboardPage - First video in combinedSubmissions:');
+      console.log('   ID:', first.id);
+      console.log('   Title:', first.title || '(EMPTY)');
+      console.log('   Caption:', first.caption || '(EMPTY)');
+      console.log('   Title length:', first.title?.length || 0);
+      console.log('   Caption length:', first.caption?.length || 0);
+    }
+    
+    return combined;
   }, [pendingVideos, filteredSubmissions]);
 
   // Apply date filter to link clicks
@@ -430,15 +430,46 @@ function DashboardPage() {
     setCustomDateRange(customRange);
   }, []);
 
-  const handleVideoClick = useCallback((_video: VideoSubmission) => {
-    // Don't do anything - let VideoSubmissionsTable handle video clicks with its own player
-    // This prevents the row click from interfering with thumbnail clicks
-  }, []);
+  const handleVideoClick = useCallback(async (video: VideoSubmission) => {
+    if (!currentOrgId || !currentProjectId) return;
+    
+    try {
+      // Fetch snapshots for this video
+      const snapshots = await FirestoreDataService.getVideoSnapshots(
+        currentOrgId, 
+        currentProjectId, 
+        video.id || ''
+      );
+      
+      // Update video with snapshots
+      const videoWithSnapshots: VideoSubmission = {
+        ...video,
+        snapshots: snapshots
+      };
+      
+      setSelectedVideoForAnalytics(videoWithSnapshots);
+      setIsAnalyticsModalOpen(true);
+    } catch (error) {
+      console.error('❌ Failed to load snapshots:', error);
+      // Still open modal without snapshots
+      setSelectedVideoForAnalytics(video);
+      setIsAnalyticsModalOpen(true);
+    }
+  }, [currentOrgId, currentProjectId]);
 
   const handleCloseAnalyticsModal = useCallback(() => {
     setIsAnalyticsModalOpen(false);
     setSelectedVideoForAnalytics(null);
   }, []);
+
+  const handleAccountClick = useCallback((username: string) => {
+    console.log('🎯 Account clicked from race chart:', username);
+    // Use the most recent date or the current date range end
+    const targetDate = customDateRange?.endDate || new Date();
+    setDayVideosDate(targetDate);
+    setSelectedAccountFilter(username);
+    setIsDayVideosModalOpen(true);
+  }, [customDateRange]);
 
   // Legacy function - kept for reference but replaced by handleAddVideosWithAccounts
   // const handleAddVideo = useCallback(async (videoUrl: string, uploadDate: Date) => { ... }
@@ -806,11 +837,16 @@ function DashboardPage() {
                   dateFilter={dateFilter}
                   customRange={customDateRange}
                   timePeriod="days"
+                  onVideoClick={handleVideoClick}
                 />
                 
                 {/* Top Performers Race Chart */}
                 <div className="mt-6">
-                  <TopPerformersRaceChart submissions={combinedSubmissions} />
+                  <TopPerformersRaceChart 
+                    submissions={combinedSubmissions} 
+                    onVideoClick={handleVideoClick}
+                    onAccountClick={handleAccountClick}
+                  />
                 </div>
                 
                 {/* Video Submissions Table */}
@@ -894,6 +930,17 @@ function DashboardPage() {
         video={selectedVideoForAnalytics}
         isOpen={isAnalyticsModalOpen}
         onClose={handleCloseAnalyticsModal}
+      />
+
+      {/* Day Videos Modal for Account Clicks */}
+      <DayVideosModal
+        isOpen={isDayVideosModalOpen}
+        onClose={() => setIsDayVideosModalOpen(false)}
+        date={dayVideosDate}
+        videos={combinedSubmissions}
+        metricLabel="Videos"
+        accountFilter={selectedAccountFilter}
+        onVideoClick={handleVideoClick}
       />
 
       {/* Context-Aware Floating Action Button */}

@@ -389,10 +389,13 @@ class FirestoreDataService {
               orgId,
               trackedAccountId: accountId,
               videoId: video.videoId,
-              url: video.url,
+              videoUrl: video.url, // New field name
+              url: video.url, // Keep legacy for backward compatibility
               thumbnail: video.thumbnail,
-              title: video.caption?.substring(0, 100) || '',
-              description: video.caption,
+              videoTitle: video.caption?.substring(0, 100) || '', // New field name
+              title: video.caption?.substring(0, 100) || '', // Keep legacy
+              caption: video.caption, // New field name (matches Firestore)
+              description: video.caption, // Keep legacy
               platform: platform || 'instagram',
               uploadDate: Timestamp.fromDate(video.uploadDate),
               views: video.views,

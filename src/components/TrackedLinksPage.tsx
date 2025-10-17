@@ -356,18 +356,95 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     };
   }, [filteredClicks, dateFilter]);
 
-  // Calculate stats from filtered clicks
+  // Calculate stats from filtered clicks with PP comparison
   const stats = useMemo(() => {
+    const now = new Date();
+    let dateRangeStart: Date | null = null;
+    let dateRangeEnd: Date = new Date();
+    let ppDateRangeStart: Date | null = null;
+    let ppDateRangeEnd: Date | null = null;
+    
+    // Calculate date ranges based on filter
+    if (dateFilter === 'today') {
+      dateRangeStart = new Date(now);
+      dateRangeStart.setHours(0, 0, 0, 0);
+      dateRangeEnd.setHours(23, 59, 59, 999);
+      
+      // PP = yesterday
+      ppDateRangeStart = new Date(dateRangeStart);
+      ppDateRangeStart.setDate(ppDateRangeStart.getDate() - 1);
+      ppDateRangeEnd = new Date(ppDateRangeStart);
+      ppDateRangeEnd.setHours(23, 59, 59, 999);
+    } else if (dateFilter === 'last7days') {
+      dateRangeStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      
+      // PP = previous 7 days
+      ppDateRangeStart = new Date(dateRangeStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+      ppDateRangeEnd = new Date(dateRangeStart);
+    } else if (dateFilter === 'last30days') {
+      dateRangeStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      
+      // PP = previous 30 days
+      ppDateRangeStart = new Date(dateRangeStart.getTime() - 30 * 24 * 60 * 60 * 1000);
+      ppDateRangeEnd = new Date(dateRangeStart);
+    } else if (dateFilter === 'last90days') {
+      dateRangeStart = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      
+      // PP = previous 90 days
+      ppDateRangeStart = new Date(dateRangeStart.getTime() - 90 * 24 * 60 * 60 * 1000);
+      ppDateRangeEnd = new Date(dateRangeStart);
+    } else if (dateFilter === 'custom' && customDateRange) {
+      dateRangeStart = new Date(customDateRange.startDate);
+      dateRangeStart.setHours(0, 0, 0, 0);
+      dateRangeEnd = new Date(customDateRange.endDate);
+      dateRangeEnd.setHours(23, 59, 59, 999);
+      
+      // PP = same duration before start date
+      const duration = dateRangeEnd.getTime() - dateRangeStart.getTime();
+      ppDateRangeEnd = new Date(dateRangeStart);
+      ppDateRangeStart = new Date(dateRangeStart.getTime() - duration);
+    }
+    
+    // Current Period (CP) clicks
     const totalClicks = filteredClicks.length;
     const uniqueClicks = new Set(
       filteredClicks.map(c => `${c.userAgent}-${c.deviceType}`)
     ).size;
+    
+    // Previous Period (PP) clicks
+    let ppTotalClicks = 0;
+    let ppUniqueClicks = 0;
+    
+    if (ppDateRangeStart && ppDateRangeEnd) {
+      const ppClicks = linkClicks.filter(click => {
+        const clickDate = new Date(click.timestamp);
+        return clickDate >= ppDateRangeStart! && clickDate <= ppDateRangeEnd!;
+      });
+      
+      ppTotalClicks = ppClicks.length;
+      ppUniqueClicks = new Set(
+        ppClicks.map(c => `${c.userAgent}-${c.deviceType}`)
+      ).size;
+    }
+    
     const avgCTR = links.length > 0 
       ? ((uniqueClicks / links.length) * 0.1).toFixed(1) 
       : '0.0';
     
-    return { totalClicks, uniqueClicks, avgCTR };
-  }, [filteredClicks, links]);
+    // Calculate deltas
+    const totalClicksGrowth = ppTotalClicks === 0 ? totalClicks : totalClicks - ppTotalClicks;
+    const uniqueClicksGrowth = ppUniqueClicks === 0 ? uniqueClicks : uniqueClicks - ppUniqueClicks;
+    
+    return { 
+      totalClicks, 
+      uniqueClicks, 
+      avgCTR,
+      totalClicksGrowth,
+      uniqueClicksGrowth,
+      isTotalIncreasing: totalClicksGrowth >= 0,
+      isUniqueIncreasing: uniqueClicksGrowth >= 0
+    };
+  }, [filteredClicks, links, linkClicks, dateFilter, customDateRange]);
 
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
@@ -388,246 +465,407 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       {/* Stats Overview - Dashboard Style */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Total Clicks Card */}
-        <div className="bg-zinc-900/60 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all duration-300 group">
-          <div className="flex items-start justify-between mb-4">
-            <div className="p-3 bg-gray-200 dark:bg-gray-800 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-              <MousePointer className="w-6 h-6 text-gray-900 dark:text-white" />
+        <div 
+          className="group relative rounded-2xl border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 overflow-hidden"
+          style={{ minHeight: '180px', backgroundColor: '#121214' }}
+        >
+          {/* Depth Gradient Overlay */}
+          <div 
+            className="absolute inset-0 pointer-events-none z-0"
+            style={{
+              background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
+            }}
+          />
+          
+          {/* Upper Solid Portion - 75% */}
+          <div className="relative px-5 pt-5 pb-2 z-10" style={{ height: '75%' }}>
+            {/* Icon (top-right) */}
+            <div className="absolute top-4 right-4">
+              <MousePointer className="w-5 h-5 text-gray-400 opacity-60" />
             </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-                <span className="text-xs text-gray-400">Live</span>
+
+            {/* Metric Content */}
+            <div className="flex flex-col h-full justify-start pt-1">
+              {/* Label */}
+              <div className="text-xs font-medium text-zinc-400 tracking-wide mb-2">
+                Total Clicks
+              </div>
+
+              {/* Value + Delta */}
+              <div className="flex items-baseline gap-3 -mt-1">
+                <span className="text-3xl lg:text-4xl font-bold tracking-tight text-white">
+                  {formatNumber(stats.totalClicks)}
+                </span>
+                
+                {/* Delta Badge */}
+                {dateFilter !== 'all' && stats.totalClicksGrowth !== undefined && (
+                  <span className={`inline-flex items-baseline text-xs font-semibold ${
+                    stats.isTotalIncreasing ? 'text-green-400' : 'text-red-400'
+                  }`} style={{ letterSpacing: '-0.02em' }}>
+                    <span className="mr-0">{stats.isTotalIncreasing ? '+' : '−'}</span>
+                    {formatNumber(Math.abs(stats.totalClicksGrowth))}
+                  </span>
+                )}
               </div>
             </div>
           </div>
-          <div>
-            <p className="text-sm font-medium text-gray-400 mb-1">Total Clicks</p>
-            <p className="text-3xl font-bold text-white mb-2">
-              {formatNumber(stats.totalClicks)}
-            </p>
-            <div className="flex items-center gap-2 text-xs mb-3">
-              <span className="text-gray-500">
-                {dateFilter === 'all' ? 'All time clicks' : 
-                 dateFilter === 'today' ? 'Today' :
-                 dateFilter === 'last7days' ? 'Last 7 days' :
-                 dateFilter === 'last30days' ? 'Last 30 days' :
-                 dateFilter === 'last90days' ? 'Last 90 days' : 'Selected period'}
-              </span>
+
+          {/* Bottom Graph Layer - 25% */}
+          {sparklineData.total && sparklineData.total.length > 0 && (
+            <div 
+              className="relative w-full overflow-hidden z-10"
+              style={{ 
+                height: '25%',
+                background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 100%)',
+                borderBottomLeftRadius: '1rem',
+                borderBottomRightRadius: '1rem'
+              }}
+            >
+              {/* Atmospheric Gradient Overlay */}
+              <div 
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: `linear-gradient(to top, ${stats.isTotalIncreasing ? '#22c55e' : '#ef4444'}15 0%, transparent 80%)`,
+                  mixBlendMode: 'soft-light'
+                }}
+              />
+
+              {/* Line Chart */}
+              <div className="absolute inset-0" style={{ padding: '0' }}>
+                <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart 
+                      data={sparklineData.total}
+                      margin={{ top: 2, right: 0, bottom: 2, left: 0 }}
+                    >
+                      <defs>
+                        <linearGradient id="totalGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={stats.isTotalIncreasing ? '#22c55e' : '#ef4444'} stopOpacity={0.2} />
+                          <stop offset="100%" stopColor={stats.isTotalIncreasing ? '#22c55e' : '#ef4444'} stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <Tooltip
+                        position={{ y: -60 }}
+                        offset={40}
+                        allowEscapeViewBox={{ x: false, y: true }}
+                        wrapperStyle={{ 
+                          zIndex: 99999,
+                          position: 'fixed'
+                        }}
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0]?.payload;
+                            const value = data.value;
+                            const timestamp = data.timestamp;
+                            
+                            const formatDate = (ts: number) => {
+                              const date = new Date(ts);
+                              const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+                              return `${months[date.getMonth()]} ${date.getDate()}`;
+                            };
+                            
+                            return (
+                              <div className="bg-[#1a1a1a] backdrop-blur-xl text-white px-5 py-3 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] text-sm space-y-2 min-w-[240px] border border-white/10 pointer-events-none">
+                                <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+                                  {formatDate(timestamp)}
+                                </p>
+                                <p className="text-lg text-white font-bold">
+                                  {formatNumber(value)} clicks
+                                </p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                        cursor={{ stroke: stats.isTotalIncreasing ? '#22c55e' : '#ef4444', strokeWidth: 1, strokeDasharray: '3 3' }}
+                      />
+                      <Area
+                        type="monotoneX"
+                        dataKey="value"
+                        stroke={stats.isTotalIncreasing ? '#22c55e' : '#ef4444'}
+                        strokeWidth={2}
+                        fill="url(#totalGradient)"
+                        isAnimationActive={false}
+                        dot={false}
+                        activeDot={{ 
+                          r: 4, 
+                          fill: stats.isTotalIncreasing ? '#22c55e' : '#ef4444', 
+                          strokeWidth: 2, 
+                          stroke: '#fff'
+                        }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             </div>
-            {/* Sparkline */}
-            <div className="h-12 -mx-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={sparklineData.total}>
-                  <defs>
-                    <linearGradient id="totalGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <Tooltip
-                    position={{ y: -60 }}
-                    offset={40}
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        const data = payload[0].payload;
-                        const value = data.value;
-                        const timestamp = data.timestamp;
-                        
-                        const formatDate = (ts: number) => {
-                          const date = new Date(ts);
-                          const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-                          return `${months[date.getMonth()]} ${date.getDate()}`;
-                        };
-                        
-                        const formatNumber = (num: number): string => {
-                          if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-                          if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-                          return num.toLocaleString();
-                        };
-                        
-                        return (
-                          <div className="bg-[#1a1a1a] backdrop-blur-xl text-white px-5 py-3 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] text-sm space-y-2 min-w-[240px] border border-white/10">
-                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
-                              {formatDate(timestamp)}
-                            </p>
-                            <p className="text-lg text-white font-bold">
-                              {formatNumber(value)} clicks
-                            </p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                    cursor={{ stroke: '#3B82F6', strokeWidth: 1, strokeDasharray: '3 3' }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#3B82F6"
-                    strokeWidth={2}
-                    fill="url(#totalGradient)"
-                    animationDuration={300}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Unique Clicks Card */}
-        <div className="bg-zinc-900/60 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all duration-300 group">
-          <div className="flex items-start justify-between mb-4">
-            <div className="p-3 bg-gray-200 dark:bg-gray-800 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-              <Users className="w-6 h-6 text-gray-900 dark:text-white" />
+        <div 
+          className="group relative rounded-2xl border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 overflow-hidden"
+          style={{ minHeight: '180px', backgroundColor: '#121214' }}
+        >
+          {/* Depth Gradient Overlay */}
+          <div 
+            className="absolute inset-0 pointer-events-none z-0"
+            style={{
+              background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
+            }}
+          />
+          
+          {/* Upper Solid Portion - 75% */}
+          <div className="relative px-5 pt-5 pb-2 z-10" style={{ height: '75%' }}>
+            {/* Icon (top-right) */}
+            <div className="absolute top-4 right-4">
+              <Users className="w-5 h-5 text-gray-400 opacity-60" />
             </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-                <span className="text-xs text-gray-400">Live</span>
+
+            {/* Metric Content */}
+            <div className="flex flex-col h-full justify-start pt-1">
+              {/* Label */}
+              <div className="text-xs font-medium text-zinc-400 tracking-wide mb-2">
+                Unique Clicks
+              </div>
+
+              {/* Value + Delta */}
+              <div className="flex items-baseline gap-3 -mt-1">
+                <span className="text-3xl lg:text-4xl font-bold tracking-tight text-white">
+                  {formatNumber(stats.uniqueClicks)}
+                </span>
+                
+                {/* Delta Badge */}
+                {dateFilter !== 'all' && stats.uniqueClicksGrowth !== undefined && (
+                  <span className={`inline-flex items-baseline text-xs font-semibold ${
+                    stats.isUniqueIncreasing ? 'text-green-400' : 'text-red-400'
+                  }`} style={{ letterSpacing: '-0.02em' }}>
+                    <span className="mr-0">{stats.isUniqueIncreasing ? '+' : '−'}</span>
+                    {formatNumber(Math.abs(stats.uniqueClicksGrowth))}
+                  </span>
+                )}
               </div>
             </div>
           </div>
-          <div>
-            <p className="text-sm font-medium text-gray-400 mb-1">Unique Clicks</p>
-            <p className="text-3xl font-bold text-white mb-2">
-              {formatNumber(stats.uniqueClicks)}
-            </p>
-            <div className="flex items-center gap-2 text-xs mb-3">
-              <span className="text-gray-500">Unique visitors</span>
+
+          {/* Bottom Graph Layer - 25% */}
+          {sparklineData.unique && sparklineData.unique.length > 0 && (
+            <div 
+              className="relative w-full overflow-hidden z-10"
+              style={{ 
+                height: '25%',
+                background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 100%)',
+                borderBottomLeftRadius: '1rem',
+                borderBottomRightRadius: '1rem'
+              }}
+            >
+              {/* Atmospheric Gradient Overlay */}
+              <div 
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: `linear-gradient(to top, ${stats.isUniqueIncreasing ? '#22c55e' : '#ef4444'}15 0%, transparent 80%)`,
+                  mixBlendMode: 'soft-light'
+                }}
+              />
+
+              {/* Line Chart */}
+              <div className="absolute inset-0" style={{ padding: '0' }}>
+                <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart 
+                      data={sparklineData.unique}
+                      margin={{ top: 2, right: 0, bottom: 2, left: 0 }}
+                    >
+                      <defs>
+                        <linearGradient id="uniqueGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={stats.isUniqueIncreasing ? '#22c55e' : '#ef4444'} stopOpacity={0.2} />
+                          <stop offset="100%" stopColor={stats.isUniqueIncreasing ? '#22c55e' : '#ef4444'} stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <Tooltip
+                        position={{ y: -60 }}
+                        offset={40}
+                        allowEscapeViewBox={{ x: false, y: true }}
+                        wrapperStyle={{ 
+                          zIndex: 99999,
+                          position: 'fixed'
+                        }}
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0]?.payload;
+                            const value = data.value;
+                            const timestamp = data.timestamp;
+                            
+                            const formatDate = (ts: number) => {
+                              const date = new Date(ts);
+                              const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+                              return `${months[date.getMonth()]} ${date.getDate()}`;
+                            };
+                            
+                            return (
+                              <div className="bg-[#1a1a1a] backdrop-blur-xl text-white px-5 py-3 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] text-sm space-y-2 min-w-[240px] border border-white/10 pointer-events-none">
+                                <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+                                  {formatDate(timestamp)}
+                                </p>
+                                <p className="text-lg text-white font-bold">
+                                  {formatNumber(value)} unique
+                                </p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                        cursor={{ stroke: stats.isUniqueIncreasing ? '#22c55e' : '#ef4444', strokeWidth: 1, strokeDasharray: '3 3' }}
+                      />
+                      <Area
+                        type="monotoneX"
+                        dataKey="value"
+                        stroke={stats.isUniqueIncreasing ? '#22c55e' : '#ef4444'}
+                        strokeWidth={2}
+                        fill="url(#uniqueGradient)"
+                        isAnimationActive={false}
+                        dot={false}
+                        activeDot={{ 
+                          r: 4, 
+                          fill: stats.isUniqueIncreasing ? '#22c55e' : '#ef4444', 
+                          strokeWidth: 2, 
+                          stroke: '#fff'
+                        }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             </div>
-            {/* Sparkline */}
-            <div className="h-12 -mx-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={sparklineData.unique}>
-                  <defs>
-                    <linearGradient id="uniqueGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#A855F7" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#A855F7" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <Tooltip
-                    position={{ y: -60 }}
-                    offset={40}
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        const data = payload[0].payload;
-                        const value = data.value;
-                        const timestamp = data.timestamp;
-                        
-                        const formatDate = (ts: number) => {
-                          const date = new Date(ts);
-                          const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-                          return `${months[date.getMonth()]} ${date.getDate()}`;
-                        };
-                        
-                        const formatNumber = (num: number): string => {
-                          if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-                          if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-                          return num.toLocaleString();
-                        };
-                        
-                        return (
-                          <div className="bg-[#1a1a1a] backdrop-blur-xl text-white px-5 py-3 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] text-sm space-y-2 min-w-[240px] border border-white/10">
-                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
-                              {formatDate(timestamp)}
-                            </p>
-                            <p className="text-lg text-white font-bold">
-                              {formatNumber(value)} unique
-                            </p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                    cursor={{ stroke: '#A855F7', strokeWidth: 1, strokeDasharray: '3 3' }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#A855F7"
-                    strokeWidth={2}
-                    fill="url(#uniqueGradient)"
-                    animationDuration={300}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Avg CTR Card */}
-        <div className="bg-zinc-900/60 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all duration-300 group">
-          <div className="flex items-start justify-between mb-4">
-            <div className="p-3 bg-gray-200 dark:bg-gray-800 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
-              <TrendingUp className="w-6 h-6 text-gray-900 dark:text-white" />
+        <div 
+          className="group relative rounded-2xl border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 overflow-hidden"
+          style={{ minHeight: '180px', backgroundColor: '#121214' }}
+        >
+          {/* Depth Gradient Overlay */}
+          <div 
+            className="absolute inset-0 pointer-events-none z-0"
+            style={{
+              background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
+            }}
+          />
+          
+          {/* Upper Solid Portion - 75% */}
+          <div className="relative px-5 pt-5 pb-2 z-10" style={{ height: '75%' }}>
+            {/* Icon (top-right) */}
+            <div className="absolute top-4 right-4">
+              <TrendingUp className="w-5 h-5 text-gray-400 opacity-60" />
             </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-                <span className="text-xs text-gray-400">Live</span>
+
+            {/* Metric Content */}
+            <div className="flex flex-col h-full justify-start pt-1">
+              {/* Label */}
+              <div className="text-xs font-medium text-zinc-400 tracking-wide mb-2">
+                Avg CTR
+              </div>
+
+              {/* Value */}
+              <div className="flex items-baseline gap-3 -mt-1">
+                <span className="text-3xl lg:text-4xl font-bold tracking-tight text-white">
+                  {stats.avgCTR}%
+                </span>
               </div>
             </div>
           </div>
-          <div>
-            <p className="text-sm font-medium text-gray-400 mb-1">Avg CTR</p>
-            <p className="text-3xl font-bold text-white mb-2">
-              {stats.avgCTR}%
-            </p>
-            <div className="flex items-center gap-2 text-xs mb-3">
-              <span className="text-gray-500">Click-through rate</span>
+
+          {/* Bottom Graph Layer - 25% */}
+          {sparklineData.ctr && sparklineData.ctr.length > 0 && (
+            <div 
+              className="relative w-full overflow-hidden z-10"
+              style={{ 
+                height: '25%',
+                background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 100%)',
+                borderBottomLeftRadius: '1rem',
+                borderBottomRightRadius: '1rem'
+              }}
+            >
+              {/* Atmospheric Gradient Overlay */}
+              <div 
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: `linear-gradient(to top, ${stats.isTotalIncreasing ? '#22c55e' : '#ef4444'}15 0%, transparent 80%)`,
+                  mixBlendMode: 'soft-light'
+                }}
+              />
+
+              {/* Line Chart */}
+              <div className="absolute inset-0" style={{ padding: '0' }}>
+                <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart 
+                      data={sparklineData.ctr}
+                      margin={{ top: 2, right: 0, bottom: 2, left: 0 }}
+                    >
+                      <defs>
+                        <linearGradient id="ctrGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={stats.isTotalIncreasing ? '#22c55e' : '#ef4444'} stopOpacity={0.2} />
+                          <stop offset="100%" stopColor={stats.isTotalIncreasing ? '#22c55e' : '#ef4444'} stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <Tooltip
+                        position={{ y: -60 }}
+                        offset={40}
+                        allowEscapeViewBox={{ x: false, y: true }}
+                        wrapperStyle={{ 
+                          zIndex: 99999,
+                          position: 'fixed'
+                        }}
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0]?.payload;
+                            const value = data.value;
+                            const timestamp = data.timestamp;
+                            
+                            const formatDate = (ts: number) => {
+                              const date = new Date(ts);
+                              const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+                              return `${months[date.getMonth()]} ${date.getDate()}`;
+                            };
+                            
+                            return (
+                              <div className="bg-[#1a1a1a] backdrop-blur-xl text-white px-5 py-3 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] text-sm space-y-2 min-w-[240px] border border-white/10 pointer-events-none">
+                                <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+                                  {formatDate(timestamp)}
+                                </p>
+                                <p className="text-lg text-white font-bold">
+                                  {value.toFixed(1)}% ctr
+                                </p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                        cursor={{ stroke: stats.isTotalIncreasing ? '#22c55e' : '#ef4444', strokeWidth: 1, strokeDasharray: '3 3' }}
+                      />
+                      <Area
+                        type="monotoneX"
+                        dataKey="value"
+                        stroke={stats.isTotalIncreasing ? '#22c55e' : '#ef4444'}
+                        strokeWidth={2}
+                        fill="url(#ctrGradient)"
+                        isAnimationActive={false}
+                        dot={false}
+                        activeDot={{ 
+                          r: 4, 
+                          fill: stats.isTotalIncreasing ? '#22c55e' : '#ef4444', 
+                          strokeWidth: 2, 
+                          stroke: '#fff'
+                        }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             </div>
-            {/* Sparkline */}
-            <div className="h-12 -mx-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={sparklineData.ctr}>
-                  <defs>
-                    <linearGradient id="ctrGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#F97316" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#F97316" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <Tooltip
-                    position={{ y: -60 }}
-                    offset={40}
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        const data = payload[0].payload;
-                        const value = data.value;
-                        const timestamp = data.timestamp;
-                        
-                        const formatDate = (ts: number) => {
-                          const date = new Date(ts);
-                          const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-                          return `${months[date.getMonth()]} ${date.getDate()}`;
-                        };
-                        
-                        return (
-                          <div className="bg-[#1a1a1a] backdrop-blur-xl text-white px-5 py-3 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] text-sm space-y-2 min-w-[240px] border border-white/10">
-                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
-                              {formatDate(timestamp)}
-                            </p>
-                            <p className="text-lg text-white font-bold">
-                              {value.toFixed(1)}% ctr
-                            </p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                    cursor={{ stroke: '#F97316', strokeWidth: 1, strokeDasharray: '3 3' }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#F97316"
-                    strokeWidth={2}
-                    fill="url(#ctrGradient)"
-                    animationDuration={300}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 

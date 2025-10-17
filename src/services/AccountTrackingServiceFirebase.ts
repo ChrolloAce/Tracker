@@ -974,34 +974,41 @@ export class AccountTrackingServiceFirebase {
       const videos = await FirestoreDataService.getAccountVideos(orgId, projectId, accountId);
       
       // Convert to AccountVideo format
-      const mappedVideos = videos.map(v => ({
-        id: v.id,
-        accountId: v.trackedAccountId || '',
-        videoId: v.videoId || '',
-        url: v.url || '',
-        thumbnail: v.thumbnail || '',
-        caption: v.description || '',
-        title: v.title || '',
-        uploadDate: v.uploadDate.toDate(),
-        views: v.views || 0,
-        likes: v.likes || 0,
-        comments: v.comments || 0,
-        shares: v.shares || 0,
-        duration: v.duration || 0,
-        isSponsored: false,
-        hashtags: v.hashtags || [],
-        mentions: []
-      }));
+      const mappedVideos = videos.map(v => {
+        // Try to get caption from all available fields in VideoDoc (description and title)
+        // This ensures captions are always loaded regardless of which field they're stored in
+        const caption = v.caption || v.videoTitle || '';
+        const title = v.videoTitle || v.caption || '';
+        
+        return {
+          id: v.id,
+          accountId: v.trackedAccountId || '',
+          videoId: v.videoId || '',
+          url: v.videoUrl || v.url || '',
+          thumbnail: v.thumbnail || '',
+          caption: caption,
+          title: title,
+          uploadDate: v.uploadDate.toDate(),
+          views: v.views || 0,
+          likes: v.likes || 0,
+          comments: v.comments || 0,
+          shares: v.shares || 0,
+          duration: v.duration || 0,
+          isSponsored: false,
+          hashtags: v.hashtags || [],
+          mentions: []
+        };
+      });
       
       // Debug: Log first video caption to verify it's loaded
       if (mappedVideos.length > 0) {
-        console.log('🔍 First video loaded from Firestore:', {
-          videoId: mappedVideos[0].videoId,
-          caption: mappedVideos[0].caption?.substring(0, 100),
-          title: mappedVideos[0].title?.substring(0, 100),
-          hasCaption: !!mappedVideos[0].caption,
-          hasTitle: !!mappedVideos[0].title
-        });
+        const first = mappedVideos[0];
+        console.log('🔍 AccountTrackingServiceFirebase - First video:');
+        console.log('   Video ID:', first.videoId);
+        console.log('   Title:', first.title || '(EMPTY)');
+        console.log('   Caption:', first.caption || '(EMPTY)');
+        console.log('   Title length:', first.title?.length || 0);
+        console.log('   Caption length:', first.caption?.length || 0);
       }
       
       return mappedVideos;

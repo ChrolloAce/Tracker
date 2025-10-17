@@ -243,12 +243,15 @@ export interface VideoDoc extends VideoMetrics, VideoDeltas {
   // Source
   platform: VideoPlatform;
   trackedAccountId?: string; // If from a tracked account
-  url: string;
+  url?: string; // Legacy field
+  videoUrl?: string; // New field name
   videoId: string; // Platform-specific video ID
   
   // Content
-  title?: string;
-  description?: string;
+  title?: string; // Legacy field
+  videoTitle?: string; // New field name
+  description?: string; // Legacy field
+  caption?: string; // New field name (matches Firestore)
   thumbnail?: string;
   duration?: number;
   hashtags?: string[];
