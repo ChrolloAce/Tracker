@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   define: {
     global: 'globalThis',
+    'process.env': {},
   },
   optimizeDeps: {
     include: ['apify-client'],

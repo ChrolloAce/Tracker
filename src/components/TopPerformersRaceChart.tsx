@@ -278,13 +278,13 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                         style={{
                           width: `${percentage}%`,
                           minWidth: '30%',
-                          background: 'linear-gradient(to right, #267DFF, #4A9AFF, #6BB5FF)'
+                          background: 'linear-gradient(to right, #4A9AFF, #7BB5FF, #A0CFFF)'
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.background = 'linear-gradient(to right, #1E6FE6, #3A88F0, #5AA4FF)';
+                          e.currentTarget.style.background = 'linear-gradient(to right, #267DFF, #5AA8FF, #8BC5FF)';
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'linear-gradient(to right, #267DFF, #4A9AFF, #6BB5FF)';
+                          e.currentTarget.style.background = 'linear-gradient(to right, #4A9AFF, #7BB5FF, #A0CFFF)';
                         }}
                       >
                         {/* Metric Value - Center Right */}
@@ -403,13 +403,13 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                         style={{
                           width: `${percentage}%`,
                           minWidth: '30%',
-                          background: 'linear-gradient(to right, #267DFF, #4A9AFF, #6BB5FF)'
+                          background: 'linear-gradient(to right, #4A9AFF, #7BB5FF, #A0CFFF)'
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.background = 'linear-gradient(to right, #1E6FE6, #3A88F0, #5AA4FF)';
+                          e.currentTarget.style.background = 'linear-gradient(to right, #267DFF, #5AA8FF, #8BC5FF)';
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'linear-gradient(to right, #267DFF, #4A9AFF, #6BB5FF)';
+                          e.currentTarget.style.background = 'linear-gradient(to right, #4A9AFF, #7BB5FF, #A0CFFF)';
                         }}
                       >
                         {/* Metric Value - Center Right */}
