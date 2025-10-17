@@ -686,9 +686,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         // Calculate filtered stats for each account
         const accountsWithStats: AccountWithFilteredStats[] = accounts.map(account => {
           const accountVideos = videosByAccount.get(account.id) || [];
+          
+          // 🔑 STEP 1: Apply rules filtering (if account has rules)
+          const accountRules = allRules.filter(r => 
+            r.appliesTo.accountIds && r.appliesTo.accountIds.includes(account.id)
+          );
+          const rulesFilteredVideos = accountRules.length > 0
+            ? accountVideos.filter(video => RulesService.videoMatchesRules(video, accountRules))
+            : accountVideos;
 
-          // Convert to submissions and apply date filtering
-          const videoSubmissions: VideoSubmission[] = accountVideos.map(video => ({
+          // 🔑 STEP 2: Convert to submissions
+          const videoSubmissions: VideoSubmission[] = rulesFilteredVideos.map(video => ({
             id: video.id || '',
             url: video.videoUrl || video.url || '',
             platform: account.platform,
@@ -706,6 +714,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
             snapshots: []
           }));
 
+          // 🔑 STEP 3: Apply date filtering
           const dateFiltered = DateFilterService.filterVideosByDateRange(videoSubmissions, dateFilter);
 
           return {
@@ -727,7 +736,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     };
 
     calculateFilteredStats();
-  }, [accounts, currentOrgId, currentProjectId, dateFilter, viewMode]);
+  }, [accounts, currentOrgId, currentProjectId, dateFilter, viewMode, allRules]);
 
   // Apply platform filtering and sorting
   const processedAccounts = useMemo(() => {

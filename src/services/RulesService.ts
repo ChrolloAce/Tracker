@@ -369,6 +369,19 @@ class RulesService {
   }
 
   /**
+   * Check if a video matches ANY of the provided rules (OR logic between rules)
+   */
+  static videoMatchesRules(video: any, rules: TrackingRule[]): boolean {
+    if (rules.length === 0) return true; // No rules = all videos pass
+    
+    // Video must match at least one rule
+    return rules.some(rule => {
+      const result = this.checkVideoMatchesRule(video, rule);
+      return result.matches;
+    });
+  }
+
+  /**
    * Get condition type display name
    */
   static getConditionTypeLabel(type: string): string {
