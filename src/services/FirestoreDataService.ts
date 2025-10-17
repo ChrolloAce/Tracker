@@ -669,10 +669,52 @@ class FirestoreDataService {
   /**
    * Resolve short code to link data (includes URL, projectId for instant redirect)
    */
-  static async resolveShortCode(shortCode: string): Promise<{ orgId: string; projectId: string; linkId: string; url: string } | null> {
+  static async resolveShortCode(shortCode: string): Promise<{ 
+    orgId: string; 
+    projectId: string; 
+    linkId: string; 
+    url: string;
+    linkedAccountId?: string;
+    accountHandle?: string;
+    accountProfilePicture?: string;
+    accountPlatform?: string;
+  } | null> {
     const publicLinkDoc = await getDoc(doc(db, 'publicLinks', shortCode));
     if (publicLinkDoc.exists()) {
-      return publicLinkDoc.data() as { orgId: string; projectId: string; linkId: string; url: string };
+      const publicData = publicLinkDoc.data() as { orgId: string; projectId: string; linkId: string; url: string };
+      
+      // Fetch the full link document to get linked account info
+      try {
+        const linkRef = doc(db, 'organizations', publicData.orgId, 'projects', publicData.projectId, 'links', publicData.linkId);
+        const linkDoc = await getDoc(linkRef);
+        
+        if (linkDoc.exists()) {
+          const linkData = linkDoc.data();
+          const linkedAccountId = linkData.linkedAccountId;
+          
+          // If there's a linked account, fetch the account details
+          if (linkedAccountId) {
+            const accountRef = doc(db, 'organizations', publicData.orgId, 'projects', publicData.projectId, 'trackedAccounts', linkedAccountId);
+            const accountDoc = await getDoc(accountRef);
+            
+            if (accountDoc.exists()) {
+              const accountData = accountDoc.data();
+              return {
+                ...publicData,
+                linkedAccountId,
+                accountHandle: accountData.username,
+                accountProfilePicture: accountData.profilePicture,
+                accountPlatform: accountData.platform
+              };
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching linked account info:', error);
+      }
+      
+      // Return basic data even if account fetch failed
+      return publicData;
     }
     return null;
   }

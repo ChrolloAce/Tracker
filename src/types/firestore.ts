@@ -331,6 +331,11 @@ export interface LinkClick {
   linkId: string;
   timestamp: Timestamp;
   
+  // Link metadata
+  linkTitle?: string;
+  linkUrl?: string;
+  shortCode?: string;
+  
   // Device info
   userAgent: string;
   deviceType: 'mobile' | 'tablet' | 'desktop';
@@ -346,6 +351,11 @@ export interface LinkClick {
   
   // IP (hashed for privacy)
   ipHash?: string;
+  
+  // Linked account info (if link is attached to an account)
+  accountHandle?: string;
+  accountProfilePicture?: string;
+  accountPlatform?: string;
 }
 
 // ==================== SETTINGS & PREFERENCES ====================

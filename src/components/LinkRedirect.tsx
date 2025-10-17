@@ -51,7 +51,10 @@ const LinkRedirect: React.FC = () => {
               os,
               referrer: document.referrer || 'Direct',
               country: undefined,
-              city: undefined
+              city: undefined,
+              accountHandle: resolved.accountHandle,
+              accountProfilePicture: resolved.accountProfilePicture,
+              accountPlatform: resolved.accountPlatform
             }).catch(err => console.error('Analytics failed:', err));
           } else {
             setStatus('not_found');

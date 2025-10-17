@@ -59,6 +59,9 @@ class LinkClicksService {
             browser: clickData.browser || 'Unknown',
             os: clickData.os || 'Unknown',
             referrer: clickData.referrer || 'Direct',
+            accountHandle: clickData.accountHandle,
+            accountProfilePicture: clickData.accountProfilePicture,
+            accountPlatform: clickData.accountPlatform,
           });
         });
       } catch (error) {
@@ -95,6 +98,9 @@ class LinkClicksService {
               browser: clickData.browser || 'Unknown',
               os: clickData.os || 'Unknown',
               referrer: clickData.referrer || 'Direct',
+              accountHandle: clickData.accountHandle,
+              accountProfilePicture: clickData.accountProfilePicture,
+              accountPlatform: clickData.accountPlatform,
             });
           });
         }
