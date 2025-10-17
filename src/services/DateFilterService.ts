@@ -31,25 +31,25 @@ class DateFilterService {
         
       case 'last7days':
         return {
-          startDate: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000),
+          startDate: new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000), // 6 days back + today = 7 days
           endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1) // End of today
         };
         
       case 'last14days':
         return {
-          startDate: new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000),
+          startDate: new Date(today.getTime() - 13 * 24 * 60 * 60 * 1000), // 13 days back + today = 14 days
           endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
         };
         
       case 'last30days':
         return {
-          startDate: new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000),
+          startDate: new Date(today.getTime() - 29 * 24 * 60 * 60 * 1000), // 29 days back + today = 30 days
           endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
         };
         
       case 'last90days':
         return {
-          startDate: new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000),
+          startDate: new Date(today.getTime() - 89 * 24 * 60 * 60 * 1000), // 89 days back + today = 90 days
           endDate: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
         };
         

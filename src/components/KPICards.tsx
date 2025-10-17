@@ -18,6 +18,7 @@ import { DateFilterType } from './DateRangeFilter';
 import { TimePeriodType } from './TimePeriodSelector';
 import DayVideosModal from './DayVideosModal';
 import { PlatformIcon } from './ui/PlatformIcon';
+import DataAggregationService, { IntervalType, TimeInterval } from '../services/DataAggregationService';
 
 interface KPICardsProps {
   submissions: VideoSubmission[];
@@ -25,6 +26,7 @@ interface KPICardsProps {
   dateFilter?: DateFilterType;
   customRange?: { startDate: Date; endDate: Date };
   timePeriod?: TimePeriodType;
+  granularity?: 'day' | 'week' | 'month' | 'year';
   onCreateLink?: () => void;
   onVideoClick?: (video: VideoSubmission) => void;
 }
@@ -37,10 +39,11 @@ interface KPICardData {
   accent: 'emerald' | 'pink' | 'blue' | 'violet' | 'teal' | 'orange' | 'slate';
   delta?: { value: number; isPositive: boolean; absoluteValue: number; isPercentage?: boolean };
   period?: string;
-  sparklineData?: Array<{ value: number; timestamp?: number; previousValue?: number }>;
+  sparklineData?: Array<{ value: number; timestamp?: number; interval?: TimeInterval; ppValue?: number }>;
   isEmpty?: boolean;
   ctaText?: string;
   isIncreasing?: boolean;
+  intervalType?: IntervalType; // Add interval type to track how data is aggregated
 }
 
 const KPICards: React.FC<KPICardsProps> = ({ 
@@ -49,6 +52,7 @@ const KPICards: React.FC<KPICardsProps> = ({
   dateFilter = 'all',
   customRange,
   timePeriod = 'weeks', 
+  granularity = 'day',
   onCreateLink,
   onVideoClick
 }) => {
@@ -57,7 +61,8 @@ const KPICards: React.FC<KPICardsProps> = ({
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedDayVideos, setSelectedDayVideos] = useState<VideoSubmission[]>([]);
   const [dayModalMetric, setDayModalMetric] = useState<string>('');
-  const [hoveredDate, setHoveredDate] = useState<Date | null>(null);
+  const [hoveredInterval, setHoveredInterval] = useState<TimeInterval | null>(null);
+  const [selectedInterval, setSelectedInterval] = useState<TimeInterval | null>(null);
 
   const handleCardClick = (metricId: string, metricLabel: string) => {
     // If it's link clicks and there are no links, trigger create link callback
@@ -66,39 +71,55 @@ const KPICards: React.FC<KPICardsProps> = ({
       return;
     }
     
-    // Open Day Videos Modal with hovered date or most recent date
+    // Open Day Videos Modal with hovered interval or most recent date
     if (submissions.length > 0) {
-      // Use hovered date if available, otherwise find the most recent date
       let targetDate: Date;
+      let videosForInterval: VideoSubmission[];
       
-      if (hoveredDate) {
-        targetDate = hoveredDate;
-        console.log('🎯 Using hovered date:', targetDate);
+      // Use hovered interval if available (from tooltip hover)
+      if (hoveredInterval) {
+        targetDate = new Date(hoveredInterval.startDate);
+        
+        // Filter videos for the entire interval (day, week, month, or year!)
+        videosForInterval = submissions.filter(video => {
+          const uploadDate = video.uploadDate ? new Date(video.uploadDate) : new Date(video.dateSubmitted);
+          return DataAggregationService.isDateInInterval(uploadDate, hoveredInterval);
+        });
+        
+        console.log('🎯 Card clicked - Using hovered interval');
+        console.log('   Interval type:', hoveredInterval.intervalType);
+        console.log('   Start:', hoveredInterval.startDate.toLocaleDateString());
+        console.log('   End:', hoveredInterval.endDate.toLocaleDateString());
+        console.log('   Videos in interval:', videosForInterval.length);
+        
+        // Store the interval for modal display
+        setSelectedInterval(hoveredInterval);
       } else {
+        // Fallback: find most recent date and filter for that single day
         const sortedSubmissions = [...submissions].sort((a, b) => 
           new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime()
         );
         targetDate = new Date(sortedSubmissions[0].uploadDate);
-        console.log('🎯 Using most recent date:', targetDate);
+        
+        const dayStart = new Date(targetDate);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(targetDate);
+        dayEnd.setHours(23, 59, 59, 999);
+        
+        videosForInterval = submissions.filter(video => {
+          const videoDate = new Date(video.uploadDate);
+          return videoDate >= dayStart && videoDate <= dayEnd;
+        });
+        
+        console.log('🎯 Card clicked - Using most recent date:', targetDate);
+        console.log('   Videos for that day:', videosForInterval.length);
+        
+        // No interval for fallback case
+        setSelectedInterval(null);
       }
       
-      // Filter videos for that date
-      const dayStart = new Date(targetDate);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(targetDate);
-      dayEnd.setHours(23, 59, 59, 999);
-      
-      const videosForDay = submissions.filter(video => {
-        const videoDate = new Date(video.uploadDate);
-        return videoDate >= dayStart && videoDate <= dayEnd;
-      });
-      
-      console.log('🎯 Card clicked - Opening Day Videos Modal');
-      console.log('   Date:', targetDate.toDateString());
-      console.log('   Videos for that day:', videosForDay.length);
-      
       setSelectedDate(targetDate);
-      setSelectedDayVideos(videosForDay);
+      setSelectedDayVideos(videosForInterval);
       setDayModalMetric(metricLabel);
       setIsDayModalOpen(true);
     }
@@ -107,7 +128,8 @@ const KPICards: React.FC<KPICardsProps> = ({
   const kpiData = useMemo(() => {
     // Determine the date range based on date filter
     let dateRangeStart: Date | null = null;
-    let dateRangeEnd: Date = new Date(); // Always up to now
+    let dateRangeEnd: Date = new Date();
+    dateRangeEnd.setHours(23, 59, 59, 999); // Always normalize to end of today
     
     // Check for custom range first
     if (dateFilter === 'custom' && customRange) {
@@ -118,6 +140,8 @@ const KPICards: React.FC<KPICardsProps> = ({
     } else if (dateFilter === 'today') {
       dateRangeStart = new Date();
       dateRangeStart.setHours(0, 0, 0, 0);
+      dateRangeEnd = new Date();
+      dateRangeEnd.setHours(23, 59, 59, 999);
     } else if (dateFilter === 'yesterday') {
       dateRangeStart = new Date();
       dateRangeStart.setDate(dateRangeStart.getDate() - 1);
@@ -127,23 +151,61 @@ const KPICards: React.FC<KPICardsProps> = ({
       dateRangeEnd.setHours(23, 59, 59, 999);
     } else if (dateFilter === 'last7days') {
       dateRangeStart = new Date();
-      dateRangeStart.setDate(dateRangeStart.getDate() - 7);
+      dateRangeStart.setDate(dateRangeStart.getDate() - 6); // 6 days back + today = 7 days
+      dateRangeStart.setHours(0, 0, 0, 0);
+      dateRangeEnd = new Date();
+      dateRangeEnd.setHours(23, 59, 59, 999);
+    } else if (dateFilter === 'last14days') {
+      dateRangeStart = new Date();
+      dateRangeStart.setDate(dateRangeStart.getDate() - 13); // 13 days back + today = 14 days
+      dateRangeStart.setHours(0, 0, 0, 0);
+      dateRangeEnd = new Date();
+      dateRangeEnd.setHours(23, 59, 59, 999);
     } else if (dateFilter === 'last30days') {
       dateRangeStart = new Date();
-      dateRangeStart.setDate(dateRangeStart.getDate() - 30);
+      dateRangeStart.setDate(dateRangeStart.getDate() - 29); // 29 days back + today = 30 days
+      dateRangeStart.setHours(0, 0, 0, 0);
+      dateRangeEnd = new Date();
+      dateRangeEnd.setHours(23, 59, 59, 999);
     } else if (dateFilter === 'last90days') {
       dateRangeStart = new Date();
-      dateRangeStart.setDate(dateRangeStart.getDate() - 90);
+      dateRangeStart.setDate(dateRangeStart.getDate() - 89); // 89 days back + today = 90 days
+      dateRangeStart.setHours(0, 0, 0, 0);
+      dateRangeEnd = new Date();
+      dateRangeEnd.setHours(23, 59, 59, 999);
     } else if (dateFilter === 'mtd') {
       dateRangeStart = new Date();
       dateRangeStart.setDate(1);
       dateRangeStart.setHours(0, 0, 0, 0);
+      dateRangeEnd = new Date();
+      dateRangeEnd.setHours(23, 59, 59, 999);
+    } else if (dateFilter === 'lastmonth') {
+      dateRangeStart = new Date();
+      dateRangeStart.setMonth(dateRangeStart.getMonth() - 1, 1); // First day of last month
+      dateRangeStart.setHours(0, 0, 0, 0);
+      dateRangeEnd = new Date();
+      dateRangeEnd.setDate(0); // Last day of last month
+      dateRangeEnd.setHours(23, 59, 59, 999);
     } else if (dateFilter === 'ytd') {
       dateRangeStart = new Date();
       dateRangeStart.setMonth(0, 1);
       dateRangeStart.setHours(0, 0, 0, 0);
+      dateRangeEnd = new Date();
+      dateRangeEnd.setHours(23, 59, 59, 999);
+    } else if (dateFilter === 'all') {
+      // For 'all' time: find the earliest video upload date
+      if (submissions.length > 0) {
+        const dates = submissions.map(v => new Date(v.uploadDate || v.dateSubmitted).getTime());
+        const earliestTime = Math.min(...dates);
+        dateRangeStart = new Date(earliestTime);
+        dateRangeStart.setHours(0, 0, 0, 0);
+      } else {
+        // No videos yet, default to 30 days ago
+        dateRangeStart = new Date();
+        dateRangeStart.setDate(dateRangeStart.getDate() - 29);
+        dateRangeStart.setHours(0, 0, 0, 0);
+      }
     }
-    // For 'all' time, dateRangeStart remains null
     
     // Calculate metrics based on date filter
     // KEY: Show ALL activity during the period, regardless of when videos were uploaded
@@ -392,151 +454,127 @@ const KPICards: React.FC<KPICardsProps> = ({
     const engagementRateGrowthAbsolute = ppEngagementRate === 0 ? engagementRate : engagementRate - ppEngagementRate;
 
     // Generate sparkline data based on date filter and metric type
-    const generateSparklineData = (metric: 'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts') => {
-      const data = [];
-      
-      // Calculate the actual date range and determine appropriate intervals
+    const generateSparklineData = (metric: 'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts'): { data: any[], intervalType: IntervalType } => {
+      // Calculate the actual date range
       let actualStartDate: Date;
       let actualEndDate: Date = new Date();
-      let numPoints = 30;
-      let intervalMs = 24 * 60 * 60 * 1000; // 1 day
       
       if (dateRangeStart) {
         actualStartDate = new Date(dateRangeStart);
         actualEndDate = new Date(dateRangeEnd);
-        
-        // Calculate the range duration in days
-        const rangeDurationMs = actualEndDate.getTime() - actualStartDate.getTime();
-        const rangeDurationDays = rangeDurationMs / (24 * 60 * 60 * 1000);
-        
-        // Determine appropriate granularity based on range
-        if (rangeDurationDays <= 1) {
-          // For 1 day or less (today, yesterday), use hourly intervals
-          numPoints = 24;
-          intervalMs = 60 * 60 * 1000; // 1 hour
-        } else if (rangeDurationDays <= 7) {
-          // For up to 7 days, use daily intervals
-          numPoints = Math.ceil(rangeDurationDays);
-          intervalMs = 24 * 60 * 60 * 1000; // 1 day
-        } else if (rangeDurationDays <= 31) {
-          // For up to a month, use daily intervals
-          numPoints = Math.ceil(rangeDurationDays);
-          intervalMs = 24 * 60 * 60 * 1000; // 1 day
-        } else if (rangeDurationDays <= 90) {
-          // For up to 90 days, use daily intervals (might show many points)
-          numPoints = Math.ceil(rangeDurationDays);
-          intervalMs = 24 * 60 * 60 * 1000; // 1 day
-        } else if (rangeDurationDays <= 180) {
-          // For up to 180 days (6 months), use weekly intervals
-          numPoints = Math.ceil(rangeDurationDays / 7);
-          intervalMs = 7 * 24 * 60 * 60 * 1000; // 1 week
-        } else if (rangeDurationDays <= 365) {
-          // For up to a year, use weekly intervals
-          numPoints = Math.ceil(rangeDurationDays / 7);
-          intervalMs = 7 * 24 * 60 * 60 * 1000; // 1 week
-        } else {
-          // For more than a year, use monthly intervals
-          numPoints = Math.ceil(rangeDurationDays / 30);
-          intervalMs = 30 * 24 * 60 * 60 * 1000; // ~1 month
-        }
-        
-        // Cap numPoints to reasonable limits for display
-        if (numPoints > 90) {
-          // If we have too many points, adjust to weekly intervals
-          numPoints = Math.min(52, Math.ceil(rangeDurationDays / 7));
-          intervalMs = 7 * 24 * 60 * 60 * 1000;
-        }
       } else {
         // For 'all' time filter, use last 30 days as default
         actualStartDate = new Date();
         actualStartDate.setDate(actualStartDate.getDate() - 30);
-        numPoints = 30;
-        intervalMs = 24 * 60 * 60 * 1000;
       }
       
-      // Determine the starting point for data generation
-      let startTime: number = actualStartDate.getTime();
+      // Use the granularity prop instead of auto-determining
+      const intervalType = granularity as IntervalType;
       
-      // Generate trend showing growth over time
-      for (let i = 0; i < numPoints; i++) {
-        const pointDate = new Date(startTime + (i * intervalMs));
-        const nextPointDate = new Date(startTime + ((i + 1) * intervalMs));
-        const timestamp = pointDate.getTime();
+      // Generate intervals for current period (CP)
+      const intervals = DataAggregationService.generateIntervals(
+        { startDate: actualStartDate, endDate: actualEndDate },
+        intervalType
+      );
+      
+      // Debug: Log intervals generated
+      if (metric === 'views' && intervalType === 'year') {
+        console.log(`📅 Yearly intervals generated: ${intervals.length}`);
+        console.log(`   Date range: ${actualStartDate.toLocaleDateString()} to ${actualEndDate.toLocaleDateString()}`);
+        intervals.forEach((interval, idx) => {
+          console.log(`   [${idx}] ${interval.startDate.toLocaleDateString()} to ${interval.endDate.toLocaleDateString()}`);
+        });
+      }
+      
+      // Generate intervals for previous period (PP) - same length as CP
+      let ppIntervals: typeof intervals = [];
+      
+      if (dateRangeStart && dateFilter !== 'all') {
+        const periodLength = actualEndDate.getTime() - actualStartDate.getTime();
+        const tempPPEndDate = new Date(actualStartDate.getTime() - 1);
+        const tempPPStartDate = new Date(tempPPEndDate.getTime() - periodLength);
         
-        // For hourly data, calculate previous day's same hour value for comparison
-        let previousValue: number | undefined;
-        if (intervalMs === 60 * 60 * 1000 && metric !== 'videos' && metric !== 'accounts') {
-          // This is hourly data
-          const previousDayDate = new Date(timestamp - (24 * 60 * 60 * 1000));
-          let prevDayValue = 0;
-          
-          submissions.forEach(video => {
-            if (video.snapshots && video.snapshots.length > 0) {
-              const snapshotAtPrevDay = video.snapshots
-                .filter(s => new Date(s.capturedAt) <= previousDayDate)
-                .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-              
-              if (snapshotAtPrevDay && metric in snapshotAtPrevDay) {
-                prevDayValue += (snapshotAtPrevDay as any)[metric] || 0;
-              }
-            }
-          });
-          previousValue = prevDayValue;
-        }
+        ppIntervals = DataAggregationService.generateIntervals(
+          { startDate: tempPPStartDate, endDate: tempPPEndDate },
+          intervalType
+        );
+      }
+      
+      const data = [];
+      
+      // Process each interval
+      for (let i = 0; i < intervals.length; i++) {
+        const interval = intervals[i];
+        const ppInterval = ppIntervals[i]; // Corresponding previous period interval
+        const timestamp = interval.timestamp;
         
         if (metric === 'videos') {
           // For published videos: count how many videos were published IN THIS INTERVAL
-          // Use local date comparison to avoid timezone offset issues
           const videosPublishedInInterval = submissions.filter(v => {
             const uploadDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
-            
-            // Normalize to local date (strip time) for accurate day comparison
-            const uploadDateLocal = new Date(uploadDate.getFullYear(), uploadDate.getMonth(), uploadDate.getDate());
-            const pointDateLocal = new Date(pointDate.getFullYear(), pointDate.getMonth(), pointDate.getDate());
-            const nextPointDateLocal = new Date(nextPointDate.getFullYear(), nextPointDate.getMonth(), nextPointDate.getDate());
-            
-            return uploadDateLocal >= pointDateLocal && uploadDateLocal < nextPointDateLocal;
+            return DataAggregationService.isDateInInterval(uploadDate, interval);
           });
-          data.push({ value: videosPublishedInInterval.length, timestamp, previousValue });
+          
+          // Calculate PP value if available
+          let ppValue = undefined;
+          if (ppInterval) {
+            const ppVideosPublished = submissions.filter(v => {
+              const uploadDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
+              return DataAggregationService.isDateInInterval(uploadDate, ppInterval);
+            });
+            ppValue = ppVideosPublished.length;
+          }
+          
+          data.push({ 
+            value: videosPublishedInInterval.length, 
+            timestamp,
+            interval,
+            ppValue
+          });
         } else if (metric === 'accounts') {
           // For active accounts: count unique accounts that were active IN THIS INTERVAL
-          // Use local date comparison to avoid timezone offset issues
           const videosInInterval = submissions.filter(v => {
             const uploadDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
-            
-            // Normalize to local date (strip time) for accurate day comparison
-            const uploadDateLocal = new Date(uploadDate.getFullYear(), uploadDate.getMonth(), uploadDate.getDate());
-            const pointDateLocal = new Date(pointDate.getFullYear(), pointDate.getMonth(), pointDate.getDate());
-            const nextPointDateLocal = new Date(nextPointDate.getFullYear(), nextPointDate.getMonth(), nextPointDate.getDate());
-            
-            return uploadDateLocal >= pointDateLocal && uploadDateLocal < nextPointDateLocal;
+            return DataAggregationService.isDateInInterval(uploadDate, interval);
           });
           const uniqueAccountsInInterval = new Set(videosInInterval.map(v => v.uploaderHandle)).size;
-          data.push({ value: uniqueAccountsInInterval, timestamp, previousValue });
+          
+          // Calculate PP value if available
+          let ppValue = undefined;
+          if (ppInterval) {
+            const ppVideosInInterval = submissions.filter(v => {
+              const uploadDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
+              return DataAggregationService.isDateInInterval(uploadDate, ppInterval);
+            });
+            ppValue = new Set(ppVideosInInterval.map(v => v.uploaderHandle)).size;
+          }
+          
+          data.push({ 
+            value: uniqueAccountsInInterval, 
+            timestamp,
+            interval,
+            ppValue
+          });
         } else {
           // Show per-interval values (NOT cumulative)
           let intervalValue = 0;
+          let ppIntervalValue = 0;
           
           submissions.forEach(video => {
             const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
             
-            // Normalize dates to local date (strip time) for accurate day comparison
-            const uploadDateLocal = new Date(uploadDate.getFullYear(), uploadDate.getMonth(), uploadDate.getDate());
-            const actualStartDateLocal = new Date(actualStartDate.getFullYear(), actualStartDate.getMonth(), actualStartDate.getDate());
-            const pointDateLocal = new Date(pointDate.getFullYear(), pointDate.getMonth(), pointDate.getDate());
-            const nextPointDateLocal = new Date(nextPointDate.getFullYear(), nextPointDate.getMonth(), nextPointDate.getDate());
-            
-            // Only process videos that are relevant to the date range we're analyzing
-            if (uploadDateLocal < actualStartDateLocal) {
+            // === CURRENT PERIOD (CP) CALCULATION ===
+            // Check if video was uploaded before the analysis period started
+            if (uploadDate < actualStartDate) {
               // Video was uploaded before our analysis period
               // Check if it has growth during this interval via snapshots
               if (video.snapshots && video.snapshots.length > 0) {
                 const snapshotAtStart = video.snapshots
-                  .filter(s => new Date(s.capturedAt) <= pointDate)
+                  .filter(s => new Date(s.capturedAt) <= interval.startDate)
                   .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
                 
                 const snapshotAtEnd = video.snapshots
-                  .filter(s => new Date(s.capturedAt) <= nextPointDate)
+                  .filter(s => new Date(s.capturedAt) <= interval.endDate)
                   .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
                 
                 if (snapshotAtStart && snapshotAtEnd && snapshotAtStart !== snapshotAtEnd) {
@@ -544,7 +582,7 @@ const KPICards: React.FC<KPICardsProps> = ({
                   intervalValue += delta;
                 }
               }
-            } else if (uploadDateLocal >= pointDateLocal && uploadDateLocal < nextPointDateLocal) {
+            } else if (DataAggregationService.isDateInInterval(uploadDate, interval)) {
               // Video was uploaded during this interval
               // Use either the first snapshot or current value
               if (video.snapshots && video.snapshots.length > 0) {
@@ -555,16 +593,52 @@ const KPICards: React.FC<KPICardsProps> = ({
                 // No snapshots, use current value
                 intervalValue += video[metric] || 0;
               }
-            } else if (uploadDateLocal >= nextPointDateLocal) {
-              // Video was uploaded after this interval, skip it
-              return;
+            }
+            
+            // === PREVIOUS PERIOD (PP) CALCULATION ===
+            if (ppInterval) {
+              // Use the same logic as CP, but for PP interval dates
+              if (uploadDate < ppInterval.startDate) {
+                // Video was uploaded before PP started - look for growth during PP interval
+                if (video.snapshots && video.snapshots.length > 0) {
+                  const snapshotAtStart = video.snapshots
+                    .filter(s => new Date(s.capturedAt) <= ppInterval.startDate)
+                    .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
+                  
+                  const snapshotAtEnd = video.snapshots
+                    .filter(s => new Date(s.capturedAt) <= ppInterval.endDate)
+                    .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
+                  
+                  if (snapshotAtStart && snapshotAtEnd && snapshotAtStart !== snapshotAtEnd) {
+                    const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - (snapshotAtStart[metric] || 0));
+                    ppIntervalValue += delta;
+                  }
+                }
+              } else if (DataAggregationService.isDateInInterval(uploadDate, ppInterval)) {
+                // Video was uploaded during PP interval
+                if (video.snapshots && video.snapshots.length > 0) {
+                  const firstSnapshot = video.snapshots
+                    .sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime())[0];
+                  ppIntervalValue += firstSnapshot[metric] || 0;
+                } else {
+                  ppIntervalValue += video[metric] || 0;
+                }
+              }
             }
           });
           
-          data.push({ value: intervalValue, timestamp, previousValue });
+          const finalPPValue = ppInterval ? ppIntervalValue : undefined;
+          
+          data.push({ 
+            value: intervalValue, 
+            timestamp,
+            interval,
+            ppValue: finalPPValue
+          });
         }
       }
-      return data;
+      
+      return { data, intervalType };
     };
 
     const formatNumber = (num: number): string => {
@@ -607,13 +681,13 @@ const KPICards: React.FC<KPICardsProps> = ({
     const clicksGrowthAbsolute = ppClicks === 0 ? cpClicks : cpClicks - ppClicks;
 
     // Generate sparkline data first so we can calculate trends
-    const viewsSparkline = generateSparklineData('views');
-    const likesSparkline = generateSparklineData('likes');
-    const commentsSparkline = generateSparklineData('comments');
-    const sharesSparkline = generateSparklineData('shares');
-    const videosSparkline = generateSparklineData('videos');
-    const accountsSparkline = generateSparklineData('accounts');
-
+    const viewsSparklineResult = generateSparklineData('views');
+    const likesSparklineResult = generateSparklineData('likes');
+    const commentsSparklineResult = generateSparklineData('comments');
+    const sharesSparklineResult = generateSparklineData('shares');
+    const videosSparklineResult = generateSparklineData('videos');
+    const accountsSparklineResult = generateSparklineData('accounts');
+    
     const cards: KPICardData[] = [
       {
         id: 'views',
@@ -622,7 +696,8 @@ const KPICards: React.FC<KPICardsProps> = ({
         icon: Play,
         accent: 'emerald',
         delta: { value: Math.abs(viewsGrowth), isPositive: viewsGrowth >= 0, absoluteValue: viewsGrowthAbsolute },
-        sparklineData: viewsSparkline,
+        sparklineData: viewsSparklineResult.data,
+        intervalType: viewsSparklineResult.intervalType,
         isIncreasing: viewsGrowthAbsolute >= 0 // Use delta, not sparkline trend
       },
       {
@@ -632,7 +707,8 @@ const KPICards: React.FC<KPICardsProps> = ({
         icon: Heart,
         accent: 'pink',
         delta: { value: 0, isPositive: likesGrowthAbsolute >= 0, absoluteValue: likesGrowthAbsolute },
-        sparklineData: likesSparkline,
+        sparklineData: likesSparklineResult.data,
+        intervalType: likesSparklineResult.intervalType,
         isIncreasing: likesGrowthAbsolute >= 0 // Use delta, not sparkline trend
       },
       {
@@ -642,7 +718,8 @@ const KPICards: React.FC<KPICardsProps> = ({
         icon: MessageCircle,
         accent: 'blue',
         delta: { value: 0, isPositive: commentsGrowthAbsolute >= 0, absoluteValue: commentsGrowthAbsolute },
-        sparklineData: commentsSparkline,
+        sparklineData: commentsSparklineResult.data,
+        intervalType: commentsSparklineResult.intervalType,
         isIncreasing: commentsGrowthAbsolute >= 0 // Use delta, not sparkline trend
       },
       {
@@ -652,7 +729,8 @@ const KPICards: React.FC<KPICardsProps> = ({
         icon: Share2,
         accent: 'orange',
         delta: { value: 0, isPositive: sharesGrowthAbsolute >= 0, absoluteValue: sharesGrowthAbsolute },
-        sparklineData: sharesSparkline,
+        sparklineData: sharesSparklineResult.data,
+        intervalType: sharesSparklineResult.intervalType,
         isIncreasing: sharesGrowthAbsolute >= 0 // Use delta, not sparkline trend
       },
       {
@@ -662,7 +740,8 @@ const KPICards: React.FC<KPICardsProps> = ({
         icon: Video,
         accent: 'violet',
         delta: { value: 0, isPositive: videosGrowthAbsolute >= 0, absoluteValue: videosGrowthAbsolute },
-        sparklineData: videosSparkline,
+        sparklineData: videosSparklineResult.data,
+        intervalType: videosSparklineResult.intervalType,
         isIncreasing: videosGrowthAbsolute >= 0 // Use delta, not sparkline trend
       },
       {
@@ -671,93 +750,71 @@ const KPICards: React.FC<KPICardsProps> = ({
         value: activeAccounts,
         icon: AtSign,
         accent: 'teal',
-        sparklineData: accountsSparkline,
+        sparklineData: accountsSparklineResult.data,
+        intervalType: accountsSparklineResult.intervalType,
         isIncreasing: true // Default to green for accounts (no delta calculated)
       },
       (() => {
         // Generate engagement rate sparkline data (per-interval, not cumulative)
         let actualStartDate: Date;
         let actualEndDate: Date = new Date();
-        let numPoints = 30;
-        let intervalMs = 24 * 60 * 60 * 1000; // 1 day
         
         if (dateRangeStart) {
           actualStartDate = new Date(dateRangeStart);
           actualEndDate = new Date(dateRangeEnd);
-          
-          // Calculate the range duration in days
-          const rangeDurationMs = actualEndDate.getTime() - actualStartDate.getTime();
-          const rangeDurationDays = rangeDurationMs / (24 * 60 * 60 * 1000);
-          
-          // Determine appropriate granularity based on range (same as other metrics)
-          if (rangeDurationDays <= 1) {
-            numPoints = 24;
-            intervalMs = 60 * 60 * 1000; // 1 hour
-          } else if (rangeDurationDays <= 7) {
-            numPoints = Math.ceil(rangeDurationDays);
-            intervalMs = 24 * 60 * 60 * 1000; // 1 day
-          } else if (rangeDurationDays <= 31) {
-            numPoints = Math.ceil(rangeDurationDays);
-            intervalMs = 24 * 60 * 60 * 1000; // 1 day
-          } else if (rangeDurationDays <= 90) {
-            numPoints = Math.ceil(rangeDurationDays);
-            intervalMs = 24 * 60 * 60 * 1000; // 1 day
-          } else if (rangeDurationDays <= 180) {
-            numPoints = Math.ceil(rangeDurationDays / 7);
-            intervalMs = 7 * 24 * 60 * 60 * 1000; // 1 week
-          } else if (rangeDurationDays <= 365) {
-            numPoints = Math.ceil(rangeDurationDays / 7);
-            intervalMs = 7 * 24 * 60 * 60 * 1000; // 1 week
-          } else {
-            numPoints = Math.ceil(rangeDurationDays / 30);
-            intervalMs = 30 * 24 * 60 * 60 * 1000; // ~1 month
-          }
-          
-          // Cap numPoints to reasonable limits for display
-          if (numPoints > 90) {
-            numPoints = Math.min(52, Math.ceil(rangeDurationDays / 7));
-            intervalMs = 7 * 24 * 60 * 60 * 1000;
-          }
         } else {
           // For 'all' time filter, use last 30 days as default
           actualStartDate = new Date();
           actualStartDate.setDate(actualStartDate.getDate() - 30);
-          numPoints = 30;
-          intervalMs = 24 * 60 * 60 * 1000;
         }
         
-        // Determine the starting point for data generation
-        let startTime: number = actualStartDate.getTime();
+        // Use the granularity prop instead of auto-determining
+        const intervalType = granularity as IntervalType;
+        
+        // Generate intervals for current period
+        const intervals = DataAggregationService.generateIntervals(
+          { startDate: actualStartDate, endDate: actualEndDate },
+          intervalType
+        );
+        
+        // Generate intervals for previous period (PP)
+        let ppIntervals: typeof intervals = [];
+        if (dateRangeStart && dateFilter !== 'all') {
+          const periodLength = actualEndDate.getTime() - actualStartDate.getTime();
+          const ppEndDate = new Date(actualStartDate.getTime() - 1);
+          const ppStartDate = new Date(ppEndDate.getTime() - periodLength);
+          
+          ppIntervals = DataAggregationService.generateIntervals(
+            { startDate: ppStartDate, endDate: ppEndDate },
+            intervalType
+          );
+        }
         
         const data = [];
-        for (let i = 0; i < numPoints; i++) {
-          const pointDate = new Date(startTime + (i * intervalMs));
-          const nextPointDate = new Date(startTime + ((i + 1) * intervalMs));
+        for (let i = 0; i < intervals.length; i++) {
+          const interval = intervals[i];
+          const ppInterval = ppIntervals[i];
           
           // Calculate engagement rate for ONLY this specific interval
           let periodViews = 0;
           let periodEngagement = 0;
+          let ppPeriodViews = 0;
+          let ppPeriodEngagement = 0;
           
           submissions.forEach(video => {
             const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
             
-            // Normalize dates to local date (strip time) for accurate day comparison
-            const uploadDateLocal = new Date(uploadDate.getFullYear(), uploadDate.getMonth(), uploadDate.getDate());
-            const actualStartDateLocal = new Date(actualStartDate.getFullYear(), actualStartDate.getMonth(), actualStartDate.getDate());
-            const pointDateLocal = new Date(pointDate.getFullYear(), pointDate.getMonth(), pointDate.getDate());
-            const nextPointDateLocal = new Date(nextPointDate.getFullYear(), nextPointDate.getMonth(), nextPointDate.getDate());
-            
-            // Only process videos that are relevant to the date range we're analyzing
-            if (uploadDateLocal < actualStartDateLocal) {
+            // Check if video was uploaded before the analysis period started
+            if (uploadDate < actualStartDate) {
               // Video was uploaded before our analysis period
               // Check if it has growth during this interval via snapshots
               if (video.snapshots && video.snapshots.length > 0) {
                 const snapshotAtStart = video.snapshots
-                  .filter(s => new Date(s.capturedAt) <= pointDate)
+                  .filter(s => new Date(s.capturedAt) <= interval.startDate)
                   .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
                 
                 const snapshotAtEnd = video.snapshots
-                  .filter(s => new Date(s.capturedAt) <= nextPointDate)
+                  .filter(s => new Date(s.capturedAt) <= interval.endDate)
                   .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
                 
                 if (snapshotAtStart && snapshotAtEnd && snapshotAtStart !== snapshotAtEnd) {
@@ -770,7 +827,7 @@ const KPICards: React.FC<KPICardsProps> = ({
                   periodEngagement += likesDelta + commentsDelta + sharesDelta;
                 }
               }
-            } else if (uploadDateLocal >= pointDateLocal && uploadDateLocal < nextPointDateLocal) {
+            } else if (DataAggregationService.isDateInInterval(uploadDate, interval)) {
               // Video was uploaded during this interval
               // Use either the first snapshot or current value
               if (video.snapshots && video.snapshots.length > 0) {
@@ -783,17 +840,56 @@ const KPICards: React.FC<KPICardsProps> = ({
                 periodViews += video.views || 0;
                 periodEngagement += (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
               }
-            } else if (uploadDateLocal >= nextPointDateLocal) {
-              // Video was uploaded after this interval, skip it
-              return;
+            }
+            
+            // Calculate PP values if available
+            if (ppInterval) {
+              const ppStartDate = ppInterval.startDate;
+              
+              if (uploadDate < ppStartDate) {
+                // Video was uploaded before PP
+                if (video.snapshots && video.snapshots.length > 0) {
+                  const snapshotAtStart = video.snapshots
+                    .filter(s => new Date(s.capturedAt) <= ppInterval.startDate)
+                    .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
+                  
+                  const snapshotAtEnd = video.snapshots
+                    .filter(s => new Date(s.capturedAt) <= ppInterval.endDate)
+                    .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
+                  
+                  if (snapshotAtStart && snapshotAtEnd && snapshotAtStart !== snapshotAtEnd) {
+                    const viewsDelta = Math.max(0, (snapshotAtEnd.views || 0) - (snapshotAtStart.views || 0));
+                    const likesDelta = Math.max(0, (snapshotAtEnd.likes || 0) - (snapshotAtStart.likes || 0));
+                    const commentsDelta = Math.max(0, (snapshotAtEnd.comments || 0) - (snapshotAtStart.comments || 0));
+                    const sharesDelta = Math.max(0, (snapshotAtEnd.shares || 0) - (snapshotAtStart.shares || 0));
+                    
+                    ppPeriodViews += viewsDelta;
+                    ppPeriodEngagement += likesDelta + commentsDelta + sharesDelta;
+                  }
+                }
+              } else if (DataAggregationService.isDateInInterval(uploadDate, ppInterval)) {
+                // Video was uploaded during PP
+                if (video.snapshots && video.snapshots.length > 0) {
+                  const firstSnapshot = video.snapshots
+                    .sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime())[0];
+                  ppPeriodViews += firstSnapshot.views || 0;
+                  ppPeriodEngagement += (firstSnapshot.likes || 0) + (firstSnapshot.comments || 0) + (firstSnapshot.shares || 0);
+                } else {
+                  ppPeriodViews += video.views || 0;
+                  ppPeriodEngagement += (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
+                }
+              }
             }
           });
           
           const rate = periodViews > 0 ? ((periodEngagement / periodViews) * 100) : 0;
+          const ppRate = ppInterval && ppPeriodViews > 0 ? ((ppPeriodEngagement / ppPeriodViews) * 100) : undefined;
           
           data.push({
             value: Number(rate.toFixed(1)),
-            timestamp: pointDate.getTime()
+            timestamp: interval.timestamp,
+            interval,
+            ppValue: ppRate !== undefined ? Number(ppRate.toFixed(1)) : undefined
           });
         }
         
@@ -806,6 +902,7 @@ const KPICards: React.FC<KPICardsProps> = ({
           accent: 'violet' as const,
           delta: { value: 0, isPositive: engagementRateGrowthAbsolute >= 0, absoluteValue: engagementRateGrowthAbsolute, isPercentage: true },
           sparklineData: engagementSparkline,
+          intervalType: intervalType,
           isIncreasing: engagementRateGrowthAbsolute >= 0 // Use delta, not sparkline trend
         };
       })(),
@@ -813,76 +910,64 @@ const KPICards: React.FC<KPICardsProps> = ({
         // Generate link clicks sparkline data
         let actualStartDate: Date;
         let actualEndDate: Date = new Date();
-        let numPoints = 30;
-        let intervalMs = 24 * 60 * 60 * 1000; // 1 day
         
         if (dateRangeStart) {
           actualStartDate = new Date(dateRangeStart);
           actualEndDate = new Date(dateRangeEnd);
-          
-          // Calculate the range duration in days
-          const rangeDurationMs = actualEndDate.getTime() - actualStartDate.getTime();
-          const rangeDurationDays = rangeDurationMs / (24 * 60 * 60 * 1000);
-          
-          // Determine appropriate granularity based on range (same as other metrics)
-          if (rangeDurationDays <= 1) {
-            numPoints = 24;
-            intervalMs = 60 * 60 * 1000; // 1 hour
-          } else if (rangeDurationDays <= 7) {
-            numPoints = Math.ceil(rangeDurationDays);
-            intervalMs = 24 * 60 * 60 * 1000; // 1 day
-          } else if (rangeDurationDays <= 31) {
-            numPoints = Math.ceil(rangeDurationDays);
-            intervalMs = 24 * 60 * 60 * 1000; // 1 day
-          } else if (rangeDurationDays <= 90) {
-            numPoints = Math.ceil(rangeDurationDays);
-            intervalMs = 24 * 60 * 60 * 1000; // 1 day
-          } else if (rangeDurationDays <= 180) {
-            numPoints = Math.ceil(rangeDurationDays / 7);
-            intervalMs = 7 * 24 * 60 * 60 * 1000; // 1 week
-          } else if (rangeDurationDays <= 365) {
-            numPoints = Math.ceil(rangeDurationDays / 7);
-            intervalMs = 7 * 24 * 60 * 60 * 1000; // 1 week
-          } else {
-            numPoints = Math.ceil(rangeDurationDays / 30);
-            intervalMs = 30 * 24 * 60 * 60 * 1000; // ~1 month
-          }
-          
-          // Cap numPoints to reasonable limits for display
-          if (numPoints > 90) {
-            numPoints = Math.min(52, Math.ceil(rangeDurationDays / 7));
-            intervalMs = 7 * 24 * 60 * 60 * 1000;
-          }
         } else {
           // For 'all' time filter, use last 30 days as default
           actualStartDate = new Date();
           actualStartDate.setDate(actualStartDate.getDate() - 30);
-          numPoints = 30;
-          intervalMs = 24 * 60 * 60 * 1000;
         }
         
-        // Determine the starting point for data generation
-        let startTime: number = actualStartDate.getTime();
+        // Use the granularity prop instead of auto-determining
+        const intervalType = granularity as IntervalType;
+        
+        // Generate intervals for current period
+        const intervals = DataAggregationService.generateIntervals(
+          { startDate: actualStartDate, endDate: actualEndDate },
+          intervalType
+        );
+        
+        // Generate intervals for previous period (PP)
+        let ppIntervals: typeof intervals = [];
+        if (dateRangeStart && dateFilter !== 'all') {
+          const periodLength = actualEndDate.getTime() - actualStartDate.getTime();
+          const ppEndDate = new Date(actualStartDate.getTime() - 1);
+          const ppStartDate = new Date(ppEndDate.getTime() - periodLength);
+          
+          ppIntervals = DataAggregationService.generateIntervals(
+            { startDate: ppStartDate, endDate: ppEndDate },
+            intervalType
+          );
+        }
         
         const data = [];
-        for (let i = 0; i < numPoints; i++) {
-          const pointDate = new Date(startTime + (i * intervalMs));
-          const nextPointDate = new Date(startTime + ((i + 1) * intervalMs));
-          
-          // Normalize dates to local time (strip time component)
-          const pointDateLocal = new Date(pointDate.getFullYear(), pointDate.getMonth(), pointDate.getDate());
-          const nextPointDateLocal = new Date(nextPointDate.getFullYear(), nextPointDate.getMonth(), nextPointDate.getDate());
+        for (let i = 0; i < intervals.length; i++) {
+          const interval = intervals[i];
+          const ppInterval = ppIntervals[i];
           
           // Count clicks in this time period
           const clicksInPeriod = linkClicks.filter(click => {
             const clickDate = new Date(click.timestamp);
-            const clickDateLocal = new Date(clickDate.getFullYear(), clickDate.getMonth(), clickDate.getDate());
-            return clickDateLocal >= pointDateLocal && clickDateLocal < nextPointDateLocal;
+            return DataAggregationService.isDateInInterval(clickDate, interval);
           });
+          
+          // Count PP clicks if available
+          let ppClicksCount = undefined;
+          if (ppInterval) {
+            const ppClicksInPeriod = linkClicks.filter(click => {
+              const clickDate = new Date(click.timestamp);
+              return DataAggregationService.isDateInInterval(clickDate, ppInterval);
+            });
+            ppClicksCount = ppClicksInPeriod.length;
+          }
           
           data.push({
             value: clicksInPeriod.length,
-            timestamp: pointDate.getTime()
+            timestamp: interval.timestamp,
+            interval,
+            ppValue: ppClicksCount
           });
         }
         
@@ -899,13 +984,14 @@ const KPICards: React.FC<KPICardsProps> = ({
           ctaText: displayClicks === 0 ? 'Create link' : undefined,
           delta: hasClicks ? { value: 0, isPositive: clicksGrowthAbsolute >= 0, absoluteValue: clicksGrowthAbsolute } : undefined,
           sparklineData: linkClicksSparkline,
+          intervalType: intervalType,
           isIncreasing: hasClicks ? clicksGrowthAbsolute >= 0 : true // Use delta, not sparkline trend
         };
       })()
     ];
 
     return cards;
-  }, [submissions, linkClicks, dateFilter, customRange, timePeriod]);
+  }, [submissions, linkClicks, dateFilter, customRange, timePeriod, granularity]);
 
   return (
     <>
@@ -915,7 +1001,7 @@ const KPICards: React.FC<KPICardsProps> = ({
             key={card.id} 
             data={card} 
             onClick={() => handleCardClick(card.id, card.label)}
-            onHover={setHoveredDate}
+            onIntervalHover={setHoveredInterval}
             timePeriod={timePeriod}
             submissions={submissions}
             linkClicks={linkClicks}
@@ -933,6 +1019,7 @@ const KPICards: React.FC<KPICardsProps> = ({
           videos={selectedDayVideos}
           metricLabel={dayModalMetric}
           onVideoClick={onVideoClick}
+          interval={selectedInterval}
         />
       )}
     </>
@@ -1068,11 +1155,11 @@ const _KPISparkline: React.FC<{
 const KPICard: React.FC<{ 
   data: KPICardData; 
   onClick?: () => void;
-  onHover?: (date: Date | null) => void;
+  onIntervalHover?: (interval: TimeInterval | null) => void;
   timePeriod?: TimePeriodType;
   submissions?: VideoSubmission[];
   linkClicks?: LinkClick[];
-}> = ({ data, onClick, onHover, submissions = [], linkClicks = [] }) => {
+}> = ({ data, onClick, onIntervalHover, submissions = [], linkClicks = [] }) => {
   // Tooltip state for Portal rendering
   const [tooltipData, setTooltipData] = useState<{ x: number; y: number; point: any; lineX: number } | null>(null);
   const cardRef = React.useRef<HTMLDivElement>(null);
@@ -1132,15 +1219,15 @@ const KPICard: React.FC<{
             lineX: snappedLineX // Snapped to data point, not mouse position
           });
           
-          // Update hovered date
-          if (onHover && point.timestamp) {
-            onHover(new Date(point.timestamp));
+          // Store the hovered interval so handleCardClick knows the full timeframe
+          if (point.interval && onIntervalHover) {
+            onIntervalHover(point.interval);
           }
         }
       }}
       onMouseLeave={() => {
         setTooltipData(null);
-        if (onHover) onHover(null);
+        if (onIntervalHover) onIntervalHover(null);
       }}
       className="group relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 cursor-pointer overflow-hidden"
       style={{ minHeight: '180px' }}
@@ -1253,7 +1340,29 @@ const KPICard: React.FC<{
                       <stop offset="0%" stopColor={colors.stroke} stopOpacity={0.2} />
                       <stop offset="100%" stopColor={colors.stroke} stopOpacity={0} />
                     </linearGradient>
+                    <linearGradient id={`pp-gradient-${data.id}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={colors.stroke} stopOpacity={0.05} />
+                      <stop offset="100%" stopColor={colors.stroke} stopOpacity={0} />
+                    </linearGradient>
                   </defs>
+                  {/* PP (Previous Period) Ghost Graph - rendered first so it's behind */}
+                  {(() => {
+                    const hasPPData = data.sparklineData.some(d => d.ppValue !== undefined);
+                    return hasPPData ? (
+                      <Area
+                        type="monotoneX"
+                        dataKey="ppValue"
+                        stroke={colors.stroke}
+                        strokeWidth={1.5}
+                        strokeOpacity={0.2}
+                        strokeDasharray="4 4"
+                        fill={`url(#pp-gradient-${data.id})`}
+                        dot={false}
+                        isAnimationActive={false}
+                      />
+                    ) : null;
+                  })()}
+                  {/* Main Current Period Graph */}
                   <Area
                     type="monotoneX"
                     dataKey="value"
@@ -1285,14 +1394,26 @@ const KPICard: React.FC<{
 
       {/* Portal Tooltip - Rendered at document.body level */}
       {tooltipData && (() => {
-        // Smart positioning: left by default, flip to right if too close to left edge
+        // Always position below cursor, but adjust horizontal position to stay on screen
         const tooltipWidth = 400;
-        const margin = 20;
-        const shouldFlipRight = tooltipData.x < (tooltipWidth + margin);
+        const verticalOffset = 20; // spacing below cursor
+        const horizontalPadding = 20; // minimum distance from screen edges
+        const windowWidth = window.innerWidth;
         
-        const leftPosition = shouldFlipRight 
-          ? tooltipData.x + margin  // Position to the right
-          : tooltipData.x - tooltipWidth - margin;  // Position to the left
+        // Calculate horizontal position to keep tooltip on screen
+        let leftPosition = tooltipData.x;
+        let transformX = '-50%'; // default: centered under cursor
+        
+        // Check if tooltip would go off left edge
+        if (tooltipData.x - (tooltipWidth / 2) < horizontalPadding) {
+          leftPosition = horizontalPadding;
+          transformX = '0'; // align left edge to position
+        }
+        // Check if tooltip would go off right edge
+        else if (tooltipData.x + (tooltipWidth / 2) > windowWidth - horizontalPadding) {
+          leftPosition = windowWidth - horizontalPadding;
+          transformX = '-100%'; // align right edge to position
+        }
         
         return createPortal(
           <div 
@@ -1300,8 +1421,8 @@ const KPICard: React.FC<{
             style={{ 
               position: 'fixed',
               left: `${leftPosition}px`,
-              top: `${tooltipData.y}px`,
-              transform: 'translateY(-50%)',
+              top: `${tooltipData.y + verticalOffset}px`,
+              transform: `translateX(${transformX})`,
               zIndex: 999999999,
               width: '400px',
               maxHeight: '500px',
@@ -1311,12 +1432,14 @@ const KPICard: React.FC<{
             {(() => {
             const point = tooltipData.point;
             const value = point.value;
-            const timestamp = point.timestamp;
             
-            // Format date
-            const date = timestamp ? new Date(timestamp) : null;
-            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-            const dateStr = date ? `${monthNames[date.getMonth()]} ${date.getDate()}${date.getDate() === 1 ? 'st' : date.getDate() === 2 ? 'nd' : date.getDate() === 3 ? 'rd' : 'th'}, ${date.getFullYear()}` : '';
+            // Get the interval from the data point
+            const interval = point.interval;
+            
+            // Format date based on interval type
+            const dateStr = interval 
+              ? DataAggregationService.formatIntervalLabelFull(new Date(interval.startDate), interval.intervalType)
+              : '';
             
             // Format value based on metric type
             const formatDisplayNumber = (num: number): string => {
@@ -1326,43 +1449,34 @@ const KPICard: React.FC<{
             };
             
             const displayValue = typeof value === 'number' ? formatDisplayNumber(value) : value;
+            const ppValue = point.ppValue;
+            const ppDisplayValue = typeof ppValue === 'number' ? formatDisplayNumber(ppValue) : null;
             
-            // Filter videos for this specific day
-            const dayStart = date ? new Date(date) : null;
-            const dayEnd = date ? new Date(date) : null;
-            if (dayStart) {
-              dayStart.setHours(0, 0, 0, 0);
-              console.log('📅 Tooltip Date:', dateStr);
-              console.log('📅 Day Range:', { start: dayStart, end: dayEnd, timestamp });
-              console.log('📅 Date object:', date);
-            }
-            if (dayEnd) dayEnd.setHours(23, 59, 59, 999);
+            // Calculate PP comparison
+            const ppComparison = (ppValue !== undefined && typeof value === 'number') ? (() => {
+              const diff = value - ppValue;
+              const percentChange = ppValue > 0 ? ((diff / ppValue) * 100) : 0;
+              const isPositive = diff >= 0;
+              return {
+                diff,
+                percentChange,
+                isPositive,
+                displayValue: ppDisplayValue
+              };
+            })() : null;
             
-            // Filter and sort based on the metric type
-            const videosOnDay = submissions.filter((video: VideoSubmission) => {
-              if (!video.dateSubmitted) return false;
-              
-              const videoDate = new Date(video.dateSubmitted);
-              if (!dayStart || !dayEnd) return false;
-              
-              // Check if video date is within the day range
-              const matches = videoDate >= dayStart && videoDate <= dayEnd;
-              
-              // Also check upload date as a fallback
-              if (!matches && video.uploadDate) {
-                const uploadDate = new Date(video.uploadDate);
-                return uploadDate >= dayStart && uploadDate <= dayEnd;
-              }
-              
-              return matches;
-            });
+            // Filter videos for this interval (not just a single day!)
+            const videosInInterval = interval ? submissions.filter((video: VideoSubmission) => {
+              const uploadDate = video.uploadDate ? new Date(video.uploadDate) : new Date(video.dateSubmitted);
+              return DataAggregationService.isDateInInterval(uploadDate, interval);
+            }) : [];
             
             // Sort by the relevant metric
             let sortedItems: any[] = [];
             if (data.id === 'accounts') {
               // For accounts: group by uploaderHandle and sum total views
               const accountsMap = new Map<string, { handle: string; platform: string; totalViews: number; videoCount: number; profilePicture?: string }>();
-              videosOnDay.forEach(video => {
+              videosInInterval.forEach(video => {
                 const handle = video.uploaderHandle || 'Unknown';
                 if (accountsMap.has(handle)) {
                   const existing = accountsMap.get(handle)!;
@@ -1382,24 +1496,17 @@ const KPICard: React.FC<{
                 .sort((a, b) => b.totalViews - a.totalViews)
                 .slice(0, 5);
             } else if (data.id === 'link-clicks') {
-              // For link clicks: show links clicked that day
-              const clicksOnDay = linkClicks.filter((click: LinkClick) => {
+              // For link clicks: show links clicked in this interval
+              const clicksInInterval = interval ? linkClicks.filter((click: LinkClick) => {
                 const clickDate = new Date(click.timestamp);
-                if (!dayStart || !dayEnd) return false;
-                
-                // Normalize click date to local date (strip time) for accurate day matching
-                const clickDateLocal = new Date(clickDate.getFullYear(), clickDate.getMonth(), clickDate.getDate());
-                const dayStartLocal = new Date(dayStart.getFullYear(), dayStart.getMonth(), dayStart.getDate());
-                const dayEndLocal = new Date(dayEnd.getFullYear(), dayEnd.getMonth(), dayEnd.getDate());
-                
-                return clickDateLocal >= dayStartLocal && clickDateLocal <= dayEndLocal;
-              });
+                return DataAggregationService.isDateInInterval(clickDate, interval);
+              }) : [];
               
-              console.log(`🔗 Link Clicks Tooltip: Found ${clicksOnDay.length} clicks on ${dateStr}`);
+              console.log(`🔗 Link Clicks Tooltip: Found ${clicksInInterval.length} clicks in ${dateStr}`);
               
               // Group by linkId and count clicks
               const linksMap = new Map<string, { linkId: string; title: string; url: string; shortCode: string; clicks: number; accountHandle?: string; accountProfilePicture?: string; accountPlatform?: string }>();
-              clicksOnDay.forEach((click: LinkClick) => {
+              clicksInInterval.forEach((click: LinkClick) => {
                 if (linksMap.has(click.linkId)) {
                   const existing = linksMap.get(click.linkId)!;
                   existing.clicks += 1;
@@ -1428,18 +1535,12 @@ const KPICard: React.FC<{
                 : data.id === 'shares' ? 'shares'
                 : 'views'; // default to views
               
-              sortedItems = videosOnDay
+              sortedItems = videosInInterval
                 .sort((a: VideoSubmission, b: VideoSubmission) => ((b as any)[metricKey] || 0) - ((a as any)[metricKey] || 0))
                 .slice(0, 5);
             }
             
-            if (dayStart) {
-              console.log(`📹 Found ${videosOnDay.length} items for ${dateStr} (${data.label})`);
-              console.log('📹 All submissions count:', submissions.length);
-              if (sortedItems.length > 0) {
-                console.log('📹 Top items:', sortedItems.slice(0, 3));
-              }
-            }
+              // Top items sorted by metric
             
             // Get the metric label and key for display
             const metricLabel = data.id === 'views' ? 'Views'
@@ -1463,9 +1564,16 @@ const KPICard: React.FC<{
                   <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
                     {dateStr}
                   </p>
+                  <div className="flex items-baseline gap-3">
                   <p className="text-2xl font-bold text-white">
                     {displayValue}
                   </p>
+                    {ppComparison && (
+                      <span className={`text-xs font-semibold ${ppComparison.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {ppComparison.isPositive ? '↑' : '↓'} {Math.abs(ppComparison.percentChange).toFixed(0)}%
+                      </span>
+                    )}
+                  </div>
             </div>
                 
                 {/* Divider */}

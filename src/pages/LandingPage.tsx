@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp, BookOpen, Users, Star, BarChart3, Eye } from 'lucide-react';
+import { TrendingUp, BookOpen, Users, Star, BarChart3, Eye, Play, Heart, MessageCircle, Share2, Video, UserPlus } from 'lucide-react';
 import blackLogo from '../components/blacklogo.png';
 import dashboardImg from '/dashboard.png';
 
@@ -127,64 +127,169 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Results Section - 6 KPI Cards */}
       <section id="features" className="py-20 px-6 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Everything you need to grow</h2>
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">Real Results, Real Growth</h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Track, analyze, and optimize your social media presence with powerful tools designed for creators.
+              Track the metrics that matter and watch your influence grow.
             </p>
           </div>
 
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              {
+                icon: Play,
+                title: 'Views',
+                value: '461.9M',
+                growth: '+461.9M',
+                color: 'from-emerald-500 to-emerald-600',
+                strokeColor: '#10b981',
+              },
+              {
+                icon: Heart,
+                title: 'Likes',
+                value: '13.4M',
+                growth: '+13.4M',
+                color: 'from-pink-500 to-pink-600',
+                strokeColor: '#ec4899',
+              },
+              {
+                icon: MessageCircle,
+                title: 'Comments',
+                value: '394.7K',
+                growth: '+394.7K',
+                color: 'from-blue-500 to-blue-600',
+                strokeColor: '#3b82f6',
+              },
+              {
+                icon: Share2,
+                title: 'Shares',
+                value: '28.6K',
+                growth: '+28.6K',
+                color: 'from-purple-500 to-purple-600',
+                strokeColor: '#a855f7',
+              },
+              {
+                icon: Video,
+                title: 'Videos',
+                value: '341',
+                growth: '+341',
+                color: 'from-orange-500 to-orange-600',
+                strokeColor: '#f97316',
+              },
+              {
+                icon: UserPlus,
+                title: 'Accounts',
+                value: '30',
+                growth: '+30',
+                color: 'from-indigo-500 to-indigo-600',
+                strokeColor: '#6366f1',
+              },
+            ].map((metric, index) => (
+              <div
+                key={index}
+                className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-700"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 bg-gradient-to-br ${metric.color} rounded-lg flex items-center justify-center shadow-lg`}>
+                      <metric.icon className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-400 uppercase tracking-wider">{metric.title}</span>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex items-baseline gap-2">
+                    <h3 className="text-3xl font-bold text-white">{metric.value}</h3>
+                    <span className="text-sm font-semibold text-emerald-400">{metric.growth}</span>
+                  </div>
+                  
+                  {/* Mini Graph */}
+                  <div className="h-16 w-full">
+                    <svg className="w-full h-full" viewBox="0 0 200 50" preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient id={`gradient-${index}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={metric.strokeColor} stopOpacity="0.3" />
+                          <stop offset="100%" stopColor={metric.strokeColor} stopOpacity="0" />
+                        </linearGradient>
+                      </defs>
+                      <path
+                        d={`M0,${30 + Math.random() * 10} L${40},${25 + Math.random() * 15} L${80},${20 + Math.random() * 10} L${120},${15 + Math.random() * 15} L${160},${10 + Math.random() * 10} L200,${5 + Math.random() * 10}`}
+                        fill="none"
+                        stroke={metric.strokeColor}
+                        strokeWidth="2"
+                      />
+                      <path
+                        d={`M0,${30 + Math.random() * 10} L${40},${25 + Math.random() * 15} L${80},${20 + Math.random() * 10} L${120},${15 + Math.random() * 15} L${160},${10 + Math.random() * 10} L200,${5 + Math.random() * 10} L200,50 L0,50 Z`}
+                        fill={`url(#gradient-${index})`}
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pain Points Section */}
+      <section className="py-20 px-6 bg-red-600">
+        <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-3 gap-8">
             {[
               {
-                icon: Eye,
-                title: 'Multi-Platform Tracking',
-                description: 'Track Instagram, TikTok, and YouTube videos from a single dashboard.',
-                color: 'blue',
+                title: 'Lost in the Numbers',
+                description: 'Tracking views across Instagram, TikTok, and YouTube feels like juggling chaos. You know your content is performing, but proving it? Impossible.',
               },
               {
-                icon: BarChart3,
-                title: 'Link Analytics',
-                description: 'Create branded short links and track every click with detailed analytics.',
-                color: 'purple',
+                title: 'Spreadsheet Hell',
+                description: 'Manual data entry is eating your time. Hours wasted copying numbers, building reports, and still missing the bigger picture of what actually works.',
               },
               {
-                icon: TrendingUp,
-                title: 'Smart Rules',
-                description: 'Set up automated filters to organize and prioritize your content.',
-                color: 'orange',
+                title: 'No Clear ROI',
+                description: 'Brands ask for proof of performance, but your messy tracking makes you look unprofessional. Lost deals. Lost credibility. Lost revenue.',
+              },
+            ].map((pain, index) => (
+              <div key={index} className="bg-red-700/50 backdrop-blur-sm rounded-2xl p-8 border border-red-500/30">
+                <h3 className="text-2xl font-bold text-white mb-4">{pain.title}</h3>
+                <p className="text-red-100 text-lg leading-relaxed">{pain.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* We Got You Covered Section */}
+      <section className="py-20 px-6 bg-blue-600">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-white mb-4">We Got You Covered</h2>
+            <p className="text-xl text-blue-100 max-w-2xl mx-auto">
+              Everything you need to track, prove, and grow your influence.
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                title: 'One Dashboard. All Platforms.',
+                description: 'Track Instagram, TikTok, and YouTube videos from a single, beautiful dashboard. No more tab-switching nightmares.',
               },
               {
-                icon: BookOpen,
-                title: 'Real-Time Insights',
-                description: 'Get instant updates on your content performance across all platforms.',
-                color: 'green',
+                title: 'Automatic Tracking',
+                description: 'Set it and forget it. We refresh your metrics automatically, so your reports are always up-to-date without lifting a finger.',
               },
               {
-                icon: Users,
-                title: 'Account Tracking',
-                description: 'Monitor entire social media accounts and track all their videos automatically.',
-                color: 'pink',
+                title: 'Professional Reports',
+                description: 'Impress brands with clean, comprehensive analytics. Export beautiful reports that prove your worth and close deals faster.',
               },
-              {
-                icon: BarChart3,
-                title: 'Beautiful Reports',
-                description: 'Visualize your growth with stunning charts and comprehensive analytics.',
-                color: 'indigo',
-              },
-            ].map((feature, index) => (
-              <div
-                key={index}
-                className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100"
-              >
-                <div className={`w-12 h-12 bg-${feature.color}-100 rounded-xl flex items-center justify-center mb-4`}>
-                  <feature.icon className={`w-6 h-6 text-${feature.color}-600`} />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">{feature.title}</h3>
-                <p className="text-gray-600">{feature.description}</p>
+            ].map((solution, index) => (
+              <div key={index} className="bg-blue-700/50 backdrop-blur-sm rounded-2xl p-8 border border-blue-400/30">
+                <h3 className="text-2xl font-bold text-white mb-4">{solution.title}</h3>
+                <p className="text-blue-100 text-lg leading-relaxed">{solution.description}</p>
               </div>
             ))}
           </div>

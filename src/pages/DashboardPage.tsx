@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { clsx } from 'clsx';
-import { ArrowLeft, ChevronDown, Search } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Search, Filter, CheckCircle2, Circle, Plus, Trash2 } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
+import { Modal } from '../components/ui/Modal';
 import { VideoSubmissionsTable } from '../components/VideoSubmissionsTable';
 import { AddVideoModal } from '../components/AddVideoModal';
 import { TikTokSearchModal } from '../components/TikTokSearchModal';
@@ -31,6 +32,7 @@ import { Timestamp, collection, getDocs, onSnapshot, query, where, orderBy, limi
 import { db } from '../services/firebase';
 import { fixVideoPlatforms } from '../services/FixVideoPlatform';
 import { TrackedAccount } from '../types/firestore';
+import { TrackingRule, RuleCondition, RuleConditionType } from '../types/rules';
 
 interface DateRange {
   startDate: Date;
@@ -46,18 +48,41 @@ function DashboardPage() {
   const [submissions, setSubmissions] = useState<VideoSubmission[]>([]);
   const [linkClicks, setLinkClicks] = useState<LinkClick[]>([]);
   const [trackedAccounts, setTrackedAccounts] = useState<TrackedAccount[]>([]);
-  const [allRules, setAllRules] = useState<any[]>([]);
+  const [allRules, setAllRules] = useState<TrackingRule[]>([]);
+  const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
+  const [showCreateRuleForm, setShowCreateRuleForm] = useState(false);
+  const [ruleName, setRuleName] = useState('');
+  const [conditions, setConditions] = useState<RuleCondition[]>([
+    { id: '1', type: 'description_contains', value: '', operator: 'AND' }
+  ]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
   
   // Loading/pending state for immediate UI feedback
   const [pendingVideos, setPendingVideos] = useState<VideoSubmission[]>([]);
   const [pendingAccounts, setPendingAccounts] = useState<TrackedAccount[]>([]);
-  const [dateFilter, setDateFilter] = useState<DateFilterType>('last30days');
-  const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>();
+  const [dateFilter, setDateFilter] = useState<DateFilterType>(() => {
+    const saved = localStorage.getItem('dashboardDateFilter');
+    return (saved as DateFilterType) || 'last30days';
+  });
+  const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>(() => {
+    const saved = localStorage.getItem('dashboardCustomDateRange');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return {
+        startDate: new Date(parsed.startDate),
+        endDate: new Date(parsed.endDate)
+      };
+    }
+    return undefined;
+  });
   const [selectedVideoForAnalytics, setSelectedVideoForAnalytics] = useState<VideoSubmission | null>(null);
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [granularity, setGranularity] = useState<'day' | 'week' | 'month' | 'year'>(() => {
+    const saved = localStorage.getItem('dashboardGranularity');
+    return (saved as 'day' | 'week' | 'month' | 'year') || 'day';
+  });
   
   // Day Videos Modal state (for account clicks from race chart)
   const [isDayVideosModalOpen, setIsDayVideosModalOpen] = useState(false);
@@ -71,32 +96,129 @@ function DashboardPage() {
   const [userRole, setUserRole] = useState<string>('');
   
   // Accounts page state
-  const [accountsDateFilter, setAccountsDateFilter] = useState<DateFilterType>('all');
-  const [accountsViewMode, setAccountsViewMode] = useState<'table' | 'details'>('table');
-  const [accountsPlatformFilter, setAccountsPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'youtube'>('all');
+  const [accountsDateFilter, setAccountsDateFilter] = useState<DateFilterType>(() => {
+    const saved = localStorage.getItem('accountsDateFilter');
+    return (saved as DateFilterType) || 'all';
+  });
+  const [accountsViewMode, setAccountsViewMode] = useState<'table' | 'details'>(() => {
+    const saved = localStorage.getItem('accountsViewMode');
+    return (saved as 'table' | 'details') || 'table';
+  });
+  const [accountsPlatformFilter, setAccountsPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'youtube'>(() => {
+    const saved = localStorage.getItem('accountsPlatformFilter');
+    return (saved as 'all' | 'instagram' | 'tiktok' | 'youtube') || 'all';
+  });
   const [accountsSearchQuery, setAccountsSearchQuery] = useState('');
   const accountsPageRef = useRef<AccountsPageRef | null>(null);
   const trackedLinksPageRef = useRef<TrackedLinksPageRef | null>(null);
   const creatorsPageRef = useRef<CreatorsManagementPageRef | null>(null);
 
   // Dashboard platform filter state
-  const [dashboardPlatformFilter, setDashboardPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'youtube'>('all');
+  const [dashboardPlatformFilter, setDashboardPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'youtube'>(() => {
+    const saved = localStorage.getItem('dashboardPlatformFilter');
+    return (saved as 'all' | 'instagram' | 'tiktok' | 'youtube') || 'all';
+  });
   
   // Dashboard accounts filter state
-  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>(() => {
+    const saved = localStorage.getItem('dashboardSelectedAccountIds');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Dashboard rule filter state
+  const [selectedRuleId, setSelectedRuleId] = useState<string>(() => {
+    const saved = localStorage.getItem('dashboardSelectedRuleId');
+    return saved || 'all';
+  });
   
   // Tracked Links search state
   const [linksSearchQuery, setLinksSearchQuery] = useState('');
-  const [linksDateFilter, setLinksDateFilter] = useState<DateFilterType>('last30days');
-  const [linksCustomDateRange, setLinksCustomDateRange] = useState<DateRange | undefined>();
+  const [linksDateFilter, setLinksDateFilter] = useState<DateFilterType>(() => {
+    const saved = localStorage.getItem('linksDateFilter');
+    return (saved as DateFilterType) || 'last30days';
+  });
+  const [linksCustomDateRange, setLinksCustomDateRange] = useState<DateRange | undefined>(() => {
+    const saved = localStorage.getItem('linksCustomDateRange');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return {
+        startDate: new Date(parsed.startDate),
+        endDate: new Date(parsed.endDate)
+      };
+    }
+    return undefined;
+  });
   
   // Creators date filter state
-  const [creatorsDateFilter, setCreatorsDateFilter] = useState<DateFilterType>('all');
+  const [creatorsDateFilter, setCreatorsDateFilter] = useState<DateFilterType>(() => {
+    const saved = localStorage.getItem('creatorsDateFilter');
+    return (saved as DateFilterType) || 'all';
+  });
 
   // Save active tab to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('activeTab', activeTab);
   }, [activeTab]);
+
+  // Save dashboard filters to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('dashboardDateFilter', dateFilter);
+  }, [dateFilter]);
+
+  useEffect(() => {
+    if (customDateRange) {
+      localStorage.setItem('dashboardCustomDateRange', JSON.stringify(customDateRange));
+    } else {
+      localStorage.removeItem('dashboardCustomDateRange');
+    }
+  }, [customDateRange]);
+
+  useEffect(() => {
+    localStorage.setItem('dashboardGranularity', granularity);
+  }, [granularity]);
+
+  useEffect(() => {
+    localStorage.setItem('dashboardPlatformFilter', dashboardPlatformFilter);
+  }, [dashboardPlatformFilter]);
+
+  useEffect(() => {
+    localStorage.setItem('dashboardSelectedAccountIds', JSON.stringify(selectedAccountIds));
+  }, [selectedAccountIds]);
+
+  useEffect(() => {
+    localStorage.setItem('dashboardSelectedRuleId', selectedRuleId);
+  }, [selectedRuleId]);
+
+  // Save accounts page filters to localStorage
+  useEffect(() => {
+    localStorage.setItem('accountsDateFilter', accountsDateFilter);
+  }, [accountsDateFilter]);
+
+  useEffect(() => {
+    localStorage.setItem('accountsViewMode', accountsViewMode);
+  }, [accountsViewMode]);
+
+  useEffect(() => {
+    localStorage.setItem('accountsPlatformFilter', accountsPlatformFilter);
+  }, [accountsPlatformFilter]);
+
+  // Save tracked links filters to localStorage
+  useEffect(() => {
+    localStorage.setItem('linksDateFilter', linksDateFilter);
+  }, [linksDateFilter]);
+
+  useEffect(() => {
+    if (linksCustomDateRange) {
+      localStorage.setItem('linksCustomDateRange', JSON.stringify(linksCustomDateRange));
+    } else {
+      localStorage.removeItem('linksCustomDateRange');
+    }
+  }, [linksCustomDateRange]);
+
+  // Save creators date filter to localStorage
+  useEffect(() => {
+    localStorage.setItem('creatorsDateFilter', creatorsDateFilter);
+  }, [creatorsDateFilter]);
 
   // Refresh data when switching tabs
   useEffect(() => {
@@ -242,7 +364,7 @@ function DashboardPage() {
       const rules = rulesSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      }));
+      })) as TrackingRule[];
       
       console.log(`📋 Loaded ${rules.length} tracking rules`);
       setAllRules(rules);
@@ -423,50 +545,59 @@ function DashboardPage() {
       );
     }
     
-    // Apply rules filtering for tracked accounts
-    if (allRules.length > 0) {
-      const beforeRulesCount = filtered.length;
-      
-      filtered = filtered.filter(video => {
-        if (!video.uploaderHandle) return true; // Keep videos without uploader handle
-        
-        // Find the account for this video
-        const account = trackedAccounts.find(
-          acc => acc.username.toLowerCase() === video.uploaderHandle?.toLowerCase()
-        );
-        
-        if (!account) return true; // Keep videos without matching account
-        
-        // Get rules that apply to this account
-        const accountRules = allRules.filter(rule => {
-          if (!rule.isActive) return false;
-          
-          const { platforms, accountIds } = rule.appliesTo;
-          
-          // Check platform match
-          const platformMatch = !platforms || platforms.length === 0 || platforms.includes(account.platform);
-          
-          // Check account match - rule must explicitly include this account
-          const accountMatch = accountIds && accountIds.length > 0 && accountIds.includes(account.id);
-          
-          return platformMatch && accountMatch;
+    // Apply specific rule filter if selected
+    if (selectedRuleId !== 'all') {
+      const selectedRule = allRules.find(rule => rule.id === selectedRuleId);
+      if (selectedRule && selectedRule.isActive) {
+        console.log(`🔍 Filtering by rule: "${selectedRule.name}"`);
+        const beforeCount = filtered.length;
+        filtered = filtered.filter(video => {
+          // Check if video matches the selected rule
+          const result = RulesService.checkVideoMatchesRule(video as any, selectedRule);
+          return result.matches;
         });
-        
-        if (accountRules.length === 0) return true; // No rules = show all videos
-        
-        // Check if video matches any of the account's rules
-        const matches = accountRules.some((rule: any) => 
-          RulesService.checkVideoMatchesRule(video as any, rule).matches
-        );
-        
-        return matches;
-      });
-      
-      console.log(`🔑 Rules filtering: ${beforeRulesCount} videos → ${filtered.length} videos (${allRules.length} rules applied)`);
+        console.log(`   Before: ${beforeCount} videos, After: ${filtered.length} videos`);
+      }
+    } else {
+      // Apply default rules filtering for tracked accounts (all active rules)
+      if (allRules.length > 0) {
+        filtered = filtered.filter(video => {
+          if (!video.uploaderHandle) return true; // Keep videos without uploader handle
+          
+          // Find the account for this video
+          const account = trackedAccounts.find(
+            acc => acc.username.toLowerCase() === video.uploaderHandle?.toLowerCase()
+          );
+          
+          if (!account) return true; // Keep videos without matching account
+          
+          // Get rules that apply to this account
+          const accountRules = allRules.filter(rule => {
+            if (!rule.isActive) return false;
+            
+            const { platforms, accountIds } = rule.appliesTo;
+            
+            // Check platform match
+            const platformMatch = !platforms || platforms.length === 0 || platforms.includes(account.platform);
+            
+            // Check account match
+            const accountMatch = !accountIds || accountIds.length === 0 || accountIds.includes(account.id);
+            
+            return platformMatch && accountMatch;
+          });
+          
+          if (accountRules.length === 0) return true; // No rules = show all videos
+          
+          // Check if video matches any of the account's rules
+          return accountRules.some((rule: any) => 
+            RulesService.checkVideoMatchesRule(video as any, rule).matches
+          );
+        });
+      }
     }
     
     return filtered;
-  }, [submissions, dateFilter, customDateRange, dashboardPlatformFilter, selectedAccountIds, trackedAccounts, allRules]);
+  }, [submissions, dateFilter, customDateRange, dashboardPlatformFilter, selectedAccountIds, trackedAccounts, allRules, selectedRuleId]);
 
   // Combine real submissions with pending videos for immediate UI feedback
   const combinedSubmissions = useMemo(() => {
@@ -755,6 +886,87 @@ function DashboardPage() {
     console.log('✅ TikTok search results added and saved locally!');
   }, []);
 
+  // Rule management functions
+  const addCondition = useCallback(() => {
+    const newId = (Math.max(...conditions.map(c => Number(c.id)), 0) + 1).toString();
+    setConditions(prev => [...prev, { 
+      id: newId, 
+      type: 'description_contains', 
+      value: '', 
+      operator: 'AND' 
+    }]);
+  }, [conditions]);
+
+  const removeCondition = useCallback((id: string) => {
+    setConditions(prev => prev.filter(c => c.id !== id));
+  }, []);
+
+  const updateCondition = useCallback((id: string, field: string, value: any) => {
+    setConditions(prev => prev.map(condition => 
+      condition.id === id 
+        ? { ...condition, [field]: value }
+        : condition
+    ));
+  }, []);
+
+  const handleShowCreateForm = useCallback(() => {
+    setShowCreateRuleForm(true);
+  }, []);
+
+  const handleSaveRule = useCallback(async () => {
+    if (!user || !currentOrgId || !currentProjectId) return;
+    if (!ruleName.trim() || conditions.filter(c => c.value !== '').length === 0) return;
+
+    try {
+      const ruleData = {
+        name: ruleName,
+        conditions: conditions.filter(c => c.value !== ''),
+        appliesTo: {
+          platforms: [], // Empty means applies to all platforms
+          accountIds: [] // Empty means available to all accounts
+        },
+        isActive: true
+      };
+
+      await RulesService.createRule(currentOrgId, currentProjectId, user.uid, ruleData);
+      
+      // Reload rules
+      const rules = await RulesService.getRules(currentOrgId, currentProjectId);
+      setAllRules(rules as TrackingRule[]);
+      
+      // Reset form and show list
+      setShowCreateRuleForm(false);
+      setRuleName('');
+      setConditions([{ id: '1', type: 'description_contains', value: '', operator: 'AND' }]);
+      
+      console.log(`✅ Created rule "${ruleName}"`);
+    } catch (error) {
+      console.error('Failed to create rule:', error);
+      alert('Failed to create rule. Please try again.');
+    }
+  }, [user, currentOrgId, currentProjectId, ruleName, conditions]);
+
+  const handleOpenRuleModal = useCallback(async () => {
+    setIsRuleModalOpen(true);
+    
+    // Reload rules when modal opens to ensure fresh data
+    if (currentOrgId && currentProjectId) {
+      try {
+        const rules = await RulesService.getRules(currentOrgId, currentProjectId);
+        setAllRules(rules as TrackingRule[]);
+        console.log(`📋 Reloaded ${rules.length} rules for modal`);
+      } catch (error) {
+        console.error('❌ Failed to reload rules:', error);
+      }
+    }
+  }, [currentOrgId, currentProjectId]);
+
+  const handleCloseRuleModal = useCallback(() => {
+    setIsRuleModalOpen(false);
+    setShowCreateRuleForm(false);
+    setRuleName('');
+    setConditions([{ id: '1', type: 'description_contains', value: '', operator: 'AND' }]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
@@ -833,6 +1045,38 @@ function DashboardPage() {
                   <option value="youtube" className="bg-gray-900">YouTube</option>
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
+              </div>
+
+              {/* Rule Filter Button */}
+              <button
+                onClick={handleOpenRuleModal}
+                className="flex items-center gap-2 pl-4 pr-4 py-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
+              >
+                <Filter className="w-4 h-4" />
+                {selectedRuleId === 'all' ? 'All Videos' : (allRules.find(r => r.id === selectedRuleId)?.name || 'Select Rule')}
+              </button>
+              
+              {/* Granularity Selector */}
+              <div className="flex items-center bg-white/5 rounded-lg border border-white/10 p-1">
+                {[
+                  { value: 'day' as const, label: 'D', tooltip: 'Show data by day' },
+                  { value: 'week' as const, label: 'W', tooltip: 'Show data by week' },
+                  { value: 'month' as const, label: 'M', tooltip: 'Show data by month' },
+                  { value: 'year' as const, label: 'Y', tooltip: 'Show data by year' }
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setGranularity(option.value)}
+                    title={option.tooltip}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded transition-all ${
+                      granularity === option.value
+                        ? 'bg-white text-gray-900'
+                        : 'text-white/60 hover:text-white/90 hover:bg-white/10'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
               </div>
               
               <DateRangeFilter
@@ -925,13 +1169,43 @@ function DashboardPage() {
           {/* Dashboard Tab */}
           <div className={activeTab === 'dashboard' ? '' : 'hidden'}>
             <>
+              {/* Active Rule Filter Indicator */}
+              {selectedRuleId !== 'all' && (() => {
+                const activeRule = allRules.find(r => r.id === selectedRuleId);
+                if (activeRule) {
+                  return (
+                    <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Filter className="w-5 h-5 text-blue-400" />
+                        <div>
+                          <p className="text-sm font-semibold text-white">
+                            Filtered by Rule: <span className="text-blue-400">{activeRule.name}</span>
+                          </p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            Showing only videos matching this rule's conditions
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setSelectedRuleId('all')}
+                        className="px-3 py-1.5 text-sm text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-colors"
+                      >
+                        Clear Filter
+                      </button>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+              
               {/* KPI Cards with Working Sparklines */}
                 <KPICards 
-                  submissions={combinedSubmissions}
-                  linkClicks={filteredLinkClicks}
+                  submissions={filteredSubmissions}
+                  linkClicks={linkClicks}
                   dateFilter={dateFilter}
                   customRange={customDateRange}
                   timePeriod="days"
+                  granularity={granularity}
                   onVideoClick={handleVideoClick}
                 />
                 
@@ -1037,6 +1311,284 @@ function DashboardPage() {
         dateRangeLabel={getDateFilterLabel(dateFilter)}
         onVideoClick={handleVideoClick}
       />
+
+      {/* Rule Filter Modal */}
+      <Modal
+        isOpen={isRuleModalOpen}
+        onClose={handleCloseRuleModal}
+        title={showCreateRuleForm ? 'Create Tracking Rule' : 'Filter by Tracking Rule'}
+      >
+        {showCreateRuleForm ? (
+          // Create Rule Form
+          <div className="space-y-6 max-h-[70vh] overflow-y-auto px-1">
+            {/* Rule Name */}
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2">
+                Rule Name
+              </label>
+              <input
+                type="text"
+                value={ruleName}
+                onChange={(e) => setRuleName(e.target.value)}
+                placeholder="e.g., High Engagement Posts"
+                className="w-full px-4 py-3 border border-gray-700 rounded-lg bg-gray-800 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* Conditions */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-semibold text-white">
+                  Conditions
+                </label>
+                <button
+                  onClick={addCondition}
+                  className="flex items-center gap-1 px-3 py-1 text-sm text-gray-400 hover:bg-white/10 rounded-lg transition-colors"
+                >
+                  <Plus className="w-3 h-3" />
+                  Add Condition
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {conditions.map((condition, index) => (
+                  <div key={condition.id} className="space-y-2">
+                    {index > 0 && (
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={conditions[index - 1].operator || 'AND'}
+                          onChange={(e) => updateCondition(conditions[index - 1].id, 'operator', e.target.value as 'AND' | 'OR')}
+                          className="px-3 py-1 text-sm border border-gray-700 rounded-lg bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="AND">AND</option>
+                          <option value="OR">OR</option>
+                        </select>
+                      </div>
+                    )}
+                    
+                    <div className="space-y-2">
+                      <div className="flex gap-2 items-start p-3 border border-gray-700 rounded-lg bg-gray-800/50">
+                        <select
+                          value={condition.type}
+                          onChange={(e) => updateCondition(condition.id, 'type', e.target.value as RuleConditionType)}
+                          className="flex-1 px-3 py-2 border border-gray-700 rounded-lg bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        >
+                          <option value="description_contains">Description contains</option>
+                          <option value="description_not_contains">Description does not contain</option>
+                          <option value="hashtag_includes">Hashtag includes</option>
+                          <option value="hashtag_not_includes">Hashtag does not include</option>
+                          <option value="views_greater_than">Views greater than</option>
+                          <option value="views_less_than">Views less than</option>
+                          <option value="likes_greater_than">Likes greater than</option>
+                          <option value="engagement_rate_greater_than">Engagement rate &gt;</option>
+                          <option value="posted_after_date">Posted after date</option>
+                          <option value="posted_before_date">Posted before date</option>
+                        </select>
+
+                        <input
+                          type={
+                            condition.type.includes('date') ? 'date' :
+                            condition.type.includes('greater') || condition.type.includes('less') ? 'number' :
+                            'text'
+                          }
+                          value={condition.value}
+                          onChange={(e) => updateCondition(condition.id, 'value', e.target.value)}
+                          placeholder={
+                            condition.type.includes('description') ? 'e.g., @brand.com' :
+                            condition.type.includes('hashtag') ? 'e.g., ad or #ad' :
+                            condition.type.includes('views') ? 'e.g., 10000' :
+                            'Value'
+                          }
+                          className="flex-1 px-3 py-2 border border-gray-700 rounded-lg bg-gray-800 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+
+                        {conditions.length > 1 && (
+                          <button
+                            onClick={() => removeCondition(condition.id)}
+                            className="p-2 text-red-400 hover:bg-red-900/30 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                      
+                      {/* Case-sensitive toggle for text-based conditions */}
+                      {(condition.type.includes('description') || condition.type.includes('hashtag')) && (
+                        <label className="flex items-center gap-2 px-3 text-sm text-gray-400 cursor-pointer hover:text-gray-300">
+                          <input
+                            type="checkbox"
+                            checked={condition.caseSensitive || false}
+                            onChange={(e) => updateCondition(condition.id, 'caseSensitive', e.target.checked)}
+                            className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:ring-offset-0"
+                          />
+                          <span>Case sensitive</span>
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Info message */}
+            <div className="p-4 bg-white/5 border border-white/10 rounded-lg">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 mt-0.5">
+                  <svg className="w-5 h-5 text-gray-900 dark:text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
+                    Available to All Accounts
+                  </h4>
+                  <p className="text-xs text-gray-700 dark:text-gray-300">
+                    This rule will be available for filtering across all tracked accounts and platforms.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-4 border-t border-gray-700">
+              <button
+                onClick={() => setShowCreateRuleForm(false)}
+                className="flex-1 px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                Back
+              </button>
+              <button
+                onClick={handleSaveRule}
+                disabled={!ruleName.trim() || conditions.filter(c => c.value !== '').length === 0}
+                className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-white/10"
+              >
+                Create Rule
+              </button>
+            </div>
+          </div>
+        ) : allRules.length === 0 ? (
+          <div className="text-center py-12">
+            <Filter className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+            <p className="text-gray-400 mb-4">No tracking rules created yet</p>
+            <button
+              onClick={handleShowCreateForm}
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors border border-white/10"
+            >
+              Create Your First Rule
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-gray-400 mb-4">
+              Select a rule to filter dashboard videos. Only videos matching the selected rule will be displayed.
+            </p>
+            <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+              {/* All Videos Option */}
+              <div
+                className={clsx(
+                  'p-4 rounded-lg border transition-all cursor-pointer group',
+                  selectedRuleId === 'all'
+                    ? 'bg-white/10 border-white/20'
+                    : 'bg-gray-800/50 border-gray-700 hover:border-gray-600'
+                )}
+                onClick={() => {
+                  console.log('🎯 Selected: All Videos');
+                  setSelectedRuleId('all');
+                  setIsRuleModalOpen(false);
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5">
+                    {selectedRuleId === 'all' ? (
+                      <CheckCircle2 className="w-5 h-5 text-white" />
+                    ) : (
+                      <Circle className="w-5 h-5 text-gray-500 group-hover:text-gray-400" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-white">All Videos</h4>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Show all videos based on their assigned account rules
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Individual Rules */}
+              {allRules
+                .filter(rule => rule.isActive)
+                .map((rule) => {
+                  const isSelected = selectedRuleId === rule.id;
+                  
+                  return (
+                    <div
+                      key={rule.id}
+                      className={clsx(
+                        'p-4 rounded-lg border transition-all cursor-pointer group',
+                        isSelected
+                          ? 'bg-white/10 border-white/20'
+                          : 'bg-gray-800/50 border-gray-700 hover:border-gray-600'
+                      )}
+                      onClick={() => {
+                        console.log(`🎯 Selected rule: "${rule.name}" (ID: ${rule.id})`);
+                        setSelectedRuleId(rule.id);
+                        setIsRuleModalOpen(false);
+                      }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5">
+                          {isSelected ? (
+                            <CheckCircle2 className="w-5 h-5 text-white" />
+                          ) : (
+                            <Circle className="w-5 h-5 text-gray-500 group-hover:text-gray-400" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-white">{rule.name}</h4>
+                          {rule.description && (
+                            <p className="text-xs text-gray-500 mt-1">{rule.description}</p>
+                          )}
+                          <div className="space-y-1 mt-2">
+                            {rule.conditions.slice(0, 2).map((condition: RuleCondition, index: number) => (
+                              <div key={condition.id} className="flex items-center gap-2 text-xs">
+                                {index > 0 && (
+                                  <span className="text-gray-900 dark:text-white font-semibold">
+                                    {rule.conditions[index - 1].operator || 'AND'}
+                                  </span>
+                                )}
+                                <div className="flex items-center gap-2 px-2 py-1 bg-gray-800 rounded">
+                                  <span className="text-gray-400">
+                                    {RulesService.getConditionTypeLabel(condition.type)}:
+                                  </span>
+                                  <span className="font-mono text-white">
+                                    {String(condition.value)}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                            {rule.conditions.length > 2 && (
+                              <p className="text-xs text-gray-500">
+                                +{rule.conditions.length - 2} more condition{rule.conditions.length - 2 > 1 ? 's' : ''}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+            <div className="pt-4 border-t border-gray-700 flex items-center justify-between">
+              <button
+                onClick={handleShowCreateForm}
+                className="text-sm text-gray-400 hover:text-white transition-colors"
+              >
+                Create New Rule →
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Context-Aware Floating Action Button */}
       {activeTab !== 'settings' && activeTab !== 'subscription' && activeTab !== 'cron' && activeTab !== 'team' && activeTab !== 'invitations' && activeTab !== 'creators' && (

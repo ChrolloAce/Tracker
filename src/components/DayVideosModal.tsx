@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { X, Calendar } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { VideoSubmissionsTable } from './VideoSubmissionsTable';
+import { TimeInterval } from '../services/DataAggregationService';
 
 interface DayVideosModalProps {
   isOpen: boolean;
@@ -12,6 +13,7 @@ interface DayVideosModalProps {
   onVideoClick?: (video: VideoSubmission) => void;
   accountFilter?: string; // Optional: filter by account username
   dateRangeLabel?: string; // Optional: show date range instead of specific date (e.g., "Last 7 Days")
+  interval?: TimeInterval | null; // Optional: interval information for formatted date range
 }
 
 const DayVideosModal: React.FC<DayVideosModalProps> = ({
@@ -22,7 +24,8 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
   metricLabel,
   onVideoClick,
   accountFilter,
-  dateRangeLabel
+  dateRangeLabel,
+  interval
 }) => {
   if (!isOpen) return null;
 
@@ -33,6 +36,45 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
       month: 'long', 
       day: 'numeric' 
     });
+  };
+
+  const formatIntervalRange = (interval: TimeInterval): string => {
+    const startDate = new Date(interval.startDate);
+    const endDate = new Date(interval.endDate);
+    
+    switch (interval.intervalType) {
+      case 'year':
+        // Just show the year: "2024"
+        return startDate.getFullYear().toString();
+      
+      case 'month':
+        // Show month and year: "January 2024"
+        return startDate.toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'long'
+        });
+      
+      case 'week':
+        // Show full date range: "Monday, January 1, 2024 - Sunday, January 7, 2024"
+        const startFormatted = startDate.toLocaleDateString('en-US', { 
+          weekday: 'long',
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        });
+        const endFormatted = endDate.toLocaleDateString('en-US', { 
+          weekday: 'long',
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        });
+        return `${startFormatted} - ${endFormatted}`;
+      
+      case 'day':
+      default:
+        // Show single day: "Monday, January 1, 2024"
+        return formatDate(startDate);
+    }
   };
 
   const formatNumber = (num: number): string => {
@@ -78,14 +120,22 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             </div>
             <div>
               <h2 className="text-2xl font-bold text-white">
-                {dateRangeLabel && accountFilter 
-                  ? `@${accountFilter} ${dateRangeLabel} Stats`
-                  : dateRangeLabel || formatDate(date)
-                }
+                {(() => {
+                  // Priority: interval > dateRangeLabel > fallback to formatted date
+                  if (interval) {
+                    return accountFilter 
+                      ? `@${accountFilter} ${formatIntervalRange(interval)}`
+                      : formatIntervalRange(interval);
+                  }
+                  if (dateRangeLabel && accountFilter) {
+                    return `@${accountFilter} ${dateRangeLabel} Stats`;
+                  }
+                  return dateRangeLabel || formatDate(date);
+                })()}
               </h2>
               <p className="text-sm text-gray-400 mt-1">
                 {filteredVideos.length} {filteredVideos.length === 1 ? 'video' : 'videos'} • {metricLabel}
-                {accountFilter && !dateRangeLabel && <span className="ml-2 text-emerald-400">• @{accountFilter}</span>}
+                {accountFilter && !dateRangeLabel && !interval && <span className="ml-2 text-emerald-400">• @{accountFilter}</span>}
               </p>
             </div>
           </div>
