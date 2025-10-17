@@ -28,7 +28,7 @@ import LinkClicksService, { LinkClick } from '../services/LinkClicksService';
 import RulesService from '../services/RulesService';
 import { cssVariables } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
-import { Timestamp, collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { Timestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { fixVideoPlatforms } from '../services/FixVideoPlatform';
 import { TrackedAccount } from '../types/firestore';
@@ -267,6 +267,82 @@ function DashboardPage() {
     console.log('✅ All data loaded');
     })(); // End of async IIFE
   }, [user, currentOrgId, currentProjectId]); // Reload when project changes!
+
+  // Smart sync monitoring - Auto-refresh when accounts finish syncing
+  useEffect(() => {
+    if (!user || !currentOrgId || !currentProjectId) return;
+
+    console.log('👂 Setting up smart sync monitor for dashboard...');
+
+    const accountsRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts');
+    const syncingQuery = query(accountsRef, where('syncStatus', 'in', ['pending', 'syncing']));
+
+    let previousSyncingCount = 0;
+
+    const unsubscribe = onSnapshot(syncingQuery, async (snapshot) => {
+      const currentSyncingCount = snapshot.docs.length;
+      
+      // If syncing count decreased (someone finished), reload videos
+      if (previousSyncingCount > 0 && currentSyncingCount < previousSyncingCount) {
+        console.log('✅ Sync completed on dashboard! Auto-refreshing videos...');
+        
+        // Reload videos
+        try {
+          const videosRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'videos');
+          const videosQuery = query(videosRef, orderBy('dateAdded', 'desc'), limit(1000));
+          const videosSnapshot = await getDocs(videosQuery);
+          
+          const accounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
+          const accountsMap = new Map(accounts.map(acc => [acc.id, acc]));
+          
+          const videoIds = videosSnapshot.docs.map(doc => doc.id);
+          const snapshotsMap = await FirestoreDataService.getVideoSnapshotsBatch(currentOrgId, currentProjectId, videoIds);
+          
+          const allSubmissions: VideoSubmission[] = videosSnapshot.docs.map(doc => {
+            const video = { id: doc.id, ...doc.data() } as any;
+            const account = video.trackedAccountId ? accountsMap.get(video.trackedAccountId) : null;
+            const snapshots = snapshotsMap.get(video.id) || [];
+            
+            const caption = video.caption || video.videoTitle || '';
+            const title = video.videoTitle || video.caption || '';
+            
+            return {
+              id: video.id,
+              url: video.videoUrl || video.url || '',
+              platform: video.platform as 'instagram' | 'tiktok' | 'youtube',
+              thumbnail: video.thumbnail || '',
+              title: title,
+              caption: caption,
+              uploader: account?.displayName || account?.username || '',
+              uploaderHandle: account?.username || '',
+              uploaderProfilePicture: account?.profilePicture,
+              status: video.status === 'archived' ? 'rejected' : 'approved',
+              views: video.views || 0,
+              likes: video.likes || 0,
+              comments: video.comments || 0,
+              shares: video.shares || 0,
+              dateSubmitted: video.dateAdded?.toDate?.() || new Date(),
+              uploadDate: video.uploadDate?.toDate?.() || new Date(),
+              lastRefreshed: video.lastRefreshed?.toDate?.(),
+              snapshots: snapshots
+            };
+          });
+          
+          console.log(`🔄 Auto-refreshed ${allSubmissions.length} videos after sync`);
+          setSubmissions(allSubmissions);
+        } catch (error) {
+          console.error('❌ Failed to auto-refresh videos:', error);
+        }
+      }
+      
+      previousSyncingCount = currentSyncingCount;
+    });
+
+    return () => {
+      console.log('👋 Cleaning up smart sync monitor');
+      unsubscribe();
+    };
+  }, [user, currentOrgId, currentProjectId]);
 
   // Apply CSS variables to the root and expose fix function
   useEffect(() => {

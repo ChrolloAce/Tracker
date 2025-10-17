@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle, useRef } from 'react';
-import { collection, query, where, getDocs, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import Lottie from 'lottie-react';
 import { 
@@ -566,17 +566,15 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     loadRules();
   }, [currentOrgId, currentProjectId]);
 
-  // Real-time listener for syncing accounts
+  // Smart sync monitoring - Only monitors when accounts are actively syncing
   useEffect(() => {
     if (!currentOrgId || !currentProjectId) return;
 
-    console.log('👂 Checking sync status (removed real-time monitoring)...');
+    console.log('👂 Setting up smart sync monitor (only watches active syncs)...');
 
-    // Removed real-time sync listener - no longer monitoring in real-time
-    // User can refresh page to see updated sync status
-    setSyncingAccounts(new Set<string>());
-    return;
-    /* OLD CODE:
+    const accountsRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts');
+    const syncingQuery = query(accountsRef, where('syncStatus', 'in', ['pending', 'syncing']));
+
     const unsubscribe = onSnapshot(syncingQuery, async (snapshot) => {
       const syncingIds = new Set<string>();
       const previousSize = syncingAccounts.size;
@@ -609,24 +607,41 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
 
       setSyncingAccounts(syncingIds);
 
-      // If an account just finished syncing (size decreased), refresh the selected account's videos
-      if (syncingIds.size < previousSize && syncingIds.size === 0) {
-        console.log('✅ All syncs completed! Refreshing data...');
+      // If an account just finished syncing (size decreased), refresh the data
+      if (syncingIds.size < previousSize) {
+        console.log('✅ Sync completed! Auto-refreshing data...');
         
-        // Refresh the selected account's videos if one is selected
-        if (selectedAccount) {
-          console.log(`🔄 Refreshing videos for ${selectedAccount.username}...`);
-          loadAccountVideos(selectedAccount.id);
-        }
+        // Reload the accounts list to get updated data
+        (async () => {
+          try {
+            const accountsRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts');
+            const accountsQuery = query(accountsRef);
+            const accountsSnapshot = await getDocs(accountsQuery);
+            const loadedAccounts: TrackedAccount[] = accountsSnapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            } as TrackedAccount));
+            
+            setAccounts(loadedAccounts);
+            console.log(`🔄 Refreshed ${loadedAccounts.length} accounts after sync completion`);
+            
+            // If the selected account was the one syncing, reload its videos
+            if (selectedAccount && !syncingIds.has(selectedAccount.id)) {
+              console.log(`🔄 Refreshing videos for ${selectedAccount.username}...`);
+              loadAccountVideos(selectedAccount.id);
+            }
+          } catch (error) {
+            console.error('❌ Failed to refresh after sync:', error);
+          }
+        })();
       }
     });
 
     return () => {
-      console.log('👋 Cleaning up sync status listener');
+      console.log('👋 Cleaning up smart sync monitor');
       unsubscribe();
     };
-    END OLD CODE */
-  }, [currentOrgId, currentProjectId]);
+  }, [currentOrgId, currentProjectId, syncingAccounts.size, selectedAccount, loadAccountVideos]);
 
   // Calculate filtered stats for all accounts (for table view)
   useEffect(() => {
