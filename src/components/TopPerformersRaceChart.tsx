@@ -274,7 +274,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                   <div className="ml-14 flex-1 relative">
                     <div className="h-10 bg-gray-800 rounded-lg overflow-hidden">
                       <div 
-                        className="h-full bg-white relative transition-all duration-1000 ease-out group-hover:bg-gray-100"
+                        className="h-full bg-gradient-to-r from-purple-500 via-purple-400 to-pink-400 relative transition-all duration-1000 ease-out group-hover:from-purple-600 group-hover:via-purple-500 group-hover:to-pink-500"
                         style={{
                           width: `${percentage}%`,
                           minWidth: '30%'
@@ -282,7 +282,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                       >
                         {/* Metric Value - Center Right */}
                         <div className="absolute inset-0 flex items-center justify-end pr-4">
-                          <span className="text-lg font-semibold text-black tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
+                          <span className="text-lg font-semibold text-white tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
                             {formatNumber(value, videosMetric)}
                           </span>
                         </div>
@@ -392,7 +392,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                   <div className="ml-14 flex-1 relative">
                     <div className="h-10 bg-gray-800 rounded-lg overflow-hidden">
                       <div 
-                        className="h-full bg-white relative transition-all duration-1000 ease-out group-hover:bg-gray-100"
+                        className="h-full bg-gradient-to-r from-purple-500 via-purple-400 to-pink-400 relative transition-all duration-1000 ease-out group-hover:from-purple-600 group-hover:via-purple-500 group-hover:to-pink-500"
                         style={{
                           width: `${percentage}%`,
                           minWidth: '30%'
@@ -400,7 +400,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                       >
                         {/* Metric Value - Center Right */}
                         <div className="absolute inset-0 flex items-center justify-end pr-4">
-                          <span className="text-lg font-semibold text-black tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
+                          <span className="text-lg font-semibold text-white tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
                             {formatNumber(value, accountsMetric)}
                           </span>
                         </div>
