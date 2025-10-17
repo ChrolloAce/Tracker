@@ -11,6 +11,7 @@ interface DayVideosModalProps {
   metricLabel: string;
   onVideoClick?: (video: VideoSubmission) => void;
   accountFilter?: string; // Optional: filter by account username
+  dateRangeLabel?: string; // Optional: show date range instead of specific date (e.g., "Last 7 Days")
 }
 
 const DayVideosModal: React.FC<DayVideosModalProps> = ({
@@ -20,7 +21,8 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
   videos,
   metricLabel,
   onVideoClick,
-  accountFilter
+  accountFilter,
+  dateRangeLabel
 }) => {
   if (!isOpen) return null;
 
@@ -76,11 +78,14 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             </div>
             <div>
               <h2 className="text-2xl font-bold text-white">
-                {formatDate(date)}
+                {dateRangeLabel && accountFilter 
+                  ? `@${accountFilter} ${dateRangeLabel} Stats`
+                  : dateRangeLabel || formatDate(date)
+                }
               </h2>
               <p className="text-sm text-gray-400 mt-1">
                 {filteredVideos.length} {filteredVideos.length === 1 ? 'video' : 'videos'} • {metricLabel}
-                {accountFilter && <span className="ml-2 text-emerald-400">• @{accountFilter}</span>}
+                {accountFilter && !dateRangeLabel && <span className="ml-2 text-emerald-400">• @{accountFilter}</span>}
               </p>
             </div>
           </div>

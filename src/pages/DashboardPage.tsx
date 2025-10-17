@@ -219,6 +219,7 @@ function DashboardPage() {
           likes: video.likes || 0,
           comments: video.comments || 0,
           shares: video.shares || 0,
+          duration: video.duration || 0,
           dateSubmitted: video.dateAdded?.toDate?.() || new Date(),
           uploadDate: video.uploadDate?.toDate?.() || new Date(),
           lastRefreshed: video.lastRefreshed?.toDate?.(),
@@ -315,6 +316,7 @@ function DashboardPage() {
               likes: video.likes || 0,
               comments: video.comments || 0,
               shares: video.shares || 0,
+              duration: video.duration || 0,
               dateSubmitted: video.dateAdded?.toDate?.() || new Date(),
               uploadDate: video.uploadDate?.toDate?.() || new Date(),
               lastRefreshed: video.lastRefreshed?.toDate?.(),
@@ -531,6 +533,26 @@ function DashboardPage() {
     setIsAnalyticsModalOpen(false);
     setSelectedVideoForAnalytics(null);
   }, []);
+
+  // Helper function to get human-readable date filter label
+  const getDateFilterLabel = useCallback((filter: DateFilterType): string => {
+    const labels: Record<DateFilterType, string> = {
+      'all': 'All Time',
+      'today': 'Today',
+      'yesterday': 'Yesterday',
+      'last7days': 'Last 7 Days',
+      'last14days': 'Last 14 Days',
+      'last30days': 'Last 30 Days',
+      'last90days': 'Last 90 Days',
+      'lastmonth': 'Last Month',
+      'mtd': 'Month to Date',
+      'ytd': 'Year to Date',
+      'custom': customDateRange 
+        ? `${customDateRange.startDate.toLocaleDateString()} - ${customDateRange.endDate.toLocaleDateString()}`
+        : 'Custom Range'
+    };
+    return labels[filter] || 'All Time';
+  }, [customDateRange]);
 
   const handleAccountClick = useCallback((username: string) => {
     console.log('🎯 Account clicked from race chart:', username);
@@ -1006,6 +1028,7 @@ function DashboardPage() {
         videos={combinedSubmissions}
         metricLabel="Videos"
         accountFilter={selectedAccountFilter}
+        dateRangeLabel={getDateFilterLabel(dateFilter)}
         onVideoClick={handleVideoClick}
       />
 
