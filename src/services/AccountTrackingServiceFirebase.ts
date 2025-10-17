@@ -620,6 +620,26 @@ export class AccountTrackingServiceFirebase {
     const result = await response.json();
     console.log(`📊 Official Apify scraper returned ${result.items?.length || 0} items`);
 
+    // DEBUG: Log first item structure to see actual field names
+    if (result.items && result.items.length > 0) {
+      console.log('🔍 DEBUG: First item structure from Apify scraper:', {
+        availableFields: Object.keys(result.items[0]),
+        sampleData: {
+          type: result.items[0].type,
+          shortCode: result.items[0].shortCode,
+          id: result.items[0].id,
+          caption: result.items[0].caption,
+          text: result.items[0].text,
+          displayUrl: result.items[0].displayUrl,
+          url: result.items[0].url,
+          videoPlayCount: result.items[0].videoPlayCount,
+          videoViewCount: result.items[0].videoViewCount,
+          likesCount: result.items[0].likesCount,
+          commentsCount: result.items[0].commentsCount,
+        }
+      });
+    }
+
     if (!result.items || !Array.isArray(result.items)) {
       console.warn('⚠️ No items returned from Instagram scraper');
       return [];
@@ -717,35 +737,33 @@ export class AccountTrackingServiceFirebase {
         }
       }
 
-      // Caption from caption field
-      const caption = item.caption || '';
+      // Caption from caption field - try multiple possible field names
+      const caption = item.caption || item.text || item.title || item.alt || '';
       
       // Upload date from timestamp (ISO string)
       const uploadDate = item.timestamp ? new Date(item.timestamp) : new Date();
 
       // Metrics from official scraper fields
-      const views = item.videoPlayCount || item.videoViewCount || 0;
-      const likes = item.likesCount || 0;
-      const comments = item.commentsCount || 0;
-      const duration = item.videoDuration || 0;
+      const views = item.videoPlayCount || item.videoViewCount || item.playCount || item.viewCount || 0;
+      const likes = item.likesCount || item.likeCount || 0;
+      const comments = item.commentsCount || item.commentCount || 0;
+      const duration = item.videoDuration || item.duration || 0;
 
       // Extract hashtags and mentions
       const hashtags = item.hashtags || [];
       const mentions = item.mentions || [];
 
-      // Debug: Log first video
-      if (videos.length === 0) {
-        console.log('🔍 Official Apify scraper first video:', {
-          code: videoCode,
-          caption: caption.substring(0, 50),
-          views,
-          likes,
-          comments,
-          duration,
-          uploadDate: uploadDate.toISOString(),
-          url: item.url
-        });
-      }
+      // Debug: Log EVERY video to see what we're getting
+      console.log(`🔍 Parsing video ${videos.length + 1}:`, {
+        videoCode,
+        hasCaption: !!caption,
+        captionPreview: caption ? caption.substring(0, 50) : 'NO CAPTION',
+        captionField: item.caption ? 'caption' : (item.text ? 'text' : (item.title ? 'title' : 'none')),
+        url: item.url || `https://www.instagram.com/p/${videoCode}/`,
+        views,
+        likes,
+        hasUrl: !!item.url
+      });
 
       videos.push({
         id: `${account.id}_${videoCode}`,
