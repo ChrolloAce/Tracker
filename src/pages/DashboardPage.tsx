@@ -425,6 +425,8 @@ function DashboardPage() {
     
     // Apply rules filtering for tracked accounts
     if (allRules.length > 0) {
+      const beforeRulesCount = filtered.length;
+      
       filtered = filtered.filter(video => {
         if (!video.uploaderHandle) return true; // Keep videos without uploader handle
         
@@ -444,8 +446,8 @@ function DashboardPage() {
           // Check platform match
           const platformMatch = !platforms || platforms.length === 0 || platforms.includes(account.platform);
           
-          // Check account match
-          const accountMatch = !accountIds || accountIds.length === 0 || accountIds.includes(account.id);
+          // Check account match - rule must explicitly include this account
+          const accountMatch = accountIds && accountIds.length > 0 && accountIds.includes(account.id);
           
           return platformMatch && accountMatch;
         });
@@ -453,10 +455,14 @@ function DashboardPage() {
         if (accountRules.length === 0) return true; // No rules = show all videos
         
         // Check if video matches any of the account's rules
-        return accountRules.some((rule: any) => 
+        const matches = accountRules.some((rule: any) => 
           RulesService.checkVideoMatchesRule(video as any, rule).matches
         );
+        
+        return matches;
       });
+      
+      console.log(`🔑 Rules filtering: ${beforeRulesCount} videos → ${filtered.length} videos (${allRules.length} rules applied)`);
     }
     
     return filtered;
