@@ -274,10 +274,17 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                   <div className="ml-14 flex-1 relative">
                     <div className="h-10 bg-gray-800 rounded-lg overflow-hidden">
                       <div 
-                        className="h-full bg-gradient-to-r from-purple-500 via-purple-400 to-pink-400 relative transition-all duration-1000 ease-out group-hover:from-purple-600 group-hover:via-purple-500 group-hover:to-pink-500"
+                        className="h-full relative transition-all duration-1000 ease-out"
                         style={{
                           width: `${percentage}%`,
-                          minWidth: '30%'
+                          minWidth: '30%',
+                          background: 'linear-gradient(to right, #267DFF, #4A9AFF, #6BB5FF)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'linear-gradient(to right, #1E6FE6, #3A88F0, #5AA4FF)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'linear-gradient(to right, #267DFF, #4A9AFF, #6BB5FF)';
                         }}
                       >
                         {/* Metric Value - Center Right */}
@@ -392,10 +399,17 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                   <div className="ml-14 flex-1 relative">
                     <div className="h-10 bg-gray-800 rounded-lg overflow-hidden">
                       <div 
-                        className="h-full bg-gradient-to-r from-purple-500 via-purple-400 to-pink-400 relative transition-all duration-1000 ease-out group-hover:from-purple-600 group-hover:via-purple-500 group-hover:to-pink-500"
+                        className="h-full relative transition-all duration-1000 ease-out"
                         style={{
                           width: `${percentage}%`,
-                          minWidth: '30%'
+                          minWidth: '30%',
+                          background: 'linear-gradient(to right, #267DFF, #4A9AFF, #6BB5FF)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'linear-gradient(to right, #1E6FE6, #3A88F0, #5AA4FF)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'linear-gradient(to right, #267DFF, #4A9AFF, #6BB5FF)';
                         }}
                       >
                         {/* Metric Value - Center Right */}
