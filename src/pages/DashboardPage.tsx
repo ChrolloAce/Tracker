@@ -17,7 +17,6 @@ import CronManagementPage from '../components/CronManagementPage';
 import TrackedLinksPage, { TrackedLinksPageRef } from '../components/TrackedLinksPage';
 import CreatorPortalPage from '../components/CreatorPortalPage';
 import CreatorsManagementPage, { CreatorsManagementPageRef } from '../components/CreatorsManagementPage';
-import { PageLoadingSkeleton } from '../components/ui/LoadingSkeleton';
 import OrganizationService from '../services/OrganizationService';
 import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
 import { VideoSubmission, InstagramVideoData } from '../types';
@@ -69,7 +68,6 @@ function DashboardPage() {
     const savedTab = localStorage.getItem('activeTab');
     return savedTab || 'dashboard';
   });
-  const [isLoadingData, setIsLoadingData] = useState(true);
   const [userRole, setUserRole] = useState<string>('');
   
   // Accounts page state
@@ -157,9 +155,7 @@ function DashboardPage() {
     // Initialize theme
     ThemeService.initializeTheme();
     
-    setIsLoadingData(true);
-    
-    // Async IIFE to load all data
+    // Async IIFE to load all data (UI shows immediately with empty states)
     (async () => {
       // One-time load for tracked accounts
     const accountsRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts');
@@ -233,10 +229,8 @@ function DashboardPage() {
       console.log(`🎬 Loaded ${allSubmissions.length} videos`);
       console.log(`📸 Videos with snapshots: ${allSubmissions.filter(v => v.snapshots && v.snapshots.length > 0).length}`);
       setSubmissions(allSubmissions);
-      setIsLoadingData(false);
     } catch (error) {
       console.error('❌ Error loading videos:', error);
-      setIsLoadingData(false);
     }
     
     // One-time load for rules
@@ -902,11 +896,8 @@ function DashboardPage() {
         <div className="max-w-7xl mx-auto px-6 py-8" style={{ overflow: 'visible' }}>
           {/* Dashboard Tab */}
           <div className={activeTab === 'dashboard' ? '' : 'hidden'}>
-            {isLoadingData ? (
-              <PageLoadingSkeleton type="dashboard" />
-            ) : (
-              <>
-                {/* KPI Cards with Working Sparklines */}
+            <>
+              {/* KPI Cards with Working Sparklines */}
                 <KPICards 
                   submissions={combinedSubmissions}
                   linkClicks={filteredLinkClicks}
@@ -935,7 +926,6 @@ function DashboardPage() {
                   />
                 </div>
               </>
-            )}
           </div>
 
           {/* Accounts Tab */}
