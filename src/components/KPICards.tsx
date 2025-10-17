@@ -1306,13 +1306,15 @@ const KPICard: React.FC<{
               sortedItems = Array.from(accountsMap.values())
                 .sort((a, b) => b.totalViews - a.totalViews)
                 .slice(0, 5);
-            } else if (data.id === 'linkClicks') {
+            } else if (data.id === 'link-clicks') {
               // For link clicks: show links clicked that day
               const clicksOnDay = linkClicks.filter((click: LinkClick) => {
                 const clickDate = new Date(click.timestamp);
                 if (!dayStart || !dayEnd) return false;
                 return clickDate >= dayStart && clickDate <= dayEnd;
               });
+              
+              console.log(`🔗 Link Clicks Tooltip: Found ${clicksOnDay.length} clicks on ${dateStr}`);
               
               // Group by linkId and count clicks
               const linksMap = new Map<string, { linkId: string; title: string; url: string; shortCode: string; clicks: number; accountHandle?: string; accountProfilePicture?: string; accountPlatform?: string }>();
@@ -1364,6 +1366,7 @@ const KPICard: React.FC<{
               : data.id === 'comments' ? 'Comments'
               : data.id === 'shares' ? 'Shares'
               : data.id === 'accounts' ? 'Total Views'
+              : data.id === 'link-clicks' ? 'Clicks'
               : 'Views';
             
             const metricKey = data.id === 'views' ? 'views'
@@ -1444,7 +1447,7 @@ const KPICard: React.FC<{
         </div>
                         </div>
                       ))
-                    ) : data.id === 'linkClicks' ? (
+                    ) : data.id === 'link-clicks' ? (
                       // Render Link Clicks with Account Profile Pictures
                       sortedItems.map((link: any, idx: number) => (
                         <div 
