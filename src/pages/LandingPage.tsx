@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp, BookOpen, Users, Star, BarChart3, Eye, Play, Heart, MessageCircle, Share2, Video, UserPlus } from 'lucide-react';
+import { TrendingUp, BookOpen, Star, Play, Heart, MessageCircle, Share2, Video, UserPlus } from 'lucide-react';
 import blackLogo from '../components/blacklogo.png';
 import dashboardImg from '/dashboard.png';
 

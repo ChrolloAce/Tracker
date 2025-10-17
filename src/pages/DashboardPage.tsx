@@ -617,21 +617,6 @@ function DashboardPage() {
     return combined;
   }, [pendingVideos, filteredSubmissions]);
 
-  // Apply date filter to link clicks
-  const filteredLinkClicks = useMemo(() => {
-    if (dateFilter === 'all') {
-      return linkClicks;
-    }
-    
-    const range = DateFilterService.getDateRange(dateFilter, customDateRange);
-    if (!range) return linkClicks;
-    
-    return LinkClicksService.filterClicksByDateRange(
-      linkClicks,
-      range.startDate,
-      range.endDate
-    );
-  }, [linkClicks, dateFilter, customDateRange]);
 
   // Handle date filter changes
   const handleDateFilterChange = useCallback((filter: DateFilterType, customRange?: DateRange) => {
