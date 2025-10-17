@@ -278,6 +278,10 @@ export class AccountTrackingServiceFirebase {
       
       const proxyUrl = `${window.location.origin}/api/apify-proxy`;
       
+      // Get Instagram session cookie from environment variable
+      const sessionId = import.meta.env.VITE_INSTAGRAM_SESSION_ID || '';
+      console.log('🔐 Instagram auth:', sessionId ? 'Using session cookies ✓' : '⚠️ No session cookies (may fail with 401)');
+      
       const response = await fetch(proxyUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -289,6 +293,17 @@ export class AccountTrackingServiceFirebase {
             sortOrder: "newest",
             maxComments: 10,
             maxReels: 10, // Just need a few for profile info
+            // 🔑 ADD SESSION COOKIES FOR AUTHENTICATION
+            ...(sessionId && {
+              sessionCookie: sessionId,
+              additionalCookies: [
+                {
+                  name: 'sessionid',
+                  value: sessionId,
+                  domain: '.instagram.com'
+                }
+              ]
+            }),
             proxyConfiguration: {
               useApifyProxy: true,
               apifyProxyGroups: ['RESIDENTIAL'],  // 🔑 Use RESIDENTIAL proxies to avoid Instagram 429 blocks
@@ -585,6 +600,10 @@ export class AccountTrackingServiceFirebase {
     
     const proxyUrl = `${window.location.origin}/api/apify-proxy`;
     
+    // Get Instagram session cookie from environment variable
+    const sessionId = import.meta.env.VITE_INSTAGRAM_SESSION_ID || '';
+    console.log('🔐 Instagram auth:', sessionId ? 'Using session cookies ✓' : '⚠️ No session cookies (may fail with 401)');
+    
     const response = await fetch(proxyUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -596,6 +615,17 @@ export class AccountTrackingServiceFirebase {
           sortOrder: "newest",
           maxComments: 10,
           maxReels: maxReels, // Use user's preference
+          // 🔑 ADD SESSION COOKIES FOR AUTHENTICATION
+          ...(sessionId && {
+            sessionCookie: sessionId,
+            additionalCookies: [
+              {
+                name: 'sessionid',
+                value: sessionId,
+                domain: '.instagram.com'
+              }
+            ]
+          }),
           proxyConfiguration: {
             useApifyProxy: true,
             apifyProxyGroups: ['RESIDENTIAL'],  // 🔑 Use RESIDENTIAL proxies to avoid Instagram 429 blocks

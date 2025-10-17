@@ -27,12 +27,28 @@ class InstagramApiService {
     console.log('📡 Calling NEW Instagram Reels scraper...');
 
     try {
+      // Get Instagram session cookies from env (if available)
+      const sessionId = import.meta.env.VITE_INSTAGRAM_SESSION_ID || '';
+      
+      console.log('🔐 Instagram authentication:', sessionId ? 'Using session cookies ✓' : 'No session cookies (may cause 401 errors)');
+      
       // Run the NEW Instagram Reels scraper actor with RESIDENTIAL proxies
       const run = await this.apifyClient.runActor(this.INSTAGRAM_SCRAPER_ACTOR, {
         urls: [instagramUrl],
         sortOrder: "newest",
         maxComments: 50,
         maxReels: 30,
+        // 🔑 ADD SESSION COOKIES FOR AUTHENTICATION
+        ...(sessionId && {
+          sessionCookie: sessionId,  // Pass Instagram session cookie
+          additionalCookies: [
+            {
+              name: 'sessionid',
+              value: sessionId,
+              domain: '.instagram.com'
+            }
+          ]
+        }),
         proxyConfiguration: {
           useApifyProxy: true,
           apifyProxyGroups: ['RESIDENTIAL'],  // 🔑 Use RESIDENTIAL proxies to avoid Instagram 429 blocks
