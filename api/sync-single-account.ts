@@ -686,7 +686,12 @@ export default async function handler(
         const userData = userDoc.data();
         
         if (userData?.email) {
-          await fetch(`${process.env.VERCEL_URL || 'https://tracker-red-zeta.vercel.app'}/api/send-notification-email`, {
+          // Ensure URL has protocol (VERCEL_URL doesn't include https://)
+          const baseUrl = process.env.VERCEL_URL 
+            ? `https://${process.env.VERCEL_URL}` 
+            : 'https://tracker-red-zeta.vercel.app';
+          
+          await fetch(`${baseUrl}/api/send-notification-email`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -696,7 +701,7 @@ export default async function handler(
                 username: account.username,
                 platform: account.platform,
                 videosAdded: savedCount,
-                dashboardUrl: 'https://tracker-red-zeta.vercel.app'
+                dashboardUrl: baseUrl
               }
             })
           }).catch(err => console.error('Failed to send notification email:', err));

@@ -200,7 +200,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const userData = userDoc.data();
         
         if (userData?.email) {
-          await fetch(`${process.env.VERCEL_URL || 'https://tracker-red-zeta.vercel.app'}/api/send-notification-email`, {
+          // Ensure URL has protocol (VERCEL_URL doesn't include https://)
+          const baseUrl = process.env.VERCEL_URL 
+            ? `https://${process.env.VERCEL_URL}` 
+            : 'https://tracker-red-zeta.vercel.app';
+          
+          await fetch(`${baseUrl}/api/send-notification-email`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
