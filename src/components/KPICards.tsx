@@ -1540,6 +1540,9 @@ const KPICard: React.FC<{
       ref={cardRef}
       onClick={onClick}
       onMouseMove={(e) => {
+        // Disable tooltips in edit mode
+        if (isEditMode) return;
+        
         if (!data.sparklineData || data.sparklineData.length === 0 || !cardRef.current) return;
         
         const cardRect = cardRef.current.getBoundingClientRect();
