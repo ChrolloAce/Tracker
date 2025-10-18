@@ -133,6 +133,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (response.ok) {
             const data = await response.json();
             
+            console.log('RevenueCat response:', JSON.stringify(data));
+            
             // Transform overview metrics to transaction-like format
             // This gives aggregate data, not individual transactions
             const transactions = [];
@@ -145,7 +147,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 return acc;
               }, {});
 
+              console.log('Parsed metrics:', metrics);
+
               // Create a single aggregate "transaction" entry
+              // Note: This is ALL TIME data, not filtered by date range
               if (metrics.revenue || metrics.mrr) {
                 transactions.push({
                   id: `rc_aggregate_${now}`,
@@ -163,7 +168,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               success: true, 
               data: { 
                 transactions,
-                note: 'This is aggregate metrics data. For detailed transaction tracking, please set up webhooks.',
+                raw_data: data, // Include raw data for debugging
+                note: 'This is ALL TIME aggregate metrics (not filtered by date). For detailed transaction tracking, please set up webhooks.',
                 webhook_guide: '/REVENUECAT_SETUP_GUIDE.md'
               } 
             });
