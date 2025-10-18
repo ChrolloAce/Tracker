@@ -11,6 +11,7 @@ import { AddVideoModal } from '../components/AddVideoModal';
 import { TikTokSearchModal } from '../components/TikTokSearchModal';
 import KPICards from '../components/KPICards';
 import { KPICardEditor } from '../components/KPICardEditor';
+import { DraggableSection } from '../components/DraggableSection';
 import DateRangeFilter, { DateFilterType } from '../components/DateRangeFilter';
 import VideoAnalyticsModal from '../components/VideoAnalyticsModal';
 import TopPerformersRaceChart from '../components/TopPerformersRaceChart';
@@ -103,6 +104,9 @@ function DashboardPage() {
   });
   const [isEditingLayout, setIsEditingLayout] = useState(false);
   const [isCardEditorOpen, setIsCardEditorOpen] = useState(false);
+  const [draggedSection, setDraggedSection] = useState<string | null>(null);
+  const [dragOverSection, setDragOverSection] = useState<string | null>(null);
+  
   const [kpiCardOrder, setKpiCardOrder] = useState<string[]>(() => {
     // Load saved card order from localStorage
     const saved = localStorage.getItem('kpiCardOrder');
@@ -126,6 +130,23 @@ function DashboardPage() {
       revenue: true,
       downloads: true,
       'link-clicks': true
+    };
+  });
+  
+  const [dashboardSectionOrder, setDashboardSectionOrder] = useState<string[]>(() => {
+    const saved = localStorage.getItem('dashboardSectionOrder');
+    return saved ? JSON.parse(saved) : ['kpi-cards', 'top-performers', 'videos-table'];
+  });
+  
+  const [dashboardSectionVisibility, setDashboardSectionVisibility] = useState<Record<string, boolean>>(() => {
+    const saved = localStorage.getItem('dashboardSectionVisibility');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+    return {
+      'kpi-cards': true,
+      'top-performers': true,
+      'videos-table': true
     };
   });
   const [userRole, setUserRole] = useState<string>('');
@@ -998,60 +1019,113 @@ function DashboardPage() {
 
   // KPI Card Editor handlers
   const handleToggleCard = useCallback((cardId: string) => {
-    setKpiCardVisibility(prev => {
-      const updated = { ...prev, [cardId]: !prev[cardId] };
-      localStorage.setItem('kpiCardVisibility', JSON.stringify(updated));
-      return updated;
-    });
+    // Check if it's a section or a KPI card
+    if (cardId.includes('-') && ['kpi-cards', 'top-performers', 'videos-table'].includes(cardId)) {
+      // It's a section
+      setDashboardSectionVisibility(prev => {
+        const updated = { ...prev, [cardId]: !prev[cardId] };
+        localStorage.setItem('dashboardSectionVisibility', JSON.stringify(updated));
+        return updated;
+      });
+    } else {
+      // It's a KPI card
+      setKpiCardVisibility(prev => {
+        const updated = { ...prev, [cardId]: !prev[cardId] };
+        localStorage.setItem('kpiCardVisibility', JSON.stringify(updated));
+        return updated;
+      });
+    }
   }, []);
 
   const handleReorderCard = useCallback((cardId: string, direction: 'up' | 'down') => {
-    setKpiCardOrder(prev => {
-      // If no order set, use default order
-      const currentOrder = prev.length > 0 ? prev : [
-        'views', 'likes', 'comments', 'shares', 'videos', 'accounts', 
-        'engagementRate', 'revenue', 'downloads', 'link-clicks'
-      ];
-      
-      const currentIndex = currentOrder.indexOf(cardId);
-      if (currentIndex === -1) return currentOrder;
-      
-      const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-      if (newIndex < 0 || newIndex >= currentOrder.length) return currentOrder;
-      
-      const newOrder = [...currentOrder];
-      [newOrder[currentIndex], newOrder[newIndex]] = [newOrder[newIndex], newOrder[currentIndex]];
-      
-      localStorage.setItem('kpiCardOrder', JSON.stringify(newOrder));
-      return newOrder;
-    });
+    // Check if it's a section or a KPI card
+    if (cardId.includes('-') && ['kpi-cards', 'top-performers', 'videos-table'].includes(cardId)) {
+      // It's a section
+      setDashboardSectionOrder(prev => {
+        const currentOrder = prev.length > 0 ? prev : ['kpi-cards', 'top-performers', 'videos-table'];
+        
+        const currentIndex = currentOrder.indexOf(cardId);
+        if (currentIndex === -1) return currentOrder;
+        
+        const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+        if (newIndex < 0 || newIndex >= currentOrder.length) return currentOrder;
+        
+        const newOrder = [...currentOrder];
+        [newOrder[currentIndex], newOrder[newIndex]] = [newOrder[newIndex], newOrder[currentIndex]];
+        
+        localStorage.setItem('dashboardSectionOrder', JSON.stringify(newOrder));
+        return newOrder;
+      });
+    } else {
+      // It's a KPI card
+      setKpiCardOrder(prev => {
+        const currentOrder = prev.length > 0 ? prev : [
+          'views', 'likes', 'comments', 'shares', 'videos', 'accounts', 
+          'engagementRate', 'revenue', 'downloads', 'link-clicks'
+        ];
+        
+        const currentIndex = currentOrder.indexOf(cardId);
+        if (currentIndex === -1) return currentOrder;
+        
+        const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+        if (newIndex < 0 || newIndex >= currentOrder.length) return currentOrder;
+        
+        const newOrder = [...currentOrder];
+        [newOrder[currentIndex], newOrder[newIndex]] = [newOrder[newIndex], newOrder[currentIndex]];
+        
+        localStorage.setItem('kpiCardOrder', JSON.stringify(newOrder));
+        return newOrder;
+      });
+    }
   }, []);
 
-  // Define KPI card options for the editor
+  // Define KPI card and section options for the editor
   const kpiCardOptions = useMemo(() => {
-    const currentOrder = kpiCardOrder.length > 0 ? kpiCardOrder : [
+    // Dashboard sections come first
+    const sections = [
+      { id: 'kpi-cards', label: 'KPI Cards', description: 'Performance metrics overview', icon: Activity },
+      { id: 'top-performers', label: 'Top Performers', description: 'Accounts & videos race chart', icon: Activity },
+      { id: 'videos-table', label: 'Videos Table', description: 'All video submissions', icon: Video },
+    ];
+    
+    // Then KPI cards (nested under the KPI Cards section conceptually)
+    const kpiCards = [
+      { id: 'views', label: '├─ Views', description: 'Total video views', icon: Play },
+      { id: 'likes', label: '├─ Likes', description: 'Total likes received', icon: Heart },
+      { id: 'comments', label: '├─ Comments', description: 'Total comments', icon: MessageCircle },
+      { id: 'shares', label: '├─ Shares', description: 'Total shares/sends', icon: Share2 },
+      { id: 'videos', label: '├─ Published Videos', description: 'Total videos published', icon: Video },
+      { id: 'accounts', label: '├─ Active Accounts', description: 'Number of tracked accounts', icon: AtSign },
+      { id: 'engagementRate', label: '├─ Engagement Rate', description: 'Average engagement percentage', icon: Activity },
+      { id: 'revenue', label: '├─ Revenue', description: 'Total revenue (MRR)', icon: DollarSign },
+      { id: 'downloads', label: '├─ Downloads', description: 'App downloads/subscriptions', icon: Download },
+      { id: 'link-clicks', label: '└─ Link Clicks', description: 'Tracked link clicks', icon: LinkIcon },
+    ];
+    
+    // Sort sections
+    const sortedSections = sections
+      .sort((a, b) => {
+        const aIndex = dashboardSectionOrder.indexOf(a.id);
+        const bIndex = dashboardSectionOrder.indexOf(b.id);
+        if (aIndex === -1) return 1;
+        if (bIndex === -1) return -1;
+        return aIndex - bIndex;
+      })
+      .map(section => ({
+        ...section,
+        isVisible: dashboardSectionVisibility[section.id] !== false
+      }));
+    
+    // Sort KPI cards
+    const currentCardOrder = kpiCardOrder.length > 0 ? kpiCardOrder : [
       'views', 'likes', 'comments', 'shares', 'videos', 'accounts', 
       'engagementRate', 'revenue', 'downloads', 'link-clicks'
     ];
     
-    const allCards = [
-      { id: 'views', label: 'Views', description: 'Total video views', icon: Play },
-      { id: 'likes', label: 'Likes', description: 'Total likes received', icon: Heart },
-      { id: 'comments', label: 'Comments', description: 'Total comments', icon: MessageCircle },
-      { id: 'shares', label: 'Shares', description: 'Total shares/sends', icon: Share2 },
-      { id: 'videos', label: 'Published Videos', description: 'Total videos published', icon: Video },
-      { id: 'accounts', label: 'Active Accounts', description: 'Number of tracked accounts', icon: AtSign },
-      { id: 'engagementRate', label: 'Engagement Rate', description: 'Average engagement percentage', icon: Activity },
-      { id: 'revenue', label: 'Revenue', description: 'Total revenue (MRR)', icon: DollarSign },
-      { id: 'downloads', label: 'Downloads', description: 'App downloads/subscriptions', icon: Download },
-      { id: 'link-clicks', label: 'Link Clicks', description: 'Tracked link clicks', icon: LinkIcon },
-    ];
-    
-    // Sort cards based on the current order
-    return allCards
+    const sortedCards = kpiCards
       .sort((a, b) => {
-        const aIndex = currentOrder.indexOf(a.id);
-        const bIndex = currentOrder.indexOf(b.id);
+        const aIndex = currentCardOrder.indexOf(a.id);
+        const bIndex = currentCardOrder.indexOf(b.id);
         if (aIndex === -1) return 1;
         if (bIndex === -1) return -1;
         return aIndex - bIndex;
@@ -1060,7 +1134,10 @@ function DashboardPage() {
         ...card,
         isVisible: kpiCardVisibility[card.id] !== false
       }));
-  }, [kpiCardOrder, kpiCardVisibility]);
+    
+    // Combine: sections first, then cards
+    return [...sortedSections, ...sortedCards];
+  }, [kpiCardOrder, kpiCardVisibility, dashboardSectionOrder, dashboardSectionVisibility]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
@@ -1310,45 +1387,122 @@ function DashboardPage() {
           {/* Dashboard Tab */}
           <div className={activeTab === 'dashboard' ? '' : 'hidden'}>
             <>
-              {/* KPI Cards with Working Sparklines */}
-                <KPICards 
-                  submissions={filteredSubmissions}
-                  allSubmissions={submissionsWithoutDateFilter}
-                  linkClicks={linkClicks}
-                  dateFilter={dateFilter}
-                  customRange={customDateRange}
-                  timePeriod="days"
-                  granularity={granularity}
-                  onVideoClick={handleVideoClick}
-                  revenueMetrics={revenueMetrics}
-                  revenueIntegrations={revenueIntegrations}
-                  isEditMode={isEditingLayout}
-                  cardOrder={kpiCardOrder}
-                  cardVisibility={kpiCardVisibility}
-                  onReorder={(newOrder) => {
-                    setKpiCardOrder(newOrder);
-                    localStorage.setItem('kpiCardOrder', JSON.stringify(newOrder));
-                  }}
-                />
-                
-                {/* Top Performers Race Chart */}
-                <div className="mt-6">
-                  <TopPerformersRaceChart 
-                    submissions={filteredSubmissions} 
-                    onVideoClick={handleVideoClick}
-                    onAccountClick={handleAccountClick}
-                  />
-                </div>
-                
-                {/* Video Submissions Table */}
-                <div className="mt-6">
-                  <VideoSubmissionsTable
-                    submissions={combinedSubmissions}
-                    onStatusUpdate={handleStatusUpdate}
-                    onDelete={handleDelete}
-                    onVideoClick={handleVideoClick}
-                  />
-                </div>
+              {/* Render dashboard sections in order */}
+              {dashboardSectionOrder
+                .filter(sectionId => dashboardSectionVisibility[sectionId] !== false)
+                .map((sectionId, index) => {
+                  const handleSectionDragStart = () => {
+                    if (isEditingLayout) setDraggedSection(sectionId);
+                  };
+                  
+                  const handleSectionDragEnd = () => {
+                    setDraggedSection(null);
+                    setDragOverSection(null);
+                  };
+                  
+                  const handleSectionDragOver = (e: React.DragEvent) => {
+                    if (isEditingLayout) {
+                      e.preventDefault();
+                      setDragOverSection(sectionId);
+                    }
+                  };
+                  
+                  const handleSectionDragLeave = () => {
+                    setDragOverSection(null);
+                  };
+                  
+                  const handleSectionDrop = () => {
+                    if (isEditingLayout && draggedSection && draggedSection !== sectionId) {
+                      const currentOrder = [...dashboardSectionOrder];
+                      const draggedIndex = currentOrder.indexOf(draggedSection);
+                      const targetIndex = currentOrder.indexOf(sectionId);
+                      
+                      if (draggedIndex !== -1 && targetIndex !== -1) {
+                        const newOrder = [...currentOrder];
+                        newOrder.splice(draggedIndex, 1);
+                        newOrder.splice(targetIndex, 0, draggedSection);
+                        setDashboardSectionOrder(newOrder);
+                        localStorage.setItem('dashboardSectionOrder', JSON.stringify(newOrder));
+                      }
+                    }
+                    setDraggedSection(null);
+                    setDragOverSection(null);
+                  };
+                  
+                  const getSectionTitle = (id: string) => {
+                    switch (id) {
+                      case 'kpi-cards': return 'KPI Cards';
+                      case 'top-performers': return 'Top Performers';
+                      case 'videos-table': return 'Videos Table';
+                      default: return '';
+                    }
+                  };
+                  
+                  const renderSectionContent = () => {
+                    switch (sectionId) {
+                      case 'kpi-cards':
+                        return (
+                          <KPICards 
+                            submissions={filteredSubmissions}
+                            allSubmissions={submissionsWithoutDateFilter}
+                            linkClicks={linkClicks}
+                            dateFilter={dateFilter}
+                            customRange={customDateRange}
+                            timePeriod="days"
+                            granularity={granularity}
+                            onVideoClick={handleVideoClick}
+                            revenueMetrics={revenueMetrics}
+                            revenueIntegrations={revenueIntegrations}
+                            isEditMode={isEditingLayout}
+                            cardOrder={kpiCardOrder}
+                            cardVisibility={kpiCardVisibility}
+                            onReorder={(newOrder) => {
+                              setKpiCardOrder(newOrder);
+                              localStorage.setItem('kpiCardOrder', JSON.stringify(newOrder));
+                            }}
+                          />
+                        );
+                      case 'top-performers':
+                        return (
+                          <TopPerformersRaceChart 
+                            submissions={filteredSubmissions} 
+                            onVideoClick={handleVideoClick}
+                            onAccountClick={handleAccountClick}
+                          />
+                        );
+                      case 'videos-table':
+                        return (
+                          <VideoSubmissionsTable
+                            submissions={combinedSubmissions}
+                            onStatusUpdate={handleStatusUpdate}
+                            onDelete={handleDelete}
+                            onVideoClick={handleVideoClick}
+                          />
+                        );
+                      default:
+                        return null;
+                    }
+                  };
+                  
+                  return (
+                    <div key={sectionId} className={index > 0 ? 'mt-6' : ''}>
+                      <DraggableSection
+                        id={sectionId}
+                        title={getSectionTitle(sectionId)}
+                        isEditMode={isEditingLayout}
+                        isDragging={draggedSection === sectionId}
+                        isDragOver={dragOverSection === sectionId}
+                        onDragStart={handleSectionDragStart}
+                        onDragEnd={handleSectionDragEnd}
+                        onDragOver={handleSectionDragOver}
+                        onDragLeave={handleSectionDragLeave}
+                        onDrop={handleSectionDrop}
+                      >
+                        {renderSectionContent()}
+                      </DraggableSection>
+                    </div>
+                  );
+                })}
               </>
           </div>
 
