@@ -1065,18 +1065,14 @@ function DashboardPage() {
     if (allSections.includes(cardId)) {
       // It's a section
       setDashboardSectionVisibility(prev => {
-        const newValue = !prev[cardId];
-        const updated = { ...prev, [cardId]: newValue };
-        console.log(`🔄 Toggling section "${cardId}":`, prev[cardId], '→', newValue);
+        const updated = { ...prev, [cardId]: !prev[cardId] };
         localStorage.setItem('dashboardSectionVisibility', JSON.stringify(updated));
         return updated;
       });
     } else {
       // It's a KPI card
       setKpiCardVisibility(prev => {
-        const newValue = !prev[cardId];
-        const updated = { ...prev, [cardId]: newValue };
-        console.log(`🔄 Toggling KPI card "${cardId}":`, prev[cardId], '→', newValue);
+        const updated = { ...prev, [cardId]: !prev[cardId] };
         localStorage.setItem('kpiCardVisibility', JSON.stringify(updated));
         return updated;
       });
@@ -1420,28 +1416,6 @@ function DashboardPage() {
                      Add Item
                    </button>
                    
-                   {/* DEBUG: Force show all sections */}
-                   <button
-                     onClick={() => {
-                       const allVisible = {
-                         'kpi-cards': true,
-                         'top-performers': true,
-                         'top-platforms': true,
-                         'posting-activity': true,
-                         'tracked-accounts': true,
-                         'videos-table': true
-                       };
-                       console.log('🔧 DEBUG: Force-enabling all sections:', JSON.stringify(allVisible, null, 2));
-                       console.log('🔧 DEBUG: Current order:', dashboardSectionOrder);
-                       setDashboardSectionVisibility(allVisible);
-                       localStorage.setItem('dashboardSectionVisibility', JSON.stringify(allVisible));
-                     }}
-                     className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 hover:bg-yellow-500/30"
-                     title="DEBUG: Show all sections"
-                   >
-                     Debug
-                   </button>
-                   
                    <button
                      onClick={() => setIsEditingLayout(false)}
                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all bg-white/10 text-white hover:bg-white/20"
@@ -1536,15 +1510,8 @@ function DashboardPage() {
           <div className={activeTab === 'dashboard' ? '' : 'hidden'}>
             <>
               {/* Render dashboard sections in order */}
-              {(() => {
-                const visibleSections = dashboardSectionOrder.filter(sectionId => {
-                  const isVisible = dashboardSectionVisibility[sectionId] !== false;
-                  console.log(`📊 Section "${sectionId}": visibility =`, dashboardSectionVisibility[sectionId], '→ shown:', isVisible);
-                  return isVisible;
-                });
-                console.log('📋 Total visible sections:', visibleSections.length, '/', dashboardSectionOrder.length);
-                return visibleSections;
-              })()
+              {dashboardSectionOrder
+                .filter(sectionId => dashboardSectionVisibility[sectionId] !== false)
                 .map((sectionId, index) => {
                   const handleSectionDragStart = () => {
                     if (isEditingLayout) setDraggedSection(sectionId);
@@ -1589,7 +1556,6 @@ function DashboardPage() {
                   };
                   
                   const renderSectionContent = () => {
-                    console.log(`🎨 Rendering section content for: "${sectionId}"`);
                     switch (sectionId) {
                       case 'kpi-cards':
                         return (
@@ -1623,14 +1589,12 @@ function DashboardPage() {
                           />
                         );
                       case 'top-platforms':
-                        console.log('✅ Rendering TopPlatformsRaceChart with', filteredSubmissions.length, 'submissions');
                         return (
                           <TopPlatformsRaceChart 
                             submissions={filteredSubmissions}
                           />
                         );
                       case 'posting-activity':
-                        console.log('✅ Rendering PostingActivityHeatmap with', filteredSubmissions.length, 'submissions');
                         return (
                           <PostingActivityHeatmap 
                             submissions={filteredSubmissions}
@@ -1638,7 +1602,6 @@ function DashboardPage() {
                           />
                         );
                       case 'tracked-accounts':
-                        console.log('✅ Rendering Tracked Accounts with', trackedAccounts.length, 'accounts');
                         return (
                           <AccountsPage 
                             ref={accountsPageRef}
@@ -1659,7 +1622,6 @@ function DashboardPage() {
                           />
                         );
                       default:
-                        console.warn(`⚠️ Unknown section ID: "${sectionId}"`);
                         return null;
                     }
                   };
