@@ -15,6 +15,8 @@ import { DraggableSection } from '../components/DraggableSection';
 import DateRangeFilter, { DateFilterType } from '../components/DateRangeFilter';
 import VideoAnalyticsModal from '../components/VideoAnalyticsModal';
 import TopPerformersRaceChart from '../components/TopPerformersRaceChart';
+import TopPlatformsRaceChart from '../components/TopPlatformsRaceChart';
+import PostingActivityChart from '../components/PostingActivityChart';
 import DayVideosModal from '../components/DayVideosModal';
 import AccountsPage, { AccountsPageRef } from '../components/AccountsPage';
 import SettingsPage from '../components/SettingsPage';
@@ -136,7 +138,7 @@ function DashboardPage() {
   
   const [dashboardSectionOrder, setDashboardSectionOrder] = useState<string[]>(() => {
     const saved = localStorage.getItem('dashboardSectionOrder');
-    return saved ? JSON.parse(saved) : ['kpi-cards', 'top-performers', 'videos-table'];
+    return saved ? JSON.parse(saved) : ['kpi-cards', 'top-performers', 'top-platforms', 'posting-activity', 'tracked-accounts', 'videos-table'];
   });
   
   const [dashboardSectionVisibility, setDashboardSectionVisibility] = useState<Record<string, boolean>>(() => {
@@ -147,6 +149,9 @@ function DashboardPage() {
     return {
       'kpi-cards': true,
       'top-performers': true,
+      'top-platforms': false,
+      'posting-activity': false,
+      'tracked-accounts': false,
       'videos-table': true
     };
   });
@@ -1096,23 +1101,26 @@ function DashboardPage() {
   const kpiCardOptions = useMemo(() => {
     // Dashboard sections come first
     const sections = [
-      { id: 'kpi-cards', label: 'KPI Cards', description: 'Performance metrics overview', icon: Activity },
-      { id: 'top-performers', label: 'Top Performers', description: 'Accounts & videos race chart', icon: Activity },
-      { id: 'videos-table', label: 'Videos Table', description: 'All video submissions', icon: Video },
+      { id: 'kpi-cards', label: 'KPI Cards', description: 'Performance metrics overview', icon: Activity, category: 'sections' as const },
+      { id: 'top-performers', label: 'Top Performers', description: 'Accounts & videos race chart', icon: Activity, category: 'sections' as const },
+      { id: 'top-platforms', label: 'Top Platforms', description: 'Platform performance comparison', icon: Activity, category: 'sections' as const },
+      { id: 'posting-activity', label: 'Posting Activity', description: 'Daily posting frequency', icon: Activity, category: 'sections' as const },
+      { id: 'tracked-accounts', label: 'Tracked Accounts', description: 'Full accounts dashboard', icon: AtSign, category: 'sections' as const },
+      { id: 'videos-table', label: 'Videos Table', description: 'All video submissions', icon: Video, category: 'sections' as const },
     ];
     
     // Then KPI cards (nested under the KPI Cards section conceptually)
     const kpiCards = [
-      { id: 'views', label: '├─ Views', description: 'Total video views', icon: Play },
-      { id: 'likes', label: '├─ Likes', description: 'Total likes received', icon: Heart },
-      { id: 'comments', label: '├─ Comments', description: 'Total comments', icon: MessageCircle },
-      { id: 'shares', label: '├─ Shares', description: 'Total shares/sends', icon: Share2 },
-      { id: 'videos', label: '├─ Published Videos', description: 'Total videos published', icon: Video },
-      { id: 'accounts', label: '├─ Active Accounts', description: 'Number of tracked accounts', icon: AtSign },
-      { id: 'engagementRate', label: '├─ Engagement Rate', description: 'Average engagement percentage', icon: Activity },
-      { id: 'revenue', label: '├─ Revenue', description: 'Total revenue (MRR)', icon: DollarSign },
-      { id: 'downloads', label: '├─ Downloads', description: 'App downloads/subscriptions', icon: Download },
-      { id: 'link-clicks', label: '└─ Link Clicks', description: 'Tracked link clicks', icon: LinkIcon },
+      { id: 'views', label: 'Views', description: 'Total video views', icon: Play, category: 'kpi' as const },
+      { id: 'likes', label: 'Likes', description: 'Total likes received', icon: Heart, category: 'kpi' as const },
+      { id: 'comments', label: 'Comments', description: 'Total comments', icon: MessageCircle, category: 'kpi' as const },
+      { id: 'shares', label: 'Shares', description: 'Total shares/sends', icon: Share2, category: 'kpi' as const },
+      { id: 'videos', label: 'Published Videos', description: 'Total videos published', icon: Video, category: 'kpi' as const },
+      { id: 'accounts', label: 'Active Accounts', description: 'Number of tracked accounts', icon: AtSign, category: 'kpi' as const },
+      { id: 'engagementRate', label: 'Engagement Rate', description: 'Average engagement percentage', icon: Activity, category: 'kpi' as const },
+      { id: 'revenue', label: 'Revenue', description: 'Total revenue (MRR)', icon: DollarSign, category: 'kpi' as const },
+      { id: 'downloads', label: 'Downloads', description: 'App downloads/subscriptions', icon: Download, category: 'kpi' as const },
+      { id: 'link-clicks', label: 'Link Clicks', description: 'Tracked link clicks', icon: LinkIcon, category: 'kpi' as const },
     ];
     
     // Sort sections
@@ -1300,13 +1308,6 @@ function DashboardPage() {
                     Add Item
                   </button>
                   
-                  <div className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-blue-500/30 rounded-lg text-blue-400 text-sm">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                    </svg>
-                    <span className="font-medium">Drag cards to reorder</span>
-                  </div>
-                  
                   <button
                     onClick={() => setIsEditingLayout(false)}
                     className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all bg-white/10 text-white hover:bg-white/20"
@@ -1477,6 +1478,29 @@ function DashboardPage() {
                             submissions={filteredSubmissions} 
                             onVideoClick={handleVideoClick}
                             onAccountClick={handleAccountClick}
+                          />
+                        );
+                      case 'top-platforms':
+                        return (
+                          <TopPlatformsRaceChart 
+                            submissions={filteredSubmissions}
+                          />
+                        );
+                      case 'posting-activity':
+                        return (
+                          <PostingActivityChart 
+                            submissions={filteredSubmissions}
+                          />
+                        );
+                      case 'tracked-accounts':
+                        return (
+                          <AccountsPage 
+                            ref={accountsPageRef}
+                            dateFilter={accountsDateFilter}
+                            platformFilter={accountsPlatformFilter}
+                            searchQuery={accountsSearchQuery}
+                            onViewModeChange={setAccountsViewMode}
+                            pendingAccounts={pendingAccounts}
                           />
                         );
                       case 'videos-table':
