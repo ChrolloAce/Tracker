@@ -379,7 +379,7 @@ export class RevenueCatService {
   /**
    * Test API connection (via API proxy)
    */
-  static async testConnection(apiKey: string): Promise<boolean> {
+  static async testConnection(apiKey: string, projectId?: string): Promise<boolean> {
     try {
       const response = await fetch('/api/revenue-sync', {
         method: 'POST',
@@ -390,6 +390,7 @@ export class RevenueCatService {
           provider: 'revenuecat',
           action: 'test',
           credentials: { apiKey },
+          projectId, // Pass project ID for v2 endpoint
         }),
       });
 

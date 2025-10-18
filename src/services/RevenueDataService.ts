@@ -198,7 +198,8 @@ class RevenueDataService {
   ): Promise<boolean> {
     try {
       if (provider === 'revenuecat' && credentials.apiKey) {
-        return await RevenueCatService.testConnection(credentials.apiKey);
+        // For RevenueCat, appId field contains the project ID
+        return await RevenueCatService.testConnection(credentials.apiKey, credentials.appId);
       }
       
       if (provider === 'superwall' && credentials.apiKey && credentials.appId) {

@@ -45,12 +45,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const baseUrl = 'https://api.revenuecat.com/v1';
+      const baseUrlV2 = 'https://api.revenuecat.com/v2';
 
-      // Test connection
+      // Test connection - use v2 endpoint with project_id
       if (action === 'test') {
         try {
+          // Get project ID from credentials
+          const { projectId } = req.body;
+          
+          if (!projectId) {
+            return res.status(400).json({ 
+              success: false, 
+              error: 'Project ID is required to test the connection' 
+            });
+          }
+
+          // Test using v2 overview endpoint
           const response = await fetchWithTimeout(
-            `${baseUrl}/subscribers/overview`,
+            `${baseUrlV2}/projects/${projectId}/metrics/overview?currency=USD`,
             {
               method: 'GET',
               headers: {
@@ -63,10 +75,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (response.ok) {
             return res.status(200).json({ success: true });
           } else {
-            const error = await response.json().catch(() => ({ message: 'Unknown error' }));
+            const errorText = await response.text();
+            let error;
+            try {
+              error = JSON.parse(errorText);
+            } catch {
+              error = { message: errorText || 'Unknown error' };
+            }
+            
             return res.status(response.status).json({ 
               success: false, 
-              error: error.message || 'API connection failed' 
+              error: error.message || error.error || 'API connection failed',
+              hint: response.status === 403 ? 'Make sure you created a V2 API key with charts_metrics:overview:read permission' : undefined
             });
           }
         } catch (error: any) {
