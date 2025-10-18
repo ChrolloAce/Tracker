@@ -41,16 +41,16 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
     });
     
     const dayMap = new Map<string, VideoSubmission[]>();
-    let usingPublishedCount = 0;
+    let usingUploadDateCount = 0;
     let usingSubmittedCount = 0;
     
     uniqueVideos.forEach(sub => {
-      // Prefer datePublished (actual upload date), fall back to dateSubmitted
+      // Use uploadDate (actual upload date from platform), fall back to dateSubmitted
       // This ensures ALL videos show up in the heatmap
-      const hasPublished = !!sub.datePublished;
-      const pubDate = sub.datePublished || sub.dateSubmitted;
+      const hasUploadDate = !!sub.uploadDate;
+      const pubDate = sub.uploadDate || sub.dateSubmitted;
       
-      if (hasPublished) usingPublishedCount++;
+      if (hasUploadDate) usingUploadDateCount++;
       else usingSubmittedCount++;
       
       if (pubDate) {
@@ -65,7 +65,7 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
           if (dayMap.size <= 5) {
             console.log(`📹 Video added to heatmap:`, {
               title: sub.title?.substring(0, 30) || sub.description?.substring(0, 30),
-              datePublished: sub.datePublished ? format(new Date(sub.datePublished), 'MMM d, yyyy') : 'none',
+              uploadDate: sub.uploadDate ? format(new Date(sub.uploadDate), 'MMM d, yyyy') : 'none',
               dateSubmitted: format(new Date(sub.dateSubmitted), 'MMM d, yyyy'),
               usedDate: format(new Date(pubDate), 'MMM d, yyyy'),
               dateKey
@@ -77,18 +77,18 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
       }
     });
     
-    console.log(`📊 Date source breakdown: ${usingPublishedCount} using datePublished, ${usingSubmittedCount} using dateSubmitted`);
+    console.log(`📊 Date source breakdown: ${usingUploadDateCount} using uploadDate, ${usingSubmittedCount} using dateSubmitted`);
     
     // Debug: Show first 10 dates with posts
     const datesWithPosts = Array.from(dayMap.keys()).sort();
-    const videosWithPublishDate = Array.from(uniqueVideos.values()).filter(v => v.datePublished).length;
-    const videosWithoutPublishDate = uniqueVideos.size - videosWithPublishDate;
+    const videosWithUploadDate = Array.from(uniqueVideos.values()).filter(v => v.uploadDate).length;
+    const videosWithoutUploadDate = uniqueVideos.size - videosWithUploadDate;
     
     console.log('📅 Heatmap Debug:', {
       totalSubmissions: submissions.length,
       uniqueVideos: uniqueVideos.size,
-      videosWithPublishDate,
-      videosWithoutPublishDate,
+      videosWithUploadDate,
+      videosWithoutUploadDate,
       daysWithPosts: dayMap.size,
       dateRange: `${format(yearStart, 'MMM d, yyyy')} - ${format(yearEnd, 'MMM d, yyyy')}`,
       firstDatesWithPosts: datesWithPosts.slice(0, 10),
