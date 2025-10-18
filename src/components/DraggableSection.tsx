@@ -34,45 +34,40 @@ export const DraggableSection: React.FC<DraggableSectionProps> = ({
   onDrop,
   children
 }) => {
-  const [isHovered, setIsHovered] = useState(false);
-  const dragHandleRef = React.useRef<HTMLDivElement>(null);
+  const [isDraggingFromHandle, setIsDraggingFromHandle] = useState(false);
+  const topHandleRef = React.useRef<HTMLDivElement>(null);
+  const bottomHandleRef = React.useRef<HTMLDivElement>(null);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    // Only allow dragging if clicking on the drag handle area
-    if (isEditMode && dragHandleRef.current && !dragHandleRef.current.contains(e.target as Node)) {
-      // Clicking on content, not the handle - don't allow section drag
-      e.stopPropagation();
-    }
+  const handleDragStart = (e: React.DragEvent) => {
+    setIsDraggingFromHandle(true);
+    onDragStart();
+  };
+
+  const handleDragEnd = () => {
+    setIsDraggingFromHandle(false);
+    onDragEnd();
   };
 
   return (
     <div
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      onMouseDown={handleMouseDown}
       className={`
         relative transition-all duration-200
         ${isDragging ? 'opacity-50 scale-[0.98]' : ''}
-        ${isDragOver ? 'ring-2 ring-emerald-500 rounded-lg' : ''}
       `}
     >
-      {/* Drag Handle Overlay (Edit Mode Only) */}
+      {/* Top Drag Handle (Edit Mode Only) */}
       {isEditMode && (
         <div
-          ref={dragHandleRef}
+          ref={topHandleRef}
           draggable={true}
-          onDragStart={onDragStart}
-          onDragEnd={onDragEnd}
-          className={`
-            absolute -left-3 top-0 bottom-0 flex items-center justify-center
-            transition-opacity duration-200 z-50 cursor-move
-            ${isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'}
-          `}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-50 cursor-move"
         >
-          <div className="flex flex-col items-center gap-0.5 p-2 bg-emerald-500/20 border border-emerald-500/50 rounded-lg backdrop-blur-sm">
-            <GripVertical className="w-5 h-5 text-emerald-400" />
+          <div className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/20 border border-emerald-500/50 rounded-lg backdrop-blur-sm hover:bg-emerald-500/30 transition-colors">
+            <GripVertical className="w-4 h-4 text-emerald-400" />
             {title && (
-              <span className="text-[10px] font-medium text-emerald-400 whitespace-nowrap rotate-180 writing-mode-vertical-rl">
+              <span className="text-xs font-medium text-emerald-400 whitespace-nowrap">
                 {title}
               </span>
             )}
@@ -82,15 +77,41 @@ export const DraggableSection: React.FC<DraggableSectionProps> = ({
 
       {/* Section Content - Keep pointer events enabled for nested draggables */}
       <div
-        onDragOver={onDragOver}
+        onDragOver={(e) => {
+          // Only show drop indicator if dragging from handle (entire section)
+          if (isDraggingFromHandle) {
+            onDragOver(e);
+          }
+        }}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
+        className={isDraggingFromHandle && isDragOver ? 'ring-2 ring-emerald-500 rounded-lg' : ''}
       >
         {children}
       </div>
 
-      {/* Drop Indicator */}
-      {isDragOver && (
+      {/* Bottom Drag Handle (Edit Mode Only) */}
+      {isEditMode && (
+        <div
+          ref={bottomHandleRef}
+          draggable={true}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 z-50 cursor-move"
+        >
+          <div className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/20 border border-emerald-500/50 rounded-lg backdrop-blur-sm hover:bg-emerald-500/30 transition-colors">
+            <GripVertical className="w-4 h-4 text-emerald-400" />
+            {title && (
+              <span className="text-xs font-medium text-emerald-400 whitespace-nowrap">
+                {title}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Drop Indicator - Only show when dragging from handle */}
+      {isDraggingFromHandle && isDragOver && (
         <div className="absolute inset-0 border-2 border-dashed border-emerald-500 rounded-lg pointer-events-none bg-emerald-500/5 z-40" />
       )}
     </div>
