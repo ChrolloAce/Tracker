@@ -146,16 +146,16 @@ function DashboardPage() {
     const defaults = {
       'kpi-cards': true,
       'top-performers': true,
-      'top-platforms': true,
-      'posting-activity': true,
-      'tracked-accounts': true,
+      'top-platforms': false,
+      'posting-activity': false,
+      'tracked-accounts': false,
       'videos-table': true
     };
     
     const saved = localStorage.getItem('dashboardSectionVisibility');
     if (saved) {
       const parsed = JSON.parse(saved);
-      // Merge saved values with defaults (new sections get default true)
+      // Merge saved values with defaults (new sections get default false)
       return { ...defaults, ...parsed };
     }
     return defaults;
@@ -268,30 +268,6 @@ function DashboardPage() {
   useEffect(() => {
     localStorage.setItem('dashboardSelectedRuleId', selectedRuleId);
   }, [selectedRuleId, allRules]);
-
-  // One-time migration: Fix old false defaults for new sections
-  useEffect(() => {
-    const migrationKey = 'dashboardSectionsMigrated_v1';
-    if (!localStorage.getItem(migrationKey)) {
-      const current = { ...dashboardSectionVisibility };
-      let needsUpdate = false;
-      
-      // Set new sections to true if they were false
-      ['top-platforms', 'posting-activity', 'tracked-accounts'].forEach(sectionId => {
-        if (current[sectionId] === false) {
-          current[sectionId] = true;
-          needsUpdate = true;
-        }
-      });
-      
-      if (needsUpdate) {
-        setDashboardSectionVisibility(current);
-        localStorage.setItem('dashboardSectionVisibility', JSON.stringify(current));
-      }
-      
-      localStorage.setItem(migrationKey, 'true');
-    }
-  }, []); // Run once on mount
 
   // Save accounts page filters to localStorage
   useEffect(() => {
@@ -1068,7 +1044,8 @@ function DashboardPage() {
   // KPI Card Editor handlers
   const handleToggleCard = useCallback((cardId: string) => {
     // Check if it's a section or a KPI card
-    if (cardId.includes('-') && ['kpi-cards', 'top-performers', 'videos-table'].includes(cardId)) {
+    const allSections = ['kpi-cards', 'top-performers', 'top-platforms', 'posting-activity', 'tracked-accounts', 'videos-table'];
+    if (allSections.includes(cardId)) {
       // It's a section
       setDashboardSectionVisibility(prev => {
         const updated = { ...prev, [cardId]: !prev[cardId] };
@@ -1087,10 +1064,11 @@ function DashboardPage() {
 
   const handleReorderCard = useCallback((cardId: string, direction: 'up' | 'down') => {
     // Check if it's a section or a KPI card
-    if (cardId.includes('-') && ['kpi-cards', 'top-performers', 'videos-table'].includes(cardId)) {
+    const allSections = ['kpi-cards', 'top-performers', 'top-platforms', 'posting-activity', 'tracked-accounts', 'videos-table'];
+    if (allSections.includes(cardId)) {
       // It's a section
       setDashboardSectionOrder(prev => {
-        const currentOrder = prev.length > 0 ? prev : ['kpi-cards', 'top-performers', 'videos-table'];
+        const currentOrder = prev.length > 0 ? prev : allSections;
         
         const currentIndex = currentOrder.indexOf(cardId);
         if (currentIndex === -1) return currentOrder;
