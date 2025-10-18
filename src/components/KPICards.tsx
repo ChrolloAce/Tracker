@@ -1230,7 +1230,7 @@ const KPICard: React.FC<{
         if (onIntervalHover) onIntervalHover(null);
       }}
       className="group relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 cursor-pointer overflow-hidden"
-      style={{ minHeight: '180px' }}
+      style={{ minHeight: '220px' }}
     >
       {/* Depth Gradient Overlay */}
       <div 
@@ -1256,8 +1256,8 @@ const KPICard: React.FC<{
         />
       )}
 
-      {/* Upper Solid Portion - 75% (reduced to give more space to graph) */}
-      <div className="relative px-5 pt-5 pb-2 z-10" style={{ height: '75%' }}>
+      {/* Upper Solid Portion - 60% (reduced to give more space to graph) */}
+      <div className="relative px-5 pt-4 pb-2 z-10" style={{ height: '60%' }}>
         {/* Icon (top-right) */}
         <div className="absolute top-4 right-4">
           <Icon className="w-5 h-5 text-gray-400 opacity-60" />
@@ -1272,7 +1272,7 @@ const KPICard: React.FC<{
 
           {/* Value Row - Number + Delta Badge aligned horizontally */}
           <div className="flex items-baseline gap-3 -mt-1">
-            <span className={`text-3xl lg:text-4xl font-bold tracking-tight ${data.isEmpty ? 'text-zinc-600' : 'text-white'}`}>
+            <span className={`text-2xl lg:text-3xl font-bold tracking-tight ${data.isEmpty ? 'text-zinc-600' : 'text-white'}`}>
               {data.value}
             </span>
             
@@ -1307,12 +1307,12 @@ const KPICard: React.FC<{
       )}
       </div>
 
-      {/* Bottom Graph Layer - 25% (expanded from 20%) */}
+      {/* Bottom Graph Layer - 40% (expanded to show more detail) */}
       {data.sparklineData && data.sparklineData.length > 0 && (
         <div 
           className="relative w-full overflow-hidden z-10"
           style={{ 
-            height: '25%',
+            height: '40%',
             background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 100%)',
             borderBottomLeftRadius: '1rem',
             borderBottomRightRadius: '1rem'
