@@ -41,10 +41,17 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
     });
     
     const dayMap = new Map<string, VideoSubmission[]>();
+    let usingPublishedCount = 0;
+    let usingSubmittedCount = 0;
+    
     uniqueVideos.forEach(sub => {
       // Prefer datePublished (actual upload date), fall back to dateSubmitted
       // This ensures ALL videos show up in the heatmap
+      const hasPublished = !!sub.datePublished;
       const pubDate = sub.datePublished || sub.dateSubmitted;
+      
+      if (hasPublished) usingPublishedCount++;
+      else usingSubmittedCount++;
       
       if (pubDate) {
         try {
@@ -53,11 +60,24 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
             dayMap.set(dateKey, []);
           }
           dayMap.get(dateKey)!.push(sub);
+          
+          // Debug first 5 videos
+          if (dayMap.size <= 5) {
+            console.log(`📹 Video added to heatmap:`, {
+              title: sub.title?.substring(0, 30) || sub.description?.substring(0, 30),
+              datePublished: sub.datePublished ? format(new Date(sub.datePublished), 'MMM d, yyyy') : 'none',
+              dateSubmitted: format(new Date(sub.dateSubmitted), 'MMM d, yyyy'),
+              usedDate: format(new Date(pubDate), 'MMM d, yyyy'),
+              dateKey
+            });
+          }
         } catch (error) {
           console.warn('Invalid date for video:', { pubDate, video: sub });
         }
       }
     });
+    
+    console.log(`📊 Date source breakdown: ${usingPublishedCount} using datePublished, ${usingSubmittedCount} using dateSubmitted`);
     
     // Debug: Show first 10 dates with posts
     const datesWithPosts = Array.from(dayMap.keys()).sort();
