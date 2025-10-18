@@ -31,15 +31,37 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
     // Get all days in the year
     const allDays = eachDayOfInterval({ start: yearStart, end: yearEnd });
     
-    // Group submissions by day
-    const dayMap = new Map<string, VideoSubmission[]>();
-    submissions.forEach(sub => {
-      const pubDate = sub.datePublished || sub.dateSubmitted;
-      const dateKey = format(pubDate, 'yyyy-MM-dd');
-      if (!dayMap.has(dateKey)) {
-        dayMap.set(dateKey, []);
+    // Group submissions by day - deduplicate videos first
+    const uniqueVideos = new Map<string, VideoSubmission>();
+    submissions.forEach(video => {
+      const key = video.id || video.url || `${video.platform}_${video.uploaderHandle}_${video.dateSubmitted.getTime()}`;
+      if (!uniqueVideos.has(key)) {
+        uniqueVideos.set(key, video);
       }
-      dayMap.get(dateKey)!.push(sub);
+    });
+    
+    const dayMap = new Map<string, VideoSubmission[]>();
+    uniqueVideos.forEach(sub => {
+      const pubDate = sub.datePublished || sub.dateSubmitted;
+      // Ensure we have a valid date
+      if (pubDate) {
+        const dateKey = format(startOfDay(new Date(pubDate)), 'yyyy-MM-dd');
+        if (!dayMap.has(dateKey)) {
+          dayMap.set(dateKey, []);
+        }
+        dayMap.get(dateKey)!.push(sub);
+      }
+    });
+    
+    // Debug: Show first 10 dates with posts
+    const datesWithPosts = Array.from(dayMap.keys()).sort();
+    console.log('📅 Heatmap Debug:', {
+      totalSubmissions: submissions.length,
+      uniqueVideos: uniqueVideos.size,
+      daysWithPosts: dayMap.size,
+      dateRange: `${format(yearStart, 'MMM d, yyyy')} - ${format(yearEnd, 'MMM d, yyyy')}`,
+      firstDatesWithPosts: datesWithPosts.slice(0, 10),
+      lastDatesWithPosts: datesWithPosts.slice(-10)
     });
     
     // Create day data array
@@ -133,23 +155,7 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-zinc-800/50 rounded-lg p-3 border border-white/5">
-          <div className="text-xs text-white/50 mb-1">Total Posts</div>
-          <div className="text-lg font-bold text-emerald-400">{stats.totalPosts}</div>
-        </div>
-        <div className="bg-zinc-800/50 rounded-lg p-3 border border-white/5">
-          <div className="text-xs text-white/50 mb-1">Peak Day</div>
-          <div className="text-lg font-bold text-emerald-400">{stats.maxPostsInDay} posts</div>
-        </div>
-        <div className="bg-zinc-800/50 rounded-lg p-3 border border-white/5">
-          <div className="text-xs text-white/50 mb-1">Avg. per Day</div>
-          <div className="text-lg font-bold text-emerald-400">{stats.avgPostsPerDay}</div>
-        </div>
-      </div>
-
-      {/* Day labels */}
+      {/* Day labels and Heatmap grid */}
       <div className="flex items-start gap-2 mb-2">
         <div className="w-8 flex flex-col gap-1 text-[10px] text-white/40 pt-1">
           <div className="h-3">M</div>
@@ -161,9 +167,9 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
           <div className="h-3">S</div>
         </div>
 
-        {/* Heatmap grid */}
+        {/* Heatmap grid - FULL WIDTH */}
         <div className="flex-1 overflow-x-auto">
-          <div className="flex gap-1">
+          <div className="flex gap-1 w-full">
             {weeks.map((week, weekIndex) => (
               <div key={weekIndex} className="flex flex-col gap-1">
                 {/* Fill empty days at the start of the first week */}
