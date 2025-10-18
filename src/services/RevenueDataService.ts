@@ -50,13 +50,25 @@ class RevenueDataService {
       collection(db, 'organizations', orgId, 'projects', projectId, 'revenueIntegrations')
     );
 
+    // Clean credentials - remove undefined values to avoid Firestore errors
+    const cleanedCredentials: RevenueIntegration['credentials'] = {};
+    if (credentials.apiKey !== undefined) {
+      cleanedCredentials.apiKey = credentials.apiKey;
+    }
+    if (credentials.appId !== undefined) {
+      cleanedCredentials.appId = credentials.appId;
+    }
+    if (credentials.secretKey !== undefined) {
+      cleanedCredentials.secretKey = credentials.secretKey;
+    }
+
     const integration: RevenueIntegration = {
       id: integrationRef.id,
       organizationId: orgId,
       projectId,
       provider,
       enabled: true,
-      credentials,
+      credentials: cleanedCredentials,
       settings: settings || {
         autoSync: true,
         syncInterval: 60, // 1 hour

@@ -326,6 +326,60 @@ service cloud.firestore {
           allow update, delete: if false;
         }
         
+        // ==================== PROJECT REVENUE INTEGRATIONS ====================
+        
+        match /revenueIntegrations/{integrationId} {
+          // All members can read revenue integrations
+          allow read: if canReadOrg(orgId);
+          
+          // Admins can manage integrations
+          allow create: if canManageOrg(orgId) 
+            && request.resource.data.organizationId == orgId
+            && request.resource.data.projectId == projectId;
+          
+          allow update: if canManageOrg(orgId);
+          allow delete: if canManageOrg(orgId);
+        }
+        
+        match /revenueTransactions/{transactionId} {
+          // All members can read transactions
+          allow read: if canReadOrg(orgId);
+          
+          // System/admins can create transactions
+          allow create: if canManageOrg(orgId);
+          
+          // Transactions are immutable after creation
+          allow update, delete: if false;
+        }
+        
+        match /revenueMetrics/{metricsId} {
+          // All members can read metrics
+          allow read: if canReadOrg(orgId);
+          
+          // System/admins can write metrics
+          allow create, update: if canManageOrg(orgId);
+          allow delete: if canManageOrg(orgId);
+        }
+        
+        match /revenueSnapshots/{snapshotId} {
+          // All members can read snapshots
+          allow read: if canReadOrg(orgId);
+          
+          // System/admins can create snapshots
+          allow create: if canManageOrg(orgId);
+          
+          // Snapshots are immutable
+          allow update, delete: if false;
+        }
+        
+        match /revenueAttributions/{attributionId} {
+          // All members can read attributions
+          allow read: if canReadOrg(orgId);
+          
+          // System/admins can manage attributions
+          allow create, update, delete: if canManageOrg(orgId);
+        }
+        
         // ==================== PROJECT CREATOR LINKS ====================
         
         match /creatorLinks/{linkId} {
