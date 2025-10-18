@@ -41,6 +41,7 @@ interface KPICardsProps {
   cardOrder?: string[];
   cardVisibility?: Record<string, boolean>;
   onReorder?: (newOrder: string[]) => void;
+  onToggleCard?: (cardId: string) => void;
 }
 
 interface KPICardData {
@@ -73,7 +74,8 @@ const KPICards: React.FC<KPICardsProps> = ({
   isEditMode = false,
   cardOrder = [],
   cardVisibility = {},
-  onReorder
+  onReorder,
+  onToggleCard
 }) => {
   const navigate = useNavigate();
   // Day Videos Modal state
@@ -91,6 +93,7 @@ const KPICards: React.FC<KPICardsProps> = ({
   const [draggedCard, setDraggedCard] = useState<string | null>(null);
   const [dragOverCard, setDragOverCard] = useState<string | null>(null);
   const [selectedPPInterval, setSelectedPPInterval] = useState<TimeInterval | null>(null);
+  const [isOverTrash, setIsOverTrash] = useState(false);
 
   const handleCardClick = (metricId: string, metricLabel: string) => {
     // If it's link clicks and there are no links, trigger create link callback
@@ -1328,6 +1331,42 @@ const KPICards: React.FC<KPICardsProps> = ({
           ));
         })()}
       </div>
+
+      {/* Trash Drop Zone - Only visible when dragging a KPI card */}
+      {isEditMode && draggedCard && (
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsOverTrash(true);
+          }}
+          onDragLeave={() => setIsOverTrash(false)}
+          onDrop={() => {
+            if (draggedCard && onToggleCard) {
+              // Hide the card by toggling its visibility
+              onToggleCard(draggedCard);
+            }
+            setDraggedCard(null);
+            setIsOverTrash(false);
+          }}
+          className={`
+            fixed bottom-8 left-1/2 transform -translate-x-1/2 z-[100]
+            flex flex-col items-center justify-center gap-3
+            px-8 py-6 rounded-2xl border-2 border-dashed
+            transition-all duration-200
+            ${isOverTrash 
+              ? 'bg-red-500/30 border-red-500 scale-110 shadow-2xl shadow-red-500/50' 
+              : 'bg-red-500/10 border-red-500/50 hover:bg-red-500/20'
+            }
+          `}
+        >
+          <svg className={`w-12 h-12 transition-all ${isOverTrash ? 'text-red-400 animate-bounce' : 'text-red-400/70'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          <span className={`text-sm font-semibold transition-all ${isOverTrash ? 'text-red-300' : 'text-red-400/70'}`}>
+            {isOverTrash ? 'Release to hide card' : 'Drag here to hide card'}
+          </span>
+        </div>
+      )}
 
       {/* Old Metrics Modal Removed - Now using Day Videos Modal */}
 

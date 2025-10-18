@@ -1467,6 +1467,7 @@ function DashboardPage() {
                               setKpiCardOrder(newOrder);
                               localStorage.setItem('kpiCardOrder', JSON.stringify(newOrder));
                             }}
+                            onToggleCard={handleToggleCard}
                           />
                         );
                       case 'top-performers':

@@ -63,16 +63,19 @@ export const DraggableSection: React.FC<DraggableSectionProps> = ({
           draggable={true}
           onDragStart={onDragStart}
           onDragEnd={onDragEnd}
-          className="flex items-center gap-2 px-3 py-2 mb-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg cursor-move hover:bg-emerald-500/20 transition-colors z-50"
+          className="w-full flex items-center gap-3 px-4 py-3 mb-4 bg-gradient-to-r from-emerald-500/20 to-emerald-500/10 border-2 border-emerald-500/50 rounded-lg cursor-move hover:from-emerald-500/30 hover:to-emerald-500/20 hover:border-emerald-500/70 transition-all shadow-lg shadow-emerald-500/10 z-50"
         >
-          <GripVertical className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+          <GripVertical className="w-5 h-5 text-emerald-400 flex-shrink-0" />
           {title && (
-            <span className="text-sm font-medium text-emerald-400">
+            <span className="text-base font-semibold text-emerald-400">
               {title}
             </span>
           )}
-          <div className="ml-auto text-xs text-emerald-400/60">
-            Drag to reorder
+          <div className="ml-auto flex items-center gap-2 text-xs text-emerald-400/70 font-medium">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+            </svg>
+            Drag to reorder section
           </div>
         </div>
       )}
