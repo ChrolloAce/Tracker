@@ -16,7 +16,7 @@ import DateRangeFilter, { DateFilterType } from '../components/DateRangeFilter';
 import VideoAnalyticsModal from '../components/VideoAnalyticsModal';
 import TopPerformersRaceChart from '../components/TopPerformersRaceChart';
 import TopPlatformsRaceChart from '../components/TopPlatformsRaceChart';
-import PostingActivityChart from '../components/PostingActivityChart';
+import PostingActivityHeatmap from '../components/PostingActivityHeatmap';
 import DayVideosModal from '../components/DayVideosModal';
 import AccountsPage, { AccountsPageRef } from '../components/AccountsPage';
 import SettingsPage from '../components/SettingsPage';
@@ -1630,10 +1630,11 @@ function DashboardPage() {
                           />
                         );
                       case 'posting-activity':
-                        console.log('✅ Rendering PostingActivityChart with', filteredSubmissions.length, 'submissions');
+                        console.log('✅ Rendering PostingActivityHeatmap with', filteredSubmissions.length, 'submissions');
                         return (
-                          <PostingActivityChart 
+                          <PostingActivityHeatmap 
                             submissions={filteredSubmissions}
+                            onVideoClick={handleVideoClick}
                           />
                         );
                       case 'tracked-accounts':
@@ -1843,8 +1844,9 @@ function DashboardPage() {
               );
             case 'posting-activity':
               return (
-                <PostingActivityChart 
+                <PostingActivityHeatmap 
                   submissions={filteredSubmissions}
+                  onVideoClick={handleVideoClick}
                 />
               );
             case 'tracked-accounts':
