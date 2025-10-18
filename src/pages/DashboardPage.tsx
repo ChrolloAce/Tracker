@@ -1239,13 +1239,23 @@ function DashboardPage() {
                     <button
                       onClick={() => setPlatformDropdownOpen(!platformDropdownOpen)}
                       onBlur={() => setTimeout(() => setPlatformDropdownOpen(false), 200)}
-                      className="flex items-center gap-2 pl-3 pr-8 py-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
+                      className="flex items-center gap-2 pl-3 pr-8 py-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm min-w-[140px]"
                       title={dashboardPlatformFilter === 'all' ? 'All Platforms' : dashboardPlatformFilter.charAt(0).toUpperCase() + dashboardPlatformFilter.slice(1)}
                     >
                       {dashboardPlatformFilter === 'all' ? (
                         <>
-                          <span className="text-lg">🌐</span>
-                          <span>All</span>
+                          <div className="relative flex items-center" style={{ width: '20px', height: '16px' }}>
+                            <div className="absolute left-0" style={{ zIndex: 3 }}>
+                              <PlatformIcon platform="instagram" size="sm" />
+                            </div>
+                            <div className="absolute left-1.5" style={{ zIndex: 2 }}>
+                              <PlatformIcon platform="tiktok" size="sm" />
+                            </div>
+                            <div className="absolute left-3" style={{ zIndex: 1 }}>
+                              <PlatformIcon platform="youtube" size="sm" />
+                            </div>
+                          </div>
+                          <span className="ml-2">All</span>
                         </>
                       ) : (
                         <>
@@ -1270,8 +1280,18 @@ function DashboardPage() {
                               : 'text-white/90 hover:bg-white/5'
                           }`}
                         >
-                          <span className="text-lg">🌐</span>
-                          <span>All Platforms</span>
+                          <div className="relative flex items-center" style={{ width: '20px', height: '16px' }}>
+                            <div className="absolute left-0" style={{ zIndex: 3 }}>
+                              <PlatformIcon platform="instagram" size="sm" />
+                            </div>
+                            <div className="absolute left-1.5" style={{ zIndex: 2 }}>
+                              <PlatformIcon platform="tiktok" size="sm" />
+                            </div>
+                            <div className="absolute left-3" style={{ zIndex: 1 }}>
+                              <PlatformIcon platform="youtube" size="sm" />
+                            </div>
+                          </div>
+                          <span className="ml-2">All Platforms</span>
                         </button>
                         <button
                           onClick={() => {
