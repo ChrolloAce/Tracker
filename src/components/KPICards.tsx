@@ -9,6 +9,7 @@ import {
   Video, 
   Share2,
   ChevronRight,
+  ChevronDown,
   Link as LinkIcon
 } from 'lucide-react';
 import { VideoSubmission } from '../types';
@@ -21,7 +22,8 @@ import { PlatformIcon } from './ui/PlatformIcon';
 import DataAggregationService, { IntervalType, TimeInterval } from '../services/DataAggregationService';
 
 interface KPICardsProps {
-  submissions: VideoSubmission[];
+  submissions: VideoSubmission[]; // Filtered submissions for current period
+  allSubmissions?: VideoSubmission[]; // All submissions (unfiltered) for PP calculation
   linkClicks?: LinkClick[];
   dateFilter?: DateFilterType;
   customRange?: { startDate: Date; endDate: Date };
@@ -48,6 +50,7 @@ interface KPICardData {
 
 const KPICards: React.FC<KPICardsProps> = ({ 
   submissions, 
+  allSubmissions, // All submissions for PP calculation
   linkClicks = [], 
   dateFilter = 'all',
   customRange,
@@ -60,9 +63,13 @@ const KPICards: React.FC<KPICardsProps> = ({
   const [isDayModalOpen, setIsDayModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedDayVideos, setSelectedDayVideos] = useState<VideoSubmission[]>([]);
+  const [selectedPPVideos, setSelectedPPVideos] = useState<VideoSubmission[]>([]);
+  const [selectedLinkClicks, setSelectedLinkClicks] = useState<LinkClick[]>([]);
+  const [selectedPPLinkClicks, setSelectedPPLinkClicks] = useState<LinkClick[]>([]);
   const [dayModalMetric, setDayModalMetric] = useState<string>('');
   const [hoveredInterval, setHoveredInterval] = useState<TimeInterval | null>(null);
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval | null>(null);
+  const [selectedPPInterval, setSelectedPPInterval] = useState<TimeInterval | null>(null);
 
   const handleCardClick = (metricId: string, metricLabel: string) => {
     // If it's link clicks and there are no links, trigger create link callback
@@ -75,6 +82,10 @@ const KPICards: React.FC<KPICardsProps> = ({
     if (submissions.length > 0) {
       let targetDate: Date;
       let videosForInterval: VideoSubmission[];
+      let ppVideosForInterval: VideoSubmission[] = [];
+      let clicksForInterval: LinkClick[] = [];
+      let ppClicksForInterval: LinkClick[] = [];
+      let ppIntervalData: TimeInterval | null = null;
       
       // Use hovered interval if available (from tooltip hover)
       if (hoveredInterval) {
@@ -86,8 +97,42 @@ const KPICards: React.FC<KPICardsProps> = ({
           return DataAggregationService.isDateInInterval(uploadDate, hoveredInterval);
         });
         
+        // Filter link clicks for this interval
+        clicksForInterval = linkClicks.filter(click => {
+          const clickDate = new Date(click.timestamp);
+          return DataAggregationService.isDateInInterval(clickDate, hoveredInterval);
+        });
+        
+        // Calculate PP interval
+        if (dateFilter !== 'all') {
+          const periodLength = hoveredInterval.endDate.getTime() - hoveredInterval.startDate.getTime();
+          const ppEndDate = new Date(hoveredInterval.startDate.getTime() - 1);
+          const ppStartDate = new Date(ppEndDate.getTime() - periodLength);
+          
+          ppIntervalData = {
+            startDate: ppStartDate,
+            endDate: ppEndDate,
+            timestamp: ppStartDate.getTime(),
+            intervalType: hoveredInterval.intervalType,
+            label: DataAggregationService.formatIntervalLabel(ppStartDate, hoveredInterval.intervalType)
+          };
+          
+          // Filter PP videos using all submissions
+          ppVideosForInterval = (allSubmissions || submissions).filter(video => {
+            const uploadDate = video.uploadDate ? new Date(video.uploadDate) : new Date(video.dateSubmitted);
+            return DataAggregationService.isDateInInterval(uploadDate, ppIntervalData!);
+          });
+          
+          // Filter PP link clicks
+          ppClicksForInterval = linkClicks.filter(click => {
+            const clickDate = new Date(click.timestamp);
+            return DataAggregationService.isDateInInterval(clickDate, ppIntervalData!);
+          });
+        }
+        
         // Store the interval for modal display
         setSelectedInterval(hoveredInterval);
+        setSelectedPPInterval(ppIntervalData);
       } else {
         // Fallback: find most recent date and filter for that single day
         const sortedSubmissions = [...submissions].sort((a, b) => 
@@ -105,12 +150,60 @@ const KPICards: React.FC<KPICardsProps> = ({
           return videoDate >= dayStart && videoDate <= dayEnd;
         });
         
-        // No interval for fallback case
-        setSelectedInterval(null);
+        // Filter link clicks for this day
+        clicksForInterval = linkClicks.filter(click => {
+          const clickDate = new Date(click.timestamp);
+          clickDate.setHours(0, 0, 0, 0);
+          return clickDate >= dayStart && clickDate <= dayEnd;
+        });
+        
+        // Calculate PP data even for fallback case if date filter is active
+        if (dateFilter !== 'all') {
+          // Calculate previous day
+          const ppDayStart = new Date(dayStart);
+          ppDayStart.setDate(ppDayStart.getDate() - 1);
+          const ppDayEnd = new Date(ppDayStart);
+          ppDayEnd.setHours(23, 59, 59, 999);
+          
+          ppIntervalData = {
+            startDate: ppDayStart,
+            endDate: ppDayEnd,
+            timestamp: ppDayStart.getTime(),
+            intervalType: 'day',
+            label: DataAggregationService.formatIntervalLabel(ppDayStart, 'day')
+          };
+          
+          // Filter PP videos
+          ppVideosForInterval = (allSubmissions || submissions).filter(video => {
+            const videoDate = new Date(video.uploadDate);
+            videoDate.setHours(0, 0, 0, 0);
+            return videoDate >= ppDayStart && videoDate <= ppDayEnd;
+          });
+          
+          // Filter PP link clicks
+          ppClicksForInterval = linkClicks.filter(click => {
+            const clickDate = new Date(click.timestamp);
+            clickDate.setHours(0, 0, 0, 0);
+            return clickDate >= ppDayStart && clickDate <= ppDayEnd;
+          });
+        }
+        
+        // Set interval for fallback case (single day)
+        setSelectedInterval({
+          startDate: dayStart,
+          endDate: dayEnd,
+          timestamp: dayStart.getTime(),
+          intervalType: 'day',
+          label: DataAggregationService.formatIntervalLabel(dayStart, 'day')
+        });
+        setSelectedPPInterval(ppIntervalData);
       }
       
       setSelectedDate(targetDate);
       setSelectedDayVideos(videosForInterval);
+      setSelectedPPVideos(ppVideosForInterval);
+      setSelectedLinkClicks(clicksForInterval);
+      setSelectedPPLinkClicks(ppClicksForInterval);
       setDayModalMetric(metricLabel);
       setIsDayModalOpen(true);
     }
@@ -331,6 +424,7 @@ const KPICards: React.FC<KPICardsProps> = ({
       const periodLength = dateRangeEnd.getTime() - dateRangeStart.getTime();
       ppDateRangeEnd = new Date(dateRangeStart.getTime() - 1); // End of PP is 1ms before start of CP
       ppDateRangeStart = new Date(ppDateRangeEnd.getTime() - periodLength);
+      console.log('📅 PP Date Range:', ppDateRangeStart.toLocaleDateString(), '-', ppDateRangeEnd.toLocaleDateString());
     }
     
     // Calculate PP metrics using the same logic as CP
@@ -342,7 +436,8 @@ const KPICards: React.FC<KPICardsProps> = ({
     let ppVideos = 0;
     
     if (ppDateRangeStart && ppDateRangeEnd) {
-      submissions.forEach(video => {
+      console.log('📊 PP Calculation - Using submissions with platform/rule filters (not date filter):', (allSubmissions || submissions).length);
+      (allSubmissions || submissions).forEach(video => {
         const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
         
         if (video.snapshots && video.snapshots.length > 0) {
@@ -498,10 +593,10 @@ const KPICards: React.FC<KPICardsProps> = ({
             return DataAggregationService.isDateInInterval(uploadDate, interval);
           });
           
-          // Calculate PP value if available
-          let ppValue = undefined;
+          // Calculate PP value if available - use ALL submissions, not filtered
+          let ppValue = 0;
           if (ppInterval) {
-            const ppVideosPublished = submissions.filter(v => {
+            const ppVideosPublished = (allSubmissions || submissions).filter(v => {
               const uploadDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
               return DataAggregationService.isDateInInterval(uploadDate, ppInterval);
             });
@@ -522,10 +617,10 @@ const KPICards: React.FC<KPICardsProps> = ({
           });
           const uniqueAccountsInInterval = new Set(videosInInterval.map(v => v.uploaderHandle)).size;
           
-          // Calculate PP value if available
-          let ppValue = undefined;
+          // Calculate PP value if available - use ALL submissions, not filtered
+          let ppValue = 0;
           if (ppInterval) {
-            const ppVideosInInterval = submissions.filter(v => {
+            const ppVideosInInterval = (allSubmissions || submissions).filter(v => {
               const uploadDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
               return DataAggregationService.isDateInInterval(uploadDate, ppInterval);
             });
@@ -543,7 +638,11 @@ const KPICards: React.FC<KPICardsProps> = ({
           let intervalValue = 0;
           let ppIntervalValue = 0;
           
-          submissions.forEach(video => {
+          // Use filtered submissions for CP, all submissions for PP calculation
+          const submissionsForCP = submissions;
+          const submissionsForPP = allSubmissions || submissions;
+          
+          submissionsForCP.forEach(video => {
             const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
             
             // === CURRENT PERIOD (CP) CALCULATION ===
@@ -577,9 +676,14 @@ const KPICards: React.FC<KPICardsProps> = ({
                 intervalValue += video[metric] || 0;
               }
             }
-            
-            // === PREVIOUS PERIOD (PP) CALCULATION ===
-            if (ppInterval) {
+          });
+          
+          // === PREVIOUS PERIOD (PP) CALCULATION ===
+          // Use ALL submissions (not filtered) for PP calculation
+          if (ppInterval) {
+            submissionsForPP.forEach(video => {
+              const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
+              
               // Use the same logic as CP, but for PP interval dates
               if (uploadDate < ppInterval.startDate) {
                 // Video was uploaded before PP started - look for growth during PP interval
@@ -607,10 +711,10 @@ const KPICards: React.FC<KPICardsProps> = ({
                   ppIntervalValue += video[metric] || 0;
                 }
               }
-            }
-          });
+            });
+          }
           
-          const finalPPValue = ppInterval ? ppIntervalValue : undefined;
+          const finalPPValue = ppInterval ? ppIntervalValue : 0;
           
           data.push({ 
             value: intervalValue, 
@@ -619,6 +723,12 @@ const KPICards: React.FC<KPICardsProps> = ({
             ppValue: finalPPValue
           });
         }
+      }
+      
+      // Debug: Log PP sparkline data
+      const ppDataPoints = data.filter(d => typeof d.ppValue === 'number' && d.ppValue > 0).length;
+      if (ppDataPoints > 0) {
+        console.log(`✨ Generated ${ppDataPoints} PP sparkline points for metric: ${metric}`);
       }
       
       return { data, intervalType };
@@ -784,7 +894,11 @@ const KPICards: React.FC<KPICardsProps> = ({
           let ppPeriodViews = 0;
           let ppPeriodEngagement = 0;
           
-          submissions.forEach(video => {
+          // Use filtered submissions for CP
+          const submissionsForCP = submissions;
+          const submissionsForPP = allSubmissions || submissions;
+          
+          submissionsForCP.forEach(video => {
             const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
             
             // Check if video was uploaded before the analysis period started
@@ -824,9 +938,12 @@ const KPICards: React.FC<KPICardsProps> = ({
                 periodEngagement += (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
               }
             }
-            
-            // Calculate PP values if available
-            if (ppInterval) {
+          });
+          
+          // Calculate PP values if available - use ALL submissions
+          if (ppInterval) {
+            submissionsForPP.forEach(video => {
+              const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
               const ppStartDate = ppInterval.startDate;
               
               if (uploadDate < ppStartDate) {
@@ -862,17 +979,17 @@ const KPICards: React.FC<KPICardsProps> = ({
                   ppPeriodEngagement += (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
                 }
               }
-            }
-          });
+            });
+          }
           
           const rate = periodViews > 0 ? ((periodEngagement / periodViews) * 100) : 0;
-          const ppRate = ppInterval && ppPeriodViews > 0 ? ((ppPeriodEngagement / ppPeriodViews) * 100) : undefined;
+          const ppRate = ppInterval && ppPeriodViews > 0 ? ((ppPeriodEngagement / ppPeriodViews) * 100) : 0;
           
           data.push({
             value: Number(rate.toFixed(1)),
             timestamp: interval.timestamp,
             interval,
-            ppValue: ppRate !== undefined ? Number(ppRate.toFixed(1)) : undefined
+            ppValue: Number(ppRate.toFixed(1))
           });
         }
         
@@ -937,7 +1054,7 @@ const KPICards: React.FC<KPICardsProps> = ({
           });
           
           // Count PP clicks if available
-          let ppClicksCount = undefined;
+          let ppClicksCount = 0;
           if (ppInterval) {
             const ppClicksInPeriod = linkClicks.filter(click => {
               const clickDate = new Date(click.timestamp);
@@ -1003,6 +1120,10 @@ const KPICards: React.FC<KPICardsProps> = ({
           metricLabel={dayModalMetric}
           onVideoClick={onVideoClick}
           interval={selectedInterval}
+          ppVideos={selectedPPVideos}
+          ppInterval={selectedPPInterval}
+          linkClicks={selectedLinkClicks}
+          ppLinkClicks={selectedPPLinkClicks}
         />
       )}
     </>
@@ -1315,9 +1436,9 @@ const KPICard: React.FC<{
             <div style={{ width: '100%', height: '100%', position: 'relative' }}>
               {(() => {
                 // Calculate intelligent Y-axis domain with outlier capping
-                const values = data.sparklineData.map(d => d.value).filter(v => v !== undefined);
-                const ppValues = data.sparklineData.map(d => d.ppValue).filter(v => v !== undefined);
-                const allValues = [...values, ...ppValues];
+                const values = data.sparklineData.map(d => d.value).filter((v): v is number => typeof v === 'number');
+                const ppValues = data.sparklineData.map(d => d.ppValue).filter((v): v is number => typeof v === 'number' && v > 0);
+                const allValues: number[] = [...values, ...ppValues];
                 
                 if (allValues.length === 0) {
                   return null;
@@ -1325,8 +1446,8 @@ const KPICard: React.FC<{
                 
                 // Sort to find statistics
                 const sortedValues = [...allValues].sort((a, b) => a - b);
-                const max = sortedValues[sortedValues.length - 1];
-                const q3 = sortedValues[Math.floor(sortedValues.length * 0.75)];
+                const max = sortedValues[sortedValues.length - 1] || 1;
+                const q3 = sortedValues[Math.floor(sortedValues.length * 0.75)] || 1;
                 
                 // Cap outliers: if max is more than 5x the Q3, cap at 2x Q3
                 let yMax = max;
@@ -1335,7 +1456,7 @@ const KPICard: React.FC<{
                 }
                 
                 // Check if PP data exists
-                const hasPPData = data.sparklineData.some(d => d.ppValue !== undefined && d.ppValue > 0);
+                const hasPPData = data.sparklineData.some(d => typeof d.ppValue === 'number' && d.ppValue > 0);
                 
                 return (
                   <ResponsiveContainer width="100%" height="100%">
@@ -1465,7 +1586,7 @@ const KPICard: React.FC<{
             const ppDisplayValue = typeof ppValue === 'number' ? formatDisplayNumber(ppValue) : null;
             
             // Calculate PP comparison
-            const ppComparison = (ppValue !== undefined && typeof value === 'number') ? (() => {
+            const ppComparison = (typeof ppValue === 'number' && ppValue > 0 && typeof value === 'number') ? (() => {
               const diff = value - ppValue;
               const percentChange = ppValue > 0 ? ((diff / ppValue) * 100) : 0;
               const isPositive = diff >= 0;
@@ -1591,7 +1712,7 @@ const KPICard: React.FC<{
                 
                 {/* Content List - Accounts or Videos */}
                 {sortedItems.length > 0 ? (
-                  <div className="overflow-y-auto px-5 py-3" style={{ maxHeight: '320px' }}>
+                  <div className="px-5 py-3">
                     {data.id === 'accounts' ? (
                       // Render Accounts with Profile Pictures
                       sortedItems.map((account: any, idx: number) => (
@@ -1765,6 +1886,14 @@ const KPICard: React.FC<{
                         </div>
                       ))
                     )}
+                    
+                    {/* Click to Expand */}
+                    <div className="mt-2 pt-3 border-t border-white/10">
+                      <button className="w-full flex items-center justify-center gap-2 py-2 text-xs text-gray-400 hover:text-white transition-colors">
+                        <span>Click to expand data</span>
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="px-5 py-6 text-center">

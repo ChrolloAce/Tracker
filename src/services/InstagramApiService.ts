@@ -10,7 +10,7 @@ class InstagramApiService {
   private readonly INSTAGRAM_SCRAPER_ACTOR = 'scraper-engine~instagram-reels-scraper';
   
   constructor() {
-    console.log('🔧 Initializing NEW Instagram Reels Scraper with token:', this.APIFY_TOKEN ? '***' + this.APIFY_TOKEN.slice(-4) : 'No token');
+    // console.log('🔧 Initializing NEW Instagram Reels Scraper with token:', this.APIFY_TOKEN ? '***' + this.APIFY_TOKEN.slice(-4) : 'No token');
     this.apifyClient = new ApifyBrowserClient(this.APIFY_TOKEN);
   }
   

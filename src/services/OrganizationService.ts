@@ -57,7 +57,7 @@ class OrganizationService {
         displayName: displayName || userDoc.data()?.displayName,
         photoURL: photoURL || userDoc.data()?.photoURL
       }, { merge: true });
-      console.log(`✅ Updated user profile for ${email}`);
+      // console.log(`✅ Updated user profile for ${email}`);
     }
   }
 
@@ -260,12 +260,12 @@ class OrganizationService {
         displayName = displayName || userAccount?.displayName;
         photoURL = userAccount?.photoURL; // Get profile photo
         
-        console.log(`👤 Loaded user profile:`, {
-          userId: memberData.userId,
-          email,
-          displayName,
-          hasPhoto: !!photoURL
-        });
+        // console.log(`👤 Loaded user profile:`, {
+        //   userId: memberData.userId,
+        //   email,
+        //   displayName,
+        //   hasPhoto: !!photoURL
+        // });
       } catch (error) {
         // If user account fetch fails, use fallbacks from member doc
         console.warn(`⚠️ Could not fetch user account for ${memberData.userId}`, error);

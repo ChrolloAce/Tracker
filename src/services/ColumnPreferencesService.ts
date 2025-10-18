@@ -41,7 +41,7 @@ class ColumnPreferencesService {
       allPreferences[tableName] = preferences;
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allPreferences));
       
-      console.log(`✅ Saved column preferences for ${tableName}`);
+      // console.log(`✅ Saved column preferences for ${tableName}`);
     } catch (error) {
       console.error('Failed to save column preferences:', error);
     }

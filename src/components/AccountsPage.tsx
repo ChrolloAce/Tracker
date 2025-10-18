@@ -121,7 +121,8 @@ interface AccountWithFilteredStats extends TrackedAccount {
   filteredTotalComments: number;
 }
 
-const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilter, platformFilter, searchQuery = '', onViewModeChange, pendingAccounts = [] }, ref) => {
+const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
+  ({ dateFilter, platformFilter, searchQuery = '', onViewModeChange, pendingAccounts = [] }, ref) => {
   const { user, currentOrgId, currentProjectId } = useAuth();
   const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
   const [filteredAccounts, setFilteredAccounts] = useState<AccountWithFilteredStats[]>([]);
@@ -130,6 +131,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   // Track if we've already done the initial restoration from localStorage
   const hasRestoredFromLocalStorage = useRef(false);
   const [accountVideos, setAccountVideos] = useState<AccountVideo[]>([]);
+  const [allAccountVideos, setAllAccountVideos] = useState<AccountVideo[]>([]); // Unfiltered for PP calculation
   const [activeRulesCount, setActiveRulesCount] = useState(0);
   const [viewMode, setViewMode] = useState<'table' | 'details'>('table');
   const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
@@ -857,6 +859,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         uploadDate: v.uploadDate || new Date(),
         snapshots: []
       }));
+
+      // Store unfiltered videos for PP calculation
+      setAllAccountVideos(rulesFilteredVideos);
 
       const dateFilteredSubmissions = DateFilterService.filterVideosByDateRange(
         videoSubmissions,
@@ -1993,6 +1998,25 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                 snapshots: []
               }));
 
+              // ALL videos (unfiltered by date) for PP calculation
+              const allVideoSubmissions: VideoSubmission[] = allAccountVideos.map(video => ({
+                id: video.id || video.videoId || '',
+                url: video.url || '',
+                platform: selectedAccount.platform,
+                thumbnail: video.thumbnail || '',
+                title: video.caption || video.title || 'No caption',
+                uploader: selectedAccount.displayName || selectedAccount.username,
+                uploaderHandle: selectedAccount.username,
+                status: 'approved' as const,
+                views: video.viewsCount || video.views || 0,
+                likes: video.likesCount || video.likes || 0,
+                comments: video.commentsCount || video.comments || 0,
+                shares: video.sharesCount || video.shares || 0,
+                dateSubmitted: video.uploadDate || new Date(),
+                uploadDate: video.uploadDate || new Date(),
+                snapshots: []
+              }));
+
               // Filter link clicks for this account
               // 1. Find all links associated with this account
               const accountLinkIds = trackedLinks
@@ -2008,6 +2032,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                 <div className="mb-6">
                   <KPICards 
                     submissions={filteredVideoSubmissions}
+                    allSubmissions={allVideoSubmissions}
                     linkClicks={accountLinkClicks}
                     dateFilter={dateFilter}
                     timePeriod="days"
@@ -2331,6 +2356,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   
+                                  console.log('Opening video player:', {
                                     videoId: video.videoId,
                                     url: video.url,
                                     platform: selectedAccount.platform,
@@ -2425,7 +2451,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                             {visibleColumns.engagement && (
                             <td className="px-6 py-5">
                               <div className="flex items-center space-x-2">
-                                <Activity className="w-4 h-4 text-purple-500" />
+                                <Activity className="w-4 h-4 text-white/70" />
                                 <span className="text-sm font-medium text-white">
                                   {engagementRate.toFixed(2)}%
                                 </span>

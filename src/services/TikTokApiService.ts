@@ -10,7 +10,7 @@ class TikTokApiService {
   private readonly TIKTOK_SCRAPER_ACTOR = 'clockworks~tiktok-scraper'; // User's TikTok scraper
   
   constructor() {
-    console.log('🔧 Initializing browser-compatible TikTok client with token:', this.APIFY_TOKEN ? '***' + this.APIFY_TOKEN.slice(-4) : 'No token');
+    // console.log('🔧 Initializing browser-compatible TikTok client with token:', this.APIFY_TOKEN ? '***' + this.APIFY_TOKEN.slice(-4) : 'No token');
     this.apifyClient = new ApifyBrowserClient(this.APIFY_TOKEN);
   }
   

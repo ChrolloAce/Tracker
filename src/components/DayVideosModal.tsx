@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
-import { X, Calendar } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { X, Calendar, Eye, Heart, MessageCircle, Share2, Activity, Video, Users, MousePointerClick, ChevronLeft, ChevronRight } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { VideoSubmissionsTable } from './VideoSubmissionsTable';
 import { TimeInterval } from '../services/DataAggregationService';
+import { LinkClick } from '../services/LinkClicksService';
 
 interface DayVideosModalProps {
   isOpen: boolean;
@@ -14,6 +15,10 @@ interface DayVideosModalProps {
   accountFilter?: string; // Optional: filter by account username
   dateRangeLabel?: string; // Optional: show date range instead of specific date (e.g., "Last 7 Days")
   interval?: TimeInterval | null; // Optional: interval information for formatted date range
+  ppVideos?: VideoSubmission[]; // Previous period videos
+  ppInterval?: TimeInterval | null; // Previous period interval
+  linkClicks?: LinkClick[]; // Link clicks for the period
+  ppLinkClicks?: LinkClick[]; // Previous period link clicks
 }
 
 const DayVideosModal: React.FC<DayVideosModalProps> = ({
@@ -21,19 +26,23 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
   onClose,
   date,
   videos,
-  metricLabel,
+  metricLabel: _metricLabel,
   onVideoClick,
   accountFilter,
   dateRangeLabel,
-  interval
+  interval,
+  ppVideos = [],
+  ppInterval,
+  linkClicks = [],
+  ppLinkClicks = []
 }) => {
-  if (!isOpen) return null;
+  const [showPreviousPeriod, setShowPreviousPeriod] = useState(false);
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', { 
-      weekday: 'long',
+      weekday: 'short',
       year: 'numeric', 
-      month: 'long', 
+      month: 'short', 
       day: 'numeric' 
     });
   };
@@ -48,31 +57,31 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
         return startDate.getFullYear().toString();
       
       case 'month':
-        // Show month and year: "January 2024"
+        // Show month and year: "Oct 2024"
         return startDate.toLocaleDateString('en-US', { 
           year: 'numeric', 
-          month: 'long'
+          month: 'short'
         });
       
       case 'week':
-        // Show full date range: "Monday, January 1, 2024 - Sunday, January 7, 2024"
+        // Show date range: "Sun, Oct 1, 2024 - Sat, Oct 7, 2024"
         const startFormatted = startDate.toLocaleDateString('en-US', { 
-          weekday: 'long',
+          weekday: 'short',
           year: 'numeric', 
-          month: 'long', 
+          month: 'short', 
           day: 'numeric' 
         });
         const endFormatted = endDate.toLocaleDateString('en-US', { 
-          weekday: 'long',
+          weekday: 'short',
           year: 'numeric', 
-          month: 'long', 
+          month: 'short', 
           day: 'numeric' 
         });
         return `${startFormatted} - ${endFormatted}`;
       
       case 'day':
       default:
-        // Show single day: "Monday, January 1, 2024"
+        // Show single day: "Sun, Oct 1, 2024"
         return formatDate(startDate);
     }
   };
@@ -88,20 +97,99 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
 
   // Filter by account if specified
   const filteredVideos = useMemo(() => {
-    if (!accountFilter) return videos;
-    return videos.filter(v => 
+    const videosToFilter = showPreviousPeriod ? ppVideos : videos;
+    if (!accountFilter) return videosToFilter;
+    return videosToFilter.filter(v => 
       v.uploaderHandle?.toLowerCase() === accountFilter.toLowerCase()
     );
-  }, [videos, accountFilter]);
+  }, [videos, ppVideos, accountFilter, showPreviousPeriod]);
 
-  const totalMetrics = useMemo(() => {
+  const calculateComparison = (cpValue: number, ppValue: number) => {
+    if (ppValue === 0) return { percentChange: 0, isPositive: true };
+    const percentChange = ((cpValue - ppValue) / ppValue) * 100;
     return {
-      views: filteredVideos.reduce((sum, v) => sum + v.views, 0),
-      likes: filteredVideos.reduce((sum, v) => sum + v.likes, 0),
-      comments: filteredVideos.reduce((sum, v) => sum + v.comments, 0),
-      shares: filteredVideos.reduce((sum, v) => sum + (v.shares || 0), 0)
+      percentChange: Math.abs(percentChange),
+      isPositive: percentChange >= 0
     };
-  }, [filteredVideos]);
+  };
+
+  const hasPPData = ppInterval !== null && ppInterval !== undefined;
+
+  // Calculate all KPI metrics for current period
+  const cpKPIMetrics = useMemo(() => {
+    const videosToUse = accountFilter 
+      ? videos.filter(v => v.uploaderHandle?.toLowerCase() === accountFilter.toLowerCase())
+      : videos;
+    
+    const totalViews = videosToUse.reduce((sum, v) => sum + (v.views || 0), 0);
+    const totalLikes = videosToUse.reduce((sum, v) => sum + (v.likes || 0), 0);
+    const totalComments = videosToUse.reduce((sum, v) => sum + (v.comments || 0), 0);
+    const totalShares = videosToUse.reduce((sum, v) => sum + (v.shares || 0), 0);
+    const totalEngagement = totalLikes + totalComments + totalShares;
+    const engagementRate = totalViews > 0 ? (totalEngagement / totalViews) * 100 : 0;
+    const uniqueAccounts = new Set(videosToUse.map(v => v.uploaderHandle)).size;
+    const clicksCount = linkClicks.length;
+
+    return {
+      views: totalViews,
+      likes: totalLikes,
+      comments: totalComments,
+      shares: totalShares,
+      engagementRate,
+      videos: videosToUse.length,
+      accounts: uniqueAccounts,
+      clicks: clicksCount
+    };
+  }, [videos, accountFilter, linkClicks]);
+
+  // Calculate all KPI metrics for previous period
+  const ppKPIMetrics = useMemo(() => {
+    const videosToUse = accountFilter 
+      ? ppVideos.filter(v => v.uploaderHandle?.toLowerCase() === accountFilter.toLowerCase())
+      : ppVideos;
+    
+    const totalViews = videosToUse.reduce((sum, v) => sum + (v.views || 0), 0);
+    const totalLikes = videosToUse.reduce((sum, v) => sum + (v.likes || 0), 0);
+    const totalComments = videosToUse.reduce((sum, v) => sum + (v.comments || 0), 0);
+    const totalShares = videosToUse.reduce((sum, v) => sum + (v.shares || 0), 0);
+    const totalEngagement = totalLikes + totalComments + totalShares;
+    const engagementRate = totalViews > 0 ? (totalEngagement / totalViews) * 100 : 0;
+    const uniqueAccounts = new Set(videosToUse.map(v => v.uploaderHandle)).size;
+    const clicksCount = ppLinkClicks.length;
+
+    return {
+      views: totalViews,
+      likes: totalLikes,
+      comments: totalComments,
+      shares: totalShares,
+      engagementRate,
+      videos: videosToUse.length,
+      accounts: uniqueAccounts,
+      clicks: clicksCount
+    };
+  }, [ppVideos, accountFilter, ppLinkClicks]);
+
+  // Generate button text based on interval type
+  const getToggleButtonText = () => {
+    if (!interval) return { show: 'Show Previous Period', showing: 'Show Current Period' };
+    
+    switch (interval.intervalType) {
+      case 'day':
+        return { show: 'Show Yesterday', showing: 'Show Today' };
+      case 'week':
+        return { show: 'Show Previous Week', showing: 'Show Current Week' };
+      case 'month':
+        return { show: 'Show Previous Month', showing: 'Show Current Month' };
+      case 'year':
+        return { show: 'Show Previous Year', showing: 'Show Current Year' };
+      default:
+        return { show: 'Show Previous Period', showing: 'Show Current Period' };
+    }
+  };
+
+  const buttonText = getToggleButtonText();
+
+  if (!isOpen) return null;
 
   return (
     <div 
@@ -114,61 +202,254 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/5">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-white/5 rounded-xl border border-white/10">
-              <Calendar className="w-6 h-6 text-gray-300" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-white">
-                {(() => {
-                  // Priority: interval > dateRangeLabel > fallback to formatted date
-                  if (interval) {
-                    return accountFilter 
-                      ? `@${accountFilter} ${formatIntervalRange(interval)}`
-                      : formatIntervalRange(interval);
-                  }
-                  if (dateRangeLabel && accountFilter) {
-                    return `@${accountFilter} ${dateRangeLabel} Stats`;
-                  }
-                  return dateRangeLabel || formatDate(date);
-                })()}
-              </h2>
-              <p className="text-sm text-gray-400 mt-1">
-                {filteredVideos.length} {filteredVideos.length === 1 ? 'video' : 'videos'} • {metricLabel}
-                {accountFilter && !dateRangeLabel && !interval && <span className="ml-2 text-emerald-400">• @{accountFilter}</span>}
-              </p>
-            </div>
+          <div>
+            <h2 className="text-2xl font-bold text-white">
+              {(() => {
+                const currentInterval = showPreviousPeriod ? ppInterval : interval;
+                // Priority: interval > dateRangeLabel > fallback to formatted date
+                if (currentInterval) {
+                  return accountFilter 
+                    ? `@${accountFilter} ${formatIntervalRange(currentInterval)}`
+                    : formatIntervalRange(currentInterval);
+                }
+                if (dateRangeLabel && accountFilter) {
+                  return `@${accountFilter} ${dateRangeLabel} Stats`;
+                }
+                return dateRangeLabel || formatDate(date);
+              })()}
+            </h2>
+            <p className={`text-sm mt-1 font-medium ${showPreviousPeriod ? 'text-red-400' : 'text-emerald-400'}`}>
+              {showPreviousPeriod 
+                ? 'Viewing data from a past period' 
+                : 'Viewing data from current period'
+              }
+            </p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-white/5 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5 text-gray-400 hover:text-white transition-colors" />
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Previous Period Toggle */}
+            {hasPPData && (
+              <button
+                onClick={() => setShowPreviousPeriod(!showPreviousPeriod)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex items-center gap-2 ${
+                  showPreviousPeriod
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25'
+                    : 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/25'
+                }`}
+              >
+                {showPreviousPeriod ? (
+                  <>
+                    <ChevronRight className="w-4 h-4" />
+                    {buttonText.showing}
+                  </>
+                ) : (
+                  <>
+                    <ChevronLeft className="w-4 h-4" />
+                    {buttonText.show}
+                  </>
+                )}
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5 text-gray-400 hover:text-white transition-colors" />
+            </button>
+          </div>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-4 gap-4 p-6 border-b border-white/5">
-          <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2 font-medium">Total Views</p>
-            <p className="text-2xl font-bold text-white">{formatNumber(totalMetrics.views)}</p>
-          </div>
-          <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2 font-medium">Total Likes</p>
-            <p className="text-2xl font-bold text-white">{formatNumber(totalMetrics.likes)}</p>
-          </div>
-          <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2 font-medium">Total Comments</p>
-            <p className="text-2xl font-bold text-white">{formatNumber(totalMetrics.comments)}</p>
-          </div>
-          <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2 font-medium">Total Shares</p>
-            <p className="text-2xl font-bold text-white">{formatNumber(totalMetrics.shares)}</p>
+        {/* KPI Metrics Grid */}
+        <div className="px-6 py-4 border-b border-white/5">
+          <h3 className="text-sm font-semibold text-white mb-4 uppercase tracking-wider">All Metrics</h3>
+          <div className="grid grid-cols-4 gap-3">
+            {/* Views */}
+            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10">
+              <div className="flex items-center gap-2 mb-2">
+                <Eye className="w-4 h-4 text-white/70" />
+                <p className="text-xs text-gray-400 font-medium">Views</p>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <p className="text-lg font-bold text-white">
+                  {formatNumber(showPreviousPeriod ? ppKPIMetrics.views : cpKPIMetrics.views)}
+                </p>
+                {hasPPData && (() => {
+                  const comp = showPreviousPeriod 
+                    ? calculateComparison(ppKPIMetrics.views, cpKPIMetrics.views)
+                    : calculateComparison(cpKPIMetrics.views, ppKPIMetrics.views);
+                  return comp.percentChange > 0 ? (
+                    <span className={`text-xs font-semibold flex items-center ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
+                    </span>
+                  ) : null;
+                })()}
+              </div>
+            </div>
+
+            {/* Likes */}
+            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10">
+              <div className="flex items-center gap-2 mb-2">
+                <Heart className="w-4 h-4 text-white/70" />
+                <p className="text-xs text-gray-400 font-medium">Likes</p>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <p className="text-lg font-bold text-white">
+                  {formatNumber(showPreviousPeriod ? ppKPIMetrics.likes : cpKPIMetrics.likes)}
+                </p>
+                {hasPPData && (() => {
+                  const comp = showPreviousPeriod 
+                    ? calculateComparison(ppKPIMetrics.likes, cpKPIMetrics.likes)
+                    : calculateComparison(cpKPIMetrics.likes, ppKPIMetrics.likes);
+                  return comp.percentChange > 0 ? (
+                    <span className={`text-xs font-semibold flex items-center ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
+                    </span>
+                  ) : null;
+                })()}
+              </div>
+            </div>
+
+            {/* Comments */}
+            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10">
+              <div className="flex items-center gap-2 mb-2">
+                <MessageCircle className="w-4 h-4 text-white/70" />
+                <p className="text-xs text-gray-400 font-medium">Comments</p>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <p className="text-lg font-bold text-white">
+                  {formatNumber(showPreviousPeriod ? ppKPIMetrics.comments : cpKPIMetrics.comments)}
+                </p>
+                {hasPPData && (() => {
+                  const comp = showPreviousPeriod 
+                    ? calculateComparison(ppKPIMetrics.comments, cpKPIMetrics.comments)
+                    : calculateComparison(cpKPIMetrics.comments, ppKPIMetrics.comments);
+                  return comp.percentChange > 0 ? (
+                    <span className={`text-xs font-semibold flex items-center ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
+                    </span>
+                  ) : null;
+                })()}
+              </div>
+            </div>
+
+            {/* Shares */}
+            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10">
+              <div className="flex items-center gap-2 mb-2">
+                <Share2 className="w-4 h-4 text-white/70" />
+                <p className="text-xs text-gray-400 font-medium">Shares</p>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <p className="text-lg font-bold text-white">
+                  {formatNumber(showPreviousPeriod ? ppKPIMetrics.shares : cpKPIMetrics.shares)}
+                </p>
+                {hasPPData && (() => {
+                  const comp = showPreviousPeriod 
+                    ? calculateComparison(ppKPIMetrics.shares, cpKPIMetrics.shares)
+                    : calculateComparison(cpKPIMetrics.shares, ppKPIMetrics.shares);
+                  return comp.percentChange > 0 ? (
+                    <span className={`text-xs font-semibold flex items-center ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
+                    </span>
+                  ) : null;
+                })()}
+              </div>
+            </div>
+
+            {/* Engagement Rate */}
+            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10">
+              <div className="flex items-center gap-2 mb-2">
+                <Activity className="w-4 h-4 text-white/70" />
+                <p className="text-xs text-gray-400 font-medium">Engagement</p>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <p className="text-lg font-bold text-white">
+                  {(showPreviousPeriod ? ppKPIMetrics.engagementRate : cpKPIMetrics.engagementRate).toFixed(2)}%
+                </p>
+                {hasPPData && (() => {
+                  const comp = showPreviousPeriod 
+                    ? calculateComparison(ppKPIMetrics.engagementRate, cpKPIMetrics.engagementRate)
+                    : calculateComparison(cpKPIMetrics.engagementRate, ppKPIMetrics.engagementRate);
+                  return comp.percentChange > 0 ? (
+                    <span className={`text-xs font-semibold flex items-center ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
+                    </span>
+                  ) : null;
+                })()}
+              </div>
+            </div>
+
+            {/* Videos */}
+            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10">
+              <div className="flex items-center gap-2 mb-2">
+                <Video className="w-4 h-4 text-white/70" />
+                <p className="text-xs text-gray-400 font-medium">Videos</p>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <p className="text-lg font-bold text-white">
+                  {showPreviousPeriod ? ppKPIMetrics.videos : cpKPIMetrics.videos}
+                </p>
+                {hasPPData && (() => {
+                  const comp = showPreviousPeriod 
+                    ? calculateComparison(ppKPIMetrics.videos, cpKPIMetrics.videos)
+                    : calculateComparison(cpKPIMetrics.videos, ppKPIMetrics.videos);
+                  return comp.percentChange > 0 ? (
+                    <span className={`text-xs font-semibold flex items-center ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
+                    </span>
+                  ) : null;
+                })()}
+              </div>
+            </div>
+
+            {/* Accounts */}
+            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="w-4 h-4 text-white/70" />
+                <p className="text-xs text-gray-400 font-medium">Accounts</p>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <p className="text-lg font-bold text-white">
+                  {showPreviousPeriod ? ppKPIMetrics.accounts : cpKPIMetrics.accounts}
+                </p>
+                {hasPPData && (() => {
+                  const comp = showPreviousPeriod 
+                    ? calculateComparison(ppKPIMetrics.accounts, cpKPIMetrics.accounts)
+                    : calculateComparison(cpKPIMetrics.accounts, ppKPIMetrics.accounts);
+                  return comp.percentChange > 0 ? (
+                    <span className={`text-xs font-semibold flex items-center ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
+                    </span>
+                  ) : null;
+                })()}
+              </div>
+            </div>
+
+            {/* Link Clicks */}
+            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10">
+              <div className="flex items-center gap-2 mb-2">
+                <MousePointerClick className="w-4 h-4 text-white/70" />
+                <p className="text-xs text-gray-400 font-medium">Clicks</p>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <p className="text-lg font-bold text-white">
+                  {showPreviousPeriod ? ppKPIMetrics.clicks : cpKPIMetrics.clicks}
+                </p>
+                {hasPPData && (() => {
+                  const comp = showPreviousPeriod 
+                    ? calculateComparison(ppKPIMetrics.clicks, cpKPIMetrics.clicks)
+                    : calculateComparison(cpKPIMetrics.clicks, ppKPIMetrics.clicks);
+                  return comp.percentChange > 0 ? (
+                    <span className={`text-xs font-semibold flex items-center ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
+                    </span>
+                  ) : null;
+                })()}
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Videos Table - Using VideoSubmissionsTable for consistent styling */}
-        <div className="overflow-auto" style={{ maxHeight: 'calc(85vh - 280px)' }}>
+        <div className="overflow-auto" style={{ maxHeight: 'calc(85vh - 380px)' }}>
           {filteredVideos.length > 0 ? (
             <VideoSubmissionsTable 
               submissions={filteredVideos}

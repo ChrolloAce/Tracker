@@ -507,13 +507,9 @@ function DashboardPage() {
     };
   }, [activeTab, isModalOpen, isTikTokSearchOpen, isAnalyticsModalOpen]);
 
-  // Filter submissions based on date range, platform, and accounts (memoized to prevent infinite loops)
-  const filteredSubmissions = useMemo(() => {
-    let filtered = DateFilterService.filterVideosByDateRange(
-      submissions, 
-      dateFilter, 
-      customDateRange
-    );
+  // Apply platform, account, and rule filters (but NOT date filter) - for PP calculation
+  const submissionsWithoutDateFilter = useMemo(() => {
+    let filtered = submissions;
     
     // Apply platform filter
     if (dashboardPlatformFilter !== 'all') {
@@ -540,7 +536,6 @@ function DashboardPage() {
     if (selectedRuleId !== 'all') {
       const selectedRule = allRules.find(rule => rule.id === selectedRuleId);
       if (selectedRule && selectedRule.isActive) {
-        const beforeCount = filtered.length;
         filtered = filtered.filter(video => {
           // Check if video matches the selected rule
           const result = RulesService.checkVideoMatchesRule(video as any, selectedRule);
@@ -587,7 +582,18 @@ function DashboardPage() {
     }
     
     return filtered;
-  }, [submissions, dateFilter, customDateRange, dashboardPlatformFilter, selectedAccountIds, trackedAccounts, allRules, selectedRuleId]);
+  }, [submissions, dashboardPlatformFilter, selectedAccountIds, trackedAccounts, allRules, selectedRuleId]);
+
+  // Filter submissions based on date range, platform, and accounts (memoized to prevent infinite loops)
+  const filteredSubmissions = useMemo(() => {
+    let filtered = DateFilterService.filterVideosByDateRange(
+      submissionsWithoutDateFilter, 
+      dateFilter, 
+      customDateRange
+    );
+    
+    return filtered;
+  }, [submissionsWithoutDateFilter, dateFilter, customDateRange]);
 
   // Combine real submissions with pending videos for immediate UI feedback
   const combinedSubmissions = useMemo(() => {
@@ -1121,38 +1127,10 @@ function DashboardPage() {
           {/* Dashboard Tab */}
           <div className={activeTab === 'dashboard' ? '' : 'hidden'}>
             <>
-              {/* Active Rule Filter Indicator */}
-              {selectedRuleId !== 'all' && (() => {
-                const activeRule = allRules.find(r => r.id === selectedRuleId);
-                if (activeRule) {
-                  return (
-                    <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Filter className="w-5 h-5 text-blue-400" />
-                        <div>
-                          <p className="text-sm font-semibold text-white">
-                            Filtered by Rule: <span className="text-blue-400">{activeRule.name}</span>
-                          </p>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            Showing only videos matching this rule's conditions
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setSelectedRuleId('all')}
-                        className="px-3 py-1.5 text-sm text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-colors"
-                      >
-                        Clear Filter
-                      </button>
-                    </div>
-                  );
-                }
-                return null;
-              })()}
-              
               {/* KPI Cards with Working Sparklines */}
                 <KPICards 
                   submissions={filteredSubmissions}
+                  allSubmissions={submissionsWithoutDateFilter}
                   linkClicks={linkClicks}
                   dateFilter={dateFilter}
                   customRange={customDateRange}

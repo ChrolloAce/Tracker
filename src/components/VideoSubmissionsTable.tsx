@@ -616,6 +616,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           
+                          console.log('Opening video player:', {
                             videoId: submission.id,
                             url: submission.url,
                             platform: submission.platform,

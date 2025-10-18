@@ -23,7 +23,7 @@ class ThemeService {
   static initializeTheme(): ThemeMode {
     const root = document.documentElement;
     root.classList.add(this.DARK_CLASS);
-    console.log('🎨 Dark mode enabled (permanent)');
+    // console.log('🎨 Dark mode enabled (permanent)');
     return 'dark';
   }
 }

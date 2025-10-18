@@ -318,7 +318,7 @@ class FirestoreDataService {
       snapshotsMap.set(videoId, snapshots);
     });
     
-    console.log(`📸 Loaded snapshots for ${results.filter(r => r.snapshots.length > 0).length}/${videoIds.length} videos`);
+    // console.log(`📸 Loaded snapshots for ${results.filter(r => r.snapshots.length > 0).length}/${videoIds.length} videos`);
     
     return snapshotsMap;
   }

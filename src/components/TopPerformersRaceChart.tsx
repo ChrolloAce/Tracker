@@ -231,7 +231,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
       {/* Top Videos */}
-      <div className="relative rounded-2xl border border-white/5 p-6 shadow-lg overflow-hidden" style={{ backgroundColor: '#121214' }}>
+      <div className="relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl transition-all duration-300 p-6 overflow-hidden">
         {/* Depth Gradient Overlay */}
         <div 
           className="absolute inset-0 pointer-events-none z-0"
@@ -244,14 +244,14 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
         <div className="relative z-10">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-lg font-semibold text-white/90">Top Videos</h2>
+          <h2 className="text-lg font-semibold text-white">Top Videos</h2>
           <div className="flex items-center gap-3">
             {/* Count Selector */}
             <div className="relative">
               <select
                 value={topVideosCount}
                 onChange={(e) => setTopVideosCount(Number(e.target.value))}
-                className="appearance-none bg-white/5 text-white/90 rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
+                className="appearance-none bg-white/10 text-white rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-white/10 hover:bg-white/15 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all cursor-pointer"
               >
                 <option value={3} className="bg-gray-900">3</option>
                 <option value={5} className="bg-gray-900">5</option>
@@ -264,7 +264,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
               <select
                 value={videosMetric}
                 onChange={(e) => setVideosMetric(e.target.value as MetricType)}
-                className="appearance-none bg-white/5 text-white/90 rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
+                className="appearance-none bg-white/10 text-white rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-white/10 hover:bg-white/15 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all cursor-pointer"
               >
                 <option value="views" className="bg-gray-900">Views</option>
                 <option value="likes" className="bg-gray-900">Likes</option>
@@ -351,7 +351,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                     </div>
                     {/* Metric Value - Always on Right */}
                     <div className="ml-4 min-w-[100px] text-right">
-                      <span className="text-lg font-semibold text-white/90 tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
+                      <span className="text-lg font-semibold text-white tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
                         {formatNumber(value, videosMetric)}
                       </span>
                     </div>
@@ -371,7 +371,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
       </div>
 
       {/* Top Accounts */}
-      <div className="relative rounded-2xl border border-white/5 p-6 shadow-lg overflow-hidden" style={{ backgroundColor: '#121214' }}>
+      <div className="relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl transition-all duration-300 p-6 overflow-hidden">
         {/* Depth Gradient Overlay */}
         <div 
           className="absolute inset-0 pointer-events-none z-0"
@@ -384,14 +384,14 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
         <div className="relative z-10">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-lg font-semibold text-white/90">Top Accounts</h2>
+          <h2 className="text-lg font-semibold text-white">Top Accounts</h2>
           <div className="flex items-center gap-3">
             {/* Count Selector */}
             <div className="relative">
               <select
                 value={topAccountsCount}
                 onChange={(e) => setTopAccountsCount(Number(e.target.value))}
-                className="appearance-none bg-white/5 text-white/90 rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
+                className="appearance-none bg-white/10 text-white rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-white/10 hover:bg-white/15 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all cursor-pointer"
               >
                 <option value={3} className="bg-gray-900">3</option>
                 <option value={5} className="bg-gray-900">5</option>
@@ -404,7 +404,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
               <select
                 value={accountsMetric}
                 onChange={(e) => setAccountsMetric(e.target.value as MetricType)}
-                className="appearance-none bg-white/5 text-white/90 rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
+                className="appearance-none bg-white/10 text-white rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-white/10 hover:bg-white/15 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all cursor-pointer"
               >
                 <option value="views" className="bg-gray-900">Views</option>
                 <option value="likes" className="bg-gray-900">Likes</option>
@@ -506,7 +506,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                     </div>
                     {/* Metric Value - Always on Right */}
                     <div className="ml-4 min-w-[100px] text-right">
-                      <span className="text-lg font-semibold text-white/90 tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
+                      <span className="text-lg font-semibold text-white tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
                         {formatNumber(value, accountsMetric)}
                       </span>
                     </div>
@@ -535,120 +535,87 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
             transform: 'translate(-50%, -100%)'
           }}
         >
-          <div className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10 p-4 w-[320px]">
-            {/* Header */}
-            <div className="flex items-start gap-3 mb-3 pb-3 border-b border-white/10">
-              <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-800 flex-shrink-0">
-                {hoveredVideo.video.thumbnail ? (
-                  <img 
-                    src={hoveredVideo.video.thumbnail} 
-                    alt="" 
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Play className="w-5 h-5 text-gray-600" />
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-semibold text-white line-clamp-2 leading-tight">
-                  {hoveredVideo.video.title || hoveredVideo.video.caption || '(No caption)'}
-                </h3>
-                <div className="flex items-center gap-1.5 mt-1">
-                  <div className="w-3.5 h-3.5">
-                    <PlatformIcon platform={hoveredVideo.video.platform} size="sm" />
-                  </div>
-                  <span className="text-xs text-gray-400">
-                    {hoveredVideo.video.uploaderHandle || hoveredVideo.video.platform}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Stats */}
+          <div className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10 w-[320px]">
             {(() => {
               const stats = getVideoStats(hoveredVideo.video);
               const formatNum = (num: number) => {
-                if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-                if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+                if (num >= 1000000) return `${(num / 1000000).toFixed(1)} M`;
+                if (num >= 1000) return `${(num / 1000).toFixed(1)} k`;
                 return num.toLocaleString();
               };
 
+              const uploadDate = stats.uploadDate ? new Date(stats.uploadDate) : null;
+              const dateStr = uploadDate ? uploadDate.toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric',
+                year: 'numeric'
+              }) : 'Unknown Date';
+
               return (
-                <div className="space-y-2.5">
-                  {/* Current Views */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Eye className="w-4 h-4 text-blue-400" />
-                      <span className="text-xs text-gray-400">Current Views</span>
+                <>
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-5 pt-4 pb-3">
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+                      {dateStr}
+                    </p>
+                    <div className="flex items-baseline gap-3">
+                      <p className="text-2xl font-bold text-white">
+                        {formatNum(getMetricValue(hoveredVideo.video, videosMetric))}
+                      </p>
+                      {stats.viewChange !== 0 && (
+                        <span className={`text-xs font-semibold ${stats.viewChange > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {stats.viewChange > 0 ? '↑' : '↓'} {Math.abs(stats.viewChangePercentage).toFixed(0)}%
+                        </span>
+                      )}
                     </div>
-                    <span className="text-sm font-semibold text-white">
-                      {formatNum(stats.currentViews)}
-                    </span>
                   </div>
-
-                  {/* View Change */}
-                  {stats.viewChange !== 0 && (
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {stats.viewChange > 0 ? (
-                          <TrendingUp className="w-4 h-4 text-green-400" />
+                  
+                  {/* Divider */}
+                  <div className="border-t border-white/10 mx-5"></div>
+                  
+                  {/* Video Info */}
+                  <div className="px-5 py-3">
+                    <div className="flex items-center gap-3 py-2.5">
+                      {/* Thumbnail */}
+                      <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-800">
+                        {hoveredVideo.video.thumbnail ? (
+                          <img 
+                            src={hoveredVideo.video.thumbnail} 
+                            alt="" 
+                            className="w-full h-full object-cover"
+                          />
                         ) : (
-                          <TrendingDown className="w-4 h-4 text-red-400" />
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Play className="w-5 h-5 text-gray-600" />
+                          </div>
                         )}
-                        <span className="text-xs text-gray-400">View Change</span>
                       </div>
-                      <div className="text-right">
-                        <span className={`text-sm font-semibold ${stats.viewChange > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {stats.viewChange > 0 ? '+' : ''}{formatNum(stats.viewChange)}
-                        </span>
-                        {stats.viewChangePercentage !== 0 && (
-                          <span className={`text-xs ml-1 ${stats.viewChange > 0 ? 'text-green-400/70' : 'text-red-400/70'}`}>
-                            ({stats.viewChange > 0 ? '+' : ''}{stats.viewChangePercentage.toFixed(1)}%)
+
+                      {/* Metadata */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-white font-medium truncate leading-tight mb-1">
+                          {hoveredVideo.video.title || hoveredVideo.video.caption || '(No caption)'}
+                        </p>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-4 h-4">
+                            <PlatformIcon platform={hoveredVideo.video.platform} size="sm" />
+                          </div>
+                          <span className="text-xs text-gray-400 lowercase">
+                            {hoveredVideo.video.uploaderHandle || hoveredVideo.video.platform}
                           </span>
-                        )}
+                        </div>
                       </div>
                     </div>
-                  )}
 
-                  {/* Engagement Rate */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-400">Engagement Rate</span>
-                    <span className="text-sm font-semibold text-purple-400">
-                      {stats.engagementRate.toFixed(2)}%
-                    </span>
-                  </div>
-
-                  {/* Dates */}
-                  <div className="pt-2 mt-2 border-t border-white/10 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-3.5 h-3.5 text-gray-500" />
-                        <span className="text-xs text-gray-500">Upload Date</span>
-                      </div>
-                      <span className="text-xs text-gray-300">
-                        {stats.uploadDate ? new Date(stats.uploadDate).toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric',
-                          year: 'numeric'
-                        }) : 'Unknown'}
-                      </span>
+                    {/* Click to Expand */}
+                    <div className="mt-2 pt-3 border-t border-white/10">
+                      <button className="w-full flex items-center justify-center gap-2 py-2 text-xs text-gray-400 hover:text-white transition-colors">
+                        <span>Click to expand data</span>
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                    {stats.lastSnapshotDate && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-500 ml-5">Last Snapshot</span>
-                        <span className="text-xs text-gray-300">
-                          {stats.lastSnapshotDate.toLocaleDateString('en-US', { 
-                            month: 'short', 
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </span>
-                      </div>
-                    )}
                   </div>
-                </div>
+                </>
               );
             })()}
           </div>
@@ -666,82 +633,122 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
             transform: 'translate(-50%, -100%)'
           }}
         >
-          <div className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10 p-4 w-[380px] max-h-[500px] overflow-y-auto">
-            {/* Header */}
-            <div className="mb-3 pb-3 border-b border-white/10">
-              <h3 className="text-sm font-semibold text-white">
-                Top Videos by {hoveredAccount.handle}
-              </h3>
-              <p className="text-xs text-gray-400 mt-1">
-                Sorted by performance
-              </p>
-            </div>
+          <div className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10 w-[380px]">
+            {(() => {
+              // Find the account data
+              const account = topAccounts.find(acc => acc.handle === hoveredAccount.handle);
+              if (!account) return null;
 
-            {/* Video List */}
-            <div className="space-y-2.5">
-              {getAccountVideos(hoveredAccount.handle).map((video, idx) => {
+              const formatNum = (num: number) => {
+                if (num >= 1000000) return `${(num / 1000000).toFixed(1)} M`;
+                if (num >= 1000) return `${(num / 1000).toFixed(1)} k`;
+                return num.toLocaleString();
+              };
+
+              // Calculate total views for this account
+              const totalViews = account.totalViews;
+              
+              // Calculate PP comparison (you can add this logic based on your data)
+              // For now, we'll show growth if view change data is available
+              const accountVideos = getAccountVideos(hoveredAccount.handle);
+              let totalGrowth = 0;
+              let hasGrowthData = false;
+              accountVideos.forEach(video => {
                 const stats = getVideoStats(video);
-                const formatNum = (num: number) => {
-                  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-                  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-                  return num.toLocaleString();
-                };
+                if (stats.viewChange !== 0) {
+                  totalGrowth += stats.viewChangePercentage;
+                  hasGrowthData = true;
+                }
+              });
+              const avgGrowth = hasGrowthData ? totalGrowth / accountVideos.filter(v => getVideoStats(v).viewChange !== 0).length : 0;
 
-                return (
-                  <div 
-                    key={video.id} 
-                    className="flex items-start gap-2.5 p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
-                  >
-                    {/* Thumbnail */}
-                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-800 flex-shrink-0">
-                      {video.thumbnail ? (
-                        <img 
-                          src={video.thumbnail} 
-                          alt="" 
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Play className="w-4 h-4 text-gray-600" />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-white font-medium line-clamp-2 leading-tight mb-1">
-                        {video.title || video.caption || '(No caption)'}
+              return (
+                <>
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-5 pt-4 pb-3">
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+                      @{hoveredAccount.handle}
+                    </p>
+                    <div className="flex items-baseline gap-3">
+                      <p className="text-2xl font-bold text-white">
+                        {formatNum(totalViews)}
                       </p>
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="text-gray-400">
-                          {formatNum(video.views || 0)} views
-                        </span>
-                        {stats.viewChange > 0 && (
-                          <span className="text-green-400">
-                            +{formatNum(stats.viewChange)}
-                          </span>
-                        )}
-                      </div>
-                      {stats.uploadDate && (
-                        <span className="text-xs text-gray-500 mt-0.5 block">
-                          {new Date(stats.uploadDate).toLocaleDateString('en-US', { 
-                            month: 'short', 
-                            day: 'numeric'
-                          })}
+                      {hasGrowthData && avgGrowth !== 0 && (
+                        <span className={`text-xs font-semibold ${avgGrowth >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {avgGrowth >= 0 ? '↑' : '↓'} {Math.abs(avgGrowth).toFixed(0)}%
                         </span>
                       )}
-                    </div>
-
-                    {/* Rank Badge */}
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">
-                      <span className="text-xs font-bold text-white/60">
-                        {idx + 1}
-                      </span>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                  
+                  {/* Divider */}
+                  <div className="border-t border-white/10 mx-5"></div>
+                  
+                  {/* Video List */}
+                  <div className="overflow-y-auto px-5 py-3" style={{ maxHeight: '400px' }}>
+                    {accountVideos.map((video, idx) => {
+                      const stats = getVideoStats(video);
+
+                      return (
+                        <div 
+                          key={video.id} 
+                          className="flex items-center gap-3 py-2.5 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                        >
+                          {/* Thumbnail */}
+                          <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-800">
+                            {video.thumbnail ? (
+                              <img 
+                                src={video.thumbnail} 
+                                alt="" 
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Play className="w-5 h-5 text-gray-600" />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Metadata */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-white font-medium truncate leading-tight mb-1">
+                              {video.title || video.caption || '(No caption)'}
+                            </p>
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-4 h-4">
+                                <PlatformIcon platform={video.platform} size="sm" />
+                              </div>
+                              <span className="text-xs text-gray-400">
+                                {stats.uploadDate ? new Date(stats.uploadDate).toLocaleDateString('en-US', { 
+                                  month: 'short', 
+                                  day: 'numeric'
+                                }) : 'Unknown'}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {/* Metric Value */}
+                          <div className="flex-shrink-0 text-right">
+                            <p className="text-sm font-bold text-white">
+                              {formatNum(video.views || 0)}
+                            </p>
+                            <p className="text-xs text-gray-500">Views</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    
+                    {/* Click to Expand */}
+                    <div className="mt-2 pt-3 border-t border-white/10">
+                      <button className="w-full flex items-center justify-center gap-2 py-2 text-xs text-gray-400 hover:text-white transition-colors">
+                        <span>Click to expand data</span>
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>,
         document.body

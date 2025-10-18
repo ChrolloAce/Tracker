@@ -26,7 +26,8 @@ interface TrackedLinksPageProps {
   customDateRange?: { startDate: Date; endDate: Date };
 }
 
-const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(({ searchQuery, linkClicks = [], dateFilter, customDateRange }, ref) => {
+const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
+  ({ searchQuery, linkClicks = [], dateFilter, customDateRange }, ref) => {
   const { currentOrgId, currentProjectId, user } = useAuth();
   const [links, setLinks] = useState<TrackedLink[]>([]);
   const [accounts, setAccounts] = useState<Map<string, TrackedAccount>>(new Map());
