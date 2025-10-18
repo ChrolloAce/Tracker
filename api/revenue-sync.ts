@@ -140,24 +140,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const transactions = [];
             
             if (data.metrics && Array.isArray(data.metrics)) {
-              // Extract revenue-related metrics
+              // Extract revenue-related metrics by ID
               const now = Date.now();
               const metrics = data.metrics.reduce((acc: any, metric: any) => {
-                acc[metric.metric] = metric.value;
+                // Use metric.id as the key (not metric.metric which doesn't exist)
+                acc[metric.id] = metric.value;
                 return acc;
               }, {});
 
               console.log('Parsed metrics:', metrics);
 
+              // Look for revenue metrics - try common metric IDs
+              const revenue = metrics.revenue || metrics.total_revenue || metrics.lifetime_revenue || 0;
+              const mrr = metrics.mrr || metrics.monthly_recurring_revenue || 0;
+              const activeSubscriptions = metrics.active_subscriptions || metrics.active_subscribers || 0;
+
+              console.log('Extracted values:', { revenue, mrr, activeSubscriptions });
+
               // Create a single aggregate "transaction" entry
               // Note: This is ALL TIME data, not filtered by date range
-              if (metrics.revenue || metrics.mrr) {
+              if (revenue > 0 || mrr > 0) {
                 transactions.push({
                   id: `rc_aggregate_${now}`,
                   date: new Date().toISOString(),
-                  revenue: metrics.revenue || 0,
-                  mrr: metrics.mrr || 0,
-                  active_subscriptions: metrics.active_subscriptions || 0,
+                  revenue: revenue,
+                  mrr: mrr,
+                  active_subscriptions: activeSubscriptions,
                   currency: 'USD',
                   type: 'aggregate_metrics',
                 });
