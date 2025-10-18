@@ -1048,14 +1048,18 @@ function DashboardPage() {
     if (allSections.includes(cardId)) {
       // It's a section
       setDashboardSectionVisibility(prev => {
-        const updated = { ...prev, [cardId]: !prev[cardId] };
+        const newValue = !prev[cardId];
+        const updated = { ...prev, [cardId]: newValue };
+        console.log(`🔄 Toggling section "${cardId}":`, prev[cardId], '→', newValue);
         localStorage.setItem('dashboardSectionVisibility', JSON.stringify(updated));
         return updated;
       });
     } else {
       // It's a KPI card
       setKpiCardVisibility(prev => {
-        const updated = { ...prev, [cardId]: !prev[cardId] };
+        const newValue = !prev[cardId];
+        const updated = { ...prev, [cardId]: newValue };
+        console.log(`🔄 Toggling KPI card "${cardId}":`, prev[cardId], '→', newValue);
         localStorage.setItem('kpiCardVisibility', JSON.stringify(updated));
         return updated;
       });
@@ -1493,8 +1497,15 @@ function DashboardPage() {
           <div className={activeTab === 'dashboard' ? '' : 'hidden'}>
             <>
               {/* Render dashboard sections in order */}
-              {dashboardSectionOrder
-                .filter(sectionId => dashboardSectionVisibility[sectionId] !== false)
+              {(() => {
+                const visibleSections = dashboardSectionOrder.filter(sectionId => {
+                  const isVisible = dashboardSectionVisibility[sectionId] !== false;
+                  console.log(`📊 Section "${sectionId}": visibility =`, dashboardSectionVisibility[sectionId], '→ shown:', isVisible);
+                  return isVisible;
+                });
+                console.log('📋 Total visible sections:', visibleSections.length, '/', dashboardSectionOrder.length);
+                return visibleSections;
+              })()
                 .map((sectionId, index) => {
                   const handleSectionDragStart = () => {
                     if (isEditingLayout) setDraggedSection(sectionId);
