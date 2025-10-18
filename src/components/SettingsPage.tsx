@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, Crown, Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, Building2, User as UserIcon, Download, X, Users } from 'lucide-react';
+import { LogOut, Crown, Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, Building2, User as UserIcon, Download, X, Users, DollarSign } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -9,8 +9,9 @@ import DeleteOrganizationModal from './DeleteOrganizationModal';
 import TeamManagementPage from './TeamManagementPage';
 import PendingInvitationsPage from './PendingInvitationsPage';
 import { OrgMember } from '../types/firestore';
+import { RevenueIntegrationsSettings } from './RevenueIntegrationsSettings';
 
-type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'team';
+type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'team' | 'revenue';
 
 /**
  * SettingsPage Component
@@ -19,7 +20,7 @@ type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'team'
  * Features: Billing, Notifications, Organization, Profile management
  */
 const SettingsPage: React.FC = () => {
-  const { logout, user, currentOrgId } = useAuth();
+  const { logout, user, currentOrgId, currentProjectId } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [uploading, setUploading] = useState(false);
@@ -166,6 +167,7 @@ const SettingsPage: React.FC = () => {
             {[
               { id: 'billing', label: 'Billing', icon: CreditCard },
               { id: 'notifications', label: 'Notifications', icon: Bell },
+              { id: 'revenue', label: 'Revenue', icon: DollarSign },
               { id: 'organization', label: 'Organization', icon: Building2 },
               { id: 'profile', label: 'Profile', icon: UserIcon },
               { id: 'team', label: 'Team', icon: Users },
@@ -456,6 +458,33 @@ const SettingsPage: React.FC = () => {
                   Save changes
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Revenue Tab */}
+          {activeTab === 'revenue' && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Revenue Integrations</h2>
+                <p className="text-gray-600 dark:text-gray-400">Connect RevenueCat, Superwall, or other revenue sources to track performance alongside your video metrics.</p>
+              </div>
+
+              {currentOrgId && currentProjectId ? (
+                <RevenueIntegrationsSettings 
+                  organizationId={currentOrgId}
+                  projectId={currentProjectId}
+                />
+              ) : (
+                <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-12 text-center">
+                  <DollarSign className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    Select an Organization and Project
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Please select an organization and project to manage revenue integrations.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
