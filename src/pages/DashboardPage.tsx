@@ -27,6 +27,7 @@ import CreatorPortalPage from '../components/CreatorPortalPage';
 import CreatorsManagementPage, { CreatorsManagementPageRef } from '../components/CreatorsManagementPage';
 import OrganizationService from '../services/OrganizationService';
 import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
+import { PlatformIcon } from '../components/ui/PlatformIcon';
 import { VideoSubmission, InstagramVideoData } from '../types';
 import DateFilterService from '../services/DateFilterService';
 import ThemeService from '../services/ThemeService';
@@ -192,6 +193,7 @@ function DashboardPage() {
     const saved = localStorage.getItem('dashboardPlatformFilter');
     return (saved as 'all' | 'instagram' | 'tiktok' | 'youtube') || 'all';
   });
+  const [platformDropdownOpen, setPlatformDropdownOpen] = useState(false);
   
   // Dashboard accounts filter state
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>(() => {
@@ -1205,7 +1207,7 @@ function DashboardPage() {
               </h1>
               {activeTab !== 'analytics' && (
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
-                  {activeTab === 'dashboard' && (isEditingLayout ? 'Drag sections around to make your unique dashboard' : 'Track and analyze your video performance')}
+                  {activeTab === 'dashboard' && isEditingLayout && 'Drag sections around to make your unique dashboard'}
                   {activeTab === 'accounts' && 'Monitor entire Instagram and TikTok accounts'}
                   {activeTab === 'subscription' && 'Choose the perfect plan to scale your tracking'}
                   {activeTab === 'creators' && 'Manage and discover content creators'}
@@ -1232,20 +1234,92 @@ function DashboardPage() {
                     placeholder="All Accounts"
                   />
                   
-                  {/* Platform Filter - Icon Only */}
+                  {/* Platform Filter - Icon Based */}
                   <div className="relative">
-                    <select
-                      value={dashboardPlatformFilter}
-                      onChange={(e) => setDashboardPlatformFilter(e.target.value as 'all' | 'instagram' | 'tiktok' | 'youtube')}
-                      className="appearance-none pl-3 pr-8 py-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
+                    <button
+                      onClick={() => setPlatformDropdownOpen(!platformDropdownOpen)}
+                      onBlur={() => setTimeout(() => setPlatformDropdownOpen(false), 200)}
+                      className="flex items-center gap-2 pl-3 pr-8 py-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
                       title={dashboardPlatformFilter === 'all' ? 'All Platforms' : dashboardPlatformFilter.charAt(0).toUpperCase() + dashboardPlatformFilter.slice(1)}
                     >
-                      <option value="all" className="bg-gray-900">🌐 All</option>
-                      <option value="instagram" className="bg-gray-900">📷 IG</option>
-                      <option value="tiktok" className="bg-gray-900">🎵 TT</option>
-                      <option value="youtube" className="bg-gray-900">▶️ YT</option>
-                    </select>
-                    <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-white/50 pointer-events-none" />
+                      {dashboardPlatformFilter === 'all' ? (
+                        <>
+                          <span className="text-lg">🌐</span>
+                          <span>All</span>
+                        </>
+                      ) : (
+                        <>
+                          <PlatformIcon platform={dashboardPlatformFilter as 'instagram' | 'tiktok' | 'youtube'} size="sm" />
+                          <span className="capitalize">{dashboardPlatformFilter}</span>
+                        </>
+                      )}
+                      <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-white/50" />
+                    </button>
+                    
+                    {platformDropdownOpen && (
+                      <div className="absolute top-full mt-1 w-48 bg-gray-900 border border-white/10 rounded-lg shadow-xl overflow-hidden z-50">
+                        <button
+                          onClick={() => {
+                            setDashboardPlatformFilter('all');
+                            localStorage.setItem('dashboardPlatformFilter', 'all');
+                            setPlatformDropdownOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${
+                            dashboardPlatformFilter === 'all' 
+                              ? 'bg-emerald-500/20 text-emerald-400' 
+                              : 'text-white/90 hover:bg-white/5'
+                          }`}
+                        >
+                          <span className="text-lg">🌐</span>
+                          <span>All Platforms</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setDashboardPlatformFilter('instagram');
+                            localStorage.setItem('dashboardPlatformFilter', 'instagram');
+                            setPlatformDropdownOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${
+                            dashboardPlatformFilter === 'instagram' 
+                              ? 'bg-emerald-500/20 text-emerald-400' 
+                              : 'text-white/90 hover:bg-white/5'
+                          }`}
+                        >
+                          <PlatformIcon platform="instagram" size="sm" />
+                          <span>Instagram</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setDashboardPlatformFilter('tiktok');
+                            localStorage.setItem('dashboardPlatformFilter', 'tiktok');
+                            setPlatformDropdownOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${
+                            dashboardPlatformFilter === 'tiktok' 
+                              ? 'bg-emerald-500/20 text-emerald-400' 
+                              : 'text-white/90 hover:bg-white/5'
+                          }`}
+                        >
+                          <PlatformIcon platform="tiktok" size="sm" />
+                          <span>TikTok</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setDashboardPlatformFilter('youtube');
+                            localStorage.setItem('dashboardPlatformFilter', 'youtube');
+                            setPlatformDropdownOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${
+                            dashboardPlatformFilter === 'youtube' 
+                              ? 'bg-emerald-500/20 text-emerald-400' 
+                              : 'text-white/90 hover:bg-white/5'
+                          }`}
+                        >
+                          <PlatformIcon platform="youtube" size="sm" />
+                          <span>YouTube</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                   
                   {/* Granularity Selector - Dropdown */}
