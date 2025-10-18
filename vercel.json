@@ -12,6 +12,9 @@
     "api/redirect.ts": {
       "maxDuration": 10
     },
+    "api/revenue-sync.ts": {
+      "maxDuration": 30
+    },
     "api/cron-refresh-videos.ts": {
       "maxDuration": 300
     },
