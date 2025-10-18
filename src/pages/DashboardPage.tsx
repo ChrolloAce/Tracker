@@ -1216,89 +1216,84 @@ function DashboardPage() {
             </div>
           </div>
           {activeTab === 'dashboard' && (
-            <div className="flex items-center justify-between w-full space-x-4">
+            <div className="flex items-center justify-end w-full space-x-2">
               {!isEditingLayout ? (
                 <>
-                  {/* Left Side Filters */}
-                  <div className="flex items-center space-x-3">
-                    {/* Accounts Filter */}
-                    <MultiSelectDropdown
-                      options={trackedAccounts.map(account => ({
-                        id: account.id,
-                        label: account.displayName || `@${account.username}`,
-                        avatar: account.profilePicture
-                      }))}
-                      selectedIds={selectedAccountIds}
-                      onChange={setSelectedAccountIds}
-                      placeholder="All Accounts"
-                    />
-                    
-                    {/* Platform Filter - Icon Only */}
-                    <div className="relative">
-                      <select
-                        value={dashboardPlatformFilter}
-                        onChange={(e) => setDashboardPlatformFilter(e.target.value as 'all' | 'instagram' | 'tiktok' | 'youtube')}
-                        className="appearance-none pl-3 pr-8 py-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
-                        title={dashboardPlatformFilter === 'all' ? 'All Platforms' : dashboardPlatformFilter.charAt(0).toUpperCase() + dashboardPlatformFilter.slice(1)}
-                      >
-                        <option value="all" className="bg-gray-900">🌐 All</option>
-                        <option value="instagram" className="bg-gray-900">📷 IG</option>
-                        <option value="tiktok" className="bg-gray-900">🎵 TT</option>
-                        <option value="youtube" className="bg-gray-900">▶️ YT</option>
-                      </select>
-                      <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-white/50 pointer-events-none" />
-                    </div>
-                    
-                    {/* Granularity Selector */}
-                    <div className="flex items-center bg-white/5 rounded-lg border border-white/10 p-1">
-                      {[
-                        { value: 'day' as const, label: 'D', tooltip: 'Show data by day' },
-                        { value: 'week' as const, label: 'W', tooltip: 'Show data by week' },
-                        { value: 'month' as const, label: 'M', tooltip: 'Show data by month' },
-                        { value: 'year' as const, label: 'Y', tooltip: 'Show data by year' }
-                      ].map((option) => (
-                        <button
-                          key={option.value}
-                          onClick={() => setGranularity(option.value)}
-                          title={option.tooltip}
-                          className={`px-2.5 py-1 text-xs font-semibold rounded transition-all ${
-                            granularity === option.value
-                              ? 'bg-white text-gray-900'
-                              : 'text-white/60 hover:text-white/90 hover:bg-white/10'
-                          }`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                    
-                    <DateRangeFilter
-                      selectedFilter={dateFilter}
-                      customRange={customDateRange}
-                      onFilterChange={handleDateFilterChange}
-                    />
+                  {/* All filters aligned to the right */}
+                  {/* Accounts Filter */}
+                  <MultiSelectDropdown
+                    options={trackedAccounts.map(account => ({
+                      id: account.id,
+                      label: account.displayName || `@${account.username}`,
+                      avatar: account.profilePicture
+                    }))}
+                    selectedIds={selectedAccountIds}
+                    onChange={setSelectedAccountIds}
+                    placeholder="All Accounts"
+                  />
+                  
+                  {/* Platform Filter - Icon Only */}
+                  <div className="relative">
+                    <select
+                      value={dashboardPlatformFilter}
+                      onChange={(e) => setDashboardPlatformFilter(e.target.value as 'all' | 'instagram' | 'tiktok' | 'youtube')}
+                      className="appearance-none pl-3 pr-8 py-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
+                      title={dashboardPlatformFilter === 'all' ? 'All Platforms' : dashboardPlatformFilter.charAt(0).toUpperCase() + dashboardPlatformFilter.slice(1)}
+                    >
+                      <option value="all" className="bg-gray-900">🌐 All</option>
+                      <option value="instagram" className="bg-gray-900">📷 IG</option>
+                      <option value="tiktok" className="bg-gray-900">🎵 TT</option>
+                      <option value="youtube" className="bg-gray-900">▶️ YT</option>
+                    </select>
+                    <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-white/50 pointer-events-none" />
                   </div>
                   
-                  {/* Right Side Actions */}
-                  <div className="flex items-center space-x-2">
-                    {/* Rule Filter Button - Icon Only */}
-                    <button
-                      onClick={handleOpenRuleModal}
-                      className="p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
-                      title={selectedRuleId === 'all' ? 'All Videos' : (allRules.find(r => r.id === selectedRuleId)?.name || 'Select Rule')}
-                    >
-                      <Filter className="w-4 h-4" />
-                    </button>
-                    
-                    {/* Edit Layout Button - Icon Only */}
-                    <button
-                      onClick={() => setIsEditingLayout(true)}
-                      className="p-2 rounded-lg transition-all bg-white/5 text-white/90 border border-white/10 hover:border-white/20"
-                      title="Customize dashboard layout"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
+                  {/* Granularity Selector */}
+                  <div className="flex items-center bg-white/5 rounded-lg border border-white/10 p-1">
+                    {[
+                      { value: 'day' as const, label: 'D', tooltip: 'Show data by day' },
+                      { value: 'week' as const, label: 'W', tooltip: 'Show data by week' },
+                      { value: 'month' as const, label: 'M', tooltip: 'Show data by month' },
+                      { value: 'year' as const, label: 'Y', tooltip: 'Show data by year' }
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => setGranularity(option.value)}
+                        title={option.tooltip}
+                        className={`px-2.5 py-1 text-xs font-semibold rounded transition-all ${
+                          granularity === option.value
+                            ? 'bg-white text-gray-900'
+                            : 'text-white/60 hover:text-white/90 hover:bg-white/10'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
                   </div>
+                  
+                  <DateRangeFilter
+                    selectedFilter={dateFilter}
+                    customRange={customDateRange}
+                    onFilterChange={handleDateFilterChange}
+                  />
+                  
+                  {/* Rule Filter Button - Icon Only */}
+                  <button
+                    onClick={handleOpenRuleModal}
+                    className="p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
+                    title={selectedRuleId === 'all' ? 'All Videos' : (allRules.find(r => r.id === selectedRuleId)?.name || 'Select Rule')}
+                  >
+                    <Filter className="w-4 h-4" />
+                  </button>
+                  
+                  {/* Edit Layout Button - Icon Only */}
+                  <button
+                    onClick={() => setIsEditingLayout(true)}
+                    className="p-2 rounded-lg transition-all bg-white/5 text-white/90 border border-white/10 hover:border-white/20"
+                    title="Customize dashboard layout"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
                 </>
               ) : (
                 <>
