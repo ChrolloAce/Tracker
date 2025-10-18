@@ -1248,27 +1248,19 @@ function DashboardPage() {
                     <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-white/50 pointer-events-none" />
                   </div>
                   
-                  {/* Granularity Selector */}
-                  <div className="flex items-center bg-white/5 rounded-lg border border-white/10 p-1">
-                    {[
-                      { value: 'day' as const, label: 'D', tooltip: 'Show data by day' },
-                      { value: 'week' as const, label: 'W', tooltip: 'Show data by week' },
-                      { value: 'month' as const, label: 'M', tooltip: 'Show data by month' },
-                      { value: 'year' as const, label: 'Y', tooltip: 'Show data by year' }
-                    ].map((option) => (
-                      <button
-                        key={option.value}
-                        onClick={() => setGranularity(option.value)}
-                        title={option.tooltip}
-                        className={`px-2.5 py-1 text-xs font-semibold rounded transition-all ${
-                          granularity === option.value
-                            ? 'bg-white text-gray-900'
-                            : 'text-white/60 hover:text-white/90 hover:bg-white/10'
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
+                  {/* Granularity Selector - Dropdown */}
+                  <div className="relative">
+                    <select
+                      value={granularity}
+                      onChange={(e) => setGranularity(e.target.value as 'day' | 'week' | 'month' | 'year')}
+                      className="appearance-none pl-3 pr-8 py-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
+                    >
+                      <option value="day" className="bg-gray-900">Daily</option>
+                      <option value="week" className="bg-gray-900">Weekly</option>
+                      <option value="month" className="bg-gray-900">Monthly</option>
+                      <option value="year" className="bg-gray-900">Yearly</option>
+                    </select>
+                    <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-white/50 pointer-events-none" />
                   </div>
                   
                   <DateRangeFilter
