@@ -578,7 +578,7 @@ const KPICards: React.FC<KPICardsProps> = ({
         );
       }
       
-      const data = [];
+      let data = [];
       
       // Process each interval
       for (let i = 0; i < intervals.length; i++) {
@@ -729,6 +729,25 @@ const KPICards: React.FC<KPICardsProps> = ({
       const ppDataPoints = data.filter(d => typeof d.ppValue === 'number' && d.ppValue > 0).length;
       if (ppDataPoints > 0) {
         console.log(`✨ Generated ${ppDataPoints} PP sparkline points for metric: ${metric}`);
+      }
+      
+      // If only one data point exists, add padding points to create a flat line
+      if (data.length === 1) {
+        const singlePoint = data[0];
+        const paddingLeft = {
+          value: singlePoint.value,
+          timestamp: singlePoint.timestamp - 1,
+          interval: singlePoint.interval,
+          ppValue: singlePoint.ppValue
+        };
+        const paddingRight = {
+          value: singlePoint.value,
+          timestamp: singlePoint.timestamp + 1,
+          interval: singlePoint.interval,
+          ppValue: singlePoint.ppValue
+        };
+        // Add padding points before and after to create a flat line
+        data = [paddingLeft, singlePoint, paddingRight];
       }
       
       return { data, intervalType };

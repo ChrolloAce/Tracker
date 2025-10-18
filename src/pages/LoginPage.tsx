@@ -98,11 +98,11 @@ const LoginPage: React.FC = () => {
           <div className="flex items-center justify-center mb-6">
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-black"></div>
           </div>
-          <h2 className="text-xl font-extrabold text-gray-900 mb-2">
-            Calculating your life score...
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Setting up your account...
           </h2>
-          <p className="text-sm text-gray-500 font-medium">
-            Analyzing your account data. This will only take a moment!
+          <p className="text-gray-500">
+            We're creating your creator profile. This will only take a moment!
           </p>
         </div>
       </div>
