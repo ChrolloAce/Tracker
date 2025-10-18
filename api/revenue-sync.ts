@@ -145,7 +145,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (response.ok) {
             const data = await response.json();
             
-            console.log('RevenueCat Overview API response:', JSON.stringify(data));
+            console.log('🔍 ===== REVENUECAT DEBUG =====');
+            console.log('📦 Full API Response:', JSON.stringify(data, null, 2));
             
             // Transform overview metrics to transaction format
             // This gives ALL-TIME aggregate data, NOT date-filtered
@@ -155,13 +156,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             if (data.metrics && Array.isArray(data.metrics)) {
               const now = Date.now();
               
+              console.log(`📊 Found ${data.metrics.length} metrics in response`);
+              
+              // Log each metric individually for debugging
+              data.metrics.forEach((metric: any, index: number) => {
+                console.log(`  Metric ${index + 1}:`, {
+                  id: metric.id,
+                  name: metric.name,
+                  value: metric.value,
+                  unit: metric.unit,
+                  full: metric
+                });
+              });
+              
               // Parse metrics by ID
               const metrics = data.metrics.reduce((acc: any, metric: any) => {
                 acc[metric.id] = metric.value;
                 return acc;
               }, {});
 
-              console.log('Parsed metrics:', metrics);
+              console.log('📈 Parsed metrics object:', metrics);
+              console.log('🔑 Available metric IDs:', Object.keys(metrics));
 
               // Extract revenue metrics (try different possible IDs)
               totalRevenue = metrics.revenue || 
@@ -176,11 +191,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                                          metrics.active_trials || 
                                          0;
 
-              console.log('Extracted values:', { totalRevenue, mrr, activeSubscriptions });
+              console.log('💰 Extracted values:', { 
+                totalRevenue, 
+                mrr, 
+                activeSubscriptions,
+                foundRevenueIn: totalRevenue > 0 ? 'revenue field found' : 'NO REVENUE FOUND'
+              });
 
               // Create a single aggregate transaction
               // WARNING: This is ALL TIME data, not filtered by the requested date range
-              if (totalRevenue > 0 || mrr > 0) {
+              if (totalRevenue > 0 || mrr > 0 || activeSubscriptions > 0) {
                 transactions.push({
                   id: `rc_all_time_${now}`,
                   date: new Date().toISOString(),
@@ -189,12 +209,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                   active_subscriptions: activeSubscriptions,
                   currency: 'USD',
                   type: 'all_time_aggregate',
-                  warning: 'This is ALL-TIME data, not filtered by date range'
+                  warning: 'This is ALL-TIME data, not filtered by date range',
+                  debug: {
+                    all_metrics: metrics,
+                    metric_ids: Object.keys(metrics)
+                  }
                 });
+              } else {
+                console.log('⚠️ No revenue/MRR/subscriptions found. All metrics:', metrics);
               }
+            } else {
+              console.log('❌ No metrics array found in response');
             }
             
-            console.log(`Returning ${transactions.length} transaction(s) with total revenue: $${totalRevenue}`);
+            console.log(`✅ Returning ${transactions.length} transaction(s) with total revenue: $${totalRevenue}`);
+            console.log('🔍 ===== END REVENUECAT DEBUG =====');
             
             return res.status(200).json({ 
               success: true, 

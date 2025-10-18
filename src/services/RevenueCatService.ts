@@ -112,11 +112,20 @@ export class RevenueCatService {
     }
 
     const result = await response.json();
+    
+    console.log('🔍 RevenueCat Frontend - API Response:', result);
+    console.log('📦 Transactions received:', result.data?.transactions?.length || 0);
+    console.log('📊 Raw data:', result.data?.raw_data);
+    console.log('⚠️ Warnings:', result.data?.warning);
+    console.log('📝 Note:', result.data?.note);
+    
     if (!result.success) {
       throw new Error(`RevenueCat API Error: ${result.error || 'Unknown error'}`);
     }
 
-    return result.data.transactions || [];
+    const transactions = result.data.transactions || [];
+    console.log('✅ Returning transactions:', transactions);
+    return transactions;
   }
 
   /**
