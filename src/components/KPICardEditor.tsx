@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Eye, EyeOff, Edit2, Check } from 'lucide-react';
+import React from 'react';
+import { X, Eye, EyeOff } from 'lucide-react';
 
 interface KPICardOption {
   id: string;
@@ -37,9 +37,6 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
   onRenameSection,
   renderSectionPreview
 }) => {
-  const [editingSection, setEditingSection] = useState<string | null>(null);
-  const [editingValue, setEditingValue] = useState('');
-  
   if (!isOpen) return null;
 
   const visibleCount = cardOptions.filter(card => card.isVisible).length;
@@ -47,32 +44,11 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
   // Group cards by category
   const kpiCards = cardOptions.filter(card => card.category === 'kpi');
   const sectionCards = cardOptions.filter(card => card.category === 'sections');
-  
-  const handleStartEditing = (cardId: string, currentLabel: string) => {
-    setEditingSection(cardId);
-    setEditingValue(sectionTitles[cardId] || currentLabel);
-  };
-  
-  const handleSaveEdit = (cardId: string) => {
-    if (onRenameSection && editingValue.trim()) {
-      onRenameSection(cardId, editingValue.trim());
-    }
-    setEditingSection(null);
-    setEditingValue('');
-  };
-  
-  const handleCancelEdit = () => {
-    setEditingSection(null);
-    setEditingValue('');
-  };
-  
-  const isSectionCard = (id: string) => {
-    return ['kpi-cards', 'top-performers', 'top-platforms', 'posting-activity', 'tracked-accounts', 'videos-table'].includes(id);
-  };
 
   const renderItemCard = (item: KPICardOption) => {
     const Icon = item.icon;
     const isSection = item.category === 'sections';
+    const isKPI = item.category === 'kpi';
     
     return (
       <div
@@ -81,7 +57,7 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
           group relative rounded-xl border-2 transition-all overflow-hidden
           ${item.isVisible 
             ? 'bg-gradient-to-br from-white/5 to-white/[0.02] border-emerald-500/30 hover:border-emerald-500/50' 
-            : 'bg-white/[0.01] border-white/5 hover:border-white/10 opacity-60'
+            : 'bg-gradient-to-br from-white/[0.02] to-white/[0.01] border-white/10 hover:border-white/20 opacity-50'
           }
         `}
       >
@@ -96,61 +72,22 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
             </div>
             
             <div className="flex-1 min-w-0">
-              {editingSection === item.id ? (
-                <input
-                  type="text"
-                  value={editingValue}
-                  onChange={(e) => setEditingValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleSaveEdit(item.id);
-                    if (e.key === 'Escape') handleCancelEdit();
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-full px-2 py-1 text-sm font-semibold bg-white/10 border border-emerald-500/50 rounded text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  autoFocus
-                />
-              ) : (
-                <>
-                  <h3 className={`
-                    text-sm font-semibold transition-colors
-                    ${item.isVisible ? 'text-white' : 'text-white/40'}
-                  `}>
-                    {sectionTitles[item.id] || item.label}
-                  </h3>
-                  <p className={`
-                    text-xs mt-0.5 transition-colors
-                    ${item.isVisible ? 'text-white/50' : 'text-white/30'}
-                  `}>
-                    {item.description}
-                  </p>
-                </>
-              )}
+              <h3 className={`
+                text-sm font-semibold transition-colors
+                ${item.isVisible ? 'text-white' : 'text-white/40'}
+              `}>
+                {sectionTitles[item.id] || item.label}
+              </h3>
+              <p className={`
+                text-xs mt-0.5 transition-colors
+                ${item.isVisible ? 'text-white/50' : 'text-white/30'}
+              `}>
+                {item.description}
+              </p>
             </div>
           </div>
           
           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-            {/* Edit button for sections */}
-            {isSectionCard(item.id) && editingSection !== item.id && (
-              <button
-                onClick={() => handleStartEditing(item.id, item.label)}
-                className="p-2 text-white/40 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
-                title="Rename section"
-              >
-                <Edit2 className="w-4 h-4" />
-              </button>
-            )}
-            
-            {/* Save button when editing */}
-            {editingSection === item.id && (
-              <button
-                onClick={() => handleSaveEdit(item.id)}
-                className="p-2 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-lg transition-colors"
-                title="Save"
-              >
-                <Check className="w-4 h-4" />
-              </button>
-            )}
-            
             {/* Toggle button */}
             <button
               onClick={() => onToggleCard(item.id)}
@@ -177,15 +114,50 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
           </div>
         </div>
         
-        {/* Preview Section - Always shows for visible sections */}
-        {item.isVisible && isSection && renderSectionPreview && (
+        {/* Preview Section - Shows for all sections */}
+        {isSection && renderSectionPreview && (
           <div className="p-4 bg-black/20 border-t border-white/10">
-            <div className="text-xs text-white/50 mb-2 font-medium uppercase tracking-wide">Live Preview</div>
-            <div className="bg-zinc-900 rounded-lg p-3 max-h-[200px] overflow-hidden relative">
+            <div className={`text-xs mb-2 font-medium uppercase tracking-wide ${item.isVisible ? 'text-white/50' : 'text-white/30'}`}>
+              Live Preview
+            </div>
+            <div className={`bg-zinc-900 rounded-lg p-3 max-h-[200px] overflow-hidden relative ${!item.isVisible ? 'opacity-50' : ''}`}>
               <div className="transform scale-75 origin-top-left" style={{ width: '133%', height: '133%' }}>
                 {renderSectionPreview(item.id)}
               </div>
               <div className="absolute inset-0 bg-gradient-to-b from-transparent to-zinc-900 pointer-events-none"></div>
+            </div>
+          </div>
+        )}
+        
+        {/* Mini Graph Preview - Shows for KPI metrics */}
+        {isKPI && (
+          <div className="p-4 bg-black/20 border-t border-white/10">
+            <div className={`h-20 rounded-lg ${item.isVisible ? 'bg-gradient-to-br from-emerald-500/10 to-emerald-500/5' : 'bg-white/5'} p-3 flex items-end justify-between gap-1`}>
+              {/* Mini sparkline bars */}
+              {[40, 55, 35, 65, 80, 60, 90, 75, 95, 85].map((height, i) => (
+                <div 
+                  key={i}
+                  className={`flex-1 rounded-sm transition-all ${item.isVisible ? 'bg-emerald-500/60' : 'bg-white/20'}`}
+                  style={{ height: `${height}%` }}
+                />
+              ))}
+            </div>
+            <div className={`mt-2 text-right ${item.isVisible ? 'text-emerald-400' : 'text-white/30'}`}>
+              <div className="text-xl font-bold">
+                {item.id === 'revenue' ? '$2.4K' : 
+                 item.id === 'downloads' ? '156' :
+                 item.id === 'views' ? '1.2M' :
+                 item.id === 'likes' ? '84.5K' :
+                 item.id === 'comments' ? '12.3K' :
+                 item.id === 'shares' ? '8.9K' :
+                 item.id === 'videos' ? '24' :
+                 item.id === 'accounts' ? '8' :
+                 item.id === 'engagementRate' ? '6.8%' :
+                 item.id === 'link-clicks' ? '432' : '0'}
+              </div>
+              <div className={`text-xs ${item.isVisible ? 'text-white/40' : 'text-white/20'}`}>
+                {item.isVisible ? '↑ 12% vs last period' : 'Hidden'}
+              </div>
             </div>
           </div>
         )}
