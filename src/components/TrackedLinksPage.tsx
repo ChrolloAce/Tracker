@@ -100,8 +100,6 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     
     try {
       const allLinks = await FirestoreDataService.getLinks(currentOrgId, currentProjectId);
-        allLinks.map(l => ({ title: l.title, clicks: l.totalClicks || 0 }))
-      );
       setLinks(allLinks);
     } catch (error) {
       console.error('❌ Failed to load links:', error);
