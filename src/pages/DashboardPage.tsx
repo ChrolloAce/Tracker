@@ -1743,6 +1743,62 @@ function DashboardPage() {
           setDashboardSectionTitles(updated);
           localStorage.setItem('dashboardSectionTitles', JSON.stringify(updated));
         }}
+        renderSectionPreview={(sectionId) => {
+          // Render live preview of each section
+          switch (sectionId) {
+            case 'kpi-cards':
+              return (
+                <KPICards 
+                  submissions={filteredSubmissions}
+                  allSubmissions={submissionsWithoutDateFilter}
+                  linkClicks={linkClicks}
+                  dateFilter={dateFilter}
+                  customRange={customDateRange}
+                  timePeriod="days"
+                  granularity={granularity}
+                  onVideoClick={handleVideoClick}
+                  revenueMetrics={revenueMetrics}
+                  revenueIntegrations={revenueIntegrations}
+                  isEditMode={false}
+                  cardOrder={kpiCardOrder}
+                  cardVisibility={kpiCardVisibility}
+                  onReorder={() => {}}
+                  onToggleCard={() => {}}
+                />
+              );
+            case 'top-performers':
+              return (
+                <TopPerformersRaceChart 
+                  submissions={filteredSubmissions} 
+                  onVideoClick={handleVideoClick}
+                  onAccountClick={handleAccountClick}
+                />
+              );
+            case 'top-platforms':
+              return (
+                <TopPlatformsRaceChart 
+                  submissions={filteredSubmissions}
+                />
+              );
+            case 'posting-activity':
+              return (
+                <PostingActivityChart 
+                  submissions={filteredSubmissions}
+                />
+              );
+            case 'videos-table':
+              return (
+                <VideoSubmissionsTable
+                  submissions={combinedSubmissions.slice(0, 5)}
+                  onStatusUpdate={() => {}}
+                  onDelete={() => {}}
+                  onVideoClick={handleVideoClick}
+                />
+              );
+            default:
+              return <div className="text-white/50 text-sm">Preview not available</div>;
+          }
+        }}
       />
 
       {/* Day Videos Modal for Account Clicks */}
