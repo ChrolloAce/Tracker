@@ -143,18 +143,22 @@ function DashboardPage() {
   });
   
   const [dashboardSectionVisibility, setDashboardSectionVisibility] = useState<Record<string, boolean>>(() => {
-    const saved = localStorage.getItem('dashboardSectionVisibility');
-    if (saved) {
-      return JSON.parse(saved);
-    }
-    return {
+    const defaults = {
       'kpi-cards': true,
       'top-performers': true,
-      'top-platforms': false,
-      'posting-activity': false,
-      'tracked-accounts': false,
+      'top-platforms': true,
+      'posting-activity': true,
+      'tracked-accounts': true,
       'videos-table': true
     };
+    
+    const saved = localStorage.getItem('dashboardSectionVisibility');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Merge saved values with defaults (new sections get default true)
+      return { ...defaults, ...parsed };
+    }
+    return defaults;
   });
   
   const [dashboardSectionTitles, setDashboardSectionTitles] = useState<Record<string, string>>(() => {
@@ -264,6 +268,30 @@ function DashboardPage() {
   useEffect(() => {
     localStorage.setItem('dashboardSelectedRuleId', selectedRuleId);
   }, [selectedRuleId, allRules]);
+
+  // One-time migration: Fix old false defaults for new sections
+  useEffect(() => {
+    const migrationKey = 'dashboardSectionsMigrated_v1';
+    if (!localStorage.getItem(migrationKey)) {
+      const current = { ...dashboardSectionVisibility };
+      let needsUpdate = false;
+      
+      // Set new sections to true if they were false
+      ['top-platforms', 'posting-activity', 'tracked-accounts'].forEach(sectionId => {
+        if (current[sectionId] === false) {
+          current[sectionId] = true;
+          needsUpdate = true;
+        }
+      });
+      
+      if (needsUpdate) {
+        setDashboardSectionVisibility(current);
+        localStorage.setItem('dashboardSectionVisibility', JSON.stringify(current));
+      }
+      
+      localStorage.setItem(migrationKey, 'true');
+    }
+  }, []); // Run once on mount
 
   // Save accounts page filters to localStorage
   useEffect(() => {
