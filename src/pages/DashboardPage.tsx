@@ -1816,14 +1816,27 @@ function DashboardPage() {
               );
             case 'tracked-accounts':
               return (
-                <AccountsPage 
-                  ref={accountsPageRef}
-                  dateFilter={accountsDateFilter}
-                  platformFilter={accountsPlatformFilter}
-                  searchQuery={accountsSearchQuery}
-                  onViewModeChange={setAccountsViewMode}
-                  pendingAccounts={pendingAccounts}
-                />
+                <div className="bg-zinc-900 rounded-lg p-4 border border-white/10">
+                  <h3 className="text-lg font-semibold text-white mb-4">Tracked Accounts</h3>
+                  <div className="text-white/60 text-sm">
+                    <div className="grid grid-cols-5 gap-4 pb-2 border-b border-white/10 font-semibold mb-2">
+                      <div>Account</div>
+                      <div>Platform</div>
+                      <div>Followers</div>
+                      <div>Posts</div>
+                      <div>Engagement</div>
+                    </div>
+                    {trackedAccounts.slice(0, 3).map((account, i) => (
+                      <div key={i} className="grid grid-cols-5 gap-4 py-2 border-b border-white/5">
+                        <div className="text-white">@{account.username}</div>
+                        <div className="capitalize">{account.platform}</div>
+                        <div>{account.followerCount?.toLocaleString() || '—'}</div>
+                        <div>{account.postCount || 0}</div>
+                        <div className="text-emerald-400">6.8%</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               );
             case 'videos-table':
               return (
