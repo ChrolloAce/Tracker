@@ -50,6 +50,22 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
 
   // Get top accounts (aggregate by uploader handle + platform)
   const topAccounts = useMemo(() => {
+    // First, deduplicate submissions by video ID to prevent double counting
+    const uniqueVideos = new Map<string, VideoSubmission>();
+    submissions.forEach(video => {
+      if (video.id && !uniqueVideos.has(video.id)) {
+        uniqueVideos.set(video.id, video);
+      } else if (!video.id) {
+        // If no ID, use a combination of properties to identify uniqueness
+        const tempKey = `${video.platform}_${video.uploaderHandle}_${video.dateSubmitted}_${video.views}`;
+        if (!uniqueVideos.has(tempKey)) {
+          uniqueVideos.set(tempKey, video);
+        }
+      }
+    });
+    
+    console.log(`🎬 TopPerformersRaceChart: Processing ${uniqueVideos.size} unique videos (from ${submissions.length} total)`);
+    
     const accountMap = new Map<string, {
       handle: string;
       displayName: string;
@@ -62,10 +78,10 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
       profileImage?: string;
     }>();
 
-    submissions.forEach(video => {
+    uniqueVideos.forEach(video => {
       const handle = video.uploaderHandle || 'unknown';
       // Use both platform and handle to uniquely identify accounts
-      const accountKey = `${video.platform}_${handle}`;
+      const accountKey = `${video.platform}_${handle.toLowerCase()}`;
       if (!accountMap.has(accountKey)) {
         accountMap.set(accountKey, {
           handle,

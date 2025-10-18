@@ -1489,7 +1489,6 @@ function DashboardPage() {
                 onClick={() => {
                   console.log('🎯 Selected: All Videos');
                   setSelectedRuleId('all');
-                  setIsRuleModalOpen(false);
                 }}
               >
                 <div className="flex items-start gap-3">
@@ -1527,7 +1526,6 @@ function DashboardPage() {
                       onClick={() => {
                         console.log(`🎯 Selected rule: "${rule.name}" (ID: ${rule.id})`);
                         setSelectedRuleId(rule.id);
-                        setIsRuleModalOpen(false);
                       }}
                     >
                       <div className="flex items-start gap-3">
@@ -1579,6 +1577,12 @@ function DashboardPage() {
                 className="text-sm text-gray-400 hover:text-white transition-colors"
               >
                 Create New Rule →
+              </button>
+              <button
+                onClick={handleCloseRuleModal}
+                className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors text-sm"
+              >
+                Close
               </button>
             </div>
           </div>
