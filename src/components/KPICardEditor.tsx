@@ -43,9 +43,15 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
 
   const visibleCount = cardOptions.filter(card => card.isVisible).length;
   
+  // Debug logging
+  console.log('🔍 KPICardEditor - cardOptions:', cardOptions);
+  console.log('🔍 Categories found:', cardOptions.map(c => ({ id: c.id, category: c.category })));
+  
   // Group cards by category
   const kpiCards = cardOptions.filter(card => card.category === 'kpi');
   const sectionCards = cardOptions.filter(card => card.category === 'sections');
+  
+  console.log('🔍 KPI Cards:', kpiCards.length, 'Section Cards:', sectionCards.length);
   
   const toggleCategory = (category: string) => {
     const newExpanded = new Set(expandedCategories);
