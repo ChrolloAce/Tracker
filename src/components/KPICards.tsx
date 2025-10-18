@@ -1264,16 +1264,6 @@ const KPICards: React.FC<KPICardsProps> = ({
 
   return (
     <>
-      {/* Edit Mode Indicator */}
-      {isEditMode && (
-        <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg flex items-center gap-2 text-emerald-400">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-          </svg>
-          <span className="text-sm font-medium">Drag cards to reorder your dashboard</span>
-        </div>
-      )}
-      
       <div className="grid gap-4 md:gap-5 xl:gap-6 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" style={{ overflow: 'visible' }}>
         {(() => {
           // Filter cards based on visibility
