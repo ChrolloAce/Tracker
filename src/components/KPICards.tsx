@@ -1641,11 +1641,11 @@ const KPICard: React.FC<{
                         <Area
                           type="monotoneX"
                           dataKey="ppValue"
-                          stroke={colors.stroke}
-                          strokeWidth={2}
-                          strokeOpacity={0.25}
-                          strokeDasharray="5 5"
-                          fill={`url(#pp-gradient-${data.id})`}
+                          stroke="rgb(156, 163, 175)"
+                          strokeWidth={1.5}
+                          strokeOpacity={0.15}
+                          strokeDasharray="4 4"
+                          fill="transparent"
                           dot={false}
                           isAnimationActive={false}
                         />
