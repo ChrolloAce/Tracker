@@ -1,12 +1,16 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { clsx } from 'clsx';
-import { ArrowLeft, ChevronDown, Search, Filter, CheckCircle2, Circle, Plus, Trash2 } from 'lucide-react';
+import { 
+  ArrowLeft, ChevronDown, Search, Filter, CheckCircle2, Circle, Plus, Trash2,
+  Play, Heart, MessageCircle, Share2, Video, AtSign, Activity, DollarSign, Download, Link as LinkIcon
+} from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import { Modal } from '../components/ui/Modal';
 import { VideoSubmissionsTable } from '../components/VideoSubmissionsTable';
 import { AddVideoModal } from '../components/AddVideoModal';
 import { TikTokSearchModal } from '../components/TikTokSearchModal';
 import KPICards from '../components/KPICards';
+import { KPICardEditor } from '../components/KPICardEditor';
 import DateRangeFilter, { DateFilterType } from '../components/DateRangeFilter';
 import VideoAnalyticsModal from '../components/VideoAnalyticsModal';
 import TopPerformersRaceChart from '../components/TopPerformersRaceChart';
@@ -102,6 +106,26 @@ function DashboardPage() {
     // Load saved card order from localStorage
     const saved = localStorage.getItem('kpiCardOrder');
     return saved ? JSON.parse(saved) : [];
+  });
+  const [kpiCardVisibility, setKpiCardVisibility] = useState<Record<string, boolean>>(() => {
+    // Load saved card visibility from localStorage
+    const saved = localStorage.getItem('kpiCardVisibility');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+    // Default: all cards visible
+    return {
+      views: true,
+      likes: true,
+      comments: true,
+      shares: true,
+      videos: true,
+      accounts: true,
+      engagementRate: true,
+      revenue: true,
+      downloads: true,
+      'link-clicks': true
+    };
   });
   const [userRole, setUserRole] = useState<string>('');
   
@@ -971,6 +995,72 @@ function DashboardPage() {
     setConditions([{ id: '1', type: 'description_contains', value: '', operator: 'AND' }]);
   }, []);
 
+  // KPI Card Editor handlers
+  const handleToggleCard = useCallback((cardId: string) => {
+    setKpiCardVisibility(prev => {
+      const updated = { ...prev, [cardId]: !prev[cardId] };
+      localStorage.setItem('kpiCardVisibility', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  const handleReorderCard = useCallback((cardId: string, direction: 'up' | 'down') => {
+    setKpiCardOrder(prev => {
+      // If no order set, use default order
+      const currentOrder = prev.length > 0 ? prev : [
+        'views', 'likes', 'comments', 'shares', 'videos', 'accounts', 
+        'engagementRate', 'revenue', 'downloads', 'link-clicks'
+      ];
+      
+      const currentIndex = currentOrder.indexOf(cardId);
+      if (currentIndex === -1) return currentOrder;
+      
+      const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+      if (newIndex < 0 || newIndex >= currentOrder.length) return currentOrder;
+      
+      const newOrder = [...currentOrder];
+      [newOrder[currentIndex], newOrder[newIndex]] = [newOrder[newIndex], newOrder[currentIndex]];
+      
+      localStorage.setItem('kpiCardOrder', JSON.stringify(newOrder));
+      return newOrder;
+    });
+  }, []);
+
+  // Define KPI card options for the editor
+  const kpiCardOptions = useMemo(() => {
+    const currentOrder = kpiCardOrder.length > 0 ? kpiCardOrder : [
+      'views', 'likes', 'comments', 'shares', 'videos', 'accounts', 
+      'engagementRate', 'revenue', 'downloads', 'link-clicks'
+    ];
+    
+    const allCards = [
+      { id: 'views', label: 'Views', description: 'Total video views', icon: Play },
+      { id: 'likes', label: 'Likes', description: 'Total likes received', icon: Heart },
+      { id: 'comments', label: 'Comments', description: 'Total comments', icon: MessageCircle },
+      { id: 'shares', label: 'Shares', description: 'Total shares/sends', icon: Share2 },
+      { id: 'videos', label: 'Published Videos', description: 'Total videos published', icon: Video },
+      { id: 'accounts', label: 'Active Accounts', description: 'Number of tracked accounts', icon: AtSign },
+      { id: 'engagementRate', label: 'Engagement Rate', description: 'Average engagement percentage', icon: Activity },
+      { id: 'revenue', label: 'Revenue', description: 'Total revenue (MRR)', icon: DollarSign },
+      { id: 'downloads', label: 'Downloads', description: 'App downloads/subscriptions', icon: Download },
+      { id: 'link-clicks', label: 'Link Clicks', description: 'Tracked link clicks', icon: LinkIcon },
+    ];
+    
+    // Sort cards based on the current order
+    return allCards
+      .sort((a, b) => {
+        const aIndex = currentOrder.indexOf(a.id);
+        const bIndex = currentOrder.indexOf(b.id);
+        if (aIndex === -1) return 1;
+        if (bIndex === -1) return -1;
+        return aIndex - bIndex;
+      })
+      .map(card => ({
+        ...card,
+        isVisible: kpiCardVisibility[card.id] !== false
+      }));
+  }, [kpiCardOrder, kpiCardVisibility]);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
       {/* Fixed Sidebar */}
@@ -980,6 +1070,11 @@ function DashboardPage() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
+      
+      {/* Sidebar overlay when in edit mode */}
+      {isEditingLayout && (
+        <div className="fixed inset-y-0 left-0 w-64 bg-black/30 backdrop-blur-sm z-40 pointer-events-none" />
+      )}
       
       {/* Fixed Header */}
       <header className={clsx(
@@ -1025,20 +1120,14 @@ function DashboardPage() {
             <div className="flex items-center space-x-4">
               {/* Edit Layout Button */}
               <button
-                onClick={() => setIsEditingLayout(!isEditingLayout)}
-                className={`
-                  flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
-                  ${isEditingLayout 
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
-                    : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
-                  }
-                `}
+                onClick={() => setIsEditingLayout(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all bg-white/5 text-white/90 border border-white/10 hover:border-white/20"
                 title="Customize dashboard layout"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
                 </svg>
-                {isEditingLayout ? 'Done' : 'Edit Layout'}
+                Edit Layout
               </button>
               
               {/* Accounts Filter */}
@@ -1202,8 +1291,9 @@ function DashboardPage() {
                   onVideoClick={handleVideoClick}
                   revenueMetrics={revenueMetrics}
                   revenueIntegrations={revenueIntegrations}
-                  isEditMode={isEditingLayout}
+                  isEditMode={false}
                   cardOrder={kpiCardOrder}
+                  cardVisibility={kpiCardVisibility}
                   onReorder={(newOrder) => {
                     setKpiCardOrder(newOrder);
                     localStorage.setItem('kpiCardOrder', JSON.stringify(newOrder));
@@ -1299,6 +1389,15 @@ function DashboardPage() {
         video={selectedVideoForAnalytics}
         isOpen={isAnalyticsModalOpen}
         onClose={handleCloseAnalyticsModal}
+      />
+
+      {/* KPI Card Editor Modal */}
+      <KPICardEditor
+        isOpen={isEditingLayout}
+        onClose={() => setIsEditingLayout(false)}
+        cardOptions={kpiCardOptions}
+        onToggleCard={handleToggleCard}
+        onReorder={handleReorderCard}
       />
 
       {/* Day Videos Modal for Account Clicks */}

@@ -1,0 +1,189 @@
+import React from 'react';
+import { X, Eye, EyeOff, GripVertical } from 'lucide-react';
+
+interface KPICardOption {
+  id: string;
+  label: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+  isVisible: boolean;
+}
+
+interface KPICardEditorProps {
+  isOpen: boolean;
+  onClose: () => void;
+  cardOptions: KPICardOption[];
+  onToggleCard: (cardId: string) => void;
+  onReorder: (cardId: string, direction: 'up' | 'down') => void;
+}
+
+/**
+ * KPICardEditor Component
+ * 
+ * Stripe-style modal for managing dashboard KPI cards.
+ * Allows users to show/hide cards and reorder them.
+ */
+export const KPICardEditor: React.FC<KPICardEditorProps> = ({
+  isOpen,
+  onClose,
+  cardOptions,
+  onToggleCard,
+  onReorder
+}) => {
+  if (!isOpen) return null;
+
+  const visibleCount = cardOptions.filter(card => card.isVisible).length;
+
+  return (
+    <>
+      {/* Backdrop overlay */}
+      <div 
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+        onClick={onClose}
+      />
+      
+      {/* Side panel */}
+      <div className="fixed right-0 top-0 bottom-0 w-[400px] bg-zinc-900 border-l border-white/10 shadow-2xl z-50 overflow-y-auto">
+        {/* Header */}
+        <div className="sticky top-0 bg-zinc-900/95 backdrop-blur border-b border-white/10 px-6 py-5 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-white">Edit dashboard</h2>
+            <p className="text-sm text-white/60 mt-1">
+              Customize your dashboard layout
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-white/5 rounded-lg transition-colors text-white/60 hover:text-white"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Stats */}
+        <div className="px-6 py-4 bg-white/5 border-b border-white/10">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-white/60">Visible sections</span>
+            <span className="text-white font-medium">{visibleCount} of {cardOptions.length}</span>
+          </div>
+        </div>
+
+        {/* Card list */}
+        <div className="px-6 py-4 space-y-2">
+          {cardOptions.map((card, index) => {
+            const Icon = card.icon;
+            return (
+              <div
+                key={card.id}
+                className={`
+                  group relative rounded-lg border transition-all
+                  ${card.isVisible 
+                    ? 'bg-white/5 border-white/10 hover:bg-white/10' 
+                    : 'bg-white/[0.02] border-white/5 hover:bg-white/5'
+                  }
+                `}
+              >
+                <div className="flex items-center gap-3 p-4">
+                  {/* Drag handle */}
+                  <div className="flex flex-col gap-1">
+                    <button
+                      onClick={() => index > 0 && onReorder(card.id, 'up')}
+                      disabled={index === 0}
+                      className={`
+                        p-1 rounded transition-colors
+                        ${index === 0 
+                          ? 'text-white/20 cursor-not-allowed' 
+                          : 'text-white/40 hover:text-white hover:bg-white/10'
+                        }
+                      `}
+                      title="Move up"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => index < cardOptions.length - 1 && onReorder(card.id, 'down')}
+                      disabled={index === cardOptions.length - 1}
+                      className={`
+                        p-1 rounded transition-colors
+                        ${index === cardOptions.length - 1
+                          ? 'text-white/20 cursor-not-allowed' 
+                          : 'text-white/40 hover:text-white hover:bg-white/10'
+                        }
+                      `}
+                      title="Move down"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Icon */}
+                  <div className={`
+                    p-2 rounded-lg transition-opacity
+                    ${card.isVisible ? 'opacity-100' : 'opacity-40'}
+                  `}>
+                    <Icon className="w-5 h-5 text-white" />
+                  </div>
+
+                  {/* Card info */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className={`
+                      text-sm font-medium transition-opacity
+                      ${card.isVisible ? 'text-white' : 'text-white/40'}
+                    `}>
+                      {card.label}
+                    </h3>
+                    <p className={`
+                      text-xs mt-0.5 transition-opacity
+                      ${card.isVisible ? 'text-white/60' : 'text-white/30'}
+                    `}>
+                      {card.description}
+                    </p>
+                  </div>
+
+                  {/* Toggle button */}
+                  <button
+                    onClick={() => onToggleCard(card.id)}
+                    className={`
+                      flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all
+                      ${card.isVisible
+                        ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
+                        : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+                      }
+                    `}
+                  >
+                    {card.isVisible ? (
+                      <>
+                        <Eye className="w-4 h-4" />
+                        <span>Visible</span>
+                      </>
+                    ) : (
+                      <>
+                        <EyeOff className="w-4 h-4" />
+                        <span>Hidden</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Footer */}
+        <div className="sticky bottom-0 bg-zinc-900/95 backdrop-blur border-t border-white/10 px-6 py-4">
+          <button
+            onClick={onClose}
+            className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-colors"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </>
+  );
+};
+

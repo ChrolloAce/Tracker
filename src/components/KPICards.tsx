@@ -39,6 +39,7 @@ interface KPICardsProps {
   revenueIntegrations?: RevenueIntegration[];
   isEditMode?: boolean;
   cardOrder?: string[];
+  cardVisibility?: Record<string, boolean>;
   onReorder?: (newOrder: string[]) => void;
 }
 
@@ -71,6 +72,7 @@ const KPICards: React.FC<KPICardsProps> = ({
   revenueIntegrations = [],
   isEditMode = false,
   cardOrder = [],
+  cardVisibility = {},
   onReorder
 }) => {
   const navigate = useNavigate();
@@ -1274,10 +1276,12 @@ const KPICards: React.FC<KPICardsProps> = ({
       
       <div className="grid gap-4 md:gap-5 xl:gap-6 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" style={{ overflow: 'visible' }}>
         {(() => {
+          // Filter cards based on visibility
+          let visibleCards = kpiData.filter(card => cardVisibility[card.id] !== false);
+          
           // Sort cards based on saved order
-          let orderedCards = [...kpiData];
           if (cardOrder.length > 0) {
-            orderedCards.sort((a, b) => {
+            visibleCards.sort((a, b) => {
               const aIndex = cardOrder.indexOf(a.id);
               const bIndex = cardOrder.indexOf(b.id);
               if (aIndex === -1) return 1;
@@ -1286,7 +1290,7 @@ const KPICards: React.FC<KPICardsProps> = ({
             });
           }
           
-          return orderedCards.map((card) => (
+          return visibleCards.map((card) => (
             <KPICard 
               key={card.id} 
               data={card} 
