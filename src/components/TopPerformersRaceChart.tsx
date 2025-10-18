@@ -43,7 +43,16 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
 
   // Get top videos sorted by selected metric
   const topVideos = useMemo(() => {
-    return [...submissions]
+    // Deduplicate videos by ID first
+    const uniqueVideos = new Map<string, VideoSubmission>();
+    submissions.forEach(video => {
+      const key = video.id || video.url || `${video.platform}_${video.uploaderHandle}_${video.dateSubmitted.getTime()}`;
+      if (!uniqueVideos.has(key)) {
+        uniqueVideos.set(key, video);
+      }
+    });
+    
+    return Array.from(uniqueVideos.values())
       .sort((a, b) => getMetricValue(b, videosMetric) - getMetricValue(a, videosMetric))
       .slice(0, topVideosCount);
   }, [submissions, videosMetric, topVideosCount]);
@@ -52,19 +61,30 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
   const topAccounts = useMemo(() => {
     // First, deduplicate submissions by video ID to prevent double counting
     const uniqueVideos = new Map<string, VideoSubmission>();
+    const skippedDuplicates: string[] = [];
+    
     submissions.forEach(video => {
-      if (video.id && !uniqueVideos.has(video.id)) {
-        uniqueVideos.set(video.id, video);
+      if (video.id) {
+        if (!uniqueVideos.has(video.id)) {
+          uniqueVideos.set(video.id, video);
+        } else {
+          skippedDuplicates.push(`${video.platform}:${video.uploaderHandle}:${video.id}`);
+        }
       } else if (!video.id) {
-        // If no ID, use a combination of properties to identify uniqueness
-        const tempKey = `${video.platform}_${video.uploaderHandle}_${video.dateSubmitted}_${video.views}`;
+        // If no ID, use URL as primary key if available
+        const tempKey = video.url || `${video.platform}_${video.uploaderHandle}_${video.dateSubmitted.getTime()}`;
         if (!uniqueVideos.has(tempKey)) {
           uniqueVideos.set(tempKey, video);
+        } else {
+          skippedDuplicates.push(`${video.platform}:${video.uploaderHandle}:NO_ID`);
         }
       }
     });
     
     console.log(`🎬 TopPerformersRaceChart: Processing ${uniqueVideos.size} unique videos (from ${submissions.length} total)`);
+    if (skippedDuplicates.length > 0) {
+      console.log(`⚠️  Skipped ${skippedDuplicates.length} duplicate videos:`, skippedDuplicates.slice(0, 10));
+    }
     
     const accountMap = new Map<string, {
       handle: string;
@@ -79,9 +99,10 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
     }>();
 
     uniqueVideos.forEach(video => {
-      const handle = video.uploaderHandle || 'unknown';
+      const handle = (video.uploaderHandle || 'unknown').trim();
       // Use both platform and handle to uniquely identify accounts
       const accountKey = `${video.platform}_${handle.toLowerCase()}`;
+      
       if (!accountMap.has(accountKey)) {
         accountMap.set(accountKey, {
           handle,
@@ -103,6 +124,8 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
       account.totalShares += video.shares || 0;
       account.videoCount += 1;
     });
+    
+    console.log(`👥 Aggregated into ${accountMap.size} unique accounts`);
 
     const getAccountMetric = (account: typeof accountMap extends Map<string, infer T> ? T : never): number => {
       switch (accountsMetric) {
