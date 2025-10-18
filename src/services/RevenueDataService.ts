@@ -481,7 +481,7 @@ class RevenueDataService {
       throw new Error('RevenueCat Project ID is required. Please update your integration settings.');
     }
 
-    // Fetch transactions from RevenueCat
+    // Fetch transactions from RevenueCat (returns aggregate metrics from v2 API)
     const rcTransactions = await RevenueCatService.fetchTransactions(
       { 
         apiKey: integration.credentials.apiKey,
@@ -491,17 +491,19 @@ class RevenueDataService {
       endDate
     );
 
-    // Check if webhook setup is required
+    // Note: v2 API returns aggregate metrics, not individual transactions
+    // This is expected and still provides useful revenue data
     if (rcTransactions.length === 0) {
       // Update last synced time even if no data
       await this.updateIntegration(orgId, projectId, integration.id, {
         lastSynced: new Date(),
       });
 
-      // Return empty result - webhook setup required
-      throw new Error(
-        'RevenueCat integration requires webhooks. Please set up webhooks in your RevenueCat dashboard to receive transaction data automatically. Visit: https://www.revenuecat.com/docs/integrations/webhooks'
-      );
+      // Return zero results (no error - this is expected for v2 API)
+      return {
+        transactionCount: 0,
+        revenue: 0,
+      };
     }
 
     // Transform to our format
