@@ -28,7 +28,6 @@ const LoginPage: React.FC = () => {
       // Check if we have invite parameters and an authenticated user
       if (!user || !inviteId || !orgId || processingInvite) return;
       
-      console.log('🎯 Auto-accepting invitation...', { inviteId, orgId, user: user.email });
       setProcessingInvite(true);
       setError('');
 
@@ -42,7 +41,6 @@ const LoginPage: React.FC = () => {
           user.displayName || undefined
         );
 
-        console.log('✅ Invitation accepted! Creator account created.');
         
         // Give Firebase a moment to propagate the changes
         await new Promise(resolve => setTimeout(resolve, 2000));

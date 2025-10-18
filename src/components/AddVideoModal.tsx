@@ -27,7 +27,6 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
         
         if (parsed && parsed.isValid && parsed.platform) {
           setVideoInputs([{ id: '1', url: parsed.url, detectedPlatform: parsed.platform }]);
-          console.log(`🎯 Auto-filled ${parsed.platform} URL from clipboard`);
         }
       };
       

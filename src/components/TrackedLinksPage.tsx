@@ -42,10 +42,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
   // Expose openCreateModal to parent component
   // Refresh data function for parent to call
   const refreshData = async () => {
-    console.log('🔄 Manually refreshing TrackedLinksPage data...');
     await loadLinks();
     await loadAccounts();
-    console.log('✅ TrackedLinksPage data refreshed');
   };
 
   useImperativeHandle(ref, () => ({
@@ -101,9 +99,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     }
     
     try {
-      console.log('🔗 Loading tracked links...');
       const allLinks = await FirestoreDataService.getLinks(currentOrgId, currentProjectId);
-      console.log(`✅ Loaded ${allLinks.length} links with click data:`, 
         allLinks.map(l => ({ title: l.title, clicks: l.totalClicks || 0 }))
       );
       setLinks(allLinks);

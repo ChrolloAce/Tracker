@@ -128,7 +128,6 @@ function DashboardPage() {
   // Dashboard rule filter state
   const [selectedRuleId, setSelectedRuleId] = useState<string>(() => {
     const saved = localStorage.getItem('dashboardSelectedRuleId');
-    console.log('🔧 Loading rule from localStorage:', saved || 'all');
     return saved || 'all';
   });
   
@@ -190,9 +189,7 @@ function DashboardPage() {
     localStorage.setItem('dashboardSelectedRuleId', selectedRuleId);
     if (selectedRuleId !== 'all') {
       const rule = allRules.find(r => r.id === selectedRuleId);
-      console.log(`🎯 Rule filter active: "${rule?.name || 'Unknown'}" (ID: ${selectedRuleId})`);
     } else {
-      console.log('🎯 Rule filter: All Videos');
     }
   }, [selectedRuleId, allRules]);
 
@@ -231,7 +228,6 @@ function DashboardPage() {
   useEffect(() => {
     if (!currentOrgId || !currentProjectId) return;
     
-    console.log(`🔄 Tab changed to: ${activeTab} - Refreshing data...`);
     
     // Trigger refresh for the active tab
     switch (activeTab) {
@@ -249,7 +245,6 @@ function DashboardPage() {
         break;
       case 'dashboard':
         // Dashboard data is already handled by real-time listeners above
-        console.log('✅ Dashboard data refreshed via real-time listeners');
         break;
     }
   }, [activeTab, currentOrgId, currentProjectId]);
@@ -277,9 +272,6 @@ function DashboardPage() {
       return;
     }
 
-    console.log('🎯 ViewTrack Dashboard - Loading data');
-    console.log('📁 Organization ID:', currentOrgId);
-    console.log('📁 Project ID:', currentProjectId);
     
     // Initialize theme
     ThemeService.initializeTheme();
@@ -297,7 +289,6 @@ function DashboardPage() {
         ...doc.data()
       } as TrackedAccount));
       
-      console.log(`👥 Loaded ${accounts.length} tracked accounts`);
       setTrackedAccounts(accounts);
     } catch (error) {
       console.error('❌ Failed to load accounts:', error);
@@ -356,8 +347,6 @@ function DashboardPage() {
         };
       });
       
-      console.log(`🎬 Loaded ${allSubmissions.length} videos`);
-      console.log(`📸 Videos with snapshots: ${allSubmissions.filter(v => v.snapshots && v.snapshots.length > 0).length}`);
       setSubmissions(allSubmissions);
     } catch (error) {
       console.error('❌ Error loading videos:', error);
@@ -373,7 +362,6 @@ function DashboardPage() {
         ...doc.data()
       })) as TrackingRule[];
       
-      console.log(`📋 Loaded ${rules.length} tracking rules`);
       setAllRules(rules);
     } catch (error) {
       console.error('❌ Failed to load rules:', error);
@@ -383,12 +371,10 @@ function DashboardPage() {
     try {
       const allClicks = await LinkClicksService.getProjectLinkClicks(currentOrgId, currentProjectId);
       setLinkClicks(allClicks);
-      console.log(`🔗 Loaded ${allClicks.length} link clicks`);
     } catch (error) {
       console.error('❌ Failed to load link clicks:', error);
     }
     
-    console.log('✅ All data loaded');
     })(); // End of async IIFE
   }, [user, currentOrgId, currentProjectId]); // Reload when project changes!
 
@@ -396,7 +382,6 @@ function DashboardPage() {
   useEffect(() => {
     if (!user || !currentOrgId || !currentProjectId) return;
 
-    console.log('👂 Setting up smart sync monitor for dashboard...');
 
     const accountsRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts');
     const syncingQuery = query(accountsRef, where('syncStatus', 'in', ['pending', 'syncing']));
@@ -408,7 +393,6 @@ function DashboardPage() {
       
       // If syncing count decreased (someone finished), reload videos
       if (previousSyncingCount > 0 && currentSyncingCount < previousSyncingCount) {
-        console.log('✅ Sync completed on dashboard! Auto-refreshing videos...');
         
         // Reload videos
         try {
@@ -453,7 +437,6 @@ function DashboardPage() {
             };
           });
           
-          console.log(`🔄 Auto-refreshed ${allSubmissions.length} videos after sync`);
           setSubmissions(allSubmissions);
         } catch (error) {
           console.error('❌ Failed to auto-refresh videos:', error);
@@ -464,7 +447,6 @@ function DashboardPage() {
     });
 
     return () => {
-      console.log('👋 Cleaning up smart sync monitor');
       unsubscribe();
     };
   }, [user, currentOrgId, currentProjectId]);
@@ -558,14 +540,12 @@ function DashboardPage() {
     if (selectedRuleId !== 'all') {
       const selectedRule = allRules.find(rule => rule.id === selectedRuleId);
       if (selectedRule && selectedRule.isActive) {
-        console.log(`🔍 Filtering by rule: "${selectedRule.name}"`);
         const beforeCount = filtered.length;
         filtered = filtered.filter(video => {
           // Check if video matches the selected rule
           const result = RulesService.checkVideoMatchesRule(video as any, selectedRule);
           return result.matches;
         });
-        console.log(`   Before: ${beforeCount} videos, After: ${filtered.length} videos`);
       }
     } else {
       // Apply default rules filtering for tracked accounts (all active rules)
@@ -616,12 +596,6 @@ function DashboardPage() {
     // Debug: Check first video in combined submissions
     if (combined.length > 0) {
       const first = combined[0];
-      console.log('🔍 DashboardPage - First video in combinedSubmissions:');
-      console.log('   ID:', first.id);
-      console.log('   Title:', first.title || '(EMPTY)');
-      console.log('   Caption:', first.caption || '(EMPTY)');
-      console.log('   Title length:', first.title?.length || 0);
-      console.log('   Caption length:', first.caption?.length || 0);
     }
     
     return combined;
@@ -687,7 +661,6 @@ function DashboardPage() {
   }, [customDateRange]);
 
   const handleAccountClick = useCallback((username: string) => {
-    console.log('🎯 Account clicked from race chart:', username);
     // Use the most recent date or the current date range end
     const targetDate = customDateRange?.endDate || new Date();
     setDayVideosDate(targetDate);
@@ -704,7 +677,6 @@ function DashboardPage() {
       throw new Error('User not authenticated or no organization selected');
     }
 
-    console.log('🎬 Adding videos to processing queue...', { platform, count: videoUrls.length });
 
     // Create placeholder videos immediately for instant UI feedback
     const placeholderVideos: VideoSubmission[] = videoUrls.map((url, index) => ({
@@ -728,7 +700,6 @@ function DashboardPage() {
 
     // Add placeholders to state immediately
     setPendingVideos(prev => [...prev, ...placeholderVideos]);
-    console.log(`✨ Added ${placeholderVideos.length} placeholder videos to UI`);
 
     let successCount = 0;
     let failureCount = 0;
@@ -736,7 +707,6 @@ function DashboardPage() {
     // Queue videos for background processing (like accounts)
     for (const videoUrl of videoUrls) {
       try {
-        console.log(`📝 Queuing video: ${videoUrl}`);
         
         // Create a pending video record
         const videoId = await FirestoreDataService.addVideo(currentOrgId, currentProjectId, user.uid, {
@@ -760,10 +730,8 @@ function DashboardPage() {
           syncRetryCount: 0
         });
 
-        console.log(`✅ Video queued: ${videoId}`);
         
         // Trigger immediate processing (like accounts)
-        console.log(`⚡ Triggering immediate processing...`);
         fetch('/api/process-single-video', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -786,15 +754,12 @@ function DashboardPage() {
       }
     }
 
-    console.log(`📊 Results: ${successCount} queued, ${failureCount} failed`);
 
     // Handle results
     if (successCount > 0) {
       const message = successCount === 1 
         ? '✅ Video processing started! Refreshing shortly...' 
         : `✅ ${successCount} videos processing! Refreshing shortly...`;
-      console.log(message);
-      console.log('⚡ Videos are being processed in the background...');
       
       // Reload after 8 seconds to allow processing to complete
       setTimeout(() => {
@@ -812,7 +777,6 @@ function DashboardPage() {
   const handleStatusUpdate = useCallback(async (id: string, status: VideoSubmission['status']) => {
     if (!user || !currentOrgId) return;
     
-    console.log('📝 Updating submission status:', id, '→', status);
     
     try {
       // Update in Firestore
@@ -825,7 +789,6 @@ function DashboardPage() {
         submission.id === id ? { ...submission, status } : submission
       ));
       
-      console.log('✅ Status updated and saved to Firestore');
     } catch (error) {
       console.error('Failed to update status:', error);
     }
@@ -834,7 +797,6 @@ function DashboardPage() {
   const handleDelete = useCallback(async (id: string) => {
     if (!user || !currentOrgId) return;
     
-    console.log('🗑️ Deleting submission:', id);
     
     try {
       // Delete from Firestore (archive it)
@@ -845,14 +807,12 @@ function DashboardPage() {
       // Update state
       setSubmissions(prev => prev.filter(submission => submission.id !== id));
       
-      console.log('✅ Submission deleted and removed from Firestore');
     } catch (error) {
       console.error('Failed to delete video:', error);
     }
   }, [user, currentOrgId]);
 
   const handleTikTokVideosFound = useCallback((videos: InstagramVideoData[]) => {
-    console.log('🎵 Adding TikTok search results to dashboard:', videos.length, 'videos');
     
     const newSubmissions: VideoSubmission[] = videos.map((video, index) => ({
       id: `${Date.now()}_${index}`,
@@ -878,7 +838,6 @@ function DashboardPage() {
     // Update state
     setSubmissions(prev => [...newSubmissions, ...prev]);
     
-    console.log('✅ TikTok search results added and saved locally!');
   }, []);
 
   // Rule management functions
@@ -934,7 +893,6 @@ function DashboardPage() {
       setRuleName('');
       setConditions([{ id: '1', type: 'description_contains', value: '', operator: 'AND' }]);
       
-      console.log(`✅ Created rule "${ruleName}"`);
     } catch (error) {
       console.error('Failed to create rule:', error);
       alert('Failed to create rule. Please try again.');
@@ -949,7 +907,6 @@ function DashboardPage() {
       try {
         const rules = await RulesService.getRules(currentOrgId, currentProjectId);
         setAllRules(rules as TrackingRule[]);
-        console.log(`📋 Reloaded ${rules.length} rules for modal`);
       } catch (error) {
         console.error('❌ Failed to reload rules:', error);
       }
@@ -1487,7 +1444,6 @@ function DashboardPage() {
                     : 'bg-gray-800/50 border-gray-700 hover:border-gray-600'
                 )}
                 onClick={() => {
-                  console.log('🎯 Selected: All Videos');
                   setSelectedRuleId('all');
                 }}
               >
@@ -1524,7 +1480,6 @@ function DashboardPage() {
                           : 'bg-gray-800/50 border-gray-700 hover:border-gray-600'
                       )}
                       onClick={() => {
-                        console.log(`🎯 Selected rule: "${rule.name}" (ID: ${rule.id})`);
                         setSelectedRuleId(rule.id);
                       }}
                     >

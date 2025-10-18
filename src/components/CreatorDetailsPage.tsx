@@ -219,41 +219,33 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
       }
 
       // Load linked accounts
-      console.log('🔍 Loading linked accounts for creator:', creator.userId);
       const links = await CreatorLinksService.getCreatorLinkedAccounts(
         currentOrgId,
         currentProjectId,
         creator.userId
       );
-      console.log('📋 Found creator links:', links.length, links);
       const accountIds = links.map(link => link.accountId);
-      console.log('📋 Account IDs to link:', accountIds);
       
       // Load all accounts from project
       const projectAccounts = await FirestoreDataService.getTrackedAccounts(
         currentOrgId,
         currentProjectId
       );
-      console.log('📊 All project accounts:', projectAccounts.length);
       setAllAccounts(projectAccounts);
       
       // Filter to linked accounts
       const linked = projectAccounts.filter(acc => accountIds.includes(acc.id));
-      console.log('✅ Linked accounts after filter:', linked.length, linked);
       setLinkedAccounts(linked);
 
       // Load all videos from linked accounts
       if (linked.length > 0) {
-        console.log('🎬 Loading videos for', linked.length, 'accounts');
         const videosPromises = linked.map(async (account) => {
           try {
-            console.log('📹 Fetching videos for account:', account.username);
             const videos = await FirestoreDataService.getVideos(
               currentOrgId,
               currentProjectId,
               { trackedAccountId: account.id }
             );
-            console.log(`✅ Found ${videos.length} videos for ${account.username}`);
             // Ensure platform is set from account data
             return videos.map(v => ({ 
               ...v, 
@@ -267,17 +259,14 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
         });
         
         const allVideos = (await Promise.all(videosPromises)).flat();
-        console.log('🎬 Total videos loaded:', allVideos.length);
         // Sort by upload date (newest first)
         const sortedVideos = allVideos.sort((a, b) => {
           const dateA = a.uploadDate?.toDate?.() || new Date(0);
           const dateB = b.uploadDate?.toDate?.() || new Date(0);
           return dateB.getTime() - dateA.getTime();
         });
-        console.log('🎬 Sorted videos:', sortedVideos.length);
         setRecentVideos(sortedVideos);
       } else {
-        console.log('⚠️ No linked accounts found, skipping video loading');
         setRecentVideos([]);
       }
 

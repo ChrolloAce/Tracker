@@ -77,7 +77,6 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ isOpen, onClose, pr
             currentOrgId,
             imageFile
           );
-          console.log('✅ Uploaded new project image:', imageUrl);
         } catch (uploadError) {
           console.error('Failed to upload image:', uploadError);
           setError('Failed to upload image. Updating project without new image.');
@@ -96,7 +95,6 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ isOpen, onClose, pr
         imageUrl,
       });
 
-      console.log('✅ Updated project:', project.id);
 
       if (onSuccess) {
         onSuccess();

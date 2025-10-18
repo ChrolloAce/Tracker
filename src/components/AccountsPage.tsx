@@ -172,7 +172,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       const filtered = parsed.filter((acc: any) => {
         // Remove accounts that have been processing for more than 5 minutes
         if (!acc.startedAt || acc.startedAt < fiveMinutesAgo) {
-          console.log(`🧹 Cleaning up stuck account: @${acc.username}`);
           return false;
         }
         return true;
@@ -269,7 +268,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
         const filtered = prev.filter(acc => {
           if (!acc.startedAt || acc.startedAt < fiveMinutesAgo) {
-            console.log(`🧹 Auto-cleanup: Removing stuck account @${acc.username}`);
             return false;
           }
           return true;
@@ -300,12 +298,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     
     setLoadingAccountDetail(true);
     
-    console.log('📱 Loading videos for account:', account.username);
     const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, currentProjectId, accountId);
-    console.log('📹 Loaded videos from Firestore:', videos.length);
     
     // Apply rules to filter videos
-    console.log('📋 Applying rules to filter videos...');
     
     // Get active rules for this account
     const accountRules = await RulesService.getRulesForAccount(
@@ -324,7 +319,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       videos
     );
     
-    console.log(`✅ Rules filtered: ${rulesFilteredVideos.length}/${videos.length} videos match rules (${accountRules.length} rules active)`);
     
     // Apply date filtering on top of rules filtering
     const videoSubmissions: VideoSubmission[] = rulesFilteredVideos.map(video => ({
@@ -368,7 +362,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       };
     });
     
-    console.log(`✅ Date + Rules filtered: ${finalFilteredVideos.length}/${videos.length} videos (${accountRules.length} rules, ${dateFilter} date range)`);
     setAccountVideos(finalFilteredVideos);
     setLoadingAccountDetail(false);
   }, [currentOrgId, currentProjectId, accounts, dateFilter]);
@@ -378,7 +371,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const refreshData = useCallback(async () => {
     if (!currentOrgId || !currentProjectId) return;
     
-    console.log('🔄 Manually refreshing AccountsPage data...');
     
     try {
       // Reload links and clicks
@@ -395,7 +387,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         await loadAccountVideos(selectedAccount.id);
       }
       
-      console.log('✅ AccountsPage data refreshed');
     } catch (error) {
       console.error('❌ Failed to refresh data:', error);
     }
@@ -416,7 +407,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         if (parsed && parsed.isValid && parsed.platform) {
           setNewAccountUrl(parsed.url);
           setDetectedPlatform(parsed.platform);
-          console.log(`🎯 Auto-filled ${parsed.platform} URL from clipboard: ${parsed.url}`);
         }
       };
       
@@ -433,7 +423,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   // Load videos and rules when an account is selected
   useEffect(() => {
     if (selectedAccount && currentOrgId && currentProjectId) {
-      console.log('🔍 Account selected, loading videos and rules...');
       loadAccountVideos(selectedAccount.id);
       setViewMode('details');
       onViewModeChange('details');
@@ -449,7 +438,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       return;
     }
 
-    console.log('👂 Setting up real-time accounts listener...');
     
     const accountsRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts');
     const accountsQuery = query(accountsRef);
@@ -457,21 +445,18 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     (async () => {
       try {
         const snapshot = await getDocs(accountsQuery);
-      console.log('📥 Accounts loaded');
       const loadedAccounts: TrackedAccount[] = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       } as TrackedAccount));
       
       setAccounts(loadedAccounts);
-      console.log(`✅ Updated ${loadedAccounts.length} accounts`);
 
       // Auto-cleanup: Remove from processing if account now exists in real list
       setProcessingAccounts(prev => {
         const accountKeys = new Set(loadedAccounts.map(acc => `${acc.platform}_${acc.username}`));
         const remaining = prev.filter(proc => !accountKeys.has(`${proc.platform}_${proc.username}`));
         if (remaining.length < prev.length) {
-          console.log(`🧹 Auto-removed ${prev.length - remaining.length} accounts from processing (now in accounts list)`);
         }
         return remaining;
       });
@@ -483,7 +468,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         if (savedSelectedAccountId) {
           const savedAccount = loadedAccounts.find(a => a.id === savedSelectedAccountId);
           if (savedAccount) {
-            console.log('🔄 Restoring selected account from localStorage:', savedAccount.username);
             setSelectedAccount(savedAccount);
           }
         }
@@ -531,7 +515,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       if (!currentOrgId || !currentProjectId) return;
 
       try {
-        console.log('🔗 Loading tracked links and clicks...');
         const [loadedLinks, loadedClicks] = await Promise.all([
           FirestoreDataService.getLinks(currentOrgId, currentProjectId),
           LinkClicksService.getProjectLinkClicks(currentOrgId, currentProjectId)
@@ -539,7 +522,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         
         setTrackedLinks(loadedLinks);
         setLinkClicks(loadedClicks);
-        console.log(`✅ Loaded ${loadedLinks.length} links and ${loadedClicks.length} clicks`);
       } catch (error) {
         console.error('❌ Failed to load links and clicks:', error);
       }
@@ -554,10 +536,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       if (!currentOrgId || !currentProjectId) return;
 
       try {
-        console.log('📋 Loading all rules for project...');
         const rules = await RulesService.getRules(currentOrgId, currentProjectId);
         setAllRules(rules);
-        console.log(`✅ Loaded ${rules.length} rules`);
       } catch (error) {
         console.error('❌ Failed to load rules:', error);
       }
@@ -570,7 +550,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   useEffect(() => {
     if (!currentOrgId || !currentProjectId) return;
 
-    console.log('👂 Setting up smart sync monitor (only watches active syncs)...');
 
     const accountsRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts');
     const syncingQuery = query(accountsRef, where('syncStatus', 'in', ['pending', 'syncing']));
@@ -588,7 +567,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         
         // Auto-cancel if stuck for more than 15 minutes
         if (syncAge > SYNC_TIMEOUT) {
-          console.log(`⏰ Auto-cancelling stuck sync for ${data.username} (stuck for ${Math.round(syncAge / 60000)} minutes)`);
           try {
             const accountRef = doc(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts', docSnapshot.id);
             await updateDoc(accountRef, {
@@ -601,7 +579,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
           }
         } else {
           syncingIds.add(docSnapshot.id);
-          console.log(`🔄 Account syncing: ${data.username} - ${data.syncStatus}`);
         }
       }
 
@@ -609,7 +586,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
 
       // If an account just finished syncing (size decreased), refresh the data
       if (syncingIds.size < previousSize) {
-        console.log('✅ Sync completed! Auto-refreshing data...');
         
         // Reload the accounts list to get updated data
         (async () => {
@@ -623,11 +599,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
             } as TrackedAccount));
             
             setAccounts(loadedAccounts);
-            console.log(`🔄 Refreshed ${loadedAccounts.length} accounts after sync completion`);
             
             // If the selected account was the one syncing, reload its videos
             if (selectedAccount && !syncingIds.has(selectedAccount.id)) {
-              console.log(`🔄 Refreshing videos for ${selectedAccount.username}...`);
               loadAccountVideos(selectedAccount.id);
             }
           } catch (error) {
@@ -638,7 +612,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     });
 
     return () => {
-      console.log('👋 Cleaning up smart sync monitor');
       unsubscribe();
     };
   }, [currentOrgId, currentProjectId, syncingAccounts.size, selectedAccount, loadAccountVideos]);
@@ -650,7 +623,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         return;
       }
 
-      console.log('⚡ Fast loading filtered stats for table view...');
       const startTime = performance.now();
       
       // IMMEDIATELY show table with basic stats (no delay!)
@@ -727,7 +699,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         });
 
         const endTime = performance.now();
-        console.log(`⚡ Calculated filtered stats for ${accountsWithStats.length} accounts in ${Math.round(endTime - startTime)}ms`);
         setFilteredAccounts(accountsWithStats);
       } catch (error) {
         console.error('❌ Failed to calculate filtered stats:', error);
@@ -807,7 +778,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       return;
     }
 
-    console.log(`👂 Setting up real-time listener for @${selectedAccount.username} videos...`);
     setViewMode('details');
     onViewModeChange('details');
     localStorage.setItem('selectedAccountId', selectedAccount.id);
@@ -830,7 +800,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     (async () => {
       try {
         const snapshot = await getDocs(videosQuery);
-      console.log(`📥 Videos loaded for @${selectedAccount.username}: ${snapshot.docs.length} videos`);
       
       const videos: AccountVideo[] = snapshot.docs.map(doc => {
         const data = doc.data();
@@ -900,7 +869,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         return originalVideo || sub as any;
       });
 
-      console.log(`✅ After rules + date filter: ${finalFilteredVideos.length}/${videos.length} videos displayed (date: ${dateFilter})`);
       setAccountVideos(finalFilteredVideos);
       } catch (error) {
         console.error('❌ Failed to load videos:', error);
@@ -914,7 +882,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     setIsSyncing(accountId);
     setSyncError(null);
     try {
-      console.log(`🔄 Starting sync for account ${accountId}...`);
       const videoCount = await AccountTrackingServiceFirebase.syncAccountVideos(currentOrgId, currentProjectId, user.uid, accountId);
       
       // Update accounts list
@@ -924,7 +891,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       // Update videos if this account is selected
       if (selectedAccount?.id === accountId) {
         const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, currentProjectId, accountId);
-        console.log('🔄 Updating displayed videos after sync:', videos.length);
         
         // Apply rules to filter
         const filteredVideos = await RulesService.filterVideosByRules(
@@ -934,11 +900,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
           selectedAccount.platform,
           videos
         );
-        console.log(`✅ After sync filter: ${filteredVideos.length}/${videos.length} videos match rules`);
         setAccountVideos(filteredVideos);
       }
       
-      console.log(`✅ Successfully synced ${videoCount} videos to Firestore`);
       
       // Show success message briefly
       if (videoCount === 0) {
@@ -1028,7 +992,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         'my', // Default to 'my' account type
         account.videoCount // Pass each account's specific video count
       ).then(() => {
-        console.log(`✅ Added account @${account.username} with ${account.videoCount} videos`);
         return { success: true, username: account.username };
       }).catch(error => {
         console.error(`Failed to add account @${account.username}:`, error);
@@ -1041,8 +1004,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     
     // Note: Real-time listener will automatically update accounts and clean up processing state
     // No need to manually reload - this prevents flickering
-    console.log(`⏳ ${accountsToAdd.length} account(s) added. Real-time listener will update the list.`);
-    console.log(`📧 You'll receive an email in 5-10 minutes when video scraping completes!`);
     
     // Safety cleanup: Remove from processing after 10 seconds if real-time listener hasn't already
     setTimeout(() => {
@@ -1050,7 +1011,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       setProcessingAccounts(prev => {
         const filtered = prev.filter(acc => !usernames.includes(acc.username));
         if (filtered.length < prev.length) {
-          console.log('⏰ Safety cleanup: Removed accounts from processing after 10s');
         }
         return filtered;
       });
@@ -1220,7 +1180,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       // Reload videos with updated rules
       await loadAccountVideos(selectedAccount.id);
       
-      console.log(`✅ Toggled rule "${rule.name}" for @${selectedAccount.username} - Reloading videos...`);
     } catch (error) {
       console.error('Failed to toggle rule:', error);
       alert('Failed to update rule. Please try again.');
@@ -1295,7 +1254,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
       // Reload videos with new rule
       setSelectedAccount({ ...selectedAccount });
       
-      console.log(`✅ Created rule "${ruleName}" for @${selectedAccount.username}`);
     } catch (error) {
       console.error('Failed to create rule:', error);
       alert('Failed to create rule. Please try again.');
@@ -1644,7 +1602,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                           <button
                             onClick={() => {
                               setProcessingAccounts(prev => prev.filter((_, i) => i !== index));
-                              console.log(`🗑️ Manually removed stuck account: @${procAccount.username}`);
                             }}
                             className="px-3 py-1.5 text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-md transition-colors"
                             title="Cancel processing"
@@ -1729,7 +1686,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                               lastSyncedAt: new Date(),
                                               syncError: 'Manually cancelled by user'
                                             });
-                                            console.log(`🚫 Cancelled sync for @${account.username}`);
                                           } catch (error) {
                                             console.error('Failed to cancel sync:', error);
                                             alert('Failed to cancel sync');
@@ -2375,7 +2331,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   
-                                  console.log('🎬 Opening video player:', {
                                     videoId: video.videoId,
                                     url: video.url,
                                     platform: selectedAccount.platform,
@@ -3151,7 +3106,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                       onClick={async () => {
                         if (selectedCreatorId && user && currentOrgId && currentProjectId) {
                           try {
-                            console.log('Attaching account to creator:', selectedCreatorId);
                             await CreatorLinksService.linkCreatorToAccounts(
                               currentOrgId,
                               currentProjectId,
@@ -3175,7 +3129,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                               });
                             }
                             
-                            console.log('✅ Account attached to creator successfully');
                             setShowAttachCreatorModal(false);
                             setSelectedCreatorId('');
                           } catch (error) {

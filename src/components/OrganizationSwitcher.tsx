@@ -56,7 +56,6 @@ const OrganizationSwitcher: React.FC = () => {
     if (!user) return;
     
     try {
-      console.log('🔄 Switching to organization:', orgId);
       // Save to Firestore as default org
       await OrganizationService.setDefaultOrg(user.uid, orgId);
       

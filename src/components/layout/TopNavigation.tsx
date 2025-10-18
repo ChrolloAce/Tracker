@@ -48,7 +48,6 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({ onAddVideo, onTikT
           {/* Right section - Actions and Profile */}
           <div className="flex items-center space-x-4">
             <Button 
-              onClick={onRefreshAll || (() => console.log('No refresh handler provided'))} 
               variant="secondary" 
               disabled={isRefreshing || !onRefreshAll}
               className="flex items-center space-x-2"

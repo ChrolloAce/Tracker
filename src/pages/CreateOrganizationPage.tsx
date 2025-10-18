@@ -194,11 +194,9 @@ const OrganizationOnboarding: React.FC = () => {
       // Create organization
       const orgId = await OrganizationService.createOrganization(user.uid, orgData);
 
-      console.log('✅ Organization created:', orgId);
 
       // TODO: Send team invites if any
       if (data.teamEmails.length > 0) {
-        console.log('📧 Team invites to send:', data.teamEmails);
         // Implement team invite logic here
       }
 

@@ -78,7 +78,6 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
             currentOrgId,
             imageFile
           );
-          console.log('✅ Uploaded project image:', imageUrl);
         } catch (uploadError) {
           console.error('Failed to upload image:', uploadError);
           setError('Failed to upload image. Creating project without image.');
@@ -92,7 +91,6 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
         imageUrl,
       });
 
-      console.log('✅ Created project:', projectId);
 
       // Switch to the new project
       await switchProject(projectId);

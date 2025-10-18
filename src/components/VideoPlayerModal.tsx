@@ -39,7 +39,6 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
 
   // Convert video URLs to embed URLs
   const getEmbedUrl = (url: string, platform?: string): string => {
-    console.log('🎬 Converting video URL:', { url, platform });
     
     try {
       // TikTok
@@ -48,7 +47,6 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
         const videoIdMatch = url.match(/video\/(\d+)/);
         if (videoIdMatch) {
           const embedUrl = `https://www.tiktok.com/embed/v2/${videoIdMatch[1]}`;
-          console.log('✅ TikTok embed URL:', embedUrl);
           return embedUrl;
         }
         console.warn('⚠️ Could not parse TikTok video ID from:', url);
@@ -63,19 +61,16 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
           const type = postMatch[1] === 'reels' ? 'reel' : postMatch[1]; // Normalize 'reels' to 'reel'
           const code = postMatch[2];
           const embedUrl = `https://www.instagram.com/${type}/${code}/embed`;
-          console.log('✅ Instagram embed URL:', embedUrl);
           return embedUrl;
         }
         
         // Fallback: if URL already has /embed, use it
         if (url.includes('/embed')) {
-          console.log('✅ Using existing Instagram embed URL:', url);
           return url;
         }
         
         // Last resort: try appending /embed
         const embedUrl = url.replace(/\/$/, '') + '/embed';
-        console.log('⚠️ Fallback Instagram embed URL:', embedUrl);
         return embedUrl;
       }
       
@@ -84,14 +79,12 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
         const shortsMatch = url.match(/shorts\/([a-zA-Z0-9_-]+)/);
         if (shortsMatch) {
           const embedUrl = `https://www.youtube.com/embed/${shortsMatch[1]}`;
-          console.log('✅ YouTube Shorts embed URL:', embedUrl);
           return embedUrl;
         }
         
         const youtuMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
         if (youtuMatch) {
           const embedUrl = `https://www.youtube.com/embed/${youtuMatch[1]}`;
-          console.log('✅ YouTube embed URL:', embedUrl);
           return embedUrl;
         }
         
@@ -100,7 +93,6 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
           const v = u.searchParams.get('v');
           if (v) {
             const embedUrl = `https://www.youtube.com/embed/${v}`;
-            console.log('✅ YouTube watch embed URL:', embedUrl);
             return embedUrl;
           }
         } catch (e) {
@@ -110,11 +102,9 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
       
       // Twitter/X
       if (url.includes('twitter.com') || url.includes('x.com') || platform === 'twitter') {
-        console.log('ℹ️ Twitter video - opening externally');
         return url;
       }
       
-      console.log('⚠️ Using original URL:', url);
       return url;
     } catch (error) {
       console.error('❌ Error converting video URL:', error);
@@ -136,7 +126,6 @@ const VideoPlayerModal: React.FC<VideoPlayerModalProps> = ({
     return null;
   }
 
-  console.log('✅ VideoPlayerModal: Opening video:', { videoUrl, embedUrl, platform });
 
   const modalContent = (
     <div 

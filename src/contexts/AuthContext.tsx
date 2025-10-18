@@ -48,7 +48,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(user);
       
       if (user) {
-        console.log('✅ User signed in:', user.email);
         
         // Create user account in Firestore if doesn't exist
         await OrganizationService.createUserAccount(
@@ -63,7 +62,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // If no organization exists, redirect to create organization page
         if (!orgId) {
-          console.log('🔄 No organizations found, redirecting to create organization page');
           setCurrentOrgId(null);
           setCurrentProjectId(null);
           setUserRole(null);
@@ -77,20 +75,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         setCurrentOrgId(orgId);
-        console.log('✅ Current organization:', orgId);
 
         // Get or create default project
         const projectId = await loadOrCreateProject(orgId, user.uid);
         setCurrentProjectId(projectId);
-        console.log('✅ Current project:', projectId);
         
         // Load user role
         const members = await OrganizationService.getOrgMembers(orgId);
         const member = members.find(m => m.userId === user.uid);
         setUserRole(member?.role || null);
-        console.log('✅ User role:', member?.role);
       } else {
-        console.log('❌ User signed out');
         setCurrentOrgId(null);
         setCurrentProjectId(null);
       }
@@ -127,7 +121,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         // No projects exist, create default project
-        console.log('📁 Creating default project for org:', orgId);
         const projectId = await ProjectService.createDefaultProject(orgId, userId);
         await ProjectService.setActiveProject(orgId, userId, projectId);
         return projectId;
@@ -138,7 +131,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // If it's a permission error and not the last attempt, wait and retry
         if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
           if (attempt < maxRetries) {
-            console.log(`⏳ Waiting before retry (member document may still be propagating)...`);
             await new Promise(resolve => setTimeout(resolve, 3000)); // Increased to 3s
             continue;
           }
@@ -162,7 +154,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-      console.log('✅ Signed in with Google');
     } catch (error) {
       console.error('Failed to sign in with Google:', error);
       throw error;
@@ -172,7 +163,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signInWithEmail = async (email: string, password: string) => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      console.log('✅ Signed in with email');
     } catch (error) {
       console.error('Failed to sign in with email:', error);
       throw error;
@@ -182,7 +172,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUpWithEmail = async (email: string, password: string) => {
     try {
       await createUserWithEmailAndPassword(auth, email, password);
-      console.log('✅ Signed up with email');
     } catch (error) {
       console.error('Failed to sign up with email:', error);
       throw error;
@@ -194,7 +183,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await signOut(auth);
       setCurrentOrgId(null);
       setCurrentProjectId(null);
-      console.log('✅ Signed out');
     } catch (error) {
       console.error('Failed to sign out:', error);
       throw error;
@@ -204,7 +192,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const switchOrganization = (orgId: string) => {
     setCurrentOrgId(orgId);
     setCurrentProjectId(null); // Reset project when switching orgs
-    console.log('🔄 Switched to organization:', orgId);
   };
 
   const switchProject = async (projectId: string) => {
@@ -213,7 +200,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await ProjectService.setActiveProject(currentOrgId, user.uid, projectId);
       setCurrentProjectId(projectId);
-      console.log('🔄 Switched to project:', projectId);
     } catch (error) {
       console.error('Failed to switch project:', error);
       throw error;

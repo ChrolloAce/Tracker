@@ -165,7 +165,6 @@ const ProjectCreationFlow: React.FC<ProjectCreationFlowProps> = ({ onClose, onSu
         description: data.website || undefined,
       });
 
-      console.log('✅ Project created:', projectId);
 
       // Show success toast
       setShowSuccess(true);

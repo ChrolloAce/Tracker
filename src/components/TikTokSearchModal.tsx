@@ -41,7 +41,6 @@ export const TikTokSearchModal: React.FC<TikTokSearchModalProps> = ({
     setResults([]);
 
     try {
-      console.log(`🔍 Starting TikTok ${searchType} search:`, searchQuery);
       
       let videos: InstagramVideoData[];
       
@@ -51,7 +50,6 @@ export const TikTokSearchModal: React.FC<TikTokSearchModalProps> = ({
         videos = await TikTokApiService.searchVideos(searchQuery, maxVideos);
       }
 
-      console.log('✅ TikTok search completed, found videos:', videos.length);
       setResults(videos);
       
       if (videos.length === 0) {

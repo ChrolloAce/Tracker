@@ -130,22 +130,17 @@ const ThumbnailImage: React.FC<{ submission: VideoSubmission }> = ({ submission 
   }, [submission.id]);
 
   const handleImageError = () => {
-    console.log('🖼️ Image failed to load, trying proxy or fallback for:', submission.id);
-    console.log('📸 Failed thumbnail URL:', thumbnailSrc);
     
     // If it's already a Firebase Storage URL, don't try proxy - just use placeholder
     if (thumbnailSrc.includes('firebasestorage.googleapis.com')) {
-      console.log('⚠️ Firebase Storage thumbnail failed to load - using placeholder');
       setThumbnailSrc(`data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjZTVlN2ViIi8+CjxwYXRoIGQ9Ik0yNCAzMkMxNy4zNzI2IDMyIDEyIDI2LjYyNzQgMTIgMjBDMTIgMTMuMzcyNiAxNy4zNzI2IDggMjQgOEMzMC42Mjc0IDggMzYgMTMuMzcyNiAzNiAyMEMzNiAyNi42Mjc0IDMwLjYyNzQgMzIgMjQgMzJaTTI0IDI4QzI4LjQxODMgMjggMzIgMjQuNDE4MyAzMiAyMEMzMiAxNS41ODE3IDI4LjQxODMgMTIgMjQgMTJDMTkuNTgxNyAxMiAxNiAxNS41ODE3IDE2IDIwQzE2IDI0LjQxODMgMTkuNTgxNyAyOCAyNCAyOFoiIGZpbGw9IiM5Y2EzYWYiLz4KPC9zdmc+Cg==`);
     }
     // If it's an Instagram URL, try using a CORS proxy service
     else if (thumbnailSrc.includes('instagram.com') || thumbnailSrc.includes('cdninstagram.com')) {
-      console.log('📡 Trying CORS proxy for Instagram image...');
       const proxiedUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(thumbnailSrc)}`;
       setThumbnailSrc(proxiedUrl);
     } else {
       // Final fallback to SVG placeholder
-      console.log('🎨 Using SVG placeholder as final fallback');
       setThumbnailSrc(`data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjZTVlN2ViIi8+CjxwYXRoIGQ9Ik0yNCAzMkMxNy4zNzI2IDMyIDEyIDI2LjYyNzQgMTIgMjBDMTIgMTMuMzcyNiAxNy4zNzI2IDggMjQgOEMzMC42Mjc0IDggMzYgMTMuMzcyNiAzNiAyMEMzNiAyNi42Mjc0IDMwLjYyNzQgMzIgMjQgMzJaTTI0IDI4QzI4LjQxODMgMjggMzIgMjQuNDE4MyAzMiAyMEMzMiAxNS41ODE3IDI4LjQxODMgMTIgMjQgMTJDMTkuNTgxNyAxMiAxNiAxNS41ODE3IDE2IDIwQzE2IDI0LjQxODMgMTkuNTgxNyAyOCAyNCAyOFoiIGZpbGw9IiM5Y2EzYWYiLz4KPC9zdmc+Cg==`);
     }
   };
@@ -166,18 +161,10 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   onDelete,
   onVideoClick
 }) => {
-  console.log('🎬 VideoSubmissionsTable rendered with', submissions.length, 'videos');
-  console.log('📅 Sample submission uploadDate check:', submissions[0]?.uploadDate);
   
   // Debug: Check captions on first video
   if (submissions.length > 0) {
     const first = submissions[0];
-    console.log('🔍 VideoSubmissionsTable - First video:');
-    console.log('   ID:', first.id);
-    console.log('   Title:', first.title || '(EMPTY)');
-    console.log('   Caption:', first.caption || '(EMPTY)');
-    console.log('   Title length:', first.title?.length || 0);
-    console.log('   Caption length:', first.caption?.length || 0);
   }
   
   // Pagination state
@@ -629,7 +616,6 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           
-                          console.log('🎬 Opening video player:', {
                             videoId: submission.id,
                             url: submission.url,
                             platform: submission.platform,

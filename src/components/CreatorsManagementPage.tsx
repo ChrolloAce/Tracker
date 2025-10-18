@@ -78,9 +78,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   useImperativeHandle(ref, () => ({
     openInviteModal: () => setShowInviteModal(true),
     refreshData: async () => {
-      console.log('🔄 Manually refreshing CreatorsManagementPage data...');
       await loadData();
-      console.log('✅ CreatorsManagementPage data refreshed');
     }
   }));
 

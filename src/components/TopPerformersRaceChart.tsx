@@ -81,11 +81,6 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
       }
     });
     
-    console.log(`🎬 TopPerformersRaceChart: Processing ${uniqueVideos.size} unique videos (from ${submissions.length} total)`);
-    if (skippedDuplicates.length > 0) {
-      console.log(`⚠️  Skipped ${skippedDuplicates.length} duplicate videos:`, skippedDuplicates.slice(0, 10));
-    }
-    
     const accountMap = new Map<string, {
       handle: string;
       displayName: string;
@@ -104,20 +99,6 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
       // Use both platform and handle to uniquely identify accounts
       const accountKey = `${video.platform}_${handle}`;
       
-      // Debug logging for Nev account specifically
-      if (handle.includes('nev')) {
-        console.log(`🔍 Processing Nev video:`, {
-          handle,
-          displayName,
-          accountKey,
-          platform: video.platform,
-          videoId: video.id,
-          url: video.url,
-          uploaderHandle: video.uploaderHandle,
-          uploader: video.uploader
-        });
-      }
-      
       if (!accountMap.has(accountKey)) {
         accountMap.set(accountKey, {
           handle,
@@ -130,12 +111,6 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
           videoCount: 0,
           profileImage: video.uploaderProfilePicture
         });
-        
-        if (handle.includes('nev')) {
-          console.log(`✨ Created NEW account entry for: ${accountKey}`);
-        }
-      } else if (handle.includes('nev')) {
-        console.log(`♻️  Adding to EXISTING account entry: ${accountKey}`);
       }
 
       const account = accountMap.get(accountKey)!;
@@ -145,15 +120,6 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
       account.totalShares += video.shares || 0;
       account.videoCount += 1;
     });
-    
-    console.log(`👥 Aggregated into ${accountMap.size} unique accounts`);
-    
-    // Log all account keys for debugging duplicates
-    const accountKeys = Array.from(accountMap.keys());
-    const nevAccounts = accountKeys.filter(key => key.includes('nev'));
-    if (nevAccounts.length > 0) {
-      console.log(`🎯 Nev account keys found:`, nevAccounts);
-    }
 
     const getAccountMetric = (account: typeof accountMap extends Map<string, infer T> ? T : never): number => {
       switch (accountsMetric) {
@@ -176,17 +142,6 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
     const sortedAccounts = Array.from(accountMap.values())
       .sort((a, b) => getAccountMetric(b) - getAccountMetric(a))
       .slice(0, topAccountsCount);
-    
-    // Log final top accounts
-    const nevInTop = sortedAccounts.filter(acc => acc.handle.includes('nev'));
-    if (nevInTop.length > 0) {
-      console.log(`🏆 Nev accounts in TOP ${topAccountsCount}:`, nevInTop.map(a => ({
-        handle: a.handle,
-        platform: a.platform,
-        displayName: a.displayName,
-        views: a.totalViews
-      })));
-    }
     
     return sortedAccounts;
   }, [submissions, accountsMetric, topAccountsCount]);
@@ -483,7 +438,6 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                   animation: `raceSlideIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) ${index * 0.12}s both`
                 }}
                 onClick={() => {
-                  console.log('🎯 Account clicked:', account.handle);
                   onAccountClick?.(account.handle);
                 }}
                 onMouseEnter={(e) => {
