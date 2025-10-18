@@ -375,31 +375,13 @@ function DashboardPage() {
       console.error('❌ Failed to load link clicks:', error);
     }
     
-    // Load revenue data
+    // Load revenue integrations (syncing will be handled by date filter effect)
     try {
       const integrations = await RevenueDataService.getAllIntegrations(currentOrgId, currentProjectId);
       setRevenueIntegrations(integrations);
       
-      // If there are enabled integrations, auto-sync and load latest metrics
+      // Load existing metrics immediately (syncing will happen via date filter effect)
       if (integrations.some(i => i.enabled)) {
-        // Auto-sync revenue data on page load
-        const endDate = new Date();
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - 30); // Last 30 days
-        
-        try {
-          await RevenueDataService.syncAllIntegrations(
-            currentOrgId,
-            currentProjectId,
-            startDate,
-            endDate
-          );
-          console.log('✅ Auto-synced revenue data');
-        } catch (syncError) {
-          console.error('Failed to auto-sync revenue:', syncError);
-        }
-        
-        // Load the metrics (whether sync succeeded or not)
         const metrics = await RevenueDataService.getLatestMetrics(currentOrgId, currentProjectId);
         setRevenueMetrics(metrics);
       }
@@ -409,6 +391,41 @@ function DashboardPage() {
     
     })(); // End of async IIFE
   }, [user, currentOrgId, currentProjectId]); // Reload when project changes!
+
+  // Auto-sync revenue data when date filters change
+  useEffect(() => {
+    if (!user || !currentOrgId || !currentProjectId) return;
+    if (revenueIntegrations.length === 0 || !revenueIntegrations.some(i => i.enabled)) return;
+
+    const syncRevenue = async () => {
+      try {
+        // Calculate date range based on current filter
+        const range = DateFilterService.getDateRange(dateFilter, customDateRange);
+        const startDate = range.startDate;
+        const endDate = range.endDate;
+
+        console.log(`🔄 Syncing revenue data for ${dateFilter}:`, { startDate, endDate });
+
+        // Sync all integrations with the new date range
+        await RevenueDataService.syncAllIntegrations(
+          currentOrgId,
+          currentProjectId,
+          startDate,
+          endDate
+        );
+
+        // Reload metrics after sync
+        const metrics = await RevenueDataService.getLatestMetrics(currentOrgId, currentProjectId);
+        setRevenueMetrics(metrics);
+
+        console.log('✅ Revenue data synced for date range');
+      } catch (error) {
+        console.error('❌ Failed to sync revenue for date range:', error);
+      }
+    };
+
+    syncRevenue();
+  }, [user, currentOrgId, currentProjectId, dateFilter, customDateRange, revenueIntegrations]);
 
   // Smart sync monitoring - Auto-refresh when accounts finish syncing
   useEffect(() => {
