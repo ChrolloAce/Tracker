@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { VideoSubmission } from '../types';
-import { format, startOfWeek, addDays, startOfYear, endOfYear, eachDayOfInterval, isSameDay } from 'date-fns';
+import { format, startOfWeek, addDays, startOfYear, endOfYear, eachDayOfInterval, isSameDay, startOfDay } from 'date-fns';
 
 interface PostingActivityHeatmapProps {
   submissions: VideoSubmission[];
