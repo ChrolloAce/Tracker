@@ -138,8 +138,25 @@ function DashboardPage() {
   });
   
   const [dashboardSectionOrder, setDashboardSectionOrder] = useState<string[]>(() => {
+    const defaultOrder = ['kpi-cards', 'top-performers', 'top-platforms', 'posting-activity', 'tracked-accounts', 'videos-table'];
     const saved = localStorage.getItem('dashboardSectionOrder');
-    return saved ? JSON.parse(saved) : ['kpi-cards', 'top-performers', 'top-platforms', 'posting-activity', 'tracked-accounts', 'videos-table'];
+    
+    if (saved) {
+      const parsedOrder = JSON.parse(saved);
+      // Merge old order with new sections that might be missing
+      const merged = [...parsedOrder];
+      defaultOrder.forEach(sectionId => {
+        if (!merged.includes(sectionId)) {
+          merged.push(sectionId);
+        }
+      });
+      console.log('🔧 Merged section order:', { old: parsedOrder, new: merged });
+      // Save the merged order back to localStorage
+      localStorage.setItem('dashboardSectionOrder', JSON.stringify(merged));
+      return merged;
+    }
+    
+    return defaultOrder;
   });
   
   const [dashboardSectionVisibility, setDashboardSectionVisibility] = useState<Record<string, boolean>>(() => {
@@ -1414,7 +1431,8 @@ function DashboardPage() {
                          'tracked-accounts': true,
                          'videos-table': true
                        };
-                       console.log('🔧 DEBUG: Force-enabling all sections:', allVisible);
+                       console.log('🔧 DEBUG: Force-enabling all sections:', JSON.stringify(allVisible, null, 2));
+                       console.log('🔧 DEBUG: Current order:', dashboardSectionOrder);
                        setDashboardSectionVisibility(allVisible);
                        localStorage.setItem('dashboardSectionVisibility', JSON.stringify(allVisible));
                      }}
