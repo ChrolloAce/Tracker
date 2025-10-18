@@ -18,8 +18,8 @@ export interface RevenueIntegration {
   provider: RevenueProvider;
   enabled: boolean;
   credentials: {
-    apiKey?: string; // RevenueCat API Key
-    appId?: string; // Superwall App ID
+    apiKey?: string; // RevenueCat API Key / Superwall API Key
+    appId?: string; // Superwall App ID / RevenueCat Project ID (stored here for RevenueCat)
     secretKey?: string; // For server-side integrations
   };
   settings?: {

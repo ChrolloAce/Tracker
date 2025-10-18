@@ -476,9 +476,16 @@ class RevenueDataService {
       throw new Error('RevenueCat integration not found or missing API key');
     }
 
+    if (!integration.credentials.appId) {
+      throw new Error('RevenueCat Project ID is required. Please update your integration settings.');
+    }
+
     // Fetch transactions from RevenueCat
     const rcTransactions = await RevenueCatService.fetchTransactions(
-      { apiKey: integration.credentials.apiKey },
+      { 
+        apiKey: integration.credentials.apiKey,
+        projectId: integration.credentials.appId // RevenueCat Project ID stored in appId field
+      },
       startDate,
       endDate
     );

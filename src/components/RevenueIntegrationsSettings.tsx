@@ -330,6 +330,11 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
       return;
     }
 
+    if (provider === 'revenuecat' && !appId) {
+      alert('Please enter a Project ID for RevenueCat');
+      return;
+    }
+
     if (provider === 'superwall' && !appId) {
       alert('Please enter an App ID for Superwall');
       return;
@@ -344,7 +349,7 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
         provider,
         {
           apiKey,
-          appId: provider === 'superwall' ? appId : undefined,
+          appId: (provider === 'superwall' || provider === 'revenuecat') ? appId : undefined,
         }
       );
 
@@ -411,6 +416,25 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
               </button>
             </div>
           </div>
+
+          {/* Project ID (RevenueCat only) */}
+          {provider === 'revenuecat' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Project ID *
+              </label>
+              <input
+                type="text"
+                value={appId}
+                onChange={(e) => setAppId(e.target.value)}
+                placeholder="e.g. proj1ab2c3d4"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <p className="mt-2 text-sm text-gray-400">
+                Find this in your RevenueCat dashboard under Project Settings → API keys
+              </p>
+            </div>
+          )}
 
           {/* App ID (Superwall only) */}
           {provider === 'superwall' && (

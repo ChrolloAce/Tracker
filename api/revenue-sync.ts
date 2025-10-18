@@ -77,21 +77,98 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
 
-      // Fetch transactions
-      // IMPORTANT: RevenueCat's public REST API v1 does NOT support fetching transaction lists
-      // You must use webhooks to receive transaction data in real-time
-      // Reference: https://www.revenuecat.com/docs/integrations/webhooks
+      // Fetch overview metrics (aggregate data)
+      // Note: For transaction-level data, webhooks are required
+      // Reference: https://docs.revenuecat.com/reference/get-overview-metrics-for-a-project
       if (action === 'fetchTransactions') {
-        // Return helpful message about webhook requirement
-        return res.status(200).json({
-          success: true,
-          data: {
-            transactions: [],
-            webhook_required: true,
-            message: 'RevenueCat requires webhooks to sync transaction data. Please set up webhooks in your RevenueCat dashboard to receive real-time transaction events.',
-            setup_url: 'https://www.revenuecat.com/docs/integrations/webhooks'
+        if (!startDate || !endDate) {
+          return res.status(400).json({ error: 'Missing startDate or endDate' });
+        }
+
+        try {
+          // Note: This endpoint requires a project_id, not just an API key
+          // The project_id should be passed in the request body
+          const { projectId } = req.body;
+          
+          if (!projectId) {
+            return res.status(400).json({ 
+              error: 'Missing projectId. Please provide your RevenueCat project ID.' 
+            });
           }
-        });
+
+          const baseUrlV2 = 'https://api.revenuecat.com/v2';
+          
+          // Fetch overview metrics
+          const response = await fetchWithTimeout(
+            `${baseUrlV2}/projects/${projectId}/metrics/overview?currency=USD`,
+            {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            
+            // Transform overview metrics to transaction-like format
+            // This gives aggregate data, not individual transactions
+            const transactions = [];
+            
+            if (data.metrics && Array.isArray(data.metrics)) {
+              // Extract revenue-related metrics
+              const now = Date.now();
+              const metrics = data.metrics.reduce((acc: any, metric: any) => {
+                acc[metric.metric] = metric.value;
+                return acc;
+              }, {});
+
+              // Create a single aggregate "transaction" entry
+              if (metrics.revenue || metrics.mrr) {
+                transactions.push({
+                  id: `rc_aggregate_${now}`,
+                  date: new Date().toISOString(),
+                  revenue: metrics.revenue || 0,
+                  mrr: metrics.mrr || 0,
+                  active_subscriptions: metrics.active_subscriptions || 0,
+                  currency: 'USD',
+                  type: 'aggregate_metrics',
+                });
+              }
+            }
+            
+            return res.status(200).json({ 
+              success: true, 
+              data: { 
+                transactions,
+                note: 'This is aggregate metrics data. For detailed transaction tracking, please set up webhooks.',
+                webhook_guide: '/REVENUECAT_SETUP_GUIDE.md'
+              } 
+            });
+          } else {
+            const errorText = await response.text();
+            let errorData;
+            try {
+              errorData = JSON.parse(errorText);
+            } catch {
+              errorData = { message: errorText || 'Unknown error' };
+            }
+            
+            return res.status(response.status).json({ 
+              success: false, 
+              error: errorData.message || errorData.error || 'Failed to fetch metrics',
+              details: errorData
+            });
+          }
+        } catch (error: any) {
+          return res.status(500).json({ 
+            success: false, 
+            error: error.message || 'Failed to fetch metrics',
+            details: error.toString()
+          });
+        }
       }
 
       // Fetch overview

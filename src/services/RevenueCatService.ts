@@ -85,7 +85,7 @@ export class RevenueCatService {
    * Fetch transaction history (via API proxy)
    */
   static async fetchTransactions(
-    config: RevenueCatConfig,
+    config: RevenueCatConfig & { projectId?: string },
     startDate: Date,
     endDate: Date,
     limit: number = 100
@@ -99,6 +99,7 @@ export class RevenueCatService {
         provider: 'revenuecat',
         action: 'fetchTransactions',
         credentials: { apiKey: config.apiKey },
+        projectId: config.projectId, // Pass the RevenueCat project ID
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
         limit,
