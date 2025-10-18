@@ -482,14 +482,30 @@ class RevenueDataService {
     }
 
     // Fetch transactions from RevenueCat (returns aggregate metrics from v2 API)
-    const rcTransactions = await RevenueCatService.fetchTransactions(
-      { 
-        apiKey: integration.credentials.apiKey,
-        projectId: integration.credentials.appId // RevenueCat Project ID stored in appId field
-      },
-      startDate,
-      endDate
-    );
+    let rcTransactions;
+    try {
+      rcTransactions = await RevenueCatService.fetchTransactions(
+        { 
+          apiKey: integration.credentials.apiKey,
+          projectId: integration.credentials.appId // RevenueCat Project ID stored in appId field
+        },
+        startDate,
+        endDate
+      );
+    } catch (error: any) {
+      // Don't let RevenueCat errors break the entire dashboard
+      console.error('⚠️ RevenueCat sync failed (non-critical):', error.message);
+      
+      // Update last synced time anyway to prevent constant retries
+      await this.updateIntegration(orgId, projectId, integration.id, {
+        lastSynced: new Date(),
+      });
+      
+      return {
+        transactionCount: 0,
+        revenue: 0
+      };
+    }
 
     // Note: v2 API returns aggregate metrics, not individual transactions
     // This is expected and still provides useful revenue data

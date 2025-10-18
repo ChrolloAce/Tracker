@@ -42,8 +42,9 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
     
     const dayMap = new Map<string, VideoSubmission[]>();
     uniqueVideos.forEach(sub => {
-      // ONLY use datePublished (actual upload date), skip videos without it
-      const pubDate = sub.datePublished;
+      // Prefer datePublished (actual upload date), fall back to dateSubmitted
+      // This ensures ALL videos show up in the heatmap
+      const pubDate = sub.datePublished || sub.dateSubmitted;
       
       if (pubDate) {
         try {
