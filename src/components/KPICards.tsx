@@ -1159,6 +1159,24 @@ const KPICards: React.FC<KPICardsProps> = ({
         const revenueGrowth = ppRevenue > 0 ? ((totalRevenue - ppRevenue) / ppRevenue) * 100 : 0;
         const revenueGrowthAbsolute = totalRevenue - ppRevenue;
         
+        // Generate simple sparkline data (showing current period trend)
+        // For now, create a simple upward/downward trend based on growth
+        const sparklineData: Array<{ value: number }> = [];
+        if (ppRevenue > 0 && totalRevenue > 0) {
+          // Create a trend line from PP to current
+          const dataPoints = 10;
+          for (let i = 0; i <= dataPoints; i++) {
+            const progress = i / dataPoints;
+            const value = ppRevenue + (totalRevenue - ppRevenue) * progress;
+            sparklineData.push({ value });
+          }
+        } else if (totalRevenue > 0) {
+          // No PP data, show flat line at current value
+          for (let i = 0; i < 10; i++) {
+            sparklineData.push({ value: totalRevenue });
+          }
+        }
+        
         return {
           id: 'revenue',
           label: 'Revenue',
@@ -1166,6 +1184,8 @@ const KPICards: React.FC<KPICardsProps> = ({
           icon: DollarSign,
           accent: 'emerald' as const,
           delta: { value: Math.abs(revenueGrowth), isPositive: revenueGrowth >= 0, absoluteValue: revenueGrowthAbsolute },
+          sparklineData: sparklineData.length > 0 ? sparklineData : undefined,
+          intervalType: 'day' as IntervalType,
           isIncreasing: revenueGrowth >= 0
         };
       })(),
@@ -1202,12 +1222,24 @@ const KPICards: React.FC<KPICardsProps> = ({
         // Use new subscriptions as a proxy for downloads/installs
         const downloads = revenueMetrics.newSubscriptions || 0;
         
+        // Generate simple sparkline for downloads
+        const sparklineData: Array<{ value: number }> = [];
+        if (downloads > 0) {
+          // Show a simple upward trend leading to current value
+          for (let i = 0; i < 10; i++) {
+            const progress = i / 9;
+            sparklineData.push({ value: Math.round(downloads * progress) });
+          }
+        }
+        
         return {
           id: 'downloads',
           label: 'Downloads',
           value: formatNumber(downloads),
           icon: Download,
           accent: 'blue' as const,
+          sparklineData: sparklineData.length > 0 ? sparklineData : undefined,
+          intervalType: 'day' as IntervalType,
           isIncreasing: true
         };
       })()

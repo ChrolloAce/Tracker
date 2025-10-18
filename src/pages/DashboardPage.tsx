@@ -380,8 +380,26 @@ function DashboardPage() {
       const integrations = await RevenueDataService.getAllIntegrations(currentOrgId, currentProjectId);
       setRevenueIntegrations(integrations);
       
-      // If there are enabled integrations, load latest metrics
+      // If there are enabled integrations, auto-sync and load latest metrics
       if (integrations.some(i => i.enabled)) {
+        // Auto-sync revenue data on page load
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 30); // Last 30 days
+        
+        try {
+          await RevenueDataService.syncAllIntegrations(
+            currentOrgId,
+            currentProjectId,
+            startDate,
+            endDate
+          );
+          console.log('✅ Auto-synced revenue data');
+        } catch (syncError) {
+          console.error('Failed to auto-sync revenue:', syncError);
+        }
+        
+        // Load the metrics (whether sync succeeded or not)
         const metrics = await RevenueDataService.getLatestMetrics(currentOrgId, currentProjectId);
         setRevenueMetrics(metrics);
       }
