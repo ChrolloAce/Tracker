@@ -37,7 +37,12 @@ interface RevenueCatTransaction {
   currency: string;
   is_trial_period?: boolean;
   store?: 'app_store' | 'play_store' | 'stripe' | 'promotional';
-  // Add more fields as needed
+  // Aggregate metrics fields (from v2 API /metrics/overview)
+  mrr?: number;
+  active_subscriptions?: number;
+  active_trials?: number;
+  type?: string;
+  period?: string;
 }
 
 /**
@@ -212,7 +217,8 @@ export class RevenueCatService {
     projectId: string
   ): RevenueTransaction[] {
     return transactions.map((tx) => {
-      // Handle Charts API format (has date and revenue fields)
+      // Handle aggregate metrics format (from v2 API /metrics/overview)
+      // These transactions include mrr, active_subscriptions, etc.
       if (tx.date && tx.revenue !== undefined) {
         return {
           id: `rc_${tx.id}`,
@@ -222,14 +228,22 @@ export class RevenueCatService {
           platform: 'other' as const,
           transactionId: tx.id,
           customerId: 'aggregate',
-          amount: Math.round(tx.revenue * 100), // Convert to cents
+          amount: Math.round(tx.revenue * 100), // Convert to cents (revenue is already in dollars)
           currency: tx.currency || 'USD',
-          productId: 'daily_revenue',
+          productId: 'mrr',
           purchaseDate: new Date(tx.date),
           type: 'purchase' as const,
           status: 'active' as const,
           isRenewal: false,
           isTrial: false,
+          metadata: {
+            // Preserve aggregate metrics from the API response
+            active_subscriptions: tx.active_subscriptions || 0,
+            active_trials: tx.active_trials || 0,
+            mrr: tx.mrr || 0,
+            type: tx.type || 'aggregate',
+            period: tx.period || 'P28D'
+          },
           createdAt: new Date(),
           updatedAt: new Date(),
         };
@@ -278,15 +292,29 @@ export class RevenueCatService {
 
     const netRevenue = totalRevenue - refunds;
 
-    const activeSubscriptions = new Set(
-      transactions
-        .filter(tx => tx.status === 'active' && tx.subscriptionPeriod)
-        .map(tx => tx.customerId)
-    ).size;
+    // Handle both individual transactions and aggregate metrics
+    let activeSubscriptions = 0;
+    let newSubscriptions = 0;
+    
+    // Check if we have aggregate data (from v2 API overview)
+    const aggregateTransaction = transactions.find(tx => tx.metadata?.active_subscriptions !== undefined);
+    
+    if (aggregateTransaction && aggregateTransaction.metadata) {
+      // Use the aggregate values directly from the API
+      activeSubscriptions = aggregateTransaction.metadata.active_subscriptions || 0;
+      newSubscriptions = aggregateTransaction.metadata.new_subscriptions || 0;
+    } else {
+      // Calculate from individual transactions (webhook data)
+      activeSubscriptions = new Set(
+        transactions
+          .filter(tx => tx.status === 'active' && tx.subscriptionPeriod)
+          .map(tx => tx.customerId)
+      ).size;
 
-    const newSubscriptions = transactions.filter(tx => 
-      tx.type === 'purchase' && !tx.isRenewal
-    ).length;
+      newSubscriptions = transactions.filter(tx => 
+        tx.type === 'purchase' && !tx.isRenewal
+      ).length;
+    }
 
     const trialConversions = transactions.filter(tx => 
       tx.type === 'purchase' && tx.isTrial

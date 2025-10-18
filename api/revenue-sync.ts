@@ -178,45 +178,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               console.log('📈 Parsed metrics object:', metrics);
               console.log('🔑 Available metric IDs:', Object.keys(metrics));
 
-              // Extract revenue metrics (try different possible IDs)
-              totalRevenue = metrics.revenue || 
-                             metrics.total_revenue || 
-                             metrics.lifetime_revenue || 
-                             metrics.active_subscriptions_revenue || 
-                             0;
-              
+              // Extract revenue metrics
+              // RevenueCat returns MRR (Monthly Recurring Revenue) for P28D period
+              // Use MRR as the revenue value since that's what they provide
               const mrr = metrics.mrr || metrics.monthly_recurring_revenue || 0;
+              totalRevenue = mrr; // Use MRR as revenue (represents 28-day recurring revenue)
+              
               const activeSubscriptions = metrics.active_subscriptions || 
                                          metrics.active_subscribers || 
-                                         metrics.active_trials || 
                                          0;
+              const activeTrials = metrics.active_trials || 0;
 
               console.log('💰 Extracted values:', { 
-                totalRevenue, 
-                mrr, 
-                activeSubscriptions,
-                foundRevenueIn: totalRevenue > 0 ? 'revenue field found' : 'NO REVENUE FOUND'
+                totalRevenue: totalRevenue,
+                mrr: mrr, 
+                activeSubscriptions: activeSubscriptions,
+                activeTrials: activeTrials,
+                note: 'MRR represents 28-day recurring revenue (P28D period)'
               });
 
               // Create a single aggregate transaction
-              // WARNING: This is ALL TIME data, not filtered by the requested date range
-              if (totalRevenue > 0 || mrr > 0 || activeSubscriptions > 0) {
+              // Note: MRR represents the last 28 days of recurring revenue (P28D period)
+              if (totalRevenue > 0 || activeSubscriptions > 0 || activeTrials > 0) {
                 transactions.push({
-                  id: `rc_all_time_${now}`,
+                  id: `rc_mrr_${now}`,
                   date: new Date().toISOString(),
-                  revenue: totalRevenue,
+                  revenue: totalRevenue, // MRR value (28-day recurring revenue)
                   mrr: mrr,
                   active_subscriptions: activeSubscriptions,
+                  active_trials: activeTrials,
                   currency: 'USD',
-                  type: 'all_time_aggregate',
-                  warning: 'This is ALL-TIME data, not filtered by date range',
+                  type: 'mrr_28d', // Indicates this is MRR for a 28-day period
+                  period: 'P28D',
                   debug: {
                     all_metrics: metrics,
                     metric_ids: Object.keys(metrics)
                   }
                 });
+                console.log('✅ Created transaction with MRR:', totalRevenue);
               } else {
-                console.log('⚠️ No revenue/MRR/subscriptions found. All metrics:', metrics);
+                console.log('⚠️ No MRR or active subscriptions found. All metrics:', metrics);
               }
             } else {
               console.log('❌ No metrics array found in response');
@@ -230,11 +231,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               data: { 
                 transactions,
                 raw_data: data, // Include raw data for debugging
-                warning: 'RevenueCat REST API does not support date-filtered revenue queries',
-                recommendation: 'For date-specific revenue tracking, set up webhooks: /REVENUECAT_SETUP_GUIDE.md',
+                metrics_period: 'P28D',
+                warning: 'RevenueCat overview endpoint returns fixed-period metrics (MRR = last 28 days). Cannot be customized via API.',
+                recommendation: 'For custom date-range revenue tracking, set up webhooks: /REVENUECAT_SETUP_GUIDE.md',
                 note: transactions.length === 0 
                   ? 'No revenue data found. Check that you have active subscriptions and the correct project ID.'
-                  : `Showing ALL-TIME aggregate metrics (not filtered by date range)`
+                  : `Showing MRR (Monthly Recurring Revenue) for the last 28 days (P28D period)`
               } 
             });
           } else {

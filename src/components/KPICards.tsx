@@ -1179,14 +1179,15 @@ const KPICards: React.FC<KPICardsProps> = ({
         
         return {
           id: 'revenue',
-          label: 'Revenue',
+          label: 'MRR (28d)',
           value: `$${formatNumber(totalRevenue)}`,
           icon: DollarSign,
           accent: 'emerald' as const,
           delta: { value: Math.abs(revenueGrowth), isPositive: revenueGrowth >= 0, absoluteValue: revenueGrowthAbsolute },
           sparklineData: sparklineData.length > 0 ? sparklineData : undefined,
           intervalType: 'day' as IntervalType,
-          isIncreasing: revenueGrowth >= 0
+          isIncreasing: revenueGrowth >= 0,
+          tooltip: 'Monthly Recurring Revenue (fixed 28-day period from RevenueCat)'
         };
       })(),
       // Downloads card (from RevenueCat new subscriptions)
@@ -1219,28 +1220,29 @@ const KPICards: React.FC<KPICardsProps> = ({
           };
         }
         
-        // Use new subscriptions as a proxy for downloads/installs
-        const downloads = revenueMetrics.newSubscriptions || 0;
+        // Use active subscriptions from RevenueCat
+        const activeSubscriptions = revenueMetrics.activeSubscriptions || revenueMetrics.newSubscriptions || 0;
         
-        // Generate simple sparkline for downloads
+        // Generate simple sparkline
         const sparklineData: Array<{ value: number }> = [];
-        if (downloads > 0) {
+        if (activeSubscriptions > 0) {
           // Show a simple upward trend leading to current value
           for (let i = 0; i < 10; i++) {
             const progress = i / 9;
-            sparklineData.push({ value: Math.round(downloads * progress) });
+            sparklineData.push({ value: Math.round(activeSubscriptions * progress) });
           }
         }
         
         return {
           id: 'downloads',
-          label: 'Downloads',
-          value: formatNumber(downloads),
+          label: 'Active Subs',
+          value: formatNumber(activeSubscriptions),
           icon: Download,
           accent: 'blue' as const,
           sparklineData: sparklineData.length > 0 ? sparklineData : undefined,
           intervalType: 'day' as IntervalType,
-          isIncreasing: true
+          isIncreasing: true,
+          tooltip: 'Active Subscriptions from RevenueCat'
         };
       })()
     ];
