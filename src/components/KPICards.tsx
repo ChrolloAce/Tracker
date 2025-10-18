@@ -1350,19 +1350,19 @@ const KPICards: React.FC<KPICardsProps> = ({
           }}
           className={`
             fixed bottom-8 left-1/2 transform -translate-x-1/2 z-[100]
-            flex flex-col items-center justify-center gap-3
-            px-8 py-6 rounded-2xl border-2 border-dashed
+            flex flex-col items-center justify-center gap-2
+            px-6 py-4 rounded-xl border-2 border-dashed
             transition-all duration-200
             ${isOverTrash 
-              ? 'bg-red-500/30 border-red-500 scale-110 shadow-2xl shadow-red-500/50' 
-              : 'bg-red-500/10 border-red-500/50 hover:bg-red-500/20'
+              ? 'bg-red-500/20 border-red-500 scale-105' 
+              : 'bg-red-500/5 border-red-500/40 hover:bg-red-500/10'
             }
           `}
         >
-          <svg className={`w-12 h-12 transition-all ${isOverTrash ? 'text-red-400 animate-bounce' : 'text-red-400/70'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-8 h-8 transition-all ${isOverTrash ? 'text-red-400' : 'text-red-400/60'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
           </svg>
-          <span className={`text-sm font-semibold transition-all ${isOverTrash ? 'text-red-300' : 'text-red-400/70'}`}>
+          <span className={`text-xs font-medium transition-all ${isOverTrash ? 'text-red-300' : 'text-red-400/60'}`}>
             {isOverTrash ? 'Release to hide card' : 'Drag here to hide card'}
           </span>
         </div>
