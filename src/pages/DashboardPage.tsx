@@ -97,6 +97,12 @@ function DashboardPage() {
     const savedTab = localStorage.getItem('activeTab');
     return savedTab || 'dashboard';
   });
+  const [isEditingLayout, setIsEditingLayout] = useState(false);
+  const [kpiCardOrder, setKpiCardOrder] = useState<string[]>(() => {
+    // Load saved card order from localStorage
+    const saved = localStorage.getItem('kpiCardOrder');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [userRole, setUserRole] = useState<string>('');
   
   // Accounts page state
@@ -1017,6 +1023,24 @@ function DashboardPage() {
           </div>
           {activeTab === 'dashboard' && (
             <div className="flex items-center space-x-4">
+              {/* Edit Layout Button */}
+              <button
+                onClick={() => setIsEditingLayout(!isEditingLayout)}
+                className={`
+                  flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
+                  ${isEditingLayout 
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
+                    : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
+                  }
+                `}
+                title="Customize dashboard layout"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+                </svg>
+                {isEditingLayout ? 'Done' : 'Edit Layout'}
+              </button>
+              
               {/* Accounts Filter */}
               <MultiSelectDropdown
                 options={trackedAccounts.map(account => ({
@@ -1178,6 +1202,12 @@ function DashboardPage() {
                   onVideoClick={handleVideoClick}
                   revenueMetrics={revenueMetrics}
                   revenueIntegrations={revenueIntegrations}
+                  isEditMode={isEditingLayout}
+                  cardOrder={kpiCardOrder}
+                  onReorder={(newOrder) => {
+                    setKpiCardOrder(newOrder);
+                    localStorage.setItem('kpiCardOrder', JSON.stringify(newOrder));
+                  }}
                 />
                 
                 {/* Top Performers Race Chart */}

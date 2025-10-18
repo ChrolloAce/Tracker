@@ -37,6 +37,9 @@ interface KPICardsProps {
   onVideoClick?: (video: VideoSubmission) => void;
   revenueMetrics?: RevenueMetrics | null;
   revenueIntegrations?: RevenueIntegration[];
+  isEditMode?: boolean;
+  cardOrder?: string[];
+  onReorder?: (newOrder: string[]) => void;
 }
 
 interface KPICardData {
@@ -65,7 +68,10 @@ const KPICards: React.FC<KPICardsProps> = ({
   onCreateLink,
   onVideoClick,
   revenueMetrics,
-  revenueIntegrations = []
+  revenueIntegrations = [],
+  isEditMode = false,
+  cardOrder = [],
+  onReorder
 }) => {
   const navigate = useNavigate();
   // Day Videos Modal state
@@ -78,6 +84,10 @@ const KPICards: React.FC<KPICardsProps> = ({
   const [dayModalMetric, setDayModalMetric] = useState<string>('');
   const [hoveredInterval, setHoveredInterval] = useState<TimeInterval | null>(null);
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval | null>(null);
+  
+  // Drag and drop state
+  const [draggedCard, setDraggedCard] = useState<string | null>(null);
+  const [dragOverCard, setDragOverCard] = useState<string | null>(null);
   const [selectedPPInterval, setSelectedPPInterval] = useState<TimeInterval | null>(null);
 
   const handleCardClick = (metricId: string, metricLabel: string) => {
@@ -1252,18 +1262,77 @@ const KPICards: React.FC<KPICardsProps> = ({
 
   return (
     <>
+      {/* Edit Mode Indicator */}
+      {isEditMode && (
+        <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg flex items-center gap-2 text-emerald-400">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+          </svg>
+          <span className="text-sm font-medium">Drag cards to reorder your dashboard</span>
+        </div>
+      )}
+      
       <div className="grid gap-4 md:gap-5 xl:gap-6 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" style={{ overflow: 'visible' }}>
-        {kpiData.map((card) => (
-          <KPICard 
-            key={card.id} 
-            data={card} 
-            onClick={() => handleCardClick(card.id, card.label)}
-            onIntervalHover={setHoveredInterval}
-            timePeriod={timePeriod}
-            submissions={submissions}
-            linkClicks={linkClicks}
-          />
-        ))}
+        {(() => {
+          // Sort cards based on saved order
+          let orderedCards = [...kpiData];
+          if (cardOrder.length > 0) {
+            orderedCards.sort((a, b) => {
+              const aIndex = cardOrder.indexOf(a.id);
+              const bIndex = cardOrder.indexOf(b.id);
+              if (aIndex === -1) return 1;
+              if (bIndex === -1) return -1;
+              return aIndex - bIndex;
+            });
+          }
+          
+          return orderedCards.map((card) => (
+            <KPICard 
+              key={card.id} 
+              data={card} 
+              onClick={() => !isEditMode && handleCardClick(card.id, card.label)}
+              onIntervalHover={setHoveredInterval}
+              timePeriod={timePeriod}
+              submissions={submissions}
+              linkClicks={linkClicks}
+              isEditMode={isEditMode}
+              isDragging={draggedCard === card.id}
+              isDragOver={dragOverCard === card.id}
+              onDragStart={() => {
+                if (isEditMode) setDraggedCard(card.id);
+              }}
+              onDragEnd={() => {
+                setDraggedCard(null);
+                setDragOverCard(null);
+              }}
+              onDragOver={(e) => {
+                if (isEditMode) {
+                  e.preventDefault();
+                  setDragOverCard(card.id);
+                }
+              }}
+              onDragLeave={() => {
+                setDragOverCard(null);
+              }}
+              onDrop={() => {
+                if (isEditMode && draggedCard && draggedCard !== card.id) {
+                  const currentOrder = cardOrder.length > 0 ? cardOrder : kpiData.map(c => c.id);
+                  const draggedIndex = currentOrder.indexOf(draggedCard);
+                  const targetIndex = currentOrder.indexOf(card.id);
+                  
+                  if (draggedIndex !== -1 && targetIndex !== -1) {
+                    const newOrder = [...currentOrder];
+                    newOrder.splice(draggedIndex, 1);
+                    newOrder.splice(targetIndex, 0, draggedCard);
+                    onReorder?.(newOrder);
+                  }
+                }
+                setDraggedCard(null);
+                setDragOverCard(null);
+              }}
+            />
+          ));
+        })()}
       </div>
 
       {/* Old Metrics Modal Removed - Now using Day Videos Modal */}
@@ -1420,7 +1489,29 @@ const KPICard: React.FC<{
   timePeriod?: TimePeriodType;
   submissions?: VideoSubmission[];
   linkClicks?: LinkClick[];
-}> = ({ data, onClick, onIntervalHover, submissions = [], linkClicks = [] }) => {
+  isEditMode?: boolean;
+  isDragging?: boolean;
+  isDragOver?: boolean;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDragLeave?: () => void;
+  onDrop?: () => void;
+}> = ({ 
+  data, 
+  onClick, 
+  onIntervalHover, 
+  submissions = [], 
+  linkClicks = [],
+  isEditMode = false,
+  isDragging = false,
+  isDragOver = false,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDragLeave,
+  onDrop
+}) => {
   // Tooltip state for Portal rendering
   const [tooltipData, setTooltipData] = useState<{ x: number; y: number; point: any; lineX: number } | null>(null);
   const cardRef = React.useRef<HTMLDivElement>(null);
@@ -1490,7 +1581,18 @@ const KPICard: React.FC<{
         setTooltipData(null);
         if (onIntervalHover) onIntervalHover(null);
       }}
-      className="group relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 cursor-pointer overflow-hidden"
+      draggable={isEditMode}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      className={`
+        group relative rounded-2xl bg-zinc-900/60 backdrop-blur border shadow-lg transition-all duration-300 overflow-hidden
+        ${isEditMode ? 'cursor-move' : 'cursor-pointer'}
+        ${isDragging ? 'opacity-50 scale-95' : ''}
+        ${isDragOver ? 'ring-2 ring-emerald-500 border-emerald-500/50' : 'border-white/5 hover:shadow-xl hover:ring-1 hover:ring-white/10'}
+      `}
       style={{ minHeight: '180px' }}
     >
       {/* Depth Gradient Overlay */}
@@ -1519,6 +1621,15 @@ const KPICard: React.FC<{
 
       {/* Upper Solid Portion - 60% (reduced to give more space to graph) */}
       <div className="relative px-5 pt-4 pb-2 z-10" style={{ height: '60%' }}>
+        {/* Drag Handle (edit mode only) */}
+        {isEditMode && (
+          <div className="absolute top-4 left-4 text-emerald-400 opacity-60">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+            </svg>
+          </div>
+        )}
+        
         {/* Icon (top-right) */}
         <div className="absolute top-4 right-4">
           <Icon className="w-5 h-5 text-gray-400 opacity-60" />
