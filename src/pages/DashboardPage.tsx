@@ -1391,26 +1391,47 @@ function DashboardPage() {
                     <Edit2 className="w-4 h-4" />
                   </button>
                 </>
-              ) : (
-                <>
-                  {/* Edit Mode Controls */}
-                  <button
-                    onClick={() => setIsCardEditorOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-500/30"
-                    title="Add or remove dashboard cards"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Item
-                  </button>
-                  
-                  <button
-                    onClick={() => setIsEditingLayout(false)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all bg-white/10 text-white hover:bg-white/20"
-                  >
-                    Done
-                  </button>
-                </>
-              )}
+               ) : (
+                 <>
+                   {/* Edit Mode Controls */}
+                   <button
+                     onClick={() => setIsCardEditorOpen(true)}
+                     className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-500/30"
+                     title="Add or remove dashboard cards"
+                   >
+                     <Plus className="w-4 h-4" />
+                     Add Item
+                   </button>
+                   
+                   {/* DEBUG: Force show all sections */}
+                   <button
+                     onClick={() => {
+                       const allVisible = {
+                         'kpi-cards': true,
+                         'top-performers': true,
+                         'top-platforms': true,
+                         'posting-activity': true,
+                         'tracked-accounts': true,
+                         'videos-table': true
+                       };
+                       console.log('🔧 DEBUG: Force-enabling all sections:', allVisible);
+                       setDashboardSectionVisibility(allVisible);
+                       localStorage.setItem('dashboardSectionVisibility', JSON.stringify(allVisible));
+                     }}
+                     className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 hover:bg-yellow-500/30"
+                     title="DEBUG: Show all sections"
+                   >
+                     Debug
+                   </button>
+                   
+                   <button
+                     onClick={() => setIsEditingLayout(false)}
+                     className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all bg-white/10 text-white hover:bg-white/20"
+                   >
+                     Done
+                   </button>
+                 </>
+               )}
             </div>
           )}
           {activeTab === 'accounts' && (
@@ -1550,6 +1571,7 @@ function DashboardPage() {
                   };
                   
                   const renderSectionContent = () => {
+                    console.log(`🎨 Rendering section content for: "${sectionId}"`);
                     switch (sectionId) {
                       case 'kpi-cards':
                         return (
@@ -1583,18 +1605,21 @@ function DashboardPage() {
                           />
                         );
                       case 'top-platforms':
+                        console.log('✅ Rendering TopPlatformsRaceChart with', filteredSubmissions.length, 'submissions');
                         return (
                           <TopPlatformsRaceChart 
                             submissions={filteredSubmissions}
                           />
                         );
                       case 'posting-activity':
+                        console.log('✅ Rendering PostingActivityChart with', filteredSubmissions.length, 'submissions');
                         return (
                           <PostingActivityChart 
                             submissions={filteredSubmissions}
                           />
                         );
                       case 'tracked-accounts':
+                        console.log('✅ Rendering Tracked Accounts with', trackedAccounts.length, 'accounts');
                         return (
                           <AccountsPage 
                             ref={accountsPageRef}
@@ -1615,6 +1640,7 @@ function DashboardPage() {
                           />
                         );
                       default:
+                        console.warn(`⚠️ Unknown section ID: "${sectionId}"`);
                         return null;
                     }
                   };
