@@ -99,14 +99,29 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
     }>();
 
     uniqueVideos.forEach(video => {
-      const handle = (video.uploaderHandle || 'unknown').trim();
+      const handle = (video.uploaderHandle || 'unknown').trim().toLowerCase();
+      const displayName = (video.uploader || handle).trim();
       // Use both platform and handle to uniquely identify accounts
-      const accountKey = `${video.platform}_${handle.toLowerCase()}`;
+      const accountKey = `${video.platform}_${handle}`;
+      
+      // Debug logging for Nev account specifically
+      if (handle.includes('nev')) {
+        console.log(`🔍 Processing Nev video:`, {
+          handle,
+          displayName,
+          accountKey,
+          platform: video.platform,
+          videoId: video.id,
+          url: video.url,
+          uploaderHandle: video.uploaderHandle,
+          uploader: video.uploader
+        });
+      }
       
       if (!accountMap.has(accountKey)) {
         accountMap.set(accountKey, {
           handle,
-          displayName: video.uploader || handle,
+          displayName,
           platform: video.platform,
           totalViews: 0,
           totalLikes: 0,
@@ -115,6 +130,12 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
           videoCount: 0,
           profileImage: video.uploaderProfilePicture
         });
+        
+        if (handle.includes('nev')) {
+          console.log(`✨ Created NEW account entry for: ${accountKey}`);
+        }
+      } else if (handle.includes('nev')) {
+        console.log(`♻️  Adding to EXISTING account entry: ${accountKey}`);
       }
 
       const account = accountMap.get(accountKey)!;
@@ -126,6 +147,13 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
     });
     
     console.log(`👥 Aggregated into ${accountMap.size} unique accounts`);
+    
+    // Log all account keys for debugging duplicates
+    const accountKeys = Array.from(accountMap.keys());
+    const nevAccounts = accountKeys.filter(key => key.includes('nev'));
+    if (nevAccounts.length > 0) {
+      console.log(`🎯 Nev account keys found:`, nevAccounts);
+    }
 
     const getAccountMetric = (account: typeof accountMap extends Map<string, infer T> ? T : never): number => {
       switch (accountsMetric) {
@@ -145,9 +173,22 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
       }
     };
 
-    return Array.from(accountMap.values())
+    const sortedAccounts = Array.from(accountMap.values())
       .sort((a, b) => getAccountMetric(b) - getAccountMetric(a))
       .slice(0, topAccountsCount);
+    
+    // Log final top accounts
+    const nevInTop = sortedAccounts.filter(acc => acc.handle.includes('nev'));
+    if (nevInTop.length > 0) {
+      console.log(`🏆 Nev accounts in TOP ${topAccountsCount}:`, nevInTop.map(a => ({
+        handle: a.handle,
+        platform: a.platform,
+        displayName: a.displayName,
+        views: a.totalViews
+      })));
+    }
+    
+    return sortedAccounts;
   }, [submissions, accountsMetric, topAccountsCount]);
 
   const maxVideoValue = topVideos.length > 0 ? getMetricValue(topVideos[0], videosMetric) : 1;
@@ -289,7 +330,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
             
             return (
               <div 
-                key={video.id} 
+                key={video.id || `${video.platform}_${video.uploaderHandle}_${index}`} 
                 className="group relative cursor-pointer"
                 style={{
                   animation: `raceSlideIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) ${index * 0.12}s both`
@@ -436,7 +477,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
             
             return (
               <div 
-                key={account.handle} 
+                key={`${account.platform}_${account.handle}_${index}`} 
                 className="group relative cursor-pointer hover:opacity-90 transition-opacity"
                 style={{
                   animation: `raceSlideIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) ${index * 0.12}s both`
