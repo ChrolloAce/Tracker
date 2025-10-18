@@ -540,16 +540,18 @@ function DashboardPage() {
     
     // Apply accounts filter
     if (selectedAccountIds.length > 0) {
-      // Create a set of usernames from selected accounts
-      const selectedUsernames = new Set(
+      // Create a set of platform_username keys from selected accounts
+      const selectedAccountKeys = new Set(
         trackedAccounts
           .filter(account => selectedAccountIds.includes(account.id))
-          .map(account => account.username.toLowerCase())
+          .map(account => `${account.platform}_${account.username.toLowerCase()}`)
       );
       
-      filtered = filtered.filter(video => 
-        video.uploaderHandle && selectedUsernames.has(video.uploaderHandle.toLowerCase())
-      );
+      filtered = filtered.filter(video => {
+        if (!video.uploaderHandle) return false;
+        const videoKey = `${video.platform}_${video.uploaderHandle.toLowerCase()}`;
+        return selectedAccountKeys.has(videoKey);
+      });
     }
     
     // Apply specific rule filter if selected
@@ -571,9 +573,10 @@ function DashboardPage() {
         filtered = filtered.filter(video => {
           if (!video.uploaderHandle) return true; // Keep videos without uploader handle
           
-          // Find the account for this video
+          // Find the account for this video (match by both username AND platform)
           const account = trackedAccounts.find(
-            acc => acc.username.toLowerCase() === video.uploaderHandle?.toLowerCase()
+            acc => acc.username.toLowerCase() === video.uploaderHandle?.toLowerCase() &&
+                   acc.platform === video.platform
           );
           
           if (!account) return true; // Keep videos without matching account

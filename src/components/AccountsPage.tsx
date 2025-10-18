@@ -468,8 +468,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
 
       // Auto-cleanup: Remove from processing if account now exists in real list
       setProcessingAccounts(prev => {
-        const accountUsernames = new Set(loadedAccounts.map(acc => acc.username));
-        const remaining = prev.filter(proc => !accountUsernames.has(proc.username));
+        const accountKeys = new Set(loadedAccounts.map(acc => `${acc.platform}_${acc.username}`));
+        const remaining = prev.filter(proc => !accountKeys.has(`${proc.platform}_${proc.username}`));
         if (remaining.length < prev.length) {
           console.log(`🧹 Auto-removed ${prev.length - remaining.length} accounts from processing (now in accounts list)`);
         }
