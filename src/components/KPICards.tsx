@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { LinkClick } from '../services/LinkClicksService';
-import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer, Tooltip, YAxis } from 'recharts';
 import { DateFilterType } from './DateRangeFilter';
 import { TimePeriodType } from './TimePeriodSelector';
 import DayVideosModal from './DayVideosModal';
@@ -1230,7 +1230,7 @@ const KPICard: React.FC<{
         if (onIntervalHover) onIntervalHover(null);
       }}
       className="group relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 cursor-pointer overflow-hidden"
-      style={{ minHeight: '220px' }}
+      style={{ minHeight: '180px' }}
     >
       {/* Depth Gradient Overlay */}
       <div 
@@ -1272,7 +1272,7 @@ const KPICard: React.FC<{
 
           {/* Value Row - Number + Delta Badge aligned horizontally */}
           <div className="flex items-baseline gap-3 -mt-1">
-            <span className={`text-2xl lg:text-3xl font-bold tracking-tight ${data.isEmpty ? 'text-zinc-600' : 'text-white'}`}>
+            <span className={`text-3xl lg:text-4xl font-bold tracking-tight ${data.isEmpty ? 'text-zinc-600' : 'text-white'}`}>
               {data.value}
             </span>
             
@@ -1307,7 +1307,7 @@ const KPICard: React.FC<{
       )}
       </div>
 
-      {/* Bottom Graph Layer - 40% (expanded to show more detail) */}
+      {/* Bottom Graph Layer - 40% (expanded for better visibility) */}
       {data.sparklineData && data.sparklineData.length > 0 && (
         <div 
           className="relative w-full overflow-hidden z-10"
@@ -1330,50 +1330,80 @@ const KPICard: React.FC<{
           {/* Line Chart - More vertical space for amplitude */}
           <div className="absolute inset-0" style={{ padding: '0' }}>
             <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart 
-                  data={data.sparklineData}
-                  margin={{ top: 2, right: 0, bottom: 2, left: 0 }}
-                >
-                  <defs>
-                    <linearGradient id={`bottom-gradient-${data.id}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={colors.stroke} stopOpacity={0.2} />
-                      <stop offset="100%" stopColor={colors.stroke} stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id={`pp-gradient-${data.id}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={colors.stroke} stopOpacity={0.05} />
-                      <stop offset="100%" stopColor={colors.stroke} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  {/* PP (Previous Period) Ghost Graph - rendered first so it's behind */}
-                  {(() => {
-                    const hasPPData = data.sparklineData.some(d => d.ppValue !== undefined);
-                    return hasPPData ? (
+              {(() => {
+                // Calculate intelligent Y-axis domain with outlier capping
+                const values = data.sparklineData.map(d => d.value).filter(v => v !== undefined);
+                const ppValues = data.sparklineData.map(d => d.ppValue).filter(v => v !== undefined);
+                const allValues = [...values, ...ppValues];
+                
+                if (allValues.length === 0) {
+                  return null;
+                }
+                
+                // Sort to find statistics
+                const sortedValues = [...allValues].sort((a, b) => a - b);
+                const max = sortedValues[sortedValues.length - 1];
+                const q3 = sortedValues[Math.floor(sortedValues.length * 0.75)];
+                
+                // Cap outliers: if max is more than 5x the Q3, cap at 2x Q3
+                let yMax = max;
+                if (max > q3 * 5 && q3 > 0) {
+                  yMax = q3 * 2;
+                  console.log(`📊 ${data.label}: Capping outlier from ${max.toLocaleString()} to ${yMax.toLocaleString()} (Q3: ${q3.toLocaleString()})`);
+                }
+                
+                // Check if PP data exists
+                const hasPPData = data.sparklineData.some(d => d.ppValue !== undefined && d.ppValue > 0);
+                
+                return (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart 
+                      data={data.sparklineData}
+                      margin={{ top: 4, right: 0, bottom: 4, left: 0 }}
+                    >
+                      <defs>
+                        <linearGradient id={`bottom-gradient-${data.id}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={colors.stroke} stopOpacity={0.2} />
+                          <stop offset="100%" stopColor={colors.stroke} stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id={`pp-gradient-${data.id}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={colors.stroke} stopOpacity={0.08} />
+                          <stop offset="100%" stopColor={colors.stroke} stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      {/* Y-axis with intelligent domain */}
+                      <YAxis 
+                        domain={[0, yMax]} 
+                        hide={true}
+                      />
+                      {/* PP (Previous Period) Ghost Graph - rendered first so it's behind */}
+                      {hasPPData && (
+                        <Area
+                          type="monotoneX"
+                          dataKey="ppValue"
+                          stroke={colors.stroke}
+                          strokeWidth={2}
+                          strokeOpacity={0.25}
+                          strokeDasharray="5 5"
+                          fill={`url(#pp-gradient-${data.id})`}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      )}
+                      {/* Main Current Period Graph */}
                       <Area
                         type="monotoneX"
-                        dataKey="ppValue"
+                        dataKey="value"
                         stroke={colors.stroke}
-                        strokeWidth={1.5}
-                        strokeOpacity={0.2}
-                        strokeDasharray="4 4"
-                        fill={`url(#pp-gradient-${data.id})`}
+                        strokeWidth={2.5}
+                        fill={`url(#bottom-gradient-${data.id})`}
                         dot={false}
                         isAnimationActive={false}
                       />
-                    ) : null;
-                  })()}
-                  {/* Main Current Period Graph */}
-                  <Area
-                    type="monotoneX"
-                    dataKey="value"
-                    stroke={colors.stroke}
-                    strokeWidth={2}
-                    fill={`url(#bottom-gradient-${data.id})`}
-                    dot={false}
-                    isAnimationActive={false}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+                    </AreaChart>
+                  </ResponsiveContainer>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -1384,7 +1414,7 @@ const KPICard: React.FC<{
         <div 
           className="relative w-full overflow-hidden"
           style={{ 
-            height: '25%',
+            height: '40%',
             background: 'linear-gradient(to top, rgba(0,0,0,0.2) 0%, transparent 100%)',
             borderBottomLeftRadius: '1rem',
             borderBottomRightRadius: '1rem'
