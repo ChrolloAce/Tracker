@@ -21,7 +21,15 @@ type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'team'
  */
 const SettingsPage: React.FC = () => {
   const { logout, user, currentOrgId, currentProjectId } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabType>('profile');
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    // Check if we should open the revenue tab (e.g., from Setup button click)
+    const savedTab = localStorage.getItem('settingsActiveTab');
+    if (savedTab) {
+      localStorage.removeItem('settingsActiveTab'); // Clear after reading
+      return savedTab as TabType;
+    }
+    return 'profile';
+  });
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);

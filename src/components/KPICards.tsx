@@ -10,16 +10,20 @@ import {
   Share2,
   ChevronRight,
   ChevronDown,
-  Link as LinkIcon
+  Link as LinkIcon,
+  DollarSign,
+  Download
 } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { LinkClick } from '../services/LinkClicksService';
+import { RevenueMetrics, RevenueIntegration } from '../types/revenue';
 import { AreaChart, Area, ResponsiveContainer, Tooltip, YAxis } from 'recharts';
 import { DateFilterType } from './DateRangeFilter';
 import { TimePeriodType } from './TimePeriodSelector';
 import DayVideosModal from './DayVideosModal';
 import { PlatformIcon } from './ui/PlatformIcon';
 import DataAggregationService, { IntervalType, TimeInterval } from '../services/DataAggregationService';
+import { useNavigate } from 'react-router-dom';
 
 interface KPICardsProps {
   submissions: VideoSubmission[]; // Filtered submissions for current period
@@ -31,6 +35,8 @@ interface KPICardsProps {
   granularity?: 'day' | 'week' | 'month' | 'year';
   onCreateLink?: () => void;
   onVideoClick?: (video: VideoSubmission) => void;
+  revenueMetrics?: RevenueMetrics | null;
+  revenueIntegrations?: RevenueIntegration[];
 }
 
 interface KPICardData {
@@ -57,8 +63,11 @@ const KPICards: React.FC<KPICardsProps> = ({
   timePeriod = 'weeks', 
   granularity = 'day',
   onCreateLink,
-  onVideoClick
+  onVideoClick,
+  revenueMetrics,
+  revenueIntegrations = []
 }) => {
+  const navigate = useNavigate();
   // Day Videos Modal state
   const [isDayModalOpen, setIsDayModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -75,6 +84,14 @@ const KPICards: React.FC<KPICardsProps> = ({
     // If it's link clicks and there are no links, trigger create link callback
     if (metricId === 'link-clicks' && linkClicks.length === 0 && onCreateLink) {
       onCreateLink();
+      return;
+    }
+    
+    // If it's revenue or downloads and no integration is set up, redirect to settings
+    if ((metricId === 'revenue' || metricId === 'downloads') && revenueIntegrations.length === 0) {
+      navigate('/settings');
+      // Set the active tab to revenue when navigating
+      localStorage.setItem('settingsActiveTab', 'revenue');
       return;
     }
     
@@ -1106,11 +1123,98 @@ const KPICards: React.FC<KPICardsProps> = ({
           intervalType: intervalType,
           isIncreasing: hasClicks ? clicksGrowthAbsolute >= 0 : true // Use delta, not sparkline trend
         };
+      })(),
+      // Revenue card
+      (() => {
+        const hasIntegration = revenueIntegrations.length > 0 && revenueIntegrations.some(i => i.enabled);
+        
+        if (!hasIntegration) {
+          return {
+            id: 'revenue',
+            label: 'Revenue',
+            value: 'Setup',
+            icon: DollarSign,
+            accent: 'emerald' as const,
+            isEmpty: true,
+            ctaText: 'Setup',
+            isIncreasing: true
+          };
+        }
+        
+        if (!revenueMetrics) {
+          return {
+            id: 'revenue',
+            label: 'Revenue',
+            value: '$0',
+            icon: DollarSign,
+            accent: 'emerald' as const,
+            isEmpty: true,
+            ctaText: 'Sync now',
+            isIncreasing: true
+          };
+        }
+        
+        const totalRevenue = (revenueMetrics.totalRevenue || 0) / 100; // Convert cents to dollars
+        const ppRevenue = (revenueMetrics.previousPeriodRevenue || 0) / 100;
+        const revenueGrowth = ppRevenue > 0 ? ((totalRevenue - ppRevenue) / ppRevenue) * 100 : 0;
+        const revenueGrowthAbsolute = totalRevenue - ppRevenue;
+        
+        return {
+          id: 'revenue',
+          label: 'Revenue',
+          value: `$${formatNumber(totalRevenue)}`,
+          icon: DollarSign,
+          accent: 'emerald' as const,
+          delta: { value: Math.abs(revenueGrowth), isPositive: revenueGrowth >= 0, absoluteValue: revenueGrowthAbsolute },
+          isIncreasing: revenueGrowth >= 0
+        };
+      })(),
+      // Downloads card (from RevenueCat new subscriptions)
+      (() => {
+        const hasIntegration = revenueIntegrations.length > 0 && revenueIntegrations.some(i => i.enabled);
+        
+        if (!hasIntegration) {
+          return {
+            id: 'downloads',
+            label: 'Downloads',
+            value: 'Setup',
+            icon: Download,
+            accent: 'blue' as const,
+            isEmpty: true,
+            ctaText: 'Setup',
+            isIncreasing: true
+          };
+        }
+        
+        if (!revenueMetrics) {
+          return {
+            id: 'downloads',
+            label: 'Downloads',
+            value: '0',
+            icon: Download,
+            accent: 'blue' as const,
+            isEmpty: true,
+            ctaText: 'Sync now',
+            isIncreasing: true
+          };
+        }
+        
+        // Use new subscriptions as a proxy for downloads/installs
+        const downloads = revenueMetrics.newSubscriptions || 0;
+        
+        return {
+          id: 'downloads',
+          label: 'Downloads',
+          value: formatNumber(downloads),
+          icon: Download,
+          accent: 'blue' as const,
+          isIncreasing: true
+        };
       })()
     ];
 
     return cards;
-  }, [submissions, linkClicks, dateFilter, customRange, timePeriod, granularity]);
+  }, [submissions, linkClicks, dateFilter, customRange, timePeriod, granularity, revenueMetrics, revenueIntegrations]);
 
   return (
     <>

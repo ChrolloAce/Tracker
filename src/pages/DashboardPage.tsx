@@ -26,6 +26,8 @@ import ThemeService from '../services/ThemeService';
 import FirestoreDataService from '../services/FirestoreDataService';
 import LinkClicksService, { LinkClick } from '../services/LinkClicksService';
 import RulesService from '../services/RulesService';
+import RevenueDataService from '../services/RevenueDataService';
+import { RevenueMetrics, RevenueIntegration } from '../types/revenue';
 import { cssVariables } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { Timestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
@@ -49,6 +51,8 @@ function DashboardPage() {
   const [linkClicks, setLinkClicks] = useState<LinkClick[]>([]);
   const [trackedAccounts, setTrackedAccounts] = useState<TrackedAccount[]>([]);
   const [allRules, setAllRules] = useState<TrackingRule[]>([]);
+  const [revenueMetrics, setRevenueMetrics] = useState<RevenueMetrics | null>(null);
+  const [revenueIntegrations, setRevenueIntegrations] = useState<RevenueIntegration[]>([]);
   const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
   const [showCreateRuleForm, setShowCreateRuleForm] = useState(false);
   const [ruleName, setRuleName] = useState('');
@@ -369,6 +373,20 @@ function DashboardPage() {
       setLinkClicks(allClicks);
     } catch (error) {
       console.error('❌ Failed to load link clicks:', error);
+    }
+    
+    // Load revenue data
+    try {
+      const integrations = await RevenueDataService.getAllIntegrations(currentOrgId, currentProjectId);
+      setRevenueIntegrations(integrations);
+      
+      // If there are enabled integrations, load latest metrics
+      if (integrations.some(i => i.enabled)) {
+        const metrics = await RevenueDataService.getLatestMetrics(currentOrgId, currentProjectId);
+        setRevenueMetrics(metrics);
+      }
+    } catch (error) {
+      console.error('❌ Failed to load revenue data:', error);
     }
     
     })(); // End of async IIFE
@@ -1123,6 +1141,8 @@ function DashboardPage() {
                   timePeriod="days"
                   granularity={granularity}
                   onVideoClick={handleVideoClick}
+                  revenueMetrics={revenueMetrics}
+                  revenueIntegrations={revenueIntegrations}
                 />
                 
                 {/* Top Performers Race Chart */}
