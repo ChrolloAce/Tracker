@@ -78,43 +78,74 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       // Fetch transactions
+      // Note: RevenueCat REST API v1 doesn't have a direct transactions endpoint
+      // We need to use the Charts API or Webhooks for transaction data
       if (action === 'fetchTransactions') {
         if (!startDate || !endDate) {
           return res.status(400).json({ error: 'Missing startDate or endDate' });
         }
 
         try {
-          const params = new URLSearchParams({
-            start_date: startDate,
-            end_date: endDate,
-            limit: limit.toString(),
-          });
-
+          // Use the Charts API for revenue data
+          // Reference: https://www.revenuecat.com/docs/charts-api
+          const chartsBaseUrl = 'https://api.revenuecat.com/v2';
+          
+          const start = new Date(startDate).toISOString().split('T')[0];
+          const end = new Date(endDate).toISOString().split('T')[0];
+          
+          // Try to fetch overview metrics which includes revenue data
           const response = await fetchWithTimeout(
-            `${baseUrl}/transactions?${params}`,
+            `${chartsBaseUrl}/charts/metrics`,
             {
-              method: 'GET',
+              method: 'POST',
               headers: {
                 'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json',
               },
+              body: JSON.stringify({
+                start_date: start,
+                end_date: end,
+                metrics: ['revenue', 'active_subscriptions', 'new_customers'],
+                interval: 'day',
+              }),
             }
           );
 
           if (response.ok) {
             const data = await response.json();
-            return res.status(200).json({ success: true, data });
+            
+            // Transform Charts API response to transaction-like format
+            const transactions = data.results?.revenue?.data_points?.map((point: any, index: number) => ({
+              id: `rc_${Date.now()}_${index}`,
+              date: point.date,
+              revenue: point.value || 0,
+              currency: 'USD', // RevenueCat reports in USD by default
+            })) || [];
+            
+            return res.status(200).json({ 
+              success: true, 
+              data: { transactions } 
+            });
           } else {
-            const error = await response.json().catch(() => ({ message: 'Unknown error' }));
+            const errorText = await response.text();
+            let errorData;
+            try {
+              errorData = JSON.parse(errorText);
+            } catch {
+              errorData = { message: errorText || 'Unknown error' };
+            }
+            
             return res.status(response.status).json({ 
               success: false, 
-              error: error.message || 'Failed to fetch transactions' 
+              error: errorData.message || errorData.error || 'Failed to fetch transactions',
+              details: errorData
             });
           }
         } catch (error: any) {
           return res.status(500).json({ 
             success: false, 
-            error: error.message || 'Failed to fetch transactions' 
+            error: error.message || 'Failed to fetch transactions',
+            details: error.toString()
           });
         }
       }

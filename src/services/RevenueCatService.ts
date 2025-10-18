@@ -28,13 +28,15 @@ interface RevenueCatOverviewResponse {
 
 interface RevenueCatTransaction {
   id: string;
-  app_user_id: string;
-  product_id: string;
-  purchased_at_ms: number;
-  price: number;
+  date?: string;
+  revenue?: number;
+  app_user_id?: string;
+  product_id?: string;
+  purchased_at_ms?: number;
+  price?: number;
   currency: string;
-  is_trial_period: boolean;
-  store: 'app_store' | 'play_store' | 'stripe' | 'promotional';
+  is_trial_period?: boolean;
+  store?: 'app_store' | 'play_store' | 'stripe' | 'promotional';
   // Add more fields as needed
 }
 
@@ -199,25 +201,51 @@ export class RevenueCatService {
     organizationId: string,
     projectId: string
   ): RevenueTransaction[] {
-    return transactions.map((tx) => ({
-      id: `rc_${tx.id}`,
-      organizationId,
-      projectId,
-      provider: 'revenuecat' as const,
-      platform: this.mapStoreToPlatform(tx.store),
-      transactionId: tx.id,
-      customerId: tx.app_user_id,
-      amount: Math.round(tx.price * 100), // Convert to cents
-      currency: tx.currency,
-      productId: tx.product_id,
-      purchaseDate: new Date(tx.purchased_at_ms),
-      type: tx.is_trial_period ? 'trial' : 'purchase',
-      status: 'active' as const,
-      isRenewal: false,
-      isTrial: tx.is_trial_period,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }));
+    return transactions.map((tx) => {
+      // Handle Charts API format (has date and revenue fields)
+      if (tx.date && tx.revenue !== undefined) {
+        return {
+          id: `rc_${tx.id}`,
+          organizationId,
+          projectId,
+          provider: 'revenuecat' as const,
+          platform: 'other' as const,
+          transactionId: tx.id,
+          customerId: 'aggregate',
+          amount: Math.round(tx.revenue * 100), // Convert to cents
+          currency: tx.currency || 'USD',
+          productId: 'daily_revenue',
+          purchaseDate: new Date(tx.date),
+          type: 'purchase' as const,
+          status: 'active' as const,
+          isRenewal: false,
+          isTrial: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+      }
+      
+      // Handle traditional transaction format (backwards compatibility)
+      return {
+        id: `rc_${tx.id}`,
+        organizationId,
+        projectId,
+        provider: 'revenuecat' as const,
+        platform: this.mapStoreToPlatform(tx.store || 'other'),
+        transactionId: tx.id,
+        customerId: tx.app_user_id || 'unknown',
+        amount: Math.round((tx.price || 0) * 100), // Convert to cents
+        currency: tx.currency,
+        productId: tx.product_id || 'unknown',
+        purchaseDate: new Date(tx.purchased_at_ms || Date.now()),
+        type: tx.is_trial_period ? 'trial' : 'purchase',
+        status: 'active' as const,
+        isRenewal: false,
+        isTrial: tx.is_trial_period || false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    });
   }
 
   /**
@@ -332,7 +360,9 @@ export class RevenueCatService {
   /**
    * Map RevenueCat store to our platform type
    */
-  private static mapStoreToPlatform(store: string): 'ios' | 'android' | 'web' | 'other' {
+  private static mapStoreToPlatform(store: string | undefined): 'ios' | 'android' | 'web' | 'other' {
+    if (!store) return 'other';
+    
     switch (store) {
       case 'app_store':
         return 'ios';
