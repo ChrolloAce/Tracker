@@ -39,7 +39,6 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
 }) => {
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
-  const [selectedItem, setSelectedItem] = useState<string | null>(null);
   
   if (!isOpen) return null;
 
@@ -78,14 +77,12 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
     return (
       <div
         key={item.id}
-        onClick={() => setSelectedItem(selectedItem === item.id ? null : item.id)}
         className={`
-          group relative rounded-xl border-2 transition-all cursor-pointer overflow-hidden
+          group relative rounded-xl border-2 transition-all overflow-hidden
           ${item.isVisible 
             ? 'bg-gradient-to-br from-white/5 to-white/[0.02] border-emerald-500/30 hover:border-emerald-500/50' 
             : 'bg-white/[0.01] border-white/5 hover:border-white/10 opacity-60'
           }
-          ${selectedItem === item.id ? 'ring-2 ring-emerald-500 border-emerald-500' : ''}
         `}
       >
         {/* Header */}
@@ -180,8 +177,8 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
           </div>
         </div>
         
-        {/* Preview Section - Shows when selected and visible */}
-        {selectedItem === item.id && item.isVisible && isSection && renderSectionPreview && (
+        {/* Preview Section - Always shows for visible sections */}
+        {item.isVisible && isSection && renderSectionPreview && (
           <div className="p-4 bg-black/20 border-t border-white/10">
             <div className="text-xs text-white/50 mb-2 font-medium uppercase tracking-wide">Live Preview</div>
             <div className="bg-zinc-900 rounded-lg p-3 max-h-[200px] overflow-hidden relative">
@@ -234,10 +231,6 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
               <div>
                 <div className="text-xs text-white/50 font-medium uppercase tracking-wide">Total Items</div>
                 <div className="text-2xl font-bold text-white mt-1">{cardOptions.length}</div>
-              </div>
-              <div className="flex-1"></div>
-              <div className="text-xs text-white/40 italic">
-                💡 Click on a section to see its preview
               </div>
             </div>
           </div>

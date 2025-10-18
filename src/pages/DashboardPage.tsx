@@ -1814,6 +1814,17 @@ function DashboardPage() {
                   submissions={filteredSubmissions}
                 />
               );
+            case 'tracked-accounts':
+              return (
+                <AccountsPage 
+                  ref={accountsPageRef}
+                  dateFilter={accountsDateFilter}
+                  platformFilter={accountsPlatformFilter}
+                  searchQuery={accountsSearchQuery}
+                  onViewModeChange={setAccountsViewMode}
+                  pendingAccounts={pendingAccounts}
+                />
+              );
             case 'videos-table':
               return (
                 <VideoSubmissionsTable
