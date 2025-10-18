@@ -1644,8 +1644,7 @@ const KPICard: React.FC<{
                           stroke="rgb(156, 163, 175)"
                           strokeWidth={1.5}
                           strokeOpacity={0.15}
-                          strokeDasharray="4 4"
-                          fill="transparent"
+                          fill="none"
                           dot={false}
                           isAnimationActive={false}
                         />
