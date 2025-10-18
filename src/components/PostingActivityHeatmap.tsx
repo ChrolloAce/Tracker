@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { VideoSubmission } from '../types';
-import { format, startOfWeek, addDays, startOfYear, endOfYear, eachDayOfInterval, isSameDay, startOfDay } from 'date-fns';
+import { format, startOfWeek, addDays, startOfYear, endOfYear, eachDayOfInterval, isSameDay, startOfDay, subYears } from 'date-fns';
 
 interface PostingActivityHeatmapProps {
   submissions: VideoSubmission[];
@@ -22,14 +22,13 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
   const [hoveredDay, setHoveredDay] = useState<DayData | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
-  // Calculate heatmap data for the last year
+  // Calculate heatmap data for the last year (ending TODAY)
   const heatmapData = useMemo(() => {
-    const today = new Date();
-    const yearStart = startOfYear(today);
-    const yearEnd = endOfYear(today);
+    const today = startOfDay(new Date()); // End at today
+    const yearAgo = startOfDay(subYears(today, 1)); // Start 1 year ago
     
-    // Get all days in the year
-    const allDays = eachDayOfInterval({ start: yearStart, end: yearEnd });
+    // Get all days from 1 year ago to today (no future dates)
+    const allDays = eachDayOfInterval({ start: yearAgo, end: today });
     
     // Group submissions by day - deduplicate videos first
     const uniqueVideos = new Map<string, VideoSubmission>();
@@ -90,7 +89,7 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
       videosWithUploadDate,
       videosWithoutUploadDate,
       daysWithPosts: dayMap.size,
-      dateRange: `${format(yearStart, 'MMM d, yyyy')} - ${format(yearEnd, 'MMM d, yyyy')}`,
+      dateRange: `${format(yearAgo, 'MMM d, yyyy')} - ${format(today, 'MMM d, yyyy')}`,
       firstDatesWithPosts: datesWithPosts.slice(0, 10),
       lastDatesWithPosts: datesWithPosts.slice(-10),
       postsPerDay: Array.from(dayMap.entries()).sort((a, b) => b[1].length - a[1].length).slice(0, 5).map(([date, videos]) => ({ date, count: videos.length }))
@@ -188,26 +187,29 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
       </div>
 
       {/* Day labels and Heatmap grid */}
-      <div className="flex items-start gap-2 mb-2">
-        <div className="w-8 flex flex-col gap-1 text-[10px] text-white/40 pt-1">
-          <div className="h-3">M</div>
-          <div className="h-3">T</div>
-          <div className="h-3">W</div>
-          <div className="h-3">T</div>
-          <div className="h-3">F</div>
-          <div className="h-3">S</div>
-          <div className="h-3">S</div>
+      <div className="flex items-start gap-3 mb-2">
+        <div className="w-10 flex flex-col gap-[2px] text-xs text-white/40 pt-1">
+          <div className="h-4">M</div>
+          <div className="h-4">T</div>
+          <div className="h-4">W</div>
+          <div className="h-4">T</div>
+          <div className="h-4">F</div>
+          <div className="h-4">S</div>
+          <div className="h-4">S</div>
         </div>
 
-        {/* Heatmap grid - FULL WIDTH */}
-        <div className="flex-1 overflow-x-auto">
-          <div className="flex gap-1 w-full">
+        {/* Heatmap grid - FULL WIDTH with responsive cells */}
+        <div className="flex-1">
+          <div className="grid gap-[2px]" style={{ 
+            gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))`,
+            gridAutoFlow: 'column'
+          }}>
             {weeks.map((week, weekIndex) => (
-              <div key={weekIndex} className="flex flex-col gap-1">
+              <div key={weekIndex} className="flex flex-col gap-[2px]">
                 {/* Fill empty days at the start of the first week */}
                 {weekIndex === 0 && week[0] && week[0].date.getDay() > 0 && (
                   Array.from({ length: week[0].date.getDay() }).map((_, i) => (
-                    <div key={`empty-${i}`} className="w-3 h-3" />
+                    <div key={`empty-${i}`} className="aspect-square w-full" />
                   ))
                 )}
                 
@@ -215,9 +217,9 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
                   <div
                     key={format(day.date, 'yyyy-MM-dd')}
                     className={`
-                      w-3 h-3 rounded-sm transition-all cursor-pointer
+                      aspect-square w-full rounded-sm transition-all cursor-pointer
                       ${getColorIntensity(day.count)}
-                      ${day.count > 0 ? 'hover:ring-2 hover:ring-emerald-400 hover:ring-offset-2 hover:ring-offset-zinc-900' : ''}
+                      ${day.count > 0 ? 'hover:ring-2 hover:ring-emerald-400 hover:ring-offset-1 hover:ring-offset-zinc-900' : ''}
                     `}
                     onClick={() => handleCellClick(day)}
                     onMouseEnter={(e) => handleMouseEnter(day, e)}
@@ -234,12 +236,12 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
       {/* Legend */}
       <div className="flex items-center justify-between mt-4 text-xs text-white/40">
         <div>Fewer Posts</div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-sm bg-zinc-800/50" />
-          <div className="w-3 h-3 rounded-sm bg-emerald-500/20" />
-          <div className="w-3 h-3 rounded-sm bg-emerald-500/40" />
-          <div className="w-3 h-3 rounded-sm bg-emerald-500/60" />
-          <div className="w-3 h-3 rounded-sm bg-emerald-500/80" />
+        <div className="flex items-center gap-[2px]">
+          <div className="w-4 h-4 rounded-sm bg-zinc-800/50" />
+          <div className="w-4 h-4 rounded-sm bg-emerald-500/20" />
+          <div className="w-4 h-4 rounded-sm bg-emerald-500/40" />
+          <div className="w-4 h-4 rounded-sm bg-emerald-500/60" />
+          <div className="w-4 h-4 rounded-sm bg-emerald-500/80" />
         </div>
         <div>More Posts</div>
       </div>
