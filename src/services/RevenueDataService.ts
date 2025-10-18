@@ -483,6 +483,19 @@ class RevenueDataService {
       endDate
     );
 
+    // Check if webhook setup is required
+    if (rcTransactions.length === 0) {
+      // Update last synced time even if no data
+      await this.updateIntegration(orgId, projectId, integration.id, {
+        lastSynced: new Date(),
+      });
+
+      // Return empty result - webhook setup required
+      throw new Error(
+        'RevenueCat integration requires webhooks. Please set up webhooks in your RevenueCat dashboard to receive transaction data automatically. Visit: https://www.revenuecat.com/docs/integrations/webhooks'
+      );
+    }
+
     // Transform to our format
     const transactions = RevenueCatService.transformTransactions(
       rcTransactions,

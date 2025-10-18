@@ -78,76 +78,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       // Fetch transactions
-      // Note: RevenueCat REST API v1 doesn't have a direct transactions endpoint
-      // We need to use the Charts API or Webhooks for transaction data
+      // IMPORTANT: RevenueCat's public REST API v1 does NOT support fetching transaction lists
+      // You must use webhooks to receive transaction data in real-time
+      // Reference: https://www.revenuecat.com/docs/integrations/webhooks
       if (action === 'fetchTransactions') {
-        if (!startDate || !endDate) {
-          return res.status(400).json({ error: 'Missing startDate or endDate' });
-        }
-
-        try {
-          // Use the Charts API for revenue data
-          // Reference: https://www.revenuecat.com/docs/charts-api
-          const chartsBaseUrl = 'https://api.revenuecat.com/v2';
-          
-          const start = new Date(startDate).toISOString().split('T')[0];
-          const end = new Date(endDate).toISOString().split('T')[0];
-          
-          // Try to fetch overview metrics which includes revenue data
-          const response = await fetchWithTimeout(
-            `${chartsBaseUrl}/charts/metrics`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                start_date: start,
-                end_date: end,
-                metrics: ['revenue', 'active_subscriptions', 'new_customers'],
-                interval: 'day',
-              }),
-            }
-          );
-
-          if (response.ok) {
-            const data = await response.json();
-            
-            // Transform Charts API response to transaction-like format
-            const transactions = data.results?.revenue?.data_points?.map((point: any, index: number) => ({
-              id: `rc_${Date.now()}_${index}`,
-              date: point.date,
-              revenue: point.value || 0,
-              currency: 'USD', // RevenueCat reports in USD by default
-            })) || [];
-            
-            return res.status(200).json({ 
-              success: true, 
-              data: { transactions } 
-            });
-          } else {
-            const errorText = await response.text();
-            let errorData;
-            try {
-              errorData = JSON.parse(errorText);
-            } catch {
-              errorData = { message: errorText || 'Unknown error' };
-            }
-            
-            return res.status(response.status).json({ 
-              success: false, 
-              error: errorData.message || errorData.error || 'Failed to fetch transactions',
-              details: errorData
-            });
+        // Return helpful message about webhook requirement
+        return res.status(200).json({
+          success: true,
+          data: {
+            transactions: [],
+            webhook_required: true,
+            message: 'RevenueCat requires webhooks to sync transaction data. Please set up webhooks in your RevenueCat dashboard to receive real-time transaction events.',
+            setup_url: 'https://www.revenuecat.com/docs/integrations/webhooks'
           }
-        } catch (error: any) {
-          return res.status(500).json({ 
-            success: false, 
-            error: error.message || 'Failed to fetch transactions',
-            details: error.toString()
-          });
-        }
+        });
       }
 
       // Fetch overview

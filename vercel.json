@@ -29,6 +29,9 @@
     },
     "api/revenue-sync.ts": {
       "maxDuration": 60
+    },
+    "api/revenuecat-webhook.ts": {
+      "maxDuration": 30
     }
   },
   "crons": [
