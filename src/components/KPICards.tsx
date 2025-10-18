@@ -498,6 +498,20 @@ const KPICards: React.FC<KPICardsProps> = ({
           { startDate: tempPPStartDate, endDate: tempPPEndDate },
           intervalType
         );
+        
+        console.log(`📊 PP Intervals for ${metric}:`, {
+          dateFilter,
+          currentPeriod: `${actualStartDate.toLocaleDateString()} to ${actualEndDate.toLocaleDateString()}`,
+          previousPeriod: `${tempPPStartDate.toLocaleDateString()} to ${tempPPEndDate.toLocaleDateString()}`,
+          currentIntervals: intervals.length,
+          ppIntervals: ppIntervals.length
+        });
+      } else {
+        console.log(`📊 PP NOT generated for ${metric}:`, {
+          dateFilter,
+          dateRangeStart: dateRangeStart ? 'EXISTS' : 'NULL',
+          reason: dateFilter === 'all' ? 'ALL TIME filter' : 'No dateRangeStart'
+        });
       }
       
       const data = [];
@@ -523,6 +537,14 @@ const KPICards: React.FC<KPICardsProps> = ({
               return DataAggregationService.isDateInInterval(uploadDate, ppInterval);
             });
             ppValue = ppVideosPublished.length;
+            
+            if (metric === 'videos' && i === 0) {
+              console.log(`📊 PP Value for first ${metric} interval:`, {
+                currentValue: videosPublishedInInterval.length,
+                ppValue,
+                ppInterval: `${ppInterval.startDate.toLocaleDateString()} to ${ppInterval.endDate.toLocaleDateString()}`
+              });
+            }
           }
           
           data.push({ 
@@ -629,6 +651,15 @@ const KPICards: React.FC<KPICardsProps> = ({
           
           const finalPPValue = ppInterval ? ppIntervalValue : undefined;
           
+          // Log PP values for first interval of views metric
+          if (metric === 'views' && i === 0) {
+            console.log(`📊 PP Value for first ${metric} interval:`, {
+              currentValue: intervalValue,
+              ppValue: finalPPValue,
+              ppInterval: ppInterval ? `${ppInterval.startDate.toLocaleDateString()} to ${ppInterval.endDate.toLocaleDateString()}` : 'NONE'
+            });
+          }
+          
           data.push({ 
             value: intervalValue, 
             timestamp,
@@ -637,6 +668,19 @@ const KPICards: React.FC<KPICardsProps> = ({
           });
         }
       }
+      
+      // Summary: count how many PP values exist
+      const ppValuesCount = data.filter(d => d.ppValue !== undefined && d.ppValue !== null).length;
+      console.log(`📊 ${metric} sparkline data summary:`, {
+        totalIntervals: data.length,
+        ppValuesCount,
+        hasPPData: ppValuesCount > 0,
+        sampleFirstInterval: data[0] ? {
+          value: data[0].value,
+          ppValue: data[0].ppValue,
+          timestamp: new Date(data[0].timestamp).toLocaleDateString()
+        } : 'NONE'
+      });
       
       return { data, intervalType };
     };
@@ -1354,6 +1398,13 @@ const KPICard: React.FC<{
                 
                 // Check if PP data exists
                 const hasPPData = data.sparklineData.some(d => d.ppValue !== undefined && d.ppValue > 0);
+                
+                // Debug log for PP rendering
+                console.log(`🎨 Rendering ${data.label} graph:`, {
+                  hasPPData,
+                  dataPoints: data.sparklineData.length,
+                  ppValuesSample: data.sparklineData.slice(0, 3).map(d => ({ value: d.value, ppValue: d.ppValue }))
+                });
                 
                 return (
                   <ResponsiveContainer width="100%" height="100%">
