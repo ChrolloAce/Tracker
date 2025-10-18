@@ -187,10 +187,6 @@ function DashboardPage() {
 
   useEffect(() => {
     localStorage.setItem('dashboardSelectedRuleId', selectedRuleId);
-    if (selectedRuleId !== 'all') {
-      const rule = allRules.find(r => r.id === selectedRuleId);
-    } else {
-    }
   }, [selectedRuleId, allRules]);
 
   // Save accounts page filters to localStorage
@@ -598,12 +594,6 @@ function DashboardPage() {
   // Combine real submissions with pending videos for immediate UI feedback
   const combinedSubmissions = useMemo(() => {
     const combined = [...pendingVideos, ...filteredSubmissions];
-    
-    // Debug: Check first video in combined submissions
-    if (combined.length > 0) {
-      const first = combined[0];
-    }
-    
     return combined;
   }, [pendingVideos, filteredSubmissions]);
 
@@ -763,10 +753,6 @@ function DashboardPage() {
 
     // Handle results
     if (successCount > 0) {
-      const message = successCount === 1 
-        ? '✅ Video processing started! Refreshing shortly...' 
-        : `✅ ${successCount} videos processing! Refreshing shortly...`;
-      
       // Reload after 8 seconds to allow processing to complete
       setTimeout(() => {
         setPendingVideos([]);

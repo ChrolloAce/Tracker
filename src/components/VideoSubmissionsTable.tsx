@@ -162,11 +162,6 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   onVideoClick
 }) => {
   
-  // Debug: Check captions on first video
-  if (submissions.length > 0) {
-    const first = submissions[0];
-  }
-  
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(() => {

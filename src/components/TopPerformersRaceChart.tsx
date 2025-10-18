@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
-import { ChevronDown, TrendingUp, TrendingDown, Calendar, Eye, Play } from 'lucide-react';
+import { ChevronDown, Play } from 'lucide-react';
 
 interface TopPerformersRaceChartProps {
   submissions: VideoSubmission[];
@@ -686,7 +686,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                   
                   {/* Video List */}
                   <div className="overflow-y-auto px-5 py-3" style={{ maxHeight: '400px' }}>
-                    {accountVideos.map((video, idx) => {
+                    {accountVideos.map((video, _idx) => {
                       const stats = getVideoStats(video);
 
                       return (

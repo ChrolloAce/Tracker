@@ -625,8 +625,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         return;
       }
 
-      const startTime = performance.now();
-      
       // IMMEDIATELY show table with basic stats (no delay!)
       const accountsWithBasicStats: AccountWithFilteredStats[] = accounts.map(account => ({
         ...account,
@@ -700,7 +698,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           };
         });
 
-        const endTime = performance.now();
         setFilteredAccounts(accountsWithStats);
       } catch (error) {
         console.error('❌ Failed to calculate filtered stats:', error);
