@@ -42,26 +42,37 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
     
     const dayMap = new Map<string, VideoSubmission[]>();
     uniqueVideos.forEach(sub => {
-      const pubDate = sub.datePublished || sub.dateSubmitted;
-      // Ensure we have a valid date
+      // ONLY use datePublished (actual upload date), skip videos without it
+      const pubDate = sub.datePublished;
+      
       if (pubDate) {
-        const dateKey = format(startOfDay(new Date(pubDate)), 'yyyy-MM-dd');
-        if (!dayMap.has(dateKey)) {
-          dayMap.set(dateKey, []);
+        try {
+          const dateKey = format(startOfDay(new Date(pubDate)), 'yyyy-MM-dd');
+          if (!dayMap.has(dateKey)) {
+            dayMap.set(dateKey, []);
+          }
+          dayMap.get(dateKey)!.push(sub);
+        } catch (error) {
+          console.warn('Invalid date for video:', { pubDate, video: sub });
         }
-        dayMap.get(dateKey)!.push(sub);
       }
     });
     
     // Debug: Show first 10 dates with posts
     const datesWithPosts = Array.from(dayMap.keys()).sort();
+    const videosWithPublishDate = Array.from(uniqueVideos.values()).filter(v => v.datePublished).length;
+    const videosWithoutPublishDate = uniqueVideos.size - videosWithPublishDate;
+    
     console.log('📅 Heatmap Debug:', {
       totalSubmissions: submissions.length,
       uniqueVideos: uniqueVideos.size,
+      videosWithPublishDate,
+      videosWithoutPublishDate,
       daysWithPosts: dayMap.size,
       dateRange: `${format(yearStart, 'MMM d, yyyy')} - ${format(yearEnd, 'MMM d, yyyy')}`,
       firstDatesWithPosts: datesWithPosts.slice(0, 10),
-      lastDatesWithPosts: datesWithPosts.slice(-10)
+      lastDatesWithPosts: datesWithPosts.slice(-10),
+      postsPerDay: Array.from(dayMap.entries()).sort((a, b) => b[1].length - a[1].length).slice(0, 5).map(([date, videos]) => ({ date, count: videos.length }))
     });
     
     // Create day data array
