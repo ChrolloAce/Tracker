@@ -1183,42 +1183,40 @@ function DashboardPage() {
           'left-16': isSidebarCollapsed,
         }
       )}>
-        {/* Title Row - Full Width */}
-        <div className="flex items-center space-x-4 mb-4">
-          {activeTab === 'accounts' && accountsViewMode === 'details' && (
-            <button
-              onClick={() => accountsPageRef.current?.handleBackToTable()}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
-            </button>
-          )}
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {activeTab === 'dashboard' && (isEditingLayout ? 'EDIT MODE' : 'Dashboard')}
-              {activeTab === 'accounts' && 'Tracked Accounts'}
-              {activeTab === 'subscription' && 'Subscription Plans'}
-              {activeTab === 'analytics' && 'Tracked Links'}
-              {activeTab === 'creators' && 'Creators'}
-              {activeTab === 'cron' && 'Cron Jobs'}
-              {activeTab === 'settings' && 'Settings'}
-            </h1>
-            {activeTab !== 'analytics' && (
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {activeTab === 'dashboard' && (isEditingLayout ? 'Drag sections around to make your unique dashboard' : 'Track and analyze your video performance')}
-                {activeTab === 'accounts' && 'Monitor entire Instagram and TikTok accounts'}
-                {activeTab === 'subscription' && 'Choose the perfect plan to scale your tracking'}
-                {activeTab === 'creators' && 'Manage and discover content creators'}
-                {activeTab === 'cron' && 'Manage automated video refreshes'}
-                {activeTab === 'settings' && 'Configure your preferences'}
-              </p>
+        <div className="flex items-center justify-between w-full gap-4">
+          <div className="flex items-center space-x-4 flex-1 min-w-0">
+            {activeTab === 'accounts' && accountsViewMode === 'details' && (
+              <button
+                onClick={() => accountsPageRef.current?.handleBackToTable()}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
+              >
+                <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
+              </button>
             )}
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white whitespace-nowrap">
+                {activeTab === 'dashboard' && (isEditingLayout ? 'EDIT MODE' : 'Dashboard')}
+                {activeTab === 'accounts' && 'Tracked Accounts'}
+                {activeTab === 'subscription' && 'Subscription Plans'}
+                {activeTab === 'analytics' && 'Tracked Links'}
+                {activeTab === 'creators' && 'Creators'}
+                {activeTab === 'cron' && 'Cron Jobs'}
+                {activeTab === 'settings' && 'Settings'}
+              </h1>
+              {activeTab !== 'analytics' && (
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                  {activeTab === 'dashboard' && (isEditingLayout ? 'Drag sections around to make your unique dashboard' : 'Track and analyze your video performance')}
+                  {activeTab === 'accounts' && 'Monitor entire Instagram and TikTok accounts'}
+                  {activeTab === 'subscription' && 'Choose the perfect plan to scale your tracking'}
+                  {activeTab === 'creators' && 'Manage and discover content creators'}
+                  {activeTab === 'cron' && 'Manage automated video refreshes'}
+                  {activeTab === 'settings' && 'Configure your preferences'}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
-        
-        {/* Filters Row - Right Aligned */}
-        {activeTab === 'dashboard' && (
-            <div className="flex items-center justify-end w-full space-x-2">
+          {activeTab === 'dashboard' && (
+            <div className="flex items-center space-x-2 flex-shrink-0">
               {!isEditingLayout ? (
                 <>
                   {/* All filters aligned to the right */}
@@ -1236,23 +1234,18 @@ function DashboardPage() {
                   
                   {/* Platform Filter - Icon Only */}
                   <div className="relative">
-                    <div className="flex items-center gap-1 px-2 py-2 bg-white/5 dark:bg-white/5 rounded-lg border border-white/10 hover:border-white/20">
-                      {dashboardPlatformFilter === 'all' && <span className="text-white/90 text-xs font-medium">All</span>}
-                      {dashboardPlatformFilter === 'instagram' && <img src="/Instagram_icon.png" alt="Instagram" className="w-4 h-4" />}
-                      {dashboardPlatformFilter === 'tiktok' && <img src="/TiktokLogo.png" alt="TikTok" className="w-4 h-4" />}
-                      {dashboardPlatformFilter === 'youtube' && <img src="/Youtube_shorts_icon.svg.png" alt="YouTube" className="w-4 h-4" />}
-                    </div>
                     <select
                       value={dashboardPlatformFilter}
                       onChange={(e) => setDashboardPlatformFilter(e.target.value as 'all' | 'instagram' | 'tiktok' | 'youtube')}
-                      className="absolute inset-0 w-full opacity-0 cursor-pointer"
+                      className="appearance-none pl-3 pr-8 py-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
                       title={dashboardPlatformFilter === 'all' ? 'All Platforms' : dashboardPlatformFilter.charAt(0).toUpperCase() + dashboardPlatformFilter.slice(1)}
                     >
-                      <option value="all">All</option>
-                      <option value="instagram">Instagram</option>
-                      <option value="tiktok">TikTok</option>
-                      <option value="youtube">YouTube</option>
+                      <option value="all" className="bg-gray-900">🌐 All</option>
+                      <option value="instagram" className="bg-gray-900">📷 IG</option>
+                      <option value="tiktok" className="bg-gray-900">🎵 TT</option>
+                      <option value="youtube" className="bg-gray-900">▶️ YT</option>
                     </select>
+                    <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-white/50 pointer-events-none" />
                   </div>
                   
                   {/* Granularity Selector */}
@@ -1392,6 +1385,7 @@ function DashboardPage() {
               />
             </div>
           )}
+        </div>
       </header>
 
       {/* Main Content with dynamic margins for sidebar and header */}
