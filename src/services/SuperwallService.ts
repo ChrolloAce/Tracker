@@ -64,28 +64,31 @@ export class SuperwallService {
     startDate: Date,
     endDate: Date
   ): Promise<SuperwallAnalyticsResponse> {
-    const baseUrl = config.baseUrl || this.DEFAULT_BASE_URL;
-    
-    const params = new URLSearchParams({
-      app_id: config.appId,
-      start_date: startDate.toISOString(),
-      end_date: endDate.toISOString(),
-    });
-
-    const response = await fetch(`${baseUrl}/analytics/paywalls?${params}`, {
-      method: 'GET',
+    const response = await fetch('/api/revenue-sync', {
+      method: 'POST',
       headers: {
-        'Authorization': `Bearer ${config.apiKey}`,
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        provider: 'superwall',
+        action: 'fetchPaywallAnalytics',
+        credentials: { apiKey: config.apiKey, appId: config.appId },
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      }),
     });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-      throw new Error(`Superwall API Error: ${error.message || response.statusText}`);
+      throw new Error(`Superwall API Error: ${error.error || error.message || response.statusText}`);
     }
 
-    return response.json();
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(`Superwall API Error: ${result.error || 'Unknown error'}`);
+    }
+
+    return result.data;
   }
 
   /**
@@ -184,30 +187,32 @@ export class SuperwallService {
     endDate: Date,
     limit: number = 100
   ): Promise<SuperwallEventResponse> {
-    const baseUrl = config.baseUrl || this.DEFAULT_BASE_URL;
-    
-    const params = new URLSearchParams({
-      app_id: config.appId,
-      event_name: 'subscription_start',
-      start_date: startDate.toISOString(),
-      end_date: endDate.toISOString(),
-      limit: limit.toString(),
-    });
-
-    const response = await fetch(`${baseUrl}/events?${params}`, {
-      method: 'GET',
+    const response = await fetch('/api/revenue-sync', {
+      method: 'POST',
       headers: {
-        'Authorization': `Bearer ${config.apiKey}`,
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        provider: 'superwall',
+        action: 'fetchConversionEvents',
+        credentials: { apiKey: config.apiKey, appId: config.appId },
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        limit,
+      }),
     });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-      throw new Error(`Superwall API Error: ${error.message || response.statusText}`);
+      throw new Error(`Superwall API Error: ${error.error || error.message || response.statusText}`);
     }
 
-    return response.json();
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(`Superwall API Error: ${result.error || 'Unknown error'}`);
+    }
+
+    return result.data;
   }
 
   /**
@@ -335,21 +340,28 @@ export class SuperwallService {
   }
 
   /**
-   * Test API connection
+   * Test API connection (via API proxy)
    */
   static async testConnection(apiKey: string, appId: string): Promise<boolean> {
     try {
-      const params = new URLSearchParams({ app_id: appId });
-      
-      const response = await fetch(`${this.DEFAULT_BASE_URL}/paywalls?${params}`, {
-        method: 'GET',
+      const response = await fetch('/api/revenue-sync', {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          provider: 'superwall',
+          action: 'test',
+          credentials: { apiKey, appId },
+        }),
       });
 
-      return response.ok;
+      if (!response.ok) {
+        return false;
+      }
+
+      const result = await response.json();
+      return result.success === true;
     } catch (error) {
       console.error('Superwall connection test failed:', error);
       return false;

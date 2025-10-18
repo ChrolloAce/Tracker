@@ -45,38 +45,42 @@ export class RevenueCatService {
   private static readonly DEFAULT_BASE_URL = 'https://api.revenuecat.com/v1';
 
   /**
-   * Fetch overview metrics from RevenueCat
+   * Fetch overview metrics from RevenueCat (via API proxy)
    */
   static async fetchOverview(
     config: RevenueCatConfig,
     startDate: Date,
     endDate: Date
   ): Promise<RevenueCatOverviewResponse> {
-    const baseUrl = config.baseUrl || this.DEFAULT_BASE_URL;
-    
-    const params = new URLSearchParams({
-      start_date: startDate.toISOString().split('T')[0],
-      end_date: endDate.toISOString().split('T')[0],
-    });
-
-    const response = await fetch(`${baseUrl}/subscribers/overview?${params}`, {
-      method: 'GET',
+    const response = await fetch('/api/revenue-sync', {
+      method: 'POST',
       headers: {
-        'Authorization': `Bearer ${config.apiKey}`,
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        provider: 'revenuecat',
+        action: 'fetchOverview',
+        credentials: { apiKey: config.apiKey },
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      }),
     });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-      throw new Error(`RevenueCat API Error: ${error.message || response.statusText}`);
+      throw new Error(`RevenueCat API Error: ${error.error || error.message || response.statusText}`);
     }
 
-    return response.json();
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(`RevenueCat API Error: ${result.error || 'Unknown error'}`);
+    }
+
+    return result.data;
   }
 
   /**
-   * Fetch transaction history
+   * Fetch transaction history (via API proxy)
    */
   static async fetchTransactions(
     config: RevenueCatConfig,
@@ -84,29 +88,32 @@ export class RevenueCatService {
     endDate: Date,
     limit: number = 100
   ): Promise<RevenueCatTransaction[]> {
-    const baseUrl = config.baseUrl || this.DEFAULT_BASE_URL;
-    
-    const params = new URLSearchParams({
-      start_date: startDate.toISOString(),
-      end_date: endDate.toISOString(),
-      limit: limit.toString(),
-    });
-
-    const response = await fetch(`${baseUrl}/transactions?${params}`, {
-      method: 'GET',
+    const response = await fetch('/api/revenue-sync', {
+      method: 'POST',
       headers: {
-        'Authorization': `Bearer ${config.apiKey}`,
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        provider: 'revenuecat',
+        action: 'fetchTransactions',
+        credentials: { apiKey: config.apiKey },
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        limit,
+      }),
     });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-      throw new Error(`RevenueCat API Error: ${error.message || response.statusText}`);
+      throw new Error(`RevenueCat API Error: ${error.error || error.message || response.statusText}`);
     }
 
-    const data = await response.json();
-    return data.transactions || [];
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(`RevenueCat API Error: ${result.error || 'Unknown error'}`);
+    }
+
+    return result.data.transactions || [];
   }
 
   /**
@@ -339,19 +346,28 @@ export class RevenueCatService {
   }
 
   /**
-   * Test API connection
+   * Test API connection (via API proxy)
    */
   static async testConnection(apiKey: string): Promise<boolean> {
     try {
-      const response = await fetch(`${this.DEFAULT_BASE_URL}/subscribers/overview`, {
-        method: 'GET',
+      const response = await fetch('/api/revenue-sync', {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          provider: 'revenuecat',
+          action: 'test',
+          credentials: { apiKey },
+        }),
       });
 
-      return response.ok;
+      if (!response.ok) {
+        return false;
+      }
+
+      const result = await response.json();
+      return result.success === true;
     } catch (error) {
       console.error('RevenueCat connection test failed:', error);
       return false;
