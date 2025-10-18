@@ -149,6 +149,18 @@ function DashboardPage() {
       'videos-table': true
     };
   });
+  
+  const [dashboardSectionTitles, setDashboardSectionTitles] = useState<Record<string, string>>(() => {
+    const saved = localStorage.getItem('dashboardSectionTitles');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+    return {
+      'kpi-cards': 'KPI Cards',
+      'top-performers': 'Top Performers',
+      'videos-table': 'Videos Table'
+    };
+  });
   const [userRole, setUserRole] = useState<string>('');
   
   // Accounts page state
@@ -1430,12 +1442,7 @@ function DashboardPage() {
                   };
                   
                   const getSectionTitle = (id: string) => {
-                    switch (id) {
-                      case 'kpi-cards': return 'KPI Cards';
-                      case 'top-performers': return 'Top Performers';
-                      case 'videos-table': return 'Videos Table';
-                      default: return '';
-                    }
+                    return dashboardSectionTitles[id] || id;
                   };
                   
                   const renderSectionContent = () => {
@@ -1583,6 +1590,12 @@ function DashboardPage() {
         cardOptions={kpiCardOptions}
         onToggleCard={handleToggleCard}
         onReorder={handleReorderCard}
+        sectionTitles={dashboardSectionTitles}
+        onRenameSection={(sectionId, newTitle) => {
+          const updated = { ...dashboardSectionTitles, [sectionId]: newTitle };
+          setDashboardSectionTitles(updated);
+          localStorage.setItem('dashboardSectionTitles', JSON.stringify(updated));
+        }}
       />
 
       {/* Day Videos Modal for Account Clicks */}

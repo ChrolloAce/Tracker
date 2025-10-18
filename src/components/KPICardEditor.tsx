@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, Eye, EyeOff, GripVertical } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Eye, EyeOff, GripVertical, Edit2, Check } from 'lucide-react';
 
 interface KPICardOption {
   id: string;
@@ -15,24 +15,55 @@ interface KPICardEditorProps {
   cardOptions: KPICardOption[];
   onToggleCard: (cardId: string) => void;
   onReorder: (cardId: string, direction: 'up' | 'down') => void;
+  sectionTitles?: Record<string, string>;
+  onRenameSection?: (sectionId: string, newTitle: string) => void;
 }
 
 /**
  * KPICardEditor Component
  * 
  * Stripe-style modal for managing dashboard KPI cards.
- * Allows users to show/hide cards and reorder them.
+ * Allows users to show/hide cards, reorder them, and rename sections.
  */
 export const KPICardEditor: React.FC<KPICardEditorProps> = ({
   isOpen,
   onClose,
   cardOptions,
   onToggleCard,
-  onReorder
+  onReorder,
+  sectionTitles = {},
+  onRenameSection
 }) => {
+  const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState('');
+  
   if (!isOpen) return null;
 
   const visibleCount = cardOptions.filter(card => card.isVisible).length;
+  
+  const handleStartEditing = (cardId: string, currentLabel: string) => {
+    setEditingSection(cardId);
+    // Remove tree characters from label
+    const cleanLabel = currentLabel.replace(/^[├─└─\s]+/, '');
+    setEditingValue(sectionTitles[cardId] || cleanLabel);
+  };
+  
+  const handleSaveEdit = (cardId: string) => {
+    if (onRenameSection && editingValue.trim()) {
+      onRenameSection(cardId, editingValue.trim());
+    }
+    setEditingSection(null);
+    setEditingValue('');
+  };
+  
+  const handleCancelEdit = () => {
+    setEditingSection(null);
+    setEditingValue('');
+  };
+  
+  const isSectionCard = (id: string) => {
+    return ['kpi-cards', 'top-performers', 'videos-table'].includes(id);
+  };
 
   return (
     <>
@@ -130,19 +161,57 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
 
                   {/* Card info */}
                   <div className="flex-1 min-w-0">
-                    <h3 className={`
-                      text-sm font-medium transition-opacity
-                      ${card.isVisible ? 'text-white' : 'text-white/40'}
-                    `}>
-                      {card.label}
-                    </h3>
-                    <p className={`
-                      text-xs mt-0.5 transition-opacity
-                      ${card.isVisible ? 'text-white/60' : 'text-white/30'}
-                    `}>
-                      {card.description}
-                    </p>
+                    {editingSection === card.id ? (
+                      <input
+                        type="text"
+                        value={editingValue}
+                        onChange={(e) => setEditingValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveEdit(card.id);
+                          if (e.key === 'Escape') handleCancelEdit();
+                        }}
+                        className="w-full px-2 py-1 text-sm font-medium bg-white/10 border border-white/20 rounded text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        autoFocus
+                      />
+                    ) : (
+                      <h3 className={`
+                        text-sm font-medium transition-opacity
+                        ${card.isVisible ? 'text-white' : 'text-white/40'}
+                      `}>
+                        {card.label}
+                      </h3>
+                    )}
+                    {editingSection !== card.id && (
+                      <p className={`
+                        text-xs mt-0.5 transition-opacity
+                        ${card.isVisible ? 'text-white/60' : 'text-white/30'}
+                      `}>
+                        {card.description}
+                      </p>
+                    )}
                   </div>
+                  
+                  {/* Edit button for sections */}
+                  {isSectionCard(card.id) && editingSection !== card.id && (
+                    <button
+                      onClick={() => handleStartEditing(card.id, card.label)}
+                      className="p-2 text-white/40 hover:text-white hover:bg-white/10 rounded transition-colors"
+                      title="Rename section"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                  )}
+                  
+                  {/* Save button when editing */}
+                  {editingSection === card.id && (
+                    <button
+                      onClick={() => handleSaveEdit(card.id)}
+                      className="p-2 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded transition-colors"
+                      title="Save"
+                    >
+                      <Check className="w-4 h-4" />
+                    </button>
+                  )}
 
                   {/* Toggle button */}
                   <button
