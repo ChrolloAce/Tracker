@@ -60,21 +60,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             });
           }
 
-          // Test using Charts API with date range (same endpoint used for syncing)
-          const endDate = new Date();
-          const startDate = new Date();
-          startDate.setDate(startDate.getDate() - 30);
-          
-          const formatDate = (date: Date) => date.toISOString().split('T')[0];
-          
-          const params = new URLSearchParams({
-            start_date: formatDate(startDate),
-            end_date: formatDate(endDate),
-            currency: 'USD'
-          });
-          
+          // Test using overview metrics endpoint (only available aggregate endpoint)
           const response = await fetchWithTimeout(
-            `${baseUrlV2}/projects/${projectId}/charts/revenue?${params.toString()}`,
+            `${baseUrlV2}/projects/${projectId}/metrics/overview?currency=USD`,
             {
               method: 'GET',
               headers: {
@@ -98,7 +86,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(response.status).json({ 
               success: false, 
               error: error.message || error.error || 'API connection failed',
-              hint: response.status === 403 ? 'Make sure you created a V2 API key with charts:revenue:read permission' : undefined
+              hint: response.status === 403 ? 'Make sure you created a V2 API key with the required permissions (metrics read access)' : undefined
             });
           }
         } catch (error: any) {
@@ -130,27 +118,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
           const baseUrlV2 = 'https://api.revenuecat.com/v2';
           
-          // Use Charts API with date range support
-          // Format dates as YYYY-MM-DD for RevenueCat
-          const formatDate = (dateStr: string) => {
-            const date = new Date(dateStr);
-            return date.toISOString().split('T')[0];
-          };
+          // RevenueCat's public REST API doesn't have a date-filtered revenue endpoint
+          // The best we can do is use the overview metrics endpoint
+          // Note: This returns ALL TIME data, not date-filtered
+          // For date-filtered transaction data, webhooks are required
           
-          const params = new URLSearchParams({
-            start_date: formatDate(startDate),
-            end_date: formatDate(endDate),
-            currency: 'USD'
+          console.log('⚠️ RevenueCat API limitation: Fetching overview metrics (all-time data)');
+          console.log('⚠️ Date filtering requires webhook integration for real-time transaction tracking');
+          console.log('Requested date range (will be ignored by API):', {
+            start: new Date(startDate).toISOString().split('T')[0],
+            end: new Date(endDate).toISOString().split('T')[0]
           });
           
-          console.log('Fetching RevenueCat data for date range:', {
-            start_date: formatDate(startDate),
-            end_date: formatDate(endDate)
-          });
-          
-          // Fetch revenue chart data (supports date filtering)
+          // Use overview metrics endpoint (only available endpoint for aggregate data)
           const response = await fetchWithTimeout(
-            `${baseUrlV2}/projects/${projectId}/charts/revenue?${params.toString()}`,
+            `${baseUrlV2}/projects/${projectId}/metrics/overview?currency=USD`,
             {
               method: 'GET',
               headers: {
@@ -163,69 +145,51 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (response.ok) {
             const data = await response.json();
             
-            console.log('RevenueCat Charts API response:', JSON.stringify(data));
+            console.log('RevenueCat Overview API response:', JSON.stringify(data));
             
-            // Transform Charts API response to transaction format
-            // Charts API returns time-series data with data points
+            // Transform overview metrics to transaction format
+            // This gives ALL-TIME aggregate data, NOT date-filtered
             const transactions = [];
-            
-            // Try different possible response formats
             let totalRevenue = 0;
-            let dataPoints: any[] = [];
             
-            if (data.data_points && Array.isArray(data.data_points)) {
-              // Format: { data_points: [ { date: "2024-01-01", value: 100 } ] }
-              dataPoints = data.data_points;
-            } else if (data.results && Array.isArray(data.results)) {
-              // Format: { results: [...] }
-              dataPoints = data.results;
-            } else if (data.series && Array.isArray(data.series)) {
-              // Format: { series: [...] }
-              dataPoints = data.series;
-            } else if (Array.isArray(data)) {
-              // Format: [{ date: "2024-01-01", value: 100 }]
-              dataPoints = data;
-            }
-
-            console.log('Parsed data points:', dataPoints.length, 'points');
-
-            // Sum up revenue from all data points in the range
-            if (dataPoints.length > 0) {
-              totalRevenue = dataPoints.reduce((sum: number, point: any) => {
-                const value = point.value || point.revenue || point.amount || 0;
-                return sum + value;
-              }, 0);
+            if (data.metrics && Array.isArray(data.metrics)) {
+              const now = Date.now();
               
-              console.log('Total revenue from data points:', totalRevenue);
+              // Parse metrics by ID
+              const metrics = data.metrics.reduce((acc: any, metric: any) => {
+                acc[metric.id] = metric.value;
+                return acc;
+              }, {});
+
+              console.log('Parsed metrics:', metrics);
+
+              // Extract revenue metrics (try different possible IDs)
+              totalRevenue = metrics.revenue || 
+                             metrics.total_revenue || 
+                             metrics.lifetime_revenue || 
+                             metrics.active_subscriptions_revenue || 
+                             0;
               
-              // Create a single aggregate transaction for the period
-              if (totalRevenue > 0) {
-                const now = Date.now();
+              const mrr = metrics.mrr || metrics.monthly_recurring_revenue || 0;
+              const activeSubscriptions = metrics.active_subscriptions || 
+                                         metrics.active_subscribers || 
+                                         metrics.active_trials || 
+                                         0;
+
+              console.log('Extracted values:', { totalRevenue, mrr, activeSubscriptions });
+
+              // Create a single aggregate transaction
+              // WARNING: This is ALL TIME data, not filtered by the requested date range
+              if (totalRevenue > 0 || mrr > 0) {
                 transactions.push({
-                  id: `rc_period_${now}`,
+                  id: `rc_all_time_${now}`,
                   date: new Date().toISOString(),
                   revenue: totalRevenue,
+                  mrr: mrr,
+                  active_subscriptions: activeSubscriptions,
                   currency: 'USD',
-                  type: 'period_aggregate',
-                  period: {
-                    start: formatDate(startDate),
-                    end: formatDate(endDate)
-                  }
-                });
-              }
-            } else {
-              console.log('No data points found, trying direct metrics extraction');
-              
-              // Fallback: Try to extract direct metrics if available
-              const revenue = data.revenue || data.total_revenue || data.value || 0;
-              if (revenue > 0) {
-                totalRevenue = revenue;
-                transactions.push({
-                  id: `rc_aggregate_${Date.now()}`,
-                  date: new Date().toISOString(),
-                  revenue: totalRevenue,
-                  currency: 'USD',
-                  type: 'aggregate_metrics',
+                  type: 'all_time_aggregate',
+                  warning: 'This is ALL-TIME data, not filtered by date range'
                 });
               }
             }
@@ -237,13 +201,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               data: { 
                 transactions,
                 raw_data: data, // Include raw data for debugging
-                period: {
-                  start: formatDate(startDate),
-                  end: formatDate(endDate)
-                },
+                warning: 'RevenueCat REST API does not support date-filtered revenue queries',
+                recommendation: 'For date-specific revenue tracking, set up webhooks: /REVENUECAT_SETUP_GUIDE.md',
                 note: transactions.length === 0 
-                  ? 'No revenue data found for this period. If you have revenue, it may take time to process, or you may need to set up webhooks for real-time data.'
-                  : `Revenue data for period ${formatDate(startDate)} to ${formatDate(endDate)}`
+                  ? 'No revenue data found. Check that you have active subscriptions and the correct project ID.'
+                  : `Showing ALL-TIME aggregate metrics (not filtered by date range)`
               } 
             });
           } else {
