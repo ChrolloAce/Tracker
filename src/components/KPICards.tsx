@@ -1664,6 +1664,9 @@ const KPICard: React.FC<{
         </div>
       )}
 
+
+      {/* Upper Solid Portion - 60% (reduced to give more space to graph) */}
+      <div className="relative px-5 pt-4 pb-2 z-10" style={{ height: '60%' }}>
         {/* Icon (top-right) */}
         <div className="absolute top-4 right-4">
           <Icon className="w-5 h-5 text-gray-400 opacity-60" />
