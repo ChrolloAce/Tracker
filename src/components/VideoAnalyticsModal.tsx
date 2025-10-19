@@ -334,7 +334,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
               </h2>
               <p className="text-xs text-[#A1A1AA]">@{video.uploaderHandle}</p>
               <div className="flex items-center gap-2 mt-0.5 text-xs text-[#9B9B9B]">
-                <span>Posted: {new Date(video.timestamp || video.dateSubmitted).toLocaleDateString()}</span>
+                <span>Posted: {new Date(video.uploadDate || video.dateSubmitted).toLocaleDateString()}</span>
                 {video.lastRefreshed && (
                   <>
                     <span>•</span>
