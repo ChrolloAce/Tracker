@@ -32,9 +32,9 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
   onClose,
   cardOptions,
   onToggleCard,
-  onReorder,
+  // onReorder - kept for potential future use
   sectionTitles = {},
-  onRenameSection,
+  // onRenameSection - kept for potential future use
   renderSectionPreview
 }) => {
   if (!isOpen) return null;

@@ -119,7 +119,7 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({ submissio
       case 'twitter':
         return 'X (Twitter)';
       default:
-        return platform.charAt(0).toUpperCase() + platform.slice(1);
+        return (platform as string).charAt(0).toUpperCase() + (platform as string).slice(1);
     }
   };
 
@@ -245,7 +245,7 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({ submissio
           }}
         >
           <div className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-xl text-xs whitespace-nowrap">
-            <div className="font-semibold">{getPlatformName(hoveredPlatform.platform)}</div>
+            <div className="font-semibold">{getPlatformName(hoveredPlatform.platform as 'instagram' | 'tiktok' | 'youtube' | 'twitter')}</div>
             <div className="text-gray-300 mt-1">
               {platformData.find(p => p.platform === hoveredPlatform.platform)?.videoCount} videos tracked
             </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { GripVertical } from 'lucide-react';
 
 interface DraggableSectionProps {
@@ -22,7 +22,7 @@ interface DraggableSectionProps {
  * Shows a drag handle in edit mode.
  */
 export const DraggableSection: React.FC<DraggableSectionProps> = ({
-  id,
+  // id is kept for potential future use but marked as unused
   title,
   isEditMode,
   isDragging,
@@ -34,7 +34,6 @@ export const DraggableSection: React.FC<DraggableSectionProps> = ({
   onDrop,
   children
 }) => {
-  const [isHovered, setIsHovered] = useState(false);
   const dragHandleRef = React.useRef<HTMLDivElement>(null);
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -47,8 +46,6 @@ export const DraggableSection: React.FC<DraggableSectionProps> = ({
 
   return (
     <div
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       onMouseDown={handleMouseDown}
       className={`
         relative transition-all duration-200

@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { VideoSubmission } from '../types';
-import { format, startOfWeek, addDays, startOfYear, endOfYear, eachDayOfInterval, isSameDay, startOfDay, subYears } from 'date-fns';
-import { X, Play } from 'lucide-react';
+import { format, eachDayOfInterval, startOfDay, subYears } from 'date-fns';
+import { Play } from 'lucide-react';
 import { PlatformIcon } from './ui/PlatformIcon';
 import DayVideosModal from './DayVideosModal';
 
@@ -68,7 +68,7 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
           // Debug first 5 videos
           if (dayMap.size <= 5) {
             console.log(`📹 Video added to heatmap:`, {
-              title: sub.title?.substring(0, 30) || sub.description?.substring(0, 30),
+              title: sub.title?.substring(0, 30) || sub.caption?.substring(0, 30),
               uploadDate: sub.uploadDate ? format(new Date(sub.uploadDate), 'MMM d, yyyy') : 'none',
               dateSubmitted: format(new Date(sub.dateSubmitted), 'MMM d, yyyy'),
               usedDate: format(new Date(pubDate), 'MMM d, yyyy'),
@@ -325,7 +325,7 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
                 {/* Metadata */}
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-white truncate">
-                    {video.title || video.caption || video.description || 'Untitled'}
+                    {video.title || video.caption || 'Untitled'}
                   </div>
                   <div className="text-xs text-gray-400 flex items-center gap-2 mt-0.5">
                     <span>{video.uploaderHandle}</span>

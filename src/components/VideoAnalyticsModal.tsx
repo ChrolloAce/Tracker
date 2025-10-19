@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ExternalLink, Eye, Heart, MessageCircle, Share2, TrendingUp, Bookmark, Clock, Flame } from 'lucide-react';
 import { VideoSubmission } from '../types';
@@ -118,7 +118,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         likes: video.likes,
         comments: video.comments,
         shares: video.shares || 0,
-        capturedAt: new Date().toISOString(),
+        capturedAt: new Date(),
       });
     }
 
@@ -168,13 +168,18 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
 
   // Calculate cumulative totals for KPI display (not deltas)
   const cumulativeTotals = useMemo(() => {
+    const views = video?.views || 0;
+    const likes = video?.likes || 0;
+    const comments = video?.comments || 0;
+    const shares = video?.shares || 0;
+    
     return {
-      views: video?.views || 0,
-      likes: video?.likes || 0,
-      comments: video?.comments || 0,
-      shares: video?.shares || 0,
-      engagementRate: video?.views > 0 
-        ? (((video?.likes || 0) + (video?.comments || 0) + (video?.shares || 0)) / video.views) * 100 
+      views,
+      likes,
+      comments,
+      shares,
+      engagementRate: views > 0 
+        ? ((likes + comments + shares) / views) * 100 
         : 0,
     };
   }, [video?.views, video?.likes, video?.comments, video?.shares]);
