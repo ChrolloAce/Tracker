@@ -55,11 +55,11 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Prepare chart data from snapshots
+  // Prepare chart data from snapshots (showing incremental changes/deltas)
   const chartData = useMemo((): ChartDataPoint[] => {
     if (!video) return [];
     
-    // Helper to create a data point
+    // Helper to create a data point with cumulative stats (for KPI display)
     const createDataPoint = (stats: any, timestamp: Date): ChartDataPoint => {
       const totalEngagement = stats.likes + stats.comments + (stats.shares || 0);
       const engagementRate = stats.views > 0 ? (totalEngagement / stats.views) * 100 : 0;
@@ -90,25 +90,59 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       (a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
     );
 
-    // Create data points from snapshots
-    const data = sortedSnapshots.map((snapshot) => 
-      createDataPoint(snapshot, new Date(snapshot.capturedAt))
-    );
-    
-    // Always append current video stats as the most recent data point
-    // This ensures KPI cards show the latest actual numbers, not just the last snapshot
-    const currentDataPoint = createDataPoint(video, new Date());
-    
-    // Only add current stats if they're different from the last snapshot (to avoid duplicates)
-    const lastSnapshot = data[data.length - 1];
-    const hasNewData = !lastSnapshot || 
-      lastSnapshot.views !== video.views ||
-      lastSnapshot.likes !== video.likes ||
-      lastSnapshot.comments !== video.comments ||
-      lastSnapshot.shares !== (video.shares || 0);
+    // Append current video stats if different from last snapshot
+    const allSnapshots = [...sortedSnapshots];
+    const lastSnapshotData = sortedSnapshots[sortedSnapshots.length - 1];
+    const hasNewData = !lastSnapshotData || 
+      lastSnapshotData.views !== video.views ||
+      lastSnapshotData.likes !== video.likes ||
+      lastSnapshotData.comments !== video.comments ||
+      (lastSnapshotData.shares || 0) !== (video.shares || 0);
     
     if (hasNewData) {
-      data.push(currentDataPoint);
+      allSnapshots.push({
+        views: video.views,
+        likes: video.likes,
+        comments: video.comments,
+        shares: video.shares || 0,
+        capturedAt: new Date().toISOString(),
+      });
+    }
+
+    // Create data points with DELTAS (incremental changes)
+    // First point shows initial snapshot values, subsequent points show changes
+    const data: ChartDataPoint[] = [];
+    
+    for (let i = 0; i < allSnapshots.length; i++) {
+      const snapshot = allSnapshots[i];
+      const timestamp = new Date(snapshot.capturedAt);
+      
+      if (i === 0) {
+        // First point: show absolute values
+        data.push(createDataPoint(snapshot, timestamp));
+      } else {
+        // Subsequent points: show delta/difference from previous snapshot
+        const prevSnapshot = allSnapshots[i - 1];
+        const deltaViews = snapshot.views - prevSnapshot.views;
+        const deltaLikes = snapshot.likes - prevSnapshot.likes;
+        const deltaComments = snapshot.comments - prevSnapshot.comments;
+        const deltaShares = (snapshot.shares || 0) - (prevSnapshot.shares || 0);
+        const totalDeltaEngagement = deltaLikes + deltaComments + deltaShares;
+        const deltaEngagementRate = deltaViews > 0 ? (totalDeltaEngagement / deltaViews) * 100 : 0;
+        
+        data.push({
+          date: timestamp.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric'
+          }),
+          views: deltaViews,
+          likes: deltaLikes,
+          comments: deltaComments,
+          shares: deltaShares,
+          engagementRate: deltaEngagementRate,
+          timestamp: timestamp.getTime(),
+        });
+      }
     }
     
     // If only one data point, duplicate it to create a flat line
@@ -118,6 +152,19 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     
     return data;
   }, [video?.id, video?.views, video?.likes, video?.comments, video?.shares, video?.snapshots?.length]);
+
+  // Calculate cumulative totals for KPI display (not deltas)
+  const cumulativeTotals = useMemo(() => {
+    return {
+      views: video?.views || 0,
+      likes: video?.likes || 0,
+      comments: video?.comments || 0,
+      shares: video?.shares || 0,
+      engagementRate: video?.views > 0 
+        ? (((video?.likes || 0) + (video?.comments || 0) + (video?.shares || 0)) / video.views) * 100 
+        : 0,
+    };
+  }, [video?.views, video?.likes, video?.comments, video?.shares]);
 
   if (!isOpen || !video) return null;
 
@@ -179,42 +226,42 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
 
   const embedUrl = getEmbedUrl(video.url, video.platform);
 
-  // Define metrics with their configurations
+  // Define metrics with their configurations (using cumulative totals, not deltas)
   const metrics = [
     {
       key: 'views' as const,
       label: 'Views',
       icon: Eye,
       color: '#B47CFF',
-      value: chartData[chartData.length - 1]?.views || 0,
+      value: cumulativeTotals.views,
     },
     {
       key: 'likes' as const,
       label: 'Likes',
       icon: Heart,
       color: '#FF6B9D',
-      value: chartData[chartData.length - 1]?.likes || 0,
+      value: cumulativeTotals.likes,
     },
     {
       key: 'comments' as const,
       label: 'Comments',
       icon: MessageCircle,
       color: '#4ECDC4',
-      value: chartData[chartData.length - 1]?.comments || 0,
+      value: cumulativeTotals.comments,
     },
     {
       key: 'shares' as const,
       label: 'Shares',
       icon: Share2,
       color: '#FFE66D',
-      value: chartData[chartData.length - 1]?.shares || 0,
+      value: cumulativeTotals.shares,
     },
     {
       key: 'engagementRate' as const,
       label: 'Engagement',
       icon: TrendingUp,
       color: '#00D9FF',
-      value: chartData[chartData.length - 1]?.engagementRate || 0,
+      value: cumulativeTotals.engagementRate,
       isPercentage: true,
     },
     {
