@@ -114,11 +114,14 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     
     if (hasNewData) {
       allSnapshots.push({
+        id: `current-${Date.now()}`,
+        videoId: video.id,
         views: video.views,
         likes: video.likes,
         comments: video.comments,
         shares: video.shares || 0,
         capturedAt: new Date(),
+        capturedBy: 'manual_refresh'
       });
     }
 
