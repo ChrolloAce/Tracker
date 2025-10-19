@@ -454,6 +454,13 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             <VideoSubmissionsTable 
               submissions={filteredVideos}
               onVideoClick={onVideoClick}
+              headerTitle={(() => {
+                const currentInterval = showPreviousPeriod ? ppInterval : interval;
+                if (currentInterval) {
+                  return `Content from ${formatIntervalRange(currentInterval)}`;
+                }
+                return `Content from ${formatDate(date)}`;
+              })()}
             />
           ) : (
             <div className="flex flex-col items-center justify-center py-16 text-center px-6">

@@ -18,6 +18,7 @@ interface VideoSubmissionsTableProps {
   onStatusUpdate?: (id: string, status: VideoSubmission['status']) => void;
   onDelete?: (id: string) => void;
   onVideoClick?: (video: VideoSubmission) => void;
+  headerTitle?: string; // Custom title for the table header (defaults to "Recent Activity")
 }
 
 // Dropdown menu component for video actions
@@ -155,11 +156,12 @@ const ThumbnailImage: React.FC<{ submission: VideoSubmission }> = ({ submission 
   );
 };
 
-export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
-  submissions,
-  onStatusUpdate,
+export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({ 
+  submissions, 
+  onStatusUpdate, 
   onDelete,
-  onVideoClick
+  onVideoClick,
+  headerTitle
 }) => {
   
   // Pagination state
@@ -409,7 +411,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
       <div className="relative px-6 py-5 border-b border-white/5 z-10" style={{ backgroundColor: 'rgba(18, 18, 20, 0.6)' }}>
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Activity</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{headerTitle || 'Recent Activity'}</h2>
           </div>
           <div className="flex items-center space-x-3">
             {/* Column Visibility Toggle */}

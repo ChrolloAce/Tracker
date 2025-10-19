@@ -4,6 +4,7 @@ import { VideoSubmission } from '../types';
 import { format, startOfWeek, addDays, startOfYear, endOfYear, eachDayOfInterval, isSameDay, startOfDay, subYears } from 'date-fns';
 import { X, Play } from 'lucide-react';
 import { PlatformIcon } from './ui/PlatformIcon';
+import DayVideosModal from './DayVideosModal';
 
 interface PostingActivityHeatmapProps {
   submissions: VideoSubmission[];
@@ -349,88 +350,15 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
         document.body
       )}
 
-      {/* Modal for selected day videos */}
-      {selectedDay && (
-        <>
-          {/* Backdrop */}
-          <div 
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9998]"
-            onClick={() => setSelectedDay(null)}
-          />
-          
-          {/* Modal */}
-          <div className="fixed inset-y-0 right-0 w-full max-w-2xl bg-zinc-900 shadow-2xl z-[9999] overflow-y-auto">
-            {/* Header */}
-            <div className="sticky top-0 bg-zinc-900 border-b border-white/10 p-6 flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-semibold text-white">
-                  {format(selectedDay.date, 'MMMM d, yyyy')}
-                </h3>
-                <p className="text-sm text-white/60 mt-1">
-                  {selectedDay.count} post{selectedDay.count !== 1 ? 's' : ''} on this day
-                </p>
-              </div>
-              <button
-                onClick={() => setSelectedDay(null)}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-white/60" />
-              </button>
-            </div>
-
-            {/* Videos List */}
-            <div className="p-6 space-y-4">
-              {selectedDay.videos.map((video, index) => (
-                <div
-                  key={index}
-                  className="bg-white/5 rounded-lg p-4 hover:bg-white/10 transition-colors cursor-pointer border border-white/10"
-                  onClick={() => {
-                    if (onVideoClick) onVideoClick(video);
-                    setSelectedDay(null);
-                  }}
-                >
-                  <div className="flex items-start gap-4">
-                    {/* Thumbnail */}
-                    {video.thumbnail && (
-                      <img 
-                        src={video.thumbnail} 
-                        alt="" 
-                        className="w-32 h-20 rounded object-cover flex-shrink-0"
-                      />
-                    )}
-                    
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      {/* Platform & Account */}
-                      <div className="flex items-center gap-2 mb-2">
-                        <PlatformIcon platform={video.platform} className="w-4 h-4" />
-                        <span className="text-xs text-white/60">
-                          {video.uploaderHandle}
-                        </span>
-                      </div>
-                      
-                      {/* Title */}
-                      <h4 className="text-sm font-medium text-white mb-2 line-clamp-2">
-                        {video.title || video.caption || video.description || 'Untitled'}
-                      </h4>
-                      
-                      {/* Stats */}
-                      <div className="flex items-center gap-4 text-xs text-white/60">
-                        <span>{video.views?.toLocaleString() || 0} views</span>
-                        <span>{video.likes?.toLocaleString() || 0} likes</span>
-                        <span>{video.comments?.toLocaleString() || 0} comments</span>
-                        {video.shares && video.shares > 0 && (
-                          <span>{video.shares.toLocaleString()} shares</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
+      {/* Modal for selected day videos - using DayVideosModal for consistency */}
+      <DayVideosModal
+        isOpen={selectedDay !== null}
+        onClose={() => setSelectedDay(null)}
+        date={selectedDay?.date || new Date()}
+        videos={selectedDay?.videos || []}
+        metricLabel="posts"
+        onVideoClick={onVideoClick}
+      />
     </div>
   );
 };
