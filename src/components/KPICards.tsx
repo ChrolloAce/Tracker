@@ -1655,17 +1655,15 @@ const KPICard: React.FC<{
         />
       )}
 
-      {/* Upper Solid Portion - 60% (reduced to give more space to graph) */}
-      <div className="relative px-5 pt-4 pb-2 z-10" style={{ height: '60%' }}>
-        {/* Drag Handle (edit mode only) */}
-        {isEditMode && (
-          <div className="absolute top-4 left-4 text-emerald-400 opacity-60">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-            </svg>
-          </div>
-        )}
-        
+      {/* Drag Handle (edit mode only) - Centered at top, shows on hover */}
+      {isEditMode && (
+        <div className="absolute -top-1 left-1/2 -translate-x-1/2 text-emerald-400 opacity-0 group-hover:opacity-60 transition-opacity duration-200 z-20">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+          </svg>
+        </div>
+      )}
+
         {/* Icon (top-right) */}
         <div className="absolute top-4 right-4">
           <Icon className="w-5 h-5 text-gray-400 opacity-60" />
