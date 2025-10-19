@@ -54,13 +54,13 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
       <div
         key={item.id}
         className={`
-          group relative rounded-xl border-2 transition-all overflow-hidden
+          group relative rounded-xl border-2 transition-all overflow-hidden flex flex-col
           ${item.isVisible 
             ? 'bg-gradient-to-br from-white/5 to-white/[0.02] border-white/10 hover:border-white/20' 
             : 'bg-gradient-to-br from-white/[0.02] to-white/[0.01] border-white/10 hover:border-white/20 opacity-50'
           }
         `}
-        style={isKPI ? { minHeight: '350px' } : undefined}
+        style={isKPI ? { minHeight: '400px', height: '400px' } : undefined}
       >
         {/* Header */}
         <div className="p-4 flex items-center justify-between bg-gradient-to-r from-white/5 to-transparent">
@@ -132,12 +132,21 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
         
         {/* KPI Card Preview - Shows EXACT dashboard card */}
         {isKPI && renderKPIPreview && (
-          <div className="p-4 bg-black/20 border-t border-white/10">
+          <div className="p-4 bg-black/20 border-t border-white/10 flex-1 flex flex-col">
             <div className={`text-xs mb-2 font-medium uppercase tracking-wide ${item.isVisible ? 'text-white/50' : 'text-white/30'}`}>
               Live Preview
             </div>
-            <div className={`rounded-lg overflow-visible ${!item.isVisible ? 'opacity-50' : ''}`} style={{ minHeight: '200px', minWidth: '280px' }}>
-              {renderKPIPreview(item.id)}
+            <div 
+              className={`rounded-lg flex-1 flex items-center justify-center ${!item.isVisible ? 'opacity-50' : ''}`} 
+              style={{ 
+                overflow: 'hidden',
+                position: 'relative',
+                boxSizing: 'border-box'
+              }}
+            >
+              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'stretch' }}>
+                {renderKPIPreview(item.id)}
+              </div>
             </div>
           </div>
         )}
@@ -201,7 +210,7 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
                     ({kpiCards.filter(c => c.isVisible).length}/{kpiCards.length} visible)
                   </span>
                 </h3>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   {kpiCards.map(item => renderItemCard(item))}
                 </div>
               </div>
