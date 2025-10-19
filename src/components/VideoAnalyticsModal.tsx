@@ -480,20 +480,29 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                     </linearGradient>
                 </defs>
                 <Tooltip
-                                position={{ y: -60 }}
-                                offset={40}
-                                allowEscapeViewBox={{ x: false, y: true }}
+                                position={{ y: 0 }}
+                                offset={10}
+                                allowEscapeViewBox={{ x: true, y: true }}
                                 wrapperStyle={{ 
-                                  zIndex: 99999,
-                                  position: 'fixed'
+                                  zIndex: 9999,
+                                  pointerEvents: 'none'
                                 }}
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
+                                contentStyle={{
+                                  backgroundColor: 'transparent',
+                                  border: 'none',
+                                  padding: 0
+                                }}
+                  content={({ active, payload, coordinate }) => {
+                    if (active && payload && payload.length && coordinate) {
                       const data = payload[0]?.payload;
                                     const value = data[metric.key];
                       
+                      // Smart positioning: tooltip appears above cursor if space available, below if not
+                      const tooltipHeight = 80; // Approximate height of tooltip
+                      const yPos = coordinate.y < tooltipHeight + 20 ? 'top-2' : '-top-20';
+                      
                       return (
-                                      <div className="bg-[#1a1a1a] backdrop-blur-xl text-white px-5 py-3 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] text-sm space-y-2 min-w-[240px] border border-white/10 pointer-events-none">
+                                      <div className={`relative ${yPos} bg-[#1a1a1a] backdrop-blur-xl text-white px-5 py-3 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] text-sm space-y-2 min-w-[240px] border border-white/10 pointer-events-none`}>
                                         <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
                             {data?.date}
                           </p>
