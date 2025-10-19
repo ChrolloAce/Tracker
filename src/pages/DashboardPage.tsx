@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { clsx } from 'clsx';
 import { 
   ArrowLeft, ChevronDown, Search, Filter, CheckCircle2, Circle, Plus, Trash2,
-  Play, Heart, MessageCircle, Share2, Video, AtSign, Activity, DollarSign, Download, Link as LinkIcon, Edit2
+  Play, Heart, MessageCircle, Share2, Video, AtSign, Activity, DollarSign, Download, Link as LinkIcon, Edit2, RefreshCw
 } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import { Modal } from '../components/ui/Modal';
@@ -110,6 +110,7 @@ function DashboardPage() {
   const [draggedSection, setDraggedSection] = useState<string | null>(null);
   const [dragOverSection, setDragOverSection] = useState<string | null>(null);
   const [isOverSectionTrash, setIsOverSectionTrash] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   const [kpiCardOrder, setKpiCardOrder] = useState<string[]>(() => {
     // Load saved card order from localStorage
@@ -782,6 +783,43 @@ function DashboardPage() {
     setSelectedVideoForAnalytics(null);
   }, []);
 
+  // Trigger manual video refresh
+  const handleManualRefresh = useCallback(async () => {
+    if (!currentOrgId || !currentProjectId || isRefreshing) return;
+    
+    setIsRefreshing(true);
+    try {
+      console.log('🔄 Triggering manual video refresh...');
+      const response = await fetch('/api/cron-refresh-videos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          manual: true,
+          organizationId: currentOrgId,
+          projectId: currentProjectId,
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
+        console.log('✅ Video refresh completed:', result);
+        // Optionally show a success message to the user
+        alert(`✅ Refresh completed!\n\n${result.summary || 'Videos updated successfully'}`);
+      } else {
+        console.error('❌ Video refresh failed:', result);
+        alert(`❌ Refresh failed: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to trigger refresh:', error);
+      alert('❌ Failed to trigger refresh. Please check console for details.');
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [currentOrgId, currentProjectId, isRefreshing]);
+
   // Helper function to get human-readable date filter label
   const getDateFilterLabel = useCallback((filter: DateFilterType): string => {
     const labels: Record<DateFilterType, string> = {
@@ -1402,6 +1440,20 @@ function DashboardPage() {
                     title="Customize dashboard layout"
                   >
                     <Edit2 className="w-4 h-4" />
+                  </button>
+                  
+                  {/* Manual Refresh Button - Temporary for testing */}
+                  <button
+                    onClick={handleManualRefresh}
+                    disabled={isRefreshing}
+                    className={`p-2 rounded-lg transition-all border ${
+                      isRefreshing 
+                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 cursor-wait' 
+                        : 'bg-white/5 text-white/90 border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-400'
+                    }`}
+                    title="Manually refresh all video data"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                   </button>
                 </>
                ) : (
