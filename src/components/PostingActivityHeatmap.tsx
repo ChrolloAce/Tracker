@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { VideoSubmission } from '../types';
 import { format, startOfWeek, addDays, startOfYear, endOfYear, eachDayOfInterval, isSameDay, startOfDay, subYears } from 'date-fns';
+import { X } from 'lucide-react';
+import { PlatformIcon } from './ui/PlatformIcon';
 
 interface PostingActivityHeatmapProps {
   submissions: VideoSubmission[];
@@ -21,6 +23,7 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
 }) => {
   const [hoveredDay, setHoveredDay] = useState<DayData | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const [selectedDay, setSelectedDay] = useState<DayData | null>(null);
 
   // Calculate heatmap data for the last year (ending TODAY)
   const heatmapData = useMemo(() => {
@@ -145,8 +148,11 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
   };
 
   const handleCellClick = (dayData: DayData) => {
-    if (dayData.count > 0 && onDateClick) {
-      onDateClick(dayData.date, dayData.videos);
+    if (dayData.count > 0) {
+      setSelectedDay(dayData);
+      if (onDateClick) {
+        onDateClick(dayData.date, dayData.videos);
+      }
     }
   };
 
@@ -246,7 +252,7 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
         <div>More Posts</div>
       </div>
 
-      {/* Tooltip */}
+      {/* Simple Tooltip (KPI style) */}
       {hoveredDay && hoveredDay.count > 0 && (
         <div
           className="fixed z-[9999] pointer-events-none"
@@ -256,46 +262,97 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
             transform: 'translate(-50%, -100%)',
           }}
         >
-          <div className="bg-zinc-800 border border-white/20 rounded-lg shadow-xl p-3 max-w-xs">
-            <div className="text-xs font-semibold text-white mb-2">
-              {format(hoveredDay.date, 'MMMM d, yyyy')}
-            </div>
-            <div className="text-xs text-emerald-400 mb-2">
+          <div className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-xl text-xs whitespace-nowrap">
+            <div className="font-semibold">{format(hoveredDay.date, 'MMM d, yyyy')}</div>
+            <div className="text-emerald-400 mt-1">
               {hoveredDay.count} post{hoveredDay.count !== 1 ? 's' : ''}
             </div>
-            
-            {hoveredDay.videos.length > 0 && (
-              <div className="space-y-1">
-                {hoveredDay.videos.slice(0, 3).map((video, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-2 text-xs text-white/70 hover:text-white cursor-pointer transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (onVideoClick) onVideoClick(video);
-                    }}
-                  >
+            <div className="text-gray-400 text-[10px] mt-1">Click to view videos</div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal for selected day videos */}
+      {selectedDay && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9998]"
+            onClick={() => setSelectedDay(null)}
+          />
+          
+          {/* Modal */}
+          <div className="fixed inset-y-0 right-0 w-full max-w-2xl bg-zinc-900 shadow-2xl z-[9999] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-zinc-900 border-b border-white/10 p-6 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-semibold text-white">
+                  {format(selectedDay.date, 'MMMM d, yyyy')}
+                </h3>
+                <p className="text-sm text-white/60 mt-1">
+                  {selectedDay.count} post{selectedDay.count !== 1 ? 's' : ''} on this day
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedDay(null)}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-white/60" />
+              </button>
+            </div>
+
+            {/* Videos List */}
+            <div className="p-6 space-y-4">
+              {selectedDay.videos.map((video, index) => (
+                <div
+                  key={index}
+                  className="bg-white/5 rounded-lg p-4 hover:bg-white/10 transition-colors cursor-pointer border border-white/10"
+                  onClick={() => {
+                    if (onVideoClick) onVideoClick(video);
+                    setSelectedDay(null);
+                  }}
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Thumbnail */}
                     {video.thumbnail && (
                       <img 
                         src={video.thumbnail} 
                         alt="" 
-                        className="w-8 h-8 rounded object-cover flex-shrink-0"
+                        className="w-32 h-20 rounded object-cover flex-shrink-0"
                       />
                     )}
-                    <div className="flex-1 truncate">
-                      {video.title || video.description?.substring(0, 40) || 'Untitled'}
+                    
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      {/* Platform & Account */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <PlatformIcon platform={video.platform} className="w-4 h-4" />
+                        <span className="text-xs text-white/60">
+                          {video.uploaderHandle}
+                        </span>
+                      </div>
+                      
+                      {/* Title */}
+                      <h4 className="text-sm font-medium text-white mb-2 line-clamp-2">
+                        {video.title || video.caption || video.description || 'Untitled'}
+                      </h4>
+                      
+                      {/* Stats */}
+                      <div className="flex items-center gap-4 text-xs text-white/60">
+                        <span>{video.views?.toLocaleString() || 0} views</span>
+                        <span>{video.likes?.toLocaleString() || 0} likes</span>
+                        <span>{video.comments?.toLocaleString() || 0} comments</span>
+                        {video.shares && video.shares > 0 && (
+                          <span>{video.shares.toLocaleString()} shares</span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                ))}
-                {hoveredDay.videos.length > 3 && (
-                  <div className="text-xs text-white/50 pl-10">
-                    +{hoveredDay.videos.length - 3} more
-                  </div>
-                )}
-              </div>
-            )}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

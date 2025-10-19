@@ -15,6 +15,7 @@ import { DraggableSection } from '../components/DraggableSection';
 import DateRangeFilter, { DateFilterType } from '../components/DateRangeFilter';
 import VideoAnalyticsModal from '../components/VideoAnalyticsModal';
 import TopPerformersRaceChart from '../components/TopPerformersRaceChart';
+import TopPlatformsRaceChart from '../components/TopPlatformsRaceChart';
 import PostingActivityHeatmap from '../components/PostingActivityHeatmap';
 import DayVideosModal from '../components/DayVideosModal';
 import AccountsPage, { AccountsPageRef } from '../components/AccountsPage';
@@ -137,7 +138,7 @@ function DashboardPage() {
   });
   
   const [dashboardSectionOrder, setDashboardSectionOrder] = useState<string[]>(() => {
-    const defaultOrder = ['kpi-cards', 'top-performers', 'posting-activity', 'tracked-accounts', 'videos-table'];
+    const defaultOrder = ['kpi-cards', 'top-performers', 'top-platforms', 'posting-activity', 'tracked-accounts', 'videos-table'];
     const saved = localStorage.getItem('dashboardSectionOrder');
     
     if (saved) {
@@ -162,6 +163,7 @@ function DashboardPage() {
     const defaults = {
       'kpi-cards': true,
       'top-performers': true,
+      'top-platforms': false,
       'posting-activity': false,
       'tracked-accounts': false,
       'videos-table': true
@@ -1059,7 +1061,7 @@ function DashboardPage() {
   // KPI Card Editor handlers
   const handleToggleCard = useCallback((cardId: string) => {
     // Check if it's a section or a KPI card
-    const allSections = ['kpi-cards', 'top-performers', 'posting-activity', 'tracked-accounts', 'videos-table'];
+    const allSections = ['kpi-cards', 'top-performers', 'top-platforms', 'posting-activity', 'tracked-accounts', 'videos-table'];
     if (allSections.includes(cardId)) {
       // It's a section
       setDashboardSectionVisibility(prev => {
@@ -1079,7 +1081,7 @@ function DashboardPage() {
 
   const handleReorderCard = useCallback((cardId: string, direction: 'up' | 'down') => {
     // Check if it's a section or a KPI card
-    const allSections = ['kpi-cards', 'top-performers', 'posting-activity', 'tracked-accounts', 'videos-table'];
+    const allSections = ['kpi-cards', 'top-performers', 'top-platforms', 'posting-activity', 'tracked-accounts', 'videos-table'];
     if (allSections.includes(cardId)) {
       // It's a section
       setDashboardSectionOrder(prev => {
@@ -1125,7 +1127,8 @@ function DashboardPage() {
     // Dashboard sections come first
     const sections = [
       { id: 'kpi-cards', label: 'KPI Cards', description: 'Performance metrics overview', icon: Activity, category: 'sections' as const },
-      { id: 'top-performers', label: 'Top Performers', description: 'Top videos, accounts & platforms', icon: Activity, category: 'sections' as const },
+      { id: 'top-performers', label: 'Top Performers', description: 'Accounts & videos race chart', icon: Activity, category: 'sections' as const },
+      { id: 'top-platforms', label: 'Top Platforms', description: 'Platform performance comparison', icon: Activity, category: 'sections' as const },
       { id: 'posting-activity', label: 'Posting Activity', description: 'Daily posting frequency', icon: Activity, category: 'sections' as const },
       { id: 'tracked-accounts', label: 'Tracked Accounts', description: 'Full accounts dashboard', icon: AtSign, category: 'sections' as const },
       { id: 'videos-table', label: 'Videos Table', description: 'All video submissions', icon: Video, category: 'sections' as const },
@@ -1585,6 +1588,12 @@ function DashboardPage() {
                             onAccountClick={handleAccountClick}
                           />
                         );
+                      case 'top-platforms':
+                        return (
+                          <TopPlatformsRaceChart 
+                            submissions={filteredSubmissions}
+                          />
+                        );
                       case 'posting-activity':
                         return (
                           <PostingActivityHeatmap 
@@ -1787,6 +1796,12 @@ function DashboardPage() {
                   submissions={filteredSubmissions} 
                   onVideoClick={handleVideoClick}
                   onAccountClick={handleAccountClick}
+                />
+              );
+            case 'top-platforms':
+              return (
+                <TopPlatformsRaceChart 
+                  submissions={filteredSubmissions}
                 />
               );
             case 'posting-activity':

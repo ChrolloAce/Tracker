@@ -17,12 +17,10 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
   const [topAccountsCount, setTopAccountsCount] = useState(5);
   const [videosMetric, setVideosMetric] = useState<MetricType>('views');
   const [accountsMetric, setAccountsMetric] = useState<MetricType>('views');
-  const [platformsMetric, setPlatformsMetric] = useState<MetricType>('views');
   
   // Tooltip states
   const [hoveredVideo, setHoveredVideo] = useState<{ video: VideoSubmission; x: number; y: number } | null>(null);
   const [hoveredAccount, setHoveredAccount] = useState<{ handle: string; x: number; y: number } | null>(null);
-  const [hoveredPlatform, setHoveredPlatform] = useState<{ platform: VideoSubmission['platform']; x: number; y: number } | null>(null);
 
   // Calculate metric value for a video
   const getMetricValue = (video: VideoSubmission, metric: MetricType): number => {
@@ -148,71 +146,6 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
     return sortedAccounts;
   }, [submissions, accountsMetric, topAccountsCount]);
 
-  // Get platform data
-  const platformData = useMemo(() => {
-    // Deduplicate videos by ID first
-    const uniqueVideos = new Map<string, VideoSubmission>();
-    submissions.forEach(video => {
-      const key = video.id || video.url || `${video.platform}_${video.uploaderHandle}_${video.dateSubmitted.getTime()}`;
-      if (!uniqueVideos.has(key)) {
-        uniqueVideos.set(key, video);
-      }
-    });
-    
-    const platformMap = new Map<VideoSubmission['platform'], {
-      platform: VideoSubmission['platform'];
-      totalViews: number;
-      totalLikes: number;
-      totalComments: number;
-      totalShares: number;
-      videoCount: number;
-    }>();
-
-    uniqueVideos.forEach(video => {
-      const platform = video.platform;
-      
-      if (!platformMap.has(platform)) {
-        platformMap.set(platform, {
-          platform,
-          totalViews: 0,
-          totalLikes: 0,
-          totalComments: 0,
-          totalShares: 0,
-          videoCount: 0,
-        });
-      }
-
-      const platformStats = platformMap.get(platform)!;
-      platformStats.totalViews += video.views || 0;
-      platformStats.totalLikes += video.likes || 0;
-      platformStats.totalComments += video.comments || 0;
-      platformStats.totalShares += video.shares || 0;
-      platformStats.videoCount += 1;
-    });
-
-    // Calculate the value for each platform based on selected metric
-    const getPlatformMetric = (platform: typeof platformMap extends Map<any, infer P> ? P : never): number => {
-      switch (platformsMetric) {
-        case 'views':
-          return platform.totalViews;
-        case 'likes':
-          return platform.totalLikes;
-        case 'comments':
-          return platform.totalComments;
-        case 'shares':
-          return platform.totalShares;
-        case 'engagement':
-          const totalEng = platform.totalLikes + platform.totalComments + platform.totalShares;
-          return platform.totalViews > 0 ? (totalEng / platform.totalViews) * 100 : 0;
-        default:
-          return 0;
-      }
-    };
-
-    return Array.from(platformMap.values())
-      .sort((a, b) => getPlatformMetric(b) - getPlatformMetric(a));
-  }, [submissions, platformsMetric]);
-
   const maxVideoValue = topVideos.length > 0 ? getMetricValue(topVideos[0], videosMetric) : 1;
   const maxAccountValue = topAccounts.length > 0 
     ? (accountsMetric === 'views' ? topAccounts[0].totalViews
@@ -222,17 +155,6 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
       : (() => {
           const totalEng = topAccounts[0].totalLikes + topAccounts[0].totalComments + topAccounts[0].totalShares;
           return topAccounts[0].totalViews > 0 ? (totalEng / topAccounts[0].totalViews) * 100 : 0;
-        })())
-    : 1;
-  
-  const maxPlatformValue = platformData.length > 0
-    ? (platformsMetric === 'views' ? platformData[0].totalViews
-      : platformsMetric === 'likes' ? platformData[0].totalLikes
-      : platformsMetric === 'comments' ? platformData[0].totalComments
-      : platformsMetric === 'shares' ? platformData[0].totalShares
-      : (() => {
-          const totalEng = platformData[0].totalLikes + platformData[0].totalComments + platformData[0].totalShares;
-          return platformData[0].totalViews > 0 ? (totalEng / platformData[0].totalViews) * 100 : 0;
         })())
     : 1;
 
@@ -306,24 +228,8 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
     return num.toLocaleString();
   };
 
-  // Helper to get platform display name
-  const getPlatformName = (platform: VideoSubmission['platform']): string => {
-    switch (platform) {
-      case 'instagram':
-        return 'Instagram';
-      case 'tiktok':
-        return 'TikTok';
-      case 'youtube':
-        return 'YouTube';
-      case 'twitter':
-        return 'Twitter';
-      default:
-        return platform.charAt(0).toUpperCase() + platform.slice(1);
-    }
-  };
-
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
       {/* Top Videos */}
       <div className="relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl transition-all duration-300 p-6 overflow-hidden">
         {/* Depth Gradient Overlay */}
@@ -619,129 +525,6 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
         </div>
       </div>
 
-      {/* Top Platforms */}
-      <div className="relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl transition-all duration-300 p-6 overflow-hidden">
-        {/* Depth Gradient Overlay */}
-        <div 
-          className="absolute inset-0 pointer-events-none z-0"
-          style={{
-            background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
-          }}
-        />
-        
-        {/* Content Layer */}
-        <div className="relative z-10">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-lg font-semibold text-white">Top Platforms</h2>
-          <div className="flex items-center gap-3">
-            {/* Metric Selector */}
-            <div className="relative">
-              <select
-                value={platformsMetric}
-                onChange={(e) => setPlatformsMetric(e.target.value as MetricType)}
-                className="appearance-none bg-white/10 text-white rounded-lg px-3 py-1.5 pr-8 text-sm font-medium border border-white/10 hover:bg-white/15 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all cursor-pointer"
-              >
-                <option value="views" className="bg-gray-900">Views</option>
-                <option value="likes" className="bg-gray-900">Likes</option>
-                <option value="comments" className="bg-gray-900">Comments</option>
-                <option value="shares" className="bg-gray-900">Shares</option>
-                <option value="engagement" className="bg-gray-900">Engagement</option>
-              </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
-            </div>
-          </div>
-        </div>
-
-        {/* Race Bars */}
-        <div className="space-y-3">
-          {platformData.length === 0 ? (
-            <div className="text-center py-16 text-white/40">
-              <p className="text-sm">No platforms found</p>
-            </div>
-          ) : (
-            platformData.map((platform, index) => {
-              const value = platformsMetric === 'views' ? platform.totalViews
-                : platformsMetric === 'likes' ? platform.totalLikes
-                : platformsMetric === 'comments' ? platform.totalComments
-                : platformsMetric === 'shares' ? platform.totalShares
-                : (() => {
-                    const totalEng = platform.totalLikes + platform.totalComments + platform.totalShares;
-                    return platform.totalViews > 0 ? (totalEng / platform.totalViews) * 100 : 0;
-                  })();
-              const percentage = maxPlatformValue > 0 ? (value / maxPlatformValue) * 100 : 0;
-              
-              return (
-                <div 
-                  key={platform.platform} 
-                  className="group relative cursor-pointer"
-                  style={{
-                    animation: `raceSlideIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) ${index * 0.12}s both`
-                  }}
-                  onMouseEnter={(e) => {
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    setHoveredPlatform({
-                      platform: platform.platform,
-                      x: rect.left + rect.width / 2,
-                      y: rect.top
-                    });
-                    const barElement = e.currentTarget.querySelector('.race-bar') as HTMLElement;
-                    if (barElement) {
-                      barElement.style.background = 'linear-gradient(to right, #E5E7EB, #F9FAFB)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    setHoveredPlatform(null);
-                    const barElement = e.currentTarget.querySelector('.race-bar') as HTMLElement;
-                    if (barElement) {
-                      barElement.style.background = 'linear-gradient(to right, #52525B, #3F3F46)';
-                    }
-                  }}
-                >
-                  {/* Bar Container */}
-                  <div className="relative h-10 flex items-center">
-                    {/* Platform Icon (Spearhead) */}
-                    <div className="absolute left-0 z-10 flex-shrink-0">
-                      <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/10 bg-gray-800/50 backdrop-blur-sm relative flex items-center justify-center">
-                        <PlatformIcon platform={platform.platform} className="w-6 h-6" />
-                      </div>
-                    </div>
-
-                    {/* Animated Bar */}
-                    <div className="ml-14 flex-1 relative flex items-center">
-                      <div className="h-10 rounded-lg overflow-hidden flex-1">
-                        <div 
-                          className="race-bar h-full relative transition-all duration-300 ease-out rounded-lg"
-                          style={{
-                            width: `${percentage}%`,
-                            minWidth: '8%',
-                            background: 'linear-gradient(to right, #52525B, #3F3F46)'
-                          }}
-                        >
-                          {/* Subtle highlight effect */}
-                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent" />
-                        </div>
-                      </div>
-
-                      {/* Label (Tailing) */}
-                      <div className="absolute right-4 flex items-baseline gap-2">
-                        <span className="text-lg font-bold text-white whitespace-nowrap">
-                          {formatNumber(value, platformsMetric)}
-                        </span>
-                        <span className="text-xs text-white/50">
-                          {platform.videoCount} video{platform.videoCount !== 1 ? 's' : ''}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-        </div>
-      </div>
-
       {/* Video Tooltip */}
       {hoveredVideo && createPortal(
         <div
@@ -961,78 +744,6 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                         <span>Click to expand data</span>
                         <ChevronDown className="w-3.5 h-3.5" />
                       </button>
-                    </div>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* Platform Tooltip */}
-      {hoveredPlatform && createPortal(
-        <div
-          className="fixed z-[999999] pointer-events-none"
-          style={{
-            left: `${hoveredPlatform.x}px`,
-            top: `${hoveredPlatform.y - 10}px`,
-            transform: 'translate(-50%, -100%)'
-          }}
-        >
-          <div className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10 w-[280px]">
-            {(() => {
-              // Find the platform data
-              const platform = platformData.find(p => p.platform === hoveredPlatform.platform);
-              if (!platform) return null;
-
-              const formatNum = (num: number) => {
-                if (num >= 1000000) return `${(num / 1000000).toFixed(1)} M`;
-                if (num >= 1000) return `${(num / 1000).toFixed(1)} k`;
-                return num.toLocaleString();
-              };
-
-              return (
-                <>
-                  {/* Header */}
-                  <div className="flex items-center justify-between px-5 pt-4 pb-3">
-                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider flex items-center gap-2">
-                      <PlatformIcon platform={platform.platform} size="sm" />
-                      {getPlatformName(platform.platform)}
-                    </p>
-                  </div>
-                  
-                  {/* Divider */}
-                  <div className="border-t border-white/10 mx-5"></div>
-                  
-                  {/* Stats Grid */}
-                  <div className="px-5 pt-3 pb-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <p className="text-xl font-bold text-white">
-                          {formatNum(platform.totalViews)}
-                        </p>
-                        <p className="text-xs text-gray-500">Total Views</p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-xl font-bold text-white">
-                          {formatNum(platform.totalLikes)}
-                        </p>
-                        <p className="text-xs text-gray-500">Total Likes</p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-xl font-bold text-white">
-                          {platform.videoCount}
-                        </p>
-                        <p className="text-xs text-gray-500">Videos</p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-xl font-bold text-white">
-                          {formatNum(platform.totalComments)}
-                        </p>
-                        <p className="text-xs text-gray-500">Comments</p>
-                      </div>
                     </div>
                   </div>
                 </>
