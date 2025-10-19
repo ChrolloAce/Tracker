@@ -44,7 +44,7 @@ interface KPICardsProps {
   onToggleCard?: (cardId: string) => void;
 }
 
-interface KPICardData {
+export interface KPICardData {
   id: string;
   label: string;
   value: string | number;
@@ -1515,7 +1515,7 @@ const _KPISparkline: React.FC<{
   );
 };
 
-const KPICard: React.FC<{ 
+export const KPICard: React.FC<{ 
   data: KPICardData; 
   onClick?: () => void;
   onIntervalHover?: (interval: TimeInterval | null) => void;

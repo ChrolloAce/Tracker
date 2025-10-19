@@ -15,7 +15,6 @@ import { DraggableSection } from '../components/DraggableSection';
 import DateRangeFilter, { DateFilterType } from '../components/DateRangeFilter';
 import VideoAnalyticsModal from '../components/VideoAnalyticsModal';
 import TopPerformersRaceChart from '../components/TopPerformersRaceChart';
-import TopPerformersGrid from '../components/TopPerformersGrid';
 import TopPlatformsRaceChart from '../components/TopPlatformsRaceChart';
 import PostingActivityHeatmap from '../components/PostingActivityHeatmap';
 import DayVideosModal from '../components/DayVideosModal';
@@ -45,7 +44,7 @@ import { fixVideoPlatforms } from '../services/FixVideoPlatform';
 import { TrackedAccount } from '../types/firestore';
 import { TrackingRule, RuleCondition, RuleConditionType } from '../types/rules';
 
-interface DateRange {
+export interface DateRange {
   startDate: Date;
   endDate: Date;
 }
@@ -136,25 +135,6 @@ function DashboardPage() {
       revenue: true,
       downloads: true,
       'link-clicks': true
-    };
-  });
-
-  // Top Performers Card state (for the grid within top-performers section)
-  const [performerCardOrder, setPerformerCardOrder] = useState<string[]>(() => {
-    const saved = localStorage.getItem('performerCardOrder');
-    return saved ? JSON.parse(saved) : ['top-videos', 'top-accounts', 'top-platforms-perf', 'new-uploads'];
-  });
-
-  const [performerCardVisibility, setPerformerCardVisibility] = useState<Record<string, boolean>>(() => {
-    const saved = localStorage.getItem('performerCardVisibility');
-    if (saved) {
-      return JSON.parse(saved);
-    }
-    return {
-      'top-videos': true,
-      'top-accounts': true,
-      'top-platforms-perf': false,
-      'new-uploads': false
     };
   });
   
@@ -1180,6 +1160,36 @@ function DashboardPage() {
     }
   }, []);
 
+  // Helper function to render a single KPI card preview
+  const renderKPIPreview = useCallback((kpiId: string) => {
+    // Create a visibility map that shows only this one card
+    const singleCardVisibility: Record<string, boolean> = {};
+    Object.keys(kpiCardVisibility).forEach(key => {
+      singleCardVisibility[key] = key === kpiId;
+    });
+    
+    return (
+      <div style={{ pointerEvents: 'none' }}>
+        <KPICards 
+          submissions={filteredSubmissions}
+          allSubmissions={submissionsWithoutDateFilter}
+          linkClicks={linkClicks}
+          dateFilter={dateFilter}
+          customRange={customDateRange}
+          timePeriod="days"
+          granularity={granularity}
+          revenueMetrics={revenueMetrics}
+          revenueIntegrations={revenueIntegrations}
+          isEditMode={false}
+          cardOrder={[kpiId]} // Only show this card
+          cardVisibility={singleCardVisibility} // Only this card visible
+          onReorder={() => {}}
+          onToggleCard={() => {}}
+        />
+      </div>
+    );
+  }, [filteredSubmissions, submissionsWithoutDateFilter, linkClicks, dateFilter, customDateRange, granularity, revenueMetrics, revenueIntegrations, kpiCardVisibility]);
+
   // Define KPI card and section options for the editor
   const kpiCardOptions = useMemo(() => {
     // Dashboard sections come first
@@ -1654,27 +1664,10 @@ function DashboardPage() {
                         );
                       case 'top-performers':
                         return (
-                          <TopPerformersGrid
-                            submissions={filteredSubmissions}
-                            dateRangeStart={customDateRange?.from}
-                            dateRangeEnd={customDateRange?.to}
+                          <TopPerformersRaceChart 
+                            submissions={filteredSubmissions} 
                             onVideoClick={handleVideoClick}
                             onAccountClick={handleAccountClick}
-                            isEditMode={isEditingLayout}
-                            cardOrder={performerCardOrder}
-                            cardVisibility={performerCardVisibility}
-                            onReorder={(newOrder) => {
-                              setPerformerCardOrder(newOrder);
-                              localStorage.setItem('performerCardOrder', JSON.stringify(newOrder));
-                            }}
-                            onToggleCard={(cardId) => {
-                              const newVisibility = {
-                                ...performerCardVisibility,
-                                [cardId]: !performerCardVisibility[cardId]
-                              };
-                              setPerformerCardVisibility(newVisibility);
-                              localStorage.setItem('performerCardVisibility', JSON.stringify(newVisibility));
-                            }}
                           />
                         );
                       case 'top-platforms':
@@ -1851,6 +1844,7 @@ function DashboardPage() {
         onToggleCard={handleToggleCard}
         onReorder={handleReorderCard}
         sectionTitles={dashboardSectionTitles}
+        renderKPIPreview={renderKPIPreview}
         onRenameSection={(sectionId, newTitle) => {
           const updated = { ...dashboardSectionTitles, [sectionId]: newTitle };
           setDashboardSectionTitles(updated);
