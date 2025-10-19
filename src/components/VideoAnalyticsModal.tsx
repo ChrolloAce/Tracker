@@ -414,8 +414,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
 
           {/* Right: SCROLLABLE Content */}
           <div className="space-y-4">
-            {/* 6 Metric Charts in 2x3 Grid */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* 6 Metric Charts in 3-Column Grid */}
+            <div className="grid grid-cols-3 gap-4">
             {metrics.map((metric) => {
               // Calculate if metric is increasing (comparing first to last data point)
               const isIncreasing = chartData.length > 1 
@@ -618,81 +618,107 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
 
               {/* Snapshots History */}
               {video.snapshots && video.snapshots.length > 0 && (
-                <div className="rounded-xl border border-white/5 shadow-lg p-3" style={{ backgroundColor: '#121214' }}>
-                  <div className="flex items-start gap-2">
-                    <div className="p-2 rounded-lg" style={{ backgroundColor: '#0a0a0b' }}>
-                      <Bookmark className="w-4 h-4 text-gray-400" />
+                <div className="relative rounded-2xl border border-white/5 shadow-lg overflow-hidden" style={{ backgroundColor: '#121214' }}>
+                  {/* Depth Gradient Overlay */}
+                  <div 
+                    className="absolute inset-0 pointer-events-none z-0"
+                    style={{
+                      background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
+                    }}
+                  />
+                  
+                  {/* Header */}
+                  <div className="relative px-6 py-4 border-b border-white/5 z-10" style={{ backgroundColor: 'rgba(18, 18, 20, 0.6)' }}>
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-white/5">
+                        <Bookmark className="w-4 h-4 text-gray-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-semibold text-white">
+                          Snapshots History
+                        </h3>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {video.snapshots.length} {video.snapshots.length === 1 ? 'recording' : 'recordings'}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                        Snapshots History ({video.snapshots.length} recordings)
-                      </h3>
-                      <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                        {video.snapshots
-                          .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())
-                          .map((snapshot, index) => (
-                          <div 
-                            key={snapshot.id || index}
-                            className="rounded-lg border border-white/5 p-3 hover:bg-white/[0.02] transition-colors"
-                            style={{ backgroundColor: '#0a0a0b' }}
-                          >
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-xs text-gray-400">
-                                {new Date(snapshot.capturedAt).toLocaleDateString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
+                  </div>
+
+                  {/* Scrollable Snapshots List */}
+                  <div className="relative max-h-[400px] overflow-y-auto z-10">
+                    <div className="divide-y divide-white/5">
+                      {video.snapshots
+                        .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())
+                        .map((snapshot, index) => (
+                        <div 
+                          key={snapshot.id || index}
+                          className="relative px-6 py-4 hover:bg-white/[0.03] transition-colors"
+                          style={{ backgroundColor: index % 2 === 0 ? '#121214' : 'rgba(18, 18, 20, 0.5)' }}
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-sm font-medium text-gray-300">
+                              {new Date(snapshot.capturedAt).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                            {snapshot.capturedBy && (
+                              <span className="text-xs text-gray-400 px-2.5 py-1 rounded-md bg-white/5 border border-white/10">
+                                {snapshot.capturedBy.replace('_', ' ')}
                               </span>
-                              {snapshot.capturedBy && (
-                                <span className="text-xs text-gray-500 px-2 py-0.5 rounded bg-white/5">
-                                  {snapshot.capturedBy.replace('_', ' ')}
-                                </span>
-                              )}
-                            </div>
-                            <div className="grid grid-cols-4 gap-3">
+                            )}
+                          </div>
+                          <div className="grid grid-cols-4 gap-4">
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 rounded-md bg-white/5">
+                                <Eye className="w-3.5 h-3.5 text-white/70" />
+                              </div>
                               <div>
-                                <div className="flex items-center gap-1 mb-0.5">
-                                  <Eye className="w-3 h-3 text-gray-400" />
-                                  <span className="text-xs text-gray-400">Views</span>
-                                </div>
+                                <p className="text-xs text-gray-400">Views</p>
                                 <p className="text-sm font-semibold text-white">
                                   {formatNumber(snapshot.views || 0)}
                                 </p>
                               </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 rounded-md bg-white/5">
+                                <Heart className="w-3.5 h-3.5 text-white/70" />
+                              </div>
                               <div>
-                                <div className="flex items-center gap-1 mb-0.5">
-                                  <Heart className="w-3 h-3 text-gray-400" />
-                                  <span className="text-xs text-gray-400">Likes</span>
-                                </div>
+                                <p className="text-xs text-gray-400">Likes</p>
                                 <p className="text-sm font-semibold text-white">
                                   {formatNumber(snapshot.likes || 0)}
                                 </p>
                               </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 rounded-md bg-white/5">
+                                <MessageCircle className="w-3.5 h-3.5 text-white/70" />
+                              </div>
                               <div>
-                                <div className="flex items-center gap-1 mb-0.5">
-                                  <MessageCircle className="w-3 h-3 text-gray-400" />
-                                  <span className="text-xs text-gray-400">Comments</span>
-                                </div>
+                                <p className="text-xs text-gray-400">Comments</p>
                                 <p className="text-sm font-semibold text-white">
                                   {formatNumber(snapshot.comments || 0)}
                                 </p>
                               </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 rounded-md bg-white/5">
+                                <Share2 className="w-3.5 h-3.5 text-white/70" />
+                              </div>
                               <div>
-                                <div className="flex items-center gap-1 mb-0.5">
-                                  <Share2 className="w-3 h-3 text-gray-400" />
-                                  <span className="text-xs text-gray-400">Shares</span>
-                                </div>
+                                <p className="text-xs text-gray-400">Shares</p>
                                 <p className="text-sm font-semibold text-white">
                                   {formatNumber(snapshot.shares || 0)}
                                 </p>
                               </div>
                             </div>
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
