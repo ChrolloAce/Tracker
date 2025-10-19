@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ExternalLink, Eye, Heart, MessageCircle, Share2, TrendingUp, Bookmark, Clock, Flame } from 'lucide-react';
 import { VideoSubmission } from '../types';
-import { ResponsiveContainer, AreaChart, Area, Tooltip } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { PlatformIcon } from './ui/PlatformIcon';
 
 interface VideoAnalyticsModalProps {
@@ -21,6 +22,18 @@ interface ChartDataPoint {
 }
 
 const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose }) => {
+  // Tooltip state for smooth custom tooltips
+  const [tooltipData, setTooltipData] = useState<{ 
+    x: number; 
+    y: number; 
+    dataPoint: any; 
+    metricKey: string;
+    metricLabel: string;
+    isPercentage: boolean;
+    lineX: number;
+    chartRect: DOMRect;
+  } | null>(null);
+
   // Extract title without hashtags and separate hashtags
   const { cleanTitle, hashtags } = useMemo(() => {
     if (!video) return { cleanTitle: '', hashtags: [] };
@@ -465,8 +478,51 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                         }}
                       />
                       
-                      {/* Line Chart */}
-                      <div className="absolute inset-0" style={{ padding: '0' }}>
+                      {/* Line Chart with Custom Tooltip */}
+                      <div 
+                        className="absolute inset-0" 
+                        style={{ padding: '0' }}
+                        onMouseMove={(e) => {
+                          if (!chartData || chartData.length === 0) return;
+                          
+                          const chartContainer = e.currentTarget;
+                          const chartRect = chartContainer.getBoundingClientRect();
+                          const x = e.clientX - chartRect.left;
+                          const percentage = x / chartRect.width;
+                          const index = Math.min(
+                            Math.max(0, Math.floor(percentage * chartData.length)),
+                            chartData.length - 1
+                          );
+                          const dataPoint = chartData[index];
+                          
+                          setTooltipData({
+                            x: e.clientX,
+                            y: e.clientY,
+                            dataPoint,
+                            metricKey: metric.key,
+                            metricLabel: metric.label,
+                            isPercentage: metric.isPercentage || false,
+                            lineX: x,
+                            chartRect
+                          });
+                        }}
+                        onMouseLeave={() => setTooltipData(null)}
+                      >
+                        {/* Vertical cursor line */}
+                        {tooltipData && tooltipData.metricKey === metric.key && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              left: `${tooltipData.lineX}px`,
+                              top: 0,
+                              bottom: 0,
+                              width: '2px',
+                              background: `linear-gradient(to bottom, ${displayColor}00 0%, ${displayColor}80 15%, ${displayColor}60 50%, ${displayColor}40 85%, ${displayColor}00 100%)`,
+                              pointerEvents: 'none',
+                              zIndex: 50
+                            }}
+                          />
+                        )}
                         <div style={{ width: '100%', height: '100%', position: 'relative' }}>
             <ResponsiveContainer width="100%" height="100%">
                             <AreaChart 
@@ -479,46 +535,6 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                                   <stop offset="100%" stopColor={displayColor} stopOpacity={0} />
                     </linearGradient>
                 </defs>
-                <Tooltip
-                                position={{ y: 0 }}
-                                offset={10}
-                                allowEscapeViewBox={{ x: true, y: true }}
-                                wrapperStyle={{ 
-                                  zIndex: 9999,
-                                  pointerEvents: 'none'
-                                }}
-                                contentStyle={{
-                                  backgroundColor: 'transparent',
-                                  border: 'none',
-                                  padding: 0
-                                }}
-                  content={({ active, payload, coordinate }) => {
-                    if (active && payload && payload.length && coordinate) {
-                      const data = payload[0]?.payload;
-                                    const value = data[metric.key];
-                      
-                      // Smart positioning: tooltip appears above cursor if space available, below if not
-                      const tooltipHeight = 80; // Approximate height of tooltip
-                      const yPos = coordinate.y < tooltipHeight + 20 ? 'top-2' : '-top-20';
-                      
-                      return (
-                                      <div className={`relative ${yPos} bg-[#1a1a1a] backdrop-blur-xl text-white px-5 py-3 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] text-sm space-y-2 min-w-[240px] border border-white/10 pointer-events-none`}>
-                                        <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
-                            {data?.date}
-                          </p>
-                                        <p className="text-lg text-white font-bold">
-                                          {metric.isPercentage 
-                                            ? `${value.toFixed(1)}%` 
-                                            : formatNumber(value)
-                                          } {metric.label.toLowerCase()}
-                          </p>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                                cursor={{ stroke: displayColor, strokeWidth: 1, strokeDasharray: '3 3' }}
-                />
                 <Area 
                                 type="monotoneX"
                                 dataKey={metric.key}
@@ -594,6 +610,67 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
           </div>
         </div>
       </div>
+
+      {/* Portal Tooltip - Rendered at document.body level for smooth movement */}
+      {tooltipData && (() => {
+        const tooltipWidth = 300;
+        const verticalOffset = 20;
+        const horizontalPadding = 20;
+        const windowWidth = window.innerWidth;
+        
+        // Calculate horizontal position to keep tooltip on screen
+        let leftPosition = tooltipData.x;
+        let transformX = '-50%';
+        
+        // Check if tooltip would go off left edge
+        if (tooltipData.x - (tooltipWidth / 2) < horizontalPadding) {
+          leftPosition = horizontalPadding;
+          transformX = '0';
+        }
+        // Check if tooltip would go off right edge
+        else if (tooltipData.x + (tooltipWidth / 2) > windowWidth - horizontalPadding) {
+          leftPosition = windowWidth - horizontalPadding;
+          transformX = '-100%';
+        }
+        
+        const value = tooltipData.dataPoint[tooltipData.metricKey];
+        
+        return createPortal(
+          <div 
+            className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10" 
+            style={{ 
+              position: 'fixed',
+              left: `${leftPosition}px`,
+              top: `${tooltipData.y + verticalOffset}px`,
+              transform: `translateX(${transformX})`,
+              zIndex: 999999999,
+              width: `${tooltipWidth}px`,
+              pointerEvents: 'none'
+            }}
+          >
+            {/* Header */}
+            <div className="px-5 py-3 border-b border-white/10">
+              <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+                {tooltipData.dataPoint.date}
+              </p>
+            </div>
+
+            {/* Value */}
+            <div className="px-5 py-4">
+              <p className="text-2xl text-white font-bold">
+                {tooltipData.isPercentage 
+                  ? `${value.toFixed(1)}%` 
+                  : formatNumber(value)
+                }
+              </p>
+              <p className="text-sm text-gray-400 mt-1">
+                {tooltipData.metricLabel}
+              </p>
+            </div>
+          </div>,
+          document.body
+        );
+      })()}
     </div>
   );
 };
