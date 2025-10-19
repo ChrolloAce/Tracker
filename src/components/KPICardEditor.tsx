@@ -141,10 +141,18 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
               style={{ 
                 overflow: 'hidden',
                 position: 'relative',
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
+                padding: '8px'
               }}
             >
-              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'stretch' }}>
+              <div style={{ 
+                width: '100%', 
+                height: '100%', 
+                display: 'flex', 
+                alignItems: 'stretch',
+                minWidth: 0,
+                flex: '1 1 auto'
+              }}>
                 {renderKPIPreview(item.id)}
               </div>
             </div>
@@ -210,7 +218,7 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
                     ({kpiCards.filter(c => c.isVisible).length}/{kpiCards.length} visible)
                   </span>
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {kpiCards.map(item => renderItemCard(item))}
                 </div>
               </div>
