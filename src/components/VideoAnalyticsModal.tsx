@@ -333,15 +333,6 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                 {cleanTitle}
               </h2>
               <p className="text-xs text-[#A1A1AA]">@{video.uploaderHandle}</p>
-              <div className="flex items-center gap-2 mt-0.5 text-xs text-[#9B9B9B]">
-                <span>Posted: {new Date(video.uploadDate || video.dateSubmitted).toLocaleDateString()}</span>
-                {video.lastRefreshed && (
-                  <>
-                    <span>•</span>
-                    <span>Updated: {new Date(video.lastRefreshed).toLocaleDateString()}</span>
-                  </>
-                )}
-              </div>
             </div>
           </div>
           <button
@@ -397,6 +388,32 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                     {viralityFactor.toFixed(2)}x
                   </div>
                 </div>
+              </div>
+
+              {/* Posted & Last Refresh Info */}
+              <div className="mt-2 rounded-lg border border-white/5 p-2.5 space-y-1.5" style={{ backgroundColor: '#0a0a0b' }}>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-gray-400">Posted:</span>
+                  <span className="text-white font-medium">
+                    {new Date(video.uploadDate || video.dateSubmitted).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </span>
+                </div>
+                {video.lastRefreshed && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-gray-400">Last refresh:</span>
+                    <span className="text-white font-medium">
+                      {new Date(video.lastRefreshed).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* View on Platform Button */}
