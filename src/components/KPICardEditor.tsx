@@ -60,7 +60,7 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
             : 'bg-gradient-to-br from-white/[0.02] to-white/[0.01] border-white/10 hover:border-white/20 opacity-50'
           }
         `}
-        style={isKPI ? { minHeight: '400px' } : undefined}
+        style={isKPI ? { minHeight: '350px' } : undefined}
       >
         {/* Header */}
         <div className="p-4 flex items-center justify-between bg-gradient-to-r from-white/5 to-transparent">
@@ -136,7 +136,7 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
             <div className={`text-xs mb-2 font-medium uppercase tracking-wide ${item.isVisible ? 'text-white/50' : 'text-white/30'}`}>
               Live Preview
             </div>
-            <div className={`rounded-lg overflow-hidden ${!item.isVisible ? 'opacity-50' : ''}`} style={{ minHeight: '180px' }}>
+            <div className={`rounded-lg overflow-visible ${!item.isVisible ? 'opacity-50' : ''}`} style={{ minHeight: '200px', minWidth: '280px' }}>
               {renderKPIPreview(item.id)}
             </div>
           </div>
@@ -201,7 +201,7 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
                     ({kpiCards.filter(c => c.isVisible).length}/{kpiCards.length} visible)
                   </span>
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {kpiCards.map(item => renderItemCard(item))}
                 </div>
               </div>
