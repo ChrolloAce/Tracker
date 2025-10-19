@@ -8,6 +8,10 @@ import NewUploadsCard from './NewUploadsCard';
 
 interface TopPerformersGridProps {
   submissions: VideoSubmission[];
+  dateRangeStart?: Date;
+  dateRangeEnd?: Date;
+  onVideoClick?: (video: VideoSubmission) => void;
+  onAccountClick?: (username: string) => void;
   isEditMode?: boolean;
   cardOrder: string[];
   cardVisibility: Record<string, boolean>;
@@ -24,6 +28,10 @@ interface TopPerformersGridProps {
  */
 const TopPerformersGrid: React.FC<TopPerformersGridProps> = ({
   submissions,
+  dateRangeStart,
+  dateRangeEnd,
+  onVideoClick,
+  onAccountClick,
   isEditMode = false,
   cardOrder,
   cardVisibility,
@@ -134,7 +142,13 @@ const TopPerformersGrid: React.FC<TopPerformersGridProps> = ({
               )}
 
               {/* Card Component */}
-              <CardComponent submissions={submissions} />
+              <CardComponent 
+                submissions={submissions}
+                dateRangeStart={card.id === 'new-uploads' ? dateRangeStart : undefined}
+                dateRangeEnd={card.id === 'new-uploads' ? dateRangeEnd : undefined}
+                onVideoClick={onVideoClick}
+                onAccountClick={onAccountClick}
+              />
             </div>
           );
         })}

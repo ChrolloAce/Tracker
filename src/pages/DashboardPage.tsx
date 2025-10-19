@@ -15,6 +15,7 @@ import { DraggableSection } from '../components/DraggableSection';
 import DateRangeFilter, { DateFilterType } from '../components/DateRangeFilter';
 import VideoAnalyticsModal from '../components/VideoAnalyticsModal';
 import TopPerformersRaceChart from '../components/TopPerformersRaceChart';
+import TopPerformersGrid from '../components/TopPerformersGrid';
 import TopPlatformsRaceChart from '../components/TopPlatformsRaceChart';
 import PostingActivityHeatmap from '../components/PostingActivityHeatmap';
 import DayVideosModal from '../components/DayVideosModal';
@@ -135,6 +136,25 @@ function DashboardPage() {
       revenue: true,
       downloads: true,
       'link-clicks': true
+    };
+  });
+
+  // Top Performers Card state (for the grid within top-performers section)
+  const [performerCardOrder, setPerformerCardOrder] = useState<string[]>(() => {
+    const saved = localStorage.getItem('performerCardOrder');
+    return saved ? JSON.parse(saved) : ['top-videos', 'top-accounts', 'top-platforms-perf', 'new-uploads'];
+  });
+
+  const [performerCardVisibility, setPerformerCardVisibility] = useState<Record<string, boolean>>(() => {
+    const saved = localStorage.getItem('performerCardVisibility');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+    return {
+      'top-videos': true,
+      'top-accounts': true,
+      'top-platforms-perf': false,
+      'new-uploads': false
     };
   });
   
@@ -1634,10 +1654,27 @@ function DashboardPage() {
                         );
                       case 'top-performers':
                         return (
-                          <TopPerformersRaceChart 
-                            submissions={filteredSubmissions} 
+                          <TopPerformersGrid
+                            submissions={filteredSubmissions}
+                            dateRangeStart={customDateRange?.from}
+                            dateRangeEnd={customDateRange?.to}
                             onVideoClick={handleVideoClick}
                             onAccountClick={handleAccountClick}
+                            isEditMode={isEditingLayout}
+                            cardOrder={performerCardOrder}
+                            cardVisibility={performerCardVisibility}
+                            onReorder={(newOrder) => {
+                              setPerformerCardOrder(newOrder);
+                              localStorage.setItem('performerCardOrder', JSON.stringify(newOrder));
+                            }}
+                            onToggleCard={(cardId) => {
+                              const newVisibility = {
+                                ...performerCardVisibility,
+                                [cardId]: !performerCardVisibility[cardId]
+                              };
+                              setPerformerCardVisibility(newVisibility);
+                              localStorage.setItem('performerCardVisibility', JSON.stringify(newVisibility));
+                            }}
                           />
                         );
                       case 'top-platforms':
