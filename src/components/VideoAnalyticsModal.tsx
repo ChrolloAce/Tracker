@@ -355,7 +355,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         </div>
 
         {/* Main Content - 2 Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
           {/* Left: Video Embed (FIXED) */}
           <div className="lg:sticky lg:top-0 lg:self-start">
             <div className="relative rounded-xl border border-white/5 shadow-lg p-3 overflow-hidden" style={{ backgroundColor: '#121214' }}>
@@ -406,7 +406,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
           {/* Right: SCROLLABLE Content */}
           <div className="space-y-4">
             {/* 6 Metric Charts in 2x3 Grid */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
             {metrics.map((metric) => {
               // Calculate if metric is increasing (comparing first to last data point)
               const isIncreasing = chartData.length > 1 
@@ -419,8 +419,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
               return (
                 <div 
                   key={metric.label}
-                  className="group relative rounded-xl border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 overflow-hidden"
-                  style={{ minHeight: '140px', backgroundColor: '#121214' }}
+                  className="group relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 overflow-hidden"
+                  style={{ minHeight: '180px' }}
                 >
                   {/* Depth Gradient Overlay */}
                   <div 
@@ -430,23 +430,23 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                     }}
                   />
                   
-                  {/* Upper Solid Portion - 75% */}
-                  <div className="relative px-3 pt-3 pb-1.5 z-10" style={{ height: '75%' }}>
+                  {/* Upper Solid Portion - 60% */}
+                  <div className="relative px-5 pt-4 pb-2 z-10" style={{ height: '60%' }}>
                     {/* Icon (top-right) */}
-                    <div className="absolute top-2.5 right-2.5">
-                      <metric.icon className="w-4 h-4 text-gray-400 opacity-60" />
+                    <div className="absolute top-4 right-4">
+                      <metric.icon className="w-5 h-5 text-gray-400 opacity-60" />
                     </div>
 
                     {/* Metric Content */}
-                    <div className="flex flex-col h-full justify-start pt-0.5">
+                    <div className="flex flex-col h-full justify-start pt-1">
                       {/* Label */}
-                      <div className="text-xs font-medium text-zinc-400 tracking-wide mb-1.5">
+                      <div className="text-xs font-medium text-zinc-400 tracking-wide mb-2">
                         {metric.label}
                       </div>
 
                       {/* Value */}
-                      <div className="flex items-baseline gap-2 -mt-0.5">
-                        <span className="text-2xl font-bold tracking-tight text-white">
+                      <div className="flex items-baseline gap-3 -mt-1">
+                        <span className="text-3xl lg:text-4xl font-bold tracking-tight text-white">
                           {(metric as any).showNA
                             ? 'N/A'
                             : metric.isPercentage 
@@ -458,15 +458,15 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
             </div>
           </div>
 
-                  {/* Bottom Graph Layer - 25% */}
+                  {/* Bottom Graph Layer - 40% */}
                   {chartData && chartData.length > 0 && (
                     <div 
                       className="relative w-full overflow-hidden z-10"
                       style={{ 
-                        height: '25%',
+                        height: '40%',
                         background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 100%)',
-                        borderBottomLeftRadius: '0.75rem',
-                        borderBottomRightRadius: '0.75rem'
+                        borderBottomLeftRadius: '1rem',
+                        borderBottomRightRadius: '1rem'
                       }}
                     >
                       {/* Atmospheric Gradient Overlay */}
