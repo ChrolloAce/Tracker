@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Eye, Heart, MessageCircle, Share2, TrendingUp, Bookmark, Clock, Flame } from 'lucide-react';
+import { X, Eye, Heart, MessageCircle, Share2, TrendingUp, Bookmark, Clock, Flame, ExternalLink } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -330,7 +330,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
             </div>
             <div>
               <h2 className="text-base font-bold text-white line-clamp-2 max-w-xl">
-                {video.title || video.caption || '(No caption)'}
+                {cleanTitle}
               </h2>
               <p className="text-xs text-[#A1A1AA]">@{video.uploaderHandle}</p>
               <div className="flex items-center gap-2 mt-0.5 text-xs text-[#9B9B9B]">
@@ -398,6 +398,17 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                   </div>
                 </div>
               </div>
+
+              {/* View on Platform Button */}
+              <a
+                href={video.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all text-sm font-medium text-white"
+              >
+                <ExternalLink className="w-4 h-4" />
+                View on Platform
+              </a>
             </div>
           </div>
 
