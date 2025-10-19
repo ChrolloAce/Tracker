@@ -59,24 +59,28 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   const chartData = useMemo((): ChartDataPoint[] => {
     if (!video) return [];
     
-    // If no snapshots, create initial data point from current video stats
-    if (!video.snapshots || video.snapshots.length === 0) {
-      const totalEngagement = video.likes + video.comments + (video.shares || 0);
-      const engagementRate = video.views > 0 ? (totalEngagement / video.views) * 100 : 0;
+    // Helper to create a data point
+    const createDataPoint = (stats: any, timestamp: Date): ChartDataPoint => {
+      const totalEngagement = stats.likes + stats.comments + (stats.shares || 0);
+      const engagementRate = stats.views > 0 ? (totalEngagement / stats.views) * 100 : 0;
       
-      const dataPoint = {
-        date: new Date(video.timestamp || video.dateSubmitted).toLocaleDateString('en-US', { 
+      return {
+        date: timestamp.toLocaleDateString('en-US', { 
           month: 'short', 
           day: 'numeric'
         }),
-        views: video.views,
-        likes: video.likes,
-        comments: video.comments,
-        shares: video.shares || 0,
+        views: stats.views,
+        likes: stats.likes,
+        comments: stats.comments,
+        shares: stats.shares || 0,
         engagementRate,
-        timestamp: new Date(video.timestamp || video.dateSubmitted).getTime(),
+        timestamp: timestamp.getTime(),
       };
-      
+    };
+
+    // If no snapshots, create data point from current video stats only
+    if (!video.snapshots || video.snapshots.length === 0) {
+      const dataPoint = createDataPoint(video, new Date(video.timestamp || video.dateSubmitted));
       // Duplicate the single point to create a flat line
       return [dataPoint, { ...dataPoint }];
     }
@@ -86,32 +90,34 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       (a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
     );
 
-    // Create cumulative data points
-    const data = sortedSnapshots.map((snapshot) => {
-      const totalEngagement = snapshot.likes + snapshot.comments + (snapshot.shares || 0);
-      const engagementRate = snapshot.views > 0 ? (totalEngagement / snapshot.views) * 100 : 0;
-      
-        return {
-          date: new Date(snapshot.capturedAt).toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric'
-          }),
-          views: snapshot.views,
-          likes: snapshot.likes,
-          comments: snapshot.comments,
-          shares: snapshot.shares || 0,
-        engagementRate,
-        timestamp: new Date(snapshot.capturedAt).getTime(),
-      };
-    });
+    // Create data points from snapshots
+    const data = sortedSnapshots.map((snapshot) => 
+      createDataPoint(snapshot, new Date(snapshot.capturedAt))
+    );
     
-    // If only one snapshot, duplicate it to create a flat line
+    // Always append current video stats as the most recent data point
+    // This ensures KPI cards show the latest actual numbers, not just the last snapshot
+    const currentDataPoint = createDataPoint(video, new Date());
+    
+    // Only add current stats if they're different from the last snapshot (to avoid duplicates)
+    const lastSnapshot = data[data.length - 1];
+    const hasNewData = !lastSnapshot || 
+      lastSnapshot.views !== video.views ||
+      lastSnapshot.likes !== video.likes ||
+      lastSnapshot.comments !== video.comments ||
+      lastSnapshot.shares !== (video.shares || 0);
+    
+    if (hasNewData) {
+      data.push(currentDataPoint);
+    }
+    
+    // If only one data point, duplicate it to create a flat line
     if (data.length === 1) {
       return [data[0], { ...data[0] }];
     }
     
     return data;
-  }, [video?.id, video?.snapshots?.length]);
+  }, [video?.id, video?.views, video?.likes, video?.comments, video?.shares, video?.snapshots?.length]);
 
   if (!isOpen || !video) return null;
 
