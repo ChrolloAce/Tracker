@@ -288,10 +288,21 @@ async function refreshAccountVideos(
   let input: any;
 
   if (platform === 'instagram') {
-    actorId = 'apify/instagram-profile-scraper';
+    // Use NEW Instagram Reels Scraper with RESIDENTIAL proxies
+    actorId = 'scraper-engine~instagram-reels-scraper';
     input = {
-      username: [username],
-      resultsLimit: 50
+      urls: [`https://www.instagram.com/${username}/`],
+      sortOrder: "newest",
+      maxComments: 0,  // Don't fetch comments for refresh (faster)
+      maxReels: 50,
+      proxyConfiguration: {
+        useApifyProxy: true,
+        apifyProxyGroups: ['RESIDENTIAL'],  // Use RESIDENTIAL proxies to avoid Instagram 429 blocks
+        apifyProxyCountry: 'US'
+      },
+      maxRequestRetries: 5,
+      requestHandlerTimeoutSecs: 300,
+      maxConcurrency: 1  // Reduce concurrency to avoid rate limits
     };
   } else if (platform === 'tiktok') {
     // FIXED: Use correct actor ID (clockworks~tiktok-scraper, not tiktok-profile-scraper)
@@ -369,10 +380,20 @@ async function saveVideosToFirestore(
   const BATCH_SIZE = 500;
 
   for (const video of videos) {
-    // Extract video ID based on platform (this is the platform's video ID, not Firestore doc ID)
+    // Extract video ID and media object based on platform (this is the platform's video ID, not Firestore doc ID)
     let platformVideoId: string;
+    let media: any = video; // Default to the video object itself
+    
     if (platform === 'instagram') {
-      platformVideoId = video.shortCode || video.id;
+      // Parse new Instagram reels scraper format
+      media = video.reel_data?.media || video.media || video;
+      
+      // Only process video content (media_type: 2 = video)
+      if (media.media_type !== 2 && media.product_type !== 'clips') {
+        continue;
+      }
+      
+      platformVideoId = media.code || media.shortCode || media.id;
     } else if (platform === 'tiktok') {
       platformVideoId = video.id || video.videoId;
     } else if (platform === 'twitter') {
@@ -414,10 +435,11 @@ async function saveVideosToFirestore(
     let shares = 0;
 
     if (platform === 'instagram') {
-      views = video.videoViewCount || video.viewCount || 0;
-      likes = video.likesCount || 0;
-      comments = video.commentsCount || 0;
-      shares = 0;
+      // Use new Instagram reels scraper field names
+      views = media.play_count || media.ig_play_count || 0;
+      likes = media.like_count || 0;
+      comments = media.comment_count || 0;
+      shares = 0; // Instagram API doesn't provide share count
     } else if (platform === 'tiktok') {
       views = video.playCount || 0;
       likes = video.diggCount || 0;
