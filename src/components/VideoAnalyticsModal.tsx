@@ -289,16 +289,16 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
 
   return (
     <div 
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-3"
       onClick={onClose}
     >
       <div 
-        className="rounded-2xl shadow-2xl border border-white/10 w-full max-w-7xl max-h-[90vh] overflow-y-auto p-6"
+        className="rounded-xl shadow-2xl border border-white/10 w-full max-w-6xl max-h-[92vh] overflow-y-auto p-4"
         style={{ backgroundColor: '#121214' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between mb-6">
+        <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
             {/* Profile Picture */}
             <div className="relative flex-shrink-0">
@@ -306,26 +306,26 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                 <img 
                   src={video.uploaderProfilePicture} 
                   alt={video.uploader || video.uploaderHandle}
-                  className="w-12 h-12 rounded-full object-cover ring-2 ring-white/10"
+                  className="w-10 h-10 rounded-full object-cover ring-2 ring-white/10"
                 />
               ) : (
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-700/50 to-gray-800/50 flex items-center justify-center ring-2 ring-white/10">
-                  <span className="text-white/70 font-semibold text-sm">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700/50 to-gray-800/50 flex items-center justify-center ring-2 ring-white/10">
+                  <span className="text-white/70 font-semibold text-xs">
                     {(video.uploader || video.uploaderHandle || 'U').charAt(0).toUpperCase()}
                   </span>
                 </div>
               )}
               {/* Platform Badge */}
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-zinc-900 rounded-full p-0.5 ring-2 ring-zinc-900">
+              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-zinc-900 rounded-full p-0.5 ring-1 ring-zinc-900">
                 <PlatformIcon platform={video.platform} size="sm" />
               </div>
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white line-clamp-2 max-w-xl">
+              <h2 className="text-base font-bold text-white line-clamp-2 max-w-xl">
                 {video.title || video.caption || '(No caption)'}
               </h2>
-              <p className="text-sm text-[#A1A1AA]">@{video.uploaderHandle}</p>
-              <div className="flex items-center gap-3 mt-1 text-xs text-[#9B9B9B]">
+              <p className="text-xs text-[#A1A1AA]">@{video.uploaderHandle}</p>
+              <div className="flex items-center gap-2 mt-0.5 text-xs text-[#9B9B9B]">
                 <span>Posted: {new Date(video.timestamp || video.dateSubmitted).toLocaleDateString()}</span>
                 {video.lastRefreshed && (
                   <>
@@ -355,10 +355,10 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         </div>
 
         {/* Main Content - 2 Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
           {/* Left: Video Embed (FIXED) */}
           <div className="lg:sticky lg:top-0 lg:self-start">
-            <div className="relative rounded-2xl border border-white/5 shadow-lg p-4 overflow-hidden" style={{ backgroundColor: '#121214' }}>
+            <div className="relative rounded-xl border border-white/5 shadow-lg p-3 overflow-hidden" style={{ backgroundColor: '#121214' }}>
               {/* Depth Gradient Overlay */}
               <div 
                 className="absolute inset-0 pointer-events-none z-0"
@@ -380,22 +380,22 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
               </div>
 
               {/* Duration & Virality Info */}
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-white/5 p-3" style={{ backgroundColor: '#0a0a0b' }}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Clock className="w-4 h-4 text-gray-400" />
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <div className="rounded-lg border border-white/5 p-2" style={{ backgroundColor: '#0a0a0b' }}>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <Clock className="w-3.5 h-3.5 text-gray-400" />
                     <span className="text-xs text-gray-400">Duration</span>
                   </div>
-                  <div className="text-lg font-bold text-white">
+                  <div className="text-sm font-bold text-white">
                     {formatDuration(video.duration || 0)}
                   </div>
                 </div>
-                <div className="rounded-xl border border-white/5 p-3" style={{ backgroundColor: '#0a0a0b' }}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Flame className="w-4 h-4 text-orange-400" />
+                <div className="rounded-lg border border-white/5 p-2" style={{ backgroundColor: '#0a0a0b' }}>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <Flame className="w-3.5 h-3.5 text-orange-400" />
                     <span className="text-xs text-gray-400">Virality</span>
                   </div>
-                  <div className="text-lg font-bold text-white">
+                  <div className="text-sm font-bold text-white">
                     {viralityFactor.toFixed(2)}x
                   </div>
                 </div>
@@ -404,9 +404,9 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
           </div>
 
           {/* Right: SCROLLABLE Content */}
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* 6 Metric Charts in 2x3 Grid */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
             {metrics.map((metric) => {
               // Calculate if metric is increasing (comparing first to last data point)
               const isIncreasing = chartData.length > 1 
@@ -419,8 +419,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
               return (
                 <div 
                   key={metric.label}
-                  className="group relative rounded-2xl border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 overflow-hidden"
-                  style={{ minHeight: '180px', backgroundColor: '#121214' }}
+                  className="group relative rounded-xl border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 overflow-hidden"
+                  style={{ minHeight: '140px', backgroundColor: '#121214' }}
                 >
                   {/* Depth Gradient Overlay */}
                   <div 
@@ -431,22 +431,22 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                   />
                   
                   {/* Upper Solid Portion - 75% */}
-                  <div className="relative px-5 pt-5 pb-2 z-10" style={{ height: '75%' }}>
+                  <div className="relative px-3 pt-3 pb-1.5 z-10" style={{ height: '75%' }}>
                     {/* Icon (top-right) */}
-                    <div className="absolute top-4 right-4">
-                      <metric.icon className="w-5 h-5 text-gray-400 opacity-60" />
+                    <div className="absolute top-2.5 right-2.5">
+                      <metric.icon className="w-4 h-4 text-gray-400 opacity-60" />
                     </div>
 
                     {/* Metric Content */}
-                    <div className="flex flex-col h-full justify-start pt-1">
+                    <div className="flex flex-col h-full justify-start pt-0.5">
                       {/* Label */}
-                      <div className="text-xs font-medium text-zinc-400 tracking-wide mb-2">
+                      <div className="text-xs font-medium text-zinc-400 tracking-wide mb-1.5">
                         {metric.label}
                       </div>
 
                       {/* Value */}
-                      <div className="flex items-baseline gap-3 -mt-1">
-                        <span className="text-3xl lg:text-4xl font-bold tracking-tight text-white">
+                      <div className="flex items-baseline gap-2 -mt-0.5">
+                        <span className="text-2xl font-bold tracking-tight text-white">
                           {(metric as any).showNA
                             ? 'N/A'
                             : metric.isPercentage 
@@ -465,8 +465,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                       style={{ 
                         height: '25%',
                         background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 100%)',
-                        borderBottomLeftRadius: '1rem',
-                        borderBottomRightRadius: '1rem'
+                        borderBottomLeftRadius: '0.75rem',
+                        borderBottomRightRadius: '0.75rem'
                       }}
                     >
                       {/* Atmospheric Gradient Overlay */}
@@ -562,10 +562,10 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
             </div>
 
             {/* Video Title & Hashtags Section */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               {/* Video Title */}
-              <div className="rounded-2xl border border-white/5 shadow-lg p-5" style={{ backgroundColor: '#121214' }}>
-                <div className="flex items-start gap-3 mb-2">
+              <div className="rounded-xl border border-white/5 shadow-lg p-3" style={{ backgroundColor: '#121214' }}>
+                <div className="flex items-start gap-2 mb-1.5">
                   <div className="p-2 rounded-lg" style={{ backgroundColor: '#0a0a0b' }}>
                     <MessageCircle className="w-4 h-4 text-gray-400" />
                   </div>
@@ -582,8 +582,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
 
               {/* Hashtags */}
               {hashtags.length > 0 && (
-                <div className="rounded-2xl border border-white/5 shadow-lg p-5" style={{ backgroundColor: '#121214' }}>
-                  <div className="flex items-start gap-3">
+                <div className="rounded-xl border border-white/5 shadow-lg p-3" style={{ backgroundColor: '#121214' }}>
+                  <div className="flex items-start gap-2">
                     <div className="p-2 rounded-lg" style={{ backgroundColor: '#0a0a0b' }}>
                       <span className="text-sm text-gray-400">#</span>
                     </div>
