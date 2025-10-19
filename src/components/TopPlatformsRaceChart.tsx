@@ -1,18 +1,21 @@
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
-import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 
 interface TopPlatformsRaceChartProps {
   submissions: VideoSubmission[];
 }
 
-type SortColumn = 'platform' | 'videos' | 'views' | 'likes' | 'comments' | 'shares' | 'avgViews';
-type SortDirection = 'asc' | 'desc';
+type MetricType = 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'videos';
 
 const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({ submissions }) => {
-  const [sortColumn, setSortColumn] = useState<SortColumn>('views');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [topCount, setTopCount] = useState(5);
+  const [selectedMetric, setSelectedMetric] = useState<MetricType>('views');
+  
+  // Tooltip state
+  const [hoveredPlatform, setHoveredPlatform] = useState<{ platform: string; x: number; y: number } | null>(null);
 
   // Get platform data
   const platformData = useMemo(() => {
@@ -59,64 +62,44 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({ submissio
     return Array.from(platformMap.values());
   }, [submissions]);
 
-  // Sort platform data
-  const sortedPlatforms = useMemo(() => {
-    const sorted = [...platformData];
-    
-    sorted.sort((a, b) => {
-      let aValue: number | string;
-      let bValue: number | string;
+  // Calculate metric value for a platform
+  const getMetricValue = (platform: typeof platformData[0], metric: MetricType): number => {
+    switch (metric) {
+      case 'views':
+        return platform.totalViews;
+      case 'likes':
+        return platform.totalLikes;
+      case 'comments':
+        return platform.totalComments;
+      case 'shares':
+        return platform.totalShares;
+      case 'engagement':
+        const totalEngagement = platform.totalLikes + platform.totalComments + platform.totalShares;
+        return platform.totalViews > 0 ? (totalEngagement / platform.totalViews) * 100 : 0;
+      case 'videos':
+        return platform.videoCount;
+      default:
+        return 0;
+    }
+  };
 
-      switch (sortColumn) {
-        case 'platform':
-          aValue = a.platform;
-          bValue = b.platform;
-          break;
-        case 'videos':
-          aValue = a.videoCount;
-          bValue = b.videoCount;
-          break;
-        case 'views':
-          aValue = a.totalViews;
-          bValue = b.totalViews;
-          break;
-        case 'likes':
-          aValue = a.totalLikes;
-          bValue = b.totalLikes;
-          break;
-        case 'comments':
-          aValue = a.totalComments;
-          bValue = b.totalComments;
-          break;
-        case 'shares':
-          aValue = a.totalShares;
-          bValue = b.totalShares;
-          break;
-        case 'avgViews':
-          aValue = a.videoCount > 0 ? a.totalViews / a.videoCount : 0;
-          bValue = b.videoCount > 0 ? b.totalViews / b.videoCount : 0;
-          break;
-        default:
-          return 0;
-      }
+  // Sort and slice platforms
+  const topPlatforms = useMemo(() => {
+    return platformData
+      .sort((a, b) => getMetricValue(b, selectedMetric) - getMetricValue(a, selectedMetric))
+      .slice(0, topCount);
+  }, [platformData, selectedMetric, topCount]);
 
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortDirection === 'asc' 
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
-      }
-
-      return sortDirection === 'asc' 
-        ? (aValue as number) - (bValue as number)
-        : (bValue as number) - (aValue as number);
-    });
-
-    return sorted;
-  }, [platformData, sortColumn, sortDirection]);
+  const maxValue = topPlatforms.length > 0 ? getMetricValue(topPlatforms[0], selectedMetric) : 1;
 
   // Format number with proper units
-  const formatNumber = (num: number): string => {
-    if (num >= 1000000) {
+  const formatNumber = (num: number, metric: MetricType): string => {
+    if (metric === 'engagement') {
+      return `${num.toFixed(1)}%`;
+    }
+    if (num >= 1000000000) {
+      return `${(num / 1000000000).toFixed(1)}B`;
+    } else if (num >= 1000000) {
       return `${(num / 1000000).toFixed(1)}M`;
     } else if (num >= 1000) {
       return `${(num / 1000).toFixed(1)}K`;
@@ -140,160 +123,136 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({ submissio
     }
   };
 
-  // Handle column sort
-  const handleSort = (column: SortColumn) => {
-    if (sortColumn === column) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortColumn(column);
-      setSortDirection('desc');
-    }
-  };
-
-  // Render sort icon
-  const renderSortIcon = (column: SortColumn) => {
-    if (sortColumn !== column) {
-      return <ArrowUpDown className="w-4 h-4 text-gray-400" />;
-    }
-    return sortDirection === 'asc' 
-      ? <ArrowUp className="w-4 h-4 text-emerald-400" />
-      : <ArrowDown className="w-4 h-4 text-emerald-400" />;
-  };
-
   return (
-    <div className="bg-zinc-900 rounded-lg shadow-lg border border-white/10 overflow-hidden">
-      <div className="p-6 border-b border-white/10">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-white">Top Platforms</h2>
-            <p className="text-sm text-white/60 mt-1">Performance across all platforms</p>
+    <div className="bg-zinc-900 rounded-lg shadow-lg border border-white/10 p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-xl font-semibold text-white">Top Platforms</h2>
+          <p className="text-sm text-white/60 mt-1">Performance by platform</p>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          {/* Count Selector */}
+          <div className="relative">
+            <select
+              value={topCount}
+              onChange={(e) => setTopCount(Number(e.target.value))}
+              className="appearance-none pl-4 pr-10 py-2 bg-white/5 text-white rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer"
+            >
+              <option value={3}>3</option>
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
           </div>
-          <div className="text-sm text-white/60">
-            {platformData.length} platform{platformData.length !== 1 ? 's' : ''}
+
+          {/* Metric Selector */}
+          <div className="relative">
+            <select
+              value={selectedMetric}
+              onChange={(e) => setSelectedMetric(e.target.value as MetricType)}
+              className="appearance-none pl-4 pr-10 py-2 bg-white/5 text-white rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer"
+            >
+              <option value="views">Views</option>
+              <option value="likes">Likes</option>
+              <option value="comments">Comments</option>
+              <option value="shares">Shares</option>
+              <option value="engagement">Engagement %</option>
+              <option value="videos">Video Count</option>
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
           </div>
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-white/5">
-            <tr>
-              <th 
-                className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider cursor-pointer hover:bg-white/5 transition-colors"
-                onClick={() => handleSort('platform')}
+      {/* Platform Race Bars */}
+      <div className="space-y-3">
+        {topPlatforms.length === 0 ? (
+          <div className="text-center py-8 text-white/40">
+            No platform data available
+          </div>
+        ) : (
+          topPlatforms.map((platform) => {
+            const value = getMetricValue(platform, selectedMetric);
+            const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
+            
+            return (
+              <div
+                key={platform.platform}
+                className="group relative"
+                onMouseEnter={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setHoveredPlatform({
+                    platform: platform.platform,
+                    x: rect.left + rect.width / 2,
+                    y: rect.top - 10
+                  });
+                }}
+                onMouseLeave={() => setHoveredPlatform(null)}
               >
-                <div className="flex items-center gap-2">
-                  Platform
-                  {renderSortIcon('platform')}
-                </div>
-              </th>
-              <th 
-                className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider cursor-pointer hover:bg-white/5 transition-colors"
-                onClick={() => handleSort('videos')}
-              >
-                <div className="flex items-center justify-end gap-2">
-                  Videos
-                  {renderSortIcon('videos')}
-                </div>
-              </th>
-              <th 
-                className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider cursor-pointer hover:bg-white/5 transition-colors"
-                onClick={() => handleSort('views')}
-              >
-                <div className="flex items-center justify-end gap-2">
-                  Total Views
-                  {renderSortIcon('views')}
-                </div>
-              </th>
-              <th 
-                className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider cursor-pointer hover:bg-white/5 transition-colors"
-                onClick={() => handleSort('avgViews')}
-              >
-                <div className="flex items-center justify-end gap-2">
-                  Avg Views
-                  {renderSortIcon('avgViews')}
-                </div>
-              </th>
-              <th 
-                className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider cursor-pointer hover:bg-white/5 transition-colors"
-                onClick={() => handleSort('likes')}
-              >
-                <div className="flex items-center justify-end gap-2">
-                  Likes
-                  {renderSortIcon('likes')}
-                </div>
-              </th>
-              <th 
-                className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider cursor-pointer hover:bg-white/5 transition-colors"
-                onClick={() => handleSort('comments')}
-              >
-                <div className="flex items-center justify-end gap-2">
-                  Comments
-                  {renderSortIcon('comments')}
-                </div>
-              </th>
-              <th 
-                className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider cursor-pointer hover:bg-white/5 transition-colors"
-                onClick={() => handleSort('shares')}
-              >
-                <div className="flex items-center justify-end gap-2">
-                  Shares
-                  {renderSortIcon('shares')}
-                </div>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {sortedPlatforms.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-white/40">
-                  No platform data available
-                </td>
-              </tr>
-            ) : (
-              sortedPlatforms.map((platform) => {
-                const avgViews = platform.videoCount > 0 ? platform.totalViews / platform.videoCount : 0;
-                
-                return (
-                  <tr 
-                    key={platform.platform}
-                    className="hover:bg-white/5 transition-colors"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/5">
-                          <PlatformIcon platform={platform.platform} className="w-5 h-5" />
+                <div className="flex items-center gap-3">
+                  {/* Platform Icon */}
+                  <div className="relative flex-shrink-0">
+                    <div className="w-12 h-12 rounded-full overflow-hidden bg-white/5 border border-white/10 flex items-center justify-center">
+                      <PlatformIcon platform={platform.platform} className="w-7 h-7" />
+                    </div>
+                  </div>
+
+                  {/* Bar Container */}
+                  <div className="flex-1 min-w-0">
+                    <div className="relative h-12 bg-white/5 rounded-lg overflow-hidden border border-white/10 group-hover:border-white/20 transition-colors">
+                      {/* Animated Bar */}
+                      <div
+                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-500/80 to-emerald-400/80 transition-all duration-700 ease-out"
+                        style={{ width: `${percentage}%` }}
+                      />
+                      
+                      {/* Platform Name & Video Count */}
+                      <div className="absolute inset-0 flex items-center justify-between px-4 z-10">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-white">
+                            {getPlatformName(platform.platform)}
+                          </span>
+                          <span className="text-xs text-white/50">
+                            {platform.videoCount} video{platform.videoCount !== 1 ? 's' : ''}
+                          </span>
                         </div>
-                        <span className="text-sm font-medium text-white">
-                          {getPlatformName(platform.platform)}
-                        </span>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-white/80">
-                      {platform.videoCount.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-white">
-                      {formatNumber(platform.totalViews)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-white/80">
-                      {formatNumber(avgViews)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-white/80">
-                      {formatNumber(platform.totalLikes)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-white/80">
-                      {formatNumber(platform.totalComments)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-white/80">
-                      {formatNumber(platform.totalShares)}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                    </div>
+                  </div>
+
+                  {/* Value Display */}
+                  <div className="flex-shrink-0 w-24 text-right">
+                    <div className="text-lg font-bold text-white">
+                      {formatNumber(value, selectedMetric)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
+
+      {/* Tooltip */}
+      {hoveredPlatform && createPortal(
+        <div
+          className="fixed z-[9999] pointer-events-none"
+          style={{
+            left: hoveredPlatform.x,
+            top: hoveredPlatform.y,
+            transform: 'translate(-50%, -100%)',
+          }}
+        >
+          <div className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-xl text-xs whitespace-nowrap">
+            <div className="font-semibold">{getPlatformName(hoveredPlatform.platform)}</div>
+            <div className="text-gray-300 mt-1">
+              {platformData.find(p => p.platform === hoveredPlatform.platform)?.videoCount} videos tracked
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };
