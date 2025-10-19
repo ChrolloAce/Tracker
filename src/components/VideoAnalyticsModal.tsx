@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ExternalLink, Eye, Heart, MessageCircle, Share2, TrendingUp, Bookmark, Clock, Flame } from 'lucide-react';
+import { X, Eye, Heart, MessageCircle, Share2, TrendingUp, Bookmark, Clock, Flame } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -344,22 +344,12 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <a
-              href={video.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-all"
-            >
-              <ExternalLink className="w-5 h-5" />
-            </a>
-            <button
-              onClick={onClose}
-              className="p-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-all"
-            >
-              <X className="w-5 h-5" strokeWidth={1.5} />
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="p-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+          >
+            <X className="w-5 h-5" strokeWidth={1.5} />
+          </button>
         </div>
 
         {/* Main Content - 2 Column Layout */}
@@ -608,6 +598,88 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                           >
                             {tag}
                           </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Snapshots History */}
+              {video.snapshots && video.snapshots.length > 0 && (
+                <div className="rounded-xl border border-white/5 shadow-lg p-3" style={{ backgroundColor: '#121214' }}>
+                  <div className="flex items-start gap-2">
+                    <div className="p-2 rounded-lg" style={{ backgroundColor: '#0a0a0b' }}>
+                      <Bookmark className="w-4 h-4 text-gray-400" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                        Snapshots History ({video.snapshots.length} recordings)
+                      </h3>
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                        {video.snapshots
+                          .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())
+                          .map((snapshot, index) => (
+                          <div 
+                            key={snapshot.id || index}
+                            className="rounded-lg border border-white/5 p-3 hover:bg-white/[0.02] transition-colors"
+                            style={{ backgroundColor: '#0a0a0b' }}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs text-gray-400">
+                                {new Date(snapshot.capturedAt).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                              {snapshot.capturedBy && (
+                                <span className="text-xs text-gray-500 px-2 py-0.5 rounded bg-white/5">
+                                  {snapshot.capturedBy.replace('_', ' ')}
+                                </span>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-4 gap-3">
+                              <div>
+                                <div className="flex items-center gap-1 mb-0.5">
+                                  <Eye className="w-3 h-3 text-gray-400" />
+                                  <span className="text-xs text-gray-400">Views</span>
+                                </div>
+                                <p className="text-sm font-semibold text-white">
+                                  {formatNumber(snapshot.views || 0)}
+                                </p>
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-1 mb-0.5">
+                                  <Heart className="w-3 h-3 text-gray-400" />
+                                  <span className="text-xs text-gray-400">Likes</span>
+                                </div>
+                                <p className="text-sm font-semibold text-white">
+                                  {formatNumber(snapshot.likes || 0)}
+                                </p>
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-1 mb-0.5">
+                                  <MessageCircle className="w-3 h-3 text-gray-400" />
+                                  <span className="text-xs text-gray-400">Comments</span>
+                                </div>
+                                <p className="text-sm font-semibold text-white">
+                                  {formatNumber(snapshot.comments || 0)}
+                                </p>
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-1 mb-0.5">
+                                  <Share2 className="w-3 h-3 text-gray-400" />
+                                  <span className="text-xs text-gray-400">Shares</span>
+                                </div>
+                                <p className="text-sm font-semibold text-white">
+                                  {formatNumber(snapshot.shares || 0)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
                         ))}
                       </div>
                     </div>
