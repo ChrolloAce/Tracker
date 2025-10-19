@@ -1556,13 +1556,13 @@ const KPICard: React.FC<{
     return absNum.toString();
   };
 
-  // Determine colors based on trend (green for increase, red for decrease)
+  // All graphs are white regardless of trend
   const isIncreasing = data.isIncreasing !== undefined ? data.isIncreasing : true;
   const colors = {
     icon: 'bg-white/5',
     iconColor: 'text-white',
-    gradient: isIncreasing ? ['#22c55e', '#22c55e00'] : ['#ef4444', '#ef444400'], // green-500 : red-500
-    stroke: isIncreasing ? '#22c55e' : '#ef4444',
+    gradient: ['#ffffff', '#ffffff00'], // white gradient
+    stroke: '#ffffff', // white
     deltaBg: 'bg-white/10 text-white'
   };
 
