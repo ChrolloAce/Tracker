@@ -44,7 +44,7 @@ import { fixVideoPlatforms } from '../services/FixVideoPlatform';
 import { TrackedAccount } from '../types/firestore';
 import { TrackingRule, RuleCondition, RuleConditionType } from '../types/rules';
 
-export interface DateRange {
+interface DateRange {
   startDate: Date;
   endDate: Date;
 }
@@ -1160,35 +1160,112 @@ function DashboardPage() {
     }
   }, []);
 
-  // Helper function to render a single KPI card preview
-  const renderKPIPreview = useCallback((kpiId: string) => {
-    // Create a visibility map that shows only this one card
-    const singleCardVisibility: Record<string, boolean> = {};
-    Object.keys(kpiCardVisibility).forEach(key => {
-      singleCardVisibility[key] = key === kpiId;
-    });
+  // Compute KPI preview data for the editor
+  const kpiPreviewData = useMemo(() => {
+    // Helper to generate sparkline data
+    const generateMiniSparkline = (total: number, forceShow: boolean = false): Array<{ value: number }> => {
+      const points = 10;
+      if (total === 0) {
+        // If forceShow is true, create a flat line at 0 or small values to still show the graph
+        if (forceShow) {
+          return Array.from({ length: points }, () => ({
+            value: Math.random() * 2 + 1 // Small random values between 1-3 for visual interest
+          }));
+        }
+        return [];
+      }
+      return Array.from({ length: points }, (_, i) => ({
+        value: Math.round(total * (0.3 + (i / points) * 0.7)) // Show growth from 30% to 100%
+      }));
+    };
+
+    // Calculate basic metrics from filtered submissions
+    const totalViews = filteredSubmissions.reduce((sum, v) => sum + (v.views || 0), 0);
+    const totalLikes = filteredSubmissions.reduce((sum, v) => sum + (v.likes || 0), 0);
+    const totalComments = filteredSubmissions.reduce((sum, v) => sum + (v.comments || 0), 0);
+    const totalShares = filteredSubmissions.reduce((sum, v) => sum + (v.shares || 0), 0);
+    const totalVideos = filteredSubmissions.length;
+    const totalAccounts = new Set(filteredSubmissions.map(v => v.uploaderHandle)).size;
+    const totalEngagement = totalLikes + totalComments + totalShares;
+    const engagementRate = totalViews > 0 ? ((totalEngagement / totalViews) * 100) : 0;
+    const totalLinkClicks = linkClicks.length;
     
-    return (
-      <div style={{ pointerEvents: 'none' }}>
-        <KPICards 
-          submissions={filteredSubmissions}
-          allSubmissions={submissionsWithoutDateFilter}
-          linkClicks={linkClicks}
-          dateFilter={dateFilter}
-          customRange={customDateRange}
-          timePeriod="days"
-          granularity={granularity}
-          revenueMetrics={revenueMetrics}
-          revenueIntegrations={revenueIntegrations}
-          isEditMode={false}
-          cardOrder={[kpiId]} // Only show this card
-          cardVisibility={singleCardVisibility} // Only this card visible
-          onReorder={() => {}}
-          onToggleCard={() => {}}
-        />
-      </div>
-    );
-  }, [filteredSubmissions, submissionsWithoutDateFilter, linkClicks, dateFilter, customDateRange, granularity, revenueMetrics, revenueIntegrations, kpiCardVisibility]);
+    // Format numbers
+    const formatNum = (num: number): string => {
+      if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+      if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+      return num.toString();
+    };
+
+    return {
+      views: {
+        value: formatNum(totalViews),
+        sparklineData: totalViews > 0 ? generateMiniSparkline(totalViews) : generateMiniSparkline(0, true),
+        accent: 'emerald' as const,
+        delta: totalViews > 0 ? { value: 12.5, isPositive: true } : undefined
+      },
+      likes: {
+        value: formatNum(totalLikes),
+        sparklineData: totalLikes > 0 ? generateMiniSparkline(totalLikes) : generateMiniSparkline(0, true),
+        accent: 'pink' as const,
+        delta: totalLikes > 0 ? { value: 8.3, isPositive: true } : undefined
+      },
+      comments: {
+        value: formatNum(totalComments),
+        sparklineData: totalComments > 0 ? generateMiniSparkline(totalComments) : generateMiniSparkline(0, true),
+        accent: 'blue' as const,
+        delta: totalComments > 0 ? { value: 5.2, isPositive: false } : undefined // Example negative trend
+      },
+      shares: {
+        value: formatNum(totalShares),
+        sparklineData: totalShares > 0 ? generateMiniSparkline(totalShares) : generateMiniSparkline(0, true),
+        accent: 'violet' as const,
+        delta: totalShares > 0 ? { value: 10.2, isPositive: true } : undefined
+      },
+      videos: {
+        value: totalVideos.toString(),
+        sparklineData: totalVideos > 0 ? generateMiniSparkline(totalVideos) : generateMiniSparkline(0, true),
+        accent: 'teal' as const,
+        delta: totalVideos > 0 ? { value: 5.0, isPositive: true } : undefined
+      },
+      accounts: {
+        value: totalAccounts.toString(),
+        sparklineData: totalAccounts > 0 ? generateMiniSparkline(totalAccounts) : generateMiniSparkline(0, true),
+        accent: 'orange' as const,
+        delta: totalAccounts > 0 ? { value: 0, isPositive: true } : undefined
+      },
+      engagementRate: {
+        value: `${engagementRate.toFixed(1)}%`,
+        sparklineData: engagementRate > 0 ? generateMiniSparkline(engagementRate * 10) : generateMiniSparkline(0, true),
+        accent: 'emerald' as const,
+        delta: engagementRate > 0 ? { value: 3.4, isPositive: false } : undefined // Example negative trend
+      },
+      revenue: {
+        value: revenueMetrics ? `$${(revenueMetrics.mrr / 100).toFixed(0)}` : '$0',
+        sparklineData: revenueMetrics && revenueMetrics.mrr > 0 
+          ? generateMiniSparkline(revenueMetrics.mrr) 
+          : generateMiniSparkline(0, true), // Force show graph even if 0
+        accent: 'emerald' as const,
+        delta: revenueMetrics && revenueMetrics.mrr > 0 ? { value: 18.5, isPositive: true } : undefined
+      },
+      downloads: {
+        value: revenueMetrics?.activeSubscriptions?.toString() || '0',
+        sparklineData: revenueMetrics && revenueMetrics.activeSubscriptions && revenueMetrics.activeSubscriptions > 0
+          ? generateMiniSparkline(revenueMetrics.activeSubscriptions)
+          : generateMiniSparkline(0, true), // Force show graph even if 0
+        accent: 'blue' as const,
+        delta: revenueMetrics && revenueMetrics.activeSubscriptions && revenueMetrics.activeSubscriptions > 0 
+          ? { value: 22.3, isPositive: true } 
+          : undefined
+      },
+      'link-clicks': {
+        value: totalLinkClicks.toString(),
+        sparklineData: totalLinkClicks > 0 ? generateMiniSparkline(totalLinkClicks) : generateMiniSparkline(0, true),
+        accent: 'violet' as const,
+        delta: totalLinkClicks > 0 ? { value: 14.8, isPositive: true } : undefined
+      }
+    };
+  }, [filteredSubmissions, linkClicks, revenueMetrics]);
 
   // Define KPI card and section options for the editor
   const kpiCardOptions = useMemo(() => {
@@ -1844,7 +1921,7 @@ function DashboardPage() {
         onToggleCard={handleToggleCard}
         onReorder={handleReorderCard}
         sectionTitles={dashboardSectionTitles}
-        renderKPIPreview={renderKPIPreview}
+        kpiPreviewData={kpiPreviewData}
         onRenameSection={(sectionId, newTitle) => {
           const updated = { ...dashboardSectionTitles, [sectionId]: newTitle };
           setDashboardSectionTitles(updated);
