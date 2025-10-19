@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { VideoSubmission } from '../types';
 import { format, startOfWeek, addDays, startOfYear, endOfYear, eachDayOfInterval, isSameDay, startOfDay, subYears } from 'date-fns';
-import { X } from 'lucide-react';
+import { X, Play } from 'lucide-react';
 import { PlatformIcon } from './ui/PlatformIcon';
 
 interface PostingActivityHeatmapProps {
@@ -252,24 +253,100 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
         <div>More Posts</div>
       </div>
 
-      {/* Simple Tooltip (KPI style) */}
-      {hoveredDay && hoveredDay.count > 0 && (
-        <div
-          className="fixed z-[9999] pointer-events-none"
-          style={{
+      {/* KPI-Style Tooltip with Videos */}
+      {hoveredDay && hoveredDay.count > 0 && createPortal(
+        <div 
+          className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10" 
+          style={{ 
+            position: 'fixed',
             left: `${tooltipPosition.x}px`,
-            top: `${tooltipPosition.y}px`,
-            transform: 'translate(-50%, -100%)',
+            top: `${tooltipPosition.y + 20}px`,
+            transform: 'translateX(-50%)',
+            zIndex: 999999999,
+            width: '400px',
+            maxHeight: '500px',
+            pointerEvents: 'none'
           }}
         >
-          <div className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-xl text-xs whitespace-nowrap">
-            <div className="font-semibold">{format(hoveredDay.date, 'MMM d, yyyy')}</div>
-            <div className="text-emerald-400 mt-1">
-              {hoveredDay.count} post{hoveredDay.count !== 1 ? 's' : ''}
-            </div>
-            <div className="text-gray-400 text-[10px] mt-1">Click to view videos</div>
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 pt-4 pb-3">
+            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+              {format(hoveredDay.date, 'EEEE, MMMM d, yyyy')}
+            </p>
+            <p className="text-2xl font-bold text-white">
+              {hoveredDay.count}
+            </p>
           </div>
-        </div>
+          
+          {/* Divider */}
+          <div className="border-t border-white/10 mx-5"></div>
+          
+          {/* Videos List */}
+          <div className="px-5 py-3 max-h-[400px] overflow-y-auto">
+            {hoveredDay.videos
+              .sort((a, b) => (b.views || 0) - (a.views || 0)) // Sort by views (top performing first)
+              .slice(0, 5)
+              .map((video, idx) => (
+              <div 
+                key={idx}
+                className="flex items-center gap-3 py-2.5 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+              >
+                {/* Video Thumbnail */}
+                <div className="flex-shrink-0 w-16 h-12 relative rounded-md overflow-hidden bg-gray-800">
+                  {video.thumbnail ? (
+                    <>
+                      <img 
+                        src={video.thumbnail} 
+                        alt={video.title || ''} 
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                      {/* Play Icon Overlay */}
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                        <Play className="w-5 h-5 text-white fill-white opacity-80" />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Play className="w-6 h-6 text-gray-600" />
+                    </div>
+                  )}
+                  {/* Platform Icon Badge */}
+                  <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-[#1a1a1a] border-2 border-[#1a1a1a] flex items-center justify-center">
+                    <div className="w-3.5 h-3.5">
+                      <PlatformIcon platform={video.platform} className="w-full h-full" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Metadata */}
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-white truncate">
+                    {video.title || video.caption || video.description || 'Untitled'}
+                  </div>
+                  <div className="text-xs text-gray-400 flex items-center gap-2 mt-0.5">
+                    <span>{video.uploaderHandle}</span>
+                    <span>•</span>
+                    <span>{(video.views || 0).toLocaleString()} views</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {hoveredDay.videos.length > 5 && (
+              <div className="text-xs text-gray-400 text-center mt-2">
+                +{hoveredDay.videos.length - 5} more video{hoveredDay.videos.length - 5 !== 1 ? 's' : ''}
+              </div>
+            )}
+          </div>
+          
+          {/* Footer hint */}
+          <div className="border-t border-white/10 px-5 py-2 text-[10px] text-gray-500 text-center">
+            Click to view all videos
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal for selected day videos */}
