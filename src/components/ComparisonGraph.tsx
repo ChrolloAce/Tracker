@@ -94,7 +94,7 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
       });
       
       // Format date label based on granularity
-      const dateLabel = DataAggregationService.formatIntervalLabel(interval, intervalType);
+      const dateLabel = DataAggregationService.formatIntervalLabel(interval.startDate, intervalType);
       
       return {
         date: dateLabel,
