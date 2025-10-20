@@ -267,6 +267,30 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     };
   }, [video?.views, video?.likes, video?.comments, video?.shares]);
 
+  // Calculate growth during the selected period
+  const metricGrowth = useMemo(() => {
+    if (chartData.length < 2) {
+      return {
+        views: 0,
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        engagementRate: 0,
+      };
+    }
+    
+    const firstPoint = chartData[0];
+    const lastPoint = chartData[chartData.length - 1];
+    
+    return {
+      views: lastPoint.views - firstPoint.views,
+      likes: lastPoint.likes - firstPoint.likes,
+      comments: lastPoint.comments - firstPoint.comments,
+      shares: lastPoint.shares - firstPoint.shares,
+      engagementRate: lastPoint.engagementRate - firstPoint.engagementRate,
+    };
+  }, [chartData]);
+
   if (!isOpen || !video) return null;
 
   const formatNumber = (num: number): string => {
@@ -335,6 +359,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       icon: Eye,
       color: '#B47CFF',
       value: cumulativeTotals.views,
+      growth: metricGrowth.views,
     },
     {
       key: 'likes' as const,
@@ -342,6 +367,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       icon: Heart,
       color: '#FF6B9D',
       value: cumulativeTotals.likes,
+      growth: metricGrowth.likes,
     },
     {
       key: 'comments' as const,
@@ -349,6 +375,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       icon: MessageCircle,
       color: '#4ECDC4',
       value: cumulativeTotals.comments,
+      growth: metricGrowth.comments,
     },
     {
       key: 'shares' as const,
@@ -356,6 +383,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       icon: Share2,
       color: '#FFE66D',
       value: cumulativeTotals.shares,
+      growth: metricGrowth.shares,
     },
     {
       key: 'engagementRate' as const,
@@ -363,6 +391,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       icon: TrendingUp,
       color: '#00D9FF',
       value: cumulativeTotals.engagementRate,
+      growth: metricGrowth.engagementRate,
       isPercentage: true,
     },
     {
@@ -371,6 +400,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       icon: Bookmark,
       color: '#FF8A5B',
       value: 0, // Bookmarks data not available yet
+      growth: 0,
       showNA: true,
     },
   ];
@@ -547,7 +577,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                       </div>
 
                       {/* Value */}
-                      <div className="flex items-baseline gap-3 -mt-1">
+                      <div className="flex flex-col gap-1 -mt-1">
                         <span className="text-3xl lg:text-4xl font-bold tracking-tight text-white">
                           {(metric as any).showNA
                             ? 'N/A'
@@ -556,6 +586,33 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                               : formatNumber(metric.value)
                           }
                         </span>
+                        
+                        {/* Growth Indicator */}
+                        {!(metric as any).showNA && (metric as any).growth !== undefined && (metric as any).growth !== 0 && (
+                          <span className={`text-xs font-semibold ${(metric as any).growth > 0 ? 'text-emerald-400' : 'text-red-400'} flex items-center gap-1`}>
+                            {(metric as any).growth > 0 ? (
+                              <>
+                                <TrendingUp className="w-3 h-3" />
+                                <span>
+                                  +{metric.isPercentage 
+                                    ? `${Math.abs((metric as any).growth).toFixed(1)}%` 
+                                    : formatNumber(Math.abs((metric as any).growth))
+                                  } gained
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <TrendingDown className="w-3 h-3" />
+                                <span>
+                                  -{metric.isPercentage 
+                                    ? `${Math.abs((metric as any).growth).toFixed(1)}%` 
+                                    : formatNumber(Math.abs((metric as any).growth))
+                                  } lost
+                                </span>
+                              </>
+                            )}
+                          </span>
+                        )}
               </div>
             </div>
           </div>
