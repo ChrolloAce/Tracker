@@ -693,6 +693,8 @@ function DashboardPage() {
         setIsModalOpen(true);
       } else if (activeTab === 'accounts') {
         accountsPageRef.current?.openAddModal();
+      } else if (activeTab === 'videos') {
+        setIsModalOpen(true);
       } else if (activeTab === 'analytics') {
         trackedLinksPageRef.current?.openCreateModal();
       }
@@ -1460,6 +1462,7 @@ function DashboardPage() {
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white whitespace-nowrap">
                 {activeTab === 'dashboard' && (isEditingLayout ? 'EDIT MODE' : 'Dashboard')}
                 {activeTab === 'accounts' && 'Tracked Accounts'}
+                {activeTab === 'videos' && 'Videos'}
                 {activeTab === 'subscription' && 'Subscription Plans'}
                 {activeTab === 'analytics' && 'Tracked Links'}
                 {activeTab === 'creators' && 'Creators'}
@@ -1470,6 +1473,7 @@ function DashboardPage() {
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
                   {activeTab === 'dashboard' && isEditingLayout && 'Drag sections around to make your unique dashboard'}
                   {activeTab === 'accounts' && 'Monitor entire Instagram and TikTok accounts'}
+                  {activeTab === 'videos' && 'View and manage all tracked videos'}
                   {activeTab === 'subscription' && 'Choose the perfect plan to scale your tracking'}
                   {activeTab === 'creators' && 'Manage and discover content creators'}
                   {activeTab === 'cron' && 'Manage automated video refreshes'}
@@ -1950,6 +1954,17 @@ function DashboardPage() {
             />
           )}
 
+          {/* Videos Tab */}
+          {activeTab === 'videos' && (
+            <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+              <VideoSubmissionsTable 
+                submissions={filteredSubmissions}
+                onVideoClick={handleVideoClick}
+                headerTitle="All Videos"
+              />
+            </div>
+          )}
+
           {/* Subscription Tab */}
           {activeTab === 'subscription' && <SubscriptionPage />}
 
@@ -1976,7 +1991,7 @@ function DashboardPage() {
           )}
 
           {/* Other Tabs - Placeholder */}
-          {!['dashboard', 'accounts', 'subscription', 'settings', 'analytics', 'creators', 'cron', 'team', 'invitations'].includes(activeTab) && (
+          {!['dashboard', 'accounts', 'videos', 'subscription', 'settings', 'analytics', 'creators', 'cron', 'team', 'invitations'].includes(activeTab) && (
             <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">🚧</span>

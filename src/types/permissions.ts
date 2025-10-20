@@ -18,6 +18,7 @@ export interface AnalyticsPermissions {
 export interface TabsPermissions {
   dashboard: boolean;
   trackedAccounts: boolean;
+  videos: boolean;
   trackedLinks: boolean;
   rules: boolean;
   contracts: boolean;
@@ -101,6 +102,7 @@ export const DEFAULT_PERMISSIONS: Record<'owner' | 'admin' | 'member' | 'creator
     tabs: {
       dashboard: true,
       trackedAccounts: true,
+      videos: true,
       trackedLinks: true,
       rules: true,
       contracts: true,
@@ -160,6 +162,7 @@ export const DEFAULT_PERMISSIONS: Record<'owner' | 'admin' | 'member' | 'creator
     tabs: {
       dashboard: true,
       trackedAccounts: true,
+      videos: true,
       trackedLinks: true,
       rules: true,
       contracts: true,
@@ -219,6 +222,7 @@ export const DEFAULT_PERMISSIONS: Record<'owner' | 'admin' | 'member' | 'creator
     tabs: {
       dashboard: true,
       trackedAccounts: true,
+      videos: true,
       trackedLinks: true,
       rules: true,
       contracts: false, // Members don't see contracts by default
@@ -278,6 +282,7 @@ export const DEFAULT_PERMISSIONS: Record<'owner' | 'admin' | 'member' | 'creator
     tabs: {
       dashboard: false, // Creators have their own specific views
       trackedAccounts: false,
+      videos: false,
       trackedLinks: false,
       rules: false,
       contracts: false,
@@ -354,6 +359,7 @@ export const PERMISSION_PRESETS: PermissionPreset[] = [
       tabs: {
         dashboard: true,
         trackedAccounts: true,
+        videos: true,
         trackedLinks: false,
         rules: false,
         contracts: false,
@@ -418,6 +424,7 @@ export const PERMISSION_PRESETS: PermissionPreset[] = [
       tabs: {
         dashboard: true,
         trackedAccounts: true,
+        videos: true,
         trackedLinks: true,
         rules: true,
         contracts: true,
@@ -482,6 +489,7 @@ export const PERMISSION_PRESETS: PermissionPreset[] = [
       tabs: {
         dashboard: true,
         trackedAccounts: true,
+        videos: true,
         trackedLinks: true,
         rules: true,
         contracts: true,
