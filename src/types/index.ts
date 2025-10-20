@@ -19,6 +19,7 @@ export interface VideoSubmission {
   uploader: string;
   uploaderHandle: string;
   uploaderProfilePicture?: string; // Account profile picture
+  followerCount?: number; // Creator's follower count
   status: 'pending' | 'approved' | 'rejected';
   views: number; // Current/latest metrics
   likes: number;

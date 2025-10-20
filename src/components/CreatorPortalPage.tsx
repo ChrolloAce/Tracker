@@ -129,6 +129,7 @@ const CreatorPortalPage: React.FC = () => {
         uploader: account?.displayName || account?.username || '',
         uploaderHandle: account?.username || '',
         uploaderProfilePicture: account?.profilePicture,
+        followerCount: account?.followerCount,
         status: video.status === 'archived' ? 'rejected' : 'approved',
         views: video.views || 0,
         likes: video.likes || 0,

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Eye, Heart, MessageCircle, Share2, TrendingUp, Bookmark, Clock, Flame, ExternalLink } from 'lucide-react';
+import { X, Eye, Heart, MessageCircle, Share2, TrendingUp, TrendingDown, Minus, Bookmark, Clock, Flame, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -9,6 +9,7 @@ interface VideoAnalyticsModalProps {
   video: VideoSubmission | null;
   isOpen: boolean;
   onClose: () => void;
+  totalCreatorVideos?: number; // Total number of videos from this creator
 }
 
 interface ChartDataPoint {
@@ -21,7 +22,7 @@ interface ChartDataPoint {
   timestamp: number;
 }
 
-const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose }) => {
+const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose, totalCreatorVideos }) => {
   // Tooltip state for smooth custom tooltips
   const [tooltipData, setTooltipData] = useState<{ 
     x: number; 
@@ -33,6 +34,16 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     lineX: number;
     chartRect: DOMRect;
   } | null>(null);
+
+  // Pagination state for snapshots
+  const [snapshotsPage, setSnapshotsPage] = useState(1);
+  const snapshotsPerPage = 5;
+  
+  // Date filter state
+  type DateFilterType = 'last7days' | 'last14days' | 'last30days' | 'last90days' | 'all';
+  type TimeGranularity = 'daily' | 'weekly' | 'monthly';
+  const [dateFilter, setDateFilter] = useState<DateFilterType>('all');
+  const [timeGranularity, setTimeGranularity] = useState<TimeGranularity>('daily');
 
   // Extract title without hashtags and separate hashtags
   const { cleanTitle, hashtags } = useMemo(() => {
@@ -59,6 +70,49 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     const totalEngagement = video.likes + video.comments + (video.shares || 0);
     return (totalEngagement / video.views) * 100;
   }, [video?.views, video?.likes, video?.comments, video?.shares]);
+
+  // Calculate performance score and ranking
+  const performanceScore = useMemo(() => {
+    // Default to 100 if totalCreatorVideos not provided
+    const maxVideos = totalCreatorVideos || 100;
+    
+    if (!video) return { score: 0, rank: 0, total: maxVideos };
+    
+    // Calculate normalized scores (0-100) for each metric
+    const engagementRate = video.views > 0 
+      ? ((video.likes + video.comments + (video.shares || 0)) / video.views) * 100 
+      : 0;
+    
+    // Normalize views (assuming 1M views = 100 points)
+    const viewScore = Math.min((video.views / 1000000) * 100, 100);
+    
+    // Normalize likes (assuming 50K likes = 100 points)
+    const likeScore = Math.min((video.likes / 50000) * 100, 100);
+    
+    // Engagement rate score (cap at 20% engagement = 100 points)
+    const engagementScore = Math.min((engagementRate / 20) * 100, 100);
+    
+    // Virality score (cap at 10x = 100 points)
+    const viralityScore = Math.min((viralityFactor / 10) * 100, 100);
+    
+    // Weighted average score
+    const totalScore = (
+      viewScore * 0.30 +      // 30% weight on views
+      likeScore * 0.25 +      // 25% weight on likes
+      engagementScore * 0.30 + // 30% weight on engagement rate
+      viralityScore * 0.15    // 15% weight on virality
+    );
+    
+    // Calculate rank based on score (higher score = lower rank number)
+    // Map score (0-100) to rank (1-maxVideos), where 100 score = rank 1
+    const rank = Math.max(1, Math.min(maxVideos, Math.round((101 - totalScore) * (maxVideos / 100))));
+    
+    return {
+      score: Math.round(totalScore),
+      rank,
+      total: maxVideos
+    };
+  }, [video?.views, video?.likes, video?.comments, video?.shares, viralityFactor, totalCreatorVideos]);
 
   // Format duration from seconds to MM:SS
   const formatDuration = (seconds: number): string => {
@@ -102,10 +156,36 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     const sortedSnapshots = [...video.snapshots].sort(
       (a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
     );
+    
+    // Apply date filter
+    const now = new Date();
+    const filterDate = new Date();
+    switch (dateFilter) {
+      case 'last7days':
+        filterDate.setDate(now.getDate() - 7);
+        break;
+      case 'last14days':
+        filterDate.setDate(now.getDate() - 14);
+        break;
+      case 'last30days':
+        filterDate.setDate(now.getDate() - 30);
+        break;
+      case 'last90days':
+        filterDate.setDate(now.getDate() - 90);
+        break;
+      case 'all':
+      default:
+        filterDate.setTime(0); // Include all
+        break;
+    }
+    
+    const filteredSnapshots = sortedSnapshots.filter(snapshot => 
+      new Date(snapshot.capturedAt).getTime() >= filterDate.getTime()
+    );
 
     // Append current video stats if different from last snapshot
-    const allSnapshots = [...sortedSnapshots];
-    const lastSnapshotData = sortedSnapshots[sortedSnapshots.length - 1];
+    const allSnapshots = [...filteredSnapshots];
+    const lastSnapshotData = filteredSnapshots[filteredSnapshots.length - 1];
     const hasNewData = !lastSnapshotData || 
       lastSnapshotData.views !== video.views ||
       lastSnapshotData.likes !== video.likes ||
@@ -167,7 +247,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     }
     
     return data;
-  }, [video?.id, video?.views, video?.likes, video?.comments, video?.shares, video?.snapshots?.length]);
+  }, [video?.id, video?.views, video?.likes, video?.comments, video?.shares, video?.snapshots?.length, dateFilter]);
 
   // Calculate cumulative totals for KPI display (not deltas)
   const cumulativeTotals = useMemo(() => {
@@ -301,52 +381,48 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       onClick={onClose}
     >
       <div 
-        className="rounded-xl shadow-2xl border border-white/10 w-full max-w-6xl max-h-[92vh] overflow-y-auto p-4"
+        className="rounded-xl shadow-2xl border border-white/10 w-full max-w-6xl max-h-[92vh] overflow-y-auto overflow-x-hidden p-4"
         style={{ backgroundColor: '#121214' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
-            {/* Profile Picture */}
-            <div className="relative flex-shrink-0">
-              {video.uploaderProfilePicture ? (
-                <img 
-                  src={video.uploaderProfilePicture} 
-                  alt={video.uploader || video.uploaderHandle}
-                  className="w-10 h-10 rounded-full object-cover ring-2 ring-white/10"
-                />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700/50 to-gray-800/50 flex items-center justify-center ring-2 ring-white/10">
-                  <span className="text-white/70 font-semibold text-xs">
-                    {(video.uploader || video.uploaderHandle || 'U').charAt(0).toUpperCase()}
-                  </span>
-                </div>
-              )}
-              {/* Platform Badge */}
-              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-zinc-900 rounded-full p-0.5 ring-1 ring-zinc-900">
-                <PlatformIcon platform={video.platform} size="sm" />
-              </div>
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-white line-clamp-2 max-w-xl">
-                {cleanTitle}
-              </h2>
-              <p className="text-xs text-[#A1A1AA]">@{video.uploaderHandle}</p>
-            </div>
-          </div>
+        <div className="flex items-center justify-end gap-3 mb-4">
+          {/* Date Filter */}
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value as DateFilterType)}
+            className="px-3 py-1.5 text-sm bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-white/20 transition-colors"
+          >
+            <option value="all">All Time</option>
+            <option value="last7days">Last 7 Days</option>
+            <option value="last14days">Last 14 Days</option>
+            <option value="last30days">Last 30 Days</option>
+            <option value="last90days">Last 90 Days</option>
+          </select>
+          
+          {/* Time Granularity */}
+          <select
+            value={timeGranularity}
+            onChange={(e) => setTimeGranularity(e.target.value as TimeGranularity)}
+            className="px-3 py-1.5 text-sm bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-white/20 transition-colors"
+          >
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+          
           <button
             onClick={onClose}
-            className="p-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+            className="p-2 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-all"
           >
             <X className="w-5 h-5" strokeWidth={1.5} />
           </button>
         </div>
 
         {/* Main Content - 2 Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
-          {/* Left: Video Embed (FIXED) */}
-          <div className="lg:sticky lg:top-0 lg:self-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 overflow-hidden">
+          {/* Left: Video Embed (Scrollable) */}
+          <div className="overflow-hidden">
             <div className="relative rounded-xl border border-white/5 shadow-lg p-3 overflow-hidden" style={{ backgroundColor: '#121214' }}>
               {/* Depth Gradient Overlay */}
               <div 
@@ -430,9 +506,9 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
           </div>
 
           {/* Right: SCROLLABLE Content */}
-          <div className="space-y-4">
+          <div className="space-y-4 min-w-0 overflow-hidden">
             {/* 6 Metric Charts in 3-Column Grid */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-4 min-w-0">
             {metrics.map((metric) => {
               // Calculate if metric is increasing (comparing first to last data point)
               const isIncreasing = chartData.length > 1 
@@ -587,159 +663,305 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
             })}
             </div>
 
-            {/* Video Title & Hashtags Section */}
-            <div className="space-y-3">
-              {/* Video Title */}
-              <div className="rounded-xl border border-white/5 shadow-lg p-3" style={{ backgroundColor: '#121214' }}>
-                <div className="flex items-start gap-2 mb-1.5">
-                  <div className="p-2 rounded-lg" style={{ backgroundColor: '#0a0a0b' }}>
-                    <MessageCircle className="w-4 h-4 text-gray-400" />
+            {/* Creator Info & Content Section */}
+            <div className="space-y-3 min-w-0">
+              {/* Creator Details & Performance Score Grid */}
+              <div className="grid grid-cols-2 gap-3 min-w-0">
+                {/* Creator Details */}
+                <div className="rounded-xl border border-white/5 shadow-lg p-3 min-w-0 overflow-hidden" style={{ backgroundColor: '#121214' }}>
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                    Creator Details
+                  </h3>
+                  
+                  <div className="flex items-center gap-3">
+                    {/* Profile Picture */}
+                    <div className="relative flex-shrink-0">
+                      {video.uploaderProfilePicture ? (
+                        <img 
+                          src={video.uploaderProfilePicture} 
+                          alt={video.uploader || video.uploaderHandle}
+                          className="w-12 h-12 rounded-full object-cover ring-2 ring-white/10"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-700/50 to-gray-800/50 flex items-center justify-center ring-2 ring-white/10">
+                          <span className="text-white/70 font-semibold text-sm">
+                            {(video.uploader || video.uploaderHandle || 'U').charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                      {/* Platform Badge */}
+                      <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-zinc-900 rounded-full p-0.5 ring-1 ring-zinc-900">
+                        <PlatformIcon platform={video.platform} size="sm" />
+                      </div>
+                    </div>
+                    
+                    {/* Username and Followers */}
+                    <div className="flex-1">
+                      <p className="text-base font-bold text-white mb-1">
+                        @{video.uploaderHandle}
+                      </p>
+                      <p className="text-sm text-gray-400">
+                        {video.followerCount ? formatNumber(video.followerCount) : 'N/A'} followers
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                      Video Caption
-                    </h3>
-                    <p className="text-base text-white leading-relaxed">
-                      {cleanTitle}
-                    </p>
+                </div>
+
+                {/* Video Performance Score */}
+                <div className="rounded-xl border border-white/5 shadow-lg p-3 min-w-0 overflow-hidden" style={{ backgroundColor: '#121214' }}>
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                    Performance Rank
+                  </h3>
+                  
+                  <div className="flex items-center gap-3">
+                    {/* Rank Display - Compact Layout */}
+                    <div className="flex-1">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-2xl font-bold text-white">
+                          #{performanceScore.rank}
+                        </span>
+                        <span className="text-sm text-gray-400">
+                          out of {performanceScore.total}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Hashtags */}
-              {hashtags.length > 0 && (
-                <div className="rounded-xl border border-white/5 shadow-lg p-3" style={{ backgroundColor: '#121214' }}>
-                  <div className="flex items-start gap-2">
-                    <div className="p-2 rounded-lg" style={{ backgroundColor: '#0a0a0b' }}>
-                      <span className="text-sm text-gray-400">#</span>
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                        Hashtags
-                      </h3>
-                      <div className="flex flex-wrap gap-2">
-                        {hashtags.map((tag, index) => (
-                          <span
-                            key={index}
-                            className="px-3 py-1.5 rounded-lg text-sm font-medium text-white/80 border border-white/10 hover:border-white/20 transition-colors"
-                            style={{ backgroundColor: '#0a0a0b' }}
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+              {/* Caption & Hashtags Grid */}
+              <div className="grid grid-cols-2 gap-3 min-w-0">
+                {/* Video Caption */}
+                <div className="rounded-xl border border-white/5 shadow-lg p-3 min-w-0 overflow-hidden" style={{ backgroundColor: '#121214' }}>
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                    Video Caption
+                  </h3>
+                  <p className="text-base text-white leading-relaxed">
+                    {cleanTitle}
+                  </p>
                 </div>
-              )}
 
-              {/* Snapshots History */}
-              {video.snapshots && video.snapshots.length > 0 && (
-                <div className="relative rounded-2xl border border-white/5 shadow-lg overflow-hidden" style={{ backgroundColor: '#121214' }}>
-                  {/* Depth Gradient Overlay */}
-                  <div 
-                    className="absolute inset-0 pointer-events-none z-0"
-                    style={{
-                      background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
-                    }}
-                  />
-                  
-                  {/* Header */}
-                  <div className="relative px-6 py-4 border-b border-white/5 z-10" style={{ backgroundColor: 'rgba(18, 18, 20, 0.6)' }}>
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-white/5">
-                        <Bookmark className="w-4 h-4 text-gray-400" />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-semibold text-white">
-                          Snapshots History
-                        </h3>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {video.snapshots.length} {video.snapshots.length === 1 ? 'recording' : 'recordings'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Scrollable Snapshots List */}
-                  <div className="relative max-h-[400px] overflow-y-auto z-10">
-                    <div className="divide-y divide-white/5">
-                      {video.snapshots
-                        .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())
-                        .map((snapshot, index) => (
-                        <div 
-                          key={snapshot.id || index}
-                          className="relative px-6 py-4 hover:bg-white/[0.03] transition-colors"
-                          style={{ backgroundColor: index % 2 === 0 ? '#121214' : 'rgba(18, 18, 20, 0.5)' }}
+                {/* Hashtags */}
+                <div className="rounded-xl border border-white/5 shadow-lg p-3 min-w-0 overflow-hidden" style={{ backgroundColor: '#121214' }}>
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                    Hashtags
+                  </h3>
+                  {hashtags.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {hashtags.map((tag, index) => (
+                        <span
+                          key={index}
+                          className="px-3 py-1.5 rounded-lg text-sm font-medium text-white/80 border border-white/10 hover:border-white/20 transition-colors"
+                          style={{ backgroundColor: '#0a0a0b' }}
                         >
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="text-sm font-medium text-gray-300">
-                              {new Date(snapshot.capturedAt).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
-                            {snapshot.capturedBy && (
-                              <span className="text-xs text-gray-400 px-2.5 py-1 rounded-md bg-white/5 border border-white/10">
-                                {snapshot.capturedBy.replace('_', ' ')}
-                              </span>
-                            )}
-                          </div>
-                          <div className="grid grid-cols-4 gap-4">
-                            <div className="flex items-center gap-2">
-                              <div className="p-1.5 rounded-md bg-white/5">
-                                <Eye className="w-3.5 h-3.5 text-white/70" />
-                              </div>
-                              <div>
-                                <p className="text-xs text-gray-400">Views</p>
-                                <p className="text-sm font-semibold text-white">
-                                  {formatNumber(snapshot.views || 0)}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="p-1.5 rounded-md bg-white/5">
-                                <Heart className="w-3.5 h-3.5 text-white/70" />
-                              </div>
-                              <div>
-                                <p className="text-xs text-gray-400">Likes</p>
-                                <p className="text-sm font-semibold text-white">
-                                  {formatNumber(snapshot.likes || 0)}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="p-1.5 rounded-md bg-white/5">
-                                <MessageCircle className="w-3.5 h-3.5 text-white/70" />
-                              </div>
-                              <div>
-                                <p className="text-xs text-gray-400">Comments</p>
-                                <p className="text-sm font-semibold text-white">
-                                  {formatNumber(snapshot.comments || 0)}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="p-1.5 rounded-md bg-white/5">
-                                <Share2 className="w-3.5 h-3.5 text-white/70" />
-                              </div>
-                              <div>
-                                <p className="text-xs text-gray-400">Shares</p>
-                                <p className="text-sm font-semibold text-white">
-                                  {formatNumber(snapshot.shares || 0)}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                          {tag}
+                        </span>
                       ))}
                     </div>
-                  </div>
+                  ) : (
+                    <p className="text-sm text-gray-400">No hashtags</p>
+                  )}
                 </div>
-              )}
+              </div>
+
+              {/* Snapshots History */}
+              {video.snapshots && video.snapshots.length > 0 && (() => {
+                const sortedSnapshots = [...video.snapshots].sort((a, b) => 
+                  new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime()
+                );
+                
+                // Apply date filter
+                const now = new Date();
+                const filterDate = new Date();
+                switch (dateFilter) {
+                  case 'last7days':
+                    filterDate.setDate(now.getDate() - 7);
+                    break;
+                  case 'last14days':
+                    filterDate.setDate(now.getDate() - 14);
+                    break;
+                  case 'last30days':
+                    filterDate.setDate(now.getDate() - 30);
+                    break;
+                  case 'last90days':
+                    filterDate.setDate(now.getDate() - 90);
+                    break;
+                  case 'all':
+                  default:
+                    filterDate.setTime(0);
+                    break;
+                }
+                
+                const filteredSnapshots = sortedSnapshots.filter(snapshot => 
+                  new Date(snapshot.capturedAt).getTime() >= filterDate.getTime()
+                );
+                
+                // Calculate engagement for each snapshot with trend
+                const snapshotsWithEngagement = filteredSnapshots.map((snapshot, idx) => {
+                  const engagement = snapshot.views > 0 
+                    ? ((snapshot.likes + snapshot.comments + (snapshot.shares || 0)) / snapshot.views) * 100 
+                    : 0;
+                  
+                  let trend: 'up' | 'down' | 'neutral' = 'neutral';
+                  if (idx < filteredSnapshots.length - 1) {
+                    const prevSnapshot = filteredSnapshots[idx + 1];
+                    const prevEngagement = prevSnapshot.views > 0 
+                      ? ((prevSnapshot.likes + prevSnapshot.comments + (prevSnapshot.shares || 0)) / prevSnapshot.views) * 100 
+                      : 0;
+                    
+                    if (engagement > prevEngagement + 0.1) trend = 'up';
+                    else if (engagement < prevEngagement - 0.1) trend = 'down';
+                  }
+                  
+                  return { ...snapshot, engagement, trend };
+                });
+
+                const totalPages = Math.ceil(snapshotsWithEngagement.length / snapshotsPerPage);
+                const startIndex = (snapshotsPage - 1) * snapshotsPerPage;
+                const endIndex = startIndex + snapshotsPerPage;
+                const paginatedSnapshots = snapshotsWithEngagement.slice(startIndex, endIndex);
+                
+                return (
+                  <div className="relative rounded-2xl border border-white/5 shadow-lg overflow-hidden min-w-0" style={{ backgroundColor: '#121214' }}>
+                    {/* Depth Gradient Overlay */}
+                    <div 
+                      className="absolute inset-0 pointer-events-none z-0"
+                      style={{
+                        background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
+                      }}
+                    />
+                    
+                    {/* Header with Pagination */}
+                    <div className="relative px-6 py-4 border-b border-white/5 z-10" style={{ backgroundColor: 'rgba(18, 18, 20, 0.6)' }}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Bookmark className="w-4 h-4 text-gray-400" />
+                          <div>
+                            <h3 className="text-base font-semibold text-white">
+                              Snapshots History
+                            </h3>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {video.snapshots.length} {video.snapshots.length === 1 ? 'recording' : 'recordings'}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* Pagination Controls */}
+                        {totalPages > 1 && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setSnapshotsPage(p => Math.max(1, p - 1))}
+                              disabled={snapshotsPage === 1}
+                              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            >
+                              <ChevronLeft className="w-4 h-4 text-white" />
+                            </button>
+                            <span className="text-xs text-gray-400 min-w-[80px] text-center">
+                              Page {snapshotsPage} of {totalPages}
+                            </span>
+                            <button
+                              onClick={() => setSnapshotsPage(p => Math.min(totalPages, p + 1))}
+                              disabled={snapshotsPage === totalPages}
+                              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            >
+                              <ChevronRight className="w-4 h-4 text-white" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Horizontally Scrollable Table */}
+                    <div className="relative overflow-x-scroll overflow-y-auto z-10 scrollbar-thin" style={{ maxHeight: '400px' }}>
+                      <table className="w-full" style={{ minWidth: '1100px' }}>
+                        <thead className="sticky top-0 z-20">
+                          <tr className="border-b border-white/5" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}>
+                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                              Date & Time
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                              Type
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                              Views
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                              Likes
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                              Comments
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                              Shares
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                              Bookmarks
+                            </th>
+                            <th className="px-6 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                              Engagement
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {paginatedSnapshots.map((snapshot, index) => (
+                            <tr 
+                              key={snapshot.id || index}
+                              className="hover:bg-white/[0.03] transition-colors"
+                              style={{ backgroundColor: index % 2 === 0 ? '#121214' : 'rgba(18, 18, 20, 0.5)' }}
+                            >
+                              <td className="px-6 py-4 text-sm font-medium text-gray-300 whitespace-nowrap">
+                                {new Date(snapshot.capturedAt).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="text-xs text-gray-400 px-2.5 py-1 rounded-md bg-white/5 border border-white/10">
+                                  {snapshot.capturedBy?.replace('_', ' ') || 'unknown'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-center text-sm font-semibold text-white whitespace-nowrap">
+                                {formatNumber(snapshot.views || 0)}
+                              </td>
+                              <td className="px-6 py-4 text-center text-sm font-semibold text-white whitespace-nowrap">
+                                {formatNumber(snapshot.likes || 0)}
+                              </td>
+                              <td className="px-6 py-4 text-center text-sm font-semibold text-white whitespace-nowrap">
+                                {formatNumber(snapshot.comments || 0)}
+                              </td>
+                              <td className="px-6 py-4 text-center text-sm font-semibold text-white whitespace-nowrap">
+                                {formatNumber(snapshot.shares || 0)}
+                              </td>
+                              <td className="px-6 py-4 text-center text-sm font-semibold text-white whitespace-nowrap">
+                                {formatNumber((snapshot as any).saves || 0)}
+                              </td>
+                              <td className="px-6 py-4 text-center whitespace-nowrap">
+                                <div className="flex items-center justify-center gap-2">
+                                  <span className="text-sm font-semibold text-white">
+                                    {snapshot.engagement.toFixed(2)}%
+                                  </span>
+                                  {snapshot.trend === 'up' && (
+                                    <TrendingUp className="w-3.5 h-3.5 text-green-400" />
+                                  )}
+                                  {snapshot.trend === 'down' && (
+                                    <TrendingDown className="w-3.5 h-3.5 text-red-400" />
+                                  )}
+                                  {snapshot.trend === 'neutral' && (
+                                    <Minus className="w-3.5 h-3.5 text-gray-400" />
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

@@ -321,3 +321,20 @@ table {
 .card-modern {
   @apply bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200;
 }
+
+/* Masonry Grid Styles */
+.masonry-grid {
+  display: flex;
+  margin-left: -24px; /* gutter size offset */
+  width: auto;
+}
+
+.masonry-grid-column {
+  padding-left: 24px; /* gutter size */
+  background-clip: padding-box;
+}
+
+.masonry-item {
+  margin-bottom: 24px; /* space between items */
+  break-inside: avoid;
+}

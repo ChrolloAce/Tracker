@@ -2,7 +2,8 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { clsx } from 'clsx';
 import { 
   ArrowLeft, ChevronDown, Search, Filter, CheckCircle2, Circle, Plus, Trash2,
-  Play, Heart, MessageCircle, Share2, Video, AtSign, Activity, DollarSign, Download, Link as LinkIcon, Edit2, RefreshCw
+  Play, Heart, MessageCircle, Share2, Video, AtSign, Activity, DollarSign, Download, Link as LinkIcon, Edit2, RefreshCw,
+  Users, Clock, TrendingUp, BarChart3
 } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import { Modal } from '../components/ui/Modal';
@@ -14,8 +15,12 @@ import { KPICardEditor } from '../components/KPICardEditor';
 import { DraggableSection } from '../components/DraggableSection';
 import DateRangeFilter, { DateFilterType } from '../components/DateRangeFilter';
 import VideoAnalyticsModal from '../components/VideoAnalyticsModal';
+import TopPerformersSection from '../components/TopPerformersSection';
 import TopPerformersRaceChart from '../components/TopPerformersRaceChart';
+import HeatmapByHour from '../components/HeatmapByHour';
+import TopTeamCreatorsList from '../components/TopTeamCreatorsList';
 import TopPlatformsRaceChart from '../components/TopPlatformsRaceChart';
+import ComparisonGraph from '../components/ComparisonGraph';
 import PostingActivityHeatmap from '../components/PostingActivityHeatmap';
 import DayVideosModal from '../components/DayVideosModal';
 import AccountsPage, { AccountsPageRef } from '../components/AccountsPage';
@@ -164,7 +169,6 @@ function DashboardPage() {
     const defaults = {
       'kpi-cards': true,
       'top-performers': true,
-      'top-platforms': false,
       'posting-activity': false,
       'tracked-accounts': false,
       'videos-table': true
@@ -173,9 +177,58 @@ function DashboardPage() {
     const saved = localStorage.getItem('dashboardSectionVisibility');
     if (saved) {
       const parsed = JSON.parse(saved);
-      // Merge saved values with defaults (new sections get default false)
-      return { ...defaults, ...parsed };
+      // Merge defaults first, then overlay saved values
+      // This ensures new sections get their default values
+      const merged = { ...defaults, ...parsed };
+      return merged;
     }
+    return defaults;
+  });
+
+  // Top Performers subsection visibility (similar to KPI cards)
+  const [topPerformersSubsectionVisibility, setTopPerformersSubsectionVisibility] = useState<Record<string, boolean>>(() => {
+    const defaults = {
+      'top-videos': true,
+      'top-accounts': true,
+      'top-gainers': false,
+      'top-creators': false,
+      'posting-times': false,
+      'top-platforms': false,
+      'comparison': true // Visible by default
+    };
+    
+    // One-time migration: check if we need to enable comparison for existing users
+    const migrationKey = 'topPerformersSubsectionVisibility_v2';
+    const migrationDone = localStorage.getItem(migrationKey);
+    
+    const saved = localStorage.getItem('topPerformersSubsectionVisibility');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        
+        // If migration hasn't been done and comparison is false or undefined, set it to true once
+        if (!migrationDone && parsed.comparison === false) {
+          parsed.comparison = true;
+          localStorage.setItem('topPerformersSubsectionVisibility', JSON.stringify(parsed));
+          localStorage.setItem(migrationKey, 'true');
+        } else if (!migrationDone) {
+          // Mark migration as done even if comparison was already true or didn't exist
+          localStorage.setItem(migrationKey, 'true');
+        }
+        
+        // Merge with defaults to ensure new keys are added
+        return { ...defaults, ...parsed };
+      } catch (e) {
+        console.error('Failed to parse topPerformersSubsectionVisibility from localStorage', e);
+        return defaults;
+      }
+    }
+    
+    // Mark migration as done for new users
+    if (!migrationDone) {
+      localStorage.setItem(migrationKey, 'true');
+    }
+    
     return defaults;
   });
   
@@ -428,6 +481,7 @@ function DashboardPage() {
           uploader: account?.displayName || account?.username || '',
           uploaderHandle: account?.username || '',
           uploaderProfilePicture: account?.profilePicture,
+          followerCount: account?.followerCount,
           status: video.status === 'archived' ? 'rejected' : 'approved',
           views: video.views || 0,
           likes: video.likes || 0,
@@ -567,6 +621,7 @@ function DashboardPage() {
               uploader: account?.displayName || account?.username || '',
               uploaderHandle: account?.username || '',
               uploaderProfilePicture: account?.profilePicture,
+              followerCount: account?.followerCount,
               status: video.status === 'archived' ? 'rejected' : 'approved',
               views: video.views || 0,
               likes: video.likes || 0,
@@ -729,10 +784,13 @@ function DashboardPage() {
 
   // Filter submissions based on date range, platform, and accounts (memoized to prevent infinite loops)
   const filteredSubmissions = useMemo(() => {
+    // Use strictMode: false to include videos with snapshots in the period
+    // This is crucial for KPI sparklines to show growth from older videos
     let filtered = DateFilterService.filterVideosByDateRange(
       submissionsWithoutDateFilter, 
       dateFilter, 
-      customDateRange
+      customDateRange,
+      false // strictMode: false to include videos with snapshots in range
     );
     
     return filtered;
@@ -777,6 +835,16 @@ function DashboardPage() {
       setIsAnalyticsModalOpen(true);
     }
   }, [currentOrgId, currentProjectId]);
+  
+  // Calculate total creator videos for the selected video
+  const totalCreatorVideos = useMemo(() => {
+    if (!selectedVideoForAnalytics) return undefined;
+    
+    // Count videos from the same creator (using uploaderHandle)
+    return filteredSubmissions.filter(
+      v => v.uploaderHandle === selectedVideoForAnalytics.uploaderHandle
+    ).length;
+  }, [selectedVideoForAnalytics, filteredSubmissions]);
 
   const handleCloseAnalyticsModal = useCallback(() => {
     setIsAnalyticsModalOpen(false);
@@ -998,6 +1066,8 @@ function DashboardPage() {
       title: video.caption.split('\n')[0] || 'Untitled TikTok Video',
       uploader: video.username,
       uploaderHandle: video.username,
+      uploaderProfilePicture: video.profile_pic_url,
+      followerCount: video.follower_count,
       status: 'pending' as const,
       views: video.view_count || 0,
       likes: video.like_count,
@@ -1098,13 +1168,22 @@ function DashboardPage() {
 
   // KPI Card Editor handlers
   const handleToggleCard = useCallback((cardId: string) => {
-    // Check if it's a section or a KPI card
-    const allSections = ['kpi-cards', 'top-performers', 'top-platforms', 'posting-activity', 'tracked-accounts', 'videos-table'];
+    // Check if it's a section, a KPI card, or a Top Performers subsection
+    const allSections = ['kpi-cards', 'top-performers', 'posting-activity', 'tracked-accounts', 'videos-table'];
+    const topPerformersSubsections = ['top-videos', 'top-accounts', 'top-gainers', 'top-creators', 'posting-times', 'top-platforms', 'comparison'];
+    
     if (allSections.includes(cardId)) {
-      // It's a section
+      // It's a main section
       setDashboardSectionVisibility(prev => {
         const updated = { ...prev, [cardId]: !prev[cardId] };
         localStorage.setItem('dashboardSectionVisibility', JSON.stringify(updated));
+        return updated;
+      });
+    } else if (topPerformersSubsections.includes(cardId)) {
+      // It's a Top Performers subsection
+      setTopPerformersSubsectionVisibility(prev => {
+        const updated = { ...prev, [cardId]: !prev[cardId] };
+        localStorage.setItem('topPerformersSubsectionVisibility', JSON.stringify(updated));
         return updated;
       });
     } else {
@@ -1267,13 +1346,27 @@ function DashboardPage() {
     };
   }, [filteredSubmissions, linkClicks, revenueMetrics]);
 
+  // Define Top Performers subsection options
+  const topPerformersSubsectionOptions = useMemo(() => [
+    { id: 'top-videos', label: 'Top Videos', description: 'Best performing videos', icon: Video },
+    { id: 'top-accounts', label: 'Top Accounts', description: 'Best performing accounts', icon: AtSign },
+    { id: 'top-gainers', label: 'Top Gainers', description: 'Videos with highest growth from snapshots', icon: TrendingUp },
+    { id: 'top-creators', label: 'Top Creators', description: 'Best performing team creators', icon: Users },
+    { id: 'posting-times', label: 'Best Posting Times', description: 'Engagement by day & hour', icon: Clock },
+    { id: 'top-platforms', label: 'Top Platforms', description: 'Platform performance comparison', icon: Activity },
+    { id: 'comparison', label: 'Platform Comparison', description: 'Multi-platform trend analysis', icon: BarChart3 },
+  ].map(option => ({
+    ...option,
+    isVisible: topPerformersSubsectionVisibility[option.id] ?? false,
+    category: 'top-performers-subsection' as const
+  })), [topPerformersSubsectionVisibility]);
+
   // Define KPI card and section options for the editor
   const kpiCardOptions = useMemo(() => {
     // Dashboard sections come first
     const sections = [
       { id: 'kpi-cards', label: 'KPI Cards', description: 'Performance metrics overview', icon: Activity, category: 'sections' as const },
-      { id: 'top-performers', label: 'Top Performers', description: 'Accounts & videos race chart', icon: Activity, category: 'sections' as const },
-      { id: 'top-platforms', label: 'Top Platforms', description: 'Platform performance comparison', icon: Activity, category: 'sections' as const },
+      { id: 'top-performers', label: 'Top Performers', description: 'Top videos, accounts, creators, posting times, platforms & comparison', icon: Activity, category: 'sections' as const },
       { id: 'posting-activity', label: 'Posting Activity', description: 'Daily posting frequency', icon: Activity, category: 'sections' as const },
       { id: 'tracked-accounts', label: 'Tracked Accounts', description: 'Full accounts dashboard', icon: AtSign, category: 'sections' as const },
       { id: 'videos-table', label: 'Videos Table', description: 'All video submissions', icon: Video, category: 'sections' as const },
@@ -1326,9 +1419,9 @@ function DashboardPage() {
         isVisible: kpiCardVisibility[card.id] !== false
       }));
     
-    // Combine: sections first, then cards
-    return [...sortedSections, ...sortedCards];
-  }, [kpiCardOrder, kpiCardVisibility, dashboardSectionOrder, dashboardSectionVisibility]);
+    // Combine: sections first, then cards, then Top Performers subsections
+    return [...sortedSections, ...sortedCards, ...topPerformersSubsectionOptions];
+  }, [kpiCardOrder, kpiCardVisibility, dashboardSectionOrder, dashboardSectionVisibility, topPerformersSubsectionOptions]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
@@ -1741,16 +1834,17 @@ function DashboardPage() {
                         );
                       case 'top-performers':
                         return (
-                          <TopPerformersRaceChart 
-                            submissions={filteredSubmissions} 
+                          <TopPerformersSection
+                            submissions={filteredSubmissions}
                             onVideoClick={handleVideoClick}
                             onAccountClick={handleAccountClick}
-                          />
-                        );
-                      case 'top-platforms':
-                        return (
-                          <TopPlatformsRaceChart 
-                            submissions={filteredSubmissions}
+                            onHeatmapCellClick={({ range }) => {
+                              setDayVideosDate(range.start);
+                              setIsDayVideosModalOpen(true);
+                            }}
+                            subsectionVisibility={topPerformersSubsectionVisibility}
+                            isEditMode={isEditingLayout}
+                            onToggleSubsection={handleToggleCard}
                           />
                         );
                       case 'posting-activity':
@@ -1911,6 +2005,7 @@ function DashboardPage() {
         video={selectedVideoForAnalytics}
         isOpen={isAnalyticsModalOpen}
         onClose={handleCloseAnalyticsModal}
+        totalCreatorVideos={totalCreatorVideos}
       />
 
       {/* KPI Card Editor Modal */}
@@ -1952,16 +2047,14 @@ function DashboardPage() {
               );
             case 'top-performers':
               return (
-                <TopPerformersRaceChart 
-                  submissions={filteredSubmissions} 
+                <TopPerformersSection
+                  submissions={filteredSubmissions}
                   onVideoClick={handleVideoClick}
                   onAccountClick={handleAccountClick}
-                />
-              );
-            case 'top-platforms':
-              return (
-                <TopPlatformsRaceChart 
-                  submissions={filteredSubmissions}
+                  onHeatmapCellClick={() => {}}
+                  subsectionVisibility={topPerformersSubsectionVisibility}
+                  isEditMode={false}
+                  onToggleSubsection={handleToggleCard}
                 />
               );
             case 'posting-activity':
@@ -2004,6 +2097,86 @@ function DashboardPage() {
                   onVideoClick={handleVideoClick}
                 />
               );
+            
+            // Top Performers Subsections
+            case 'top-videos':
+              return (
+                <TopPerformersRaceChart
+                  submissions={filteredSubmissions}
+                  onVideoClick={handleVideoClick}
+                  onAccountClick={handleAccountClick}
+                  type="videos"
+                />
+              );
+            
+            case 'top-accounts':
+              return (
+                <TopPerformersRaceChart
+                  submissions={filteredSubmissions}
+                  onVideoClick={handleVideoClick}
+                  onAccountClick={handleAccountClick}
+                  type="accounts"
+                />
+              );
+            
+            case 'top-gainers':
+              return (
+                <TopPerformersRaceChart
+                  submissions={filteredSubmissions}
+                  onVideoClick={handleVideoClick}
+                  onAccountClick={handleAccountClick}
+                  type="gainers"
+                />
+              );
+            
+            case 'posting-times':
+              return (
+                <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 p-6">
+                  <h3 className="text-xl font-bold text-white mb-1">Best Posting Times</h3>
+                  <p className="text-sm text-gray-400 mb-4">Engagement by day & hour</p>
+                  <HeatmapByHour
+                    data={filteredSubmissions.map(video => ({
+                      timestamp: video.uploadDate || video.dateSubmitted,
+                      views: video.views,
+                      likes: video.likes,
+                      comments: video.comments,
+                      shares: video.shares,
+                      videos: [{
+                        id: video.id,
+                        title: video.title || video.caption || 'Untitled',
+                        thumbnailUrl: video.thumbnail
+                      }]
+                    }))}
+                    metric="views"
+                    onCellClick={() => {}}
+                  />
+                </div>
+              );
+            
+            case 'top-creators':
+              return (
+                <TopTeamCreatorsList
+                  submissions={filteredSubmissions}
+                  onCreatorClick={handleAccountClick}
+                />
+              );
+            
+            case 'top-platforms':
+              return (
+                <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 p-6">
+                  <TopPlatformsRaceChart
+                    submissions={filteredSubmissions}
+                  />
+                </div>
+              );
+            
+            case 'comparison':
+              return (
+                <ComparisonGraph
+                  submissions={filteredSubmissions}
+                />
+              );
+            
             default:
               return <div className="text-white/50 text-sm">Preview not available</div>;
           }

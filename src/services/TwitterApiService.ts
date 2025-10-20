@@ -157,6 +157,8 @@ class TwitterApiService {
         title: tweetText ? tweetText.substring(0, 100) + (tweetText.length > 100 ? '...' : '') : 'Untitled Tweet',
         uploader: tweet.author?.name || 'Unknown',
         uploaderHandle: tweet.author?.userName || '',
+        uploaderProfilePicture: tweet.author?.profilePicture,
+        followerCount: tweet.author?.followers,
         uploadDate: tweet.createdAt ? new Date(tweet.createdAt) : new Date(),
         views: tweet.viewCount || 0,
         likes: tweet.likeCount || 0,

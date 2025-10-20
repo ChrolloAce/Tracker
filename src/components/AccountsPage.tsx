@@ -331,6 +331,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       title: video.caption || video.title || 'No caption',
       uploader: account.displayName || account.username,
       uploaderHandle: account.username,
+      uploaderProfilePicture: account.profilePicture,
+      followerCount: account.followerCount,
       status: 'approved' as const,
       views: video.viewsCount || video.views || 0,
       likes: video.likesCount || video.likes || 0,
@@ -676,6 +678,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
             title: video.videoTitle || video.caption || '',
             uploader: account.displayName || account.username,
             uploaderHandle: account.username,
+            uploaderProfilePicture: account.profilePicture,
+            followerCount: account.followerCount,
             status: 'approved' as const,
             views: video.views || 0,
             likes: video.likes || 0,
@@ -847,6 +851,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         uploader: selectedAccount.displayName || selectedAccount.username,
         uploaderHandle: selectedAccount.username,
         uploaderProfilePicture: selectedAccount.profilePicture,
+        followerCount: selectedAccount.followerCount,
         status: 'approved' as const,
         views: v.views || 0,
         likes: v.likes || 0,
@@ -1985,6 +1990,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                 title: video.caption || video.title || 'No caption',
                 uploader: selectedAccount.displayName || selectedAccount.username,
                 uploaderHandle: selectedAccount.username,
+                uploaderProfilePicture: selectedAccount.profilePicture,
+                followerCount: selectedAccount.followerCount,
                 status: 'approved' as const,
                 views: video.viewsCount || video.views || 0,
                 likes: video.likesCount || video.likes || 0,
@@ -2004,6 +2011,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                 title: video.caption || video.title || 'No caption',
                 uploader: selectedAccount.displayName || selectedAccount.username,
                 uploaderHandle: selectedAccount.username,
+                uploaderProfilePicture: selectedAccount.profilePicture,
+                followerCount: selectedAccount.followerCount,
                 status: 'approved' as const,
                 views: video.viewsCount || video.views || 0,
                 likes: video.likesCount || video.likes || 0,
@@ -2052,6 +2061,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                 uploader: selectedAccount!.displayName || selectedAccount!.username,
                 uploaderHandle: selectedAccount!.username,
                 uploaderProfilePicture: selectedAccount!.profilePicture,
+                followerCount: selectedAccount!.followerCount,
                 status: 'approved' as const,
                 views: video.viewsCount || video.views || 0,
                 likes: video.likesCount || video.likes || 0,
@@ -2269,6 +2279,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                           title: video.caption || video.title || 'No caption',
                           uploader: selectedAccount.displayName || selectedAccount.username,
                           uploaderHandle: selectedAccount.username,
+                          uploaderProfilePicture: selectedAccount.profilePicture,
+                          followerCount: selectedAccount.followerCount,
                           status: 'approved' as const,
                           views: views,
                           likes: likes,
@@ -2333,7 +2345,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                 </div>
                                 <div className="min-w-0 flex-1 max-w-[200px]">
                                   <p className="text-sm font-medium text-white truncate" title={video.caption || video.title || 'No caption'}>
-                                    {video.caption || video.title || 'No caption'}
+                                    {(() => {
+                                      const fullCaption = video.caption || video.title || 'No caption';
+                                      return fullCaption.length > 20 ? fullCaption.substring(0, 20) + '...' : fullCaption;
+                                    })()}
                                   </p>
                                   <p className="text-xs text-gray-400 mt-1 truncate">
                                     @{selectedAccount.username}
@@ -2715,6 +2730,13 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           setIsVideoAnalyticsModalOpen(false);
           setSelectedVideoForAnalytics(null);
         }}
+        totalCreatorVideos={
+          selectedVideoForAnalytics
+            ? allAccountVideos.filter(
+                v => v.uploaderHandle === selectedVideoForAnalytics.uploaderHandle
+              ).length
+            : undefined
+        }
       />
 
       {/* Rule Management Modal */}

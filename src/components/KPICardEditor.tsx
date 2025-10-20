@@ -8,7 +8,7 @@ interface KPICardOption {
   description: string;
   icon: React.ComponentType<{ className?: string }>;
   isVisible: boolean;
-  category?: 'kpi' | 'sections';
+  category?: 'kpi' | 'sections' | 'top-performers-subsection';
 }
 
 interface KPIPreviewData {
@@ -54,11 +54,13 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
   // Group cards by category
   const kpiCards = cardOptions.filter(card => card.category === 'kpi');
   const sectionCards = cardOptions.filter(card => card.category === 'sections');
+  const topPerformersSubsections = cardOptions.filter(card => card.category === 'top-performers-subsection');
 
   const renderItemCard = (item: KPICardOption) => {
     const Icon = item.icon;
     const isSection = item.category === 'sections';
     const isKPI = item.category === 'kpi';
+    const isTopPerformersSubsection = item.category === 'top-performers-subsection';
     
     return (
       <div
@@ -123,6 +125,21 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
         
         {/* Preview Section - Shows for all sections */}
         {isSection && renderSectionPreview && (
+          <div className="p-3 bg-black/20 border-t border-white/10">
+            <div className={`text-[10px] mb-1.5 font-medium uppercase tracking-wide ${item.isVisible ? 'text-white/50' : 'text-white/30'}`}>
+              Preview
+            </div>
+            <div className={`bg-zinc-900 rounded-md p-2 max-h-[120px] overflow-hidden relative pointer-events-none ${!item.isVisible ? 'opacity-50' : ''}`}>
+              <div className="transform scale-[0.6] origin-top-left" style={{ width: '167%', height: '167%' }}>
+                {renderSectionPreview(item.id)}
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-zinc-900 pointer-events-none"></div>
+            </div>
+          </div>
+        )}
+        
+        {/* Preview Section - Shows for Top Performers subsections */}
+        {isTopPerformersSubsection && renderSectionPreview && (
           <div className="p-3 bg-black/20 border-t border-white/10">
             <div className={`text-[10px] mb-1.5 font-medium uppercase tracking-wide ${item.isVisible ? 'text-white/50' : 'text-white/30'}`}>
               Preview
@@ -293,7 +310,7 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
             
             {/* KPI Cards */}
             {kpiCards.length > 0 && (
-              <div>
+              <div className="mb-8">
                 <h3 className="text-sm font-medium text-white/60 mb-4 flex items-center gap-2 uppercase tracking-wide">
                   <span>KPI Metrics</span>
                   <span className="text-xs text-white/30 font-normal normal-case">
@@ -302,6 +319,21 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {kpiCards.map(item => renderItemCard(item))}
+                </div>
+              </div>
+            )}
+            
+            {/* Top Performers Subsections */}
+            {topPerformersSubsections.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-white/60 mb-4 flex items-center gap-2 uppercase tracking-wide">
+                  <span>Top Performers Components</span>
+                  <span className="text-xs text-white/30 font-normal normal-case">
+                    ({topPerformersSubsections.filter(c => c.isVisible).length}/{topPerformersSubsections.length} visible)
+                  </span>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {topPerformersSubsections.map(item => renderItemCard(item))}
                 </div>
               </div>
             )}

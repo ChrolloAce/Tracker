@@ -2,17 +2,18 @@ import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
-import { ChevronDown, Play } from 'lucide-react';
+import { ChevronDown, Play, Info } from 'lucide-react';
 
 interface TopPerformersRaceChartProps {
   submissions: VideoSubmission[];
   onVideoClick?: (video: VideoSubmission) => void;
   onAccountClick?: (username: string) => void;
+  type?: 'videos' | 'accounts' | 'gainers' | 'both'; // Control which section to render
 }
 
-type MetricType = 'views' | 'likes' | 'comments' | 'shares' | 'engagement';
+type MetricType = 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'bookmarks' | 'virality' | 'followersGained';
 
-const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submissions, onVideoClick, onAccountClick }) => {
+const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submissions, onVideoClick, onAccountClick, type = 'both' }) => {
   const [topVideosCount, setTopVideosCount] = useState(5);
   const [topAccountsCount, setTopAccountsCount] = useState(5);
   const [videosMetric, setVideosMetric] = useState<MetricType>('views');
@@ -21,6 +22,48 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
   // Tooltip states
   const [hoveredVideo, setHoveredVideo] = useState<{ video: VideoSubmission; x: number; y: number } | null>(null);
   const [hoveredAccount, setHoveredAccount] = useState<{ handle: string; x: number; y: number } | null>(null);
+  
+  // Info tooltip states
+  const [showVideosInfo, setShowVideosInfo] = useState(false);
+  const [showAccountsInfo, setShowAccountsInfo] = useState(false);
+
+  // Calculate gain from snapshots
+  const calculateSnapshotGain = (video: VideoSubmission, metric: MetricType): number => {
+    if (!video.snapshots || video.snapshots.length === 0) return 0;
+    
+    // Sort snapshots by date
+    const sortedSnapshots = [...video.snapshots].sort((a, b) => 
+      new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+    );
+    
+    const firstSnapshot = sortedSnapshots[0];
+    const lastSnapshot = sortedSnapshots[sortedSnapshots.length - 1];
+    
+    const getSnapshotValue = (snapshot: any, metric: MetricType): number => {
+      switch (metric) {
+        case 'views':
+          return snapshot.views || 0;
+        case 'likes':
+          return snapshot.likes || 0;
+        case 'comments':
+          return snapshot.comments || 0;
+        case 'shares':
+          return snapshot.shares || 0;
+        case 'bookmarks':
+          return snapshot.saves || 0;
+        case 'engagement':
+          const totalEng = (snapshot.likes || 0) + (snapshot.comments || 0) + (snapshot.shares || 0);
+          return snapshot.views > 0 ? (totalEng / snapshot.views) * 100 : 0;
+        default:
+          return 0;
+      }
+    };
+    
+    const startValue = getSnapshotValue(firstSnapshot, metric);
+    const endValue = getSnapshotValue(lastSnapshot, metric);
+    
+    return endValue - startValue;
+  };
 
   // Calculate metric value for a video
   const getMetricValue = (video: VideoSubmission, metric: MetricType): number => {
@@ -33,9 +76,18 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
         return video.comments || 0;
       case 'shares':
         return video.shares || 0;
+      case 'bookmarks':
+        return (video as any).saves || 0;
       case 'engagement':
         const totalEngagement = (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
         return video.views > 0 ? (totalEngagement / video.views) * 100 : 0;
+      case 'virality':
+        // Virality score: (likes + comments + shares) / followers * 1000
+        const followerCount = video.followerCount || 1;
+        const totalInteractions = (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
+        return (totalInteractions / followerCount) * 1000;
+      case 'followersGained':
+        return (video as any).followersGained || 0;
       default:
         return 0;
     }
@@ -52,10 +104,20 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
       }
     });
     
-    return Array.from(uniqueVideos.values())
+    const videosArray = Array.from(uniqueVideos.values());
+    
+    // Use snapshot gains for 'gainers' type, otherwise use absolute values
+    if (type === 'gainers') {
+      return videosArray
+        .filter(video => video.snapshots && video.snapshots.length > 0) // Only videos with snapshots
+        .sort((a, b) => calculateSnapshotGain(b, videosMetric) - calculateSnapshotGain(a, videosMetric))
+        .slice(0, topVideosCount);
+    }
+    
+    return videosArray
       .sort((a, b) => getMetricValue(b, videosMetric) - getMetricValue(a, videosMetric))
       .slice(0, topVideosCount);
-  }, [submissions, videosMetric, topVideosCount]);
+  }, [submissions, videosMetric, topVideosCount, type]);
 
   // Get top accounts (aggregate by uploader handle + platform)
   const topAccounts = useMemo(() => {
@@ -89,8 +151,12 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
       totalLikes: number;
       totalComments: number;
       totalShares: number;
+      totalBookmarks: number;
+      totalVirality: number;
+      totalFollowersGained: number;
       videoCount: number;
       profileImage?: string;
+      followerCount?: number;
     }>();
 
     uniqueVideos.forEach(video => {
@@ -108,8 +174,12 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
           totalLikes: 0,
           totalComments: 0,
           totalShares: 0,
+          totalBookmarks: 0,
+          totalVirality: 0,
+          totalFollowersGained: 0,
           videoCount: 0,
-          profileImage: video.uploaderProfilePicture
+          profileImage: video.uploaderProfilePicture,
+          followerCount: video.followerCount
         });
       }
 
@@ -118,6 +188,11 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
       account.totalLikes += video.likes || 0;
       account.totalComments += video.comments || 0;
       account.totalShares += video.shares || 0;
+      account.totalBookmarks += (video as any).saves || 0;
+      account.totalFollowersGained += (video as any).followersGained || 0;
+      const followerCount = video.followerCount || 1;
+      const totalInteractions = (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
+      account.totalVirality += (totalInteractions / followerCount) * 1000;
       account.videoCount += 1;
     });
 
@@ -131,9 +206,15 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
           return account.totalComments;
         case 'shares':
           return account.totalShares;
+        case 'bookmarks':
+          return account.totalBookmarks;
         case 'engagement':
           const totalEng = account.totalLikes + account.totalComments + account.totalShares;
           return account.totalViews > 0 ? (totalEng / account.totalViews) * 100 : 0;
+        case 'virality':
+          return account.videoCount > 0 ? account.totalVirality / account.videoCount : 0; // Average virality per video
+        case 'followersGained':
+          return account.totalFollowersGained;
         default:
           return 0;
       }
@@ -146,7 +227,9 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
     return sortedAccounts;
   }, [submissions, accountsMetric, topAccountsCount]);
 
-  const maxVideoValue = topVideos.length > 0 ? getMetricValue(topVideos[0], videosMetric) : 1;
+  const maxVideoValue = topVideos.length > 0 
+    ? (type === 'gainers' ? calculateSnapshotGain(topVideos[0], videosMetric) : getMetricValue(topVideos[0], videosMetric))
+    : 1;
   const maxAccountValue = topAccounts.length > 0 
     ? (accountsMetric === 'views' ? topAccounts[0].totalViews
       : accountsMetric === 'likes' ? topAccounts[0].totalLikes
@@ -223,14 +306,23 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
     if (metric === 'engagement') {
       return `${num.toFixed(1)}%`;
     }
+    if (metric === 'virality') {
+      return `${num.toFixed(2)}x`;
+    }
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
     return num.toLocaleString();
   };
 
+  // Conditionally render based on type
+  const showVideos = type === 'videos' || type === 'gainers' || type === 'both';
+  const showAccounts = type === 'accounts' || type === 'both';
+  const showBoth = type === 'both';
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div className={showBoth ? "grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6" : ""}>
       {/* Top Videos */}
+      {showVideos && (
       <div className="relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl transition-all duration-300 p-6 overflow-hidden">
         {/* Depth Gradient Overlay */}
         <div 
@@ -244,7 +336,36 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
         <div className="relative z-10">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-lg font-semibold text-white">Top Videos</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-white">{type === 'gainers' ? 'Top Gainers' : 'Top Videos'}</h2>
+            <div className="relative">
+              <button
+                onMouseEnter={() => setShowVideosInfo(true)}
+                onMouseLeave={() => setShowVideosInfo(false)}
+                className="text-gray-500 hover:text-gray-400 transition-colors"
+              >
+                <Info className="w-4 h-4" style={{ opacity: 0.5 }} />
+              </button>
+              
+              {/* Info Tooltip */}
+              {showVideosInfo && (
+                <div 
+                  className="absolute left-0 top-full mt-2 w-64 p-3 rounded-lg border shadow-xl z-50"
+                  style={{
+                    backgroundColor: 'rgba(26, 26, 26, 0.98)',
+                    borderColor: 'rgba(255, 255, 255, 0.1)'
+                  }}
+                >
+                  <p className="text-xs text-gray-300 leading-relaxed">
+                    {type === 'gainers' 
+                      ? 'Shows videos with the highest growth between their first and last snapshot. Great for identifying trending content.'
+                      : 'Displays your best performing videos ranked by the selected metric. Click any video to see detailed analytics.'
+                    }
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
           <div className="flex items-center gap-3">
             {/* Count Selector */}
             <div className="relative">
@@ -270,7 +391,10 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                 <option value="likes" className="bg-gray-900">Likes</option>
                 <option value="comments" className="bg-gray-900">Comments</option>
                 <option value="shares" className="bg-gray-900">Shares</option>
+                <option value="bookmarks" className="bg-gray-900">Bookmarks</option>
                 <option value="engagement" className="bg-gray-900">Engagement</option>
+                <option value="virality" className="bg-gray-900">Virality Score</option>
+                <option value="followersGained" className="bg-gray-900">Followers Gained</option>
               </select>
               <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
             </div>
@@ -280,7 +404,9 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
         {/* Race Bars */}
         <div className="space-y-3">
           {topVideos.map((video, index) => {
-            const value = getMetricValue(video, videosMetric);
+            const value = type === 'gainers' 
+              ? calculateSnapshotGain(video, videosMetric)
+              : getMetricValue(video, videosMetric);
             const percentage = maxVideoValue > 0 ? (value / maxVideoValue) * 100 : 0;
             
             return (
@@ -292,12 +418,15 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                 }}
                 onClick={() => onVideoClick?.(video)}
                 onMouseEnter={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  setHoveredVideo({
-                    video,
-                    x: rect.left + rect.width / 2,
-                    y: rect.top
-                  });
+                  // Only update if not already hovering this video
+                  if (hoveredVideo?.video?.id !== video.id) {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setHoveredVideo({
+                      video,
+                      x: rect.left + rect.width / 2,
+                      y: rect.top
+                    });
+                  }
                   const barElement = e.currentTarget.querySelector('.race-bar') as HTMLElement;
                   if (barElement) {
                     barElement.style.background = 'linear-gradient(to right, #E5E7EB, #F9FAFB)';
@@ -369,8 +498,10 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
         )}
         </div>
       </div>
+      )}
 
       {/* Top Accounts */}
+      {showAccounts && (
       <div className="relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl transition-all duration-300 p-6 overflow-hidden">
         {/* Depth Gradient Overlay */}
         <div 
@@ -384,7 +515,33 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
         <div className="relative z-10">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-lg font-semibold text-white">Top Accounts</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-white">Top Accounts</h2>
+            <div className="relative">
+              <button
+                onMouseEnter={() => setShowAccountsInfo(true)}
+                onMouseLeave={() => setShowAccountsInfo(false)}
+                className="text-gray-500 hover:text-gray-400 transition-colors"
+              >
+                <Info className="w-4 h-4" style={{ opacity: 0.5 }} />
+              </button>
+              
+              {/* Info Tooltip */}
+              {showAccountsInfo && (
+                <div 
+                  className="absolute left-0 top-full mt-2 w-64 p-3 rounded-lg border shadow-xl z-50"
+                  style={{
+                    backgroundColor: 'rgba(26, 26, 26, 0.98)',
+                    borderColor: 'rgba(255, 255, 255, 0.1)'
+                  }}
+                >
+                  <p className="text-xs text-gray-300 leading-relaxed">
+                    Tracks your top performing accounts ranked by aggregated metrics across all their videos. Click to filter the dashboard by account.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
           <div className="flex items-center gap-3">
             {/* Count Selector */}
             <div className="relative">
@@ -410,7 +567,10 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                 <option value="likes" className="bg-gray-900">Likes</option>
                 <option value="comments" className="bg-gray-900">Comments</option>
                 <option value="shares" className="bg-gray-900">Shares</option>
+                <option value="bookmarks" className="bg-gray-900">Bookmarks</option>
                 <option value="engagement" className="bg-gray-900">Engagement</option>
+                <option value="virality" className="bg-gray-900">Virality Score</option>
+                <option value="followersGained" className="bg-gray-900">Followers Gained</option>
               </select>
               <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
             </div>
@@ -441,12 +601,15 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                   onAccountClick?.(account.handle);
                 }}
                 onMouseEnter={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  setHoveredAccount({
-                    handle: account.handle,
-                    x: rect.left + rect.width / 2,
-                    y: rect.top
-                  });
+                  // Only update if not already hovering this account
+                  if (hoveredAccount?.handle !== account.handle) {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setHoveredAccount({
+                      handle: account.handle,
+                      x: rect.left + rect.width / 2,
+                      y: rect.top
+                    });
+                  }
                   const barElement = e.currentTarget.querySelector('.race-bar') as HTMLElement;
                   if (barElement) {
                     barElement.style.background = 'linear-gradient(to right, #E5E7EB, #F9FAFB)';
@@ -524,6 +687,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
         )}
         </div>
       </div>
+      )}
 
       {/* Video Tooltip */}
       {hoveredVideo && createPortal(

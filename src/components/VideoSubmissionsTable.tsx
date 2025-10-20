@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, Edit3, ChevronUp, ChevronDown, Filter, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, Edit3, ChevronUp, ChevronDown, Filter, TrendingUp, TrendingDown, Minus, Bookmark, Clock } from 'lucide-react';
 import Lottie from 'lottie-react';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -188,6 +188,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
       likes: true,
       comments: true,
       shares: true,
+      bookmarks: true,
+      duration: true,
       engagement: true,
       outlier: true,
       uploadDate: true,
@@ -368,6 +370,12 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
     return num.toString();
   };
 
+  const formatDuration = (seconds: number | undefined): string => {
+    if (!seconds) return 'N/A';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   // Calculate engagement percentage
   const calculateEngagementRate = (submission: VideoSubmission): number => {
@@ -436,6 +444,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       likes: 'Likes',
                       comments: 'Comments',
                       shares: 'Shares',
+                      bookmarks: 'Bookmarks',
+                      duration: 'Video Length',
                       engagement: 'Engagement Rate',
                       outlier: 'Outlier Factor',
                       uploadDate: 'Upload Date',
@@ -499,6 +509,16 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                 <SortableHeader column="shares" className="min-w-[120px]">
                   Shares
                 </SortableHeader>
+              )}
+              {visibleColumns.bookmarks && (
+                <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
+                  Bookmarks
+                </th>
+              )}
+              {visibleColumns.duration && (
+                <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[100px]">
+                  Length
+                </th>
               )}
               {visibleColumns.engagement && (
                 <SortableHeader column="engagement" className="min-w-[140px]">
@@ -586,7 +606,10 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-medium text-gray-900 dark:text-white" title={submission.title || submission.caption || ''} style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word' }}>
-                              {submission.title || submission.caption || '(No caption)'}
+                              {(() => {
+                                const fullTitle = submission.title || submission.caption || '(No caption)';
+                                return fullTitle.length > 20 ? fullTitle.substring(0, 20) + '...' : fullTitle;
+                              })()}
                             </p>
                             {isLoading && (
                               <svg className="animate-spin h-3 w-3 text-yellow-500 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -682,6 +705,26 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                         <Share2 className="w-4 h-4 text-gray-900 dark:text-white" />
                         <span className="text-sm font-medium text-gray-900 dark:text-white">
                           {formatNumber(submission.shares || 0)}
+                        </span>
+                      </div>
+                    </td>
+                  )}
+                  {visibleColumns.bookmarks && (
+                    <td className="px-6 py-5">
+                      <div className="flex items-center space-x-2">
+                        <Bookmark className="w-4 h-4 text-gray-900 dark:text-white" />
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {formatNumber((submission as any).saves || 0)}
+                        </span>
+                      </div>
+                    </td>
+                  )}
+                  {visibleColumns.duration && (
+                    <td className="px-6 py-5">
+                      <div className="flex items-center space-x-2">
+                        <Clock className="w-4 h-4 text-gray-900 dark:text-white" />
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {formatDuration(submission.duration)}
                         </span>
                       </div>
                     </td>

@@ -258,10 +258,44 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
           </div>
         </div>
 
-        {/* KPI Metrics Grid */}
-        <div className="px-6 py-4 border-b border-white/5">
-          <h3 className="text-sm font-semibold text-white mb-4 uppercase tracking-wider">All Metrics</h3>
-          <div className="grid grid-cols-4 gap-3">
+        {/* Main Content - 2 Column Layout */}
+        <div className="flex gap-6 p-6 overflow-hidden" style={{ height: 'calc(85vh - 100px)' }}>
+          {/* Left: Videos Table */}
+          <div className="flex-1 overflow-auto min-w-0" style={{ height: 'calc(85vh - 150px)' }}>
+            {filteredVideos.length > 0 ? (
+              <VideoSubmissionsTable 
+                submissions={filteredVideos}
+                onVideoClick={onVideoClick}
+                headerTitle={(() => {
+                  const currentInterval = showPreviousPeriod ? ppInterval : interval;
+                  if (currentInterval) {
+                    return `Content from ${formatIntervalRange(currentInterval)}`;
+                  }
+                  return `Content from ${formatDate(date)}`;
+                })()}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-center px-6">
+                <div className="p-4 bg-white/5 rounded-full mb-4 border border-white/10">
+                  <Calendar className="w-12 h-12 text-gray-500" />
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-2">
+                  No videos found
+                </h3>
+                <p className="text-gray-400 text-sm">
+                  {accountFilter ? 
+                    `No videos from @${accountFilter} on ${formatDate(date)}` :
+                    `No videos were uploaded on ${formatDate(date)}`
+                  }
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Right: KPI Metrics Grid (2x4) */}
+          <div className="w-80 flex-shrink-0 flex flex-col">
+            <h3 className="text-sm font-semibold text-white mb-4 uppercase tracking-wider">All Metrics</h3>
+            <div className="grid grid-cols-2 gap-3 overflow-auto content-start" style={{ height: 'calc(85vh - 150px)' }}>
             {/* Views */}
             <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10">
               <div className="flex items-center gap-2 mb-2">
@@ -446,38 +480,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Videos Table - Using VideoSubmissionsTable for consistent styling */}
-        <div className="overflow-auto" style={{ maxHeight: 'calc(85vh - 380px)' }}>
-          {filteredVideos.length > 0 ? (
-            <VideoSubmissionsTable 
-              submissions={filteredVideos}
-              onVideoClick={onVideoClick}
-              headerTitle={(() => {
-                const currentInterval = showPreviousPeriod ? ppInterval : interval;
-                if (currentInterval) {
-                  return `Content from ${formatIntervalRange(currentInterval)}`;
-                }
-                return `Content from ${formatDate(date)}`;
-              })()}
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center py-16 text-center px-6">
-              <div className="p-4 bg-white/5 rounded-full mb-4 border border-white/10">
-                <Calendar className="w-12 h-12 text-gray-500" />
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-2">
-                No videos found
-              </h3>
-              <p className="text-gray-400 text-sm">
-                {accountFilter ? 
-                  `No videos from @${accountFilter} on ${formatDate(date)}` :
-                  `No videos were uploaded on ${formatDate(date)}`
-                }
-              </p>
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

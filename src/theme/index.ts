@@ -44,6 +44,20 @@ export const theme = {
       900: '#14532d',
     },
     
+    // Activity/Engagement color (matching PostingActivityHeatmap and HeatmapByHour)
+    activity: {
+      50: '#ecfdf5',
+      100: '#d1fae5',
+      200: '#a7f3d0',
+      300: '#6ee7b7',
+      400: '#34d399',
+      500: '#10b981', // Tailwind emerald-500 / rgb(16, 185, 129)
+      600: '#059669',
+      700: '#047857',
+      800: '#065f46',
+      900: '#064e3b',
+    },
+    
     warning: {
       50: '#fffbeb',
       100: '#fef3c7',
@@ -73,12 +87,12 @@ export const theme = {
     // Chart colors
     chart: {
       primary: '#3b82f6',
-      secondary: '#22c55e',
+      secondary: '#10b981', // emerald-500 - matches activity color
       tertiary: '#f59e0b',
       quaternary: '#ef4444',
       gradient: {
         primary: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-        secondary: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+        secondary: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', // Updated to emerald
         tertiary: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
       }
     }
@@ -179,6 +193,7 @@ export const cssVariables = {
   '--color-primary': theme.colors.primary[500],
   '--color-primary-hover': theme.colors.primary[600],
   '--color-secondary': theme.colors.success[500],
+  '--color-activity': theme.colors.activity[500], // Used for heatmaps and activity visualizations
   '--color-background': theme.colors.white,
   '--color-surface': theme.colors.gray[50],
   '--color-border': theme.colors.gray[200],
