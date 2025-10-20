@@ -23,6 +23,7 @@ type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'team'
 const BillingTabContent: React.FC = () => {
   const { currentOrgId } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [hasStripeCustomer, setHasStripeCustomer] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState<{
     planTier: PlanTier;
     isActive: boolean;
@@ -52,6 +53,11 @@ const BillingTabContent: React.FC = () => {
       const status = await SubscriptionService.getSubscriptionStatus(currentOrgId);
       console.log('✅ Subscription status:', status);
       setSubscriptionStatus(status);
+      
+      // Check if user has Stripe customer
+      const subscription = await SubscriptionService.getSubscription(currentOrgId);
+      setHasStripeCustomer(!!subscription?.stripeCustomerId);
+      console.log('💳 Has Stripe customer:', !!subscription?.stripeCustomerId);
     } catch (error) {
       console.error('❌ Failed to load billing data:', error);
     }
@@ -59,6 +65,16 @@ const BillingTabContent: React.FC = () => {
 
   const handleManageBilling = async () => {
     if (!currentOrgId) return;
+    
+    // Check if user has a Stripe customer ID
+    const subscription = await SubscriptionService.getSubscription(currentOrgId);
+    
+    if (!subscription?.stripeCustomerId) {
+      alert('You need to subscribe to a paid plan first before accessing the billing portal. Please choose a plan below.');
+      handleViewPlans();
+      return;
+    }
+    
     setLoading(true);
     try {
       console.log('🔗 Opening Stripe Customer Portal...');
@@ -72,9 +88,8 @@ const BillingTabContent: React.FC = () => {
   };
 
   const handleViewPlans = () => {
-    window.location.href = '/settings?tab=billing#plans';
-    // Or navigate to subscription page
-    // window.location.href = '/subscription';
+    // Navigate to subscription page
+    window.location.href = '/#subscription';
   };
 
   if (!subscriptionStatus) {
@@ -154,64 +169,110 @@ const BillingTabContent: React.FC = () => {
         </div>
 
         <div className="flex gap-3">
-          <button 
-            onClick={handleViewPlans}
-            className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-900 dark:text-white rounded-lg transition-colors font-medium"
-          >
-            View All Plans
-          </button>
-          <button 
-            onClick={handleManageBilling}
-            disabled={loading}
-            className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Loading...
-              </>
-            ) : (
-              <>
-                <ExternalLink className="w-4 h-4" />
-                Manage Billing
-              </>
-            )}
-          </button>
+          {hasStripeCustomer ? (
+            <>
+              <button 
+                onClick={handleViewPlans}
+                className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-900 dark:text-white rounded-lg transition-colors font-medium"
+              >
+                View All Plans
+              </button>
+              <button 
+                onClick={handleManageBilling}
+                disabled={loading}
+                className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink className="w-4 h-4" />
+                    Manage Billing
+                  </>
+                )}
+              </button>
+            </>
+          ) : (
+            <button 
+              onClick={handleViewPlans}
+              className="w-full px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium inline-flex items-center justify-center gap-2"
+            >
+              <CreditCard className="w-5 h-5" />
+              Subscribe to a Paid Plan
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Stripe Portal Info */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 p-6">
-        <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-200 mb-2 flex items-center gap-2">
-          <CreditCard className="w-5 h-5" />
-          Payment & Invoice Management
-        </h3>
-        <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
-          Click "Manage Billing" to access Stripe's secure customer portal where you can:
-        </p>
-        <ul className="space-y-2 text-sm text-blue-700 dark:text-blue-300">
-          <li className="flex items-start gap-2">
-            <span className="text-emerald-600 mt-0.5">✓</span>
-            <span>Update your payment method (credit card, debit card)</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-emerald-600 mt-0.5">✓</span>
-            <span>View and download all invoices and receipts</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-emerald-600 mt-0.5">✓</span>
-            <span>Update billing address and contact information</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-emerald-600 mt-0.5">✓</span>
-            <span>Upgrade, downgrade, or cancel your subscription</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-emerald-600 mt-0.5">✓</span>
-            <span>View billing history and upcoming charges</span>
-          </li>
-        </ul>
-      </div>
+      {/* Info Box */}
+      {hasStripeCustomer ? (
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 p-6">
+          <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-200 mb-2 flex items-center gap-2">
+            <CreditCard className="w-5 h-5" />
+            Payment & Invoice Management
+          </h3>
+          <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
+            Click "Manage Billing" to access Stripe's secure customer portal where you can:
+          </p>
+          <ul className="space-y-2 text-sm text-blue-700 dark:text-blue-300">
+            <li className="flex items-start gap-2">
+              <span className="text-emerald-600 mt-0.5">✓</span>
+              <span>Update your payment method (credit card, debit card)</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-emerald-600 mt-0.5">✓</span>
+              <span>View and download all invoices and receipts</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-emerald-600 mt-0.5">✓</span>
+              <span>Update billing address and contact information</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-emerald-600 mt-0.5">✓</span>
+              <span>Upgrade, downgrade, or cancel your subscription</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-emerald-600 mt-0.5">✓</span>
+              <span>View billing history and upcoming charges</span>
+            </li>
+          </ul>
+        </div>
+      ) : (
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-200 dark:border-yellow-800 p-6">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-6 h-6 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-yellow-900 dark:text-yellow-200 mb-1">
+                Free Trial Active
+              </h3>
+              <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
+                You're currently on a free trial. Subscribe to a paid plan to unlock:
+              </p>
+              <ul className="space-y-2 text-sm text-yellow-700 dark:text-yellow-300">
+                <li className="flex items-start gap-2">
+                  <span className="text-emerald-600 mt-0.5">✓</span>
+                  <span>More tracked accounts and videos</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-emerald-600 mt-0.5">✓</span>
+                  <span>Advanced analytics and insights</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-emerald-600 mt-0.5">✓</span>
+                  <span>Team collaboration features</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-emerald-600 mt-0.5">✓</span>
+                  <span>Priority support</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Warning if expired */}
       {subscriptionStatus.isExpired && (
