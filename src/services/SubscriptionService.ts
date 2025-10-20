@@ -23,9 +23,12 @@ class SubscriptionService {
    * Get organization's subscription
    */
   static async getSubscription(orgId: string): Promise<OrganizationSubscription | null> {
+    console.log('🔍 Fetching subscription for org:', orgId);
     const subDoc = await getDoc(doc(db, 'organizations', orgId, 'billing', 'subscription'));
+    
     if (subDoc.exists()) {
       const data = subDoc.data();
+      console.log('✅ Subscription found:', data);
       return {
         ...data,
         currentPeriodStart: data.currentPeriodStart.toDate(),
@@ -39,6 +42,10 @@ class SubscriptionService {
         updatedAt: data.updatedAt.toDate(),
       } as OrganizationSubscription;
     }
+    
+    console.warn('⚠️ No subscription document found for org:', orgId);
+    console.warn('   Expected path:', `organizations/${orgId}/billing/subscription`);
+    console.warn('   This organization needs a subscription document created.');
     return null;
   }
 

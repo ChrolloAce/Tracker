@@ -26,14 +26,32 @@ const SubscriptionPage: React.FC = () => {
   const loadSubscriptionInfo = async () => {
     if (!currentOrgId) return;
     try {
+      console.log('🔍 Loading subscription info for org:', currentOrgId);
+      
+      // Check if subscription exists
+      const existingSubscription = await SubscriptionService.getSubscription(currentOrgId);
+      
+      // If no subscription exists, create default one (free trial)
+      if (!existingSubscription) {
+        console.log('📝 No subscription found. Creating default free trial...');
+        await SubscriptionService.createDefaultSubscription(currentOrgId);
+        console.log('✅ Default subscription created');
+      }
+      
       const [tier, status] = await Promise.all([
         SubscriptionService.getPlanTier(currentOrgId),
         SubscriptionService.getSubscriptionStatus(currentOrgId),
       ]);
+      console.log('✅ Subscription loaded:', { tier, status });
       setCurrentPlan(tier);
       setSubscriptionStatus(status);
+      
+      // Log warning if expired
+      if (status.isExpired) {
+        console.warn('⚠️ Subscription has expired!');
+      }
     } catch (error) {
-      console.error('Failed to load subscription info:', error);
+      console.error('❌ Failed to load subscription info:', error);
     }
   };
 
@@ -81,19 +99,44 @@ const SubscriptionPage: React.FC = () => {
       {/* Hero Section */}
       <div className="relative pt-12 pb-8 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Manage Billing Button - Show for paid subscribers */}
-          {subscriptionStatus && subscriptionStatus.planTier !== 'free' && (
-            <div className="mb-6 flex justify-end">
-              <button
-                onClick={handleManageBilling}
-                disabled={loading}
-                className="px-6 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                </svg>
-                {loading ? 'Loading...' : 'Manage Billing & Subscription'}
-              </button>
+          {/* Current Plan Status - Always show */}
+          {subscriptionStatus && (
+            <div className="mb-6 rounded-xl border p-4 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-semibold text-blue-900 dark:text-blue-200">
+                      Current Plan: {subscriptionStatus.planTier.toUpperCase()}
+                    </h3>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                      subscriptionStatus.isActive 
+                        ? 'bg-green-500 text-white' 
+                        : 'bg-red-500 text-white'
+                    }`}>
+                      {subscriptionStatus.isActive ? 'Active' : 'Expired'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    {subscriptionStatus.expiresAt 
+                      ? `Renews on ${subscriptionStatus.expiresAt.toLocaleDateString()}` 
+                      : 'No expiration date set'}
+                  </p>
+                </div>
+                
+                {/* Manage Billing Button for paid subscribers */}
+                {subscriptionStatus.planTier !== 'free' && (
+                  <button
+                    onClick={handleManageBilling}
+                    disabled={loading}
+                    className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                    </svg>
+                    {loading ? 'Loading...' : 'Manage Billing'}
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
