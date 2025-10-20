@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Check } from 'lucide-react';
+import { Check, ArrowLeft, ExternalLink } from 'lucide-react';
 import { SUBSCRIPTION_PLANS, PlanTier } from '../types/subscription';
 import { useAuth } from '../contexts/AuthContext';
 import StripeService from '../services/StripeService';
 import SubscriptionService from '../services/SubscriptionService';
+import { useNavigate } from 'react-router-dom';
 
 const SubscriptionPage: React.FC = () => {
   const { currentOrgId } = useAuth();
+  const navigate = useNavigate();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [currentPlan, setCurrentPlan] = useState<PlanTier>('basic');
   const [loading, setLoading] = useState(false);
+  const [hasStripeCustomer, setHasStripeCustomer] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState<{
     planTier: PlanTier;
     isActive: boolean;
@@ -46,6 +49,11 @@ const SubscriptionPage: React.FC = () => {
       setCurrentPlan(tier);
       setSubscriptionStatus(status);
       
+      // Check if user has Stripe customer
+      const subscription = await SubscriptionService.getSubscription(currentOrgId);
+      setHasStripeCustomer(!!subscription?.stripeCustomerId);
+      console.log('💳 Has Stripe customer:', !!subscription?.stripeCustomerId);
+      
       // Log warning if expired
       if (status.isExpired) {
         console.warn('⚠️ Subscription has expired!');
@@ -75,6 +83,12 @@ const SubscriptionPage: React.FC = () => {
 
   const handleManageBilling = async () => {
     if (!currentOrgId) return;
+    
+    if (!hasStripeCustomer) {
+      alert('Please subscribe to a paid plan first to access billing management.');
+      return;
+    }
+    
     setLoading(true);
     try {
       await StripeService.createPortalSession(currentOrgId);
@@ -96,6 +110,41 @@ const SubscriptionPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
+      {/* Header Navigation */}
+      <div className="sticky top-0 z-50 bg-gray-50/80 dark:bg-[#0A0A0A]/80 backdrop-blur-xl border-b border-gray-200 dark:border-white/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span className="font-medium">Back to Dashboard</span>
+            </button>
+            
+            {hasStripeCustomer && (
+              <button
+                onClick={handleManageBilling}
+                disabled={loading}
+                className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink className="w-4 h-4" />
+                    Manage Billing
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Hero Section */}
       <div className="relative pt-12 pb-8 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

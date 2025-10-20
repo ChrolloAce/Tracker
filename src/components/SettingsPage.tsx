@@ -89,7 +89,7 @@ const BillingTabContent: React.FC = () => {
 
   const handleViewPlans = () => {
     // Navigate to subscription page
-    window.location.href = '/#subscription';
+    window.location.href = '/subscription';
   };
 
   if (!subscriptionStatus) {

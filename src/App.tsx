@@ -11,6 +11,7 @@ import ContractSigningPage from './pages/ContractSigningPage';
 import ContractEditorPage from './pages/ContractEditorPage';
 import CreateContractPage from './pages/CreateContractPage';
 import CreatorDetailsPageWrapper from './pages/CreatorDetailsPageWrapper';
+import SubscriptionPage from './components/SubscriptionPage';
 import { useEffect, useState } from 'react';
 import { AlertCircle } from 'lucide-react';
 
@@ -260,6 +261,19 @@ function App() {
           ) : (
             // Show loading while org/project are being created/loaded
             <LoadingSkeleton />
+          )
+        } 
+      />
+
+      <Route 
+        path="/subscription" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : !currentOrgId ? (
+            <LoadingSkeleton />
+          ) : (
+            <SubscriptionPage />
           )
         } 
       />
