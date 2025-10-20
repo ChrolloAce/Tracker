@@ -156,18 +156,18 @@ const Sidebar: React.FC<SidebarProps> = ({
           <div className="flex items-center space-x-3">
             <img 
               src={newLogo} 
-              alt="ViewTrack Logo" 
+              alt="Viewtrack Logo" 
               className="w-10 h-10 object-contain"
             />
             <div>
-              <h1 className="text-lg font-bold text-gray-900 dark:text-white">ViewTrack</h1>
+              <h1 className="text-lg font-bold text-gray-900 dark:text-white">Viewtrack</h1>
             </div>
           </div>
         ) : (
           <div className="flex items-center justify-center w-full">
             <img 
               src={newLogo} 
-              alt="ViewTrack" 
+              alt="Viewtrack" 
               className="w-10 h-10 object-contain"
             />
           </div>
