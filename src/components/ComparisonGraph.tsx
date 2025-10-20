@@ -108,8 +108,8 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
   }, [submissions, metric1, metric2, granularity]);
 
   // Metric colors - matching your theme
-  const metric1Color = '#8b5cf6'; // Purple/violet for metric 1
-  const metric2Color = '#f97316'; // Orange for metric 2
+  const metric1Color = '#10b981'; // Emerald green for metric 1 (matches activity theme)
+  const metric2Color = '#6b7280'; // Subtle gray for metric 2
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload, label }: any) => {
