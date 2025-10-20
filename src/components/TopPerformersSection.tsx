@@ -20,6 +20,7 @@ interface TopPerformersSectionProps {
   subsectionVisibility: Record<string, boolean>;
   isEditMode?: boolean;
   onToggleSubsection?: (id: string) => void;
+  granularity?: 'day' | 'week' | 'month' | 'year';
 }
 
 type SubSectionId = 'top-videos' | 'top-accounts' | 'top-gainers' | 'posting-times' | 'top-creators' | 'top-platforms' | 'comparison';
@@ -31,7 +32,8 @@ const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({
   onHeatmapCellClick,
   subsectionVisibility,
   isEditMode = false,
-  onToggleSubsection
+  onToggleSubsection,
+  granularity = 'week'
 }) => {
   console.log('🎯 TopPerformersSection rendering', { 
     subsectionVisibility,
@@ -314,6 +316,7 @@ const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({
           >
             <ComparisonGraph
               submissions={submissions}
+              granularity={granularity}
             />
           </div>
         );

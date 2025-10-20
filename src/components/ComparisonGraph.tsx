@@ -2,16 +2,18 @@ import React, { useState, useMemo } from 'react';
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, BarChart2, Activity, Info } from 'lucide-react';
 import { VideoSubmission } from '../types';
+import DataAggregationService, { IntervalType } from '../services/DataAggregationService';
 
 interface ComparisonGraphProps {
   submissions: VideoSubmission[];
+  granularity?: 'day' | 'week' | 'month' | 'year';
 }
 
 type MetricType = 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'videos';
 type ChartType = 'line' | 'area' | 'bar';
 
-const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions }) => {
-  console.log('🎨 ComparisonGraph rendering with', submissions.length, 'submissions');
+const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granularity = 'week' }) => {
+  console.log('🎨 ComparisonGraph rendering with', submissions.length, 'submissions', 'granularity:', granularity);
   
   const [metric1, setMetric1] = useState<MetricType>('views');
   const [metric2, setMetric2] = useState<MetricType>('likes');
@@ -58,36 +60,52 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions }) => {
     }
   };
 
-  // Aggregate data by day
+  // Aggregate data by selected granularity
   const chartData = useMemo(() => {
-    const dataMap = new Map<string, { metric1: number; metric2: number; timestamp: number }>();
+    if (submissions.length === 0) return [];
     
-    submissions.forEach(video => {
-      const date = video.uploadDate || video.dateSubmitted;
+    // Determine date range from submissions
+    const dates = submissions.map(v => new Date(v.uploadDate || v.dateSubmitted).getTime());
+    const startDate = new Date(Math.min(...dates));
+    const endDate = new Date(Math.max(...dates));
+    
+    // Use granularity as interval type
+    const intervalType = granularity as IntervalType;
+    
+    // Generate intervals using DataAggregationService
+    const intervals = DataAggregationService.generateIntervals(
+      { startDate, endDate },
+      intervalType
+    );
+    
+    // Aggregate data for each interval
+    const data = intervals.map(interval => {
+      let metric1Value = 0;
+      let metric2Value = 0;
       
-      // Group by day for cleaner view
-      const day = new Date(date);
-      const key = day.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      submissions.forEach(video => {
+        const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
+        
+        // Check if video is in this interval
+        if (DataAggregationService.isDateInInterval(uploadDate, interval)) {
+          metric1Value += getMetricValue(video, metric1);
+          metric2Value += getMetricValue(video, metric2);
+        }
+      });
       
-      if (!dataMap.has(key)) {
-        dataMap.set(key, { 
-          metric1: 0, 
-          metric2: 0, 
-          timestamp: day.getTime() 
-        });
-      }
+      // Format date label based on granularity
+      const dateLabel = DataAggregationService.formatIntervalLabel(interval, intervalType);
       
-      const entry = dataMap.get(key)!;
-      entry.metric1 += getMetricValue(video, metric1);
-      entry.metric2 += getMetricValue(video, metric2);
+      return {
+        date: dateLabel,
+        metric1: metric1Value,
+        metric2: metric2Value,
+        timestamp: interval.timestamp
+      };
     });
     
-    // Convert to array and sort by timestamp
-    return Array.from(dataMap.entries())
-      .map(([date, data]) => ({ date, ...data }))
-      .sort((a, b) => a.timestamp - b.timestamp);
-    // No slicing - show all data within the selected date range
-  }, [submissions, metric1, metric2]);
+    return data;
+  }, [submissions, metric1, metric2, granularity]);
 
   // Metric colors - matching your theme
   const metric1Color = '#8b5cf6'; // Purple/violet for metric 1

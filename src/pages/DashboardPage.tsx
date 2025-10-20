@@ -1845,6 +1845,7 @@ function DashboardPage() {
                             subsectionVisibility={topPerformersSubsectionVisibility}
                             isEditMode={isEditingLayout}
                             onToggleSubsection={handleToggleCard}
+                            granularity={granularity}
                           />
                         );
                       case 'posting-activity':
@@ -2055,6 +2056,7 @@ function DashboardPage() {
                   subsectionVisibility={topPerformersSubsectionVisibility}
                   isEditMode={false}
                   onToggleSubsection={handleToggleCard}
+                  granularity={granularity}
                 />
               );
             case 'posting-activity':
@@ -2174,6 +2176,7 @@ function DashboardPage() {
               return (
                 <ComparisonGraph
                   submissions={filteredSubmissions}
+                  granularity={granularity}
                 />
               );
             
