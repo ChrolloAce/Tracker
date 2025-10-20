@@ -18,6 +18,7 @@ interface ChartDataPoint {
   likes: number;
   comments: number;
   shares: number;
+  saves: number;
   engagementRate: number;
   timestamp: number;
 }
@@ -140,6 +141,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         likes: stats.likes,
         comments: stats.comments,
         shares: stats.shares || 0,
+        saves: stats.saves || 0,
         engagementRate,
         timestamp: timestamp.getTime(),
       };
@@ -200,6 +202,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         likes: video.likes,
         comments: video.comments,
         shares: video.shares || 0,
+        saves: video.saves || 0,
         capturedAt: new Date(),
         capturedBy: 'manual_refresh'
       });
@@ -223,6 +226,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         const deltaLikes = snapshot.likes - prevSnapshot.likes;
         const deltaComments = snapshot.comments - prevSnapshot.comments;
         const deltaShares = (snapshot.shares || 0) - (prevSnapshot.shares || 0);
+        const deltaSaves = (snapshot.saves || 0) - (prevSnapshot.saves || 0);
         const totalDeltaEngagement = deltaLikes + deltaComments + deltaShares;
         const deltaEngagementRate = deltaViews > 0 ? (totalDeltaEngagement / deltaViews) * 100 : 0;
         
@@ -235,6 +239,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
           likes: deltaLikes,
           comments: deltaComments,
           shares: deltaShares,
+          saves: deltaSaves,
           engagementRate: deltaEngagementRate,
           timestamp: timestamp.getTime(),
         });
@@ -255,17 +260,19 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     const likes = video?.likes || 0;
     const comments = video?.comments || 0;
     const shares = video?.shares || 0;
+    const saves = video?.saves || 0;
     
     return {
       views,
       likes,
       comments,
       shares,
+      saves,
       engagementRate: views > 0 
         ? ((likes + comments + shares) / views) * 100 
         : 0,
     };
-  }, [video?.views, video?.likes, video?.comments, video?.shares]);
+  }, [video?.views, video?.likes, video?.comments, video?.shares, video?.saves]);
 
   // Calculate growth during the selected period
   const metricGrowth = useMemo(() => {
@@ -275,6 +282,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         likes: 0,
         comments: 0,
         shares: 0,
+        saves: 0,
         engagementRate: 0,
       };
     }
@@ -287,9 +295,12 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       likes: lastPoint.likes - firstPoint.likes,
       comments: lastPoint.comments - firstPoint.comments,
       shares: lastPoint.shares - firstPoint.shares,
+      saves: video?.saves && video.snapshots && video.snapshots.length > 1
+        ? (video.snapshots[video.snapshots.length - 1].saves || 0) - (video.snapshots[0].saves || 0)
+        : 0,
       engagementRate: lastPoint.engagementRate - firstPoint.engagementRate,
     };
-  }, [chartData]);
+  }, [chartData, video?.saves, video?.snapshots]);
 
   if (!isOpen || !video) return null;
 
@@ -395,13 +406,13 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       isPercentage: true,
     },
     {
-      key: 'likes' as const, // Reusing likes key for bookmarks
+      key: 'saves' as const,
       label: 'Bookmarks',
       icon: Bookmark,
       color: '#FF8A5B',
-      value: 0, // Bookmarks data not available yet
-      growth: 0,
-      showNA: true,
+      value: cumulativeTotals.saves,
+      growth: metricGrowth.saves,
+      showNA: !cumulativeTotals.saves && cumulativeTotals.saves !== 0, // Show N/A only if undefined/null
     },
   ];
 
@@ -993,7 +1004,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                                 {formatNumber(snapshot.shares || 0)}
                               </td>
                               <td className="px-6 py-4 text-center text-sm font-semibold text-white whitespace-nowrap">
-                                {formatNumber((snapshot as any).saves || 0)}
+                                {formatNumber(snapshot.saves || 0)}
                               </td>
                               <td className="px-6 py-4 text-center whitespace-nowrap">
                                 <div className="flex items-center justify-center gap-2">

@@ -5,6 +5,7 @@ export interface VideoSnapshot {
   likes: number;
   comments: number;
   shares?: number;
+  saves?: number; // Bookmarks/saves count
   capturedAt: Date;
   capturedBy: 'initial_upload' | 'manual_refresh' | 'scheduled_refresh';
 }
@@ -24,7 +25,8 @@ export interface VideoSubmission {
   views: number; // Current/latest metrics
   likes: number;
   comments: number;
-  shares?: number; // TikTok specific
+  shares?: number; // Share count
+  saves?: number; // Bookmarks/saves count (TikTok/Instagram)
   duration?: number; // Video duration in seconds
   dateSubmitted: Date;
   uploadDate: Date; // When the video was originally uploaded to the platform
