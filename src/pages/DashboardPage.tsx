@@ -708,16 +708,36 @@ function DashboardPage() {
   }, [activeTab, isModalOpen, isTikTokSearchOpen, isAnalyticsModalOpen]);
 
   // Apply platform, account, and rule filters (but NOT date filter) - for PP calculation
+  // Create a stable dependency for rules that detects changes to rule properties
+  const rulesFingerprint = useMemo(() => {
+    return JSON.stringify(
+      allRules.map(r => ({
+        id: r.id,
+        isActive: r.isActive,
+        conditions: r.conditions,
+        appliesTo: r.appliesTo
+      }))
+    );
+  }, [allRules]);
+
   const submissionsWithoutDateFilter = useMemo(() => {
+    console.log('🔄 Recalculating submissionsWithoutDateFilter with rule filters...');
+    console.log('📊 Raw submissions count:', submissions.length);
+    console.log('🎯 Active rules count:', allRules.filter(r => r.isActive).length);
+    console.log('🔍 Selected rule ID:', selectedRuleId);
+    
     let filtered = submissions;
+    const initialCount = filtered.length;
     
     // Apply platform filter
     if (dashboardPlatformFilter !== 'all') {
       filtered = filtered.filter(video => video.platform === dashboardPlatformFilter);
+      console.log(`📱 After platform filter (${dashboardPlatformFilter}):`, filtered.length, `(removed ${initialCount - filtered.length})`);
     }
     
     // Apply accounts filter
     if (selectedAccountIds.length > 0) {
+      const beforeAccountFilter = filtered.length;
       // Create a set of platform_username keys from selected accounts
       const selectedAccountKeys = new Set(
         trackedAccounts
@@ -730,21 +750,34 @@ function DashboardPage() {
         const videoKey = `${video.platform}_${video.uploaderHandle.toLowerCase()}`;
         return selectedAccountKeys.has(videoKey);
       });
+      console.log(`👥 After accounts filter (${selectedAccountIds.length} accounts):`, filtered.length, `(removed ${beforeAccountFilter - filtered.length})`);
     }
     
     // Apply specific rule filter if selected
     if (selectedRuleId !== 'all') {
+      const beforeRuleFilter = filtered.length;
       const selectedRule = allRules.find(rule => rule.id === selectedRuleId);
-      if (selectedRule && selectedRule.isActive) {
-        filtered = filtered.filter(video => {
-          // Check if video matches the selected rule
-          const result = RulesService.checkVideoMatchesRule(video as any, selectedRule);
-          return result.matches;
-        });
+      if (selectedRule) {
+        console.log(`📋 Applying specific rule: "${selectedRule.name}" (active: ${selectedRule.isActive})`);
+        if (selectedRule.isActive) {
+          filtered = filtered.filter(video => {
+            // Check if video matches the selected rule
+            const result = RulesService.checkVideoMatchesRule(video as any, selectedRule);
+            return result.matches;
+          });
+          console.log(`✅ After specific rule filter:`, filtered.length, `(removed ${beforeRuleFilter - filtered.length})`);
+        } else {
+          console.log(`⚠️ Selected rule is INACTIVE, showing 0 videos`);
+          filtered = []; // Inactive rule = no videos
+        }
       }
     } else {
       // Apply default rules filtering for tracked accounts (all active rules)
       if (allRules.length > 0) {
+        const beforeRulesFilter = filtered.length;
+        const activeRules = allRules.filter(r => r.isActive);
+        console.log(`📋 Applying ${activeRules.length} active rules...`);
+        
         filtered = filtered.filter(video => {
           if (!video.uploaderHandle) return true; // Keep videos without uploader handle
           
@@ -757,9 +790,7 @@ function DashboardPage() {
           if (!account) return true; // Keep videos without matching account
           
           // Get rules that apply to this account
-          const accountRules = allRules.filter(rule => {
-            if (!rule.isActive) return false;
-            
+          const accountRules = activeRules.filter(rule => {
             const { platforms, accountIds } = rule.appliesTo;
             
             // Check platform match
@@ -774,18 +805,28 @@ function DashboardPage() {
           if (accountRules.length === 0) return true; // No rules = show all videos
           
           // Check if video matches any of the account's rules
-          return accountRules.some((rule: any) => 
+          const matches = accountRules.some((rule: any) => 
             RulesService.checkVideoMatchesRule(video as any, rule).matches
           );
+          
+          return matches;
         });
+        console.log(`✅ After default rules filter:`, filtered.length, `(removed ${beforeRulesFilter - filtered.length})`);
       }
     }
     
+    console.log(`🎬 FINAL filtered count:`, filtered.length);
+    console.log('─'.repeat(50));
+    
     return filtered;
-  }, [submissions, dashboardPlatformFilter, selectedAccountIds, trackedAccounts, allRules, selectedRuleId]);
+  }, [submissions, dashboardPlatformFilter, selectedAccountIds, trackedAccounts, allRules, selectedRuleId, rulesFingerprint]);
 
   // Filter submissions based on date range, platform, and accounts (memoized to prevent infinite loops)
   const filteredSubmissions = useMemo(() => {
+    console.log('📅 Applying date filter to rule-filtered submissions...');
+    console.log('📊 Input (submissionsWithoutDateFilter):', submissionsWithoutDateFilter.length);
+    console.log('📆 Date filter:', dateFilter);
+    
     // Use strictMode: false to include videos with snapshots in the period
     // This is crucial for KPI sparklines to show growth from older videos
     let filtered = DateFilterService.filterVideosByDateRange(
@@ -794,6 +835,11 @@ function DashboardPage() {
       customDateRange,
       false // strictMode: false to include videos with snapshots in range
     );
+    
+    console.log('✅ After date filter:', filtered.length, `(removed ${submissionsWithoutDateFilter.length - filtered.length})`);
+    console.log('🎯 These submissions will be used for CP (Current Period) calculations');
+    console.log('🔄 submissionsWithoutDateFilter will be used for PP (Previous Period) calculations');
+    console.log('═'.repeat(50));
     
     return filtered;
   }, [submissionsWithoutDateFilter, dateFilter, customDateRange]);
