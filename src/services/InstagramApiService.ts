@@ -165,6 +165,9 @@ class InstagramApiService {
     const comments = media.comment_count || 0;
     // NEW SCRAPER: Uses 'play_count' and 'ig_play_count'
     const views = media.play_count || media.ig_play_count || media.videoViewCount || 0;
+    // Share and save counts (usually not available in Instagram public API)
+    const shares = media.share_count || media.shareCount || media.shares || 0;
+    const saves = media.save_count || media.saveCount || media.saves || media.bookmarkCount || 0;
     
     // NEW SCRAPER: Timestamp is Unix timestamp in seconds (taken_at)
     let timestamp = new Date().toISOString();
@@ -212,9 +215,13 @@ class InstagramApiService {
       profile_pic_url: profilePic,
       display_name: displayName,
       follower_count: followerCount,
+      share_count: shares,
       video_duration: videoDuration,
       is_verified: isVerified
     };
+    
+    // Add save_count as a custom property (not in InstagramVideoData type)
+    (transformedData as any).save_count = saves;
 
     console.log('✅ NEW SCRAPER data transformation completed:', {
       id: transformedData.id,
@@ -236,6 +243,8 @@ class InstagramApiService {
     console.log('   👁️ Views:', transformedData.view_count);
     console.log('   ❤️ Likes:', transformedData.like_count);
     console.log('   💬 Comments:', transformedData.comment_count);
+    console.log('   🔄 Shares:', shares || 'Not available');
+    console.log('   🔖 Saves:', saves || 'Not available');
     console.log('   ⏱️ Duration:', videoDuration + 's');
     console.log('   📅 Upload Date:', new Date(timestamp).toLocaleDateString());
     console.log('   📸 Thumbnail URL:', thumbnailUrl ? thumbnailUrl.substring(0, 80) + '...' : 'None');
