@@ -150,7 +150,6 @@ export const HeatmapByHour: React.FC<HeatmapByHourProps> = ({
   timezone,
   onCellClick
 }) => {
-  const [focusedCell, setFocusedCell] = useState<{ hour: number; day: number } | null>(null);
   const [tooltipData, setTooltipData] = useState<{
     hour: number;
     day: number;
@@ -158,20 +157,6 @@ export const HeatmapByHour: React.FC<HeatmapByHourProps> = ({
     y: number;
   } | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
-  const [isNarrow, setIsNarrow] = useState(false);
-
-  // Check container width for responsiveness
-  useEffect(() => {
-    if (!gridRef.current) return;
-    
-    const resizeObserver = new ResizeObserver(entries => {
-      const width = entries[0].contentRect.width;
-      setIsNarrow(width < 600);
-    });
-
-    resizeObserver.observe(gridRef.current);
-    return () => resizeObserver.disconnect();
-  }, []);
 
   const { matrix, cellsMeta, globalMin, globalMax } = useMemo(
     () => aggregateToMatrix(data, metric, timezone),
@@ -225,13 +210,11 @@ export const HeatmapByHour: React.FC<HeatmapByHourProps> = ({
       case 'Escape':
         e.preventDefault();
         setTooltipData(null);
-        setFocusedCell(null);
         return;
       default:
         return;
     }
 
-    setFocusedCell({ hour: newHour, day: newDay });
     // Focus the new cell
     const cellElement = document.querySelector(
       `[data-hour="${newHour}"][data-day="${newDay}"]`
@@ -257,10 +240,6 @@ export const HeatmapByHour: React.FC<HeatmapByHourProps> = ({
     if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
     if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
     return value.toLocaleString();
-  };
-
-  const getMetricLabel = (): string => {
-    return metric.charAt(0).toUpperCase() + metric.slice(1);
   };
 
   return (

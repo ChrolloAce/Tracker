@@ -345,13 +345,13 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({ submissio
                   {/* Video List */}
                   <div className="overflow-y-auto px-5 py-3" style={{ maxHeight: '400px' }}>
                     {platformVideos.map((video, idx) => {
-                      const videoValue = selectedMetric === 'views' ? video.views
-                        : selectedMetric === 'likes' ? video.likes
-                        : selectedMetric === 'comments' ? video.comments
-                        : selectedMetric === 'shares' ? video.shares
+                      const videoValue = selectedMetric === 'views' ? (video.views || 0)
+                        : selectedMetric === 'likes' ? (video.likes || 0)
+                        : selectedMetric === 'comments' ? (video.comments || 0)
+                        : selectedMetric === 'shares' ? (video.shares || 0)
                         : selectedMetric === 'engagement' ? (() => {
                             const eng = (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
-                            return video.views > 0 ? (eng / video.views) * 100 : 0;
+                            return video.views && video.views > 0 ? (eng / video.views) * 100 : 0;
                           })()
                         : 0;
 

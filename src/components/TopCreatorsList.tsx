@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
-import { ChevronDown, TrendingUp, TrendingDown, Eye, Heart, MessageCircle, Share2, Users } from 'lucide-react';
+import { ChevronDown, TrendingUp, Eye, Heart, MessageCircle, Share2, Users } from 'lucide-react';
 
 interface TopCreatorsListProps {
   submissions: VideoSubmission[];

@@ -10,13 +10,6 @@ interface ComparisonGraphProps {
 type MetricType = 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'videos';
 type ChartType = 'line' | 'area' | 'bar';
 
-interface DataPoint {
-  date: string;
-  timestamp: number;
-  metric1: number;
-  metric2: number;
-}
-
 const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions }) => {
   console.log('🎨 ComparisonGraph rendering with', submissions.length, 'submissions');
   

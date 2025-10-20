@@ -48,8 +48,6 @@ export const KPICardEditor: React.FC<KPICardEditorProps> = ({
   kpiPreviewData = {}
 }) => {
   if (!isOpen) return null;
-
-  const visibleCount = cardOptions.filter(card => card.isVisible).length;
   
   // Group cards by category
   const kpiCards = cardOptions.filter(card => card.category === 'kpi');

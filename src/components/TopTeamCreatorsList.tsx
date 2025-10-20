@@ -1,10 +1,9 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { Creator, CreatorLink } from '../types/firestore';
 import { VideoSubmission } from '../types';
-import { PlatformIcon } from './ui/PlatformIcon';
 import { ChevronDown, Users, User, Info } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
