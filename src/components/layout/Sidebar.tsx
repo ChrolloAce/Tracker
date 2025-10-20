@@ -158,7 +158,6 @@ const Sidebar: React.FC<SidebarProps> = ({
               src={newLogo} 
               alt="ViewTrack Logo" 
               className="w-10 h-10 object-contain"
-              style={{ filter: 'invert(1)' }}
             />
             <div>
               <h1 className="text-lg font-bold text-gray-900 dark:text-white">ViewTrack</h1>
@@ -170,7 +169,6 @@ const Sidebar: React.FC<SidebarProps> = ({
               src={newLogo} 
               alt="ViewTrack" 
               className="w-10 h-10 object-contain"
-              style={{ filter: 'invert(1)' }}
             />
           </div>
         )}
