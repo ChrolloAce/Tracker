@@ -17,6 +17,7 @@ import { usePermissions } from '../../hooks/usePermissions';
 import { useAuth } from '../../contexts/AuthContext';
 import blackLogo from '../blacklogo.png';
 import whiteLogo from '../whitelogo.png';
+import newLogo from '/viewtracknewlogo.png';
 
 interface SidebarProps {
   onCollapsedChange?: (collapsed: boolean) => void;
@@ -154,14 +155,10 @@ const Sidebar: React.FC<SidebarProps> = ({
         {!isCollapsed ? (
           <div className="flex items-center space-x-3">
             <img 
-              src={blackLogo} 
+              src={newLogo} 
               alt="ViewTrack Logo" 
-              className="w-8 h-8 object-contain dark:hidden"
-            />
-            <img 
-              src={whiteLogo} 
-              alt="ViewTrack Logo" 
-              className="w-8 h-8 object-contain hidden dark:block"
+              className="w-10 h-10 object-contain"
+              style={{ filter: 'invert(1)' }}
             />
             <div>
               <h1 className="text-lg font-bold text-gray-900 dark:text-white">ViewTrack</h1>
@@ -170,14 +167,10 @@ const Sidebar: React.FC<SidebarProps> = ({
         ) : (
           <div className="flex items-center justify-center w-full">
             <img 
-              src={blackLogo} 
+              src={newLogo} 
               alt="ViewTrack" 
-              className="w-8 h-8 object-contain dark:hidden"
-            />
-            <img 
-              src={whiteLogo} 
-              alt="ViewTrack" 
-              className="w-8 h-8 object-contain hidden dark:block"
+              className="w-10 h-10 object-contain"
+              style={{ filter: 'invert(1)' }}
             />
           </div>
         )}
