@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import React, { useMemo, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 // Type definitions
@@ -290,8 +290,6 @@ export const HeatmapByHour: React.FC<HeatmapByHourProps> = ({
                   onClick={() => !isEmpty && handleCellClick(hour, day as 0 | 1 | 2 | 3 | 4 | 5 | 6)}
                   onMouseEnter={(e) => handleMouseEnter(e, hour, day)}
                   onMouseLeave={handleMouseLeave}
-                  onFocus={() => setFocusedCell({ hour, day })}
-                  onBlur={() => setFocusedCell(null)}
                   onKeyDown={(e) => handleKeyDown(e, hour, day)}
                   tabIndex={0}
                   aria-label={
