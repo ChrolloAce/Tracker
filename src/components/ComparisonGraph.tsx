@@ -385,10 +385,10 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
           <div className="flex items-center gap-2">
             {/* Metric 1 Dropdown */}
             <div 
-              className="relative rounded-lg border transition-all cursor-pointer hover:border-purple-500/40"
+              className="relative rounded-lg border transition-all cursor-pointer hover:border-emerald-500/40"
               style={{
                 backgroundColor: 'rgba(18, 18, 20, 0.6)',
-                borderColor: 'rgba(139, 92, 246, 0.3)',
+                borderColor: 'rgba(16, 185, 129, 0.3)',
                 padding: '6px 10px 6px 8px'
               }}
             >
@@ -416,10 +416,10 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
 
             {/* Metric 2 Dropdown */}
             <div 
-              className="relative rounded-lg border transition-all cursor-pointer hover:border-orange-500/40"
+              className="relative rounded-lg border transition-all cursor-pointer hover:border-gray-500/40"
               style={{
                 backgroundColor: 'rgba(18, 18, 20, 0.6)',
-                borderColor: 'rgba(249, 115, 22, 0.3)',
+                borderColor: 'rgba(107, 114, 128, 0.3)',
                 padding: '6px 10px 6px 8px'
               }}
             >
