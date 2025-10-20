@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, Crown, Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, Building2, User as UserIcon, Download, X, Users, DollarSign } from 'lucide-react';
+import { LogOut, Crown, Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, Building2, User as UserIcon, Download, X, Users, DollarSign, ExternalLink } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -10,8 +10,228 @@ import TeamManagementPage from './TeamManagementPage';
 import PendingInvitationsPage from './PendingInvitationsPage';
 import { OrgMember } from '../types/firestore';
 import { RevenueIntegrationsSettings } from './RevenueIntegrationsSettings';
+import SubscriptionService from '../services/SubscriptionService';
+import StripeService from '../services/StripeService';
+import { PlanTier, SUBSCRIPTION_PLANS } from '../types/subscription';
 
 type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'team' | 'revenue';
+
+/**
+ * BillingTabContent Component
+ * Shows real subscription data from Stripe/Firestore
+ */
+const BillingTabContent: React.FC = () => {
+  const { currentOrgId } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<{
+    planTier: PlanTier;
+    isActive: boolean;
+    isExpired: boolean;
+    expiresAt: Date | null;
+    daysUntilExpiry: number | null;
+    needsRenewal: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    loadSubscriptionData();
+  }, [currentOrgId]);
+
+  const loadSubscriptionData = async () => {
+    if (!currentOrgId) return;
+    
+    try {
+      console.log('🔍 Loading billing data for org:', currentOrgId);
+      
+      // Check if subscription exists, create if not
+      const existingSubscription = await SubscriptionService.getSubscription(currentOrgId);
+      if (!existingSubscription) {
+        console.log('📝 Creating default subscription...');
+        await SubscriptionService.createDefaultSubscription(currentOrgId);
+      }
+      
+      const status = await SubscriptionService.getSubscriptionStatus(currentOrgId);
+      console.log('✅ Subscription status:', status);
+      setSubscriptionStatus(status);
+    } catch (error) {
+      console.error('❌ Failed to load billing data:', error);
+    }
+  };
+
+  const handleManageBilling = async () => {
+    if (!currentOrgId) return;
+    setLoading(true);
+    try {
+      console.log('🔗 Opening Stripe Customer Portal...');
+      await StripeService.createPortalSession(currentOrgId);
+    } catch (error: any) {
+      console.error('❌ Failed to open billing portal:', error);
+      alert('Failed to open billing portal. Please try again or contact support.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewPlans = () => {
+    window.location.href = '/settings?tab=billing#plans';
+    // Or navigate to subscription page
+    // window.location.href = '/subscription';
+  };
+
+  if (!subscriptionStatus) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-12 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading billing information...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const currentPlan = SUBSCRIPTION_PLANS[subscriptionStatus.planTier];
+  const planPrice = currentPlan.monthlyPrice;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Billing</h2>
+        <p className="text-gray-600 dark:text-gray-400">Manage your subscription through Stripe's secure portal.</p>
+      </div>
+
+      {/* Current Plan Card - REAL DATA */}
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Current Plan</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Your subscription details</p>
+          </div>
+          <Crown className="w-8 h-8 text-yellow-500" />
+        </div>
+        
+        <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-lg p-4 mb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {subscriptionStatus.planTier.toUpperCase()} Plan
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                {subscriptionStatus.expiresAt 
+                  ? `Renews on ${subscriptionStatus.expiresAt.toLocaleDateString()}` 
+                  : 'No expiration date'}
+              </p>
+            </div>
+            <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+              subscriptionStatus.isActive 
+                ? 'bg-green-500 text-white' 
+                : 'bg-red-500 text-white'
+            }`}>
+              {subscriptionStatus.isActive ? 'Active' : 'Expired'}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-4 text-sm mb-4">
+          <div>
+            <p className="text-gray-500 dark:text-gray-400">Price</p>
+            <p className="font-semibold text-gray-900 dark:text-white mt-1">
+              {planPrice === 0 ? 'Free' : `$${planPrice}/month`}
+            </p>
+          </div>
+          <div>
+            <p className="text-gray-500 dark:text-gray-400">Billing cycle</p>
+            <p className="font-semibold text-gray-900 dark:text-white mt-1">Monthly</p>
+          </div>
+          <div>
+            <p className="text-gray-500 dark:text-gray-400">Status</p>
+            <p className={`font-semibold mt-1 ${
+              subscriptionStatus.isActive 
+                ? 'text-green-600 dark:text-green-400' 
+                : 'text-red-600 dark:text-red-400'
+            }`}>
+              {subscriptionStatus.isActive ? 'Active' : 'Expired'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <button 
+            onClick={handleViewPlans}
+            className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-900 dark:text-white rounded-lg transition-colors font-medium"
+          >
+            View All Plans
+          </button>
+          <button 
+            onClick={handleManageBilling}
+            disabled={loading}
+            className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Loading...
+              </>
+            ) : (
+              <>
+                <ExternalLink className="w-4 h-4" />
+                Manage Billing
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Stripe Portal Info */}
+      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 p-6">
+        <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-200 mb-2 flex items-center gap-2">
+          <CreditCard className="w-5 h-5" />
+          Payment & Invoice Management
+        </h3>
+        <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
+          Click "Manage Billing" to access Stripe's secure customer portal where you can:
+        </p>
+        <ul className="space-y-2 text-sm text-blue-700 dark:text-blue-300">
+          <li className="flex items-start gap-2">
+            <span className="text-emerald-600 mt-0.5">✓</span>
+            <span>Update your payment method (credit card, debit card)</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-emerald-600 mt-0.5">✓</span>
+            <span>View and download all invoices and receipts</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-emerald-600 mt-0.5">✓</span>
+            <span>Update billing address and contact information</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-emerald-600 mt-0.5">✓</span>
+            <span>Upgrade, downgrade, or cancel your subscription</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-emerald-600 mt-0.5">✓</span>
+            <span>View billing history and upcoming charges</span>
+          </li>
+        </ul>
+      </div>
+
+      {/* Warning if expired */}
+      {subscriptionStatus.isExpired && (
+        <div className="bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800 p-6">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-red-900 dark:text-red-200 mb-1">
+                Subscription Expired
+              </h3>
+              <p className="text-sm text-red-700 dark:text-red-300">
+                Your subscription has expired. Please renew to continue using premium features.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 /**
  * SettingsPage Component
@@ -205,159 +425,7 @@ const SettingsPage: React.FC = () => {
         {/* Tab Content */}
         <div className="mt-8 pb-12">
           {/* Billing Tab */}
-          {activeTab === 'billing' && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Billing</h2>
-                <p className="text-gray-600 dark:text-gray-400">Manage your plan, payments, and invoices.</p>
-              </div>
-
-              {/* Plan Details Card */}
-              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Current Plan</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Your subscription details</p>
-                  </div>
-                  <Crown className="w-8 h-8 text-yellow-500" />
-                </div>
-                
-                <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-lg p-4 mb-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">Pro Plan</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Renews on March 15, 2025</p>
-                    </div>
-                    <button className="px-4 py-2 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-lg transition-colors font-medium">
-                      Change plan
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <p className="text-gray-500 dark:text-gray-400">Price</p>
-                    <p className="font-semibold text-gray-900 dark:text-white mt-1">$49/month</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500 dark:text-gray-400">Billing cycle</p>
-                    <p className="font-semibold text-gray-900 dark:text-white mt-1">Monthly</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500 dark:text-gray-400">Status</p>
-                    <p className="font-semibold text-green-600 dark:text-green-400 mt-1">Active</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Payment Method */}
-              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Payment Method</h3>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Card number
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="1234 5678 9012 3456"
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent"
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Expiry date
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="MM / YY"
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        CVC
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="123"
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Billing address
-                    </label>
-                <input
-                      type="text"
-                      placeholder="123 Main St, City, State, ZIP"
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent"
-                    />
-                  </div>
-                </div>
-
-                <button className="mt-4 px-6 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-900 dark:text-white rounded-lg transition-colors font-medium">
-                  Update payment method
-                </button>
-              </div>
-
-              {/* Invoice History */}
-              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Invoice History</h3>
-                
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200 dark:border-white/10">
-                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Date</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Amount</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Status</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500 dark:text-gray-400">Receipt</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
-                        { date: 'Feb 15, 2025', amount: '$49.00', status: 'Paid' },
-                        { date: 'Jan 15, 2025', amount: '$49.00', status: 'Paid' },
-                        { date: 'Dec 15, 2024', amount: '$49.00', status: 'Paid' },
-                      ].map((invoice, i) => (
-                        <tr key={i} className="border-b border-gray-100 dark:border-white/5">
-                          <td className="py-4 px-4 text-sm text-gray-900 dark:text-white">{invoice.date}</td>
-                          <td className="py-4 px-4 text-sm text-gray-900 dark:text-white font-medium">{invoice.amount}</td>
-                          <td className="py-4 px-4">
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
-                              {invoice.status}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4 text-right">
-                            <button className="text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300 text-sm font-medium inline-flex items-center gap-1">
-                              <Download className="w-4 h-4" />
-                              Download
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-3">
-                <button className="px-6 py-2.5 border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-900 dark:text-white rounded-lg transition-colors font-medium">
-                  Cancel
-                </button>
-                <button className="px-6 py-2.5 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-lg transition-colors font-medium">
-                  Save changes
-                </button>
-              </div>
-            </div>
-          )}
+          {activeTab === 'billing' && <BillingTabContent />}
 
           {/* Notifications Tab */}
           {activeTab === 'notifications' && (
