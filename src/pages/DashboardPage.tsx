@@ -347,6 +347,14 @@ function DashboardPage() {
     localStorage.setItem('dashboardSelectedRuleIds', JSON.stringify(selectedRuleIds));
   }, [selectedRuleIds]);
 
+  // Debug: Log when rules or selectedRuleIds change
+  useEffect(() => {
+    console.log('🔄 Rules or selection changed:');
+    console.log('  - Selected Rule IDs:', selectedRuleIds);
+    console.log('  - Available Rules:', allRules.length);
+    console.log('  - Matched Rules:', allRules.filter(r => selectedRuleIds.includes(r.id)).length);
+  }, [selectedRuleIds, allRules]);
+
   // Save accounts page filters to localStorage
   useEffect(() => {
     localStorage.setItem('accountsDateFilter', accountsDateFilter);
@@ -765,6 +773,9 @@ function DashboardPage() {
       const beforeRuleFilter = filtered.length;
       const selectedRules = allRules.filter(rule => selectedRuleIds.includes(rule.id));
       
+      console.log(`🎯 Trying to apply ${selectedRuleIds.length} selected rule ID(s):`, selectedRuleIds);
+      console.log(`📚 Found ${selectedRules.length} matching rules in allRules (${allRules.length} total)`);
+      
       if (selectedRules.length > 0) {
         console.log(`📋 Applying ${selectedRules.length} specific rule(s)...`);
         const activeSelectedRules = selectedRules.filter(r => r.isActive);
@@ -783,6 +794,11 @@ function DashboardPage() {
           console.log(`⚠️ All selected rules are INACTIVE, showing 0 videos`);
           filtered = []; // All inactive rules = no videos
         }
+      } else {
+        // Rules are selected but not found in allRules yet (still loading)
+        // This happens on page load before rules finish loading
+        console.log(`⏳ Rules selected but not yet loaded. Waiting for rules to load...`);
+        // Don't apply any filtering yet - will recalculate when allRules loads
       }
     } else {
       // Apply default rules filtering for tracked accounts (all active rules)
