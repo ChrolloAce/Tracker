@@ -116,7 +116,6 @@ function DashboardPage() {
   const [dragOverSection, setDragOverSection] = useState<string | null>(null);
   const [isOverSectionTrash, setIsOverSectionTrash] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [rulesLoaded, setRulesLoaded] = useState(false);
   
   const [kpiCardOrder, setKpiCardOrder] = useState<string[]>(() => {
     // Load saved card order from localStorage
@@ -435,8 +434,6 @@ function DashboardPage() {
       return;
     }
 
-    // Reset rules loaded state when changing projects
-    setRulesLoaded(false);
     
     // Initialize theme
     ThemeService.initializeTheme();
@@ -529,11 +526,8 @@ function DashboardPage() {
       })) as TrackingRule[];
       
       setAllRules(rules);
-      setRulesLoaded(true);
-      console.log('✅ Rules loaded:', rules.length);
     } catch (error) {
       console.error('❌ Failed to load rules:', error);
-      setRulesLoaded(true); // Set to true even on error so UI doesn't hang
     }
     
     // One-time load for link clicks
@@ -803,8 +797,10 @@ function DashboardPage() {
       } else {
         // Rules are selected but not found in allRules yet (still loading)
         // This happens on page load before rules finish loading
-        console.log(`⏳ Rules selected but not yet loaded. Waiting for rules to load...`);
-        // Don't apply any filtering yet - will recalculate when allRules loads
+        console.log(`⏳ Rules selected but not yet loaded. Returning empty array until rules load...`);
+        // Return empty array to prevent showing unfiltered data
+        // Will recalculate when allRules loads due to dependency array
+        filtered = [];
       }
     } else {
       // Apply default rules filtering for tracked accounts (all active rules)
@@ -855,6 +851,17 @@ function DashboardPage() {
     
     return filtered;
   }, [submissions, dashboardPlatformFilter, selectedAccountIds, trackedAccounts, allRules, selectedRuleIds, rulesFingerprint]);
+
+  // Check if rules are still loading (selected but not yet loaded from Firestore)
+  const isLoadingRules = useMemo(() => {
+    if (selectedRuleIds.length === 0) return false; // No rules selected
+    const matchedRules = allRules.filter(r => selectedRuleIds.includes(r.id));
+    const isLoading = selectedRuleIds.length > 0 && matchedRules.length === 0;
+    if (isLoading) {
+      console.log('⏳ Rules are loading:', { selectedRuleIds, allRulesCount: allRules.length, matchedRules: matchedRules.length });
+    }
+    return isLoading;
+  }, [selectedRuleIds, allRules]);
 
   // Filter submissions based on date range, platform, and accounts (memoized to prevent infinite loops)
   const filteredSubmissions = useMemo(() => {
@@ -1217,7 +1224,6 @@ function DashboardPage() {
       // Reload rules
       const rules = await RulesService.getRules(currentOrgId, currentProjectId);
       setAllRules(rules as TrackingRule[]);
-      setRulesLoaded(true);
       
       // Reset form and show list
       setShowCreateRuleForm(false);
@@ -1238,10 +1244,8 @@ function DashboardPage() {
       try {
         const rules = await RulesService.getRules(currentOrgId, currentProjectId);
         setAllRules(rules as TrackingRule[]);
-        setRulesLoaded(true);
       } catch (error) {
         console.error('❌ Failed to reload rules:', error);
-        setRulesLoaded(true);
       }
     }
   }, [currentOrgId, currentProjectId]);
@@ -1509,9 +1513,6 @@ function DashboardPage() {
     // Combine: sections first, then cards, then Top Performers subsections
     return [...sortedSections, ...sortedCards, ...topPerformersSubsectionOptions];
   }, [kpiCardOrder, kpiCardVisibility, dashboardSectionOrder, dashboardSectionVisibility, topPerformersSubsectionOptions]);
-
-  // Show loading state if rules are selected but haven't loaded yet
-  const isLoadingRules = selectedRuleIds.length > 0 && !rulesLoaded;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
@@ -1857,18 +1858,24 @@ function DashboardPage() {
         <div className="max-w-7xl mx-auto px-6 py-8" style={{ overflow: 'visible' }}>
           {/* Dashboard Tab */}
           <div className={activeTab === 'dashboard' ? '' : 'hidden'}>
-            {isLoadingRules ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="text-center">
-                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mb-4"></div>
-                  <p className="text-gray-400">Loading rules filter...</p>
-                  <p className="text-xs text-gray-500 mt-2">{selectedRuleIds.length} rule{selectedRuleIds.length > 1 ? 's' : ''} selected</p>
+            <>
+              {/* Loading banner when rules are being applied */}
+              {isLoadingRules && (
+                <div className="mb-6 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-4 py-3 flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-emerald-500 border-t-transparent"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-emerald-400">
+                      Applying {selectedRuleIds.length} rule{selectedRuleIds.length > 1 ? 's' : ''}...
+                    </p>
+                    <p className="text-xs text-emerald-400/70 mt-0.5">
+                      Loading filters from database
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <>
-                {/* Render dashboard sections in order */}
-                {dashboardSectionOrder
+              )}
+              
+              {/* Render dashboard sections in order */}
+              {dashboardSectionOrder
                 .filter(sectionId => dashboardSectionVisibility[sectionId] !== false)
                 .map((sectionId, index) => {
                   const handleSectionDragStart = () => {
@@ -2042,7 +2049,6 @@ function DashboardPage() {
                 </div>
               )}
               </>
-            )}
           </div>
 
           {/* Accounts Tab */}
