@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   CreditCard, 
-  Calendar, 
-  DollarSign, 
-  FileText, 
   AlertTriangle, 
   Check, 
-  X,
   ArrowLeft,
   ExternalLink
 } from 'lucide-react';

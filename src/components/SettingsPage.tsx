@@ -11,7 +11,6 @@ import PendingInvitationsPage from './PendingInvitationsPage';
 import { OrgMember } from '../types/firestore';
 import { RevenueIntegrationsSettings } from './RevenueIntegrationsSettings';
 import SubscriptionService from '../services/SubscriptionService';
-import StripeService from '../services/StripeService';
 import { PlanTier, SUBSCRIPTION_PLANS } from '../types/subscription';
 
 type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'team' | 'revenue';
@@ -22,7 +21,6 @@ type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'team'
  */
 const BillingTabContent: React.FC = () => {
   const { currentOrgId } = useAuth();
-  const [loading, setLoading] = useState(false);
   const [hasStripeCustomer, setHasStripeCustomer] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState<{
     planTier: PlanTier;
