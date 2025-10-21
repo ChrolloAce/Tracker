@@ -158,7 +158,10 @@ const BillingManagementPage: React.FC = () => {
                   <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-800">
                     <span className="text-gray-600 dark:text-gray-400">Renews on</span>
                     <span className="font-semibold text-gray-900 dark:text-white">
-                      {subscription.currentPeriodEnd.toDate().toLocaleDateString()}
+                      {(subscription.currentPeriodEnd instanceof Date 
+                        ? subscription.currentPeriodEnd 
+                        : subscription.currentPeriodEnd.toDate()
+                      ).toLocaleDateString()}
                     </span>
                   </div>
                 )}
