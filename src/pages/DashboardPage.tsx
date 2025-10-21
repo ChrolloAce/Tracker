@@ -43,7 +43,7 @@ import RevenueDataService from '../services/RevenueDataService';
 import { RevenueMetrics, RevenueIntegration } from '../types/revenue';
 import { cssVariables } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
-import { Timestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
+import { Timestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { fixVideoPlatforms } from '../services/FixVideoPlatform';
 import { TrackedAccount } from '../types/firestore';
@@ -277,17 +277,9 @@ function DashboardPage() {
   });
 
   // Dashboard rule filter state - support multiple rule selection
-  const [selectedRuleIds, setSelectedRuleIds] = useState<string[]>(() => {
-    const saved = localStorage.getItem('dashboardSelectedRuleIds');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  });
+  // Will be loaded from Firebase along with rules
+  const [selectedRuleIds, setSelectedRuleIds] = useState<string[]>([]);
+  const [rulesLoadedFromFirebase, setRulesLoadedFromFirebase] = useState(false);
   
   // Tracked Links search state
   const [linksSearchQuery, setLinksSearchQuery] = useState('');
@@ -343,9 +335,36 @@ function DashboardPage() {
     localStorage.setItem('dashboardSelectedAccountIds', JSON.stringify(selectedAccountIds));
   }, [selectedAccountIds]);
 
+  // Save selected rules to Firestore (per user, per project)
+  // Only save after initial load to avoid overwriting on mount
   useEffect(() => {
-    localStorage.setItem('dashboardSelectedRuleIds', JSON.stringify(selectedRuleIds));
-  }, [selectedRuleIds]);
+    if (!user || !currentOrgId || !currentProjectId || !rulesLoadedFromFirebase) return;
+    
+    const saveSelectedRules = async () => {
+      try {
+        const userPrefsRef = doc(
+          db, 
+          'organizations', 
+          currentOrgId, 
+          'projects', 
+          currentProjectId, 
+          'userPreferences', 
+          user.uid
+        );
+        
+        await setDoc(userPrefsRef, {
+          selectedRuleIds,
+          updatedAt: new Date()
+        }, { merge: true });
+        
+        console.log('✅ Saved selected rules to Firebase:', selectedRuleIds);
+      } catch (error) {
+        console.error('❌ Failed to save selected rules:', error);
+      }
+    };
+    
+    saveSelectedRules();
+  }, [selectedRuleIds, user, currentOrgId, currentProjectId, rulesLoadedFromFirebase]);
 
   // Debug: Log when rules or selectedRuleIds change
   useEffect(() => {
@@ -515,17 +534,35 @@ function DashboardPage() {
       console.error('❌ Error loading videos:', error);
     }
     
-    // One-time load for rules
-    const rulesRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'rules');
-    
+    // One-time load for rules AND user's selected rules
     try {
+      const rulesRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'rules');
       const rulesSnapshot = await getDocs(rulesRef);
       const rules = rulesSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as TrackingRule[];
       
+      // Load user's selected rules from their preferences
+      const userPrefsRef = doc(
+        db, 
+        'organizations', 
+        currentOrgId, 
+        'projects', 
+        currentProjectId, 
+        'userPreferences', 
+        user.uid
+      );
+      const userPrefsDoc = await getDoc(userPrefsRef);
+      const savedSelectedRuleIds = userPrefsDoc.exists() ? (userPrefsDoc.data()?.selectedRuleIds || []) : [];
+      
+      console.log('✅ Loaded rules:', rules.length);
+      console.log('✅ Loaded selected rules from Firebase:', savedSelectedRuleIds);
+      
+      // Set both at the same time to avoid race conditions
       setAllRules(rules);
+      setSelectedRuleIds(savedSelectedRuleIds);
+      setRulesLoadedFromFirebase(true);
     } catch (error) {
       console.error('❌ Failed to load rules:', error);
     }
@@ -795,12 +832,9 @@ function DashboardPage() {
           filtered = []; // All inactive rules = no videos
         }
       } else {
-        // Rules are selected but not found in allRules yet (still loading)
-        // This happens on page load before rules finish loading
-        console.log(`⏳ Rules selected but not yet loaded. Returning empty array until rules load...`);
-        // Return empty array to prevent showing unfiltered data
-        // Will recalculate when allRules loads due to dependency array
-        filtered = [];
+        // Rules are selected but not found in allRules
+        // This shouldn't happen since they load together, but log it just in case
+        console.warn(`⚠️ Rules selected but not found in allRules. Selected: ${selectedRuleIds.length}, All rules: ${allRules.length}`);
       }
     } else {
       // Apply default rules filtering for tracked accounts (all active rules)
@@ -852,16 +886,8 @@ function DashboardPage() {
     return filtered;
   }, [submissions, dashboardPlatformFilter, selectedAccountIds, trackedAccounts, allRules, selectedRuleIds, rulesFingerprint]);
 
-  // Check if rules are still loading (selected but not yet loaded from Firestore)
-  const isLoadingRules = useMemo(() => {
-    if (selectedRuleIds.length === 0) return false; // No rules selected
-    const matchedRules = allRules.filter(r => selectedRuleIds.includes(r.id));
-    const isLoading = selectedRuleIds.length > 0 && matchedRules.length === 0;
-    if (isLoading) {
-      console.log('⏳ Rules are loading:', { selectedRuleIds, allRulesCount: allRules.length, matchedRules: matchedRules.length });
-    }
-    return isLoading;
-  }, [selectedRuleIds, allRules]);
+  // Rules are loaded from Firebase along with selectedRuleIds, so no loading state needed
+  const isLoadingRules = false;
 
   // Filter submissions based on date range, platform, and accounts (memoized to prevent infinite loops)
   const filteredSubmissions = useMemo(() => {
