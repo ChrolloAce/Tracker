@@ -276,10 +276,17 @@ function DashboardPage() {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Dashboard rule filter state
-  const [selectedRuleId, setSelectedRuleId] = useState<string>(() => {
-    const saved = localStorage.getItem('dashboardSelectedRuleId');
-    return saved || 'all';
+  // Dashboard rule filter state - support multiple rule selection
+  const [selectedRuleIds, setSelectedRuleIds] = useState<string[]>(() => {
+    const saved = localStorage.getItem('dashboardSelectedRuleIds');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return [];
+      }
+    }
+    return [];
   });
   
   // Tracked Links search state
@@ -337,8 +344,8 @@ function DashboardPage() {
   }, [selectedAccountIds]);
 
   useEffect(() => {
-    localStorage.setItem('dashboardSelectedRuleId', selectedRuleId);
-  }, [selectedRuleId, allRules]);
+    localStorage.setItem('dashboardSelectedRuleIds', JSON.stringify(selectedRuleIds));
+  }, [selectedRuleIds]);
 
   // Save accounts page filters to localStorage
   useEffect(() => {
@@ -724,7 +731,7 @@ function DashboardPage() {
     console.log('🔄 Recalculating submissionsWithoutDateFilter with rule filters...');
     console.log('📊 Raw submissions count:', submissions.length);
     console.log('🎯 Active rules count:', allRules.filter(r => r.isActive).length);
-    console.log('🔍 Selected rule ID:', selectedRuleId);
+    console.log('🔍 Selected rule IDs:', selectedRuleIds);
     
     let filtered = submissions;
     const initialCount = filtered.length;
@@ -753,22 +760,28 @@ function DashboardPage() {
       console.log(`👥 After accounts filter (${selectedAccountIds.length} accounts):`, filtered.length, `(removed ${beforeAccountFilter - filtered.length})`);
     }
     
-    // Apply specific rule filter if selected
-    if (selectedRuleId !== 'all') {
+    // Apply specific rule filter(s) if selected
+    if (selectedRuleIds.length > 0) {
       const beforeRuleFilter = filtered.length;
-      const selectedRule = allRules.find(rule => rule.id === selectedRuleId);
-      if (selectedRule) {
-        console.log(`📋 Applying specific rule: "${selectedRule.name}" (active: ${selectedRule.isActive})`);
-        if (selectedRule.isActive) {
+      const selectedRules = allRules.filter(rule => selectedRuleIds.includes(rule.id));
+      
+      if (selectedRules.length > 0) {
+        console.log(`📋 Applying ${selectedRules.length} specific rule(s)...`);
+        const activeSelectedRules = selectedRules.filter(r => r.isActive);
+        
+        if (activeSelectedRules.length > 0) {
           filtered = filtered.filter(video => {
-            // Check if video matches the selected rule
-            const result = RulesService.checkVideoMatchesRule(video as any, selectedRule);
-            return result.matches;
+            // Check if video matches ANY of the selected rules (OR logic)
+            const matches = activeSelectedRules.some(selectedRule => {
+              const result = RulesService.checkVideoMatchesRule(video as any, selectedRule);
+              return result.matches;
+            });
+            return matches;
           });
           console.log(`✅ After specific rule filter:`, filtered.length, `(removed ${beforeRuleFilter - filtered.length})`);
         } else {
-          console.log(`⚠️ Selected rule is INACTIVE, showing 0 videos`);
-          filtered = []; // Inactive rule = no videos
+          console.log(`⚠️ All selected rules are INACTIVE, showing 0 videos`);
+          filtered = []; // All inactive rules = no videos
         }
       }
     } else {
@@ -819,7 +832,7 @@ function DashboardPage() {
     console.log('─'.repeat(50));
     
     return filtered;
-  }, [submissions, dashboardPlatformFilter, selectedAccountIds, trackedAccounts, allRules, selectedRuleId, rulesFingerprint]);
+  }, [submissions, dashboardPlatformFilter, selectedAccountIds, trackedAccounts, allRules, selectedRuleIds, rulesFingerprint]);
 
   // Filter submissions based on date range, platform, and accounts (memoized to prevent infinite loops)
   const filteredSubmissions = useMemo(() => {
@@ -1675,13 +1688,18 @@ function DashboardPage() {
                     onFilterChange={handleDateFilterChange}
                   />
                   
-                  {/* Rule Filter Button - Icon Only */}
+                  {/* Rule Filter Button - Icon with Badge */}
                   <button
                     onClick={handleOpenRuleModal}
-                    className="p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
-                    title={selectedRuleId === 'all' ? 'All Videos' : (allRules.find(r => r.id === selectedRuleId)?.name || 'Select Rule')}
+                    className="relative p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
+                    title={selectedRuleIds.length === 0 ? 'All Videos' : `${selectedRuleIds.length} rule${selectedRuleIds.length > 1 ? 's' : ''} applied`}
                   >
                     <Filter className="w-4 h-4" />
+                    {selectedRuleIds.length > 0 && (
+                      <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-emerald-500 text-white text-[10px] font-bold rounded-full border-2 border-gray-900">
+                        {selectedRuleIds.length}
+                      </span>
+                    )}
                   </button>
                   
                   {/* Edit Layout Button - Icon Only */}
@@ -2427,96 +2445,67 @@ function DashboardPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-sm text-gray-400 mb-4">
-              Select a rule to filter dashboard videos. Only videos matching the selected rule will be displayed.
-            </p>
-            <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
-              {/* All Videos Option */}
-              <div
-                className={clsx(
-                  'p-4 rounded-lg border transition-all cursor-pointer group',
-                  selectedRuleId === 'all'
-                    ? 'bg-white/10 border-white/20'
-                    : 'bg-gray-800/50 border-gray-700 hover:border-gray-600'
-                )}
-                onClick={() => {
-                  setSelectedRuleId('all');
-                }}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5">
-                    {selectedRuleId === 'all' ? (
-                      <CheckCircle2 className="w-5 h-5 text-white" />
-                    ) : (
-                      <Circle className="w-5 h-5 text-gray-500 group-hover:text-gray-400" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-white">All Videos</h4>
-                    <p className="text-xs text-gray-400 mt-1">
-                      Show all videos based on their assigned account rules
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Individual Rules */}
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm text-gray-400">
+                Select multiple rules to filter videos. Videos matching ANY selected rule will be shown.
+              </p>
+              {selectedRuleIds.length > 0 && (
+                <button
+                  onClick={() => setSelectedRuleIds([])}
+                  className="text-xs text-gray-400 hover:text-white transition-colors"
+                >
+                  Clear All
+                </button>
+              )}
+            </div>
+            <div className="space-y-1 max-h-[500px] overflow-y-auto pr-2">
+              {/* Individual Rules - Compact Line Items */}
               {allRules
                 .filter(rule => rule.isActive)
                 .map((rule) => {
-                  const isSelected = selectedRuleId === rule.id;
+                  const isSelected = selectedRuleIds.includes(rule.id);
                   
                   return (
                     <div
                       key={rule.id}
                       className={clsx(
-                        'p-4 rounded-lg border transition-all cursor-pointer group',
+                        'px-3 py-2 rounded border transition-all cursor-pointer group flex items-center gap-2',
                         isSelected
-                          ? 'bg-white/10 border-white/20'
+                          ? 'bg-emerald-500/10 border-emerald-500/30'
                           : 'bg-gray-800/50 border-gray-700 hover:border-gray-600'
                       )}
                       onClick={() => {
-                        setSelectedRuleId(rule.id);
+                        setSelectedRuleIds(prev => 
+                          prev.includes(rule.id)
+                            ? prev.filter(id => id !== rule.id)
+                            : [...prev, rule.id]
+                        );
                       }}
                     >
-                      <div className="flex items-start gap-3">
-                        <div className="mt-0.5">
-                          {isSelected ? (
-                            <CheckCircle2 className="w-5 h-5 text-white" />
-                          ) : (
-                            <Circle className="w-5 h-5 text-gray-500 group-hover:text-gray-400" />
+                      <div className="flex-shrink-0">
+                        {isSelected ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        ) : (
+                          <Circle className="w-4 h-4 text-gray-500 group-hover:text-gray-400" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className={clsx(
+                            "text-sm font-medium truncate",
+                            isSelected ? "text-white" : "text-gray-300"
+                          )}>
+                            {rule.name}
+                          </span>
+                          {rule.conditions.length > 0 && (
+                            <span className="text-xs text-gray-500 flex-shrink-0">
+                              {rule.conditions.length} condition{rule.conditions.length > 1 ? 's' : ''}
+                            </span>
                           )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-white">{rule.name}</h4>
-                          {rule.description && (
-                            <p className="text-xs text-gray-500 mt-1">{rule.description}</p>
-                          )}
-                          <div className="space-y-1 mt-2">
-                            {rule.conditions.slice(0, 2).map((condition: RuleCondition, index: number) => (
-                              <div key={condition.id} className="flex items-center gap-2 text-xs">
-                                {index > 0 && (
-                                  <span className="text-gray-900 dark:text-white font-semibold">
-                                    {rule.conditions[index - 1].operator || 'AND'}
-                                  </span>
-                                )}
-                                <div className="flex items-center gap-2 px-2 py-1 bg-gray-800 rounded">
-                                  <span className="text-gray-400">
-                                    {RulesService.getConditionTypeLabel(condition.type)}:
-                                  </span>
-                                  <span className="font-mono text-white">
-                                    {String(condition.value)}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                            {rule.conditions.length > 2 && (
-                              <p className="text-xs text-gray-500">
-                                +{rule.conditions.length - 2} more condition{rule.conditions.length - 2 > 1 ? 's' : ''}
-                              </p>
-                            )}
-                          </div>
-                        </div>
+                        {rule.description && (
+                          <p className="text-xs text-gray-500 truncate mt-0.5">{rule.description}</p>
+                        )}
                       </div>
                     </div>
                   );
