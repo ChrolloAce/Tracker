@@ -13,14 +13,6 @@ const SubscriptionPage: React.FC = () => {
   const [currentPlan, setCurrentPlan] = useState<PlanTier>('basic');
   const [loading, setLoading] = useState(false);
   const [hasStripeCustomer, setHasStripeCustomer] = useState(false);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<{
-    planTier: PlanTier;
-    isActive: boolean;
-    isExpired: boolean;
-    expiresAt: Date | null;
-    daysUntilExpiry: number | null;
-    needsRenewal: boolean;
-  } | null>(null);
 
   useEffect(() => {
     loadSubscriptionInfo();
@@ -41,23 +33,14 @@ const SubscriptionPage: React.FC = () => {
         console.log('✅ Default subscription created');
       }
       
-      const [tier, status] = await Promise.all([
-        SubscriptionService.getPlanTier(currentOrgId),
-        SubscriptionService.getSubscriptionStatus(currentOrgId),
-      ]);
-      console.log('✅ Subscription loaded:', { tier, status });
+      const tier = await SubscriptionService.getPlanTier(currentOrgId);
+      console.log('✅ Subscription loaded:', { tier });
       setCurrentPlan(tier);
-      setSubscriptionStatus(status);
       
       // Check if user has Stripe customer
       const subscription = await SubscriptionService.getSubscription(currentOrgId);
       setHasStripeCustomer(!!subscription?.stripeCustomerId);
       console.log('💳 Has Stripe customer:', !!subscription?.stripeCustomerId);
-      
-      // Log warning if expired
-      if (status.isExpired) {
-        console.warn('⚠️ Subscription has expired!');
-      }
     } catch (error) {
       console.error('❌ Failed to load subscription info:', error);
     }
