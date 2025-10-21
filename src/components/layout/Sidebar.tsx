@@ -16,8 +16,6 @@ import CreateProjectModal from '../CreateProjectModal';
 import RefreshCountdown from '../RefreshCountdown';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useAuth } from '../../contexts/AuthContext';
-import blackLogo from '../blacklogo.png';
-import whiteLogo from '../whitelogo.png';
 import newLogo from '/vtlogo.png';
 
 interface SidebarProps {

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, Crown, Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, Building2, User as UserIcon, Download, X, Users, DollarSign, ExternalLink } from 'lucide-react';
+import { LogOut, Crown, Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, Building2, User as UserIcon, X, Users, DollarSign, ExternalLink } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
