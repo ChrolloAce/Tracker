@@ -116,6 +116,7 @@ function DashboardPage() {
   const [dragOverSection, setDragOverSection] = useState<string | null>(null);
   const [isOverSectionTrash, setIsOverSectionTrash] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [rulesLoaded, setRulesLoaded] = useState(false);
   
   const [kpiCardOrder, setKpiCardOrder] = useState<string[]>(() => {
     // Load saved card order from localStorage
@@ -434,6 +435,8 @@ function DashboardPage() {
       return;
     }
 
+    // Reset rules loaded state when changing projects
+    setRulesLoaded(false);
     
     // Initialize theme
     ThemeService.initializeTheme();
@@ -526,8 +529,11 @@ function DashboardPage() {
       })) as TrackingRule[];
       
       setAllRules(rules);
+      setRulesLoaded(true);
+      console.log('✅ Rules loaded:', rules.length);
     } catch (error) {
       console.error('❌ Failed to load rules:', error);
+      setRulesLoaded(true); // Set to true even on error so UI doesn't hang
     }
     
     // One-time load for link clicks
@@ -1211,6 +1217,7 @@ function DashboardPage() {
       // Reload rules
       const rules = await RulesService.getRules(currentOrgId, currentProjectId);
       setAllRules(rules as TrackingRule[]);
+      setRulesLoaded(true);
       
       // Reset form and show list
       setShowCreateRuleForm(false);
@@ -1231,8 +1238,10 @@ function DashboardPage() {
       try {
         const rules = await RulesService.getRules(currentOrgId, currentProjectId);
         setAllRules(rules as TrackingRule[]);
+        setRulesLoaded(true);
       } catch (error) {
         console.error('❌ Failed to reload rules:', error);
+        setRulesLoaded(true);
       }
     }
   }, [currentOrgId, currentProjectId]);
@@ -1500,6 +1509,9 @@ function DashboardPage() {
     // Combine: sections first, then cards, then Top Performers subsections
     return [...sortedSections, ...sortedCards, ...topPerformersSubsectionOptions];
   }, [kpiCardOrder, kpiCardVisibility, dashboardSectionOrder, dashboardSectionVisibility, topPerformersSubsectionOptions]);
+
+  // Show loading state if rules are selected but haven't loaded yet
+  const isLoadingRules = selectedRuleIds.length > 0 && !rulesLoaded;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
@@ -1845,9 +1857,18 @@ function DashboardPage() {
         <div className="max-w-7xl mx-auto px-6 py-8" style={{ overflow: 'visible' }}>
           {/* Dashboard Tab */}
           <div className={activeTab === 'dashboard' ? '' : 'hidden'}>
-            <>
-              {/* Render dashboard sections in order */}
-              {dashboardSectionOrder
+            {isLoadingRules ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="text-center">
+                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mb-4"></div>
+                  <p className="text-gray-400">Loading rules filter...</p>
+                  <p className="text-xs text-gray-500 mt-2">{selectedRuleIds.length} rule{selectedRuleIds.length > 1 ? 's' : ''} selected</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Render dashboard sections in order */}
+                {dashboardSectionOrder
                 .filter(sectionId => dashboardSectionVisibility[sectionId] !== false)
                 .map((sectionId, index) => {
                   const handleSectionDragStart = () => {
@@ -2021,6 +2042,7 @@ function DashboardPage() {
                 </div>
               )}
               </>
+            )}
           </div>
 
           {/* Accounts Tab */}
