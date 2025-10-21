@@ -117,12 +117,17 @@ async function handleSubscriptionUpdate(db: any, subscription: Stripe.Subscripti
 
   // Get plan tier from price ID
   const priceId = subscription.items.data[0].price.id;
+  console.log(`🔍 Processing subscription update for customer ${customerId}, price ID: ${priceId}`);
+  
   const planTier = getPlanTierFromPriceId(priceId);
   
   if (!planTier) {
-    console.error('Unknown price ID:', priceId);
+    console.error('❌ CRITICAL: Unknown price ID:', priceId);
+    console.error('❌ Subscription update FAILED - plan tier not recognized');
     return;
   }
+
+  console.log(`📝 Updating Firebase for org ${orgId}: ${planTier} (${subscription.status})`);
 
   // Update subscription
   await subDoc.ref.update({
@@ -137,7 +142,8 @@ async function handleSubscriptionUpdate(db: any, subscription: Stripe.Subscripti
     updatedAt: new Date(),
   });
 
-  console.log(`✅ Updated subscription for org ${orgId} to ${planTier} (${subscription.status})`);
+  console.log(`✅ SUCCESS: Updated subscription for org ${orgId} to ${planTier} (${subscription.status})`);
+  console.log(`✅ Subscription expires: ${new Date(subscription.current_period_end * 1000).toISOString()}`);
 }
 
 /**
@@ -220,17 +226,27 @@ async function handlePaymentFailed(db: any, invoice: Stripe.Invoice) {
  * Map Stripe price ID to plan tier
  */
 function getPlanTierFromPriceId(priceId: string): string | null {
-  // These should match your actual Stripe price IDs
+  // Try both with and without VITE_ prefix (for backend compatibility)
   const priceMap: Record<string, string> = {
-    [process.env.VITE_STRIPE_BASIC_MONTHLY || 'price_basic_monthly']: 'basic',
-    [process.env.VITE_STRIPE_BASIC_YEARLY || 'price_basic_yearly']: 'basic',
-    [process.env.VITE_STRIPE_PRO_MONTHLY || 'price_pro_monthly']: 'pro',
-    [process.env.VITE_STRIPE_PRO_YEARLY || 'price_pro_yearly']: 'pro',
-    [process.env.VITE_STRIPE_ULTRA_MONTHLY || 'price_ultra_monthly']: 'ultra',
-    [process.env.VITE_STRIPE_ULTRA_YEARLY || 'price_ultra_yearly']: 'ultra',
+    // Basic plan
+    [process.env.VITE_STRIPE_BASIC_MONTHLY || process.env.STRIPE_BASIC_MONTHLY || 'price_basic_monthly']: 'basic',
+    [process.env.VITE_STRIPE_BASIC_YEARLY || process.env.STRIPE_BASIC_YEARLY || 'price_basic_yearly']: 'basic',
+    // Pro plan
+    [process.env.VITE_STRIPE_PRO_MONTHLY || process.env.STRIPE_PRO_MONTHLY || 'price_pro_monthly']: 'pro',
+    [process.env.VITE_STRIPE_PRO_YEARLY || process.env.STRIPE_PRO_YEARLY || 'price_pro_yearly']: 'pro',
+    // Ultra plan
+    [process.env.VITE_STRIPE_ULTRA_MONTHLY || process.env.STRIPE_ULTRA_MONTHLY || 'price_ultra_monthly']: 'ultra',
+    [process.env.VITE_STRIPE_ULTRA_YEARLY || process.env.STRIPE_ULTRA_YEARLY || 'price_ultra_yearly']: 'ultra',
   };
 
-  return priceMap[priceId] || null;
+  const tier = priceMap[priceId];
+  
+  if (!tier) {
+    console.error('❌ Unknown price ID:', priceId);
+    console.error('📋 Available price IDs:', Object.keys(priceMap).filter(k => k !== 'price_basic_monthly' && k !== 'price_basic_yearly' && k !== 'price_pro_monthly' && k !== 'price_pro_yearly' && k !== 'price_ultra_monthly' && k !== 'price_ultra_yearly'));
+  }
+  
+  return tier || null;
 }
 
 // Disable body parsing for webhook
