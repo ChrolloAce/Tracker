@@ -63,28 +63,9 @@ const BillingTabContent: React.FC = () => {
     }
   };
 
-  const handleManageBilling = async () => {
-    if (!currentOrgId) return;
-    
-    // Check if user has a Stripe customer ID
-    const subscription = await SubscriptionService.getSubscription(currentOrgId);
-    
-    if (!subscription?.stripeCustomerId) {
-      alert('You need to subscribe to a paid plan first before accessing the billing portal. Please choose a plan below.');
-      handleViewPlans();
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      console.log('🔗 Opening Stripe Customer Portal...');
-      await StripeService.createPortalSession(currentOrgId);
-    } catch (error: any) {
-      console.error('❌ Failed to open billing portal:', error);
-      alert('Failed to open billing portal. Please try again or contact support.');
-    } finally {
-      setLoading(false);
-    }
+  const handleManageBilling = () => {
+    // Navigate to in-app billing page
+    window.location.href = '/billing';
   };
 
   const handleViewPlans = () => {

@@ -12,6 +12,7 @@ import ContractEditorPage from './pages/ContractEditorPage';
 import CreateContractPage from './pages/CreateContractPage';
 import CreatorDetailsPageWrapper from './pages/CreatorDetailsPageWrapper';
 import SubscriptionPage from './components/SubscriptionPage';
+import BillingManagementPage from './components/BillingManagementPage';
 import { useEffect, useState } from 'react';
 import { AlertCircle } from 'lucide-react';
 
@@ -274,6 +275,19 @@ function App() {
             <LoadingSkeleton />
           ) : (
             <SubscriptionPage />
+          )
+        } 
+      />
+
+      <Route 
+        path="/billing" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : !currentOrgId ? (
+            <LoadingSkeleton />
+          ) : (
+            <BillingManagementPage />
           )
         } 
       />
