@@ -198,6 +198,13 @@ service cloud.firestore {
         // Only admins can delete projects
         allow delete: if canManageOrg(orgId);
         
+        // ==================== USER PREFERENCES (PER PROJECT) ====================
+        
+        match /userPreferences/{userId} {
+          // Users can read and write their own preferences
+          allow read, write: if isOwner(userId) && canReadOrg(orgId);
+        }
+        
         // ==================== PROJECT STATS ====================
         
         match /stats/{statId} {
