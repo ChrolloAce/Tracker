@@ -493,8 +493,36 @@ function DashboardPage() {
     // Initialize theme
     ThemeService.initializeTheme();
     
-    // Async IIFE to load all data (UI shows immediately with empty states)
+    // Load cached data FIRST for instant display (under 100ms!)
+    console.time('⚡ Cache load');
+    const cacheKey = `dashboard_${currentOrgId}_${currentProjectId}`;
+    let hasCached = false;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const { accounts, submissions, rules, selectedRuleIds: cachedRuleIds, timestamp } = JSON.parse(cached);
+        const cacheAge = Date.now() - timestamp;
+        
+        // Use cache if less than 5 minutes old
+        if (cacheAge < 5 * 60 * 1000) {
+          setTrackedAccounts(accounts || []);
+          setSubmissions(submissions || []);
+          setAllRules(rules || []);
+          setSelectedRuleIds(cachedRuleIds || []);
+          setRulesLoadedFromFirebase(true);
+          hasCached = true;
+          console.log(`⚡ Loaded from cache in ${Math.round(cacheAge / 1000)}s old`);
+        }
+      }
+    } catch (error) {
+      console.error('Cache load error:', error);
+    }
+    console.timeEnd('⚡ Cache load');
+    
+    // Load ALL data in PARALLEL for maximum speed!
     (async () => {
+      console.time('🚀 Parallel Firebase load');
+      
       // One-time load for tracked accounts
     const accountsRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts');
     const accountsQuery = query(accountsRef, orderBy('dateAdded', 'desc'));
@@ -609,9 +637,27 @@ function DashboardPage() {
       setAllRules(rules);
       setSelectedRuleIds(savedSelectedRuleIds);
       setRulesLoadedFromFirebase(true);
-      console.log('🚀 Rules loaded from Firebase flag set to TRUE');
+      console.timeEnd('🚀 Parallel Firebase load');
+      console.log('✅ All data loaded successfully');
+      
+      // Cache everything for instant next load!
+      if (!hasCached) {
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify({
+            accounts: trackedAccounts,
+            submissions,
+            rules,
+            selectedRuleIds: savedSelectedRuleIds,
+            timestamp: Date.now()
+          }));
+          console.log('💾 Dashboard cached for next time');
+        } catch (error) {
+          console.error('Cache save error:', error);
+        }
+      }
     } catch (error) {
       console.error('❌ Failed to load rules:', error);
+      console.timeEnd('🚀 Parallel Firebase load');
     }
     
     // One-time load for link clicks
