@@ -32,7 +32,6 @@ function CreateProjectPageWrapper() {
 function LoadingSkeleton() {
   const { logout } = useAuth();
   const [showError, setShowError] = useState(false);
-  const [countdown, setCountdown] = useState(15);
 
   useEffect(() => {
     // Show error after 15 seconds
@@ -40,20 +39,8 @@ function LoadingSkeleton() {
       setShowError(true);
     }, 15000);
 
-    // Countdown timer
-    const countdownInterval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(countdownInterval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
     return () => {
       clearTimeout(errorTimer);
-      clearInterval(countdownInterval);
     };
   }, []);
 

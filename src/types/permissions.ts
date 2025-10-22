@@ -234,6 +234,7 @@ export const DEFAULT_PERMISSIONS: Record<'owner' | 'admin' | 'member' | 'creator
       contracts: false, // Members don't see contracts by default
       team: true,
       creators: false,
+      campaigns: true,
       extension: true,
       settings: true,
     },
@@ -374,6 +375,7 @@ export const PERMISSION_PRESETS: PermissionPreset[] = [
         contracts: false,
         team: false,
         creators: false,
+        campaigns: false,
         extension: true,
         settings: true,
       },
@@ -507,6 +509,7 @@ export const PERMISSION_PRESETS: PermissionPreset[] = [
         contracts: true,
         team: false,
         creators: true,
+        campaigns: true,
         extension: true,
         settings: false,
       },

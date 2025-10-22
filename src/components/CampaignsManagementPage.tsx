@@ -5,14 +5,6 @@ import CampaignService from '../services/CampaignService';
 import CreateCampaignModal from './CreateCampaignModal';
 import { 
   Trophy, 
-  Target, 
-  Users, 
-  TrendingUp,
-  Play,
-  Pause,
-  CheckCircle,
-  XCircle,
-  Eye,
   DollarSign,
   MoreVertical,
   Plus
@@ -35,11 +27,10 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
   openCreateModal = false, 
   onCloseCreateModal,
   selectedStatus = 'all',
-  onStatusChange,
   onOpenCreateModal,
   onCampaignsLoaded
 }) => {
-  const { user, currentOrgId, currentProjectId } = useAuth();
+  const { currentOrgId, currentProjectId } = useAuth();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -95,8 +86,6 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
   };
 
   const activeCampaigns = campaigns.filter(c => c.status === 'active');
-  const draftCampaigns = campaigns.filter(c => c.status === 'draft');
-  const completedCampaigns = campaigns.filter(c => c.status === 'completed');
 
   // Calculate overall stats
   const totalParticipants = new Set(campaigns.flatMap(c => c.participantIds)).size;
@@ -163,7 +152,6 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
             <CampaignManagementCard
               key={campaign.id}
               campaign={campaign}
-              onStatusChange={handleStatusChange}
             />
           ))}
         </div>
@@ -202,8 +190,7 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
 // Campaign Management Card - Redesigned
 const CampaignManagementCard: React.FC<{
   campaign: Campaign;
-  onStatusChange: (campaignId: string, newStatus: CampaignStatus) => void;
-}> = ({ campaign, onStatusChange }) => {
+}> = ({ campaign }) => {
   // Calculate CPM/reward from compensation
   const getRewardDisplay = () => {
     if (campaign.compensationType === 'flat_cpm' && campaign.compensationAmount) {
