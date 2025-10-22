@@ -119,16 +119,38 @@ function LoadingSkeleton() {
     );
   }
 
+  // Fast skeleton loader - no black screen! Show dashboard structure immediately
   return (
-    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-16 h-16 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-white/60 text-sm">Loading...</p>
-        {countdown > 0 && countdown <= 10 && (
-          <p className="text-white/40 text-xs mt-2">
-            If stuck, showing options in {countdown}s
-          </p>
-        )}
+    <div className="min-h-screen bg-[#0A0A0A]">
+      {/* Skeleton Sidebar */}
+      <div className="fixed left-0 top-0 bottom-0 w-64 bg-zinc-900/60 backdrop-blur border-r border-white/5 p-4">
+        <div className="h-8 bg-white/5 rounded animate-pulse mb-8"></div>
+        <div className="space-y-3">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-10 bg-white/5 rounded animate-pulse"></div>
+          ))}
+        </div>
+      </div>
+      
+      {/* Skeleton Header */}
+      <div className="fixed top-0 left-64 right-0 h-16 bg-zinc-900/60 backdrop-blur border-b border-white/5 px-6 flex items-center">
+        <div className="h-8 bg-white/5 rounded w-48 animate-pulse"></div>
+      </div>
+      
+      {/* Skeleton Content */}
+      <div className="ml-64 pt-24 px-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Skeleton KPI Cards */}
+          <div className="grid grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-32 bg-zinc-900/40 rounded-2xl border border-white/5 animate-pulse"></div>
+            ))}
+          </div>
+          
+          {/* Skeleton Charts */}
+          <div className="h-96 bg-zinc-900/40 rounded-2xl border border-white/5 animate-pulse"></div>
+          <div className="h-96 bg-zinc-900/40 rounded-2xl border border-white/5 animate-pulse"></div>
+        </div>
       </div>
     </div>
   );

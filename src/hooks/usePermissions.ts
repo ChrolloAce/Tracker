@@ -11,10 +11,38 @@ import { TeamMemberPermissions } from '../types/permissions';
  */
 export function usePermissions() {
   const { user, currentOrgId } = useAuth();
-  const [member, setMember] = useState<OrgMember | null>(null);
-  const [loading, setLoading] = useState(true);
+  
+  // Initialize with cached permissions for instant load
+  const [member, setMember] = useState<OrgMember | null>(() => {
+    if (!user || !currentOrgId) return null;
+    
+    try {
+      const cacheKey = `permissions_${user.uid}_${currentOrgId}`;
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (error) {
+      console.error('Failed to load cached permissions:', error);
+    }
+    
+    return null;
+  });
+  
+  // If we have cached permissions, start with loading = false for instant UI
+  const [loading, setLoading] = useState(() => {
+    if (!user || !currentOrgId) return true;
+    
+    try {
+      const cacheKey = `permissions_${user.uid}_${currentOrgId}`;
+      const cached = localStorage.getItem(cacheKey);
+      return !cached; // Not loading if we have cache
+    } catch {
+      return true;
+    }
+  });
 
-  // Load member data
+  // Load member data and cache it
   useEffect(() => {
     let isMounted = true;
 
@@ -32,11 +60,24 @@ export function usePermissions() {
         if (isMounted) {
           setMember(currentMember || null);
           setLoading(false);
+          
+          // Cache the permissions for instant next load
+          if (currentMember) {
+            try {
+              const cacheKey = `permissions_${user.uid}_${currentOrgId}`;
+              localStorage.setItem(cacheKey, JSON.stringify(currentMember));
+            } catch (error) {
+              console.error('Failed to cache permissions:', error);
+            }
+          }
         }
       } catch (error) {
         console.error('Failed to load member permissions:', error);
         if (isMounted) {
-          setMember(null);
+          // If we have cached permissions, keep using them on error
+          if (!member) {
+            setMember(null);
+          }
           setLoading(false);
         }
       }

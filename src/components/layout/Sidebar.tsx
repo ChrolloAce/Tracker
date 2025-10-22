@@ -43,75 +43,72 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
   const [showCreateProject, setShowCreateProject] = useState(false);
-  const { can } = usePermissions();
+  const { can, loading: permissionsLoading } = usePermissions();
   const { userRole } = useAuth();
 
-  // Filter navigation items based on permissions
+  // Show ALL navigation items immediately for instant UI, filter by permissions after loaded
   const navigationItems: NavItem[] = useMemo(() => {
-    const items: NavItem[] = [];
-
-    if (can.accessTab('dashboard')) {
-      items.push({
+    const allItems: NavItem[] = [
+      {
         id: 'dashboard',
         label: 'Dashboard',
         icon: Eye,
         isActive: activeTab === 'dashboard',
         onClick: () => onTabChange?.('dashboard'),
-      });
-    }
-
-    if (can.accessTab('trackedAccounts')) {
-      items.push({
+      },
+      {
         id: 'accounts',
         label: 'Tracked Accounts',
         icon: Users,
         isActive: activeTab === 'accounts',
         onClick: () => onTabChange?.('accounts'),
-      });
-    }
-
-    if (can.accessTab('videos')) {
-      items.push({
+      },
+      {
         id: 'videos',
         label: 'Videos',
         icon: Film,
         isActive: activeTab === 'videos',
         onClick: () => onTabChange?.('videos'),
-      });
-    }
-
-    if (can.accessTab('trackedLinks')) {
-      items.push({
+      },
+      {
         id: 'analytics',
         label: 'Tracked Links',
         icon: Link,
         isActive: activeTab === 'analytics',
         onClick: () => onTabChange?.('analytics'),
-      });
-    }
-
-    if (can.accessTab('creators')) {
-      items.push({
+      },
+      {
         id: 'creators',
-        label: userRole === 'creator' ? 'Payouts' : 'Creators', // Show "Payouts" for creators, "Creators" for admins
+        label: userRole === 'creator' ? 'Payouts' : 'Creators',
         icon: Video,
         isActive: activeTab === 'creators',
         onClick: () => onTabChange?.('creators'),
-      });
-    }
-
-    if (can.accessTab('settings')) {
-      items.push({
+      },
+      {
         id: 'settings',
         label: 'Settings',
         icon: Settings,
         isActive: activeTab === 'settings',
         onClick: () => onTabChange?.('settings'),
-      });
+      },
+    ];
+
+    // If permissions are still loading, show all items for instant UI
+    if (permissionsLoading) {
+      return allItems;
     }
 
-    return items;
-  }, [activeTab, can, onTabChange, userRole]);
+    // After permissions load, filter items based on access
+    return allItems.filter(item => {
+      if (item.id === 'dashboard') return can.accessTab('dashboard');
+      if (item.id === 'accounts') return can.accessTab('trackedAccounts');
+      if (item.id === 'videos') return can.accessTab('videos');
+      if (item.id === 'analytics') return can.accessTab('trackedLinks');
+      if (item.id === 'creators') return can.accessTab('creators');
+      if (item.id === 'settings') return can.accessTab('settings');
+      return true;
+    });
+  }, [activeTab, can, permissionsLoading, onTabChange, userRole]);
 
   const NavItemComponent: React.FC<{ item: NavItem }> = ({ item }) => {
     const Icon = item.icon;
