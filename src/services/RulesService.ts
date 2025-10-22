@@ -252,16 +252,20 @@ class RulesService {
     const originalDescription = video.caption || video.title || '';
     const description = condition.caseSensitive ? originalDescription : originalDescription.toLowerCase();
     
-    // Debug: Log what we're checking for description rules
-    if ((condition.type === 'description_contains' || condition.type === 'description_not_contains') && 
-        Math.random() < 0.1) { // Log 10% of checks to avoid spam
+    // Enhanced debug logging for TikTok videos
+    const isTikTok = video.url?.includes('tiktok') || video.videoId?.length > 15;
+    if ((condition.type === 'description_contains' || condition.type === 'description_not_contains')) {
       console.log('🔍 Rule evaluation:', {
-        videoId: video.videoId,
+        platform: isTikTok ? 'TikTok' : 'Instagram',
+        videoId: video.videoId?.substring(0, 15),
         conditionType: condition.type,
         searchValue: condition.value,
         hasCaption: !!video.caption,
         hasTitle: !!video.title,
-        descriptionPreview: originalDescription.substring(0, 50)
+        captionLength: video.caption?.length || 0,
+        titleLength: video.title?.length || 0,
+        descriptionPreview: originalDescription.substring(0, 80),
+        willMatch: description.includes(String(condition.value).toLowerCase())
       });
     }
     
