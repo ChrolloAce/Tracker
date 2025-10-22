@@ -24,6 +24,7 @@ export interface TabsPermissions {
   contracts: boolean;
   team: boolean;
   creators: boolean;
+  extension: boolean;
   settings: boolean;
 }
 
@@ -108,6 +109,7 @@ export const DEFAULT_PERMISSIONS: Record<'owner' | 'admin' | 'member' | 'creator
       contracts: true,
       team: true,
       creators: true,
+      extension: true,
       settings: true,
     },
     projects: {
@@ -168,6 +170,7 @@ export const DEFAULT_PERMISSIONS: Record<'owner' | 'admin' | 'member' | 'creator
       contracts: true,
       team: true,
       creators: true,
+      extension: true,
       settings: true,
     },
     projects: {
@@ -228,6 +231,7 @@ export const DEFAULT_PERMISSIONS: Record<'owner' | 'admin' | 'member' | 'creator
       contracts: false, // Members don't see contracts by default
       team: true,
       creators: false,
+      extension: true,
       settings: true,
     },
     projects: {
@@ -288,6 +292,7 @@ export const DEFAULT_PERMISSIONS: Record<'owner' | 'admin' | 'member' | 'creator
       contracts: false,
       team: false,
       creators: true, // Access to creator portal
+      extension: false, // Creators don't need extension
       settings: true,
     },
     projects: {
@@ -365,6 +370,7 @@ export const PERMISSION_PRESETS: PermissionPreset[] = [
         contracts: false,
         team: false,
         creators: false,
+        extension: true,
         settings: true,
       },
       projects: {
@@ -430,6 +436,7 @@ export const PERMISSION_PRESETS: PermissionPreset[] = [
         contracts: true,
         team: false,
         creators: true,
+        extension: true,
         settings: true,
       },
       projects: {
@@ -495,6 +502,7 @@ export const PERMISSION_PRESETS: PermissionPreset[] = [
         contracts: true,
         team: false,
         creators: true,
+        extension: true,
         settings: false,
       },
       projects: {

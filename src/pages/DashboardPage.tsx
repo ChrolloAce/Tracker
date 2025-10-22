@@ -30,6 +30,7 @@ import CronManagementPage from '../components/CronManagementPage';
 import TrackedLinksPage, { TrackedLinksPageRef } from '../components/TrackedLinksPage';
 import CreatorPortalPage from '../components/CreatorPortalPage';
 import CreatorsManagementPage, { CreatorsManagementPageRef } from '../components/CreatorsManagementPage';
+import ExtensionPromoModal from '../components/ExtensionPromoModal';
 import OrganizationService from '../services/OrganizationService';
 import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
 import { PlatformIcon } from '../components/ui/PlatformIcon';
@@ -519,159 +520,169 @@ function DashboardPage() {
     }
     console.timeEnd('⚡ Cache load');
     
-    // Load ALL data in TRUE PARALLEL for maximum speed! (under 1 second!)
+    // Load ALL data in PARALLEL for maximum speed!
     (async () => {
-      console.time('⚡ Parallel Firebase load');
+      console.time('🚀 Parallel Firebase load');
       
-      try {
-        // Calculate date range for smart video filtering
-        const { startDate, endDate } = DateFilterService.getDateRange(dateFilter, customDateRange);
-        const startTimestamp = Timestamp.fromDate(startDate);
+      // One-time load for tracked accounts
+    const accountsRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts');
+    const accountsQuery = query(accountsRef, orderBy('dateAdded', 'desc'));
+    
+    try {
+      const accountsSnapshot = await getDocs(accountsQuery);
+      const accounts: TrackedAccount[] = accountsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as TrackedAccount));
+      
+      setTrackedAccounts(accounts);
+    } catch (error) {
+      console.error('❌ Failed to load accounts:', error);
+    }
+    
+    // One-time load for videos
+    const videosRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'videos');
+    const videosQuery = query(videosRef, orderBy('dateAdded', 'desc'), limit(1000));
+    
+    try {
+      const videosSnapshot = await getDocs(videosQuery);
+      
+      // Get current accounts for mapping
+      const accounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
+      const accountsMap = new Map(accounts.map(acc => [acc.id, acc]));
+      
+      // Get video IDs for snapshot fetching
+      const videoIds = videosSnapshot.docs.map(doc => doc.id);
+      
+      // Fetch snapshots for all videos in parallel
+      const snapshotsMap = await FirestoreDataService.getVideoSnapshotsBatch(
+        currentOrgId, 
+        currentProjectId, 
+        videoIds
+      );
+      
+      const allSubmissions: VideoSubmission[] = videosSnapshot.docs.map(doc => {
+        const video = { id: doc.id, ...doc.data() } as any;
+        const account = video.trackedAccountId ? accountsMap.get(video.trackedAccountId) : null;
+        const snapshots = snapshotsMap.get(video.id) || [];
         
-        console.log(`📅 Loading videos from ${startDate.toLocaleDateString()} onwards`);
+        // Load caption from Firestore fields - use actual field names from Firestore
+        const caption = video.caption || video.videoTitle || '';
+        const title = video.videoTitle || video.caption || '';
         
-        // Build smart video query with date filter
-        const videosRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'videos');
-        let videosQuery;
-        
-        if (dateFilter === 'alltime') {
-          // All time: load up to 1000 most recent
-          videosQuery = query(videosRef, orderBy('uploadDate', 'desc'), limit(1000));
-        } else {
-          // Filtered: only load videos from the selected period (MUCH faster!)
-          videosQuery = query(
-            videosRef, 
-            where('uploadDate', '>=', startTimestamp),
-            orderBy('uploadDate', 'desc'),
-            limit(5000) // Higher limit for filtered queries since they're faster
-          );
-        }
-        
-        // Load EVERYTHING in parallel with Promise.all() - this is the key to speed!
-        const [accountsSnapshot, videosSnapshot, rulesSnapshot, userPrefsDoc, linkClicks] = await Promise.all([
-          // 1. Accounts
-          getDocs(query(
-            collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts'),
-            orderBy('dateAdded', 'desc')
-          )),
-          
-          // 2. Videos (with smart date filtering!)
-          getDocs(videosQuery),
-          
-          // 3. Rules
-          getDocs(collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackingRules')),
-          
-          // 4. User preferences
-          getDoc(doc(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'userPreferences', user.uid)),
-          
-          // 5. Link clicks
-          LinkClicksService.getProjectLinkClicks(currentOrgId, currentProjectId).catch(() => [])
-        ]);
-        
-        console.log(`✅ All Firebase queries completed!`);
-        
-        // Process accounts
-        const accounts: TrackedAccount[] = accountsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        } as TrackedAccount));
-        const accountsMap = new Map(accounts.map(acc => [acc.id, acc]));
-        
-        // Process rules
-        const rules = rulesSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as TrackingRule[];
-        
-        const savedSelectedRuleIds = userPrefsDoc.exists() ? (userPrefsDoc.data()?.selectedRuleIds || []) : [];
-        
-        // Get video IDs and fetch snapshots in parallel
-        const videoIds = videosSnapshot.docs.map(doc => doc.id);
-        console.log(`📹 Loading ${videoIds.length} videos...`);
-        
-        const snapshotsMap = await FirestoreDataService.getVideoSnapshotsBatch(
-          currentOrgId, 
-          currentProjectId, 
-          videoIds
-        );
-        
-        // Process videos
-        const allSubmissions: VideoSubmission[] = videosSnapshot.docs.map(doc => {
-          const video = { id: doc.id, ...doc.data() } as any;
-          const account = video.trackedAccountId ? accountsMap.get(video.trackedAccountId) : null;
-          const snapshots = snapshotsMap.get(video.id) || [];
-          
-          const caption = video.caption || video.videoTitle || '';
-          const title = video.videoTitle || video.caption || '';
-          
-          return {
-            id: video.id,
-            url: video.videoUrl || video.url || '',
-            platform: video.platform as 'instagram' | 'tiktok' | 'youtube',
-            thumbnail: video.thumbnail || '',
-            title: title,
-            caption: caption,
-            uploader: account?.displayName || account?.username || '',
-            uploaderHandle: account?.username || '',
-            uploaderProfilePicture: account?.profilePicture,
-            followerCount: account?.followerCount,
-            status: video.status === 'archived' ? 'rejected' : 'approved',
-            views: video.views || 0,
-            likes: video.likes || 0,
-            comments: video.comments || 0,
-            shares: video.shares || 0,
-            duration: video.duration || 0,
-            dateSubmitted: video.dateAdded?.toDate?.() || new Date(),
-            uploadDate: video.uploadDate?.toDate?.() || new Date(),
-            lastRefreshed: video.lastRefreshed?.toDate?.(),
-            snapshots: snapshots
-          };
-        });
-        
-        // Update ALL state at once for smooth UI
-        setTrackedAccounts(accounts);
-        setSubmissions(allSubmissions);
-        setAllRules(rules);
-        setSelectedRuleIds(savedSelectedRuleIds);
-        setLinkClicks(linkClicks);
-        setRulesLoadedFromFirebase(true);
-        
-        console.timeEnd('⚡ Parallel Firebase load');
-        console.log(`🎯 Loaded: ${accounts.length} accounts, ${allSubmissions.length} videos, ${rules.length} rules`);
-        
-        // Cache everything for instant next load!
-        if (!hasCached) {
-          try {
-            localStorage.setItem(cacheKey, JSON.stringify({
-              accounts,
-              submissions: allSubmissions,
-              rules,
-              selectedRuleIds: savedSelectedRuleIds,
-              timestamp: Date.now()
-            }));
-            console.log('💾 Dashboard cached for instant reload');
-          } catch (error) {
-            console.error('Cache save error:', error);
-          }
-        }
-        
-        // Load revenue integrations (syncing will be handled by date filter effect)
-        try {
-          const integrations = await RevenueDataService.getAllIntegrations(currentOrgId, currentProjectId);
-          setRevenueIntegrations(integrations);
-          
-          // Load existing metrics immediately (syncing will happen via date filter effect)
-          if (integrations.some(i => i.enabled)) {
-            const metrics = await RevenueDataService.getLatestMetrics(currentOrgId, currentProjectId);
-            setRevenueMetrics(metrics);
-          }
-        } catch (error) {
-          console.error('❌ Failed to load revenue data:', error);
-        }
-      } catch (error) {
-        console.error('❌ Failed to load dashboard data:', error);
-        console.timeEnd('⚡ Parallel Firebase load');
+        return {
+          id: video.id,
+          url: video.videoUrl || video.url || '',
+          platform: video.platform as 'instagram' | 'tiktok' | 'youtube',
+          thumbnail: video.thumbnail || '',
+          title: title,
+          caption: caption,
+          uploader: account?.displayName || account?.username || '',
+          uploaderHandle: account?.username || '',
+          uploaderProfilePicture: account?.profilePicture,
+          followerCount: account?.followerCount,
+          status: video.status === 'archived' ? 'rejected' : 'approved',
+          views: video.views || 0,
+          likes: video.likes || 0,
+          comments: video.comments || 0,
+          shares: video.shares || 0,
+          duration: video.duration || 0,
+          dateSubmitted: video.dateAdded?.toDate?.() || new Date(),
+          uploadDate: video.uploadDate?.toDate?.() || new Date(),
+          lastRefreshed: video.lastRefreshed?.toDate?.(),
+          snapshots: snapshots
+        };
+      });
+      
+      setSubmissions(allSubmissions);
+    } catch (error) {
+      console.error('❌ Error loading videos:', error);
+    }
+    
+    // One-time load for rules AND user's selected rules
+    try {
+      const rulesRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackingRules');
+      const rulesSnapshot = await getDocs(rulesRef);
+      const rules = rulesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as TrackingRule[];
+      
+      // Load user's selected rules from their preferences
+      const userPrefsPath = `organizations/${currentOrgId}/projects/${currentProjectId}/userPreferences/${user.uid}`;
+      console.log('📂 Loading user preferences from:', userPrefsPath);
+      
+      const userPrefsRef = doc(
+        db, 
+        'organizations', 
+        currentOrgId, 
+        'projects', 
+        currentProjectId, 
+        'userPreferences', 
+        user.uid
+      );
+      const userPrefsDoc = await getDoc(userPrefsRef);
+      
+      console.log('📄 User prefs doc exists?', userPrefsDoc.exists());
+      if (userPrefsDoc.exists()) {
+        console.log('📄 User prefs data:', userPrefsDoc.data());
       }
+      
+      const savedSelectedRuleIds = userPrefsDoc.exists() ? (userPrefsDoc.data()?.selectedRuleIds || []) : [];
+      
+      console.log('✅ Loaded rules:', rules.length);
+      console.log('✅ Loaded selected rules from Firebase:', savedSelectedRuleIds);
+      console.log('🎯 Rule IDs available:', rules.map(r => r.id));
+      
+      // Set both at the same time to avoid race conditions
+      setAllRules(rules);
+      setSelectedRuleIds(savedSelectedRuleIds);
+      setRulesLoadedFromFirebase(true);
+      console.timeEnd('🚀 Parallel Firebase load');
+      console.log('✅ All data loaded successfully');
+      
+      // Cache everything for instant next load!
+      if (!hasCached) {
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify({
+            accounts: trackedAccounts,
+            submissions,
+            rules,
+            selectedRuleIds: savedSelectedRuleIds,
+            timestamp: Date.now()
+          }));
+          console.log('💾 Dashboard cached for next time');
+        } catch (error) {
+          console.error('Cache save error:', error);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Failed to load rules:', error);
+      console.timeEnd('🚀 Parallel Firebase load');
+    }
+    
+    // One-time load for link clicks
+    try {
+      const allClicks = await LinkClicksService.getProjectLinkClicks(currentOrgId, currentProjectId);
+      setLinkClicks(allClicks);
+    } catch (error) {
+      console.error('❌ Failed to load link clicks:', error);
+    }
+    
+    // Load revenue integrations (syncing will be handled by date filter effect)
+    try {
+      const integrations = await RevenueDataService.getAllIntegrations(currentOrgId, currentProjectId);
+      setRevenueIntegrations(integrations);
+      
+      // Load existing metrics immediately (syncing will happen via date filter effect)
+      if (integrations.some(i => i.enabled)) {
+        const metrics = await RevenueDataService.getLatestMetrics(currentOrgId, currentProjectId);
+        setRevenueMetrics(metrics);
+      }
+    } catch (error) {
+      console.error('❌ Failed to load revenue data:', error);
+    }
+    
     })(); // End of async IIFE
   }, [user, currentOrgId, currentProjectId]); // Reload when project changes!
 
@@ -816,7 +827,7 @@ function DashboardPage() {
       if (isModalOpen || isTikTokSearchOpen || isAnalyticsModalOpen) return;
       
       // Only trigger on tabs where + button is visible
-      if (activeTab === 'settings' || activeTab === 'subscription' || activeTab === 'cron' || activeTab === 'creators') {
+      if (activeTab === 'settings' || activeTab === 'subscription' || activeTab === 'extension' || activeTab === 'cron' || activeTab === 'creators') {
         return;
       }
       
@@ -1661,6 +1672,7 @@ function DashboardPage() {
                 {activeTab === 'subscription' && 'Subscription Plans'}
                 {activeTab === 'analytics' && 'Tracked Links'}
                 {activeTab === 'creators' && 'Creators'}
+                {activeTab === 'extension' && 'Extension'}
                 {activeTab === 'cron' && 'Cron Jobs'}
                 {activeTab === 'settings' && 'Settings'}
               </h1>
@@ -1671,6 +1683,7 @@ function DashboardPage() {
                   {activeTab === 'videos' && 'View and manage all tracked videos'}
                   {activeTab === 'subscription' && 'Choose the perfect plan to scale your tracking'}
                   {activeTab === 'creators' && 'Manage and discover content creators'}
+                  {activeTab === 'extension' && 'Supercharge your workflow with our browser extension'}
                   {activeTab === 'cron' && 'Manage automated video refreshes'}
                   {activeTab === 'settings' && 'Configure your preferences'}
                 </p>
@@ -2174,6 +2187,14 @@ function DashboardPage() {
 
           {/* Subscription Tab */}
           {activeTab === 'subscription' && <SubscriptionPage />}
+
+          {/* Extension Tab - Shows promo modal */}
+          {activeTab === 'extension' && (
+            <ExtensionPromoModal
+              isOpen={true}
+              onClose={() => setActiveTab('dashboard')}
+            />
+          )}
 
           {/* Settings Tab (includes Team tab inside) */}
           {activeTab === 'settings' && <SettingsPage />}

@@ -7,7 +7,8 @@ import {
   ChevronRight,
   Eye,
   Link,
-  Film
+  Film,
+  Puzzle
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import ProjectSwitcher from '../ProjectSwitcher';
@@ -85,6 +86,13 @@ const Sidebar: React.FC<SidebarProps> = ({
         onClick: () => onTabChange?.('creators'),
       },
       {
+        id: 'extension',
+        label: 'Extension',
+        icon: Puzzle,
+        isActive: activeTab === 'extension',
+        onClick: () => onTabChange?.('extension'),
+      },
+      {
         id: 'settings',
         label: 'Settings',
         icon: Settings,
@@ -105,6 +113,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       if (item.id === 'videos') return can.accessTab('videos');
       if (item.id === 'analytics') return can.accessTab('trackedLinks');
       if (item.id === 'creators') return can.accessTab('creators');
+      if (item.id === 'extension') return can.accessTab('extension');
       if (item.id === 'settings') return can.accessTab('settings');
       return true;
     });
