@@ -917,10 +917,32 @@ function DashboardPage() {
         const activeSelectedRules = selectedRules.filter(r => r.isActive);
         
         if (activeSelectedRules.length > 0) {
+          // Log TikTok videos for debugging
+          const tiktokVideos = filtered.filter(v => v.platform === 'tiktok');
+          if (tiktokVideos.length > 0) {
+            console.log(`🎬 TikTok videos before rule filter: ${tiktokVideos.length}`);
+            console.log(`📝 Sample TikTok video:`, {
+              id: tiktokVideos[0].id,
+              title: tiktokVideos[0].title,
+              caption: tiktokVideos[0].caption,
+              titleLength: tiktokVideos[0].title?.length || 0,
+              captionLength: tiktokVideos[0].caption?.length || 0
+            });
+          }
+          
           filtered = filtered.filter(video => {
             // Check if video matches ANY of the selected rules (OR logic)
             const matches = activeSelectedRules.some(selectedRule => {
               const result = RulesService.checkVideoMatchesRule(video as any, selectedRule);
+              if (video.platform === 'tiktok') {
+                console.log(`🎬 TikTok rule check:`, {
+                  videoId: video.id?.substring(0, 15),
+                  ruleId: selectedRule.id,
+                  matches: result.matches,
+                  hasTitle: !!video.title,
+                  hasCaption: !!video.caption
+                });
+              }
               return result.matches;
             });
             return matches;
