@@ -175,7 +175,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
     
     switch (interval.intervalType) {
       case 'day':
-        return { show: 'Show Yesterday', showing: 'Show Today' };
+        return { show: 'Show Previous Day', showing: 'Show Current Day' };
       case 'week':
         return { show: 'Show Previous Week', showing: 'Show Current Week' };
       case 'month':
