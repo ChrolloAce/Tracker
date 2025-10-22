@@ -75,17 +75,7 @@ const CampaignsManagementPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header with Create Button */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-            <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
-              <Trophy className="w-8 h-8 text-emerald-400" />
-            </div>
-            Campaigns
-          </h1>
-          <p className="text-gray-400 mt-1">Create and manage creator campaigns</p>
-        </div>
-
+      <div className="flex items-center justify-end">
         <button
           onClick={() => setIsCreateModalOpen(true)}
           className="group relative px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-all shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:scale-105"
