@@ -86,11 +86,14 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
     
     try {
       const members = await OrganizationService.getOrgMembers(currentOrgId);
-      console.log('✅ Loaded members for campaign:', members);
-      console.log('📊 Member count:', members.length);
+      console.log('✅ Loaded all members:', members.length);
       
-      if (members.length > 0) {
-        console.log('👥 Member details:', members.map(m => ({ 
+      // Filter to only show creators (not admin/owner team members)
+      const creators = members.filter(m => m.role === 'creator');
+      console.log('📊 Filtered creators:', creators.length);
+      
+      if (creators.length > 0) {
+        console.log('👥 Creator details:', creators.map(m => ({ 
           id: m.id, 
           name: m.displayName || 'No name', 
           email: m.email, 
@@ -98,10 +101,10 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
         })));
       }
       
-      setAvailableCreators(members);
+      setAvailableCreators(creators);
     } catch (error) {
       console.error('❌ Failed to load creators:', error);
-      setError('Failed to load team members. Please try again.');
+      setError('Failed to load creators. Please try again.');
     } finally {
       setLoadingCreators(false);
     }
@@ -224,12 +227,23 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
     setRewards(updated);
   };
 
-  const toggleCreator = (creatorId: string) => {
-    setSelectedCreatorIds(prev => 
-      prev.includes(creatorId)
+  const toggleCreator = (creatorId: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    
+    console.log('🔘 Toggling creator:', creatorId);
+    console.log('📋 Before:', selectedCreatorIds);
+    
+    setSelectedCreatorIds(prev => {
+      const newSelection = prev.includes(creatorId)
         ? prev.filter(id => id !== creatorId)
-        : [...prev, creatorId]
-    );
+        : [...prev, creatorId];
+      
+      console.log('📋 After:', newSelection);
+      return newSelection;
+    });
   };
 
   if (!isOpen) return null;
@@ -541,7 +555,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
                           <button
                             key={creator.id}
                             type="button"
-                            onClick={() => toggleCreator(creator.id)}
+                            onClick={(e) => toggleCreator(creator.id, e)}
                             className={`w-full px-4 py-3 rounded-lg border transition-all text-left flex items-center gap-3 ${
                               isSelected
                                 ? 'bg-emerald-500/10 border-emerald-500/30'
