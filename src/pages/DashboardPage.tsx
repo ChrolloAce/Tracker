@@ -31,6 +31,7 @@ import TrackedLinksPage, { TrackedLinksPageRef } from '../components/TrackedLink
 import CreatorPortalPage from '../components/CreatorPortalPage';
 import CreatorsManagementPage, { CreatorsManagementPageRef } from '../components/CreatorsManagementPage';
 import CampaignsManagementPage from '../components/CampaignsManagementPage';
+import { CampaignStatus } from '../types/campaigns';
 import ExtensionPromoModal from '../components/ExtensionPromoModal';
 import OrganizationService from '../services/OrganizationService';
 import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
@@ -92,6 +93,8 @@ function DashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
   const [isCreateCampaignModalOpen, setIsCreateCampaignModalOpen] = useState(false);
+  const [campaignStatusFilter, setCampaignStatusFilter] = useState<'all' | CampaignStatus>('all');
+  const [campaignCounts, setCampaignCounts] = useState({ active: 0, draft: 0, completed: 0, cancelled: 0 });
   
   // Loading/pending state for immediate UI feedback
   const [pendingVideos, setPendingVideos] = useState<VideoSubmission[]>([]);
@@ -1935,14 +1938,25 @@ function DashboardPage() {
             </div>
           )}
           {activeTab === 'campaigns' && (
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setIsCreateCampaignModalOpen(true)}
-                className="p-2 rounded-lg transition-all bg-white/5 text-white/90 border border-white/10 hover:border-white/20 hover:bg-white/10"
-                title="Create Campaign"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
+            <div className="flex items-center gap-2">
+              {(['all', 'active', 'draft', 'completed', 'cancelled'] as const).map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setCampaignStatusFilter(status)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    campaignStatusFilter === status
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-white/5'
+                  }`}
+                >
+                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                  {status !== 'all' && (
+                    <span className="ml-1.5 text-xs opacity-60">
+                      ({campaignCounts[status as keyof typeof campaignCounts] || 0})
+                    </span>
+                  )}
+                </button>
+              ))}
             </div>
           )}
           {activeTab === 'analytics' && (
@@ -2238,6 +2252,10 @@ function DashboardPage() {
             <CampaignsManagementPage 
               openCreateModal={isCreateCampaignModalOpen}
               onCloseCreateModal={() => setIsCreateCampaignModalOpen(false)}
+              selectedStatus={campaignStatusFilter}
+              onStatusChange={setCampaignStatusFilter}
+              onOpenCreateModal={() => setIsCreateCampaignModalOpen(true)}
+              onCampaignsLoaded={setCampaignCounts}
             />
           )}
 

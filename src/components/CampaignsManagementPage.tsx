@@ -14,12 +14,17 @@ import {
   XCircle,
   Eye,
   DollarSign,
-  MoreVertical
+  MoreVertical,
+  Plus
 } from 'lucide-react';
 
 interface CampaignsManagementPageProps {
   openCreateModal?: boolean;
   onCloseCreateModal?: () => void;
+  selectedStatus?: 'all' | CampaignStatus;
+  onStatusChange?: (status: 'all' | CampaignStatus) => void;
+  onOpenCreateModal?: () => void;
+  onCampaignsLoaded?: (counts: { active: number; draft: number; completed: number; cancelled: number }) => void;
 }
 
 /**
@@ -28,12 +33,15 @@ interface CampaignsManagementPageProps {
  */
 const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({ 
   openCreateModal = false, 
-  onCloseCreateModal 
+  onCloseCreateModal,
+  selectedStatus = 'all',
+  onStatusChange,
+  onOpenCreateModal,
+  onCampaignsLoaded
 }) => {
   const { user, currentOrgId, currentProjectId } = useAuth();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedStatus, setSelectedStatus] = useState<'all' | CampaignStatus>('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Sync external open state with internal state
@@ -57,6 +65,17 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
         : await CampaignService.getCampaigns(currentOrgId, currentProjectId, selectedStatus);
 
       setCampaigns(allCampaigns);
+
+      // Update campaign counts
+      if (onCampaignsLoaded) {
+        const counts = {
+          active: allCampaigns.filter(c => c.status === 'active').length,
+          draft: allCampaigns.filter(c => c.status === 'draft').length,
+          completed: allCampaigns.filter(c => c.status === 'completed').length,
+          cancelled: allCampaigns.filter(c => c.status === 'cancelled').length,
+        };
+        onCampaignsLoaded(counts);
+      }
     } catch (error) {
       console.error('Failed to load campaigns:', error);
     } finally {
@@ -114,28 +133,6 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
         </div>
       </div>
 
-      {/* Status Filter */}
-      <div className="flex items-center gap-2">
-        {(['all', 'active', 'draft', 'completed', 'cancelled'] as const).map((status) => (
-          <button
-            key={status}
-            onClick={() => setSelectedStatus(status)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              selectedStatus === status
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-white/5'
-            }`}
-          >
-            {status.charAt(0).toUpperCase() + status.slice(1)}
-            {status !== 'all' && (
-              <span className="ml-2 text-xs opacity-60">
-                ({campaigns.filter(c => c.status === status).length})
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-
       {/* Campaigns List */}
       {campaigns.length === 0 ? (
         <div className="rounded-2xl border border-white/10 p-12 text-center" style={{ backgroundColor: '#121214' }}>
@@ -147,7 +144,13 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
             Create your first campaign to start motivating creators and tracking performance!
           </p>
           <button
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={() => {
+              if (onOpenCreateModal) {
+                onOpenCreateModal();
+              } else {
+                setIsCreateModalOpen(true);
+              }
+            }}
             className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-all"
           >
             <Plus className="w-5 h-5" />
@@ -164,6 +167,23 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
             />
           ))}
         </div>
+      )}
+
+      {/* Floating + Button */}
+      {campaigns.length > 0 && (
+        <button
+          onClick={() => {
+            if (onOpenCreateModal) {
+              onOpenCreateModal();
+            } else {
+              setIsCreateModalOpen(true);
+            }
+          }}
+          className="fixed bottom-8 right-8 w-14 h-14 bg-white hover:bg-gray-100 text-black rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 z-50"
+          title="Create Campaign"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
       )}
 
       {/* Create Campaign Modal */}
