@@ -163,13 +163,18 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     }
     
     // Calculate previous period (same length, going back from current start)
-    const prevEnd = new Date(currentStart.getTime() - 1);
-    const prevStart = new Date(prevEnd);
-    if (daysBack > 0) {
-      prevStart.setDate(prevEnd.getDate() - daysBack);
-    } else {
-      prevStart.setTime(0);
-    }
+    // Use milliseconds to ensure accurate date math across month boundaries
+    const periodLength = currentEnd.getTime() - currentStart.getTime();
+    const prevEnd = new Date(currentStart.getTime() - 1); // 1ms before current period starts
+    const prevStart = new Date(currentStart.getTime() - periodLength); // Same duration back
+    
+    console.log('📅 Period Calculation:', {
+      dateFilter,
+      currentPeriod: `${currentStart.toLocaleDateString()} - ${currentEnd.toLocaleDateString()}`,
+      previousPeriod: `${prevStart.toLocaleDateString()} - ${prevEnd.toLocaleDateString()}`,
+      daysBack,
+      periodLength: Math.round(periodLength / (1000 * 60 * 60 * 24)) + ' days'
+    });
     
     return { currentStart, currentEnd, prevStart, prevEnd };
   }, [dateFilter]);
@@ -502,7 +507,13 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                 ) : (
                   <>
                     <ChevronLeft className="w-4 h-4" />
-                    Show Previous {timeGranularity === 'daily' ? 'Period' : timeGranularity === 'weekly' ? 'Week' : 'Month'}
+                    Show Previous {
+                      dateFilter === 'last7days' ? '7 Days' :
+                      dateFilter === 'last14days' ? '14 Days' :
+                      dateFilter === 'last30days' ? '30 Days' :
+                      dateFilter === 'last90days' ? '90 Days' :
+                      'Period'
+                    }
                   </>
                 )}
               </button>
