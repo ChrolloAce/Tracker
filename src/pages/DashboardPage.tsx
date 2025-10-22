@@ -1913,24 +1913,18 @@ function DashboardPage() {
         <div className="max-w-7xl mx-auto px-6 py-8" style={{ overflow: 'visible' }}>
           {/* Dashboard Tab */}
           <div className={activeTab === 'dashboard' ? '' : 'hidden'}>
-            <>
-              {/* Loading banner when rules are being applied */}
-              {isLoadingRules && (
-                <div className="mb-6 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-4 py-3 flex items-center gap-3">
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-emerald-500 border-t-transparent"></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-emerald-400">
-                      Applying {selectedRuleIds.length} rule{selectedRuleIds.length > 1 ? 's' : ''}...
-                    </p>
-                    <p className="text-xs text-emerald-400/70 mt-0.5">
-                      Loading filters from database
-                    </p>
-                  </div>
+            {!rulesLoadedFromFirebase ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="text-center">
+                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mb-4"></div>
+                  <p className="text-gray-400">Loading dashboard...</p>
+                  <p className="text-xs text-gray-500 mt-2">Initializing filters and rules</p>
                 </div>
-              )}
-              
-              {/* Render dashboard sections in order */}
-              {dashboardSectionOrder
+              </div>
+            ) : (
+              <>
+                {/* Render dashboard sections in order */}
+                {dashboardSectionOrder
                 .filter(sectionId => dashboardSectionVisibility[sectionId] !== false)
                 .map((sectionId, index) => {
                   const handleSectionDragStart = () => {
@@ -2104,6 +2098,7 @@ function DashboardPage() {
                 </div>
               )}
               </>
+            )}
           </div>
 
           {/* Accounts Tab */}
