@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { CampaignGoalType, CompensationType, CampaignReward } from '../types/campaigns';
 import CampaignService from '../services/CampaignService';
-import FirestoreDataService from '../services/FirestoreDataService';
+import OrganizationService from '../services/OrganizationService';
 import { OrgMember } from '../types/firestore';
 
 interface CreateCampaignModalProps {
@@ -85,7 +85,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
     setLoadingCreators(true);
     
     try {
-      const members = await FirestoreDataService.getOrganizationMembers(currentOrgId);
+      const members = await OrganizationService.getOrgMembers(currentOrgId);
       console.log('✅ Loaded members for campaign:', members);
       console.log('📊 Member count:', members.length);
       
