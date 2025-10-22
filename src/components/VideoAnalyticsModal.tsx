@@ -45,6 +45,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   type TimeGranularity = 'daily' | 'weekly' | 'monthly';
   const [dateFilter, setDateFilter] = useState<DateFilterType>('all');
   const [timeGranularity, setTimeGranularity] = useState<TimeGranularity>('daily');
+  const [showPreviousPeriod, setShowPreviousPeriod] = useState(false);
 
   // Extract title without hashtags and separate hashtags
   const { cleanTitle, hashtags } = useMemo(() => {
@@ -124,6 +125,55 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   };
 
   // Prepare chart data from snapshots (showing incremental changes/deltas)
+  // Reset previous period toggle when date filter changes
+  React.useEffect(() => {
+    setShowPreviousPeriod(false);
+  }, [dateFilter]);
+
+  // Calculate period ranges for current and previous periods
+  const periodRanges = useMemo(() => {
+    const now = new Date();
+    const currentEnd = new Date(now);
+    let currentStart = new Date();
+    let daysBack = 0;
+    
+    // Calculate current period based on filter
+    switch (dateFilter) {
+      case 'last7days':
+        daysBack = 7;
+        currentStart.setDate(now.getDate() - 7);
+        break;
+      case 'last14days':
+        daysBack = 14;
+        currentStart.setDate(now.getDate() - 14);
+        break;
+      case 'last30days':
+        daysBack = 30;
+        currentStart.setDate(now.getDate() - 30);
+        break;
+      case 'last90days':
+        daysBack = 90;
+        currentStart.setDate(now.getDate() - 90);
+        break;
+      case 'all':
+      default:
+        currentStart.setTime(0);
+        daysBack = 0;
+        break;
+    }
+    
+    // Calculate previous period (same length, going back from current start)
+    const prevEnd = new Date(currentStart.getTime() - 1);
+    const prevStart = new Date(prevEnd);
+    if (daysBack > 0) {
+      prevStart.setDate(prevEnd.getDate() - daysBack);
+    } else {
+      prevStart.setTime(0);
+    }
+    
+    return { currentStart, currentEnd, prevStart, prevEnd };
+  }, [dateFilter]);
+
   const chartData = useMemo((): ChartDataPoint[] => {
     if (!video) return [];
     
@@ -159,53 +209,38 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       (a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
     );
     
-    // Apply date filter
-    const now = new Date();
-    const filterDate = new Date();
-    switch (dateFilter) {
-      case 'last7days':
-        filterDate.setDate(now.getDate() - 7);
-        break;
-      case 'last14days':
-        filterDate.setDate(now.getDate() - 14);
-        break;
-      case 'last30days':
-        filterDate.setDate(now.getDate() - 30);
-        break;
-      case 'last90days':
-        filterDate.setDate(now.getDate() - 90);
-        break;
-      case 'all':
-      default:
-        filterDate.setTime(0); // Include all
-        break;
-    }
+    // Apply date filter based on current or previous period
+    const filterStart = showPreviousPeriod ? periodRanges.prevStart : periodRanges.currentStart;
+    const filterEnd = showPreviousPeriod ? periodRanges.prevEnd : periodRanges.currentEnd;
     
-    const filteredSnapshots = sortedSnapshots.filter(snapshot => 
-      new Date(snapshot.capturedAt).getTime() >= filterDate.getTime()
-    );
+    const filteredSnapshots = sortedSnapshots.filter(snapshot => {
+      const snapshotTime = new Date(snapshot.capturedAt).getTime();
+      return snapshotTime >= filterStart.getTime() && snapshotTime <= filterEnd.getTime();
+    });
 
-    // Append current video stats if different from last snapshot
+    // Append current video stats if different from last snapshot (only for current period, not previous)
     const allSnapshots = [...filteredSnapshots];
-    const lastSnapshotData = filteredSnapshots[filteredSnapshots.length - 1];
-    const hasNewData = !lastSnapshotData || 
-      lastSnapshotData.views !== video.views ||
-      lastSnapshotData.likes !== video.likes ||
-      lastSnapshotData.comments !== video.comments ||
-      (lastSnapshotData.shares || 0) !== (video.shares || 0);
-    
-    if (hasNewData) {
-      allSnapshots.push({
-        id: `current-${Date.now()}`,
-        videoId: video.id,
-        views: video.views,
-        likes: video.likes,
-        comments: video.comments,
-        shares: video.shares || 0,
-        saves: video.saves || 0,
-        capturedAt: new Date(),
-        capturedBy: 'manual_refresh'
-      });
+    if (!showPreviousPeriod) {
+      const lastSnapshotData = filteredSnapshots[filteredSnapshots.length - 1];
+      const hasNewData = !lastSnapshotData || 
+        lastSnapshotData.views !== video.views ||
+        lastSnapshotData.likes !== video.likes ||
+        lastSnapshotData.comments !== video.comments ||
+        (lastSnapshotData.shares || 0) !== (video.shares || 0);
+      
+      if (hasNewData) {
+        allSnapshots.push({
+          id: `current-${Date.now()}`,
+          videoId: video.id,
+          views: video.views,
+          likes: video.likes,
+          comments: video.comments,
+          shares: video.shares || 0,
+          saves: video.saves || 0,
+          capturedAt: new Date(),
+          capturedBy: 'manual_refresh'
+        });
+      }
     }
 
     // Create data points with DELTAS (incremental changes)
@@ -252,7 +287,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     }
     
     return data;
-  }, [video?.id, video?.views, video?.likes, video?.comments, video?.shares, video?.snapshots?.length, dateFilter]);
+  }, [video?.id, video?.views, video?.likes, video?.comments, video?.shares, video?.snapshots?.length, dateFilter, showPreviousPeriod, periodRanges]);
 
   // Calculate cumulative totals for KPI display (not deltas)
   const cumulativeTotals = useMemo(() => {
@@ -427,37 +462,86 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-end gap-3 mb-4">
-          {/* Date Filter */}
-          <select
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value as DateFilterType)}
-            className="px-3 py-1.5 text-sm bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-white/20 transition-colors"
-          >
-            <option value="all">All Time</option>
-            <option value="last7days">Last 7 Days</option>
-            <option value="last14days">Last 14 Days</option>
-            <option value="last30days">Last 30 Days</option>
-            <option value="last90days">Last 90 Days</option>
-          </select>
+        <div className="flex items-center justify-between gap-3 mb-4">
+          {/* Left: Period Date Display */}
+          <div className="flex items-center gap-3">
+            <div className="text-sm text-gray-400">
+              {showPreviousPeriod ? (
+                <span>
+                  {periodRanges.prevStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  {' - '}
+                  {periodRanges.prevEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              ) : (
+                <span>
+                  {periodRanges.currentStart.getTime() > 0 
+                    ? periodRanges.currentStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    : 'All time'
+                  }
+                  {periodRanges.currentStart.getTime() > 0 && (
+                    <>
+                      {' - '}
+                      {periodRanges.currentEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </>
+                  )}
+                </span>
+              )}
+            </div>
+            
+            {/* Previous Period Toggle */}
+            {dateFilter !== 'all' && (
+              <button
+                onClick={() => setShowPreviousPeriod(!showPreviousPeriod)}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg text-emerald-400 hover:text-emerald-300 transition-all"
+              >
+                {showPreviousPeriod ? (
+                  <>
+                    <ChevronRight className="w-4 h-4" />
+                    Show Current Period
+                  </>
+                ) : (
+                  <>
+                    <ChevronLeft className="w-4 h-4" />
+                    Show Previous {timeGranularity === 'daily' ? 'Period' : timeGranularity === 'weekly' ? 'Week' : 'Month'}
+                  </>
+                )}
+              </button>
+            )}
+          </div>
           
-          {/* Time Granularity */}
-          <select
-            value={timeGranularity}
-            onChange={(e) => setTimeGranularity(e.target.value as TimeGranularity)}
-            className="px-3 py-1.5 text-sm bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-white/20 transition-colors"
-          >
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-          </select>
-          
-          <button
-            onClick={onClose}
-            className="p-2 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-all"
-          >
-            <X className="w-5 h-5" strokeWidth={1.5} />
-          </button>
+          {/* Right: Filters & Close */}
+          <div className="flex items-center gap-3">
+            {/* Date Filter */}
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value as DateFilterType)}
+              className="px-3 py-1.5 text-sm bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-white/20 transition-colors"
+            >
+              <option value="all">All Time</option>
+              <option value="last7days">Last 7 Days</option>
+              <option value="last14days">Last 14 Days</option>
+              <option value="last30days">Last 30 Days</option>
+              <option value="last90days">Last 90 Days</option>
+            </select>
+            
+            {/* Time Granularity */}
+            <select
+              value={timeGranularity}
+              onChange={(e) => setTimeGranularity(e.target.value as TimeGranularity)}
+              className="px-3 py-1.5 text-sm bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-white/20 transition-colors"
+            >
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+            
+            <button
+              onClick={onClose}
+              className="p-2 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-all"
+            >
+              <X className="w-5 h-5" strokeWidth={1.5} />
+            </button>
+          </div>
         </div>
 
         {/* Main Content - 2 Column Layout */}
