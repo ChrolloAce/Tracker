@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Campaign, CampaignStatus } from '../types/campaigns';
 import CampaignService from '../services/CampaignService';
@@ -31,6 +32,7 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
   onCampaignsLoaded
 }) => {
   const { currentOrgId, currentProjectId } = useAuth();
+  const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -141,6 +143,7 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
             <CampaignManagementCard
               key={campaign.id}
               campaign={campaign}
+              onClick={() => navigate(`/campaign/${campaign.id}`)}
             />
           ))}
         </div>
@@ -162,7 +165,8 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
 // Campaign Management Card - Redesigned
 const CampaignManagementCard: React.FC<{
   campaign: Campaign;
-}> = ({ campaign }) => {
+  onClick?: () => void;
+}> = ({ campaign, onClick }) => {
   // Calculate CPM/reward from compensation
   const getRewardDisplay = () => {
     if (campaign.compensationType === 'flat_cpm' && campaign.compensationAmount) {
@@ -189,6 +193,7 @@ const CampaignManagementCard: React.FC<{
 
   return (
     <div 
+      onClick={onClick}
       className="rounded-2xl border border-white/10 overflow-hidden transition-all hover:border-white/20 cursor-pointer group"
       style={{ backgroundColor: '#0b0b0b' }}
     >
