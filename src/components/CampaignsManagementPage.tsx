@@ -146,23 +146,6 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
         </div>
       )}
 
-      {/* Floating + Button */}
-      {campaigns.length > 0 && (
-        <button
-          onClick={() => {
-            if (onOpenCreateModal) {
-              onOpenCreateModal();
-            } else {
-              setIsCreateModalOpen(true);
-            }
-          }}
-          className="fixed bottom-8 right-8 w-14 h-14 bg-white hover:bg-gray-100 text-black rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 z-50"
-          title="Create Campaign"
-        >
-          <Plus className="w-6 h-6" />
-        </button>
-      )}
-
       {/* Create Campaign Modal */}
       <CreateCampaignModal
         isOpen={isCreateModalOpen}

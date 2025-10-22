@@ -832,7 +832,7 @@ function DashboardPage() {
       if (isModalOpen || isTikTokSearchOpen || isAnalyticsModalOpen) return;
       
       // Only trigger on tabs where + button is visible
-      if (activeTab === 'settings' || activeTab === 'subscription' || activeTab === 'extension' || activeTab === 'cron' || activeTab === 'creators' || activeTab === 'campaigns') {
+      if (activeTab === 'settings' || activeTab === 'subscription' || activeTab === 'extension' || activeTab === 'cron' || activeTab === 'creators') {
         return;
       }
       
@@ -848,6 +848,8 @@ function DashboardPage() {
         setIsModalOpen(true);
       } else if (activeTab === 'analytics') {
         trackedLinksPageRef.current?.openCreateModal();
+      } else if (activeTab === 'campaigns') {
+        setIsCreateCampaignModalOpen(true);
       }
     };
     
@@ -2781,6 +2783,8 @@ function DashboardPage() {
               accountsPageRef.current?.openAddModal();
             } else if (activeTab === 'analytics') {
               trackedLinksPageRef.current?.openCreateModal();
+            } else if (activeTab === 'campaigns') {
+              setIsCreateCampaignModalOpen(true);
             }
           }}
           className="fixed bottom-8 right-8 z-50 bg-gray-900 dark:bg-white hover:bg-black dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-full p-4 shadow-2xl transition-all duration-200 hover:scale-110 group"
@@ -2788,6 +2792,7 @@ function DashboardPage() {
             activeTab === 'dashboard' ? 'Add Video' :
             activeTab === 'accounts' ? 'Track Account' :
             activeTab === 'analytics' ? 'Create Link' :
+            activeTab === 'campaigns' ? 'Create Campaign' :
             'Add'
           }
         >
@@ -2808,6 +2813,7 @@ function DashboardPage() {
             {activeTab === 'dashboard' && 'Add Video'}
             {activeTab === 'accounts' && 'Track Account'}
             {activeTab === 'analytics' && 'Create Link'}
+            {activeTab === 'campaigns' && 'Create Campaign'}
           </span>
         </button>
       )}
