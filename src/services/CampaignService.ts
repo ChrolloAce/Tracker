@@ -63,6 +63,7 @@ class CampaignService {
       compensationType: input.compensationType,
       rewards: input.rewards,
       bonusRewards: input.bonusRewards,
+      metricGuarantees: input.metricGuarantees || [],
       participantIds: input.participantIds,
       participants: [],
       totalViews: 0,
@@ -75,7 +76,11 @@ class CampaignService {
       leaderboard: [],
     };
 
-    // Only add compensationAmount if it's provided and valid
+    // Only add optional fields if provided
+    if (input.coverImage) {
+      campaign.coverImage = input.coverImage;
+    }
+    
     if (input.compensationAmount !== undefined && input.compensationAmount > 0) {
       campaign.compensationAmount = input.compensationAmount;
     }

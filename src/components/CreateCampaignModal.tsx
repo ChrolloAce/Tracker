@@ -6,12 +6,15 @@ import {
   Trash2,
   ChevronRight,
   ChevronLeft,
-  Check
+  Check,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
-import { CampaignGoalType, CompensationType, CampaignReward } from '../types/campaigns';
+import { CampaignGoalType, CompensationType, CampaignReward, MetricGuarantee } from '../types/campaigns';
 import CampaignService from '../services/CampaignService';
 import OrganizationService from '../services/OrganizationService';
 import { OrgMember } from '../types/firestore';
+import FirebaseStorageService from '../services/FirebaseStorageService';
 
 interface CreateCampaignModalProps {
   isOpen: boolean;
@@ -29,6 +32,8 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
   // Step 1: Basic Info
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [coverImage, setCoverImage] = useState<string>('');
+  const [uploadingImage, setUploadingImage] = useState(false);
   
   // Step 2: Duration
   const [durationType, setDurationType] = useState<'days' | 'weeks'>('weeks');
@@ -39,6 +44,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
   // Step 3: Goal
   const [goalType, setGoalType] = useState<CampaignGoalType>('total_views');
   const [goalAmount, setGoalAmount] = useState<number>(1000000);
+  const [metricGuarantees, setMetricGuarantees] = useState<MetricGuarantee[]>([]);
   
   // Step 4: Rewards & Compensation
   const [compensationType, setCompensationType] = useState<CompensationType>('none');
@@ -128,6 +134,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
       const campaignData: any = {
         name,
         description,
+        coverImage: coverImage || undefined,
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         goalType,
@@ -135,6 +142,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
         compensationType,
         rewards,
         bonusRewards: [],
+        metricGuarantees,
         participantIds: selectedCreatorIds,
       };
       
@@ -167,12 +175,14 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
     setCurrentStep(1);
     setName('');
     setDescription('');
+    setCoverImage('');
     setDurationType('weeks');
     setDurationValue(4);
     setStartDate('');
     setEndDate('');
     setGoalType('total_views');
     setGoalAmount(1000000);
+    setMetricGuarantees([]);
     setCompensationType('none');
     setCompensationAmount(0);
     setRewards([
@@ -233,6 +243,47 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
     const updated = [...rewards];
     updated[index] = { ...updated[index], [field]: value };
     setRewards(updated);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentOrgId) return;
+
+    setUploadingImage(true);
+    try {
+      const imageUrl = await FirebaseStorageService.downloadAndUpload(
+        currentOrgId,
+        URL.createObjectURL(file),
+        `campaign_${Date.now()}`,
+        'campaign-covers'
+      );
+      setCoverImage(imageUrl);
+    } catch (error) {
+      console.error('Failed to upload image:', error);
+      setError('Failed to upload image. Please try again.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const addMetricGuarantee = () => {
+    const newGuarantee: MetricGuarantee = {
+      id: Date.now().toString(),
+      metric: 'views',
+      minValue: 10000,
+      description: 'Minimum 10K views per video'
+    };
+    setMetricGuarantees([...metricGuarantees, newGuarantee]);
+  };
+
+  const updateMetricGuarantee = (id: string, updates: Partial<MetricGuarantee>) => {
+    setMetricGuarantees(metricGuarantees.map(g => 
+      g.id === id ? { ...g, ...updates } : g
+    ));
+  };
+
+  const removeMetricGuarantee = (id: string) => {
+    setMetricGuarantees(metricGuarantees.filter(g => g.id !== id));
   };
 
   const toggleCreator = (creatorId: string, e?: React.MouseEvent) => {

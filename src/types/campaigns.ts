@@ -51,6 +51,16 @@ export interface BonusReward {
 }
 
 /**
+ * Metric Guarantee - Required minimums per video
+ */
+export interface MetricGuarantee {
+  id: string;
+  metric: 'views' | 'likes' | 'comments' | 'shares' | 'engagement_rate';
+  minValue: number;      // Minimum required (e.g., 10,000 views)
+  description: string;   // e.g., "Minimum 10K views per video"
+}
+
+/**
  * Participant in a Campaign
  */
 export interface CampaignParticipant {
@@ -114,6 +124,9 @@ export interface Campaign {
   rewards: CampaignReward[];    // Position-based rewards (1st, 2nd, 3rd)
   bonusRewards: BonusReward[];  // Performance-based bonuses
   
+  // Requirements
+  metricGuarantees: MetricGuarantee[];  // Minimum metrics per video
+  
   // Participants
   participantIds: string[];     // Array of creator user IDs
   participants: CampaignParticipant[];
@@ -142,6 +155,7 @@ export interface Campaign {
 export interface CreateCampaignInput {
   name: string;
   description: string;
+  coverImage?: string;            // Optional cover image URL
   startDate: Date;
   endDate: Date;
   goalType: CampaignGoalType;
@@ -150,6 +164,7 @@ export interface CreateCampaignInput {
   compensationAmount?: number;
   rewards: CampaignReward[];
   bonusRewards: BonusReward[];
+  metricGuarantees: MetricGuarantee[];  // Minimum metrics per video
   participantIds: string[];
 }
 
