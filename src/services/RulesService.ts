@@ -253,7 +253,7 @@ class RulesService {
     const description = condition.caseSensitive ? originalDescription : originalDescription.toLowerCase();
     
     // Enhanced debug logging for TikTok videos
-    const isTikTok = video.url?.includes('tiktok') || video.videoId?.length > 15;
+    const isTikTok = video.url?.includes('tiktok') || (video.videoId?.length || 0) > 15;
     if ((condition.type === 'description_contains' || condition.type === 'description_not_contains')) {
       console.log('🔍 Rule evaluation:', {
         platform: isTikTok ? 'TikTok' : 'Instagram',

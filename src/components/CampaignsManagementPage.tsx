@@ -74,17 +74,6 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
     }
   };
 
-  const handleStatusChange = async (campaignId: string, newStatus: CampaignStatus) => {
-    if (!currentOrgId || !currentProjectId) return;
-
-    try {
-      await CampaignService.updateCampaignStatus(currentOrgId, currentProjectId, campaignId, newStatus);
-      await loadCampaigns();
-    } catch (error) {
-      console.error('Failed to update campaign status:', error);
-    }
-  };
-
   const activeCampaigns = campaigns.filter(c => c.status === 'active');
 
   // Calculate overall stats
