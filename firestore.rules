@@ -198,13 +198,6 @@ service cloud.firestore {
         // Only admins can delete projects
         allow delete: if canManageOrg(orgId);
         
-        // ==================== USER PREFERENCES (PER PROJECT) ====================
-        
-        match /userPreferences/{userId} {
-          // Users can read and write their own preferences
-          allow read, write: if isOwner(userId) && canReadOrg(orgId);
-        }
-        
         // ==================== PROJECT STATS ====================
         
         match /stats/{statId} {
@@ -318,6 +311,16 @@ service cloud.firestore {
           
           // Only admins can update/delete rules
           allow update, delete: if canManageOrg(orgId);
+        }
+        
+        // ==================== USER PREFERENCES (PER PROJECT) ====================
+        
+        match /userPreferences/{userId} {
+          // Users can read their own preferences
+          allow read: if isOwner(userId) && canReadOrg(orgId);
+          
+          // Users can write their own preferences
+          allow write: if isOwner(userId) && canWriteOrg(orgId);
         }
         
         // ==================== PROJECT LINK CLICKS (AGGREGATED) ====================
