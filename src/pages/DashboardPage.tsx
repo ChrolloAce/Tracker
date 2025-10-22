@@ -554,7 +554,7 @@ function DashboardPage() {
     
     // One-time load for rules AND user's selected rules
     try {
-      const rulesRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'rules');
+      const rulesRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackingRules');
       const rulesSnapshot = await getDocs(rulesRef);
       const rules = rulesSnapshot.docs.map(doc => ({
         id: doc.id,
