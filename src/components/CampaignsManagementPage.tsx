@@ -5,7 +5,6 @@ import CampaignService from '../services/CampaignService';
 import CreateCampaignModal from './CreateCampaignModal';
 import { 
   Trophy, 
-  Plus, 
   Target, 
   Users, 
   TrendingUp,
@@ -16,16 +15,31 @@ import {
   Eye
 } from 'lucide-react';
 
+interface CampaignsManagementPageProps {
+  openCreateModal?: boolean;
+  onCloseCreateModal?: () => void;
+}
+
 /**
  * Campaigns Management Page - For Admins/Managers
  * Create, view, and manage all campaigns
  */
-const CampaignsManagementPage: React.FC = () => {
+const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({ 
+  openCreateModal = false, 
+  onCloseCreateModal 
+}) => {
   const { user, currentOrgId, currentProjectId } = useAuth();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState<'all' | CampaignStatus>('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // Sync external open state with internal state
+  useEffect(() => {
+    if (openCreateModal) {
+      setIsCreateModalOpen(true);
+    }
+  }, [openCreateModal]);
 
   useEffect(() => {
     loadCampaigns();
@@ -74,18 +88,6 @@ const CampaignsManagementPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header with Create Button */}
-      <div className="flex items-center justify-end">
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="group relative px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-all shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:scale-105"
-        >
-          <div className="flex items-center gap-2">
-            <Plus className="w-5 h-5" />
-            Create Campaign
-          </div>
-        </button>
-      </div>
 
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -165,7 +167,10 @@ const CampaignsManagementPage: React.FC = () => {
       {/* Create Campaign Modal */}
       <CreateCampaignModal
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          onCloseCreateModal?.();
+        }}
         onSuccess={loadCampaigns}
       />
     </div>

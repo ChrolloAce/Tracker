@@ -91,6 +91,7 @@ function DashboardPage() {
   ]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
+  const [isCreateCampaignModalOpen, setIsCreateCampaignModalOpen] = useState(false);
   
   // Loading/pending state for immediate UI feedback
   const [pendingVideos, setPendingVideos] = useState<VideoSubmission[]>([]);
@@ -1933,6 +1934,17 @@ function DashboardPage() {
               />
             </div>
           )}
+          {activeTab === 'campaigns' && (
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setIsCreateCampaignModalOpen(true)}
+                className="p-2 rounded-lg transition-all bg-white/5 text-white/90 border border-white/10 hover:border-white/20 hover:bg-white/10"
+                title="Create Campaign"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+          )}
           {activeTab === 'analytics' && (
             <div className="flex items-center space-x-4">
               <div className="relative">
@@ -2222,7 +2234,12 @@ function DashboardPage() {
           )}
 
           {/* Campaigns Tab */}
-          {activeTab === 'campaigns' && <CampaignsManagementPage />}
+          {activeTab === 'campaigns' && (
+            <CampaignsManagementPage 
+              openCreateModal={isCreateCampaignModalOpen}
+              onCloseCreateModal={() => setIsCreateCampaignModalOpen(false)}
+            />
+          )}
 
           {/* Other Tabs - Placeholder */}
           {!['dashboard', 'accounts', 'videos', 'subscription', 'settings', 'analytics', 'creators', 'campaigns', 'cron', 'team', 'invitations'].includes(activeTab) && (
