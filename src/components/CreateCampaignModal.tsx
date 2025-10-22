@@ -405,6 +405,53 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
                 />
                 <p className="text-xs text-gray-500 mt-1">This will be visible to all participants</p>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Cover Image (Optional)
+                </label>
+                {coverImage ? (
+                  <div className="relative">
+                    <img 
+                      src={coverImage} 
+                      alt="Campaign cover" 
+                      className="w-full h-48 object-cover rounded-lg border border-white/10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setCoverImage('')}
+                      className="absolute top-2 right-2 p-2 bg-red-500/80 hover:bg-red-500 rounded-full transition-all"
+                    >
+                      <X className="w-4 h-4 text-white" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-white/10 rounded-lg cursor-pointer hover:border-emerald-500/50 transition-all bg-white/5">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      {uploadingImage ? (
+                        <>
+                          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-500 mb-2"></div>
+                          <p className="text-sm text-gray-400">Uploading...</p>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-10 h-10 text-gray-400 mb-2" />
+                          <p className="text-sm text-gray-400 mb-1">Click to upload cover image</p>
+                          <p className="text-xs text-gray-500">PNG, JPG up to 10MB</p>
+                        </>
+                      )}
+                    </div>
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      disabled={uploadingImage}
+                    />
+                  </label>
+                )}
+                <p className="text-xs text-gray-500 mt-1">Optional: Add a visual banner for your campaign</p>
+              </div>
             </div>
           )}
 
@@ -500,6 +547,73 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
                   {goalType === 'video_count' && `Target: ${goalAmount} videos`}
                   {goalType === 'total_engagement' && `Target: ${goalAmount.toLocaleString()} total engagements`}
                 </p>
+              </div>
+
+              {/* Metric Guarantees */}
+              <div className="border-t border-white/10 pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <label className="text-sm font-medium text-gray-400 block">
+                      Metric Guarantees (Optional)
+                    </label>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Set minimum requirements per video
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addMetricGuarantee}
+                    className="px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-sm font-medium rounded-lg transition-all flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Requirement
+                  </button>
+                </div>
+
+                {metricGuarantees.length > 0 && (
+                  <div className="space-y-2">
+                    {metricGuarantees.map((guarantee) => (
+                      <div key={guarantee.id} className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-lg">
+                        <select
+                          value={guarantee.metric}
+                          onChange={(e) => updateMetricGuarantee(guarantee.id, { metric: e.target.value as any })}
+                          className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500/50"
+                        >
+                          <option value="views">Views</option>
+                          <option value="likes">Likes</option>
+                          <option value="comments">Comments</option>
+                          <option value="shares">Shares</option>
+                          <option value="engagement_rate">Engagement Rate %</option>
+                        </select>
+                        
+                        <div className="flex items-center gap-2 flex-1">
+                          <span className="text-gray-400 text-sm">Min:</span>
+                          <input
+                            type="number"
+                            value={guarantee.minValue}
+                            onChange={(e) => updateMetricGuarantee(guarantee.id, { minValue: Number(e.target.value) })}
+                            min="0"
+                            className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500/50"
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => removeMetricGuarantee(guarantee.id)}
+                          className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {metricGuarantees.length === 0 && (
+                  <div className="text-center py-6 text-gray-500 text-sm border-2 border-dashed border-white/10 rounded-lg">
+                    No requirements set. Click "Add Requirement" to add minimum metrics.
+                  </div>
+                )}
               </div>
             </div>
           )}
