@@ -4,11 +4,13 @@ import { TrackedAccount, Payout, VideoDoc } from '../types/firestore';
 import CreatorLinksService from '../services/CreatorLinksService';
 import FirestoreDataService from '../services/FirestoreDataService';
 import PayoutsService from '../services/PayoutsService';
-import { Video, DollarSign, TrendingUp, Users as UsersIcon } from 'lucide-react';
+import CampaignService from '../services/CampaignService';
+import { Video, DollarSign, TrendingUp, Users as UsersIcon, Trophy, Target, Award } from 'lucide-react';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import { VideoSubmissionsTable } from './VideoSubmissionsTable';
 import { VideoSubmission } from '../types';
+import { Campaign } from '../types/campaigns';
 
 interface CreatorStats {
   totalAccounts: number;
@@ -24,7 +26,7 @@ interface CreatorStats {
  */
 const CreatorPortalPage: React.FC = () => {
   const { user, currentOrgId, currentProjectId } = useAuth();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'accounts' | 'payouts'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'campaigns' | 'accounts' | 'payouts'>('dashboard');
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<CreatorStats>({
     totalAccounts: 0,
@@ -36,6 +38,7 @@ const CreatorPortalPage: React.FC = () => {
   const [linkedAccounts, setLinkedAccounts] = useState<TrackedAccount[]>([]);
   const [videos, setVideos] = useState<VideoDoc[]>([]);
   const [payouts, setPayouts] = useState<Payout[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
 
   useEffect(() => {
     loadData();
@@ -86,6 +89,15 @@ const CreatorPortalPage: React.FC = () => {
       );
 
       setPayouts(creatorPayouts);
+
+      // Load campaigns for this creator
+      const creatorCampaigns = await CampaignService.getCreatorCampaigns(
+        currentOrgId,
+        currentProjectId,
+        user.uid
+      );
+
+      setCampaigns(creatorCampaigns);
 
       // Calculate stats
       const totalEarnings = creatorPayouts
@@ -162,6 +174,22 @@ const CreatorPortalPage: React.FC = () => {
           Dashboard
         </button>
         <button
+          onClick={() => setActiveTab('campaigns')}
+          className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
+            activeTab === 'campaigns'
+              ? 'bg-emerald-500/10 text-emerald-400 shadow-lg shadow-emerald-500/20'
+              : 'text-gray-400 hover:text-emerald-400 hover:bg-emerald-500/5'
+          }`}
+        >
+          <Trophy className="w-4 h-4" />
+          Campaigns
+          {campaigns.filter(c => c.status === 'active').length > 0 && (
+            <span className="ml-1 px-2 py-0.5 text-xs font-bold bg-emerald-500 text-white rounded-full">
+              {campaigns.filter(c => c.status === 'active').length}
+            </span>
+          )}
+        </button>
+        <button
           onClick={() => setActiveTab('accounts')}
           className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
             activeTab === 'accounts'
@@ -193,6 +221,8 @@ const CreatorPortalPage: React.FC = () => {
           videoSubmissions={videoSubmissions}
         />
       )}
+
+      {activeTab === 'campaigns' && <CampaignsTab campaigns={campaigns} />}
 
       {activeTab === 'accounts' && <AccountsTab linkedAccounts={linkedAccounts} />}
 
@@ -499,6 +529,194 @@ const PayoutsTab: React.FC<{ payouts: Payout[] }> = ({ payouts }) => {
           </table>
         </div>
       )}
+    </div>
+  );
+};
+
+// Campaigns Tab - Premium B2C Design
+const CampaignsTab: React.FC<{ campaigns: Campaign[] }> = ({ campaigns }) => {
+  const activeCampaigns = campaigns.filter(c => c.status === 'active');
+  const completedCampaigns = campaigns.filter(c => c.status === 'completed');
+  
+  if (campaigns.length === 0) {
+    return (
+      <div className="rounded-2xl border border-white/10 p-12 text-center" style={{ backgroundColor: '#121214' }}>
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500/10 rounded-full border-2 border-emerald-500/20 mb-4">
+          <Trophy className="w-8 h-8 text-emerald-400" />
+        </div>
+        <h3 className="text-xl font-bold text-white mb-2">No Campaigns Yet</h3>
+        <p className="text-gray-400 max-w-md mx-auto">
+          You haven't been added to any campaigns yet. Check back soon to compete for rewards!
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Active Campaigns */}
+      {activeCampaigns.length > 0 && (
+        <div>
+          <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+            <Target className="w-6 h-6 text-emerald-400" />
+            Active Campaigns
+            <span className="text-sm font-normal text-gray-400">({activeCampaigns.length})</span>
+          </h2>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {activeCampaigns.map((campaign) => (
+              <CampaignCard key={campaign.id} campaign={campaign} />
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Completed Campaigns */}
+      {completedCampaigns.length > 0 && (
+        <div>
+          <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+            <Award className="w-6 h-6 text-gray-400" />
+            Completed Campaigns
+            <span className="text-sm font-normal text-gray-400">({completedCampaigns.length})</span>
+          </h2>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {completedCampaigns.map((campaign) => (
+              <CampaignCard key={campaign.id} campaign={campaign} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Campaign Card - Animated & Premium
+const CampaignCard: React.FC<{ campaign: Campaign }> = ({ campaign }) => {
+  const { user } = useAuth();
+  const myParticipant = campaign.participants.find(p => p.creatorId === user?.uid);
+  const isActive = campaign.status === 'active';
+  
+  const formatDate = (date: any) => {
+    const d = date.toDate ? date.toDate() : date;
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+  
+  const getGoalLabel = (goalType: string) => {
+    switch(goalType) {
+      case 'total_views': return 'Total Views';
+      case 'total_engagement': return 'Total Engagement';
+      case 'avg_engagement_rate': return 'Avg Engagement Rate';
+      case 'total_likes': return 'Total Likes';
+      case 'video_count': return 'Video Count';
+      default: return goalType;
+    }
+  };
+  
+  return (
+    <div 
+      className="group relative overflow-hidden rounded-2xl border transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
+      style={{ 
+        backgroundColor: '#121214',
+        borderColor: isActive ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.1)'
+      }}
+    >
+      {/* Gradient Glow Effect */}
+      <div 
+        className={`absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl transition-opacity duration-300 ${
+          isActive ? 'opacity-20 group-hover:opacity-30' : 'opacity-0'
+        }`}
+        style={{ background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(5, 150, 105, 0.2))' }}
+      />
+      
+      {/* Content */}
+      <div className="relative p-6 space-y-4">
+        {/* Header */}
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <h3 className="text-xl font-bold text-white mb-1 group-hover:text-emerald-400 transition-colors">
+              {campaign.name}
+            </h3>
+            <p className="text-sm text-gray-400 line-clamp-2">{campaign.description}</p>
+          </div>
+          
+          {isActive && (
+            <div className="flex-shrink-0 ml-4">
+              <div className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full">
+                <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1">
+                  <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                  Active
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Dates */}
+        <div className="flex items-center gap-4 text-xs text-gray-400">
+          <span>{formatDate(campaign.startDate)} - {formatDate(campaign.endDate)}</span>
+        </div>
+        
+        {/* Progress Bar */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-400">{getGoalLabel(campaign.goalType)}</span>
+            <span className="text-white font-semibold">
+              {campaign.currentProgress.toLocaleString()} / {campaign.goalAmount.toLocaleString()}
+            </span>
+          </div>
+          
+          <div className="relative h-2 bg-white/5 rounded-full overflow-hidden">
+            <div 
+              className="absolute inset-y-0 left-0 rounded-full transition-all duration-500 bg-gradient-to-r from-emerald-500 to-emerald-400"
+              style={{ width: `${Math.min(campaign.progressPercent, 100)}%` }}
+            />
+          </div>
+          
+          <span className="text-xs text-emerald-400 font-medium">
+            {campaign.progressPercent.toFixed(1)}% Complete
+          </span>
+        </div>
+        
+        {/* My Performance */}
+        {myParticipant && (
+          <div className="pt-4 border-t border-white/5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-white">My Rank</span>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-bold text-emerald-400">#{myParticipant.currentRank}</span>
+                <span className="text-xs text-gray-400">of {campaign.participants.length}</span>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-white/5 rounded-lg p-3">
+                <div className="text-xs text-gray-400 mb-1">My Views</div>
+                <div className="text-lg font-bold text-white">{myParticipant.totalViews.toLocaleString()}</div>
+              </div>
+              <div className="bg-white/5 rounded-lg p-3">
+                <div className="text-xs text-gray-400 mb-1">Earnings</div>
+                <div className="text-lg font-bold text-emerald-400">${myParticipant.totalEarnings.toFixed(2)}</div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Rewards Preview */}
+        {campaign.rewards.length > 0 && (
+          <div className="pt-4 border-t border-white/5">
+            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Rewards</div>
+            <div className="flex items-center gap-2">
+              {campaign.rewards.slice(0, 3).map((reward) => (
+                <div key={reward.position} className="flex items-center gap-1 text-xs">
+                  <span className="text-gray-400">#{reward.position}</span>
+                  <span className="font-semibold text-emerald-400">${reward.amount}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
