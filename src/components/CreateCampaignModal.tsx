@@ -125,6 +125,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
       await CampaignService.createCampaign(
         currentOrgId,
         currentProjectId,
+        user.uid,
         {
           name,
           description,
