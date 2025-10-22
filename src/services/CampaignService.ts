@@ -45,7 +45,7 @@ class CampaignService {
 
     const now = Timestamp.now();
 
-    const campaign: Omit<Campaign, 'id'> = {
+    const campaign: any = {
       organizationId: orgId,
       projectId,
       name: input.name,
@@ -61,7 +61,6 @@ class CampaignService {
       currentProgress: 0,
       progressPercent: 0,
       compensationType: input.compensationType,
-      compensationAmount: input.compensationAmount,
       rewards: input.rewards,
       bonusRewards: input.bonusRewards,
       participantIds: input.participantIds,
@@ -75,6 +74,13 @@ class CampaignService {
       totalEarnings: 0,
       leaderboard: [],
     };
+
+    // Only add compensationAmount if it's provided and valid
+    if (input.compensationAmount !== undefined && input.compensationAmount > 0) {
+      campaign.compensationAmount = input.compensationAmount;
+    }
+
+    console.log('💾 Saving campaign to Firestore:', JSON.stringify(campaign, null, 2));
 
     const docRef = await addDoc(campaignsRef, campaign);
     
