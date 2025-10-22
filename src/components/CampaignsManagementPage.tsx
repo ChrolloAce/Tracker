@@ -12,7 +12,9 @@ import {
   Pause,
   CheckCircle,
   XCircle,
-  Eye
+  Eye,
+  DollarSign,
+  MoreVertical
 } from 'lucide-react';
 
 interface CampaignsManagementPageProps {
@@ -177,143 +179,143 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
   );
 };
 
-// Campaign Management Card
+// Campaign Management Card - Redesigned
 const CampaignManagementCard: React.FC<{
   campaign: Campaign;
   onStatusChange: (campaignId: string, newStatus: CampaignStatus) => void;
 }> = ({ campaign, onStatusChange }) => {
-  const [showDetails, setShowDetails] = useState(false);
-
-  const formatDate = (date: any) => {
-    const d = date.toDate ? date.toDate() : date;
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
-
-  const getStatusIcon = (status: CampaignStatus) => {
-    switch (status) {
-      case 'active':
-        return <Play className="w-4 h-4" />;
-      case 'draft':
-        return <Pause className="w-4 h-4" />;
-      case 'completed':
-        return <CheckCircle className="w-4 h-4" />;
-      case 'cancelled':
-        return <XCircle className="w-4 h-4" />;
+  // Calculate CPM/reward from compensation
+  const getRewardDisplay = () => {
+    if (campaign.compensationType === 'flat_cpm' && campaign.compensationAmount) {
+      return `$${campaign.compensationAmount.toFixed(2)} / 1K`;
+    } else if (campaign.compensationType === 'flat_per_video' && campaign.compensationAmount) {
+      return `$${campaign.compensationAmount.toFixed(2)} / video`;
     }
+    return 'Custom';
   };
 
-  const getStatusColor = (status: CampaignStatus) => {
-    switch (status) {
-      case 'active':
-        return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30';
-      case 'draft':
-        return 'text-gray-400 bg-white/5 border-white/10';
-      case 'completed':
-        return 'text-gray-300 bg-white/5 border-white/10';
-      case 'cancelled':
-        return 'text-gray-500 bg-white/5 border-white/10';
-    }
+  // Get campaign category from description or goal type
+  const getCategory = () => {
+    return campaign.description.split(' ')[0] || 'General';
   };
+
+  // Get campaign type
+  const getCampaignType = () => {
+    return 'UGC'; // User Generated Content
+  };
+
+  // Calculate budget target (assuming rewards * participants)
+  const totalBudget = campaign.rewards.reduce((sum, r) => sum + r.amount, 0) + 
+                      (campaign.compensationAmount || 0) * campaign.participantIds.length;
 
   return (
     <div 
-      className="rounded-xl border border-white/10 overflow-hidden transition-all hover:border-emerald-500/20"
-      style={{ backgroundColor: '#121214' }}
+      className="rounded-2xl border border-white/10 overflow-hidden transition-all hover:border-white/20 cursor-pointer group"
+      style={{ backgroundColor: '#0b0b0b' }}
     >
-      <div className="p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <h3 className="text-xl font-bold text-white">{campaign.name}</h3>
-              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusColor(campaign.status)}`}>
-                {getStatusIcon(campaign.status)}
-                {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
-              </span>
+      <div className="flex">
+        {/* Left side - Thumbnail (25-30%) */}
+        <div className="w-1/4 min-w-[200px] relative overflow-hidden">
+          {campaign.coverImage ? (
+            <img 
+              src={campaign.coverImage} 
+              alt={campaign.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            // Placeholder dashboard preview
+            <div className="w-full h-full bg-gradient-to-br from-zinc-900 to-zinc-800 p-4 flex items-center justify-center">
+              <div className="space-y-2 w-full">
+                <div className="h-2 bg-white/10 rounded w-3/4"></div>
+                <div className="h-2 bg-white/10 rounded w-1/2"></div>
+                <div className="h-16 bg-white/5 rounded mt-4"></div>
+                <div className="h-16 bg-white/5 rounded"></div>
+              </div>
             </div>
-            <p className="text-sm text-gray-400">{campaign.description}</p>
-          </div>
-
-          <button
-            onClick={() => setShowDetails(!showDetails)}
-            className="ml-4 p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all"
-          >
-            <Eye className="w-5 h-5" />
-          </button>
+          )}
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        {/* Right side - Campaign Summary (70%) */}
+        <div className="flex-1 p-6 flex flex-col justify-between">
+          {/* Header */}
           <div>
-            <div className="text-xs text-gray-400 mb-1">Goal</div>
-            <div className="text-sm font-semibold text-white">
-              {campaign.goalAmount.toLocaleString()}
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-white mb-1.5">{campaign.name}</h3>
+                <p className="text-sm text-gray-400">
+                  ${campaign.totalEarnings.toFixed(2)} of ${totalBudget.toFixed(2)} paid out
+                </p>
+              </div>
+
+              {/* Top-right controls */}
+              <div className="flex items-center gap-2 ml-4">
+                <button
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/10 text-gray-300 hover:text-white hover:border-white/20 transition-all text-sm"
+                  title="Add budget"
+                >
+                  <DollarSign className="w-4 h-4" />
+                  <span>Add budget</span>
+                </button>
+                <button
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-all"
+                  title="More options"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-            <div className="text-xs text-gray-500">{campaign.goalType.replace('_', ' ')}</div>
+
+            {/* Progress Bar */}
+            <div className="mb-4">
+              <div className="relative w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                <div 
+                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all"
+                  style={{ width: `${campaign.progressPercent}%` }}
+                ></div>
+              </div>
+              <div className="flex justify-end mt-1">
+                <span className="text-xs text-white font-semibold">{campaign.progressPercent.toFixed(0)}%</span>
+              </div>
+            </div>
+
+            {/* Stats Row */}
+            <div className="flex items-center gap-6 mb-3">
+              {/* Reward */}
+              <div>
+                <div className="text-[10px] text-gray-500 uppercase mb-1">Reward</div>
+                <div className="inline-flex items-center px-3 py-1 rounded-full font-bold text-sm text-white" style={{ backgroundColor: '#007aff' }}>
+                  {getRewardDisplay()}
+                </div>
+              </div>
+
+              {/* Category */}
+              <div>
+                <div className="text-[10px] text-gray-500 uppercase mb-1">Category</div>
+                <div className="text-sm text-gray-300">{getCategory()}</div>
+              </div>
+
+              {/* Type */}
+              <div>
+                <div className="text-[10px] text-gray-500 uppercase mb-1">Type</div>
+                <div className="text-sm text-gray-300">{getCampaignType()}</div>
+              </div>
+
+              {/* Views */}
+              <div>
+                <div className="text-[10px] text-gray-500 uppercase mb-1">Views</div>
+                <div className="text-sm text-white font-semibold">{campaign.totalViews.toLocaleString()}</div>
+              </div>
+            </div>
           </div>
 
-          <div>
-            <div className="text-xs text-gray-400 mb-1">Progress</div>
-            <div className="text-sm font-semibold text-emerald-400">
-              {campaign.progressPercent.toFixed(1)}%
-            </div>
-            <div className="text-xs text-gray-500">
-              {campaign.currentProgress.toLocaleString()} / {campaign.goalAmount.toLocaleString()}
+          {/* Footer */}
+          <div className="flex items-center justify-between pt-3 border-t border-white/5">
+            <div className="flex items-center gap-4 text-xs text-gray-500">
+              <span>{campaign.totalVideos} submissions</span>
+              <span className="w-1 h-1 bg-gray-600 rounded-full"></span>
+              <span>{campaign.participantIds.length} creators</span>
             </div>
           </div>
-
-          <div>
-            <div className="text-xs text-gray-400 mb-1">Participants</div>
-            <div className="text-sm font-semibold text-white">
-              {campaign.participants.length}
-            </div>
-            <div className="text-xs text-gray-500">creators</div>
-          </div>
-
-          <div>
-            <div className="text-xs text-gray-400 mb-1">Duration</div>
-            <div className="text-sm font-semibold text-white">
-              {formatDate(campaign.startDate)}
-            </div>
-            <div className="text-xs text-gray-500">to {formatDate(campaign.endDate)}</div>
-          </div>
-
-          <div>
-            <div className="text-xs text-gray-400 mb-1">Total Paid</div>
-            <div className="text-sm font-semibold text-white">
-              ${campaign.totalEarnings.toFixed(2)}
-            </div>
-            <div className="text-xs text-gray-500">earnings</div>
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-2">
-          {campaign.status === 'draft' && (
-            <button
-              onClick={() => onStatusChange(campaign.id, 'active')}
-              className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-medium rounded-lg transition-all text-sm flex items-center gap-2"
-            >
-              <Play className="w-4 h-4" />
-              Start Campaign
-            </button>
-          )}
-          
-          {campaign.status === 'active' && (
-            <button
-              onClick={() => onStatusChange(campaign.id, 'completed')}
-              className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white font-medium rounded-lg transition-all text-sm flex items-center gap-2"
-            >
-              <CheckCircle className="w-4 h-4" />
-              Complete Campaign
-            </button>
-          )}
-
-          <button className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white font-medium rounded-lg transition-all text-sm">
-            View Details
-          </button>
-
-          <button className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white font-medium rounded-lg transition-all text-sm">
-            Edit
-          </button>
         </div>
       </div>
     </div>

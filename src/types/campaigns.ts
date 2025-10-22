@@ -90,6 +90,7 @@ export interface Campaign {
   // Basic Info
   name: string;
   description: string;          // Supports markdown
+  coverImage?: string;          // Campaign cover image URL
   status: CampaignStatus;
   
   // Timeline
