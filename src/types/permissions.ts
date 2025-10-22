@@ -24,6 +24,7 @@ export interface TabsPermissions {
   contracts: boolean;
   team: boolean;
   creators: boolean;
+  campaigns: boolean;
   extension: boolean;
   settings: boolean;
 }
@@ -109,6 +110,7 @@ export const DEFAULT_PERMISSIONS: Record<'owner' | 'admin' | 'member' | 'creator
       contracts: true,
       team: true,
       creators: true,
+      campaigns: true,
       extension: true,
       settings: true,
     },
@@ -170,6 +172,7 @@ export const DEFAULT_PERMISSIONS: Record<'owner' | 'admin' | 'member' | 'creator
       contracts: true,
       team: true,
       creators: true,
+      campaigns: true,
       extension: true,
       settings: true,
     },
@@ -292,6 +295,7 @@ export const DEFAULT_PERMISSIONS: Record<'owner' | 'admin' | 'member' | 'creator
       contracts: false,
       team: false,
       creators: true, // Access to creator portal
+      campaigns: false, // Creators view campaigns in their portal
       extension: false, // Creators don't need extension
       settings: true,
     },
@@ -436,6 +440,7 @@ export const PERMISSION_PRESETS: PermissionPreset[] = [
         contracts: true,
         team: false,
         creators: true,
+        campaigns: true,
         extension: true,
         settings: true,
       },

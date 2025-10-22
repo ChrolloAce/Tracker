@@ -30,6 +30,7 @@ import CronManagementPage from '../components/CronManagementPage';
 import TrackedLinksPage, { TrackedLinksPageRef } from '../components/TrackedLinksPage';
 import CreatorPortalPage from '../components/CreatorPortalPage';
 import CreatorsManagementPage, { CreatorsManagementPageRef } from '../components/CreatorsManagementPage';
+import CampaignsManagementPage from '../components/CampaignsManagementPage';
 import ExtensionPromoModal from '../components/ExtensionPromoModal';
 import OrganizationService from '../services/OrganizationService';
 import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
@@ -827,7 +828,7 @@ function DashboardPage() {
       if (isModalOpen || isTikTokSearchOpen || isAnalyticsModalOpen) return;
       
       // Only trigger on tabs where + button is visible
-      if (activeTab === 'settings' || activeTab === 'subscription' || activeTab === 'extension' || activeTab === 'cron' || activeTab === 'creators') {
+      if (activeTab === 'settings' || activeTab === 'subscription' || activeTab === 'extension' || activeTab === 'cron' || activeTab === 'creators' || activeTab === 'campaigns') {
         return;
       }
       
@@ -1672,6 +1673,7 @@ function DashboardPage() {
                 {activeTab === 'subscription' && 'Subscription Plans'}
                 {activeTab === 'analytics' && 'Tracked Links'}
                 {activeTab === 'creators' && 'Creators'}
+                {activeTab === 'campaigns' && 'Campaigns'}
                 {activeTab === 'extension' && 'Extension'}
                 {activeTab === 'cron' && 'Cron Jobs'}
                 {activeTab === 'settings' && 'Settings'}
@@ -1683,6 +1685,7 @@ function DashboardPage() {
                   {activeTab === 'videos' && 'View and manage all tracked videos'}
                   {activeTab === 'subscription' && 'Choose the perfect plan to scale your tracking'}
                   {activeTab === 'creators' && 'Manage and discover content creators'}
+                  {activeTab === 'campaigns' && 'Create and manage creator campaigns with rewards'}
                   {activeTab === 'extension' && 'Supercharge your workflow with our browser extension'}
                   {activeTab === 'cron' && 'Manage automated video refreshes'}
                   {activeTab === 'settings' && 'Configure your preferences'}
@@ -2218,8 +2221,11 @@ function DashboardPage() {
             userRole === 'creator' ? <CreatorPortalPage /> : <CreatorsManagementPage ref={creatorsPageRef} dateFilter={creatorsDateFilter} />
           )}
 
+          {/* Campaigns Tab */}
+          {activeTab === 'campaigns' && <CampaignsManagementPage />}
+
           {/* Other Tabs - Placeholder */}
-          {!['dashboard', 'accounts', 'videos', 'subscription', 'settings', 'analytics', 'creators', 'cron', 'team', 'invitations'].includes(activeTab) && (
+          {!['dashboard', 'accounts', 'videos', 'subscription', 'settings', 'analytics', 'creators', 'campaigns', 'cron', 'team', 'invitations'].includes(activeTab) && (
             <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">🚧</span>

@@ -8,7 +8,8 @@ import {
   Eye,
   Link,
   Film,
-  Puzzle
+  Puzzle,
+  Trophy
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import ProjectSwitcher from '../ProjectSwitcher';
@@ -86,6 +87,13 @@ const Sidebar: React.FC<SidebarProps> = ({
         onClick: () => onTabChange?.('creators'),
       },
       {
+        id: 'campaigns',
+        label: 'Campaigns',
+        icon: Trophy,
+        isActive: activeTab === 'campaigns',
+        onClick: () => onTabChange?.('campaigns'),
+      },
+      {
         id: 'extension',
         label: 'Extension',
         icon: Puzzle,
@@ -113,6 +121,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       if (item.id === 'videos') return can.accessTab('videos');
       if (item.id === 'analytics') return can.accessTab('trackedLinks');
       if (item.id === 'creators') return can.accessTab('creators');
+      if (item.id === 'campaigns') return can.accessTab('campaigns');
       if (item.id === 'extension') return can.accessTab('extension');
       if (item.id === 'settings') return can.accessTab('settings');
       return true;

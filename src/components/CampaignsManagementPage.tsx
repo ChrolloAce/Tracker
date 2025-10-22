@@ -1,0 +1,367 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { Campaign, CampaignStatus } from '../types/campaigns';
+import CampaignService from '../services/CampaignService';
+import { 
+  Trophy, 
+  Plus, 
+  Target, 
+  Users, 
+  TrendingUp, 
+  Calendar,
+  Award,
+  DollarSign,
+  Play,
+  Pause,
+  CheckCircle,
+  XCircle,
+  Eye
+} from 'lucide-react';
+
+/**
+ * Campaigns Management Page - For Admins/Managers
+ * Create, view, and manage all campaigns
+ */
+const CampaignsManagementPage: React.FC = () => {
+  const { user, currentOrgId, currentProjectId } = useAuth();
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedStatus, setSelectedStatus] = useState<'all' | CampaignStatus>('all');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  useEffect(() => {
+    loadCampaigns();
+  }, [currentOrgId, currentProjectId, selectedStatus]);
+
+  const loadCampaigns = async () => {
+    if (!currentOrgId || !currentProjectId) return;
+
+    setLoading(true);
+    try {
+      const allCampaigns = selectedStatus === 'all'
+        ? await CampaignService.getCampaigns(currentOrgId, currentProjectId)
+        : await CampaignService.getCampaigns(currentOrgId, currentProjectId, selectedStatus);
+
+      setCampaigns(allCampaigns);
+    } catch (error) {
+      console.error('Failed to load campaigns:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStatusChange = async (campaignId: string, newStatus: CampaignStatus) => {
+    if (!currentOrgId || !currentProjectId) return;
+
+    try {
+      await CampaignService.updateCampaignStatus(currentOrgId, currentProjectId, campaignId, newStatus);
+      await loadCampaigns();
+    } catch (error) {
+      console.error('Failed to update campaign status:', error);
+    }
+  };
+
+  const activeCampaigns = campaigns.filter(c => c.status === 'active');
+  const draftCampaigns = campaigns.filter(c => c.status === 'draft');
+  const completedCampaigns = campaigns.filter(c => c.status === 'completed');
+
+  // Calculate overall stats
+  const totalParticipants = new Set(campaigns.flatMap(c => c.participantIds)).size;
+  const totalViews = campaigns.reduce((sum, c) => sum + c.totalViews, 0);
+  const totalPaidOut = campaigns.reduce((sum, c) => sum + c.totalEarnings, 0);
+
+  if (loading) {
+    return <div className="text-white">Loading campaigns...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header with Create Button */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+            <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
+              <Trophy className="w-8 h-8 text-emerald-400" />
+            </div>
+            Campaigns
+          </h1>
+          <p className="text-gray-400 mt-1">Create and manage creator campaigns</p>
+        </div>
+
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
+          className="group relative px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-all shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:scale-105"
+        >
+          <div className="flex items-center gap-2">
+            <Plus className="w-5 h-5" />
+            Create Campaign
+          </div>
+        </button>
+      </div>
+
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-emerald-500/10 rounded-lg">
+              <Trophy className="w-5 h-5 text-emerald-400" />
+            </div>
+            <span className="text-sm text-gray-400">Active Campaigns</span>
+          </div>
+          <div className="text-3xl font-bold text-white">{activeCampaigns.length}</div>
+        </div>
+
+        <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-purple-500/10 rounded-lg">
+              <Users className="w-5 h-5 text-purple-400" />
+            </div>
+            <span className="text-sm text-gray-400">Total Participants</span>
+          </div>
+          <div className="text-3xl font-bold text-white">{totalParticipants}</div>
+        </div>
+
+        <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-blue-500/10 rounded-lg">
+              <TrendingUp className="w-5 h-5 text-blue-400" />
+            </div>
+            <span className="text-sm text-gray-400">Total Views</span>
+          </div>
+          <div className="text-3xl font-bold text-white">{totalViews.toLocaleString()}</div>
+        </div>
+
+        <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-yellow-500/10 rounded-lg">
+              <DollarSign className="w-5 h-5 text-yellow-400" />
+            </div>
+            <span className="text-sm text-gray-400">Total Paid Out</span>
+          </div>
+          <div className="text-3xl font-bold text-white">${totalPaidOut.toFixed(2)}</div>
+        </div>
+      </div>
+
+      {/* Status Filter */}
+      <div className="flex items-center gap-2">
+        {(['all', 'active', 'draft', 'completed', 'cancelled'] as const).map((status) => (
+          <button
+            key={status}
+            onClick={() => setSelectedStatus(status)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              selectedStatus === status
+                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-white/5'
+            }`}
+          >
+            {status.charAt(0).toUpperCase() + status.slice(1)}
+            {status !== 'all' && (
+              <span className="ml-2 text-xs opacity-60">
+                ({campaigns.filter(c => c.status === status).length})
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Campaigns List */}
+      {campaigns.length === 0 ? (
+        <div className="rounded-2xl border border-white/10 p-12 text-center" style={{ backgroundColor: '#121214' }}>
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500/10 rounded-full border-2 border-emerald-500/20 mb-4">
+            <Trophy className="w-8 h-8 text-emerald-400" />
+          </div>
+          <h3 className="text-xl font-bold text-white mb-2">No Campaigns Yet</h3>
+          <p className="text-gray-400 mb-6 max-w-md mx-auto">
+            Create your first campaign to start motivating creators and tracking performance!
+          </p>
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-all"
+          >
+            <Plus className="w-5 h-5" />
+            Create Your First Campaign
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {campaigns.map((campaign) => (
+            <CampaignManagementCard
+              key={campaign.id}
+              campaign={campaign}
+              onStatusChange={handleStatusChange}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Create Campaign Modal (placeholder for now) */}
+      {isCreateModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          onClick={() => setIsCreateModalOpen(false)}
+        >
+          <div 
+            className="relative w-full max-w-4xl rounded-2xl border border-white/10 p-8"
+            style={{ backgroundColor: '#121214' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-2xl font-bold text-white mb-4">Create Campaign (Coming Soon)</h2>
+            <p className="text-gray-400 mb-6">Campaign creation modal will be implemented next!</p>
+            <button
+              onClick={() => setIsCreateModalOpen(false)}
+              className="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-lg transition-all"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Campaign Management Card
+const CampaignManagementCard: React.FC<{
+  campaign: Campaign;
+  onStatusChange: (campaignId: string, newStatus: CampaignStatus) => void;
+}> = ({ campaign, onStatusChange }) => {
+  const [showDetails, setShowDetails] = useState(false);
+
+  const formatDate = (date: any) => {
+    const d = date.toDate ? date.toDate() : date;
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const getStatusIcon = (status: CampaignStatus) => {
+    switch (status) {
+      case 'active':
+        return <Play className="w-4 h-4" />;
+      case 'draft':
+        return <Pause className="w-4 h-4" />;
+      case 'completed':
+        return <CheckCircle className="w-4 h-4" />;
+      case 'cancelled':
+        return <XCircle className="w-4 h-4" />;
+    }
+  };
+
+  const getStatusColor = (status: CampaignStatus) => {
+    switch (status) {
+      case 'active':
+        return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30';
+      case 'draft':
+        return 'text-gray-400 bg-gray-500/10 border-gray-500/30';
+      case 'completed':
+        return 'text-blue-400 bg-blue-500/10 border-blue-500/30';
+      case 'cancelled':
+        return 'text-red-400 bg-red-500/10 border-red-500/30';
+    }
+  };
+
+  return (
+    <div 
+      className="rounded-xl border border-white/10 overflow-hidden transition-all hover:border-emerald-500/20"
+      style={{ backgroundColor: '#121214' }}
+    >
+      <div className="p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <h3 className="text-xl font-bold text-white">{campaign.name}</h3>
+              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusColor(campaign.status)}`}>
+                {getStatusIcon(campaign.status)}
+                {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
+              </span>
+            </div>
+            <p className="text-sm text-gray-400">{campaign.description}</p>
+          </div>
+
+          <button
+            onClick={() => setShowDetails(!showDetails)}
+            className="ml-4 p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+          >
+            <Eye className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div>
+            <div className="text-xs text-gray-400 mb-1">Goal</div>
+            <div className="text-sm font-semibold text-white">
+              {campaign.goalAmount.toLocaleString()}
+            </div>
+            <div className="text-xs text-gray-500">{campaign.goalType.replace('_', ' ')}</div>
+          </div>
+
+          <div>
+            <div className="text-xs text-gray-400 mb-1">Progress</div>
+            <div className="text-sm font-semibold text-emerald-400">
+              {campaign.progressPercent.toFixed(1)}%
+            </div>
+            <div className="text-xs text-gray-500">
+              {campaign.currentProgress.toLocaleString()} / {campaign.goalAmount.toLocaleString()}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-xs text-gray-400 mb-1">Participants</div>
+            <div className="text-sm font-semibold text-white">
+              {campaign.participants.length}
+            </div>
+            <div className="text-xs text-gray-500">creators</div>
+          </div>
+
+          <div>
+            <div className="text-xs text-gray-400 mb-1">Duration</div>
+            <div className="text-sm font-semibold text-white">
+              {formatDate(campaign.startDate)}
+            </div>
+            <div className="text-xs text-gray-500">to {formatDate(campaign.endDate)}</div>
+          </div>
+
+          <div>
+            <div className="text-xs text-gray-400 mb-1">Total Paid</div>
+            <div className="text-sm font-semibold text-yellow-400">
+              ${campaign.totalEarnings.toFixed(2)}
+            </div>
+            <div className="text-xs text-gray-500">earnings</div>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-2">
+          {campaign.status === 'draft' && (
+            <button
+              onClick={() => onStatusChange(campaign.id, 'active')}
+              className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-medium rounded-lg transition-all text-sm flex items-center gap-2"
+            >
+              <Play className="w-4 h-4" />
+              Start Campaign
+            </button>
+          )}
+          
+          {campaign.status === 'active' && (
+            <button
+              onClick={() => onStatusChange(campaign.id, 'completed')}
+              className="px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-medium rounded-lg transition-all text-sm flex items-center gap-2"
+            >
+              <CheckCircle className="w-4 h-4" />
+              Complete Campaign
+            </button>
+          )}
+
+          <button className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white font-medium rounded-lg transition-all text-sm">
+            View Details
+          </button>
+
+          <button className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white font-medium rounded-lg transition-all text-sm">
+            Edit
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CampaignsManagementPage;
+
