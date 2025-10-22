@@ -94,7 +94,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
       
       if (creators.length > 0) {
         console.log('👥 Creator details:', creators.map(m => ({ 
-          id: m.id, 
+          userId: m.userId, 
           name: m.displayName || 'No name', 
           email: m.email, 
           role: m.role 
@@ -125,23 +125,31 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
     setError('');
 
     try {
+      const campaignData: any = {
+        name,
+        description,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        goalType,
+        goalAmount,
+        compensationType,
+        rewards,
+        bonusRewards: [],
+        participantIds: selectedCreatorIds,
+      };
+      
+      // Only add compensationAmount if it exists and compensationType is not 'none'
+      if (compensationType !== 'none' && compensationAmount > 0) {
+        campaignData.compensationAmount = compensationAmount;
+      }
+      
+      console.log('📤 Creating campaign:', campaignData);
+      
       await CampaignService.createCampaign(
         currentOrgId,
         currentProjectId,
         user.uid,
-        {
-          name,
-          description,
-          startDate: new Date(startDate),
-          endDate: new Date(endDate),
-          goalType,
-          goalAmount,
-          compensationType,
-          compensationAmount: compensationType !== 'none' ? compensationAmount : undefined,
-          rewards,
-          bonusRewards: [],
-          participantIds: selectedCreatorIds,
-        }
+        campaignData
       );
 
       onSuccess();
@@ -550,12 +558,12 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
                   {availableCreators.length > 0 ? (
                     <div className="space-y-2 max-h-96 overflow-y-auto">
                       {availableCreators.map((creator) => {
-                        const isSelected = selectedCreatorIds.includes(creator.id);
+                        const isSelected = selectedCreatorIds.includes(creator.userId);
                         return (
                           <button
-                            key={creator.id}
+                            key={creator.userId}
                             type="button"
-                            onClick={(e) => toggleCreator(creator.id, e)}
+                            onClick={(e) => toggleCreator(creator.userId, e)}
                             className={`w-full px-4 py-3 rounded-lg border transition-all text-left flex items-center gap-3 ${
                               isSelected
                                 ? 'bg-emerald-500/10 border-emerald-500/30'
