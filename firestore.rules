@@ -323,6 +323,22 @@ service cloud.firestore {
           allow write: if isOwner(userId) && canWriteOrg(orgId);
         }
         
+        // ==================== CAMPAIGNS ====================
+        
+        match /campaigns/{campaignId} {
+          // All members can read campaigns
+          allow read: if canReadOrg(orgId);
+          
+          // Only admins/managers can create campaigns
+          allow create: if canManageOrg(orgId) 
+            && request.resource.data.organizationId == orgId
+            && request.resource.data.projectId == projectId
+            && request.resource.data.createdBy == request.auth.uid;
+          
+          // Only admins/managers can update/delete campaigns
+          allow update, delete: if canManageOrg(orgId);
+        }
+        
         // ==================== PROJECT LINK CLICKS (AGGREGATED) ====================
         
         match /linkClicks/{clickId} {

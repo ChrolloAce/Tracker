@@ -2,15 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Campaign, CampaignStatus } from '../types/campaigns';
 import CampaignService from '../services/CampaignService';
+import CreateCampaignModal from './CreateCampaignModal';
 import { 
   Trophy, 
   Plus, 
   Target, 
   Users, 
-  TrendingUp, 
-  Calendar,
-  Award,
-  DollarSign,
+  TrendingUp,
   Play,
   Pause,
   CheckCircle,
@@ -102,42 +100,22 @@ const CampaignsManagementPage: React.FC = () => {
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-emerald-500/10 rounded-lg">
-              <Trophy className="w-5 h-5 text-emerald-400" />
-            </div>
-            <span className="text-sm text-gray-400">Active Campaigns</span>
-          </div>
+          <div className="text-sm text-gray-400 mb-2">Active Campaigns</div>
           <div className="text-3xl font-bold text-white">{activeCampaigns.length}</div>
         </div>
 
         <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-purple-500/10 rounded-lg">
-              <Users className="w-5 h-5 text-purple-400" />
-            </div>
-            <span className="text-sm text-gray-400">Total Participants</span>
-          </div>
+          <div className="text-sm text-gray-400 mb-2">Total Participants</div>
           <div className="text-3xl font-bold text-white">{totalParticipants}</div>
         </div>
 
         <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-blue-500/10 rounded-lg">
-              <TrendingUp className="w-5 h-5 text-blue-400" />
-            </div>
-            <span className="text-sm text-gray-400">Total Views</span>
-          </div>
+          <div className="text-sm text-gray-400 mb-2">Total Views</div>
           <div className="text-3xl font-bold text-white">{totalViews.toLocaleString()}</div>
         </div>
 
         <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-yellow-500/10 rounded-lg">
-              <DollarSign className="w-5 h-5 text-yellow-400" />
-            </div>
-            <span className="text-sm text-gray-400">Total Paid Out</span>
-          </div>
+          <div className="text-sm text-gray-400 mb-2">Total Paid Out</div>
           <div className="text-3xl font-bold text-white">${totalPaidOut.toFixed(2)}</div>
         </div>
       </div>
@@ -194,28 +172,12 @@ const CampaignsManagementPage: React.FC = () => {
         </div>
       )}
 
-      {/* Create Campaign Modal (placeholder for now) */}
-      {isCreateModalOpen && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-          onClick={() => setIsCreateModalOpen(false)}
-        >
-          <div 
-            className="relative w-full max-w-4xl rounded-2xl border border-white/10 p-8"
-            style={{ backgroundColor: '#121214' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-2xl font-bold text-white mb-4">Create Campaign (Coming Soon)</h2>
-            <p className="text-gray-400 mb-6">Campaign creation modal will be implemented next!</p>
-            <button
-              onClick={() => setIsCreateModalOpen(false)}
-              className="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-lg transition-all"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Create Campaign Modal */}
+      <CreateCampaignModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={loadCampaigns}
+      />
     </div>
   );
 };
@@ -250,11 +212,11 @@ const CampaignManagementCard: React.FC<{
       case 'active':
         return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30';
       case 'draft':
-        return 'text-gray-400 bg-gray-500/10 border-gray-500/30';
+        return 'text-gray-400 bg-white/5 border-white/10';
       case 'completed':
-        return 'text-blue-400 bg-blue-500/10 border-blue-500/30';
+        return 'text-gray-300 bg-white/5 border-white/10';
       case 'cancelled':
-        return 'text-red-400 bg-red-500/10 border-red-500/30';
+        return 'text-gray-500 bg-white/5 border-white/10';
     }
   };
 
@@ -321,7 +283,7 @@ const CampaignManagementCard: React.FC<{
 
           <div>
             <div className="text-xs text-gray-400 mb-1">Total Paid</div>
-            <div className="text-sm font-semibold text-yellow-400">
+            <div className="text-sm font-semibold text-white">
               ${campaign.totalEarnings.toFixed(2)}
             </div>
             <div className="text-xs text-gray-500">earnings</div>
@@ -343,7 +305,7 @@ const CampaignManagementCard: React.FC<{
           {campaign.status === 'active' && (
             <button
               onClick={() => onStatusChange(campaign.id, 'completed')}
-              className="px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-medium rounded-lg transition-all text-sm flex items-center gap-2"
+              className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white font-medium rounded-lg transition-all text-sm flex items-center gap-2"
             >
               <CheckCircle className="w-4 h-4" />
               Complete Campaign
