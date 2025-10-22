@@ -338,7 +338,23 @@ function DashboardPage() {
   // Save selected rules to Firestore (per user, per project)
   // Only save after initial load to avoid overwriting on mount
   useEffect(() => {
-    if (!user || !currentOrgId || !currentProjectId || !rulesLoadedFromFirebase) return;
+    console.log('💾 Save effect triggered:', {
+      hasUser: !!user,
+      hasOrg: !!currentOrgId,
+      hasProject: !!currentProjectId,
+      rulesLoaded: rulesLoadedFromFirebase,
+      selectedCount: selectedRuleIds.length
+    });
+    
+    if (!user || !currentOrgId || !currentProjectId) {
+      console.log('⏭️ Skipping save: missing user/org/project');
+      return;
+    }
+    
+    if (!rulesLoadedFromFirebase) {
+      console.log('⏭️ Skipping save: rules not yet loaded from Firebase');
+      return;
+    }
     
     const saveSelectedRules = async () => {
       try {
@@ -352,12 +368,14 @@ function DashboardPage() {
           user.uid
         );
         
+        console.log('💾 Saving to path:', `organizations/${currentOrgId}/projects/${currentProjectId}/userPreferences/${user.uid}`);
+        
         await setDoc(userPrefsRef, {
           selectedRuleIds,
           updatedAt: new Date()
         }, { merge: true });
         
-        console.log('✅ Saved selected rules to Firebase:', selectedRuleIds);
+        console.log('✅ Successfully saved selected rules to Firebase:', selectedRuleIds);
       } catch (error) {
         console.error('❌ Failed to save selected rules:', error);
       }
@@ -544,6 +562,9 @@ function DashboardPage() {
       })) as TrackingRule[];
       
       // Load user's selected rules from their preferences
+      const userPrefsPath = `organizations/${currentOrgId}/projects/${currentProjectId}/userPreferences/${user.uid}`;
+      console.log('📂 Loading user preferences from:', userPrefsPath);
+      
       const userPrefsRef = doc(
         db, 
         'organizations', 
@@ -554,15 +575,23 @@ function DashboardPage() {
         user.uid
       );
       const userPrefsDoc = await getDoc(userPrefsRef);
+      
+      console.log('📄 User prefs doc exists?', userPrefsDoc.exists());
+      if (userPrefsDoc.exists()) {
+        console.log('📄 User prefs data:', userPrefsDoc.data());
+      }
+      
       const savedSelectedRuleIds = userPrefsDoc.exists() ? (userPrefsDoc.data()?.selectedRuleIds || []) : [];
       
       console.log('✅ Loaded rules:', rules.length);
       console.log('✅ Loaded selected rules from Firebase:', savedSelectedRuleIds);
+      console.log('🎯 Rule IDs available:', rules.map(r => r.id));
       
       // Set both at the same time to avoid race conditions
       setAllRules(rules);
       setSelectedRuleIds(savedSelectedRuleIds);
       setRulesLoadedFromFirebase(true);
+      console.log('🚀 Rules loaded from Firebase flag set to TRUE');
     } catch (error) {
       console.error('❌ Failed to load rules:', error);
     }
@@ -2521,7 +2550,10 @@ function DashboardPage() {
               </p>
               {selectedRuleIds.length > 0 && (
                 <button
-                  onClick={() => setSelectedRuleIds([])}
+                  onClick={() => {
+                    console.log('🗑️ Clear All clicked - removing all selections');
+                    setSelectedRuleIds([]);
+                  }}
                   className="text-xs text-gray-400 hover:text-white transition-colors"
                 >
                   Clear All
@@ -2545,11 +2577,19 @@ function DashboardPage() {
                           : 'bg-gray-800/50 border-gray-700 hover:border-gray-600'
                       )}
                       onClick={() => {
-                        setSelectedRuleIds(prev => 
-                          prev.includes(rule.id)
+                        console.log('🖱️ Rule clicked:', rule.name, rule.id);
+                        setSelectedRuleIds(prev => {
+                          const isCurrentlySelected = prev.includes(rule.id);
+                          const newSelection = isCurrentlySelected
                             ? prev.filter(id => id !== rule.id)
-                            : [...prev, rule.id]
-                        );
+                            : [...prev, rule.id];
+                          console.log('📝 Updating selectedRuleIds:', {
+                            previous: prev,
+                            action: isCurrentlySelected ? 'REMOVE' : 'ADD',
+                            new: newSelection
+                          });
+                          return newSelection;
+                        });
                       }}
                     >
                       <div className="flex-shrink-0">
