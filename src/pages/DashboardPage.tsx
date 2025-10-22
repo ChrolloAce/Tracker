@@ -54,6 +54,21 @@ interface DateRange {
   endDate: Date;
 }
 
+// Skeleton Loader Component for fast loading UX
+const DashboardSkeleton: React.FC<{ height?: string }> = ({ height = 'h-96' }) => (
+  <div className={`${height} bg-zinc-900/40 rounded-2xl border border-white/5 animate-pulse`}>
+    <div className="p-6 space-y-4">
+      <div className="h-6 bg-white/5 rounded w-1/4"></div>
+      <div className="h-4 bg-white/5 rounded w-1/2"></div>
+      <div className="space-y-3 mt-6">
+        <div className="h-20 bg-white/5 rounded"></div>
+        <div className="h-20 bg-white/5 rounded"></div>
+        <div className="h-20 bg-white/5 rounded"></div>
+      </div>
+    </div>
+  </div>
+);
+
 function DashboardPage() {
   // Get authentication state, current organization, and current project
   const { user, currentOrgId, currentProjectId } = useAuth();
@@ -280,6 +295,9 @@ function DashboardPage() {
   // Will be loaded from Firebase along with rules
   const [selectedRuleIds, setSelectedRuleIds] = useState<string[]>([]);
   const [rulesLoadedFromFirebase, setRulesLoadedFromFirebase] = useState(false);
+  
+  // Loading state for skeleton display
+  const isInitialLoading = !rulesLoadedFromFirebase || submissions.length === 0;
   
   // Tracked Links search state
   const [linksSearchQuery, setLinksSearchQuery] = useState('');
@@ -914,9 +932,6 @@ function DashboardPage() {
     
     return filtered;
   }, [submissions, dashboardPlatformFilter, selectedAccountIds, trackedAccounts, allRules, selectedRuleIds, rulesFingerprint]);
-
-  // Rules are loaded from Firebase along with selectedRuleIds, so no loading state needed
-  const isLoadingRules = false;
 
   // Filter submissions based on date range, platform, and accounts (memoized to prevent infinite loops)
   const filteredSubmissions = useMemo(() => {
@@ -1913,18 +1928,8 @@ function DashboardPage() {
         <div className="max-w-7xl mx-auto px-6 py-8" style={{ overflow: 'visible' }}>
           {/* Dashboard Tab */}
           <div className={activeTab === 'dashboard' ? '' : 'hidden'}>
-            {!rulesLoadedFromFirebase ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="text-center">
-                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mb-4"></div>
-                  <p className="text-gray-400">Loading dashboard...</p>
-                  <p className="text-xs text-gray-500 mt-2">Initializing filters and rules</p>
-                </div>
-              </div>
-            ) : (
-              <>
-                {/* Render dashboard sections in order */}
-                {dashboardSectionOrder
+            {/* Render dashboard sections in order */}
+            {dashboardSectionOrder
                 .filter(sectionId => dashboardSectionVisibility[sectionId] !== false)
                 .map((sectionId, index) => {
                   const handleSectionDragStart = () => {
@@ -1970,6 +1975,11 @@ function DashboardPage() {
                   };
                   
                   const renderSectionContent = () => {
+                    // Show skeleton while data is loading
+                    if (isInitialLoading) {
+                      return <DashboardSkeleton height={sectionId === 'kpi-cards' ? 'h-48' : 'h-96'} />;
+                    }
+                    
                     switch (sectionId) {
                       case 'kpi-cards':
                         return (
@@ -2097,8 +2107,6 @@ function DashboardPage() {
                   </span>
                 </div>
               )}
-              </>
-            )}
           </div>
 
           {/* Accounts Tab */}
@@ -2116,11 +2124,15 @@ function DashboardPage() {
           {/* Videos Tab */}
           {activeTab === 'videos' && (
             <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
-              <VideoSubmissionsTable 
-                submissions={filteredSubmissions}
-                onVideoClick={handleVideoClick}
-                headerTitle="All Videos"
-              />
+              {isInitialLoading ? (
+                <DashboardSkeleton height="h-96" />
+              ) : (
+                <VideoSubmissionsTable 
+                  submissions={filteredSubmissions}
+                  onVideoClick={handleVideoClick}
+                  headerTitle="All Videos"
+                />
+              )}
             </div>
           )}
 
@@ -2198,6 +2210,11 @@ function DashboardPage() {
           localStorage.setItem('dashboardSectionTitles', JSON.stringify(updated));
         }}
         renderSectionPreview={(sectionId) => {
+          // Show skeleton while data is loading
+          if (isInitialLoading) {
+            return <DashboardSkeleton height={sectionId === 'kpi-cards' ? 'h-48' : 'h-96'} />;
+          }
+          
           // Render live preview of each section
           switch (sectionId) {
             case 'kpi-cards':
