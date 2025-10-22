@@ -654,26 +654,24 @@ function DashboardPage() {
             console.error('Cache save error:', error);
           }
         }
+        
+        // Load revenue integrations (syncing will be handled by date filter effect)
+        try {
+          const integrations = await RevenueDataService.getAllIntegrations(currentOrgId, currentProjectId);
+          setRevenueIntegrations(integrations);
+          
+          // Load existing metrics immediately (syncing will happen via date filter effect)
+          if (integrations.some(i => i.enabled)) {
+            const metrics = await RevenueDataService.getLatestMetrics(currentOrgId, currentProjectId);
+            setRevenueMetrics(metrics);
+          }
+        } catch (error) {
+          console.error('❌ Failed to load revenue data:', error);
+        }
       } catch (error) {
         console.error('❌ Failed to load dashboard data:', error);
         console.timeEnd('⚡ Parallel Firebase load');
       }
-    })();
-    
-    // Load revenue integrations (syncing will be handled by date filter effect)
-    try {
-      const integrations = await RevenueDataService.getAllIntegrations(currentOrgId, currentProjectId);
-      setRevenueIntegrations(integrations);
-      
-      // Load existing metrics immediately (syncing will happen via date filter effect)
-      if (integrations.some(i => i.enabled)) {
-        const metrics = await RevenueDataService.getLatestMetrics(currentOrgId, currentProjectId);
-        setRevenueMetrics(metrics);
-      }
-    } catch (error) {
-      console.error('❌ Failed to load revenue data:', error);
-    }
-    
     })(); // End of async IIFE
   }, [user, currentOrgId, currentProjectId]); // Reload when project changes!
 
