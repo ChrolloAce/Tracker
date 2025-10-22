@@ -35,6 +35,7 @@ interface NavItem {
   badge?: number;
   isActive?: boolean;
   onClick?: () => void;
+  showSeparatorBefore?: boolean; // Add separator line before this item
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
@@ -92,6 +93,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         icon: Trophy,
         isActive: activeTab === 'campaigns',
         onClick: () => onTabChange?.('campaigns'),
+        showSeparatorBefore: true, // Separator before campaigns
       },
       {
         id: 'extension',
@@ -230,7 +232,12 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {navigationItems.map((item) => (
-          <NavItemComponent key={item.id} item={item} />
+          <React.Fragment key={item.id}>
+            {item.showSeparatorBefore && (
+              <div className="my-3 border-t border-gray-200 dark:border-gray-700" />
+            )}
+            <NavItemComponent item={item} />
+          </React.Fragment>
         ))}
       </nav>
 
