@@ -10,40 +10,47 @@ export const ExtensionPromoModal: React.FC<ExtensionPromoModalProps> = ({ isOpen
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-5xl bg-zinc-900 rounded-2xl shadow-2xl overflow-hidden border border-emerald-500/20">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div 
+        className="relative w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden border border-white/10"
+        style={{ backgroundColor: '#121214' }}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-10 p-2 bg-zinc-800/80 hover:bg-zinc-700 rounded-full transition-colors"
+          className="absolute top-3 right-3 z-10 p-1.5 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all"
         >
-          <X className="w-5 h-5 text-white" />
+          <X className="w-5 h-5" />
         </button>
 
         {/* Header */}
-        <div className="text-center pt-8 pb-6 px-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500/10 rounded-full border-2 border-emerald-500/30 mb-4">
-            <Zap className="w-8 h-8 text-emerald-400" />
+        <div className="text-center pt-6 pb-4 px-6">
+          <div className="inline-flex items-center justify-center w-12 h-12 bg-emerald-500/10 rounded-xl border border-emerald-500/20 mb-3">
+            <Zap className="w-6 h-6 text-emerald-400" />
           </div>
-          <h2 className="text-3xl font-bold text-white mb-2">
-            Viewtrack Extension in Action
+          <h2 className="text-2xl font-bold text-white mb-1">
+            Viewtrack Extension
           </h2>
-          <p className="text-gray-400">
-            Never miss important insights and data updates
+          <p className="text-sm text-gray-400">
+            Supercharge your workflow with instant analytics
           </p>
         </div>
 
         {/* Video Section */}
-        <div className="px-8 pb-6">
-          <div className="relative w-full bg-black rounded-xl overflow-hidden border border-emerald-500/20 shadow-xl">
+        <div className="px-6 pb-4">
+          <div className="relative w-full bg-black/50 rounded-xl overflow-hidden border border-white/5">
             {/* Placeholder for video - replace with your actual video */}
-            <div className="aspect-video bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 flex items-center justify-center">
+            <div className="aspect-video bg-gradient-to-br from-zinc-900/50 via-zinc-800/50 to-zinc-900/50 flex items-center justify-center">
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-emerald-500/20 rounded-full mb-4">
-                  <Sparkles className="w-10 h-10 text-emerald-400 animate-pulse" />
+                <div className="inline-flex items-center justify-center w-14 h-14 bg-emerald-500/10 rounded-xl border border-emerald-500/20 mb-3">
+                  <Sparkles className="w-7 h-7 text-emerald-400 animate-pulse" />
                 </div>
-                <p className="text-white text-lg font-medium mb-2">Extension Demo Video</p>
-                <p className="text-gray-400 text-sm">Coming soon - Your extension showcase will appear here</p>
+                <p className="text-white text-base font-medium mb-1">Extension Demo</p>
+                <p className="text-gray-500 text-xs">Video coming soon</p>
               </div>
             </div>
             
@@ -64,84 +71,63 @@ export const ExtensionPromoModal: React.FC<ExtensionPromoModalProps> = ({ isOpen
         </div>
 
         {/* Features Grid */}
-        <div className="px-8 pb-6">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="px-6 pb-4">
+          <div className="grid grid-cols-2 gap-2">
             {/* Feature 1 */}
-            <div className="bg-zinc-800/50 rounded-xl p-4 border border-emerald-500/10">
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center">
-                  <Zap className="w-5 h-5 text-emerald-400" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold mb-1">Real-time Tracking</h3>
-                  <p className="text-gray-400 text-sm">Monitor your content performance instantly</p>
-                </div>
+            <div className="bg-white/5 rounded-lg p-3 border border-white/5">
+              <div className="flex items-center gap-2 mb-1">
+                <Zap className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <h3 className="text-white text-sm font-semibold">Real-time</h3>
               </div>
+              <p className="text-gray-400 text-xs">Monitor instantly</p>
             </div>
 
             {/* Feature 2 */}
-            <div className="bg-zinc-800/50 rounded-xl p-4 border border-emerald-500/10">
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center">
-                  <LineChart className="w-5 h-5 text-emerald-400" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold mb-1">Deep Analytics</h3>
-                  <p className="text-gray-400 text-sm">Comprehensive insights and metrics</p>
-                </div>
+            <div className="bg-white/5 rounded-lg p-3 border border-white/5">
+              <div className="flex items-center gap-2 mb-1">
+                <LineChart className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <h3 className="text-white text-sm font-semibold">Analytics</h3>
               </div>
+              <p className="text-gray-400 text-xs">Deep insights</p>
             </div>
 
             {/* Feature 3 */}
-            <div className="bg-zinc-800/50 rounded-xl p-4 border border-emerald-500/10">
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center">
-                  <Bell className="w-5 h-5 text-emerald-400" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold mb-1">Smart Notifications</h3>
-                  <p className="text-gray-400 text-sm">Get alerted on important updates</p>
-                </div>
+            <div className="bg-white/5 rounded-lg p-3 border border-white/5">
+              <div className="flex items-center gap-2 mb-1">
+                <Bell className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <h3 className="text-white text-sm font-semibold">Notifications</h3>
               </div>
+              <p className="text-gray-400 text-xs">Stay updated</p>
             </div>
 
             {/* Feature 4 */}
-            <div className="bg-zinc-800/50 rounded-xl p-4 border border-emerald-500/10">
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-emerald-400" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold mb-1">AI-Powered Insights</h3>
-                  <p className="text-gray-400 text-sm">Smart recommendations and trends</p>
-                </div>
+            <div className="bg-white/5 rounded-lg p-3 border border-white/5">
+              <div className="flex items-center gap-2 mb-1">
+                <Sparkles className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <h3 className="text-white text-sm font-semibold">AI-Powered</h3>
               </div>
+              <p className="text-gray-400 text-xs">Smart trends</p>
             </div>
           </div>
         </div>
 
         {/* CTA Section */}
-        <div className="bg-gradient-to-r from-emerald-600 to-emerald-500 px-8 py-6 text-center">
-          <h3 className="text-2xl font-bold text-white mb-2 flex items-center justify-center gap-2">
-            <Zap className="w-6 h-6" />
-            Supercharge Your Analytics
-            <Zap className="w-6 h-6" />
-          </h3>
-          <p className="text-white/90 mb-6">
-            Get instant access with our powerful browser extension
-          </p>
+        <div className="border-t border-white/5 px-6 py-4 text-center">
           <button
             onClick={() => {
               // Replace with your actual Chrome Web Store URL
               window.open('https://chrome.google.com/webstore', '_blank');
             }}
-            className="inline-flex items-center gap-2 px-8 py-4 bg-white hover:bg-gray-100 text-emerald-600 font-bold rounded-xl transition-all transform hover:scale-105 shadow-lg"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-lg transition-all shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40"
           >
-            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 0C5.372 0 0 5.372 0 12s5.372 12 12 12 12-5.372 12-12S18.628 0 12 0zm5.564 15.434l-3.354-1.933L9.562 15.3l3.655-6.309 1.765 3.054 3.36 1.936-1.778 3.453z"/>
             </svg>
             Add to Chrome - It's Free
           </button>
+          <p className="text-gray-500 text-xs mt-3">
+            Available for Chrome & Edge browsers
+          </p>
         </div>
       </div>
     </div>
