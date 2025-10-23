@@ -342,16 +342,66 @@ const CreateCampaignPage: React.FC = () => {
   const progressPercent = (currentStep / totalSteps) * 100;
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A]">
-      {/* Full Width Layout */}
-      <div className="flex flex-col min-h-screen">
+    <div className="min-h-screen bg-[#0A0A0A] flex">
+      {/* Left Panel - Colored Banner/Branding */}
+      <div className="hidden lg:flex lg:w-5/12 xl:w-1/2 bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-600 p-12 flex-col justify-between relative overflow-hidden">
+        {/* Background decoration */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-20 right-20 w-96 h-96 bg-white rounded-full blur-3xl"></div>
+          <div className="absolute bottom-20 left-20 w-96 h-96 bg-white rounded-full blur-3xl"></div>
+        </div>
+
+        <div className="relative z-10">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-white/80 hover:text-white transition-all mb-12"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span>Back</span>
+          </button>
+
+          <h1 className="text-5xl font-bold text-white mb-6 leading-tight">
+            Create a<br />Campaign
+          </h1>
+          
+          <p className="text-white/90 text-lg leading-relaxed max-w-md">
+            Design competitions or individual challenges that motivate your creators, 
+            track performance, and reward excellence.
+          </p>
+        </div>
+
+        <div className="relative z-10 space-y-6">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+              <Target className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h3 className="text-white font-semibold mb-1">Set Clear Goals</h3>
+              <p className="text-white/80 text-sm">Define objectives and rewards that drive results</p>
+            </div>
+          </div>
+          
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
+              <Check className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h3 className="text-white font-semibold mb-1">Track Progress</h3>
+              <p className="text-white/80 text-sm">Monitor real-time performance across all creators</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Panel - Form Content */}
+      <div className="flex-1 flex flex-col min-h-screen">
         {/* Header with progress */}
         <div className="border-b border-white/10 px-8 py-6">
-          <div className="max-w-7xl mx-auto w-full">
-            {/* Back button */}
+          <div className="max-w-4xl mx-auto w-full">
+            {/* Mobile back button */}
             <button
               onClick={() => navigate(-1)}
-              className="flex items-center gap-2 text-gray-400 hover:text-white transition-all mb-6"
+              className="lg:hidden flex items-center gap-2 text-gray-400 hover:text-white transition-all mb-6"
             >
               <ArrowLeft className="w-5 h-5" />
               <span>Back</span>
@@ -359,10 +409,9 @@ const CreateCampaignPage: React.FC = () => {
 
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-3xl font-bold text-white mb-2">Create Campaign</h2>
-                <p className="text-gray-400 text-sm">Motivate creators, track performance, reward excellence</p>
+                <h2 className="text-2xl font-bold text-white mb-1">Create Campaign</h2>
+                <p className="text-gray-400 text-sm">Step {currentStep} of {totalSteps}</p>
               </div>
-              <div className="text-sm text-gray-400">Step {currentStep} of {totalSteps}</div>
             </div>
             
             {/* Progress Bar */}
@@ -377,7 +426,7 @@ const CreateCampaignPage: React.FC = () => {
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto px-8 py-8">
-          <div className="max-w-7xl mx-auto w-full">
+          <div className="max-w-4xl mx-auto w-full">
             {error && (
               <div className="mb-6 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
                 {error}
@@ -892,7 +941,7 @@ const CreateCampaignPage: React.FC = () => {
 
         {/* Footer Navigation */}
         <div className="border-t border-white/10 px-8 py-6 bg-[#0A0A0A]/95">
-          <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
+          <div className="max-w-4xl mx-auto w-full flex items-center justify-between">
             <button
               type="button"
               onClick={currentStep === 1 ? () => navigate(-1) : prevStep}
