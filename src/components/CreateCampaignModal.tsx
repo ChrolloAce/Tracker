@@ -8,12 +8,21 @@ import {
   ChevronLeft,
   Check,
   Upload,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Target,
+  Trophy,
+  Users,
+  Instagram,
+  Music,
+  Youtube,
+  Twitter
 } from 'lucide-react';
-import { CampaignGoalType, CompensationType, CampaignReward, MetricGuarantee } from '../types/campaigns';
+import { CampaignGoalType, CompensationType, CampaignReward, MetricGuarantee, CampaignType } from '../types/campaigns';
 import CampaignService from '../services/CampaignService';
 import OrganizationService from '../services/OrganizationService';
+import RulesService from '../services/RulesService';
 import { OrgMember } from '../types/firestore';
+import { TrackingRule } from '../types/rules';
 import FirebaseStorageService from '../services/FirebaseStorageService';
 
 interface CreateCampaignModalProps {
@@ -21,6 +30,14 @@ interface CreateCampaignModalProps {
   onClose: () => void;
   onSuccess: () => void;
 }
+
+// Platform icons mapping
+const platformIcons: Record<string, React.ComponentType<any>> = {
+  instagram: Instagram,
+  tiktok: Music,
+  youtube: Youtube,
+  twitter: Twitter,
+};
 
 const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { user, currentOrgId, currentProjectId } = useAuth();
@@ -34,17 +51,24 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
   const [description, setDescription] = useState('');
   const [coverImage, setCoverImage] = useState<string>('');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [campaignType, setCampaignType] = useState<'competition' | 'individual'>('competition');
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['instagram', 'tiktok', 'youtube']);
   
   // Step 2: Duration
-  const [durationType, setDurationType] = useState<'days' | 'weeks'>('weeks');
+  const [durationType, setDurationType] = useState<'days' | 'weeks' | 'indefinite'>('indefinite');
   const [durationValue, setDurationValue] = useState<number>(4);
-  const [startDate, setStartDate] = useState('');
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState('');
   
   // Step 3: Goal
   const [goalType, setGoalType] = useState<CampaignGoalType>('total_views');
   const [goalAmount, setGoalAmount] = useState<number>(1000000);
   const [metricGuarantees, setMetricGuarantees] = useState<MetricGuarantee[]>([]);
+  const [defaultRuleId, setDefaultRuleId] = useState<string>('');
+  const [rules, setRules] = useState<TrackingRule[]>([]);
+  const [showCreateRule, setShowCreateRule] = useState(false);
+  const [newRuleName, setNewRuleName] = useState('');
+  const [newRuleKeywords, setNewRuleKeywords] = useState('');
   
   // Step 4: Rewards & Compensation
   const [compensationType, setCompensationType] = useState<CompensationType>('none');
@@ -66,13 +90,27 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
   useEffect(() => {
     if (isOpen && currentOrgId && currentProjectId) {
       loadCreators();
+      loadRules();
       setCurrentStep(1);
     }
   }, [isOpen, currentOrgId, currentProjectId]);
 
+  const loadRules = async () => {
+    if (!currentOrgId || !currentProjectId) return;
+    
+    try {
+      const rulesData = await RulesService.getRules(currentOrgId, currentProjectId);
+      setRules(rulesData);
+    } catch (error) {
+      console.error('Failed to load rules:', error);
+    }
+  };
+
   // Auto-calculate end date
   useEffect(() => {
-    if (startDate && durationValue > 0) {
+    if (durationType === 'indefinite') {
+      setEndDate('');
+    } else if (startDate && durationValue > 0) {
       const start = new Date(startDate);
       const daysToAdd = durationType === 'weeks' ? durationValue * 7 : durationValue;
       const end = new Date(start);
@@ -131,18 +169,23 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
     setError('');
 
     try {
+      const isIndefinite = durationType === 'indefinite';
+      
       const campaignData: any = {
         name,
         description,
         coverImage: coverImage || undefined,
+        campaignType,
         startDate: new Date(startDate),
-        endDate: new Date(endDate),
+        endDate: isIndefinite ? undefined : new Date(endDate),
+        isIndefinite,
         goalType,
         goalAmount,
         compensationType,
         rewards,
         bonusRewards: [],
         metricGuarantees,
+        defaultRuleIds: defaultRuleId ? [defaultRuleId] : undefined,
         participantIds: selectedCreatorIds,
       };
       
@@ -176,6 +219,8 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
     setName('');
     setDescription('');
     setCoverImage('');
+    setCampaignType('competition');
+    setSelectedPlatforms(['instagram', 'tiktok', 'youtube']);
     setDurationType('weeks');
     setDurationValue(4);
     setStartDate('');
@@ -222,7 +267,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
   const canProceed = () => {
     switch(currentStep) {
       case 1: return name.trim() !== '';
-      case 2: return startDate !== '' && durationValue > 0;
+      case 2: return startDate !== '' && (durationType === 'indefinite' || durationValue > 0);
       case 3: return goalAmount > 0;
       case 4: return true;
       case 5: return selectedCreatorIds.length > 0;
@@ -305,6 +350,48 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
     });
   };
 
+  const togglePlatform = (platform: string) => {
+    setSelectedPlatforms(prev =>
+      prev.includes(platform)
+        ? prev.filter(p => p !== platform)
+        : [...prev, platform]
+    );
+  };
+
+
+  const handleCreateRule = async () => {
+    if (!currentOrgId || !currentProjectId || !user) return;
+    if (!newRuleName.trim()) {
+      setError('Rule name is required');
+      return;
+    }
+
+    try {
+      const keywords = newRuleKeywords
+        .split(',')
+        .map(k => k.trim())
+        .filter(k => k.length > 0);
+
+      const ruleId = await RulesService.createRule(currentOrgId, currentProjectId, user.uid, {
+        name: newRuleName.trim(),
+        keywords,
+        platforms: selectedPlatforms as any[],
+        isActive: true,
+      });
+
+      // Reload rules and select the new one
+      await loadRules();
+      setDefaultRuleId(ruleId);
+      setShowCreateRule(false);
+      setNewRuleName('');
+      setNewRuleKeywords('');
+      setError('');
+    } catch (error: any) {
+      console.error('Failed to create rule:', error);
+      setError(error.message || 'Failed to create rule');
+    }
+  };
+
   if (!isOpen) return null;
 
   const stepTitles = [
@@ -317,16 +404,16 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto"
       onClick={onClose}
     >
       <div 
-        className="relative w-full max-w-2xl rounded-2xl border border-white/10 overflow-hidden"
+        className="relative w-full max-w-6xl rounded-2xl border border-white/10 overflow-hidden flex flex-col my-8 max-h-[90vh]"
         style={{ backgroundColor: '#121214' }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header with Steps */}
-        <div className="border-b border-white/10 px-6 py-4" style={{ backgroundColor: '#121214' }}>
+        {/* Header with Steps - Fixed at top */}
+        <div className="border-b border-white/10 px-6 py-4 flex-shrink-0" style={{ backgroundColor: '#121214' }}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold text-white">Create Campaign</h2>
             <button
@@ -365,8 +452,11 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-6" style={{ minHeight: '400px' }}>
+        {/* Content - Scrollable with custom scrollbar */}
+        <div 
+          className="p-6 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent hover:scrollbar-thumb-white/20" 
+          style={{ minHeight: '400px' }}
+        >
           {error && (
             <div className="mb-4 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
               {error}
@@ -378,20 +468,101 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
           {/* Step 1: Basic Info */}
           {currentStep === 1 && (
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Campaign Name *
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g., Summer Growth Challenge 2025"
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50"
-                  autoFocus
-                />
+              {/* Campaign Name and Cover Image - Horizontally aligned */}
+              <div className="flex gap-4 items-start">
+                {/* Cover Image - Small Square */}
+                <div className="flex-shrink-0">
+                  <label className="block text-sm font-medium text-gray-400 mb-2">
+                    Cover
+                  </label>
+                  {coverImage ? (
+                    <div className="relative w-[48px] h-[48px] rounded-lg overflow-hidden border border-white/10 group">
+                      <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setCoverImage('')}
+                        className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                      >
+                        <X className="w-4 h-4 text-white" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="w-[48px] h-[48px] border-2 border-dashed border-white/20 rounded-lg cursor-pointer hover:border-emerald-500/50 transition-all flex items-center justify-center bg-white/5">
+                      {uploadingImage ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-500"></div>
+                      ) : (
+                        <Upload className="w-4 h-4 text-gray-500" />
+                      )}
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        disabled={uploadingImage}
+                      />
+                    </label>
+                  )}
+                </div>
+
+                {/* Campaign Name */}
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-400 mb-2">
+                    Campaign Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g., Summer Growth Challenge 2025"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50"
+                    autoFocus
+                  />
+                </div>
               </div>
 
+              {/* Campaign Type - Dropdown */}
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Campaign Type *
+                </label>
+                <select
+                  value={campaignType}
+                  onChange={(e) => setCampaignType(e.target.value as CampaignType)}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-emerald-500/50"
+                >
+                  <option value="competition">Competition - Campaign-level goal with leaderboard</option>
+                  <option value="individual">Individual - Personal goals for each creator</option>
+                </select>
+              </div>
+
+              {/* Platform Selection - All in one row */}
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Platforms *
+                </label>
+                <div className="flex gap-2">
+                  {['instagram', 'tiktok', 'youtube', 'twitter'].map((platform) => {
+                    const Icon = platformIcons[platform];
+                    return (
+                      <button
+                        key={platform}
+                        type="button"
+                        onClick={() => togglePlatform(platform)}
+                        className={`px-3 py-2 rounded-lg border-2 transition-all flex items-center gap-2 text-sm ${
+                          selectedPlatforms.includes(platform)
+                            ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400'
+                            : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/30'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                        <span className="capitalize">{platform}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Description */}
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-2">
                   Public Description
@@ -405,53 +576,6 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
                 />
                 <p className="text-xs text-gray-500 mt-1">This will be visible to all participants</p>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Cover Image (Optional)
-                </label>
-                {coverImage ? (
-                  <div className="relative">
-                    <img 
-                      src={coverImage} 
-                      alt="Campaign cover" 
-                      className="w-full h-48 object-cover rounded-lg border border-white/10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setCoverImage('')}
-                      className="absolute top-2 right-2 p-2 bg-red-500/80 hover:bg-red-500 rounded-full transition-all"
-                    >
-                      <X className="w-4 h-4 text-white" />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-white/10 rounded-lg cursor-pointer hover:border-emerald-500/50 transition-all bg-white/5">
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      {uploadingImage ? (
-                        <>
-                          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-500 mb-2"></div>
-                          <p className="text-sm text-gray-400">Uploading...</p>
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="w-10 h-10 text-gray-400 mb-2" />
-                          <p className="text-sm text-gray-400 mb-1">Click to upload cover image</p>
-                          <p className="text-xs text-gray-500">PNG, JPG up to 10MB</p>
-                        </>
-                      )}
-                    </div>
-                    <input 
-                      type="file" 
-                      className="hidden" 
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      disabled={uploadingImage}
-                    />
-                  </label>
-                )}
-                <p className="text-xs text-gray-500 mt-1">Optional: Add a visual banner for your campaign</p>
-              </div>
             </div>
           )}
 
@@ -462,24 +586,35 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
                 <label className="block text-sm font-medium text-gray-400 mb-2">
                   Campaign Duration *
                 </label>
-                <div className="grid grid-cols-2 gap-3">
+                <select
+                  value={durationType}
+                  onChange={(e) => setDurationType(e.target.value as 'days' | 'weeks' | 'indefinite')}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-emerald-500/50"
+                >
+                  <option value="indefinite">Indefinite (No end date)</option>
+                  <option value="days">Custom Days</option>
+                  <option value="weeks">Custom Weeks</option>
+                </select>
+              </div>
+
+              {durationType !== 'indefinite' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-2">
+                    Duration Length
+                  </label>
                   <input
                     type="number"
                     value={durationValue}
                     onChange={(e) => setDurationValue(Number(e.target.value))}
                     min="1"
-                    className="px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-emerald-500/50"
+                    placeholder={durationType === 'weeks' ? 'e.g., 4' : 'e.g., 30'}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-emerald-500/50"
                   />
-                  <select
-                    value={durationType}
-                    onChange={(e) => setDurationType(e.target.value as 'days' | 'weeks')}
-                    className="px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-emerald-500/50"
-                  >
-                    <option value="days">Days</option>
-                    <option value="weeks">Weeks</option>
-                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Enter the number of {durationType} for this campaign
+                  </p>
                 </div>
-              </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-2">
@@ -493,7 +628,16 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
                 />
               </div>
 
-              {endDate && (
+              {durationType === 'indefinite' ? (
+                <div className="px-4 py-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                  <div className="text-sm text-blue-400">
+                    <span className="font-semibold">Duration:</span> Indefinite
+                  </div>
+                  <div className="text-xs text-blue-400/70 mt-1">
+                    Campaign will run continuously with no end date
+                  </div>
+                </div>
+              ) : endDate && (
                 <div className="px-4 py-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
                   <div className="text-sm text-emerald-400">
                     <span className="font-semibold">End Date:</span> {new Date(endDate).toLocaleDateString('en-US', { 
@@ -612,6 +756,102 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
                 {metricGuarantees.length === 0 && (
                   <div className="text-center py-6 text-gray-500 text-sm border-2 border-dashed border-white/10 rounded-lg">
                     No requirements set. Click "Add Requirement" to add minimum metrics.
+                  </div>
+                )}
+              </div>
+
+              {/* Tracking Rules */}
+              <div className="border-t border-white/10 pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <label className="text-sm font-medium text-gray-400 block flex items-center gap-2">
+                      <Target className="w-4 h-4" />
+                      Tracking Rules (Optional)
+                    </label>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Select rules to track videos for this campaign
+                    </p>
+                  </div>
+                  {!showCreateRule && (
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateRule(true)}
+                      className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-sm font-medium rounded-lg transition-all flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Create Rule
+                    </button>
+                  )}
+                </div>
+
+                {/* Create New Rule Form */}
+                {showCreateRule && (
+                  <div className="mb-4 p-4 bg-white/5 border border-white/10 rounded-lg space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-400 mb-2">
+                        Rule Name
+                      </label>
+                      <input
+                        type="text"
+                        value={newRuleName}
+                        onChange={(e) => setNewRuleName(e.target.value)}
+                        placeholder="e.g., My Campaign Videos"
+                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-emerald-500/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-400 mb-2">
+                        Keywords (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={newRuleKeywords}
+                        onChange={(e) => setNewRuleKeywords(e.target.value)}
+                        placeholder="keyword1, keyword2, keyword3"
+                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-emerald-500/50"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Separate with commas</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleCreateRule}
+                        className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-all"
+                      >
+                        Create Rule
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowCreateRule(false);
+                          setNewRuleName('');
+                          setNewRuleKeywords('');
+                        }}
+                        className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-sm border border-white/10 rounded-lg transition-all"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Rule Selection Dropdown */}
+                <select
+                  value={defaultRuleId}
+                  onChange={(e) => setDefaultRuleId(e.target.value)}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-emerald-500/50"
+                >
+                  <option value="">No rule (manual tracking)</option>
+                  {rules.map((rule) => (
+                    <option key={rule.id} value={rule.id}>
+                      {rule.name} {rule.keywords && rule.keywords.length > 0 ? `(${rule.keywords.slice(0, 2).join(', ')})` : ''}
+                    </option>
+                  ))}
+                </select>
+                
+                {defaultRuleId && (
+                  <div className="text-xs text-emerald-400 mt-2">
+                    ✓ Videos matching this rule will be automatically tracked
                   </div>
                 )}
               </div>
@@ -773,8 +1013,8 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
           )}
         </div>
 
-        {/* Footer Navigation */}
-        <div className="border-t border-white/5 px-6 py-4 flex items-center justify-between">
+        {/* Footer Navigation - Fixed at bottom */}
+        <div className="border-t border-white/5 px-6 py-4 flex items-center justify-between flex-shrink-0" style={{ backgroundColor: '#121214' }}>
           <button
             type="button"
             onClick={currentStep === 1 ? onClose : prevStep}
