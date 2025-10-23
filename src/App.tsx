@@ -14,6 +14,7 @@ import CreatorDetailsPageWrapper from './pages/CreatorDetailsPageWrapper';
 import SubscriptionPage from './components/SubscriptionPage';
 import BillingManagementPage from './components/BillingManagementPage';
 import CampaignDetailsPage from './components/CampaignDetailsPage';
+import CreateCampaignPage from './pages/CreateCampaignPage';
 import { useEffect, useState } from 'react';
 import { AlertCircle } from 'lucide-react';
 
@@ -233,6 +234,20 @@ function App() {
             <LoadingSkeleton />
           ) : (
             <CampaignDetailsPage />
+          )
+        } 
+      />
+
+      {/* Create campaign route - requires authentication */}
+      <Route 
+        path="/campaigns/create" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : !currentOrgId || !currentProjectId ? (
+            <LoadingSkeleton />
+          ) : (
+            <CreateCampaignPage />
           )
         } 
       />

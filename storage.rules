@@ -103,6 +103,22 @@ service firebase.storage {
         // Only org members can delete project images
         allow delete: if isOrgPath(orgId);
       }
+      
+      // ==================== CAMPAIGN COVERS ====================
+      
+      // Campaign cover images: organizations/{orgId}/campaign-covers/{imageName}
+      match /campaign-covers/{imageName} {
+        // Public read for campaign covers
+        allow read: if true;
+        
+        // Only org members can upload campaign covers
+        allow write: if isOrgPath(orgId) 
+          && isImage() 
+          && isReasonableSize();
+        
+        // Only org members can delete campaign covers
+        allow delete: if isOrgPath(orgId);
+      }
     }
     
     // ==================== DEFAULT DENY ====================

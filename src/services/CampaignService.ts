@@ -19,6 +19,9 @@ import type {
   CampaignParticipant,
   CampaignStats,
   CampaignStatus,
+  CampaignVideoSubmission,
+  CreateVideoSubmissionInput,
+  VideoSubmissionStatus,
 } from '../types/campaigns';
 
 /**
@@ -51,8 +54,9 @@ class CampaignService {
       name: input.name,
       description: input.description,
       status: 'draft',
+      campaignType: input.campaignType,
       startDate: Timestamp.fromDate(input.startDate),
-      endDate: Timestamp.fromDate(input.endDate),
+      isIndefinite: input.isIndefinite,
       createdAt: now,
       updatedAt: now,
       createdBy: userId,
@@ -76,6 +80,11 @@ class CampaignService {
       leaderboard: [],
     };
 
+    // Add endDate only if not indefinite
+    if (!input.isIndefinite && input.endDate) {
+      campaign.endDate = Timestamp.fromDate(input.endDate);
+    }
+
     // Only add optional fields if provided
     if (input.coverImage) {
       campaign.coverImage = input.coverImage;
@@ -83,6 +92,10 @@ class CampaignService {
     
     if (input.compensationAmount !== undefined && input.compensationAmount > 0) {
       campaign.compensationAmount = input.compensationAmount;
+    }
+
+    if (input.defaultRuleIds && input.defaultRuleIds.length > 0) {
+      campaign.defaultRuleIds = input.defaultRuleIds;
     }
 
     console.log('💾 Saving campaign to Firestore:', JSON.stringify(campaign, null, 2));
@@ -417,6 +430,220 @@ class CampaignService {
     }
 
     return stats;
+  }
+
+  // ==================== VIDEO SUBMISSIONS ====================
+
+  /**
+   * Submit a video to a campaign
+   */
+  static async submitVideo(
+    orgId: string,
+    projectId: string,
+    userId: string,
+    input: CreateVideoSubmissionInput
+  ): Promise<string> {
+    const submissionsRef = collection(
+      db,
+      'organizations',
+      orgId,
+      'projects',
+      projectId,
+      'campaigns',
+      input.campaignId,
+      'videoSubmissions'
+    );
+
+    const now = Timestamp.now();
+
+    const submission: any = {
+      campaignId: input.campaignId,
+      organizationId: orgId,
+      projectId,
+      submittedBy: userId,
+      submittedAt: now,
+      videoUrl: input.videoUrl,
+      platform: input.platform,
+      views: 0,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      engagementRate: 0,
+      status: 'pending',
+      baseEarnings: 0,
+      bonusEarnings: 0,
+      totalEarnings: 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    // Add optional fields
+    if (input.thumbnail) submission.thumbnail = input.thumbnail;
+    if (input.title) submission.title = input.title;
+    if (input.description) submission.description = input.description;
+    if (input.ruleId) submission.ruleId = input.ruleId;
+
+    const docRef = await addDoc(submissionsRef, submission);
+    return docRef.id;
+  }
+
+  /**
+   * Get all video submissions for a campaign
+   */
+  static async getCampaignSubmissions(
+    orgId: string,
+    projectId: string,
+    campaignId: string
+  ): Promise<CampaignVideoSubmission[]> {
+    const submissionsRef = collection(
+      db,
+      'organizations',
+      orgId,
+      'projects',
+      projectId,
+      'campaigns',
+      campaignId,
+      'videoSubmissions'
+    );
+
+    const q = query(submissionsRef, orderBy('submittedAt', 'desc'));
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as CampaignVideoSubmission[];
+  }
+
+  /**
+   * Get a creator's video submissions for a campaign
+   */
+  static async getCreatorSubmissions(
+    orgId: string,
+    projectId: string,
+    campaignId: string,
+    creatorId: string
+  ): Promise<CampaignVideoSubmission[]> {
+    const submissionsRef = collection(
+      db,
+      'organizations',
+      orgId,
+      'projects',
+      projectId,
+      'campaigns',
+      campaignId,
+      'videoSubmissions'
+    );
+
+    const q = query(
+      submissionsRef,
+      where('submittedBy', '==', creatorId),
+      orderBy('submittedAt', 'desc')
+    );
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as CampaignVideoSubmission[];
+  }
+
+  /**
+   * Update video submission status
+   */
+  static async updateSubmissionStatus(
+    orgId: string,
+    projectId: string,
+    campaignId: string,
+    submissionId: string,
+    status: VideoSubmissionStatus,
+    reviewNotes?: string,
+    reviewerId?: string
+  ): Promise<void> {
+    const submissionRef = doc(
+      db,
+      'organizations',
+      orgId,
+      'projects',
+      projectId,
+      'campaigns',
+      campaignId,
+      'videoSubmissions',
+      submissionId
+    );
+
+    const updates: any = {
+      status,
+      updatedAt: Timestamp.now(),
+    };
+
+    if (reviewNotes) updates.reviewNotes = reviewNotes;
+    if (reviewerId) {
+      updates.reviewedBy = reviewerId;
+      updates.reviewedAt = Timestamp.now();
+    }
+
+    await updateDoc(submissionRef, updates);
+  }
+
+  /**
+   * Update video submission metrics
+   */
+  static async updateSubmissionMetrics(
+    orgId: string,
+    projectId: string,
+    campaignId: string,
+    submissionId: string,
+    metrics: {
+      views?: number;
+      likes?: number;
+      comments?: number;
+      shares?: number;
+      engagementRate?: number;
+    }
+  ): Promise<void> {
+    const submissionRef = doc(
+      db,
+      'organizations',
+      orgId,
+      'projects',
+      projectId,
+      'campaigns',
+      campaignId,
+      'videoSubmissions',
+      submissionId
+    );
+
+    const updates: any = {
+      ...metrics,
+      updatedAt: Timestamp.now(),
+    };
+
+    await updateDoc(submissionRef, updates);
+  }
+
+  /**
+   * Delete a video submission
+   */
+  static async deleteSubmission(
+    orgId: string,
+    projectId: string,
+    campaignId: string,
+    submissionId: string
+  ): Promise<void> {
+    const submissionRef = doc(
+      db,
+      'organizations',
+      orgId,
+      'projects',
+      projectId,
+      'campaigns',
+      campaignId,
+      'videoSubmissions',
+      submissionId
+    );
+
+    await deleteDoc(submissionRef);
   }
 }
 

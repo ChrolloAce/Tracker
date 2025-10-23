@@ -337,6 +337,25 @@ service cloud.firestore {
           
           // Only admins/managers can update/delete campaigns
           allow update, delete: if canManageOrg(orgId);
+          
+          // ==================== CAMPAIGN VIDEO SUBMISSIONS ====================
+          
+          match /videoSubmissions/{submissionId} {
+            // All members can read video submissions
+            allow read: if canReadOrg(orgId);
+            
+            // Campaign participants can create submissions
+            // Admins can also create submissions
+            allow create: if canWriteOrg(orgId) 
+              && request.resource.data.submittedBy == request.auth.uid;
+            
+            // Only admins or the submitter can update their submissions
+            allow update: if canManageOrg(orgId) 
+              || (isSignedIn() && resource.data.submittedBy == request.auth.uid);
+            
+            // Only admins can delete submissions
+            allow delete: if canManageOrg(orgId);
+          }
         }
         
         // ==================== PROJECT LINK CLICKS (AGGREGATED) ====================

@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { clsx } from 'clsx';
 import { 
   ArrowLeft, ChevronDown, Search, Filter, CheckCircle2, Circle, Plus, Trash2,
@@ -75,6 +76,7 @@ const DashboardSkeleton: React.FC<{ height?: string }> = ({ height = 'h-96' }) =
 function DashboardPage() {
   // Get authentication state, current organization, and current project
   const { user, currentOrgId, currentProjectId } = useAuth();
+  const navigate = useNavigate();
 
 
   // State
@@ -92,7 +94,6 @@ function DashboardPage() {
   ]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
-  const [isCreateCampaignModalOpen, setIsCreateCampaignModalOpen] = useState(false);
   const [campaignStatusFilter, setCampaignStatusFilter] = useState<'all' | CampaignStatus>('all');
   const [campaignCounts, setCampaignCounts] = useState({ active: 0, draft: 0, completed: 0, cancelled: 0 });
   
@@ -849,7 +850,7 @@ function DashboardPage() {
       } else if (activeTab === 'analytics') {
         trackedLinksPageRef.current?.openCreateModal();
       } else if (activeTab === 'campaigns') {
-        setIsCreateCampaignModalOpen(true);
+        navigate('/campaigns/create');
       }
     };
     
@@ -2274,11 +2275,8 @@ function DashboardPage() {
           {/* Campaigns Tab */}
           {activeTab === 'campaigns' && (
             <CampaignsManagementPage 
-              openCreateModal={isCreateCampaignModalOpen}
-              onCloseCreateModal={() => setIsCreateCampaignModalOpen(false)}
               selectedStatus={campaignStatusFilter}
               onStatusChange={setCampaignStatusFilter}
-              onOpenCreateModal={() => setIsCreateCampaignModalOpen(true)}
               onCampaignsLoaded={setCampaignCounts}
             />
           )}
@@ -2784,7 +2782,7 @@ function DashboardPage() {
             } else if (activeTab === 'analytics') {
               trackedLinksPageRef.current?.openCreateModal();
             } else if (activeTab === 'campaigns') {
-              setIsCreateCampaignModalOpen(true);
+              navigate('/campaigns/create');
             }
           }}
           className="fixed bottom-8 right-8 z-50 bg-gray-900 dark:bg-white hover:bg-black dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-full p-4 shadow-2xl transition-all duration-200 hover:scale-110 group"
