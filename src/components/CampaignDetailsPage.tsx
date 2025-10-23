@@ -5,13 +5,9 @@ import {
   Trophy, 
   Calendar,
   Users,
-  Eye,
   CheckCircle,
   AlertCircle,
   Upload,
-  Instagram as InstagramIcon,
-  Youtube,
-  Video,
   Target
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -383,9 +379,9 @@ const CampaignDetailsPage: React.FC = () => {
                       className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg"
                     >
                       <div className="font-medium text-emerald-400 text-sm">{rule.name}</div>
-                      {rule.keywords && rule.keywords.length > 0 && (
+                      {rule.conditions && rule.conditions.length > 0 && (
                         <div className="text-xs text-gray-400 mt-1">
-                          Keywords: {rule.keywords.join(', ')}
+                          {rule.conditions.length} condition{rule.conditions.length !== 1 ? 's' : ''}
                         </div>
                       )}
                     </div>
