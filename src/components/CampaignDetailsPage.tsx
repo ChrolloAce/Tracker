@@ -6,18 +6,21 @@ import {
   Calendar,
   Users,
   Eye,
-  DollarSign,
   CheckCircle,
   AlertCircle,
-  ExternalLink,
   Upload,
   Instagram as InstagramIcon,
   Youtube,
-  Video
+  Video,
+  Target
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { Campaign } from '../types/campaigns';
+import { Campaign, CampaignVideoSubmission } from '../types/campaigns';
+import { TrackingRule } from '../types/rules';
 import CampaignService from '../services/CampaignService';
+import RulesService from '../services/RulesService';
+import CampaignVideoSubmissionsTable from './CampaignVideoSubmissionsTable';
+import CampaignVideoSubmissionModal from './CampaignVideoSubmissionModal';
 
 const CampaignDetailsPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -25,11 +28,16 @@ const CampaignDetailsPage: React.FC = () => {
   const navigate = useNavigate();
   
   const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [submissions, setSubmissions] = useState<CampaignVideoSubmission[]>([]);
+  const [campaignRules, setCampaignRules] = useState<TrackingRule[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingSubmissions, setLoadingSubmissions] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
+  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
 
   useEffect(() => {
     loadCampaign();
+    loadSubmissions();
   }, [campaignId, currentOrgId, currentProjectId]);
 
   const loadCampaign = async () => {
@@ -42,10 +50,23 @@ const CampaignDetailsPage: React.FC = () => {
         currentProjectId,
         campaignId
       );
+      
+      if (!campaignData) {
+        console.error('Campaign not found');
+        return;
+      }
+      
       setCampaign(campaignData);
       
       // Check if current user is a participant (creator)
       setIsCreator(campaignData.participantIds.includes(user?.uid || ''));
+
+      // Load associated rules
+      if (campaignData.defaultRuleIds && campaignData.defaultRuleIds.length > 0) {
+        const allRules = await RulesService.getRules(currentOrgId, currentProjectId);
+        const filteredRules = allRules.filter(rule => campaignData.defaultRuleIds?.includes(rule.id));
+        setCampaignRules(filteredRules);
+      }
     } catch (error) {
       console.error('Failed to load campaign:', error);
     } finally {
@@ -53,13 +74,27 @@ const CampaignDetailsPage: React.FC = () => {
     }
   };
 
-  const getPlatformIcon = (platform: string) => {
-    switch(platform.toLowerCase()) {
-      case 'instagram': return <InstagramIcon className="w-5 h-5" />;
-      case 'tiktok': return <Video className="w-5 h-5" />;
-      case 'youtube': return <Youtube className="w-5 h-5" />;
-      default: return <Video className="w-5 h-5" />;
+  const loadSubmissions = async () => {
+    if (!campaignId || !currentOrgId || !currentProjectId) return;
+
+    setLoadingSubmissions(true);
+    try {
+      const submissionsData = await CampaignService.getCampaignSubmissions(
+        currentOrgId,
+        currentProjectId,
+        campaignId
+      );
+      setSubmissions(submissionsData);
+    } catch (error) {
+      console.error('Failed to load submissions:', error);
+    } finally {
+      setLoadingSubmissions(false);
     }
+  };
+
+  const handleSubmissionSuccess = () => {
+    loadSubmissions();
+    loadCampaign();
   };
 
   const getRewardRate = () => {
@@ -300,37 +335,123 @@ const CampaignDetailsPage: React.FC = () => {
                     {new Date(campaign.startDate instanceof Date ? campaign.startDate : campaign.startDate.toDate()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">End Date</span>
-                  <span className="text-white font-medium">
-                    {new Date(campaign.endDate instanceof Date ? campaign.endDate : campaign.endDate.toDate()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                  </span>
-                </div>
+                {campaign.isIndefinite ? (
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">End Date</span>
+                    <span className="text-blue-400 font-medium">Indefinite</span>
+                  </div>
+                ) : campaign.endDate && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">End Date</span>
+                    <span className="text-white font-medium">
+                      {new Date(campaign.endDate instanceof Date ? campaign.endDate : campaign.endDate.toDate()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* Campaign Type Badge */}
+            <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+              <h2 className="text-xl font-bold text-white mb-3">Campaign Type</h2>
+              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold ${
+                campaign.campaignType === 'competition'
+                  ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30'
+                  : 'bg-purple-500/10 text-purple-400 border border-purple-500/30'
+              }`}>
+                {campaign.campaignType === 'competition' ? <Trophy className="w-4 h-4" /> : <Users className="w-4 h-4" />}
+                <span className="capitalize">{campaign.campaignType}</span>
+              </div>
+              <p className="text-xs text-gray-400 mt-3">
+                {campaign.campaignType === 'competition'
+                  ? 'Creators compete for top positions with shared goals'
+                  : 'Each creator has individual goals and rewards'}
+              </p>
+            </div>
+
+            {/* Tracking Rules */}
+            {campaignRules.length > 0 && (
+              <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                  <Target className="w-5 h-5" />
+                  Tracking Rules
+                </h2>
+                <div className="space-y-2">
+                  {campaignRules.map((rule) => (
+                    <div
+                      key={rule.id}
+                      className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg"
+                    >
+                      <div className="font-medium text-emerald-400 text-sm">{rule.name}</div>
+                      {rule.keywords && rule.keywords.length > 0 && (
+                        <div className="text-xs text-gray-400 mt-1">
+                          Keywords: {rule.keywords.join(', ')}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Submit Button (for creators) */}
             {isCreator && campaign.status === 'active' && (
               <button
+                onClick={() => setShowSubmissionModal(true)}
                 className="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold rounded-xl transition-all hover:scale-105 flex items-center justify-center gap-2"
               >
                 <Upload className="w-5 h-5" />
                 Submit Your Video
               </button>
             )}
+          </div>
+        </div>
 
-            {/* View Analytics (for managers) */}
-            {!isCreator && (
+        {/* Video Submissions Section */}
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-white">Video Submissions</h2>
+              <p className="text-gray-400 text-sm mt-1">
+                {submissions.length} video{submissions.length !== 1 ? 's' : ''} submitted
+              </p>
+            </div>
+            {isCreator && campaign.status === 'active' && (
               <button
-                className="w-full py-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold rounded-xl transition-all hover:scale-105 flex items-center justify-center gap-2"
+                onClick={() => setShowSubmissionModal(true)}
+                className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-all flex items-center gap-2"
               >
-                <Eye className="w-5 h-5" />
-                View Analytics
+                <Upload className="w-5 h-5" />
+                Submit Video
               </button>
             )}
           </div>
+
+          {loadingSubmissions ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto"></div>
+              <p className="text-gray-400 mt-4">Loading submissions...</p>
+            </div>
+          ) : (
+            <CampaignVideoSubmissionsTable
+              submissions={submissions}
+              campaignId={campaignId!}
+              onRefresh={handleSubmissionSuccess}
+              isCreator={isCreator}
+            />
+          )}
         </div>
       </div>
+
+      {/* Submission Modal */}
+      {showSubmissionModal && (
+        <CampaignVideoSubmissionModal
+          isOpen={showSubmissionModal}
+          onClose={() => setShowSubmissionModal(false)}
+          campaignId={campaignId!}
+          onSuccess={handleSubmissionSuccess}
+        />
+      )}
     </div>
   );
 };

@@ -3,8 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   ArrowLeft,
-  Trophy,
-  Users,
   Target,
   Plus,
   Trash2,
@@ -156,7 +154,7 @@ const CreateCampaignPage: React.FC = () => {
         currentOrgId,
         URL.createObjectURL(file),
         `campaign_${Date.now()}`,
-        'campaign-covers'
+        'profile'
       );
       setCoverImage(imageUrl);
     } catch (error) {
@@ -180,10 +178,20 @@ const CreateCampaignPage: React.FC = () => {
         .map(k => k.trim())
         .filter(k => k.length > 0);
 
+      // Create conditions from keywords
+      const conditions = keywords.map((keyword, index) => ({
+        id: `${Date.now()}_${index}`,
+        type: 'description_contains' as const,
+        value: keyword,
+        operator: 'OR' as const
+      }));
+
       const ruleId = await RulesService.createRule(currentOrgId, currentProjectId, user.uid, {
         name: newRuleName.trim(),
-        keywords,
-        platforms: selectedPlatforms as any[],
+        conditions: conditions.length > 0 ? conditions : [],
+        appliesTo: {
+          platforms: selectedPlatforms as any[]
+        },
         isActive: true,
       });
 

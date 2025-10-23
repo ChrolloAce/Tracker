@@ -8,10 +8,7 @@ import {
   ChevronLeft,
   Check,
   Upload,
-  Image as ImageIcon,
   Target,
-  Trophy,
-  Users,
   Instagram,
   Music,
   Youtube,
@@ -300,7 +297,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
         currentOrgId,
         URL.createObjectURL(file),
         `campaign_${Date.now()}`,
-        'campaign-covers'
+        'profile'
       );
       setCoverImage(imageUrl);
     } catch (error) {
@@ -372,10 +369,20 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
         .map(k => k.trim())
         .filter(k => k.length > 0);
 
+      // Create conditions from keywords
+      const conditions = keywords.map((keyword, index) => ({
+        id: `${Date.now()}_${index}`,
+        type: 'description_contains' as const,
+        value: keyword,
+        operator: 'OR' as const
+      }));
+
       const ruleId = await RulesService.createRule(currentOrgId, currentProjectId, user.uid, {
         name: newRuleName.trim(),
-        keywords,
-        platforms: selectedPlatforms as any[],
+        conditions: conditions.length > 0 ? conditions : [],
+        appliesTo: {
+          platforms: selectedPlatforms as any[]
+        },
         isActive: true,
       });
 
@@ -844,7 +851,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
                   <option value="">No rule (manual tracking)</option>
                   {rules.map((rule) => (
                     <option key={rule.id} value={rule.id}>
-                      {rule.name} {rule.keywords && rule.keywords.length > 0 ? `(${rule.keywords.slice(0, 2).join(', ')})` : ''}
+                      {rule.name}
                     </option>
                   ))}
                 </select>
