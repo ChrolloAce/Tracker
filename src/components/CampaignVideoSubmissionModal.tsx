@@ -82,7 +82,7 @@ const CampaignVideoSubmissionModal: React.FC<CampaignVideoSubmissionModalProps> 
         conditions,
         appliesTo: {
           platforms: [platform],
-          creators: []
+          accountIds: []
         },
         isActive: true,
       });

@@ -381,7 +381,8 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
         name: newRuleName.trim(),
         conditions: conditions.length > 0 ? conditions : [],
         appliesTo: {
-          platforms: selectedPlatforms as any[]
+          platforms: selectedPlatforms as any[],
+          accountIds: []
         },
         isActive: true,
       });
