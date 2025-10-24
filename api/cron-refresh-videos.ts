@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { runApifyActor } from './apify-client.js';
 
 // Initialize Firebase Admin (same pattern as other API files)
@@ -173,17 +173,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               );
 
               if (result.fetched > 0) {
-                console.log(`    ✅ @${username}: Updated ${result.updated} videos, Skipped ${result.skipped} new videos`);
+                console.log(`    ✅ @${username}: Updated ${result.updated} videos, Added ${result.added} new videos, Skipped ${result.skipped} invalid videos`);
 
                 // Update account lastSynced timestamp
                 await accountDoc.ref.update({
                   lastSynced: new Date()
                 });
                 
-                return { success: true, username, updated: result.updated };
+                return { success: true, username, updated: result.updated, added: result.added };
               } else {
                 console.log(`    ⚠️ No videos returned from API for @${username}`);
-                return { success: true, username, updated: 0 };
+                return { success: true, username, updated: 0, added: 0 };
               }
 
             } catch (error: any) {
@@ -282,7 +282,7 @@ async function refreshAccountVideos(
   username: string,
   platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter',
   isManualTrigger: boolean
-): Promise<{ fetched: number; updated: number; skipped: number }> {
+): Promise<{ fetched: number; updated: number; added: number; skipped: number }> {
   // Use the appropriate Apify actor based on platform
   let actorId: string;
   let input: any;
@@ -344,26 +344,29 @@ async function refreshAccountVideos(
 
   console.log(`    📊 Apify returned ${videos.length} items for ${platform}`);
 
-  // Save videos to Firestore (only update existing ones)
+  // Save videos to Firestore (update existing ones AND add new ones)
   let updated = 0;
+  let added = 0;
   let skipped = 0;
   
   if (videos && videos.length > 0) {
     const counts = await saveVideosToFirestore(orgId, projectId, accountId, videos, platform, isManualTrigger);
     updated = counts.updated;
+    added = counts.added;
     skipped = counts.skipped;
   }
 
   return {
     fetched: videos.length,
     updated: updated,
+    added: added,
     skipped: skipped
   };
 }
 
 /**
  * Save videos to Firestore with batched writes
- * ONLY updates existing videos - does not add new videos
+ * Updates existing videos AND adds new ones
  */
 async function saveVideosToFirestore(
   orgId: string,
@@ -372,10 +375,11 @@ async function saveVideosToFirestore(
   videos: any[],
   platform: string,
   isManualTrigger: boolean
-): Promise<{ updated: number; skipped: number }> {
+): Promise<{ updated: number; skipped: number; added: number }> {
   const batch = db.batch();
   let batchCount = 0;
   let updatedCount = 0;
+  let addedCount = 0;
   let skippedCount = 0;
   const BATCH_SIZE = 500;
 
@@ -418,21 +422,15 @@ async function saveVideosToFirestore(
     
     const querySnapshot = await videoQuery.get();
     
-    // Check if video exists
-    if (querySnapshot.empty) {
-      // Video doesn't exist in database - skip it
-      skippedCount++;
-      continue;
-    }
-    
-    const existingDoc = querySnapshot.docs[0];
-    const videoRef = existingDoc.ref;
-
     // Extract metrics based on platform
     let views = 0;
     let likes = 0;
     let comments = 0;
     let shares = 0;
+    let url = '';
+    let thumbnail = '';
+    let caption = '';
+    let uploadDate: Date = new Date();
 
     if (platform === 'instagram') {
       // Use new Instagram reels scraper field names
@@ -440,44 +438,100 @@ async function saveVideosToFirestore(
       likes = media.like_count || 0;
       comments = media.comment_count || 0;
       shares = 0; // Instagram API doesn't provide share count
+      url = `https://www.instagram.com/reel/${media.code || media.shortCode}/`;
+      thumbnail = media.thumbnail_url || media.display_url || '';
+      caption = media.caption?.text || media.caption || '';
+      uploadDate = media.taken_at ? new Date(media.taken_at * 1000) : new Date();
     } else if (platform === 'tiktok') {
       views = video.playCount || 0;
       likes = video.diggCount || 0;
       comments = video.commentCount || 0;
       shares = video.shareCount || 0;
+      url = video.webVideoUrl || video.videoUrl || '';
+      thumbnail = video.videoMeta?.coverUrl || '';
+      caption = video.text || '';
+      uploadDate = video.createTime ? new Date(video.createTime * 1000) : new Date();
     } else if (platform === 'twitter') {
       views = video.viewCount || 0;
       likes = video.likeCount || 0;
       comments = video.replyCount || 0;
       shares = video.retweetCount || 0;
+      url = video.url || '';
+      thumbnail = video.media?.[0]?.thumbnail_url || '';
+      caption = video.text || '';
+      uploadDate = video.created_at ? new Date(video.created_at) : new Date();
     }
-
-    const videoData = {
-      views,
-      likes,
-      comments,
-      shares,
-      lastRefreshed: new Date()
-    };
-
-    // Update existing video metrics
-    batch.update(videoRef, videoData);
     
-    // Create a snapshot for the updated metrics
-    const snapshotRef = videoRef.collection('snapshots').doc();
-    batch.set(snapshotRef, {
-      id: snapshotRef.id,
-      videoId: platformVideoId,  // Use the platform's video ID
-      views: videoData.views,
-      likes: videoData.likes,
-      comments: videoData.comments,
-      shares: videoData.shares,
-      capturedAt: new Date(),
-      capturedBy: isManualTrigger ? 'manual_refresh' : 'scheduled_refresh'
-    });
+    // Check if video exists
+    if (querySnapshot.empty) {
+      // Video doesn't exist - ADD IT as a new video!
+      const newVideoRef = db
+        .collection('organizations')
+        .doc(orgId)
+        .collection('projects')
+        .doc(projectId)
+        .collection('videos')
+        .doc();
 
-    updatedCount++;
-    batchCount++;
+      batch.set(newVideoRef, {
+        videoId: platformVideoId,
+        url,
+        thumbnail,
+        caption,
+        description: caption,
+        uploadDate: Timestamp.fromDate(uploadDate),
+        views,
+        likes,
+        comments,
+        shares,
+        orgId,
+        projectId,
+        trackedAccountId: accountId,
+        platform,
+        dateAdded: Timestamp.now(),
+        addedBy: 'auto_refresh',
+        lastRefreshed: Timestamp.now(),
+        status: 'active',
+        isSingular: false,
+        duration: 0,
+        hashtags: [],
+        mentions: []
+      });
+
+      addedCount++;
+      batchCount++;
+    } else {
+      // Video exists - UPDATE IT
+      const existingDoc = querySnapshot.docs[0];
+      const videoRef = existingDoc.ref;
+
+      const videoData = {
+        views,
+        likes,
+        comments,
+        shares,
+        lastRefreshed: Timestamp.now()
+      };
+
+      // Update existing video metrics
+      batch.update(videoRef, videoData);
+      
+      // Create a snapshot for the updated metrics
+      const snapshotRef = videoRef.collection('snapshots').doc();
+      batch.set(snapshotRef, {
+        id: snapshotRef.id,
+        videoId: platformVideoId,
+        views: videoData.views,
+        likes: videoData.likes,
+        comments: videoData.comments,
+        shares: videoData.shares,
+        capturedAt: Timestamp.now(),
+        capturedBy: isManualTrigger ? 'manual_refresh' : 'scheduled_refresh'
+      });
+
+      updatedCount++;
+      batchCount++;
+    }
 
     // Commit batch if we reach the limit
     if (batchCount >= BATCH_SIZE) {
@@ -491,8 +545,8 @@ async function saveVideosToFirestore(
     await batch.commit();
   }
 
-  console.log(`      📊 Updated: ${updatedCount} videos, Skipped: ${skippedCount} new videos`);
+  console.log(`      📊 Updated: ${updatedCount} videos, Added: ${addedCount} new videos, Skipped: ${skippedCount} invalid videos`);
   
-  return { updated: updatedCount, skipped: skippedCount };
+  return { updated: updatedCount, skipped: skippedCount, added: addedCount };
 }
 
