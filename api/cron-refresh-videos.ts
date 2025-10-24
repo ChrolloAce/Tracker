@@ -1,6 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 import { runApifyActor } from './apify-client.js';
 
 // Initialize Firebase Admin (same pattern as other API files)
@@ -25,6 +26,7 @@ if (!getApps().length) {
 }
 
 const db = getFirestore();
+const storage = getStorage();
 
 /**
  * Cron Job: Refresh all videos for all tracked accounts
@@ -273,6 +275,79 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }
 
 /**
+ * Download image from URL and upload to Firebase Storage
+ * Returns Firebase Storage URL or fallback placeholder
+ */
+async function downloadAndUploadImage(
+  imageUrl: string, 
+  orgId: string, 
+  filename: string,
+  folder: string = 'thumbnails'
+): Promise<string> {
+  try {
+    const isInstagram = imageUrl.includes('cdninstagram') || imageUrl.includes('fbcdn');
+    console.log(`    📥 Downloading thumbnail from ${isInstagram ? 'Instagram' : 'platform'}...`);
+    
+    // Download image with proper headers for Instagram
+    const fetchOptions: any = {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'sec-fetch-dest': 'image',
+        'sec-fetch-mode': 'no-cors',
+        'sec-fetch-site': 'cross-site'
+      }
+    };
+    
+    if (isInstagram) {
+      fetchOptions.headers['Referer'] = 'https://www.instagram.com/';
+    }
+    
+    const response = await fetch(imageUrl, fetchOptions);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to download: ${response.status}`);
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    if (buffer.length < 100) {
+      throw new Error(`Data too small (${buffer.length} bytes)`);
+    }
+    
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    
+    // Upload to Firebase Storage
+    const bucket = storage.bucket();
+    const storagePath = `organizations/${orgId}/${folder}/${filename}`;
+    const file = bucket.file(storagePath);
+    
+    await file.save(buffer, {
+      metadata: {
+        contentType: contentType,
+        metadata: {
+          uploadedAt: new Date().toISOString(),
+          originalUrl: imageUrl
+        }
+      },
+      public: true
+    });
+    
+    await file.makePublic();
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
+    
+    console.log(`    ✅ Uploaded thumbnail to Firebase Storage`);
+    return publicUrl;
+  } catch (error) {
+    console.error(`    ❌ Failed to download/upload thumbnail:`, error);
+    // Return a placeholder instead of the CDN URL (which will 403)
+    return 'https://via.placeholder.com/640x360?text=Thumbnail+Unavailable';
+  }
+}
+
+/**
  * Refresh videos for a single account by fetching from Apify
  */
 async function refreshAccountVideos(
@@ -439,7 +514,16 @@ async function saveVideosToFirestore(
       comments = media.comment_count || 0;
       shares = 0; // Instagram API doesn't provide share count
       url = `https://www.instagram.com/reel/${media.code || media.shortCode}/`;
-      thumbnail = media.thumbnail_url || media.display_url || '';
+      const instaThumbnail = media.thumbnail_url || media.display_url || '';
+      // Download and upload thumbnail to Firebase Storage
+      if (instaThumbnail) {
+        thumbnail = await downloadAndUploadImage(
+          instaThumbnail,
+          orgId,
+          `${platformVideoId}_thumb.jpg`,
+          'thumbnails'
+        );
+      }
       caption = media.caption?.text || media.caption || '';
       uploadDate = media.taken_at ? new Date(media.taken_at * 1000) : new Date();
     } else if (platform === 'tiktok') {
@@ -448,7 +532,16 @@ async function saveVideosToFirestore(
       comments = video.commentCount || 0;
       shares = video.shareCount || 0;
       url = video.webVideoUrl || video.videoUrl || '';
-      thumbnail = video.videoMeta?.coverUrl || '';
+      const tiktokThumbnail = video.videoMeta?.coverUrl || '';
+      // Download and upload thumbnail to Firebase Storage
+      if (tiktokThumbnail) {
+        thumbnail = await downloadAndUploadImage(
+          tiktokThumbnail,
+          orgId,
+          `${platformVideoId}_thumb.jpg`,
+          'thumbnails'
+        );
+      }
       caption = video.text || '';
       uploadDate = video.createTime ? new Date(video.createTime * 1000) : new Date();
     } else if (platform === 'twitter') {
@@ -457,7 +550,16 @@ async function saveVideosToFirestore(
       comments = video.replyCount || 0;
       shares = video.retweetCount || 0;
       url = video.url || '';
-      thumbnail = video.media?.[0]?.thumbnail_url || '';
+      const twitterThumbnail = video.media?.[0]?.thumbnail_url || '';
+      // Download and upload thumbnail to Firebase Storage
+      if (twitterThumbnail) {
+        thumbnail = await downloadAndUploadImage(
+          twitterThumbnail,
+          orgId,
+          `${platformVideoId}_thumb.jpg`,
+          'thumbnails'
+        );
+      }
       caption = video.text || '';
       uploadDate = video.created_at ? new Date(video.created_at) : new Date();
     }
@@ -504,14 +606,25 @@ async function saveVideosToFirestore(
       // Video exists - UPDATE IT
       const existingDoc = querySnapshot.docs[0];
       const videoRef = existingDoc.ref;
+      const existingData = existingDoc.data();
 
-      const videoData = {
+      const videoData: any = {
         views,
         likes,
         comments,
         shares,
         lastRefreshed: Timestamp.now()
       };
+
+      // If existing thumbnail is an Instagram CDN URL, update it to Firebase Storage
+      if (existingData.thumbnail && 
+          (existingData.thumbnail.includes('cdninstagram.com') || 
+           existingData.thumbnail.includes('fbcdn.net'))) {
+        console.log(`    🔄 Updating old Instagram CDN thumbnail to Firebase Storage...`);
+        if (thumbnail) {
+          videoData.thumbnail = thumbnail;
+        }
+      }
 
       // Update existing video metrics
       batch.update(videoRef, videoData);
