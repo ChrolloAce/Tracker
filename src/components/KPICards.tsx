@@ -191,34 +191,9 @@ const KPICards: React.FC<KPICardsProps> = ({
         
         // Calculate PP data even for fallback case if date filter is active
         if (dateFilter !== 'all') {
-          // Calculate period length based on date filter
-          let periodOffsetDays = 1; // Default to 1 day for 'yesterday' or 'today'
-          
-          if (dateFilter === 'last7days') {
-            periodOffsetDays = 7;
-          } else if (dateFilter === 'last14days') {
-            periodOffsetDays = 14;
-          } else if (dateFilter === 'last30days') {
-            periodOffsetDays = 30;
-          } else if (dateFilter === 'last90days') {
-            periodOffsetDays = 90;
-          } else if (dateFilter === 'lastmonth') {
-            // For last month, calculate days in the previous month
-            const tempDate = new Date(dayStart);
-            tempDate.setMonth(tempDate.getMonth() - 1);
-            periodOffsetDays = new Date(tempDate.getFullYear(), tempDate.getMonth() + 1, 0).getDate();
-          } else if (dateFilter === 'mtd' || dateFilter === 'ytd') {
-            // For MTD/YTD, use the same day N months/years ago
-            periodOffsetDays = 30; // Approximate for now
-          } else if (dateFilter === 'custom' && customRange) {
-            // For custom range, calculate the period length
-            const rangeLength = new Date(customRange.endDate).getTime() - new Date(customRange.startDate).getTime();
-            periodOffsetDays = Math.ceil(rangeLength / (1000 * 60 * 60 * 24));
-          }
-          
-          // Calculate PP day using the period offset
+          // Calculate previous day
           const ppDayStart = new Date(dayStart);
-          ppDayStart.setDate(ppDayStart.getDate() - periodOffsetDays);
+          ppDayStart.setDate(ppDayStart.getDate() - 1);
           const ppDayEnd = new Date(ppDayStart);
           ppDayEnd.setHours(23, 59, 59, 999);
           
@@ -674,7 +649,8 @@ const KPICards: React.FC<KPICardsProps> = ({
             value: videosPublishedInInterval.length, 
             timestamp,
             interval,
-            ppValue
+            ppValue,
+            ppInterval
           });
         } else if (metric === 'accounts') {
           // For active accounts: count unique accounts that were active IN THIS INTERVAL
@@ -698,7 +674,8 @@ const KPICards: React.FC<KPICardsProps> = ({
             value: uniqueAccountsInInterval, 
             timestamp,
             interval,
-            ppValue
+            ppValue,
+            ppInterval
           });
         } else {
           // Show per-interval values (NOT cumulative)
@@ -787,7 +764,8 @@ const KPICards: React.FC<KPICardsProps> = ({
             value: intervalValue, 
             timestamp,
             interval,
-            ppValue: finalPPValue
+            ppValue: finalPPValue,
+            ppInterval
           });
         }
       }
@@ -805,13 +783,15 @@ const KPICards: React.FC<KPICardsProps> = ({
           value: singlePoint.value,
           timestamp: singlePoint.timestamp - 1,
           interval: singlePoint.interval,
-          ppValue: singlePoint.ppValue
+          ppValue: singlePoint.ppValue,
+          ppInterval: singlePoint.ppInterval
         };
         const paddingRight = {
           value: singlePoint.value,
           timestamp: singlePoint.timestamp + 1,
           interval: singlePoint.interval,
-          ppValue: singlePoint.ppValue
+          ppValue: singlePoint.ppValue,
+          ppInterval: singlePoint.ppInterval
         };
         // Add padding points before and after to create a flat line
         data = [paddingLeft, singlePoint, paddingRight];
@@ -1907,10 +1887,16 @@ const KPICard: React.FC<{
             
             // Get the interval from the data point
             const interval = point.interval;
+            const ppInterval = point.ppInterval;
             
             // Format date based on interval type
             const dateStr = interval 
               ? DataAggregationService.formatIntervalLabelFull(new Date(interval.startDate), interval.intervalType)
+              : '';
+            
+            // Format PP date if available
+            const ppDateStr = ppInterval
+              ? DataAggregationService.formatIntervalLabelFull(new Date(ppInterval.startDate), ppInterval.intervalType)
               : '';
             
             // Format value based on metric type
@@ -2030,21 +2016,34 @@ const KPICard: React.FC<{
             return (
               <>
                 {/* Header */}
-                <div className="flex items-center justify-between px-5 pt-4 pb-3">
-                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
-                    {dateStr}
-                  </p>
-                  <div className="flex items-baseline gap-3">
-                  <p className="text-2xl font-bold text-white">
-                    {displayValue}
-                  </p>
-                    {ppComparison && (
-                      <span className={`text-xs font-semibold ${ppComparison.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {ppComparison.isPositive ? '↑' : '↓'} {Math.abs(ppComparison.percentChange).toFixed(0)}%
-                      </span>
-                    )}
+                <div className="px-5 pt-4 pb-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+                      {dateStr}
+                    </p>
+                    <div className="flex items-baseline gap-3">
+                      <p className="text-2xl font-bold text-white">
+                        {displayValue}
+                      </p>
+                      {ppComparison && (
+                        <span className={`text-xs font-semibold ${ppComparison.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {ppComparison.isPositive ? '↑' : '↓'} {Math.abs(ppComparison.percentChange).toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
                   </div>
-            </div>
+                  {/* Show Previous Period date if available */}
+                  {ppDateStr && ppComparison && (
+                    <div className="flex items-center justify-between text-xs">
+                      <p className="text-gray-500">
+                        vs {ppDateStr}
+                      </p>
+                      <p className="text-gray-400">
+                        {ppComparison.displayValue}
+                      </p>
+                    </div>
+                  )}
+                </div>
                 
                 {/* Divider */}
                 <div className="border-t border-white/10 mx-5"></div>
