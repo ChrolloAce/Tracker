@@ -191,9 +191,34 @@ const KPICards: React.FC<KPICardsProps> = ({
         
         // Calculate PP data even for fallback case if date filter is active
         if (dateFilter !== 'all') {
-          // Calculate previous day
+          // Calculate period length based on date filter
+          let periodOffsetDays = 1; // Default to 1 day for 'yesterday' or 'today'
+          
+          if (dateFilter === 'last7days') {
+            periodOffsetDays = 7;
+          } else if (dateFilter === 'last14days') {
+            periodOffsetDays = 14;
+          } else if (dateFilter === 'last30days') {
+            periodOffsetDays = 30;
+          } else if (dateFilter === 'last90days') {
+            periodOffsetDays = 90;
+          } else if (dateFilter === 'lastmonth') {
+            // For last month, calculate days in the previous month
+            const tempDate = new Date(dayStart);
+            tempDate.setMonth(tempDate.getMonth() - 1);
+            periodOffsetDays = new Date(tempDate.getFullYear(), tempDate.getMonth() + 1, 0).getDate();
+          } else if (dateFilter === 'mtd' || dateFilter === 'ytd') {
+            // For MTD/YTD, use the same day N months/years ago
+            periodOffsetDays = 30; // Approximate for now
+          } else if (dateFilter === 'custom' && customRange) {
+            // For custom range, calculate the period length
+            const rangeLength = new Date(customRange.endDate).getTime() - new Date(customRange.startDate).getTime();
+            periodOffsetDays = Math.ceil(rangeLength / (1000 * 60 * 60 * 24));
+          }
+          
+          // Calculate PP day using the period offset
           const ppDayStart = new Date(dayStart);
-          ppDayStart.setDate(ppDayStart.getDate() - 1);
+          ppDayStart.setDate(ppDayStart.getDate() - periodOffsetDays);
           const ppDayEnd = new Date(ppDayStart);
           ppDayEnd.setHours(23, 59, 59, 999);
           
