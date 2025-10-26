@@ -166,7 +166,6 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
     const tooltipWidth = 400; // Width of tooltip
     const tooltipHeight = 500; // Max height of tooltip
     const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
     
     let x = rect.left + rect.width / 2;
     let y = rect.top - 10;

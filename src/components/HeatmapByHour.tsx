@@ -231,7 +231,6 @@ export const HeatmapByHour: React.FC<HeatmapByHourProps> = ({
     const tooltipWidth = 400; // Width of tooltip
     const tooltipHeight = 300; // Approximate max height
     const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
     
     let x = rect.left + rect.width / 2;
     let y = rect.top;
