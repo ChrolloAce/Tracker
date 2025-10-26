@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { X, Calendar, Eye, Heart, MessageCircle, Share2, Activity, Video, Users, MousePointerClick, ChevronLeft, ChevronRight } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { VideoSubmissionsTable } from './VideoSubmissionsTable';
@@ -19,6 +19,8 @@ interface DayVideosModalProps {
   ppInterval?: TimeInterval | null; // Previous period interval
   linkClicks?: LinkClick[]; // Link clicks for the period
   ppLinkClicks?: LinkClick[]; // Previous period link clicks
+  dayOfWeek?: 0 | 1 | 2 | 3 | 4 | 5 | 6; // Optional: filter by specific day of week (0 = Sunday, 6 = Saturday)
+  hourRange?: { start: number; end: number }; // Optional: filter by hour range (e.g., {start: 13, end: 14})
 }
 
 const DayVideosModal: React.FC<DayVideosModalProps> = ({
@@ -34,9 +36,22 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
   ppVideos = [],
   ppInterval,
   linkClicks = [],
-  ppLinkClicks = []
+  ppLinkClicks = [],
+  dayOfWeek,
+  hourRange
 }) => {
   const [showPreviousPeriod, setShowPreviousPeriod] = useState(false);
+
+  // Debug: Log props on mount
+  useEffect(() => {
+    console.log('📋 DayVideosModal Props:', {
+      dayOfWeek,
+      hourRange,
+      totalVideos: videos.length,
+      date,
+      accountFilter
+    });
+  }, [dayOfWeek, hourRange, videos.length, date, accountFilter]);
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', { 
@@ -95,14 +110,78 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
     return num.toString();
   };
 
-  // Filter by account if specified
+  const getDayName = (dayIndex: 0 | 1 | 2 | 3 | 4 | 5 | 6): string => {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return days[dayIndex];
+  };
+
+  const formatHourRange = (start: number, end: number): string => {
+    const formatHour = (hour: number) => {
+      const h = hour % 12 === 0 ? 12 : hour % 12;
+      const period = hour < 12 ? 'AM' : 'PM';
+      return `${h} ${period}`;
+    };
+    return `${formatHour(start)} - ${formatHour(end)}`;
+  };
+
+  // Filter by account, day of week, and hour if specified
   const filteredVideos = useMemo(() => {
-    const videosToFilter = showPreviousPeriod ? ppVideos : videos;
-    if (!accountFilter) return videosToFilter;
-    return videosToFilter.filter(v => 
-      v.uploaderHandle?.toLowerCase() === accountFilter.toLowerCase()
-    );
-  }, [videos, ppVideos, accountFilter, showPreviousPeriod]);
+    let videosToFilter = showPreviousPeriod ? ppVideos : videos;
+    
+    // Debug logging
+    if (dayOfWeek !== undefined || hourRange) {
+      console.log('🔍 DayVideosModal Filtering:', {
+        dayOfWeek,
+        hourRange,
+        totalVideos: videosToFilter.length,
+        sampleVideo: videosToFilter[0] ? {
+          uploadDate: videosToFilter[0].uploadDate,
+          dateSubmitted: videosToFilter[0].dateSubmitted,
+          parsedDay: (videosToFilter[0].uploadDate ? new Date(videosToFilter[0].uploadDate) : new Date(videosToFilter[0].dateSubmitted)).getDay(),
+          parsedHour: (videosToFilter[0].uploadDate ? new Date(videosToFilter[0].uploadDate) : new Date(videosToFilter[0].dateSubmitted)).getHours()
+        } : null
+      });
+    }
+    
+    // Filter by account
+    if (accountFilter) {
+      videosToFilter = videosToFilter.filter(v => 
+        v.uploaderHandle?.toLowerCase() === accountFilter.toLowerCase()
+      );
+    }
+    
+    // Filter by day of week (0 = Sunday, 6 = Saturday)
+    if (dayOfWeek !== undefined) {
+      videosToFilter = videosToFilter.filter(v => {
+        const dateStr = v.uploadDate || v.dateSubmitted;
+        if (!dateStr) return false;
+        
+        const videoDate = new Date(dateStr);
+        const videoDayOfWeek = videoDate.getDay();
+        const matches = videoDayOfWeek === dayOfWeek;
+        
+        return matches;
+      });
+      console.log(`✅ After day filter (${dayOfWeek}):`, videosToFilter.length, 'videos');
+    }
+    
+    // Filter by hour range
+    if (hourRange) {
+      videosToFilter = videosToFilter.filter(v => {
+        const dateStr = v.uploadDate || v.dateSubmitted;
+        if (!dateStr) return false;
+        
+        const videoDate = new Date(dateStr);
+        const hour = videoDate.getHours();
+        const matches = hour >= hourRange.start && hour < hourRange.end;
+        
+        return matches;
+      });
+      console.log(`✅ After hour filter (${hourRange.start}-${hourRange.end}):`, videosToFilter.length, 'videos');
+    }
+    
+    return videosToFilter;
+  }, [videos, ppVideos, accountFilter, dayOfWeek, hourRange, showPreviousPeriod]);
 
   const calculateComparison = (cpValue: number, ppValue: number) => {
     if (ppValue === 0) return { percentChange: 0, isPositive: true };
@@ -117,9 +196,29 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
 
   // Calculate all KPI metrics for current period
   const cpKPIMetrics = useMemo(() => {
-    const videosToUse = accountFilter 
-      ? videos.filter(v => v.uploaderHandle?.toLowerCase() === accountFilter.toLowerCase())
-      : videos;
+    let videosToUse = videos;
+    
+    // Apply account filter
+    if (accountFilter) {
+      videosToUse = videosToUse.filter(v => v.uploaderHandle?.toLowerCase() === accountFilter.toLowerCase());
+    }
+    
+    // Apply day of week filter
+    if (dayOfWeek !== undefined) {
+      videosToUse = videosToUse.filter(v => {
+        const videoDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
+        return videoDate.getDay() === dayOfWeek;
+      });
+    }
+    
+    // Apply hour range filter
+    if (hourRange) {
+      videosToUse = videosToUse.filter(v => {
+        const videoDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
+        const hour = videoDate.getHours();
+        return hour >= hourRange.start && hour < hourRange.end;
+      });
+    }
     
     const totalViews = videosToUse.reduce((sum, v) => sum + (v.views || 0), 0);
     const totalLikes = videosToUse.reduce((sum, v) => sum + (v.likes || 0), 0);
@@ -140,13 +239,33 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
       accounts: uniqueAccounts,
       clicks: clicksCount
     };
-  }, [videos, accountFilter, linkClicks]);
+  }, [videos, accountFilter, linkClicks, dayOfWeek, hourRange]);
 
   // Calculate all KPI metrics for previous period
   const ppKPIMetrics = useMemo(() => {
-    const videosToUse = accountFilter 
-      ? ppVideos.filter(v => v.uploaderHandle?.toLowerCase() === accountFilter.toLowerCase())
-      : ppVideos;
+    let videosToUse = ppVideos;
+    
+    // Apply account filter
+    if (accountFilter) {
+      videosToUse = videosToUse.filter(v => v.uploaderHandle?.toLowerCase() === accountFilter.toLowerCase());
+    }
+    
+    // Apply day of week filter
+    if (dayOfWeek !== undefined) {
+      videosToUse = videosToUse.filter(v => {
+        const videoDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
+        return videoDate.getDay() === dayOfWeek;
+      });
+    }
+    
+    // Apply hour range filter
+    if (hourRange) {
+      videosToUse = videosToUse.filter(v => {
+        const videoDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
+        const hour = videoDate.getHours();
+        return hour >= hourRange.start && hour < hourRange.end;
+      });
+    }
     
     const totalViews = videosToUse.reduce((sum, v) => sum + (v.views || 0), 0);
     const totalLikes = videosToUse.reduce((sum, v) => sum + (v.likes || 0), 0);
@@ -167,24 +286,20 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
       accounts: uniqueAccounts,
       clicks: clicksCount
     };
-  }, [ppVideos, accountFilter, ppLinkClicks]);
+  }, [ppVideos, accountFilter, ppLinkClicks, dayOfWeek, hourRange]);
 
-  // Generate button text based on interval type
+  // Generate button text with actual dates for clarity
   const getToggleButtonText = () => {
-    if (!interval) return { show: 'Show Previous Period', showing: 'Show Current Period' };
+    if (!ppInterval) return { show: 'Show Previous Period', showing: 'Show Current Period' };
     
-    switch (interval.intervalType) {
-      case 'day':
-        return { show: 'Show Previous Day', showing: 'Show Current Day' };
-      case 'week':
-        return { show: 'Show Previous Week', showing: 'Show Current Week' };
-      case 'month':
-        return { show: 'Show Previous Month', showing: 'Show Current Month' };
-      case 'year':
-        return { show: 'Show Previous Year', showing: 'Show Current Year' };
-      default:
-        return { show: 'Show Previous Period', showing: 'Show Current Period' };
-    }
+    // Show the actual date/period being compared to for clarity
+    const ppLabel = formatIntervalRange(ppInterval);
+    const cpLabel = interval ? formatIntervalRange(interval) : '';
+    
+    return { 
+      show: `Show Previous Period (${ppLabel})`, 
+      showing: `Show Current Period (${cpLabel})` 
+    };
   };
 
   const buttonText = getToggleButtonText();
@@ -205,6 +320,13 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
           <div>
             <h2 className="text-2xl font-bold text-white">
               {(() => {
+                // If filtering by day of week and hour, show special format
+                if (dayOfWeek !== undefined && hourRange) {
+                  const dayName = getDayName(dayOfWeek);
+                  const timeRange = formatHourRange(hourRange.start, hourRange.end);
+                  return `Every video posted ${dayName} ${timeRange} - ${dateRangeLabel || 'All Time'}`;
+                }
+                
                 const currentInterval = showPreviousPeriod ? ppInterval : interval;
                 // Priority: interval > dateRangeLabel > fallback to formatted date
                 if (currentInterval) {
@@ -267,6 +389,13 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                 submissions={filteredVideos}
                 onVideoClick={onVideoClick}
                 headerTitle={(() => {
+                  // If filtering by day of week and hour, show that instead of date
+                  if (dayOfWeek !== undefined && hourRange) {
+                    const dayName = getDayName(dayOfWeek);
+                    const timeRange = formatHourRange(hourRange.start, hourRange.end);
+                    return `All ${dayName}s ${timeRange}`;
+                  }
+                  
                   const currentInterval = showPreviousPeriod ? ppInterval : interval;
                   if (currentInterval) {
                     return `Content from ${formatIntervalRange(currentInterval)}`;
@@ -283,10 +412,21 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                   No videos found
                 </h3>
                 <p className="text-gray-400 text-sm">
-                  {accountFilter ? 
-                    `No videos from @${accountFilter} on ${formatDate(date)}` :
-                    `No videos were uploaded on ${formatDate(date)}`
-                  }
+                  {(() => {
+                    // If filtering by day of week and hour
+                    if (dayOfWeek !== undefined && hourRange) {
+                      const dayName = getDayName(dayOfWeek);
+                      const timeRange = formatHourRange(hourRange.start, hourRange.end);
+                      return accountFilter 
+                        ? `No videos from @${accountFilter} on ${dayName}s ${timeRange}`
+                        : `No videos were uploaded on ${dayName}s ${timeRange}`;
+                    }
+                    
+                    // Otherwise show date-based message
+                    return accountFilter 
+                      ? `No videos from @${accountFilter} on ${formatDate(date)}`
+                      : `No videos were uploaded on ${formatDate(date)}`;
+                  })()}
                 </p>
               </div>
             )}
@@ -297,13 +437,16 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             <h3 className="text-sm font-semibold text-white mb-4 uppercase tracking-wider">All Metrics</h3>
             <div className="grid grid-cols-2 gap-3 overflow-auto content-start" style={{ height: 'calc(85vh - 150px)' }}>
             {/* Views */}
-            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="bg-[#1a1a1a] rounded-lg p-5 border border-white/10 min-h-[120px] flex flex-col justify-between">
+              {/* Icon and label */}
+              <div className="flex items-center gap-2">
                 <Eye className="w-4 h-4 text-white/70" />
                 <p className="text-xs text-gray-400 font-medium">Views</p>
               </div>
-              <div className="flex items-baseline gap-2">
-                <p className="text-lg font-bold text-white">
+              
+              {/* Value with percentage */}
+              <div className="flex items-baseline gap-2 mt-2">
+                <p className="text-2xl font-bold text-white">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.views : cpKPIMetrics.views)}
                 </p>
                 {hasPPData && (() => {
@@ -311,7 +454,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                     ? calculateComparison(ppKPIMetrics.views, cpKPIMetrics.views)
                     : calculateComparison(cpKPIMetrics.views, ppKPIMetrics.views);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-xs font-semibold flex items-center ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <span className={`text-[10px] font-semibold ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
                       {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;
@@ -320,13 +463,13 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             </div>
 
             {/* Likes */}
-            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="bg-[#1a1a1a] rounded-lg p-5 border border-white/10 min-h-[120px] flex flex-col justify-between">
+              <div className="flex items-center gap-2">
                 <Heart className="w-4 h-4 text-white/70" />
                 <p className="text-xs text-gray-400 font-medium">Likes</p>
               </div>
-              <div className="flex items-baseline gap-2">
-                <p className="text-lg font-bold text-white">
+              <div className="flex items-baseline gap-2 mt-2">
+                <p className="text-2xl font-bold text-white">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.likes : cpKPIMetrics.likes)}
                 </p>
                 {hasPPData && (() => {
@@ -334,7 +477,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                     ? calculateComparison(ppKPIMetrics.likes, cpKPIMetrics.likes)
                     : calculateComparison(cpKPIMetrics.likes, ppKPIMetrics.likes);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-xs font-semibold flex items-center ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <span className={`text-[10px] font-semibold ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
                       {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;
@@ -343,13 +486,13 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             </div>
 
             {/* Comments */}
-            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="bg-[#1a1a1a] rounded-lg p-5 border border-white/10 min-h-[120px] flex flex-col justify-between">
+              <div className="flex items-center gap-2">
                 <MessageCircle className="w-4 h-4 text-white/70" />
                 <p className="text-xs text-gray-400 font-medium">Comments</p>
               </div>
-              <div className="flex items-baseline gap-2">
-                <p className="text-lg font-bold text-white">
+              <div className="flex items-baseline gap-2 mt-2">
+                <p className="text-2xl font-bold text-white">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.comments : cpKPIMetrics.comments)}
                 </p>
                 {hasPPData && (() => {
@@ -357,7 +500,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                     ? calculateComparison(ppKPIMetrics.comments, cpKPIMetrics.comments)
                     : calculateComparison(cpKPIMetrics.comments, ppKPIMetrics.comments);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-xs font-semibold flex items-center ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <span className={`text-[10px] font-semibold ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
                       {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;
@@ -366,13 +509,13 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             </div>
 
             {/* Shares */}
-            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="bg-[#1a1a1a] rounded-lg p-5 border border-white/10 min-h-[120px] flex flex-col justify-between">
+              <div className="flex items-center gap-2">
                 <Share2 className="w-4 h-4 text-white/70" />
                 <p className="text-xs text-gray-400 font-medium">Shares</p>
               </div>
-              <div className="flex items-baseline gap-2">
-                <p className="text-lg font-bold text-white">
+              <div className="flex items-baseline gap-2 mt-2">
+                <p className="text-2xl font-bold text-white">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.shares : cpKPIMetrics.shares)}
                 </p>
                 {hasPPData && (() => {
@@ -380,7 +523,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                     ? calculateComparison(ppKPIMetrics.shares, cpKPIMetrics.shares)
                     : calculateComparison(cpKPIMetrics.shares, ppKPIMetrics.shares);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-xs font-semibold flex items-center ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <span className={`text-[10px] font-semibold ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
                       {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;
@@ -389,13 +532,13 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             </div>
 
             {/* Engagement Rate */}
-            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="bg-[#1a1a1a] rounded-lg p-5 border border-white/10 min-h-[120px] flex flex-col justify-between">
+              <div className="flex items-center gap-2">
                 <Activity className="w-4 h-4 text-white/70" />
                 <p className="text-xs text-gray-400 font-medium">Engagement</p>
               </div>
-              <div className="flex items-baseline gap-2">
-                <p className="text-lg font-bold text-white">
+              <div className="flex items-baseline gap-2 mt-2">
+                <p className="text-2xl font-bold text-white">
                   {(showPreviousPeriod ? ppKPIMetrics.engagementRate : cpKPIMetrics.engagementRate).toFixed(2)}%
                 </p>
                 {hasPPData && (() => {
@@ -403,7 +546,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                     ? calculateComparison(ppKPIMetrics.engagementRate, cpKPIMetrics.engagementRate)
                     : calculateComparison(cpKPIMetrics.engagementRate, ppKPIMetrics.engagementRate);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-xs font-semibold flex items-center ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <span className={`text-[10px] font-semibold ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
                       {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;
@@ -412,21 +555,21 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             </div>
 
             {/* Videos */}
-            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="bg-[#1a1a1a] rounded-lg p-5 border border-white/10 min-h-[120px] flex flex-col justify-between">
+              <div className="flex items-center gap-2">
                 <Video className="w-4 h-4 text-white/70" />
                 <p className="text-xs text-gray-400 font-medium">Videos</p>
               </div>
-              <div className="flex items-baseline gap-2">
-                <p className="text-lg font-bold text-white">
-                  {showPreviousPeriod ? ppKPIMetrics.videos : cpKPIMetrics.videos}
+              <div className="flex items-baseline gap-2 mt-2">
+                <p className="text-2xl font-bold text-white">
+                  {formatNumber(showPreviousPeriod ? ppKPIMetrics.videos : cpKPIMetrics.videos)}
                 </p>
                 {hasPPData && (() => {
                   const comp = showPreviousPeriod 
                     ? calculateComparison(ppKPIMetrics.videos, cpKPIMetrics.videos)
-                    : calculateComparison(cpKPIMetrics.videos, ppKPIMetrics.videos);
+                    : calculateComparison(cpKPIMetrics.videos, cpKPIMetrics.videos);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-xs font-semibold flex items-center ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <span className={`text-[10px] font-semibold ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
                       {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;
@@ -435,21 +578,21 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             </div>
 
             {/* Accounts */}
-            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="bg-[#1a1a1a] rounded-lg p-5 border border-white/10 min-h-[120px] flex flex-col justify-between">
+              <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-white/70" />
                 <p className="text-xs text-gray-400 font-medium">Accounts</p>
               </div>
-              <div className="flex items-baseline gap-2">
-                <p className="text-lg font-bold text-white">
-                  {showPreviousPeriod ? ppKPIMetrics.accounts : cpKPIMetrics.accounts}
+              <div className="flex items-baseline gap-2 mt-2">
+                <p className="text-2xl font-bold text-white">
+                  {formatNumber(showPreviousPeriod ? ppKPIMetrics.accounts : cpKPIMetrics.accounts)}
                 </p>
                 {hasPPData && (() => {
                   const comp = showPreviousPeriod 
                     ? calculateComparison(ppKPIMetrics.accounts, cpKPIMetrics.accounts)
-                    : calculateComparison(cpKPIMetrics.accounts, ppKPIMetrics.accounts);
+                    : calculateComparison(ppKPIMetrics.accounts, cpKPIMetrics.accounts);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-xs font-semibold flex items-center ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <span className={`text-[10px] font-semibold ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
                       {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;
@@ -458,21 +601,21 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             </div>
 
             {/* Link Clicks */}
-            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="bg-[#1a1a1a] rounded-lg p-5 border border-white/10 min-h-[120px] flex flex-col justify-between">
+              <div className="flex items-center gap-2">
                 <MousePointerClick className="w-4 h-4 text-white/70" />
                 <p className="text-xs text-gray-400 font-medium">Clicks</p>
               </div>
-              <div className="flex items-baseline gap-2">
-                <p className="text-lg font-bold text-white">
-                  {showPreviousPeriod ? ppKPIMetrics.clicks : cpKPIMetrics.clicks}
+              <div className="flex items-baseline gap-2 mt-2">
+                <p className="text-2xl font-bold text-white">
+                  {formatNumber(showPreviousPeriod ? ppKPIMetrics.clicks : cpKPIMetrics.clicks)}
                 </p>
                 {hasPPData && (() => {
                   const comp = showPreviousPeriod 
                     ? calculateComparison(ppKPIMetrics.clicks, cpKPIMetrics.clicks)
                     : calculateComparison(cpKPIMetrics.clicks, ppKPIMetrics.clicks);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-xs font-semibold flex items-center ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <span className={`text-[10px] font-semibold ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
                       {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;

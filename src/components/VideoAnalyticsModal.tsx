@@ -4,6 +4,7 @@ import { X, Eye, Heart, MessageCircle, Share2, TrendingUp, TrendingDown, Minus, 
 import { VideoSubmission } from '../types';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { PlatformIcon } from './ui/PlatformIcon';
+import DateRangeFilter, { DateFilterType as ImportedDateFilterType } from './DateRangeFilter';
 
 interface VideoAnalyticsModalProps {
   video: VideoSubmission | null;
@@ -41,9 +42,10 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   const snapshotsPerPage = 5;
   
   // Date filter state
-  type DateFilterType = 'last7days' | 'last14days' | 'last30days' | 'last90days' | 'all';
+  type DateFilterType = ImportedDateFilterType;
   type TimeGranularity = 'daily' | 'weekly' | 'monthly';
   const [dateFilter, setDateFilter] = useState<DateFilterType>('all');
+  const [customDateRange, setCustomDateRange] = useState<{ startDate: Date; endDate: Date } | undefined>();
   const [timeGranularity, setTimeGranularity] = useState<TimeGranularity>('daily');
   const [showPreviousPeriod, setShowPreviousPeriod] = useState(false);
 
@@ -133,27 +135,71 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   // Calculate period ranges for current and previous periods
   const periodRanges = useMemo(() => {
     const now = new Date();
-    const currentEnd = new Date(now);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let currentEnd = new Date(now);
     let currentStart = new Date();
     let daysBack = 0;
     
     // Calculate current period based on filter
     switch (dateFilter) {
+      case 'today':
+        currentStart = today;
+        currentEnd = new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1);
+        daysBack = 1;
+        break;
+      case 'yesterday': {
+        const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+        currentStart = yesterday;
+        currentEnd = new Date(yesterday.getTime() + 24 * 60 * 60 * 1000 - 1);
+        daysBack = 1;
+        break;
+      }
       case 'last7days':
+        currentStart = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
+        currentEnd = new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1);
         daysBack = 7;
-        currentStart.setDate(now.getDate() - 7);
         break;
       case 'last14days':
+        currentStart = new Date(today.getTime() - 13 * 24 * 60 * 60 * 1000);
+        currentEnd = new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1);
         daysBack = 14;
-        currentStart.setDate(now.getDate() - 14);
         break;
       case 'last30days':
+        currentStart = new Date(today.getTime() - 29 * 24 * 60 * 60 * 1000);
+        currentEnd = new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1);
         daysBack = 30;
-        currentStart.setDate(now.getDate() - 30);
         break;
       case 'last90days':
+        currentStart = new Date(today.getTime() - 89 * 24 * 60 * 60 * 1000);
+        currentEnd = new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1);
         daysBack = 90;
-        currentStart.setDate(now.getDate() - 90);
+        break;
+      case 'mtd': // Month to Date
+        currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        currentEnd = new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1);
+        daysBack = now.getDate();
+        break;
+      case 'lastmonth': {
+        currentStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        currentEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+        currentEnd.setHours(23, 59, 59, 999);
+        daysBack = Math.ceil((currentEnd.getTime() - currentStart.getTime()) / (24 * 60 * 60 * 1000));
+        break;
+      }
+      case 'ytd': // Year to Date
+        currentStart = new Date(now.getFullYear(), 0, 1);
+        currentEnd = new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1);
+        daysBack = Math.ceil((currentEnd.getTime() - currentStart.getTime()) / (24 * 60 * 60 * 1000));
+        break;
+      case 'custom':
+        if (customDateRange) {
+          currentStart = customDateRange.startDate;
+          currentEnd = customDateRange.endDate;
+          daysBack = Math.ceil((currentEnd.getTime() - currentStart.getTime()) / (24 * 60 * 60 * 1000));
+        } else {
+          currentStart.setTime(0);
+          daysBack = 0;
+        }
         break;
       case 'all':
       default:
@@ -177,7 +223,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     });
     
     return { currentStart, currentEnd, prevStart, prevEnd };
-  }, [dateFilter]);
+  }, [dateFilter, customDateRange]);
 
   const chartData = useMemo((): ChartDataPoint[] => {
     if (!video) return [];
@@ -294,13 +340,83 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     return data;
   }, [video?.id, video?.views, video?.likes, video?.comments, video?.shares, video?.snapshots?.length, dateFilter, showPreviousPeriod, periodRanges]);
 
-  // Calculate cumulative totals for KPI display (not deltas)
+  // Calculate cumulative totals for KPI display based on filtered period
   const cumulativeTotals = useMemo(() => {
-    const views = video?.views || 0;
-    const likes = video?.likes || 0;
-    const comments = video?.comments || 0;
-    const shares = video?.shares || 0;
-    const saves = video?.saves || 0;
+    if (!video) return { views: 0, likes: 0, comments: 0, shares: 0, saves: 0, engagementRate: 0 };
+    
+    // If "all time" is selected, show current video totals
+    if (dateFilter === 'all') {
+      const views = video.views || 0;
+      const likes = video.likes || 0;
+      const comments = video.comments || 0;
+      const shares = video.shares || 0;
+      const saves = video.saves || 0;
+      
+      return {
+        views,
+        likes,
+        comments,
+        shares,
+        saves,
+        engagementRate: views > 0 ? ((likes + comments + shares) / views) * 100 : 0,
+      };
+    }
+    
+    // For specific date ranges, calculate from snapshots only
+    if (!video.snapshots || video.snapshots.length === 0) {
+      // No snapshots - check if upload date is in range
+      const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
+      const filterStart = showPreviousPeriod ? periodRanges.prevStart : periodRanges.currentStart;
+      const filterEnd = showPreviousPeriod ? periodRanges.prevEnd : periodRanges.currentEnd;
+      
+      if (uploadDate >= filterStart && uploadDate <= filterEnd) {
+        // Video was uploaded in this period, show its current stats
+        const views = video.views || 0;
+        const likes = video.likes || 0;
+        const comments = video.comments || 0;
+        const shares = video.shares || 0;
+        const saves = video.saves || 0;
+        
+        return {
+          views,
+          likes,
+          comments,
+          shares,
+          saves,
+          engagementRate: views > 0 ? ((likes + comments + shares) / views) * 100 : 0,
+        };
+      }
+      
+      // Video not in this period, return zeros
+      return { views: 0, likes: 0, comments: 0, shares: 0, saves: 0, engagementRate: 0 };
+    }
+    
+    // Filter snapshots to selected date range
+    const filterStart = showPreviousPeriod ? periodRanges.prevStart : periodRanges.currentStart;
+    const filterEnd = showPreviousPeriod ? periodRanges.prevEnd : periodRanges.currentEnd;
+    
+    const filteredSnapshots = video.snapshots.filter(snapshot => {
+      const snapshotTime = new Date(snapshot.capturedAt).getTime();
+      return snapshotTime >= filterStart.getTime() && snapshotTime <= filterEnd.getTime();
+    });
+    
+    if (filteredSnapshots.length === 0) {
+      return { views: 0, likes: 0, comments: 0, shares: 0, saves: 0, engagementRate: 0 };
+    }
+    
+    // Get first and last snapshot in the range
+    const sortedSnapshots = [...filteredSnapshots].sort(
+      (a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+    );
+    const firstSnapshot = sortedSnapshots[0];
+    const lastSnapshot = sortedSnapshots[sortedSnapshots.length - 1];
+    
+    // Calculate delta (growth) between first and last snapshot in period
+    const views = lastSnapshot.views - firstSnapshot.views;
+    const likes = lastSnapshot.likes - firstSnapshot.likes;
+    const comments = lastSnapshot.comments - firstSnapshot.comments;
+    const shares = (lastSnapshot.shares || 0) - (firstSnapshot.shares || 0);
+    const saves = (lastSnapshot.saves || 0) - (firstSnapshot.saves || 0);
     
     return {
       views,
@@ -308,11 +424,9 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       comments,
       shares,
       saves,
-      engagementRate: views > 0 
-        ? ((likes + comments + shares) / views) * 100 
-        : 0,
+      engagementRate: views > 0 ? ((likes + comments + shares) / views) * 100 : 0,
     };
-  }, [video?.views, video?.likes, video?.comments, video?.shares, video?.saves]);
+  }, [video, dateFilter, showPreviousPeriod, periodRanges, video?.snapshots?.length]);
 
   // Calculate growth during the selected period
   const metricGrowth = useMemo(() => {
@@ -341,6 +455,65 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       engagementRate: lastPoint.engagementRate - firstPoint.engagementRate,
     };
   }, [chartData, video?.saves, video?.snapshots]);
+
+  // Determine trend based on snapshot data (excluding initial upload)
+  const videoTrend = useMemo(() => {
+    if (!video || !video.snapshots || video.snapshots.length < 2) {
+      // No snapshots or only one snapshot, default to positive (green)
+      return { isPositive: true, percentChange: 0 };
+    }
+    
+    // Sort snapshots by date
+    const sortedSnapshots = [...video.snapshots].sort(
+      (a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+    );
+    
+    // Skip the first snapshot (initial upload) and use subsequent snapshots
+    const snapshotsToAnalyze = sortedSnapshots.slice(1);
+    
+    if (snapshotsToAnalyze.length === 0) {
+      // Only initial upload exists, default to positive
+      return { isPositive: true, percentChange: 0 };
+    }
+    
+    // Calculate average growth rate across snapshots (excluding initial)
+    let totalGrowthRate = 0;
+    let validComparisons = 0;
+    
+    for (let i = 1; i < snapshotsToAnalyze.length; i++) {
+      const prev = snapshotsToAnalyze[i - 1];
+      const current = snapshotsToAnalyze[i];
+      
+      // Calculate growth rate based on views (primary metric)
+      const viewsDelta = current.views - prev.views;
+      const prevViews = prev.views || 1; // Avoid division by zero
+      const growthRate = (viewsDelta / prevViews) * 100;
+      
+      totalGrowthRate += growthRate;
+      validComparisons++;
+    }
+    
+    // If we have snapshot comparisons, use average growth rate
+    if (validComparisons > 0) {
+      const avgGrowthRate = totalGrowthRate / validComparisons;
+      return {
+        isPositive: avgGrowthRate >= 0,
+        percentChange: Math.abs(avgGrowthRate)
+      };
+    }
+    
+    // Compare last snapshot to first (excluding initial upload)
+    const firstSnapshot = snapshotsToAnalyze[0];
+    const lastSnapshot = snapshotsToAnalyze[snapshotsToAnalyze.length - 1];
+    const viewsGrowth = lastSnapshot.views - firstSnapshot.views;
+    
+    return {
+      isPositive: viewsGrowth >= 0,
+      percentChange: firstSnapshot.views > 0 
+        ? Math.abs((viewsGrowth / firstSnapshot.views) * 100)
+        : 0
+    };
+  }, [video?.snapshots]);
 
   if (!isOpen || !video) return null;
 
@@ -523,17 +696,14 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
           {/* Right: Filters & Close */}
           <div className="flex items-center gap-3">
             {/* Date Filter */}
-            <select
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value as DateFilterType)}
-              className="px-3 py-1.5 text-sm bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-white/20 transition-colors"
-            >
-              <option value="all">All Time</option>
-              <option value="last7days">Last 7 Days</option>
-              <option value="last14days">Last 14 Days</option>
-              <option value="last30days">Last 30 Days</option>
-              <option value="last90days">Last 90 Days</option>
-            </select>
+            <DateRangeFilter 
+              selectedFilter={dateFilter}
+              customRange={customDateRange}
+              onFilterChange={(filter, customRange) => {
+                setDateFilter(filter);
+                setCustomDateRange(customRange);
+              }}
+            />
             
             {/* Time Granularity */}
             <select
@@ -646,13 +816,9 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
             {/* 6 Metric Charts in 3-Column Grid */}
             <div className="grid grid-cols-3 gap-4 min-w-0">
             {metrics.map((metric) => {
-              // Calculate if metric is increasing (comparing first to last data point)
-              const isIncreasing = chartData.length > 1 
-                ? chartData[chartData.length - 1][metric.key] >= chartData[0][metric.key]
-                : true;
-              
-              // Use green for increasing, red for decreasing
-              const displayColor = isIncreasing ? '#22c55e' : '#ef4444';
+              // Use video trend (based on snapshot data, excluding initial upload)
+              // Green for positive trend, red for negative trend
+              const displayColor = videoTrend.isPositive ? '#22c55e' : '#ef4444';
               
               return (
                 <div 

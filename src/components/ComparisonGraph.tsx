@@ -7,13 +7,14 @@ import DataAggregationService, { IntervalType } from '../services/DataAggregatio
 interface ComparisonGraphProps {
   submissions: VideoSubmission[];
   granularity?: 'day' | 'week' | 'month' | 'year';
+  dateRange?: { startDate: Date; endDate: Date }; // Optional: use filter's date range instead of deriving from submissions
 }
 
 type MetricType = 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'videos';
 type ChartType = 'line' | 'area' | 'bar';
 
-const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granularity = 'week' }) => {
-  console.log('🎨 ComparisonGraph rendering with', submissions.length, 'submissions', 'granularity:', granularity);
+const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granularity = 'week', dateRange }) => {
+  console.log('🎨 ComparisonGraph rendering with', submissions.length, 'submissions', 'granularity:', granularity, 'dateRange:', dateRange);
   
   const [metric1, setMetric1] = useState<MetricType>('views');
   const [metric2, setMetric2] = useState<MetricType>('likes');
@@ -62,12 +63,25 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
 
   // Aggregate data by selected granularity
   const chartData = useMemo(() => {
-    if (submissions.length === 0) return [];
+    if (submissions.length === 0 && !dateRange) return [];
     
-    // Determine date range from submissions
-    const dates = submissions.map(v => new Date(v.uploadDate || v.dateSubmitted).getTime());
-    const startDate = new Date(Math.min(...dates));
-    const endDate = new Date(Math.max(...dates));
+    // Determine date range: use provided dateRange or derive from submissions
+    let startDate: Date;
+    let endDate: Date;
+    
+    if (dateRange) {
+      // Use the filter's date range to show full range even if no data
+      startDate = new Date(dateRange.startDate);
+      endDate = new Date(dateRange.endDate);
+      console.log('📅 Using provided dateRange:', startDate.toLocaleDateString(), 'to', endDate.toLocaleDateString());
+    } else {
+      // Fallback: derive from submissions (old behavior)
+      if (submissions.length === 0) return [];
+      const dates = submissions.map(v => new Date(v.uploadDate || v.dateSubmitted).getTime());
+      startDate = new Date(Math.min(...dates));
+      endDate = new Date(Math.max(...dates));
+      console.log('📅 Derived dateRange from submissions:', startDate.toLocaleDateString(), 'to', endDate.toLocaleDateString());
+    }
     
     // Use granularity as interval type
     const intervalType = granularity as IntervalType;
@@ -105,7 +119,7 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
     });
     
     return data;
-  }, [submissions, metric1, metric2, granularity]);
+  }, [submissions, metric1, metric2, granularity, dateRange]);
 
   // Metric colors - matching your theme
   const metric1Color = '#10b981'; // Emerald green for metric 1 (matches activity theme)

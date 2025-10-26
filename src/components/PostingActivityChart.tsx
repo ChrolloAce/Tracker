@@ -68,16 +68,18 @@ const PostingActivityChart: React.FC<PostingActivityChartProps> = ({ submissions
     };
   }, [activityData]);
 
-  // Custom tooltip
+  // Custom tooltip matching KPI card style
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-xl text-xs">
-          <div className="font-semibold">{data.date}</div>
-          <div className="text-gray-300 mt-1">
+        <div className="bg-[#1a1a1a] backdrop-blur-xl text-white px-5 py-3 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10 min-w-[200px]">
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1">
+            {data.date}
+          </p>
+          <p className="text-lg font-bold text-white">
             {data.posts} {data.posts === 1 ? 'post' : 'posts'}
-          </div>
+          </p>
         </div>
       );
     }

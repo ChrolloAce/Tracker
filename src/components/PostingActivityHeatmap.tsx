@@ -161,10 +161,32 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
   const handleMouseEnter = (dayData: DayData, e: React.MouseEvent) => {
     setHoveredDay(dayData);
     const rect = (e.target as HTMLElement).getBoundingClientRect();
-    setTooltipPosition({
-      x: rect.left + rect.width / 2,
-      y: rect.top - 10
-    });
+    
+    // Edge detection for tooltip
+    const tooltipWidth = 400; // Width of tooltip
+    const tooltipHeight = 500; // Max height of tooltip
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    let x = rect.left + rect.width / 2;
+    let y = rect.top - 10;
+    
+    // Check right edge
+    if (x + tooltipWidth / 2 > viewportWidth) {
+      x = viewportWidth - tooltipWidth / 2 - 20; // 20px padding from edge
+    }
+    
+    // Check left edge
+    if (x - tooltipWidth / 2 < 0) {
+      x = tooltipWidth / 2 + 20; // 20px padding from edge
+    }
+    
+    // Check top edge (flip to bottom if needed)
+    if (y - tooltipHeight < 0) {
+      y = rect.bottom + 10; // Show below instead
+    }
+    
+    setTooltipPosition({ x, y });
   };
 
   const handleMouseLeave = () => {
@@ -260,9 +282,8 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
           className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10" 
           style={{ 
             position: 'fixed',
-            left: `${tooltipPosition.x}px`,
-            top: `${tooltipPosition.y + 20}px`,
-            transform: 'translateX(-50%)',
+            left: `${tooltipPosition.x - 200}px`, // Center by subtracting half width
+            top: `${tooltipPosition.y}px`,
             zIndex: 999999999,
             width: '400px',
             maxHeight: '500px',
@@ -324,11 +345,11 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
 
                 {/* Metadata */}
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-white truncate">
+                  <p className="text-sm font-medium text-white truncate leading-tight">
                     {video.title || video.caption || 'Untitled'}
-                  </div>
-                  <div className="text-xs text-gray-400 flex items-center gap-2 mt-0.5">
-                    <span>{video.uploaderHandle}</span>
+                  </p>
+                  <div className="text-xs text-gray-400 flex items-center gap-2 mt-1">
+                    <span className="truncate">{video.uploaderHandle}</span>
                     <span>•</span>
                     <span>{(video.views || 0).toLocaleString()} views</span>
                   </div>

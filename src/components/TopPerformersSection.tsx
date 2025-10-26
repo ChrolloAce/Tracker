@@ -21,6 +21,7 @@ interface TopPerformersSectionProps {
   isEditMode?: boolean;
   onToggleSubsection?: (id: string) => void;
   granularity?: 'day' | 'week' | 'month' | 'year';
+  dateRange?: { startDate: Date; endDate: Date }; // Date range from filter
 }
 
 type SubSectionId = 'top-videos' | 'top-accounts' | 'top-gainers' | 'posting-times' | 'top-creators' | 'top-platforms' | 'comparison';
@@ -33,7 +34,8 @@ const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({
   subsectionVisibility,
   isEditMode = false,
   onToggleSubsection,
-  granularity = 'week'
+  granularity = 'week',
+  dateRange
 }) => {
   console.log('🎯 TopPerformersSection rendering', { 
     subsectionVisibility,
@@ -233,20 +235,16 @@ const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({
                   {/* Info Tooltip */}
                   {showPostingTimesInfo && (
                     <div 
-                      className="absolute left-0 top-full mt-2 w-64 p-3 rounded-lg border shadow-xl z-50"
-                      style={{
-                        backgroundColor: 'rgba(26, 26, 26, 0.98)',
-                        borderColor: 'rgba(255, 255, 255, 0.1)'
-                      }}
+                      className="absolute left-0 top-full mt-2 w-64 p-4 rounded-xl border shadow-[0_8px_32px_rgba(0,0,0,0.8)] z-50 bg-[#1a1a1a] backdrop-blur-xl border-white/10"
                     >
                       <p className="text-xs text-gray-300 leading-relaxed">
-                        Visualizes when your audience is most active throughout the week. Darker cells indicate higher engagement during those hours.
+                        Shows when you post most frequently throughout the week. Brighter cells indicate more videos posted during those hours.
                       </p>
                     </div>
                   )}
                 </div>
               </div>
-              <p className="text-sm text-gray-400">Engagement by day & hour</p>
+              <p className="text-sm text-gray-400">Posting frequency by day & hour</p>
             </div>
 
             {/* Heatmap */}
@@ -261,7 +259,9 @@ const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({
                   videos: [{
                     id: video.id,
                     title: video.title || video.caption || 'Untitled',
-                    thumbnailUrl: video.thumbnail
+                    thumbnailUrl: video.thumbnail,
+                    views: video.views,
+                    uploaderHandle: video.uploaderHandle
                   }]
                 }))}
                 metric="views"
@@ -308,7 +308,7 @@ const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({
         );
       
       case 'comparison':
-        console.log('📊 Rendering comparison subsection');
+        console.log('📊 Rendering comparison subsection with dateRange:', dateRange);
         return (
           <div 
             {...dragHandlers}
@@ -317,6 +317,7 @@ const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({
             <ComparisonGraph
               submissions={submissions}
               granularity={granularity}
+              dateRange={dateRange}
             />
           </div>
         );

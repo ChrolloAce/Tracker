@@ -135,11 +135,30 @@ const KPICards: React.FC<KPICardsProps> = ({
           return DataAggregationService.isDateInInterval(clickDate, hoveredInterval);
         });
         
-        // Calculate PP interval
+        // Calculate PP interval based on date filter, not interval length
+        // This ensures that clicking on a day shows the same day from the comparison period
         if (dateFilter !== 'all') {
-          const periodLength = hoveredInterval.endDate.getTime() - hoveredInterval.startDate.getTime();
-          const ppEndDate = new Date(hoveredInterval.startDate.getTime() - 1);
-          const ppStartDate = new Date(ppEndDate.getTime() - periodLength);
+          // Calculate how far back to go based on date filter
+          let daysBack = 1; // Default to yesterday
+          
+          if (dateFilter === 'last7days') {
+            daysBack = 7;
+          } else if (dateFilter === 'last14days') {
+            daysBack = 14;
+          } else if (dateFilter === 'last30days') {
+            daysBack = 30;
+          } else if (dateFilter === 'last90days') {
+            daysBack = 90;
+          } else if (customRange) {
+            // For custom ranges, calculate the period length in days
+            const rangeLength = Math.ceil((customRange.endDate.getTime() - customRange.startDate.getTime()) / (1000 * 60 * 60 * 24));
+            daysBack = rangeLength;
+          }
+          
+          // Calculate PP interval by going back by the date filter period
+          const intervalLength = hoveredInterval.endDate.getTime() - hoveredInterval.startDate.getTime();
+          const ppEndDate = new Date(hoveredInterval.endDate.getTime() - (daysBack * 24 * 60 * 60 * 1000));
+          const ppStartDate = new Date(ppEndDate.getTime() - intervalLength);
           
           ppIntervalData = {
             startDate: ppStartDate,
@@ -191,9 +210,27 @@ const KPICards: React.FC<KPICardsProps> = ({
         
         // Calculate PP data even for fallback case if date filter is active
         if (dateFilter !== 'all') {
-          // Calculate previous day
+          // Calculate previous period day based on date filter
+          // For example, if filter is 'last7days', go back 7 days
+          // If filter is 'last30days', go back 30 days
+          let daysBack = 1; // Default to yesterday
+          
+          if (dateFilter === 'last7days') {
+            daysBack = 7;
+          } else if (dateFilter === 'last14days') {
+            daysBack = 14;
+          } else if (dateFilter === 'last30days') {
+            daysBack = 30;
+          } else if (dateFilter === 'last90days') {
+            daysBack = 90;
+          } else if (customRange) {
+            // For custom ranges, calculate the period length in days
+            const rangeLength = Math.ceil((customRange.endDate.getTime() - customRange.startDate.getTime()) / (1000 * 60 * 60 * 24));
+            daysBack = rangeLength;
+          }
+          
           const ppDayStart = new Date(dayStart);
-          ppDayStart.setDate(ppDayStart.getDate() - 1);
+          ppDayStart.setDate(ppDayStart.getDate() - daysBack);
           const ppDayEnd = new Date(ppDayStart);
           ppDayEnd.setHours(23, 59, 59, 999);
           
@@ -468,98 +505,82 @@ const KPICards: React.FC<KPICardsProps> = ({
     let ppVideos = 0;
     
     if (ppDateRangeStart && ppDateRangeEnd) {
-      console.log('📊 PP Calculation - Using submissions with platform/rule filters (not date filter):', (allSubmissions || submissions).length);
-      (allSubmissions || submissions).forEach(video => {
+      // For PP calculation, ONLY use videos uploaded during the PP period
+      // This matches the CP logic: we show activity from videos uploaded in that period
+      const relevantVideosForPP = (allSubmissions || submissions).filter(video => {
+        const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
+        // Only include videos uploaded DURING the PP period
+        return uploadDate >= ppDateRangeStart! && uploadDate <= ppDateRangeEnd!;
+      });
+      
+      console.log('📊 PP Calculation - Total videos:', (allSubmissions || submissions).length, '| Relevant for PP:', relevantVideosForPP.length);
+      console.log('📅 PP Date Range:', ppDateRangeStart.toLocaleDateString(), '-', ppDateRangeEnd.toLocaleDateString());
+      console.log('🎬 Relevant videos for PP:', relevantVideosForPP.map(v => ({
+        handle: v.uploaderHandle,
+        uploadDate: new Date(v.uploadDate || v.dateSubmitted).toLocaleDateString(),
+        platform: v.platform,
+        snapshotCount: v.snapshots?.length || 0
+      })));
+      
+      // Since we're only looking at videos uploaded during PP period,
+      // we just use their current totals (same logic as CP)
+      let ppDebugCount = 0;
+      relevantVideosForPP.forEach(video => {
         const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
         
-        if (video.snapshots && video.snapshots.length > 0) {
-          // Get the snapshot closest to (but before or at) the PP range start
-          const snapshotBeforeOrAtStart = video.snapshots
-            .filter(s => new Date(s.capturedAt) <= ppDateRangeStart!)
-            .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-          
-          // Get the snapshot closest to (but before or at) the PP range end
-          const snapshotBeforeOrAtEnd = video.snapshots
-            .filter(s => new Date(s.capturedAt) <= ppDateRangeEnd!)
-            .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-          
-          // Get snapshots that are WITHIN the PP date range
-          const snapshotsInRange = video.snapshots.filter(s => {
-            const capturedDate = new Date(s.capturedAt);
-            return capturedDate >= ppDateRangeStart! && capturedDate <= ppDateRangeEnd!;
+        // Use current video totals (latest snapshot or current values)
+        const videoViews = video.views || 0;
+        const videoLikes = video.likes || 0;
+        const videoComments = video.comments || 0;
+        const videoShares = video.shares || 0;
+        
+        ppViews += videoViews;
+        ppLikes += videoLikes;
+        ppComments += videoComments;
+        ppShares += videoShares;
+        
+        if (videoViews > 0 && ppDebugCount < 5) {
+          console.log(`  📹 PP Video ${ppDebugCount + 1}: ${video.uploaderHandle}`, {
+            uploadDate: uploadDate.toLocaleDateString(),
+            views: videoViews,
+            likes: videoLikes
           });
-          
-          if (snapshotBeforeOrAtStart && snapshotBeforeOrAtEnd && snapshotBeforeOrAtStart !== snapshotBeforeOrAtEnd) {
-            // Both snapshots exist and they're different - calculate growth between them
-            ppViews += Math.max(0, (snapshotBeforeOrAtEnd.views || 0) - (snapshotBeforeOrAtStart.views || 0));
-            ppLikes += Math.max(0, (snapshotBeforeOrAtEnd.likes || 0) - (snapshotBeforeOrAtStart.likes || 0));
-            ppComments += Math.max(0, (snapshotBeforeOrAtEnd.comments || 0) - (snapshotBeforeOrAtStart.comments || 0));
-            ppShares += Math.max(0, (snapshotBeforeOrAtEnd.shares || 0) - (snapshotBeforeOrAtStart.shares || 0));
-          } else if (snapshotBeforeOrAtStart && snapshotBeforeOrAtEnd && snapshotBeforeOrAtStart === snapshotBeforeOrAtEnd && snapshotsInRange.length > 0) {
-            // Both snapshots are the SAME, but we have snapshots WITHIN the PP period
-            const sortedSnapshotsInRange = snapshotsInRange.sort((a, b) => 
-              new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
-            );
-            
-            const lastSnapshotInRange = sortedSnapshotsInRange[sortedSnapshotsInRange.length - 1];
-            
-            // Calculate growth from the snapshot before PP to the last snapshot in PP
-            ppViews += Math.max(0, (lastSnapshotInRange.views || 0) - (snapshotBeforeOrAtStart.views || 0));
-            ppLikes += Math.max(0, (lastSnapshotInRange.likes || 0) - (snapshotBeforeOrAtStart.likes || 0));
-            ppComments += Math.max(0, (lastSnapshotInRange.comments || 0) - (snapshotBeforeOrAtStart.comments || 0));
-            ppShares += Math.max(0, (lastSnapshotInRange.shares || 0) - (snapshotBeforeOrAtStart.shares || 0));
-          } else if (!snapshotBeforeOrAtStart && snapshotsInRange.length > 0) {
-            // No snapshot before period start, but we have snapshots IN the period
-            const sortedSnapshotsInRange = snapshotsInRange.sort((a, b) => 
-              new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
-            );
-            
-            const firstSnapshotInRange = sortedSnapshotsInRange[0];
-            const lastSnapshotInRange = sortedSnapshotsInRange[sortedSnapshotsInRange.length - 1];
-            
-            if (uploadDate >= ppDateRangeStart! && uploadDate <= ppDateRangeEnd!) {
-              // Video was uploaded during PP - count full value from last snapshot
-              ppViews += lastSnapshotInRange.views || 0;
-              ppLikes += lastSnapshotInRange.likes || 0;
-              ppComments += lastSnapshotInRange.comments || 0;
-              ppShares += lastSnapshotInRange.shares || 0;
-            } else {
-              // Video was uploaded BEFORE PP, but we only have snapshots from within PP
-              ppViews += Math.max(0, (lastSnapshotInRange.views || 0) - (firstSnapshotInRange.views || 0));
-              ppLikes += Math.max(0, (lastSnapshotInRange.likes || 0) - (firstSnapshotInRange.likes || 0));
-              ppComments += Math.max(0, (lastSnapshotInRange.comments || 0) - (firstSnapshotInRange.comments || 0));
-              ppShares += Math.max(0, (lastSnapshotInRange.shares || 0) - (firstSnapshotInRange.shares || 0));
-            }
-          } else if (!snapshotBeforeOrAtStart && !snapshotBeforeOrAtEnd) {
-            // No snapshots before the range end
-            if (uploadDate >= ppDateRangeStart! && uploadDate <= ppDateRangeEnd!) {
-              ppViews += video.views || 0;
-              ppLikes += video.likes || 0;
-              ppComments += video.comments || 0;
-              ppShares += video.shares || 0;
-            }
-          }
-        } else {
-          // No snapshots at all
-          if (uploadDate >= ppDateRangeStart! && uploadDate <= ppDateRangeEnd!) {
-            ppViews += video.views || 0;
-            ppLikes += video.likes || 0;
-            ppComments += video.comments || 0;
-            ppShares += video.shares || 0;
-          }
+          ppDebugCount++;
         }
       });
       
-      // Count videos published in PP
-      ppVideos = submissions.filter(v => {
-        const uploadDate = new Date(v.uploadDate || v.dateSubmitted);
-        return uploadDate >= ppDateRangeStart! && uploadDate <= ppDateRangeEnd!;
-      }).length;
+      // Count videos published in PP (already filtered to PP period)
+      ppVideos = relevantVideosForPP.length;
+      
+      console.log('📊 PP Metrics:', {
+        views: ppViews,
+        likes: ppLikes,
+        comments: ppComments,
+        shares: ppShares,
+        videos: ppVideos
+      });
     }
 
+    // Log CP metrics for comparison
+    console.log('📊 CP Metrics:', {
+      views: totalViews,
+      likes: totalLikes,
+      comments: totalComments,
+      shares: totalShares,
+      videos: publishedVideos,
+      accounts: activeAccounts
+    });
+    
     // Calculate deltas (CP - PP)
     const viewsGrowthAbsolute = ppViews === 0 ? totalViews : totalViews - ppViews;
     const viewsGrowth = ppViews > 0 ? ((totalViews - ppViews) / ppViews) * 100 : 0;
+    
+    console.log('📈 Views Delta:', {
+      cpViews: totalViews,
+      ppViews: ppViews,
+      difference: viewsGrowthAbsolute,
+      percentChange: viewsGrowth.toFixed(2) + '%'
+    });
     
     const likesGrowthAbsolute = ppLikes === 0 ? totalLikes : totalLikes - ppLikes;
     const commentsGrowthAbsolute = ppComments === 0 ? totalComments : totalComments - ppComments;
@@ -649,8 +670,7 @@ const KPICards: React.FC<KPICardsProps> = ({
             value: videosPublishedInInterval.length, 
             timestamp,
             interval,
-            ppValue,
-            ppInterval
+            ppValue
           });
         } else if (metric === 'accounts') {
           // For active accounts: count unique accounts that were active IN THIS INTERVAL
@@ -674,8 +694,7 @@ const KPICards: React.FC<KPICardsProps> = ({
             value: uniqueAccountsInInterval, 
             timestamp,
             interval,
-            ppValue,
-            ppInterval
+            ppValue
           });
         } else {
           // Show per-interval values (NOT cumulative)
@@ -764,8 +783,7 @@ const KPICards: React.FC<KPICardsProps> = ({
             value: intervalValue, 
             timestamp,
             interval,
-            ppValue: finalPPValue,
-            ppInterval
+            ppValue: finalPPValue
           });
         }
       }
@@ -783,15 +801,13 @@ const KPICards: React.FC<KPICardsProps> = ({
           value: singlePoint.value,
           timestamp: singlePoint.timestamp - 1,
           interval: singlePoint.interval,
-          ppValue: singlePoint.ppValue,
-          ppInterval: singlePoint.ppInterval
+          ppValue: singlePoint.ppValue
         };
         const paddingRight = {
           value: singlePoint.value,
           timestamp: singlePoint.timestamp + 1,
           interval: singlePoint.interval,
-          ppValue: singlePoint.ppValue,
-          ppInterval: singlePoint.ppInterval
+          ppValue: singlePoint.ppValue
         };
         // Add padding points before and after to create a flat line
         data = [paddingLeft, singlePoint, paddingRight];
@@ -1307,6 +1323,8 @@ const KPICards: React.FC<KPICardsProps> = ({
               timePeriod={timePeriod}
               submissions={submissions}
               linkClicks={linkClicks}
+              dateFilter={dateFilter}
+              customRange={customRange}
               isEditMode={isEditMode}
               isDragging={draggedCard === card.id}
               isDragOver={dragOverCard === card.id}
@@ -1537,6 +1555,8 @@ const KPICard: React.FC<{
   timePeriod?: TimePeriodType;
   submissions?: VideoSubmission[];
   linkClicks?: LinkClick[];
+  dateFilter?: DateFilterType;
+  customRange?: { startDate: Date; endDate: Date };
   isEditMode?: boolean;
   isDragging?: boolean;
   isDragOver?: boolean;
@@ -1551,6 +1571,8 @@ const KPICard: React.FC<{
   onIntervalHover, 
   submissions = [], 
   linkClicks = [],
+  dateFilter = 'all',
+  customRange,
   isEditMode = false,
   isDragging = false,
   isDragOver = false,
@@ -1753,37 +1775,55 @@ const KPICard: React.FC<{
           
           {/* Line Chart - More vertical space for amplitude */}
           <div className="absolute inset-0" style={{ padding: '0' }}>
-            <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-              {(() => {
-                // Calculate intelligent Y-axis domain with outlier capping
-                const values = data.sparklineData.map(d => d.value).filter((v): v is number => typeof v === 'number');
-                const ppValues = data.sparklineData.map(d => d.ppValue).filter((v): v is number => typeof v === 'number' && v > 0);
-                const allValues: number[] = [...values, ...ppValues];
-                
-                if (allValues.length === 0) {
-                  return null;
-                }
-                
-                // Sort to find statistics
-                const sortedValues = [...allValues].sort((a, b) => a - b);
-                const max = sortedValues[sortedValues.length - 1] || 1;
-                const q3 = sortedValues[Math.floor(sortedValues.length * 0.75)] || 1;
-                
-                // Cap outliers: if max is more than 5x the Q3, cap at 2x Q3
-                let yMax = max;
-                if (max > q3 * 5 && q3 > 0) {
-                  yMax = q3 * 2;
-                }
-                
-                // Check if PP data exists
-                const hasPPData = data.sparklineData.some(d => typeof d.ppValue === 'number' && d.ppValue > 0);
-                
-                return (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart 
-                      data={data.sparklineData}
-                      margin={{ top: 4, right: 0, bottom: 4, left: 0 }}
-                    >
+              <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                {(() => {
+                 // Check if single data point
+                 const isSingleDay = data.sparklineData.length === 1;
+                 
+                 // For single day, force both CP and PP dots to bottom
+                 let chartData = data.sparklineData;
+                 let yMax = 1;
+                 
+                 if (isSingleDay) {
+                   // Set domain to [0, 1] and place both dots at bottom (0.05)
+                   yMax = 1;
+                   const singlePoint = data.sparklineData[0];
+                   chartData = [{
+                     ...singlePoint,
+                     value: 0.05, // CP dot at very bottom
+                     ppValue: singlePoint.ppValue !== undefined ? 0.05 : undefined // PP dot at same spot
+                   }];
+                 } else {
+                   // Calculate intelligent Y-axis domain with outlier capping
+                   const values = data.sparklineData.map(d => d.value).filter((v): v is number => typeof v === 'number');
+                   const ppValues = data.sparklineData.map(d => d.ppValue).filter((v): v is number => typeof v === 'number' && v > 0);
+                   const allValues: number[] = [...values, ...ppValues];
+                   
+                   if (allValues.length === 0) {
+                     return null;
+                   }
+                   
+                   // Sort to find statistics
+                   const sortedValues = [...allValues].sort((a, b) => a - b);
+                   const max = sortedValues[sortedValues.length - 1] || 1;
+                   const q3 = sortedValues[Math.floor(sortedValues.length * 0.75)] || 1;
+                   
+                   // Cap outliers: if max is more than 5x the Q3, cap at 2x Q3
+                   yMax = max;
+                   if (max > q3 * 5 && q3 > 0) {
+                     yMax = q3 * 2;
+                   }
+                 }
+                 
+                 // Check if PP data exists
+                 const hasPPData = chartData.some(d => typeof d.ppValue === 'number' && d.ppValue !== undefined);
+                 
+                 return (
+                   <ResponsiveContainer width="100%" height="100%">
+                     <AreaChart 
+                       data={chartData}
+                       margin={{ top: 4, right: 0, bottom: 4, left: 0 }}
+                     >
                       <defs>
                         <linearGradient id={`bottom-gradient-${data.id}`} x1="0" y1="0" x2="0" y2="1">
                           <stop offset="0%" stopColor={colors.stroke} stopOpacity={0.2} />
@@ -1808,7 +1848,7 @@ const KPICard: React.FC<{
                           strokeWidth={1.5}
                           strokeOpacity={0.15}
                           fill="none"
-                          dot={false}
+                          dot={isSingleDay ? { r: 4, fill: 'rgb(156, 163, 175)', fillOpacity: 0.6 } : false}
                           isAnimationActive={false}
                         />
                       )}
@@ -1818,8 +1858,8 @@ const KPICard: React.FC<{
                         dataKey="value"
                         stroke={colors.stroke}
                         strokeWidth={2.5}
-                        fill={`url(#bottom-gradient-${data.id})`}
-                        dot={false}
+                        fill={isSingleDay ? 'none' : `url(#bottom-gradient-${data.id})`}
+                        dot={isSingleDay ? { r: 5, fill: colors.stroke, stroke: '#1a1a1a', strokeWidth: 2 } : false}
                         isAnimationActive={false}
                       />
                     </AreaChart>
@@ -1887,17 +1927,31 @@ const KPICard: React.FC<{
             
             // Get the interval from the data point
             const interval = point.interval;
-            const ppInterval = point.ppInterval;
             
             // Format date based on interval type
             const dateStr = interval 
               ? DataAggregationService.formatIntervalLabelFull(new Date(interval.startDate), interval.intervalType)
               : '';
             
-            // Format PP date if available
-            const ppDateStr = ppInterval
-              ? DataAggregationService.formatIntervalLabelFull(new Date(ppInterval.startDate), ppInterval.intervalType)
-              : '';
+            // Calculate PP interval date
+            let ppDateStr = '';
+            if (interval && dateFilter !== 'all') {
+              let daysBack = 1;
+              if (dateFilter === 'last7days') daysBack = 7;
+              else if (dateFilter === 'last14days') daysBack = 14;
+              else if (dateFilter === 'last30days') daysBack = 30;
+              else if (dateFilter === 'last90days') daysBack = 90;
+              else if (customRange) {
+                const rangeLength = Math.ceil((customRange.endDate.getTime() - customRange.startDate.getTime()) / (1000 * 60 * 60 * 24));
+                daysBack = rangeLength;
+              }
+              
+              const intervalLength = interval.endDate.getTime() - interval.startDate.getTime();
+              const ppEndDate = new Date(interval.endDate.getTime() - (daysBack * 24 * 60 * 60 * 1000));
+              const ppStartDate = new Date(ppEndDate.getTime() - intervalLength);
+              
+              ppDateStr = DataAggregationService.formatIntervalLabelFull(ppStartDate, interval.intervalType);
+            }
             
             // Format value based on metric type
             const formatDisplayNumber = (num: number): string => {
@@ -2015,14 +2069,15 @@ const KPICard: React.FC<{
             
             return (
               <>
-                {/* Header */}
-                <div className="px-5 pt-4 pb-3">
-                  <div className="flex items-center justify-between mb-2">
+                {/* Header with both periods as line items */}
+                <div className="px-5 pt-4 pb-3 space-y-2.5">
+                  {/* Current Period Line */}
+                  <div className="flex items-center justify-between">
                     <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
                       {dateStr}
                     </p>
-                    <div className="flex items-baseline gap-3">
-                      <p className="text-2xl font-bold text-white">
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-xl font-bold text-white">
                         {displayValue}
                       </p>
                       {ppComparison && (
@@ -2032,18 +2087,19 @@ const KPICard: React.FC<{
                       )}
                     </div>
                   </div>
-                  {/* Show Previous Period date if available */}
-                  {ppDateStr && ppComparison && (
-                    <div className="flex items-center justify-between text-xs">
-                      <p className="text-gray-500">
-                        vs {ppDateStr}
+                  
+                  {/* Previous Period Line */}
+                  {ppComparison && ppComparison.displayValue && ppDateStr && (
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">
+                        {ppDateStr}
                       </p>
-                      <p className="text-gray-400">
+                      <p className="text-lg font-semibold text-gray-400">
                         {ppComparison.displayValue}
                       </p>
                     </div>
                   )}
-                </div>
+            </div>
                 
                 {/* Divider */}
                 <div className="border-t border-white/10 mx-5"></div>

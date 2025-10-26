@@ -267,18 +267,10 @@ function DashboardPage() {
   });
   const [userRole, setUserRole] = useState<string>('');
   
-  // Accounts page state
-  const [accountsDateFilter, setAccountsDateFilter] = useState<DateFilterType>(() => {
-    const saved = localStorage.getItem('accountsDateFilter');
-    return (saved as DateFilterType) || 'all';
-  });
+  // Accounts page state (UI-specific, not filters - filters are shared with dashboard)
   const [accountsViewMode, setAccountsViewMode] = useState<'table' | 'details'>(() => {
     const saved = localStorage.getItem('accountsViewMode');
     return (saved as 'table' | 'details') || 'table';
-  });
-  const [accountsPlatformFilter, setAccountsPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'youtube'>(() => {
-    const saved = localStorage.getItem('accountsPlatformFilter');
-    return (saved as 'all' | 'instagram' | 'tiktok' | 'youtube') || 'all';
   });
   const [accountsSearchQuery, setAccountsSearchQuery] = useState('');
   const accountsPageRef = useRef<AccountsPageRef | null>(null);
@@ -417,18 +409,10 @@ function DashboardPage() {
     console.log('  - Matched Rules:', allRules.filter(r => selectedRuleIds.includes(r.id)).length);
   }, [selectedRuleIds, allRules]);
 
-  // Save accounts page filters to localStorage
-  useEffect(() => {
-    localStorage.setItem('accountsDateFilter', accountsDateFilter);
-  }, [accountsDateFilter]);
-
+  // Save accounts page view mode to localStorage
   useEffect(() => {
     localStorage.setItem('accountsViewMode', accountsViewMode);
   }, [accountsViewMode]);
-
-  useEffect(() => {
-    localStorage.setItem('accountsPlatformFilter', accountsPlatformFilter);
-  }, [accountsPlatformFilter]);
 
   // Save tracked links filters to localStorage
   useEffect(() => {
@@ -1039,7 +1023,6 @@ function DashboardPage() {
     const combined = [...pendingVideos, ...filteredSubmissions];
     return combined;
   }, [pendingVideos, filteredSubmissions]);
-
 
   // Handle date filter changes
   const handleDateFilterChange = useCallback((filter: DateFilterType, customRange?: DateRange) => {
@@ -1928,22 +1911,7 @@ function DashboardPage() {
             </div>
           )}
           {activeTab === 'accounts' && (
-            <div className="flex items-center space-x-4">
-              {/* Platform Filter Dropdown */}
-              <div className="relative">
-                <select
-                  value={accountsPlatformFilter}
-                  onChange={(e) => setAccountsPlatformFilter(e.target.value as 'all' | 'instagram' | 'tiktok' | 'youtube')}
-                  className="appearance-none pl-4 pr-10 py-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
-                >
-                  <option value="all" className="bg-gray-900">All Platforms</option>
-                  <option value="instagram" className="bg-gray-900">Instagram</option>
-                  <option value="tiktok" className="bg-gray-900">TikTok</option>
-                  <option value="youtube" className="bg-gray-900">YouTube</option>
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
-              </div>
-
+            <div className="flex items-center space-x-2 flex-shrink-0">
               {/* Search Bar */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
@@ -1956,10 +1924,276 @@ function DashboardPage() {
                 />
               </div>
               
+              {/* Platform Filter - Icon Based */}
+              <div className="relative">
+                <button
+                  onClick={() => setPlatformDropdownOpen(!platformDropdownOpen)}
+                  onBlur={() => setTimeout(() => setPlatformDropdownOpen(false), 200)}
+                  className="flex items-center gap-2 pl-3 pr-8 py-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm min-w-[140px]"
+                  title={dashboardPlatformFilter === 'all' ? 'All Platforms' : dashboardPlatformFilter.charAt(0).toUpperCase() + dashboardPlatformFilter.slice(1)}
+                >
+                  {dashboardPlatformFilter === 'all' ? (
+                    <>
+                      <div className="relative flex items-center" style={{ width: '20px', height: '16px' }}>
+                        <div className="absolute left-0" style={{ zIndex: 3 }}>
+                          <PlatformIcon platform="instagram" size="sm" />
+                        </div>
+                        <div className="absolute left-1.5" style={{ zIndex: 2 }}>
+                          <PlatformIcon platform="tiktok" size="sm" />
+                        </div>
+                        <div className="absolute left-3" style={{ zIndex: 1 }}>
+                          <PlatformIcon platform="youtube" size="sm" />
+                        </div>
+                      </div>
+                      <span className="ml-2">All</span>
+                    </>
+                  ) : (
+                    <>
+                      <PlatformIcon platform={dashboardPlatformFilter as 'instagram' | 'tiktok' | 'youtube'} size="sm" />
+                      <span className="capitalize">{dashboardPlatformFilter}</span>
+                    </>
+                  )}
+                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-white/50" />
+                </button>
+                
+                {platformDropdownOpen && (
+                  <div className="absolute top-full mt-1 w-48 bg-gray-900 border border-white/10 rounded-lg shadow-xl overflow-hidden z-50">
+                    <button
+                      onClick={() => {
+                        setDashboardPlatformFilter('all');
+                        localStorage.setItem('dashboardPlatformFilter', 'all');
+                        setPlatformDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${
+                        dashboardPlatformFilter === 'all' 
+                          ? 'bg-emerald-500/20 text-emerald-400' 
+                          : 'text-white/90 hover:bg-white/5'
+                      }`}
+                    >
+                      <div className="relative flex items-center" style={{ width: '20px', height: '16px' }}>
+                        <div className="absolute left-0" style={{ zIndex: 3 }}>
+                          <PlatformIcon platform="instagram" size="sm" />
+                        </div>
+                        <div className="absolute left-1.5" style={{ zIndex: 2 }}>
+                          <PlatformIcon platform="tiktok" size="sm" />
+                        </div>
+                        <div className="absolute left-3" style={{ zIndex: 1 }}>
+                          <PlatformIcon platform="youtube" size="sm" />
+                        </div>
+                      </div>
+                      <span className="ml-2">All Platforms</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setDashboardPlatformFilter('instagram');
+                        localStorage.setItem('dashboardPlatformFilter', 'instagram');
+                        setPlatformDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${
+                        dashboardPlatformFilter === 'instagram' 
+                          ? 'bg-emerald-500/20 text-emerald-400' 
+                          : 'text-white/90 hover:bg-white/5'
+                      }`}
+                    >
+                      <PlatformIcon platform="instagram" size="sm" />
+                      <span>Instagram</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setDashboardPlatformFilter('tiktok');
+                        localStorage.setItem('dashboardPlatformFilter', 'tiktok');
+                        setPlatformDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${
+                        dashboardPlatformFilter === 'tiktok' 
+                          ? 'bg-emerald-500/20 text-emerald-400' 
+                          : 'text-white/90 hover:bg-white/5'
+                      }`}
+                    >
+                      <PlatformIcon platform="tiktok" size="sm" />
+                      <span>TikTok</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setDashboardPlatformFilter('youtube');
+                        localStorage.setItem('dashboardPlatformFilter', 'youtube');
+                        setPlatformDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${
+                        dashboardPlatformFilter === 'youtube' 
+                          ? 'bg-emerald-500/20 text-emerald-400' 
+                          : 'text-white/90 hover:bg-white/5'
+                      }`}
+                    >
+                      <PlatformIcon platform="youtube" size="sm" />
+                      <span>YouTube</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+              
               <DateRangeFilter
-                selectedFilter={accountsDateFilter}
-                onFilterChange={(filter) => setAccountsDateFilter(filter)}
+                selectedFilter={dateFilter}
+                customRange={customDateRange}
+                onFilterChange={handleDateFilterChange}
               />
+              
+              {/* Rule Filter Button - Icon with Badge */}
+              <button
+                onClick={handleOpenRuleModal}
+                className="relative p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
+                title={selectedRuleIds.length === 0 ? 'All Videos' : `${selectedRuleIds.length} rule${selectedRuleIds.length > 1 ? 's' : ''} applied`}
+              >
+                <Filter className="w-4 h-4" />
+                {selectedRuleIds.length > 0 && (
+                  <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-emerald-500 text-white text-[10px] font-bold rounded-full border-2 border-gray-900">
+                    {selectedRuleIds.length}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
+          {activeTab === 'videos' && (
+            <div className="flex items-center space-x-2 flex-shrink-0">
+              {/* Accounts Filter */}
+              <MultiSelectDropdown
+                options={trackedAccounts.map(account => ({
+                  id: account.id,
+                  label: account.displayName || `@${account.username}`,
+                  avatar: account.profilePicture
+                }))}
+                selectedIds={selectedAccountIds}
+                onChange={setSelectedAccountIds}
+                placeholder="All Accounts"
+              />
+              
+              {/* Platform Filter - Icon Based */}
+              <div className="relative">
+                <button
+                  onClick={() => setPlatformDropdownOpen(!platformDropdownOpen)}
+                  onBlur={() => setTimeout(() => setPlatformDropdownOpen(false), 200)}
+                  className="flex items-center gap-2 pl-3 pr-8 py-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm min-w-[140px]"
+                  title={dashboardPlatformFilter === 'all' ? 'All Platforms' : dashboardPlatformFilter.charAt(0).toUpperCase() + dashboardPlatformFilter.slice(1)}
+                >
+                  {dashboardPlatformFilter === 'all' ? (
+                    <>
+                      <div className="relative flex items-center" style={{ width: '20px', height: '16px' }}>
+                        <div className="absolute left-0" style={{ zIndex: 3 }}>
+                          <PlatformIcon platform="instagram" size="sm" />
+                        </div>
+                        <div className="absolute left-1.5" style={{ zIndex: 2 }}>
+                          <PlatformIcon platform="tiktok" size="sm" />
+                        </div>
+                        <div className="absolute left-3" style={{ zIndex: 1 }}>
+                          <PlatformIcon platform="youtube" size="sm" />
+                        </div>
+                      </div>
+                      <span className="ml-2">All</span>
+                    </>
+                  ) : (
+                    <>
+                      <PlatformIcon platform={dashboardPlatformFilter as 'instagram' | 'tiktok' | 'youtube'} size="sm" />
+                      <span className="capitalize">{dashboardPlatformFilter}</span>
+                    </>
+                  )}
+                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-white/50" />
+                </button>
+                
+                {platformDropdownOpen && (
+                  <div className="absolute top-full mt-1 w-48 bg-gray-900 border border-white/10 rounded-lg shadow-xl overflow-hidden z-50">
+                    <button
+                      onClick={() => {
+                        setDashboardPlatformFilter('all');
+                        localStorage.setItem('dashboardPlatformFilter', 'all');
+                        setPlatformDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${
+                        dashboardPlatformFilter === 'all' 
+                          ? 'bg-emerald-500/20 text-emerald-400' 
+                          : 'text-white/90 hover:bg-white/5'
+                      }`}
+                    >
+                      <div className="relative flex items-center" style={{ width: '20px', height: '16px' }}>
+                        <div className="absolute left-0" style={{ zIndex: 3 }}>
+                          <PlatformIcon platform="instagram" size="sm" />
+                        </div>
+                        <div className="absolute left-1.5" style={{ zIndex: 2 }}>
+                          <PlatformIcon platform="tiktok" size="sm" />
+                        </div>
+                        <div className="absolute left-3" style={{ zIndex: 1 }}>
+                          <PlatformIcon platform="youtube" size="sm" />
+                        </div>
+                      </div>
+                      <span className="ml-2">All Platforms</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setDashboardPlatformFilter('instagram');
+                        localStorage.setItem('dashboardPlatformFilter', 'instagram');
+                        setPlatformDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${
+                        dashboardPlatformFilter === 'instagram' 
+                          ? 'bg-emerald-500/20 text-emerald-400' 
+                          : 'text-white/90 hover:bg-white/5'
+                      }`}
+                    >
+                      <PlatformIcon platform="instagram" size="sm" />
+                      <span>Instagram</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setDashboardPlatformFilter('tiktok');
+                        localStorage.setItem('dashboardPlatformFilter', 'tiktok');
+                        setPlatformDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${
+                        dashboardPlatformFilter === 'tiktok' 
+                          ? 'bg-emerald-500/20 text-emerald-400' 
+                          : 'text-white/90 hover:bg-white/5'
+                      }`}
+                    >
+                      <PlatformIcon platform="tiktok" size="sm" />
+                      <span>TikTok</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setDashboardPlatformFilter('youtube');
+                        localStorage.setItem('dashboardPlatformFilter', 'youtube');
+                        setPlatformDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${
+                        dashboardPlatformFilter === 'youtube' 
+                          ? 'bg-emerald-500/20 text-emerald-400' 
+                          : 'text-white/90 hover:bg-white/5'
+                      }`}
+                    >
+                      <PlatformIcon platform="youtube" size="sm" />
+                      <span>YouTube</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+              
+              <DateRangeFilter
+                selectedFilter={dateFilter}
+                customRange={customDateRange}
+                onFilterChange={handleDateFilterChange}
+              />
+              
+              {/* Rule Filter Button - Icon with Badge */}
+              <button
+                onClick={handleOpenRuleModal}
+                className="relative p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
+                title={selectedRuleIds.length === 0 ? 'All Videos' : `${selectedRuleIds.length} rule${selectedRuleIds.length > 1 ? 's' : ''} applied`}
+              >
+                <Filter className="w-4 h-4" />
+                {selectedRuleIds.length > 0 && (
+                  <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-18px] px-1 bg-emerald-500 text-white text-[10px] font-bold rounded-full border-2 border-gray-900">
+                    {selectedRuleIds.length}
+                  </span>
+                )}
+              </button>
             </div>
           )}
           {activeTab === 'campaigns' && (
@@ -2108,21 +2342,34 @@ function DashboardPage() {
                           />
                         );
                       case 'top-performers':
-                        return (
-                          <TopPerformersSection
-                            submissions={filteredSubmissions}
-                            onVideoClick={handleVideoClick}
-                            onAccountClick={handleAccountClick}
-                            onHeatmapCellClick={({ range }) => {
-                              setDayVideosDate(range.start);
-                              setIsDayVideosModalOpen(true);
-                            }}
-                            subsectionVisibility={topPerformersSubsectionVisibility}
-                            isEditMode={isEditingLayout}
-                            onToggleSubsection={handleToggleCard}
-                            granularity={granularity}
-                          />
-                        );
+                        {
+                          const topPerformersDateRange = DateFilterService.getDateRange(dateFilter, customDateRange);
+                          return (
+                            <TopPerformersSection
+                              submissions={filteredSubmissions}
+                              onVideoClick={handleVideoClick}
+                              onAccountClick={handleAccountClick}
+                              onHeatmapCellClick={({ dayIndex, hour, range }) => {
+                                console.log('🎯 Heatmap cell clicked:', { dayIndex, hour, range });
+                                setDayVideosDate(range.start);
+                                setSelectedAccountFilter(undefined); // Clear account filter for heatmap clicks
+                                // Store day and hour for filtering
+                                (window as any).__heatmapDayOfWeek = dayIndex;
+                                (window as any).__heatmapHourRange = { start: hour, end: hour + 1 };
+                                console.log('💾 Stored filters:', { 
+                                  dayOfWeek: (window as any).__heatmapDayOfWeek,
+                                  hourRange: (window as any).__heatmapHourRange
+                                });
+                                setIsDayVideosModalOpen(true);
+                              }}
+                              subsectionVisibility={topPerformersSubsectionVisibility}
+                              isEditMode={isEditingLayout}
+                              onToggleSubsection={handleToggleCard}
+                              granularity={granularity}
+                              dateRange={topPerformersDateRange}
+                            />
+                          );
+                        }
                       case 'posting-activity':
                         return (
                           <PostingActivityHeatmap 
@@ -2134,11 +2381,13 @@ function DashboardPage() {
                         return (
                           <AccountsPage 
                             ref={accountsPageRef}
-                            dateFilter={accountsDateFilter}
-                            platformFilter={accountsPlatformFilter}
+                            dateFilter={dateFilter}
+                            platformFilter={dashboardPlatformFilter}
                             searchQuery={accountsSearchQuery}
                             onViewModeChange={setAccountsViewMode}
                             pendingAccounts={pendingAccounts}
+                            selectedRuleIds={selectedRuleIds}
+                            dashboardRules={allRules}
                           />
                         );
                       case 'videos-table':
@@ -2216,25 +2465,60 @@ function DashboardPage() {
           {activeTab === 'accounts' && (
             <AccountsPage 
               ref={accountsPageRef}
-              dateFilter={accountsDateFilter}
-              platformFilter={accountsPlatformFilter}
+              dateFilter={dateFilter}
+              platformFilter={dashboardPlatformFilter}
               searchQuery={accountsSearchQuery}
               onViewModeChange={setAccountsViewMode}
               pendingAccounts={pendingAccounts}
+              selectedRuleIds={selectedRuleIds}
+              dashboardRules={allRules}
             />
           )}
 
           {/* Videos Tab */}
           {activeTab === 'videos' && (
-            <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+            <div className="space-y-6">
               {isInitialLoading ? (
                 <DashboardSkeleton height="h-96" />
               ) : (
+                <>
+                  {/* Top Performers Section */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Top Videos */}
+                    <div className="group relative">
+                      <TopPerformersRaceChart
+                        submissions={filteredSubmissions}
+                        onVideoClick={handleVideoClick}
+                        onAccountClick={(username) => {
+                          // Handle account click - could navigate to account details
+                          console.log('Account clicked:', username);
+                        }}
+                        type="videos"
+                      />
+                    </div>
+
+                    {/* Top Gainers */}
+                    <div className="group relative">
+                      <TopPerformersRaceChart
+                        submissions={filteredSubmissions}
+                        onVideoClick={handleVideoClick}
+                        onAccountClick={(username) => {
+                          console.log('Account clicked:', username);
+                        }}
+                        type="gainers"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Videos Table */}
+                  <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
                 <VideoSubmissionsTable 
                   submissions={filteredSubmissions}
                   onVideoClick={handleVideoClick}
                   headerTitle="All Videos"
                 />
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -2358,18 +2642,22 @@ function DashboardPage() {
                 />
               );
             case 'top-performers':
-              return (
-                <TopPerformersSection
-                  submissions={filteredSubmissions}
-                  onVideoClick={handleVideoClick}
-                  onAccountClick={handleAccountClick}
-                  onHeatmapCellClick={() => {}}
-                  subsectionVisibility={topPerformersSubsectionVisibility}
-                  isEditMode={false}
-                  onToggleSubsection={handleToggleCard}
-                  granularity={granularity}
-                />
-              );
+              {
+                const topPerformersDateRangePreview = DateFilterService.getDateRange(dateFilter, customDateRange);
+                return (
+                  <TopPerformersSection
+                    submissions={filteredSubmissions}
+                    onVideoClick={handleVideoClick}
+                    onAccountClick={handleAccountClick}
+                    onHeatmapCellClick={() => {}}
+                    subsectionVisibility={topPerformersSubsectionVisibility}
+                    isEditMode={false}
+                    onToggleSubsection={handleToggleCard}
+                    granularity={granularity}
+                    dateRange={topPerformersDateRangePreview}
+                  />
+                );
+              }
             case 'posting-activity':
               return (
                 <PostingActivityHeatmap 
@@ -2484,10 +2772,13 @@ function DashboardPage() {
               );
             
             case 'comparison':
+              // Get current filter's date range to pass to ComparisonGraph
+              const currentDateRange = DateFilterService.getDateRange(dateFilter, customDateRange);
               return (
                 <ComparisonGraph
                   submissions={filteredSubmissions}
                   granularity={granularity}
+                  dateRange={currentDateRange}
                 />
               );
             
@@ -2500,12 +2791,19 @@ function DashboardPage() {
       {/* Day Videos Modal for Account Clicks */}
       <DayVideosModal
         isOpen={isDayVideosModalOpen}
-        onClose={() => setIsDayVideosModalOpen(false)}
+        onClose={() => {
+          setIsDayVideosModalOpen(false);
+          // Clear heatmap filter data
+          (window as any).__heatmapDayOfWeek = undefined;
+          (window as any).__heatmapHourRange = undefined;
+        }}
         date={dayVideosDate}
         videos={combinedSubmissions}
         metricLabel="Videos"
         accountFilter={selectedAccountFilter}
         dateRangeLabel={getDateFilterLabel(dateFilter)}
+        dayOfWeek={(window as any).__heatmapDayOfWeek}
+        hourRange={(window as any).__heatmapHourRange}
         onVideoClick={handleVideoClick}
       />
 
