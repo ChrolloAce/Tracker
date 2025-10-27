@@ -644,53 +644,58 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         <div className="flex items-center justify-between gap-3 mb-4">
           {/* Left: Period Date Display */}
           <div className="flex items-center gap-3">
-            <div className="text-sm text-gray-400">
-              {showPreviousPeriod ? (
-                <span>
-                  {periodRanges.prevStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                  {' - '}
-                  {periodRanges.prevEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </span>
-              ) : (
-                <span>
-                  {periodRanges.currentStart.getTime() > 0 
-                    ? periodRanges.currentStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                    : 'All time'
-                  }
-                  {periodRanges.currentStart.getTime() > 0 && (
-                    <>
+            {/* Only show date range when not hiding date filter */}
+            {!hideDateFilter && (
+              <>
+                <div className="text-sm text-gray-400">
+                  {showPreviousPeriod ? (
+                    <span>
+                      {periodRanges.prevStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       {' - '}
-                      {periodRanges.currentEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </>
+                      {periodRanges.prevEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  ) : (
+                    <span>
+                      {periodRanges.currentStart.getTime() > 0 
+                        ? periodRanges.currentStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                        : 'All time'
+                      }
+                      {periodRanges.currentStart.getTime() > 0 && (
+                        <>
+                          {' - '}
+                          {periodRanges.currentEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </>
+                      )}
+                    </span>
                   )}
-                </span>
-              )}
-            </div>
-            
-            {/* Previous Period Toggle */}
-            {dateFilter !== 'all' && (
-              <button
-                onClick={() => setShowPreviousPeriod(!showPreviousPeriod)}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg text-emerald-400 hover:text-emerald-300 transition-all"
-              >
-                {showPreviousPeriod ? (
-                  <>
-                    <ChevronRight className="w-4 h-4" />
-                    Show Current Period
-                  </>
-                ) : (
-                  <>
-                    <ChevronLeft className="w-4 h-4" />
-                    Show Previous {
-                      dateFilter === 'last7days' ? '7 Days' :
-                      dateFilter === 'last14days' ? '14 Days' :
-                      dateFilter === 'last30days' ? '30 Days' :
-                      dateFilter === 'last90days' ? '90 Days' :
-                      'Period'
-                    }
-                  </>
+                </div>
+                
+                {/* Previous Period Toggle */}
+                {dateFilter !== 'all' && (
+                  <button
+                    onClick={() => setShowPreviousPeriod(!showPreviousPeriod)}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg text-emerald-400 hover:text-emerald-300 transition-all"
+                  >
+                    {showPreviousPeriod ? (
+                      <>
+                        <ChevronRight className="w-4 h-4" />
+                        Show Current Period
+                      </>
+                    ) : (
+                      <>
+                        <ChevronLeft className="w-4 h-4" />
+                        Show Previous {
+                          dateFilter === 'last7days' ? '7 Days' :
+                          dateFilter === 'last14days' ? '14 Days' :
+                          dateFilter === 'last30days' ? '30 Days' :
+                          dateFilter === 'last90days' ? '90 Days' :
+                          'Period'
+                        }
+                      </>
+                    )}
+                  </button>
                 )}
-              </button>
+              </>
             )}
           </div>
           
