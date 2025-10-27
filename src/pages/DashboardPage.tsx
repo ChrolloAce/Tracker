@@ -2597,6 +2597,7 @@ function DashboardPage() {
         isOpen={isAnalyticsModalOpen}
         onClose={handleCloseAnalyticsModal}
         totalCreatorVideos={totalCreatorVideos}
+        hideDateFilter={true}
       />
 
       {/* KPI Card Editor Modal */}
