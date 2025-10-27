@@ -446,23 +446,21 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     }
   }, [isAddModalOpen]);
 
-  // Load videos and rules when an account is selected
+  // Load videos and rules when an account is selected OR filters change
   useEffect(() => {
     if (selectedAccount && currentOrgId && currentProjectId) {
       loadAccountVideos(selectedAccount.id);
-      setViewMode('details');
-      onViewModeChange('details');
+      
+      // Only update view mode on initial account selection (not on filter changes)
+      if (viewMode !== 'details') {
+        setViewMode('details');
+        onViewModeChange('details');
+      }
+      
       // Save to localStorage for restoration
       localStorage.setItem('selectedAccountId', selectedAccount.id);
     }
-  }, [selectedAccount?.id, currentOrgId, currentProjectId, loadAccountVideos, onViewModeChange]);
-
-  // Reload videos when filters change (rules or date)
-  useEffect(() => {
-    if (selectedAccount && currentOrgId && currentProjectId) {
-      loadAccountVideos(selectedAccount.id);
-    }
-  }, [selectedRuleIds, dateFilter, selectedAccount, currentOrgId, currentProjectId, loadAccountVideos]);
+  }, [selectedAccount?.id, currentOrgId, currentProjectId, selectedRuleIds, dateFilter, dashboardRules]);
 
   // Real-time listener for accounts
   useEffect(() => {
