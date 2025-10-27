@@ -262,14 +262,17 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       (a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
     );
     
-    // Apply date filter based on current or previous period
-    const filterStart = showPreviousPeriod ? periodRanges.prevStart : periodRanges.currentStart;
-    const filterEnd = showPreviousPeriod ? periodRanges.prevEnd : periodRanges.currentEnd;
-    
-    const filteredSnapshots = sortedSnapshots.filter(snapshot => {
-      const snapshotTime = new Date(snapshot.capturedAt).getTime();
-      return snapshotTime >= filterStart.getTime() && snapshotTime <= filterEnd.getTime();
-    });
+    // Apply date filter based on current or previous period (skip if hideDateFilter is true)
+    let filteredSnapshots = sortedSnapshots;
+    if (!hideDateFilter) {
+      const filterStart = showPreviousPeriod ? periodRanges.prevStart : periodRanges.currentStart;
+      const filterEnd = showPreviousPeriod ? periodRanges.prevEnd : periodRanges.currentEnd;
+      
+      filteredSnapshots = sortedSnapshots.filter(snapshot => {
+        const snapshotTime = new Date(snapshot.capturedAt).getTime();
+        return snapshotTime >= filterStart.getTime() && snapshotTime <= filterEnd.getTime();
+      });
+    }
 
     // Append current video stats if different from last snapshot (only for current period, not previous)
     const allSnapshots = [...filteredSnapshots];
@@ -387,7 +390,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     }
     
     return data;
-  }, [video?.id, video?.views, video?.likes, video?.comments, video?.shares, video?.snapshots?.length, dateFilter, showPreviousPeriod, periodRanges, timeGranularity]);
+  }, [video?.id, video?.views, video?.likes, video?.comments, video?.shares, video?.snapshots?.length, dateFilter, showPreviousPeriod, periodRanges, timeGranularity, hideDateFilter]);
 
   // Calculate cumulative totals for KPI display based on filtered period
   const cumulativeTotals = useMemo(() => {
@@ -983,7 +986,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
             <ResponsiveContainer width="100%" height="100%">
                             <AreaChart 
                               data={chartData}
-                              margin={{ top: 5, right: 5, bottom: 5, left: 5 }}
+                              margin={{ top: 2, right: 0, bottom: 2, left: 0 }}
                             >
                 <defs>
                                 <linearGradient id={`gradient-${metric.key}`} x1="0" y1="0" x2="0" y2="1">
@@ -1009,16 +1012,13 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
               const chartHeight = tooltipData.chartRect.height;
               const dataIndex = tooltipData.dataIndex;
               
-              // Chart margins from AreaChart component (must match the margin prop)
-              const marginTop = 5;
-              const marginBottom = 5;
-              const marginLeft = 5;
-              const marginRight = 5;
+              // Chart margins from AreaChart component
+              const marginTop = 2;
+              const marginBottom = 2;
               const availableHeight = chartHeight - marginTop - marginBottom;
-              const availableWidth = chartWidth - marginLeft - marginRight;
               
-              // X position based on data index (accounting for left margin)
-              const xPosition = marginLeft + (dataIndex / Math.max(chartData.length - 1, 1)) * availableWidth;
+              // X position based on data index
+              const xPosition = (dataIndex / Math.max(chartData.length - 1, 1)) * chartWidth;
               
               // Calculate y position based on data value with proper scaling
               const values = chartData.map(d => d[metric.key]);
