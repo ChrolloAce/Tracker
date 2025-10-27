@@ -4,7 +4,8 @@ import FirebaseStorageService from './FirebaseStorageService';
 import OutlierDetectionService from './OutlierDetectionService';
 import YoutubeAccountService from './YoutubeAccountService';
 import TwitterApiService from './TwitterApiService';
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp, writeBatch, doc, collection } from 'firebase/firestore';
+import { db } from './firebase';
 
 /**
  * AccountTrackingServiceFirebase
@@ -494,6 +495,7 @@ export class AccountTrackingServiceFirebase {
 
   /**
    * Sync account videos (fetch all videos from the platform and save to Firestore)
+   * Now with INCREMENTAL SYNC: Only fetches new videos, updates snapshots for existing ones
    */
   static async syncAccountVideos(orgId: string, projectId: string, userId: string, accountId: string): Promise<number> {
     try {
@@ -507,10 +509,21 @@ export class AccountTrackingServiceFirebase {
 
       console.log(`🔄 Syncing videos for @${account.username} (${account.platform})`);
 
-      // Fetch videos from platform
+      // STEP 1: Get existing videos to check what we already have
+      const existingVideos = await this.getAccountVideos(orgId, projectId, accountId);
+      const existingVideoIds = new Set(existingVideos.map(v => v.videoId).filter((id): id is string => !!id));
+      console.log(`📚 Found ${existingVideoIds.size} existing videos in database`);
+
+      // STEP 2: Update snapshots for all existing videos (refresh their metrics)
+      if (existingVideos.length > 0) {
+        console.log(`📸 Updating snapshots for ${existingVideos.length} existing videos...`);
+        await this.updateVideoSnapshots(orgId, projectId, existingVideos);
+      }
+
+      // STEP 3: Fetch NEW videos incrementally (only videos we don't have yet)
       let videos: AccountVideo[];
       if (account.platform === 'instagram') {
-        videos = await this.syncInstagramVideos(orgId, projectId, account);
+        videos = await this.syncInstagramVideosIncremental(orgId, account, existingVideoIds);
       } else if (account.platform === 'tiktok') {
         videos = await this.syncTikTokVideos(orgId, account);
       } else if (account.platform === 'twitter') {
@@ -520,7 +533,7 @@ export class AccountTrackingServiceFirebase {
         videos = await this.syncYoutubeShorts(orgId, account);
       }
 
-      console.log(`📹 Fetched ${videos.length} videos from platform`);
+      console.log(`📹 Fetched ${videos.length} NEW videos from platform`);
 
       // NOTE: Rules are applied during DISPLAY, not during sync
       // All videos are saved to Firestore, rules filter what's shown in the UI
@@ -589,215 +602,211 @@ export class AccountTrackingServiceFirebase {
   }
 
   /**
-   * Sync Instagram videos - USING NEW WORKING SCRAPER!
+   * NEW: Incremental Instagram sync - Only fetches NEW videos we don't have
+   * Uses batches of 2 videos, stops when it hits a known video
+   * For new accounts (no existing videos), fetches larger batches to get initial history
    */
-  private static async syncInstagramVideos(orgId: string, projectId: string, account: TrackedAccount): Promise<AccountVideo[]> {
-    console.log(`🔄 Fetching Instagram videos for @${account.username} using NEW Reels Scraper...`);
+  private static async syncInstagramVideosIncremental(
+    orgId: string, 
+    account: TrackedAccount,
+    existingVideoIds: Set<string>
+  ): Promise<AccountVideo[]> {
+    const isNewAccount = existingVideoIds.size === 0;
+    console.log(`🎯 Starting ${isNewAccount ? 'FULL' : 'INCREMENTAL'} sync for @${account.username}...`);
     
-    // Use account's maxVideos preference, default to 100 if not set
-    const maxReels = (account as any).maxVideos || 100;
-    console.log(`📊 Scraping up to ${maxReels} Instagram reels for @${account.username}`);
+    const newVideos: AccountVideo[] = [];
+    // For new accounts, fetch more videos per batch to get their full history faster
+    const BATCH_SIZE = isNewAccount ? 20 : 2;
+    let currentBatch = 0;
+    let hitKnownVideo = false;
+    // For new accounts, allow more batches to get full history (up to 100 videos)
+    const MAX_BATCHES = isNewAccount ? 5 : 25; // New: 5 * 20 = 100 videos, Incremental: 25 * 2 = 50 videos
     
-    const proxyUrl = `${window.location.origin}/api/apify-proxy`;
-    
-    // Get Instagram session cookie from environment variable
-    const sessionId = import.meta.env.VITE_INSTAGRAM_SESSION_ID || '';
-    console.log('🔐 Instagram auth:', sessionId ? 'Using session cookies ✓' : '⚠️ No session cookies (may fail with 401)');
-    
-    const response = await fetch(proxyUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        // NEW WORKING SCRAPER with RESIDENTIAL proxies!
-        actorId: 'scraper-engine~instagram-reels-scraper',
-        input: {
-          urls: [`https://www.instagram.com/${account.username}/`],
-          sortOrder: "newest",
-          maxComments: 10,
-          maxReels: maxReels, // Use user's preference
-          // 🔑 ADD SESSION COOKIES FOR AUTHENTICATION
-          ...(sessionId && {
-            sessionCookie: sessionId,
-            additionalCookies: [
-              {
-                name: 'sessionid',
-                value: sessionId,
-                domain: '.instagram.com'
-              }
-            ]
+    while (!hitKnownVideo && currentBatch < MAX_BATCHES) {
+      currentBatch++;
+      const maxReels = BATCH_SIZE * currentBatch;
+      
+      console.log(`📦 Batch ${currentBatch}: Fetching up to ${maxReels} videos...`);
+      
+      try {
+        // Fetch videos from platform
+        const proxyUrl = `${window.location.origin}/api/apify-proxy`;
+        const sessionId = import.meta.env.VITE_INSTAGRAM_SESSION_ID || '';
+        
+        const response = await fetch(proxyUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            actorId: 'scraper-engine~instagram-reels-scraper',
+            input: {
+              urls: [`https://www.instagram.com/${account.username}/`],
+              sortOrder: "newest",
+              maxComments: 10,
+              maxReels: maxReels, // Incrementally increase
+              ...(sessionId && {
+                sessionCookie: sessionId,
+                additionalCookies: [{
+                  name: 'sessionid',
+                  value: sessionId,
+                  domain: '.instagram.com'
+                }]
+              }),
+              proxyConfiguration: {
+                useApifyProxy: true,
+                apifyProxyGroups: ['RESIDENTIAL'],
+                apifyProxyCountry: 'US'
+              },
+              maxRequestRetries: 5,
+              requestHandlerTimeoutSecs: 300,
+              maxConcurrency: 1
+            },
+            action: 'run'
           }),
-          proxyConfiguration: {
-            useApifyProxy: true,
-            apifyProxyGroups: ['RESIDENTIAL'],  // 🔑 Use RESIDENTIAL proxies to avoid Instagram 429 blocks
-            apifyProxyCountry: 'US'  // Use US proxies for better compatibility
-          },
-          // Additional anti-blocking measures
-          maxRequestRetries: 5,
-          requestHandlerTimeoutSecs: 300,
-          maxConcurrency: 1
-        },
-        action: 'run'
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const result = await response.json();
-    console.log(`📊 NEW Scraper returned ${result.items?.length || 0} items`);
-
-    if (!result.items || !Array.isArray(result.items)) {
-      console.warn('⚠️ No items returned from NEW Instagram scraper');
-      return [];
-    }
-
-    // Extract and update profile info from first item (NEW SCRAPER FORMAT)
-    if (result.items.length > 0) {
-      const firstItem = result.items[0];
-      // NEW SCRAPER: Data is nested under reel_data.media
-      const media = firstItem.reel_data?.media || firstItem.media || firstItem;
-      
-      const profileFullName = media.user?.full_name || media.owner?.full_name;
-      
-      // Get HD profile picture (best quality) with fallbacks
-      const profilePicUrl = media.user?.hd_profile_pic_url_info?.url ||      // HD version (925x925)
-                            media.owner?.hd_profile_pic_url_info?.url ||     // HD version from owner
-                            media.user?.profile_pic_url ||                   // Standard version (150x150)
-                            media.owner?.profile_pic_url ||                  // Standard from owner
-                            '';
-      
-      if (profileFullName || profilePicUrl) {
-        console.log('👤 Updating Instagram profile from NEW scraper...');
-        
-        // Download and save profile picture if available
-        let uploadedProfilePic = account.profilePicture;
-        if (profilePicUrl) {
-          try {
-            console.log('📸 Downloading profile picture from NEW scraper...');
-            uploadedProfilePic = await FirebaseStorageService.downloadAndUpload(
-              orgId,
-              profilePicUrl,
-              `ig_profile_${account.username}`,
-              'profile'
-            );
-            console.log('✅ Profile picture uploaded to Firebase Storage');
-          } catch (error) {
-            console.warn('⚠️ Failed to upload profile picture:', error);
-            uploadedProfilePic = profilePicUrl; // Use original URL as fallback
-          }
-        }
-        
-        // Update account with profile data
-        const profileUpdates: any = {};
-        if (profileFullName) {
-          profileUpdates.displayName = profileFullName;
-        }
-        if (uploadedProfilePic && uploadedProfilePic !== account.profilePicture) {
-          profileUpdates.profilePicture = uploadedProfilePic;
-        }
-        
-        if (Object.keys(profileUpdates).length > 0) {
-          await FirestoreDataService.updateTrackedAccount(orgId, projectId, account.id, profileUpdates);
-          console.log('✅ Updated Instagram profile for @' + account.username);
-        }
-      }
-    }
-
-    const videos: AccountVideo[] = [];
-
-    for (const item of result.items) {
-      // NEW SCRAPER: Data is nested under 'reel_data.media'
-      const media = item.reel_data?.media || item.media || item;
-      
-      // Filter for videos only (check for play_count or video_duration)
-      const isVideo = !!(media.play_count || media.ig_play_count || media.video_duration);
-      if (!isVideo) {
-        console.log(`⏭️ Skipping non-video item (no play_count or video_duration)`);
-        continue;
-      }
-
-      // NEW SCRAPER: Use 'code' field for ID
-      const videoCode = media.code || media.shortCode || media.id;
-      if (!videoCode) {
-        console.warn('⚠️ Video missing code/ID, skipping');
-        continue;
-      }
-
-      // NEW SCRAPER: Thumbnail from image_versions2
-      let thumbnailUrl = '';
-      if (media.image_versions2?.candidates && media.image_versions2.candidates.length > 0) {
-        thumbnailUrl = media.image_versions2.candidates[0].url;
-      } else if (media.display_uri) {
-        thumbnailUrl = media.display_uri;
-      } else if (media.displayUrl) {
-        thumbnailUrl = media.displayUrl;
-      }
-
-      // Upload thumbnail to Firebase Storage if we have one
-      let uploadedThumbnail = thumbnailUrl;
-      if (thumbnailUrl) {
-        try {
-          uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
-            orgId,
-            thumbnailUrl,
-            `ig_${videoCode}`,
-            'thumbnail'
-          );
-        } catch (error) {
-          console.warn(`⚠️ Failed to upload thumbnail for ${videoCode}, using original URL:`, error);
-          uploadedThumbnail = thumbnailUrl;
-        }
-      }
-
-      // NEW SCRAPER: Caption is nested under caption.text
-      const caption = media.caption?.text || (typeof media.caption === 'string' ? media.caption : '') || '';
-      
-      // NEW SCRAPER: Upload date from taken_at (Unix seconds)
-      const uploadDate = media.taken_at 
-        ? new Date(media.taken_at * 1000) 
-        : (media.takenAt ? new Date(media.takenAt * 1000) : new Date());
-
-      // NEW SCRAPER: Metrics with correct field names
-      const views = media.play_count || media.ig_play_count || 0;
-      const likes = media.like_count || 0;
-      const comments = media.comment_count || 0;
-      const duration = media.video_duration || 0;
-
-      // Debug: Log first video
-      if (videos.length === 0) {
-        console.log('🔍 NEW Scraper first video:', {
-          code: videoCode,
-          caption: caption.substring(0, 50),
-          views,
-          likes,
-          comments,
-          duration,
-          uploadDate: uploadDate.toISOString()
         });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        const items = result.items || [];
+        
+        console.log(`📊 Batch ${currentBatch} returned ${items.length} items`);
+        
+        if (items.length === 0) {
+          console.log(`✅ No more videos available, stopping`);
+          break;
+        }
+        
+        // Process videos in this batch
+        for (const item of items) {
+          const media = item.reel_data?.media || item.media || item;
+          const isVideo = !!(media.play_count || media.ig_play_count || media.video_duration);
+          
+          if (!isVideo) continue;
+          
+          const videoCode = media.code || media.shortCode || media.id;
+          if (!videoCode) continue;
+          
+          // CHECK: Have we seen this video before?
+          if (existingVideoIds.has(videoCode)) {
+            console.log(`✅ Hit known video: ${videoCode} - Stopping incremental fetch`);
+            hitKnownVideo = true;
+            break;
+          }
+          
+          // NEW VIDEO! Add it to the list
+          let thumbnailUrl = media.image_versions2?.candidates?.[0]?.url || 
+                            media.display_uri || 
+                            media.displayUrl || '';
+          
+          let uploadedThumbnail = thumbnailUrl;
+          if (thumbnailUrl) {
+            try {
+              uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
+                orgId,
+                thumbnailUrl,
+                `ig_${videoCode}`,
+                'thumbnail'
+              );
+            } catch (error) {
+              console.warn(`⚠️ Failed to upload thumbnail for ${videoCode}`);
+              uploadedThumbnail = thumbnailUrl;
+            }
+          }
+          
+          const caption = media.caption?.text || (typeof media.caption === 'string' ? media.caption : '') || '';
+          const uploadDate = media.taken_at ? new Date(media.taken_at * 1000) : new Date();
+          const views = media.play_count || media.ig_play_count || 0;
+          const likes = media.like_count || 0;
+          const comments = media.comment_count || 0;
+          const duration = media.video_duration || 0;
+          
+          newVideos.push({
+            id: `${account.id}_${videoCode}`,
+            accountId: account.id,
+            videoId: videoCode,
+            url: `https://www.instagram.com/reel/${videoCode}/`,
+            thumbnail: uploadedThumbnail,
+            caption: caption,
+            uploadDate: uploadDate,
+            views: views,
+            likes: likes,
+            comments: comments,
+            shares: 0,
+            duration: duration,
+            isSponsored: false,
+            hashtags: [],
+            mentions: []
+          });
+          
+          console.log(`➕ NEW video found: ${videoCode} (${newVideos.length} total new)`);
+        }
+        
+        if (hitKnownVideo) {
+          console.log(`✅ Incremental sync complete: Found ${newVideos.length} new videos`);
+          break;
+        }
+        
+        // If we got fewer items than maxReels, we've reached the end
+        if (items.length < maxReels) {
+          console.log(`✅ Reached end of account videos (got ${items.length} < ${maxReels})`);
+          break;
+        }
+        
+      } catch (error) {
+        console.error(`❌ Error in batch ${currentBatch}:`, error);
+        break;
       }
-
-      videos.push({
-        id: `${account.id}_${videoCode}`,
-        accountId: account.id,
-        videoId: videoCode,
-        url: `https://www.instagram.com/reel/${videoCode}/`,
-        thumbnail: uploadedThumbnail,
-        caption: caption,
-        uploadDate: uploadDate,
-        views: views,
-        likes: likes,
-        comments: comments,
-        shares: 0, // Instagram doesn't provide share count via API
-        duration: duration,
-        isSponsored: false,
-        hashtags: [], // Could extract from caption if needed
-        mentions: [] // Could extract from caption if needed
-      });
     }
+    
+    console.log(`🎉 Incremental sync finished: ${newVideos.length} new videos, ${currentBatch} batches`);
+    return newVideos;
+  }
 
-    console.log(`✅ Fetched ${videos.length} Instagram videos using NEW scraper`);
-    return videos;
+  /**
+   * NEW: Update snapshots for existing videos (refresh their metrics)
+   */
+  private static async updateVideoSnapshots(
+    orgId: string,
+    projectId: string,
+    videos: AccountVideo[]
+  ): Promise<void> {
+    console.log(`📸 Creating snapshots for ${videos.length} videos...`);
+    
+    const batch = writeBatch(db);
+    const now = Timestamp.now();
+    let snapshotCount = 0;
+    
+    for (const video of videos) {
+      const snapshotRef = doc(
+        collection(db, 'organizations', orgId, 'projects', projectId, 'videos', video.id || video.videoId || '', 'snapshots')
+      );
+      
+      const snapshot = {
+        capturedAt: now,
+        views: video.views || 0,
+        likes: video.likes || 0,
+        comments: video.comments || 0,
+        shares: video.shares || 0,
+        saves: 0
+      };
+      
+      batch.set(snapshotRef, snapshot);
+      snapshotCount++;
+      
+      // Firestore batch limit is 500 operations
+      if (snapshotCount % 500 === 0) {
+        await batch.commit();
+        console.log(`✅ Committed ${snapshotCount} snapshots...`);
+      }
+    }
+    
+    if (snapshotCount % 500 !== 0) {
+      await batch.commit();
+    }
+    
+    console.log(`✅ Created ${snapshotCount} snapshots for existing videos`);
   }
 
   /**
