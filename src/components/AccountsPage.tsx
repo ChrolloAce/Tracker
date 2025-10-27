@@ -788,117 +788,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     return sorted;
   }, [filteredAccounts, accounts, platformFilter, searchQuery, sortBy, sortOrder]);
 
-  // REAL-TIME listener for selected account's videos
-  useEffect(() => {
-    if (!selectedAccount || !currentOrgId || !currentProjectId) {
-      setViewMode('table');
-      onViewModeChange('table');
-      setAccountVideos([]);
-      localStorage.removeItem('selectedAccountId');
-      return;
-    }
-
-    setViewMode('details');
-    onViewModeChange('details');
-    localStorage.setItem('selectedAccountId', selectedAccount.id);
-    setCurrentPage(1);
-
-    // Load videos from the MAIN videos collection, filtered by trackedAccountId
-    const videosRef = collection(
-      db, 
-      'organizations', currentOrgId, 
-      'projects', currentProjectId, 
-      'videos'
-    );
-    const videosQuery = query(
-      videosRef, 
-      where('trackedAccountId', '==', selectedAccount.id),
-      orderBy('uploadDate', 'desc')
-    );
-
-    // One-time load for videos (replaced real-time listener)
-    (async () => {
-      try {
-        const snapshot = await getDocs(videosQuery);
-      
-      const videos: AccountVideo[] = snapshot.docs.map(doc => {
-        const data = doc.data();
-        
-        return {
-          id: doc.id,
-          accountId: selectedAccount.id,
-          videoId: data.videoId || '',
-          url: data.videoUrl || data.url || '',
-          thumbnail: data.thumbnail || '',
-          caption: data.caption || data.videoTitle || '',
-          title: data.videoTitle || data.caption || '',
-          uploadDate: data.uploadDate?.toDate() || new Date(),
-          views: data.views || 0,
-          viewsCount: data.views || 0,
-          likes: data.likes || 0,
-          likesCount: data.likes || 0,
-          comments: data.comments || 0,
-          commentsCount: data.comments || 0,
-          shares: data.shares || 0,
-          sharesCount: data.shares || 0,
-          duration: data.duration || 0,
-          isSponsored: data.isSponsored || false,
-          hashtags: data.hashtags || [],
-          mentions: data.mentions || []
-        } as AccountVideo;
-      });
-
-      // Apply rules filtering
-      const rulesFilteredVideos = await RulesService.filterVideosByRules(
-        currentOrgId,
-        currentProjectId,
-        selectedAccount.id,
-        selectedAccount.platform,
-        videos
-      );
-
-      // Apply date filtering
-      const videoSubmissions: VideoSubmission[] = rulesFilteredVideos.map(v => ({
-        id: v.id || v.videoId || '',
-        url: v.url || '',
-        platform: selectedAccount.platform,
-        thumbnail: v.thumbnail || '',
-        title: v.caption || v.title || '',
-        caption: v.caption || v.title || '',
-        uploader: selectedAccount.displayName || selectedAccount.username,
-        uploaderHandle: selectedAccount.username,
-        uploaderProfilePicture: selectedAccount.profilePicture,
-        followerCount: selectedAccount.followerCount,
-        status: 'approved' as const,
-        views: v.views || 0,
-        likes: v.likes || 0,
-        comments: v.comments || 0,
-        shares: v.shares || 0,
-        dateSubmitted: v.uploadDate || new Date(),
-        uploadDate: v.uploadDate || new Date(),
-        snapshots: []
-      }));
-
-      // Store unfiltered videos for PP calculation
-      setAllAccountVideos(rulesFilteredVideos);
-
-      const dateFilteredSubmissions = DateFilterService.filterVideosByDateRange(
-        videoSubmissions,
-        dateFilter
-      );
-
-      // Convert back to AccountVideo
-      const finalFilteredVideos: AccountVideo[] = dateFilteredSubmissions.map(sub => {
-        const originalVideo = rulesFilteredVideos.find(v => (v.id || v.videoId) === sub.id);
-        return originalVideo || sub as any;
-      });
-
-      setAccountVideos(finalFilteredVideos);
-      } catch (error) {
-        console.error('❌ Failed to load videos:', error);
-      }
-    })();
-  }, [selectedAccount, currentOrgId, currentProjectId, onViewModeChange, dateFilter]);
+  // NOTE: Removed duplicate useEffect - video loading is now handled by loadAccountVideos() 
+  // which is called from the useEffect at line ~450 with dashboard rules properly applied
 
   const handleSyncAccount = useCallback(async (accountId: string) => {
     if (!currentOrgId || !currentProjectId || !user) return;
@@ -912,19 +803,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       const updatedAccounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
       setAccounts(updatedAccounts);
       
-      // Update videos if this account is selected
+      // Update videos if this account is selected - use loadAccountVideos for consistent filtering
       if (selectedAccount?.id === accountId) {
-        const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, currentProjectId, accountId);
-        
-        // Apply rules to filter
-        const filteredVideos = await RulesService.filterVideosByRules(
-          currentOrgId,
-          currentProjectId,
-          accountId,
-          selectedAccount.platform,
-          videos
-        );
-        setAccountVideos(filteredVideos);
+        await loadAccountVideos(accountId);
       }
       
       
@@ -942,7 +823,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     } finally {
       setIsSyncing(null);
     }
-  }, [selectedAccount, currentOrgId, user]);
+  }, [selectedAccount, currentOrgId, currentProjectId, user, loadAccountVideos]);
 
   // Handle URL input change and auto-detect platform
   const handleUrlChange = useCallback((url: string) => {
