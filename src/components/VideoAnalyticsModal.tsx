@@ -983,7 +983,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
             <ResponsiveContainer width="100%" height="100%">
                             <AreaChart 
                               data={chartData}
-                              margin={{ top: 2, right: 0, bottom: 2, left: 0 }}
+                              margin={{ top: 5, right: 5, bottom: 5, left: 5 }}
                             >
                 <defs>
                                 <linearGradient id={`gradient-${metric.key}`} x1="0" y1="0" x2="0" y2="1">
@@ -1009,13 +1009,16 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
               const chartHeight = tooltipData.chartRect.height;
               const dataIndex = tooltipData.dataIndex;
               
-              // Chart margins from AreaChart component
-              const marginTop = 2;
-              const marginBottom = 2;
+              // Chart margins from AreaChart component (must match the margin prop)
+              const marginTop = 5;
+              const marginBottom = 5;
+              const marginLeft = 5;
+              const marginRight = 5;
               const availableHeight = chartHeight - marginTop - marginBottom;
+              const availableWidth = chartWidth - marginLeft - marginRight;
               
-              // X position based on data index
-              const xPosition = (dataIndex / Math.max(chartData.length - 1, 1)) * chartWidth;
+              // X position based on data index (accounting for left margin)
+              const xPosition = marginLeft + (dataIndex / Math.max(chartData.length - 1, 1)) * availableWidth;
               
               // Calculate y position based on data value with proper scaling
               const values = chartData.map(d => d[metric.key]);
