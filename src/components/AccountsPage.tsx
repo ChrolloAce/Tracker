@@ -139,7 +139,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   // Track if we've already done the initial restoration from localStorage
   const hasRestoredFromLocalStorage = useRef(false);
   const [accountVideos, setAccountVideos] = useState<AccountVideo[]>([]);
-  const [allAccountVideos, setAllAccountVideos] = useState<AccountVideo[]>([]); // Unfiltered for PP calculation
+  const [allAccountVideos, setAllAccountVideos] = useState<AccountVideo[]>([]); // Rules-filtered (no date filter) for PP calculation
   const [viewMode, setViewMode] = useState<'table' | 'details'>('table');
   const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
   const [selectedVideoForPlayer, setSelectedVideoForPlayer] = useState<{url: string; title: string; platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter' } | null>(null);
@@ -292,9 +292,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     
     const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, currentProjectId, accountId);
     
-    // Store unfiltered videos for calculations
-    setAllAccountVideos(videos);
-    
     // Apply dashboard rules to filter videos
     let rulesFilteredVideos = videos;
     if (selectedRuleIds.length > 0 && dashboardRules.length > 0) {
@@ -326,6 +323,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         console.log(`✅ Filtered from ${videos.length} to ${rulesFilteredVideos.length} videos`);
       }
     }
+    
+    // Store rules-filtered videos (without date filter) for PP calculations
+    // This ensures PP comparisons also respect the selected rules
+    setAllAccountVideos(rulesFilteredVideos);
     
     console.log('🔍 Rules Filter Debug:', {
       totalVideos: videos.length,
