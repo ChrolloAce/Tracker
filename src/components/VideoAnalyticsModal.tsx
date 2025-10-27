@@ -11,6 +11,7 @@ interface VideoAnalyticsModalProps {
   isOpen: boolean;
   onClose: () => void;
   totalCreatorVideos?: number; // Total number of videos from this creator
+  hideDateFilter?: boolean; // Hide date filter and always show all time data
 }
 
 interface ChartDataPoint {
@@ -24,7 +25,7 @@ interface ChartDataPoint {
   timestamp: number;
 }
 
-const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose, totalCreatorVideos }) => {
+const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose, totalCreatorVideos, hideDateFilter = false }) => {
   // Tooltip state for smooth custom tooltips
   const [tooltipData, setTooltipData] = useState<{ 
     x: number; 
@@ -41,10 +42,10 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   const [snapshotsPage, setSnapshotsPage] = useState(1);
   const snapshotsPerPage = 5;
   
-  // Date filter state
+  // Date filter state - force 'all' when hideDateFilter is true
   type DateFilterType = ImportedDateFilterType;
   type TimeGranularity = 'daily' | 'weekly' | 'monthly';
-  const [dateFilter, setDateFilter] = useState<DateFilterType>('all');
+  const [dateFilter, setDateFilter] = useState<DateFilterType>(hideDateFilter ? 'all' : 'all');
   const [customDateRange, setCustomDateRange] = useState<{ startDate: Date; endDate: Date } | undefined>();
   const [timeGranularity, setTimeGranularity] = useState<TimeGranularity>('daily');
   const [showPreviousPeriod, setShowPreviousPeriod] = useState(false);
@@ -695,15 +696,17 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
           
           {/* Right: Filters & Close */}
           <div className="flex items-center gap-3">
-            {/* Date Filter */}
-            <DateRangeFilter 
-              selectedFilter={dateFilter}
-              customRange={customDateRange}
-              onFilterChange={(filter, customRange) => {
-                setDateFilter(filter);
-                setCustomDateRange(customRange);
-              }}
-            />
+            {/* Date Filter - Hidden when hideDateFilter is true */}
+            {!hideDateFilter && (
+              <DateRangeFilter 
+                selectedFilter={dateFilter}
+                customRange={customDateRange}
+                onFilterChange={(filter, customRange) => {
+                  setDateFilter(filter);
+                  setCustomDateRange(customRange);
+                }}
+              />
+            )}
             
             {/* Time Granularity */}
             <select

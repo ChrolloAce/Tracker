@@ -366,11 +366,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       snapshots: []
     }));
     
-    // For expanded account view, always show ALL TIME data (no date filtering)
-    // Users can change granularity (daily/weekly/monthly) for visualization
     const dateFilteredSubmissions = DateFilterService.filterVideosByDateRange(
       videoSubmissions,
-      'all' // Always use 'all' time for expanded account view
+      dateFilter
     );
     
     // Convert back to AccountVideo
@@ -393,7 +391,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     
     setAccountVideos(finalFilteredVideos);
     setLoadingAccountDetail(false);
-  }, [currentOrgId, currentProjectId, accounts, selectedRuleIds, dashboardRules]);
+  }, [currentOrgId, currentProjectId, accounts, dateFilter, selectedRuleIds, dashboardRules]);
 
   // Expose handleBackToTable and openAddModal to parent component
   // Refresh data function for parent to call
@@ -449,22 +447,21 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     }
   }, [isAddModalOpen]);
 
-  // Load videos and rules when an account is selected OR rules change
-  // Note: dateFilter removed from dependencies since expanded view always shows all time
+  // Load videos and rules when an account is selected OR filters change
   useEffect(() => {
     if (selectedAccount && currentOrgId && currentProjectId) {
       loadAccountVideos(selectedAccount.id);
       
       // Only update view mode on initial account selection (not on filter changes)
       if (viewMode !== 'details') {
-        setViewMode('details');
-        onViewModeChange('details');
+      setViewMode('details');
+      onViewModeChange('details');
       }
       
       // Save to localStorage for restoration
       localStorage.setItem('selectedAccountId', selectedAccount.id);
     }
-  }, [selectedAccount?.id, currentOrgId, currentProjectId, selectedRuleIds, dashboardRules]);
+  }, [selectedAccount?.id, currentOrgId, currentProjectId, selectedRuleIds, dateFilter, dashboardRules]);
 
   // Real-time listener for accounts
   useEffect(() => {
@@ -1736,8 +1733,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                     submissions={filteredVideoSubmissions}
                     allSubmissions={allVideoSubmissions}
                     linkClicks={accountLinkClicks}
-                    dateFilter="all"
-                    granularity="day"
+                    dateFilter={dateFilter}
+                    timePeriod="days"
                     onCreateLink={() => setShowCreateLinkModal(true)}
                     onVideoClick={(video) => {
                       setSelectedVideoForAnalytics(video);
@@ -1788,7 +1785,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                   />
                 </div>
               );
-              })()}
+            })()}
 
             {/* OLD Videos Table - HIDDEN via CSS */}
             <div style={{ display: 'none' }} className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg overflow-hidden">
@@ -2442,6 +2439,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
               ).length
             : undefined
         }
+        hideDateFilter={true}
       />
 
       {/* Delete Confirmation Modal */}
