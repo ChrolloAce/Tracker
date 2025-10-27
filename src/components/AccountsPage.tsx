@@ -366,9 +366,11 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       snapshots: []
     }));
     
+    // For expanded account view, always show ALL TIME data (no date filtering)
+    // Users can change granularity (daily/weekly/monthly) for visualization
     const dateFilteredSubmissions = DateFilterService.filterVideosByDateRange(
       videoSubmissions,
-      dateFilter
+      'all' // Always use 'all' time for expanded account view
     );
     
     // Convert back to AccountVideo
@@ -391,7 +393,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     
     setAccountVideos(finalFilteredVideos);
     setLoadingAccountDetail(false);
-  }, [currentOrgId, currentProjectId, accounts, dateFilter, selectedRuleIds, dashboardRules]);
+  }, [currentOrgId, currentProjectId, accounts, selectedRuleIds, dashboardRules]);
 
   // Expose handleBackToTable and openAddModal to parent component
   // Refresh data function for parent to call
@@ -447,7 +449,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     }
   }, [isAddModalOpen]);
 
-  // Load videos and rules when an account is selected OR filters change
+  // Load videos and rules when an account is selected OR rules change
+  // Note: dateFilter removed from dependencies since expanded view always shows all time
   useEffect(() => {
     if (selectedAccount && currentOrgId && currentProjectId) {
       loadAccountVideos(selectedAccount.id);
@@ -461,7 +464,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       // Save to localStorage for restoration
       localStorage.setItem('selectedAccountId', selectedAccount.id);
     }
-  }, [selectedAccount?.id, currentOrgId, currentProjectId, selectedRuleIds, dateFilter, dashboardRules]);
+  }, [selectedAccount?.id, currentOrgId, currentProjectId, selectedRuleIds, dashboardRules]);
 
   // Real-time listener for accounts
   useEffect(() => {
@@ -1733,8 +1736,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                     submissions={filteredVideoSubmissions}
                     allSubmissions={allVideoSubmissions}
                     linkClicks={accountLinkClicks}
-                    dateFilter={dateFilter}
-                    timePeriod="days"
+                    dateFilter="all"
+                    granularity="day"
                     onCreateLink={() => setShowCreateLinkModal(true)}
                     onVideoClick={(video) => {
                       setSelectedVideoForAnalytics(video);
