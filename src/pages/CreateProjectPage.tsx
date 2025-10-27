@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Home, Users, MessageSquare, Upload, X, Check } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import ProjectService from '../services/ProjectService';
 import FirebaseStorageService from '../services/FirebaseStorageService';
@@ -23,6 +24,7 @@ interface ProjectData {
 
 const ProjectCreationFlow: React.FC<ProjectCreationFlowProps> = ({ onClose, onSuccess }) => {
   const { user, currentOrgId, switchProject } = useAuth();
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -166,23 +168,28 @@ const ProjectCreationFlow: React.FC<ProjectCreationFlowProps> = ({ onClose, onSu
       });
 
 
-      // Show success toast
-      setShowSuccess(true);
+      console.log(`✅ Project created with ID: ${projectId}`);
       
-      // Wait a moment to show success
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
       // Switch to the new project
+      console.log(`🔄 Switching to project ${projectId}...`);
       await switchProject(projectId);
-
-      // Call success callback
+      console.log(`✅ Successfully switched to project ${projectId}`);
+      
+      // Show success and close immediately
+      setShowSuccess(true);
+      setLoading(false);
+      
+      // Close modal
       onSuccess();
       
-      // Reload to refresh data
-      window.location.reload();
+      // Navigate to dashboard immediately (React Router will handle it)
+      console.log('🔄 Redirecting to dashboard...');
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 300);
     } catch (error: any) {
-      console.error('Failed to create project:', error);
-      setError(error.message || 'Failed to create project');
+      console.error('❌ Failed to create project:', error);
+      setError(error.message || 'Failed to create project. Please try again.');
       setLoading(false);
     }
   };

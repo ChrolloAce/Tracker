@@ -59,14 +59,18 @@ class ProjectService {
       lastUpdated: Timestamp.now(),
     };
 
+    // Get current org data BEFORE starting batch
+    const orgRef = doc(db, 'organizations', orgId);
+    const orgDoc = await getDoc(orgRef);
+    const currentProjectCount = orgDoc.data()?.projectCount || 0;
+
     const batch = writeBatch(db);
     batch.set(projectRef, project);
     batch.set(statsRef, stats);
 
     // Update org project count
-    const orgRef = doc(db, 'organizations', orgId);
     batch.update(orgRef, {
-      projectCount: (await getDoc(orgRef)).data()?.projectCount || 0 + 1,
+      projectCount: currentProjectCount + 1,
     });
 
     await batch.commit();
@@ -292,9 +296,11 @@ class ProjectService {
    */
   static async setActiveProject(orgId: string, userId: string, projectId: string): Promise<void> {
     const memberRef = doc(db, 'organizations', orgId, 'members', userId);
-    await updateDoc(memberRef, {
+    // Use setDoc with merge to create the document if it doesn't exist
+    await setDoc(memberRef, {
       lastActiveProjectId: projectId,
-    });
+    }, { merge: true });
+    console.log(`✅ Set active project ${projectId} for user ${userId}`);
   }
 
   /**

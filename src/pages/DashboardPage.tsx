@@ -294,9 +294,10 @@ function DashboardPage() {
   // Will be loaded from Firebase along with rules
   const [selectedRuleIds, setSelectedRuleIds] = useState<string[]>([]);
   const [rulesLoadedFromFirebase, setRulesLoadedFromFirebase] = useState(false);
+  const [dataLoadedFromFirebase, setDataLoadedFromFirebase] = useState(false);
   
-  // Loading state for skeleton display
-  const isInitialLoading = !rulesLoadedFromFirebase || submissions.length === 0;
+  // Loading state for skeleton display (only check if data has been loaded, not if it's empty)
+  const isInitialLoading = !rulesLoadedFromFirebase || !dataLoadedFromFirebase;
   
   // Tracked Links search state
   const [linksSearchQuery, setLinksSearchQuery] = useState('');
@@ -477,6 +478,9 @@ function DashboardPage() {
   // One-time data loading (no real-time listeners)
   useEffect(() => {
     if (!user || !currentOrgId || !currentProjectId) {
+      // Reset loading states when context is missing
+      setRulesLoadedFromFirebase(false);
+      setDataLoadedFromFirebase(false);
       return;
     }
 
@@ -501,6 +505,7 @@ function DashboardPage() {
           setAllRules(rules || []);
           setSelectedRuleIds(cachedRuleIds || []);
           setRulesLoadedFromFirebase(true);
+          setDataLoadedFromFirebase(true); // Mark data as loaded from cache
           hasCached = true;
           console.log(`⚡ Loaded from cache in ${Math.round(cacheAge / 1000)}s old`);
         }
@@ -628,6 +633,7 @@ function DashboardPage() {
       setAllRules(rules);
       setSelectedRuleIds(savedSelectedRuleIds);
       setRulesLoadedFromFirebase(true);
+      setDataLoadedFromFirebase(true); // Mark data as loaded (even if empty)
       console.timeEnd('🚀 Parallel Firebase load');
       console.log('✅ All data loaded successfully');
       
@@ -648,6 +654,7 @@ function DashboardPage() {
       }
     } catch (error) {
       console.error('❌ Failed to load rules:', error);
+      setDataLoadedFromFirebase(true); // Mark as loaded even on error to prevent infinite loading
       console.timeEnd('🚀 Parallel Firebase load');
     }
     
