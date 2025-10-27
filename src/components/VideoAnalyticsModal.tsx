@@ -1008,15 +1008,25 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
               const chartWidth = tooltipData.chartRect.width;
               const chartHeight = tooltipData.chartRect.height;
               const dataIndex = tooltipData.dataIndex;
-              const xPosition = (dataIndex / (chartData.length - 1)) * chartWidth;
               
-              // Calculate y position based on data value
+              // Chart margins from AreaChart component
+              const marginTop = 2;
+              const marginBottom = 2;
+              const availableHeight = chartHeight - marginTop - marginBottom;
+              
+              // X position based on data index
+              const xPosition = (dataIndex / Math.max(chartData.length - 1, 1)) * chartWidth;
+              
+              // Calculate y position based on data value with proper scaling
               const values = chartData.map(d => d[metric.key]);
               const maxValue = Math.max(...values);
               const minValue = Math.min(...values);
               const valueRange = maxValue - minValue || 1;
               const currentValue = tooltipData.dataPoint[metric.key];
-              const yPosition = chartHeight - ((currentValue - minValue) / valueRange * (chartHeight - 4)) - 2;
+              
+              // Normalize value between 0 and 1, then scale to chart height
+              const normalizedValue = (currentValue - minValue) / valueRange;
+              const yPosition = marginTop + availableHeight * (1 - normalizedValue);
               
               return (
                 <div
