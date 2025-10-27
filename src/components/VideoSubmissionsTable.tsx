@@ -12,6 +12,7 @@ import Pagination from './ui/Pagination';
 import ColumnPreferencesService from '../services/ColumnPreferencesService';
 import { OutlierBadge, calculateOutlierStatus } from './ui/OutlierBadge';
 import videoMaterialAnimation from '../../public/lottie/Video Material.json';
+import { ProxiedImage } from './ProxiedImage';
 
 interface VideoSubmissionsTableProps {
   submissions: VideoSubmission[];
@@ -130,19 +131,11 @@ const ThumbnailImage: React.FC<{ submission: VideoSubmission }> = ({ submission 
     }
   }, [submission.id]);
 
-  const handleImageError = () => {
-    // Just use placeholder for any failed images - don't try to proxy
-    // Instagram URLs with 403 errors can't be bypassed with simple proxies
-    // The proper solution is to store thumbnails during sync via /api/image-proxy
-    setThumbnailSrc(`data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjZTVlN2ViIi8+CjxwYXRoIGQ9Ik0yNCAzMkMxNy4zNzI2IDMyIDEyIDI2LjYyNzQgMTIgMjBDMTIgMTMuMzcyNiAxNy4zNzI2IDggMjQgOEMzMC42Mjc0IDggMzYgMTMuMzcyNiAzNiAyMEMzNiAyNi42Mjc0IDMwLjYyNzQgMzIgMjQgMzJaTTI0IDI4QzI4LjQxODMgMjggMzIgMjQuNDE4MyAzMiAyMEMzMiAxNS41ODE3IDI4LjQxODMgMTIgMjQgMTJDMTkuNTgxNyAxMiAxNiAxNS41ODE3IDE2IDIwQzE2IDI0LjQxODMgMTkuNTgxNyAyOCAyNCAyOFoiIGZpbGw9IiM5Y2EzYWYiLz4KPC9zdmc+Cg==`);
-  };
-
   return (
-    <img
+    <ProxiedImage
       src={thumbnailSrc}
       alt="Video thumbnail"
       className="w-full h-full object-cover"
-      onError={handleImageError}
     />
   );
 };
