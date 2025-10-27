@@ -342,42 +342,15 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     // Aggregate based on selected granularity
     const aggregatedSnapshots = aggregateSnapshots(allSnapshots, timeGranularity);
     
-    // Create data points with DELTAS (incremental changes)
-    // First point shows initial snapshot values, subsequent points show changes
+    // Create data points with CUMULATIVE values (total at each snapshot)
     const data: ChartDataPoint[] = [];
     
     for (let i = 0; i < aggregatedSnapshots.length; i++) {
       const snapshot = aggregatedSnapshots[i];
       const timestamp = new Date(snapshot.capturedAt);
       
-      if (i === 0) {
-        // First point: show absolute values
-        data.push(createDataPoint(snapshot, timestamp));
-      } else {
-        // Subsequent points: show delta/difference from previous snapshot
-        const prevSnapshot = aggregatedSnapshots[i - 1];
-        const deltaViews = snapshot.views - prevSnapshot.views;
-        const deltaLikes = snapshot.likes - prevSnapshot.likes;
-        const deltaComments = snapshot.comments - prevSnapshot.comments;
-        const deltaShares = (snapshot.shares || 0) - (prevSnapshot.shares || 0);
-        const deltaSaves = (snapshot.saves || 0) - (prevSnapshot.saves || 0);
-        const totalDeltaEngagement = deltaLikes + deltaComments + deltaShares;
-        const deltaEngagementRate = deltaViews > 0 ? (totalDeltaEngagement / deltaViews) * 100 : 0;
-        
-        data.push({
-          date: timestamp.toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric'
-          }),
-          views: deltaViews,
-          likes: deltaLikes,
-          comments: deltaComments,
-          shares: deltaShares,
-          saves: deltaSaves,
-          engagementRate: deltaEngagementRate,
-          timestamp: timestamp.getTime(),
-        });
-      }
+      // Always show cumulative/absolute values at each snapshot
+      data.push(createDataPoint(snapshot, timestamp));
     }
     
     // If only one data point, duplicate it to create a flat line
@@ -392,15 +365,6 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   const cumulativeTotals = useMemo(() => {
     if (!video) return { views: 0, likes: 0, comments: 0, shares: 0, saves: 0, engagementRate: 0 };
     
-    console.log('🎬 VideoAnalyticsModal - Video Data:', {
-      videoId: video.id,
-      views: video.views,
-      likes: video.likes,
-      snapshotCount: video.snapshots?.length || 0,
-      dateFilter,
-      hideDateFilter
-    });
-    
     // If "all time" is selected, show current video totals
     if (dateFilter === 'all') {
       const views = video.views || 0;
@@ -408,8 +372,6 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       const comments = video.comments || 0;
       const shares = video.shares || 0;
       const saves = video.saves || 0;
-      
-      console.log('✅ Cumulative Totals (All Time):', { views, likes, comments, shares });
       
       return {
         views,
