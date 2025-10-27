@@ -342,15 +342,42 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     // Aggregate based on selected granularity
     const aggregatedSnapshots = aggregateSnapshots(allSnapshots, timeGranularity);
     
-    // Create data points with CUMULATIVE values (total at each snapshot)
+    // Create data points with DELTAS (incremental changes)
+    // First point shows initial snapshot values, subsequent points show changes
     const data: ChartDataPoint[] = [];
     
     for (let i = 0; i < aggregatedSnapshots.length; i++) {
       const snapshot = aggregatedSnapshots[i];
       const timestamp = new Date(snapshot.capturedAt);
       
-      // Always show cumulative/absolute values at each snapshot
-      data.push(createDataPoint(snapshot, timestamp));
+      if (i === 0) {
+        // First point: show absolute values
+        data.push(createDataPoint(snapshot, timestamp));
+      } else {
+        // Subsequent points: show delta/difference from previous snapshot
+        const prevSnapshot = aggregatedSnapshots[i - 1];
+        const deltaViews = snapshot.views - prevSnapshot.views;
+        const deltaLikes = snapshot.likes - prevSnapshot.likes;
+        const deltaComments = snapshot.comments - prevSnapshot.comments;
+        const deltaShares = (snapshot.shares || 0) - (prevSnapshot.shares || 0);
+        const deltaSaves = (snapshot.saves || 0) - (prevSnapshot.saves || 0);
+        const totalDeltaEngagement = deltaLikes + deltaComments + deltaShares;
+        const deltaEngagementRate = deltaViews > 0 ? (totalDeltaEngagement / deltaViews) * 100 : 0;
+        
+        data.push({
+          date: timestamp.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric'
+          }),
+          views: deltaViews,
+          likes: deltaLikes,
+          comments: deltaComments,
+          shares: deltaShares,
+          saves: deltaSaves,
+          engagementRate: deltaEngagementRate,
+          timestamp: timestamp.getTime(),
+        });
+      }
     }
     
     // If only one data point, duplicate it to create a flat line
@@ -449,9 +476,9 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     };
   }, [video, dateFilter, showPreviousPeriod, periodRanges, video?.snapshots?.length]);
 
-  // Calculate growth during the selected period
-  const metricGrowth = useMemo(() => {
-    if (chartData.length < 2) {
+  // Calculate growth since last snapshot and time elapsed
+  const metricGrowthWithTime = useMemo(() => {
+    if (!video || !video.snapshots || video.snapshots.length < 2) {
       return {
         views: 0,
         likes: 0,
@@ -459,23 +486,43 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         shares: 0,
         saves: 0,
         engagementRate: 0,
+        timeSinceLastSnapshot: ''
       };
     }
     
-    const firstPoint = chartData[0];
-    const lastPoint = chartData[chartData.length - 1];
+    // Get the two most recent snapshots
+    const sortedSnapshots = [...video.snapshots].sort(
+      (a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime()
+    );
+    
+    const latest = sortedSnapshots[0];
+    const previous = sortedSnapshots[1];
+    
+    // Calculate time difference
+    const timeDiff = new Date(latest.capturedAt).getTime() - new Date(previous.capturedAt).getTime();
+    const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    
+    let timeText = '';
+    if (days > 0) {
+      timeText = `${days} day${days !== 1 ? 's' : ''} ago`;
+    } else if (hours > 0) {
+      timeText = `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+    } else {
+      timeText = 'recently';
+    }
     
     return {
-      views: lastPoint.views - firstPoint.views,
-      likes: lastPoint.likes - firstPoint.likes,
-      comments: lastPoint.comments - firstPoint.comments,
-      shares: lastPoint.shares - firstPoint.shares,
-      saves: video?.saves && video.snapshots && video.snapshots.length > 1
-        ? (video.snapshots[video.snapshots.length - 1].saves || 0) - (video.snapshots[0].saves || 0)
-        : 0,
-      engagementRate: lastPoint.engagementRate - firstPoint.engagementRate,
+      views: latest.views - previous.views,
+      likes: latest.likes - previous.likes,
+      comments: latest.comments - previous.comments,
+      shares: (latest.shares || 0) - (previous.shares || 0),
+      saves: (latest.saves || 0) - (previous.saves || 0),
+      engagementRate: ((latest.likes + latest.comments + (latest.shares || 0)) / (latest.views || 1) * 100) - 
+                      ((previous.likes + previous.comments + (previous.shares || 0)) / (previous.views || 1) * 100),
+      timeSinceLastSnapshot: timeText
     };
-  }, [chartData, video?.saves, video?.snapshots]);
+  }, [video?.snapshots]);
 
   // Determine trend based on snapshot data (excluding initial upload)
   const videoTrend = useMemo(() => {
@@ -604,7 +651,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       icon: Eye,
       color: '#B47CFF',
       value: cumulativeTotals.views,
-      growth: metricGrowth.views,
+      growth: metricGrowthWithTime.views,
+      timeSinceLastSnapshot: metricGrowthWithTime.timeSinceLastSnapshot,
     },
     {
       key: 'likes' as const,
@@ -612,7 +660,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       icon: Heart,
       color: '#FF6B9D',
       value: cumulativeTotals.likes,
-      growth: metricGrowth.likes,
+      growth: metricGrowthWithTime.likes,
+      timeSinceLastSnapshot: metricGrowthWithTime.timeSinceLastSnapshot,
     },
     {
       key: 'comments' as const,
@@ -620,7 +669,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       icon: MessageCircle,
       color: '#4ECDC4',
       value: cumulativeTotals.comments,
-      growth: metricGrowth.comments,
+      growth: metricGrowthWithTime.comments,
+      timeSinceLastSnapshot: metricGrowthWithTime.timeSinceLastSnapshot,
     },
     {
       key: 'shares' as const,
@@ -628,7 +678,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       icon: Share2,
       color: '#FFE66D',
       value: cumulativeTotals.shares,
-      growth: metricGrowth.shares,
+      growth: metricGrowthWithTime.shares,
+      timeSinceLastSnapshot: metricGrowthWithTime.timeSinceLastSnapshot,
     },
     {
       key: 'engagementRate' as const,
@@ -636,7 +687,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       icon: TrendingUp,
       color: '#00D9FF',
       value: cumulativeTotals.engagementRate,
-      growth: metricGrowth.engagementRate,
+      growth: metricGrowthWithTime.engagementRate,
+      timeSinceLastSnapshot: metricGrowthWithTime.timeSinceLastSnapshot,
       isPercentage: true,
     },
     {
@@ -645,7 +697,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       icon: Bookmark,
       color: '#FF8A5B',
       value: cumulativeTotals.saves,
-      growth: metricGrowth.saves,
+      growth: metricGrowthWithTime.saves,
+      timeSinceLastSnapshot: metricGrowthWithTime.timeSinceLastSnapshot,
       showNA: !cumulativeTotals.saves && cumulativeTotals.saves !== 0, // Show N/A only if undefined/null
     },
   ];
@@ -887,8 +940,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                           }
                         </span>
                         
-                        {/* Growth Indicator */}
-                        {!(metric as any).showNA && (metric as any).growth !== undefined && (metric as any).growth !== 0 && (
+                        {/* Growth Indicator with Time */}
+                        {!(metric as any).showNA && (metric as any).growth !== undefined && (metric as any).growth !== 0 && (metric as any).timeSinceLastSnapshot && (
                           <span className={`text-xs font-semibold ${(metric as any).growth > 0 ? 'text-emerald-400' : 'text-red-400'} flex items-center gap-1`}>
                             {(metric as any).growth > 0 ? (
                               <>
@@ -897,17 +950,17 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                                   +{metric.isPercentage 
                                     ? `${Math.abs((metric as any).growth).toFixed(1)}%` 
                                     : formatNumber(Math.abs((metric as any).growth))
-                                  } gained
+                                  } ({(metric as any).timeSinceLastSnapshot})
                                 </span>
                               </>
                             ) : (
                               <>
                                 <TrendingDown className="w-3 h-3" />
                                 <span>
-                                  -{metric.isPercentage 
+                                  {metric.isPercentage 
                                     ? `${Math.abs((metric as any).growth).toFixed(1)}%` 
                                     : formatNumber(Math.abs((metric as any).growth))
-                                  } lost
+                                  } ({(metric as any).timeSinceLastSnapshot})
                                 </span>
                               </>
                             )}
