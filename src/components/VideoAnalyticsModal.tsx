@@ -36,6 +36,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     isPercentage: boolean;
     lineX: number;
     chartRect: DOMRect;
+    dataIndex: number;
   } | null>(null);
 
   // Pagination state for snapshots
@@ -957,7 +958,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                             metricLabel: metric.label,
                             isPercentage: metric.isPercentage || false,
                             lineX: x,
-                            chartRect
+                            chartRect,
+                            dataIndex: index
                           });
                         }}
                         onMouseLeave={() => setTooltipData(null)}
@@ -997,15 +999,44 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                                 fill={`url(#gradient-${metric.key})`}
                                 isAnimationActive={false}
                                 dot={false}
-                    activeDot={{ 
-                                  r: 4, 
-                                  fill: displayColor, 
-                      strokeWidth: 2, 
-                      stroke: '#fff' 
-                    }}
+                    activeDot={false}
                   />
               </AreaChart>
             </ResponsiveContainer>
+            {/* Custom dot that snaps immediately to tooltip position */}
+            {tooltipData && tooltipData.metricKey === metric.key && tooltipData.chartRect && (() => {
+              const chartWidth = tooltipData.chartRect.width;
+              const chartHeight = tooltipData.chartRect.height;
+              const dataIndex = tooltipData.dataIndex;
+              const xPosition = (dataIndex / (chartData.length - 1)) * chartWidth;
+              
+              // Calculate y position based on data value
+              const values = chartData.map(d => d[metric.key]);
+              const maxValue = Math.max(...values);
+              const minValue = Math.min(...values);
+              const valueRange = maxValue - minValue || 1;
+              const currentValue = tooltipData.dataPoint[metric.key];
+              const yPosition = chartHeight - ((currentValue - minValue) / valueRange * (chartHeight - 4)) - 2;
+              
+              return (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: `${xPosition}px`,
+                    top: `${yPosition}px`,
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: displayColor,
+                    border: '2px solid #fff',
+                    transform: 'translate(-50%, -50%)',
+                    pointerEvents: 'none',
+                    zIndex: 100,
+                    boxShadow: `0 0 8px ${displayColor}80`
+                  }}
+                />
+              );
+            })()}
           </div>
           </div>
               </div>
