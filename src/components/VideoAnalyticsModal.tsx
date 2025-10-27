@@ -392,6 +392,15 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   const cumulativeTotals = useMemo(() => {
     if (!video) return { views: 0, likes: 0, comments: 0, shares: 0, saves: 0, engagementRate: 0 };
     
+    console.log('🎬 VideoAnalyticsModal - Video Data:', {
+      videoId: video.id,
+      views: video.views,
+      likes: video.likes,
+      snapshotCount: video.snapshots?.length || 0,
+      dateFilter,
+      hideDateFilter
+    });
+    
     // If "all time" is selected, show current video totals
     if (dateFilter === 'all') {
       const views = video.views || 0;
@@ -399,6 +408,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       const comments = video.comments || 0;
       const shares = video.shares || 0;
       const saves = video.saves || 0;
+      
+      console.log('✅ Cumulative Totals (All Time):', { views, likes, comments, shares });
       
       return {
         views,
