@@ -1736,9 +1736,30 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                     dateFilter={dateFilter}
                     timePeriod="days"
                     onCreateLink={() => setShowCreateLinkModal(true)}
-                    onVideoClick={(video) => {
-                      setSelectedVideoForAnalytics(video);
-                      setIsVideoAnalyticsModalOpen(true);
+                    onVideoClick={async (video) => {
+                      // Load snapshots before opening modal
+                      if (!currentOrgId || !currentProjectId) return;
+                      
+                      try {
+                        const snapshots = await FirestoreDataService.getVideoSnapshots(
+                          currentOrgId,
+                          currentProjectId,
+                          video.id
+                        );
+                        
+                        const videoWithSnapshots: VideoSubmission = {
+                          ...video,
+                          snapshots: snapshots
+                        };
+                        
+                        setSelectedVideoForAnalytics(videoWithSnapshots);
+                        setIsVideoAnalyticsModalOpen(true);
+                      } catch (error) {
+                        console.error('❌ Failed to load snapshots:', error);
+                        // Still open modal without snapshots
+                        setSelectedVideoForAnalytics(video);
+                        setIsVideoAnalyticsModalOpen(true);
+                      }
                     }}
                     cardVisibility={{
                       revenue: false,
@@ -1777,10 +1798,30 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                 <div className="mt-6">
                   <VideoSubmissionsTable 
                     submissions={videoSubmissions}
-                    onVideoClick={(video) => {
-                      // Open full video analytics modal instead of just player
-                      setSelectedVideoForAnalytics(video);
-                      setIsVideoAnalyticsModalOpen(true);
+                    onVideoClick={async (video) => {
+                      // Load snapshots before opening modal
+                      if (!currentOrgId || !currentProjectId) return;
+                      
+                      try {
+                        const snapshots = await FirestoreDataService.getVideoSnapshots(
+                          currentOrgId,
+                          currentProjectId,
+                          video.id
+                        );
+                        
+                        const videoWithSnapshots: VideoSubmission = {
+                          ...video,
+                          snapshots: snapshots
+                        };
+                        
+                        setSelectedVideoForAnalytics(videoWithSnapshots);
+                        setIsVideoAnalyticsModalOpen(true);
+                      } catch (error) {
+                        console.error('❌ Failed to load snapshots:', error);
+                        // Still open modal without snapshots
+                        setSelectedVideoForAnalytics(video);
+                        setIsVideoAnalyticsModalOpen(true);
+                      }
                     }}
                   />
                 </div>
