@@ -1736,6 +1736,14 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                     dateFilter={dateFilter}
                     timePeriod="days"
                     onCreateLink={() => setShowCreateLinkModal(true)}
+                    onVideoClick={(video) => {
+                      setSelectedVideoForAnalytics(video);
+                      setIsVideoAnalyticsModalOpen(true);
+                    }}
+                    cardVisibility={{
+                      revenue: false,
+                      downloads: false
+                    }}
                   />
                 </div>
               );
@@ -1770,13 +1778,14 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                   <VideoSubmissionsTable 
                     submissions={videoSubmissions}
                     onVideoClick={(video) => {
-                      setSelectedVideoForPlayer(video);
-                      setVideoPlayerOpen(true);
+                      // Open full video analytics modal instead of just player
+                      setSelectedVideoForAnalytics(video);
+                      setIsVideoAnalyticsModalOpen(true);
                     }}
                   />
                 </div>
               );
-            })()}
+              })()}
 
             {/* OLD Videos Table - HIDDEN via CSS */}
             <div style={{ display: 'none' }} className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg overflow-hidden">
