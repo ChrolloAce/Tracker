@@ -295,12 +295,59 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       }
     }
 
+    // Aggregate snapshots based on timeGranularity
+    const aggregateSnapshots = (snapshots: any[], granularity: 'daily' | 'weekly' | 'monthly') => {
+      if (snapshots.length === 0) return [];
+      
+      // Group snapshots by time period
+      const groups = new Map<string, any[]>();
+      
+      snapshots.forEach(snapshot => {
+        const date = new Date(snapshot.capturedAt);
+        let key: string;
+        
+        switch (granularity) {
+          case 'daily':
+            key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+            break;
+          case 'weekly':
+            // Get week number
+            const weekStart = new Date(date);
+            weekStart.setDate(date.getDate() - date.getDay());
+            key = `${weekStart.getFullYear()}-W${Math.ceil((weekStart.getDate()) / 7)}`;
+            break;
+          case 'monthly':
+            key = `${date.getFullYear()}-${date.getMonth()}`;
+            break;
+        }
+        
+        if (!groups.has(key)) {
+          groups.set(key, []);
+        }
+        groups.get(key)!.push(snapshot);
+      });
+      
+      // Take the last snapshot from each group (most recent data for that period)
+      const aggregated: any[] = [];
+      groups.forEach((group) => {
+        const lastSnapshot = group[group.length - 1];
+        aggregated.push(lastSnapshot);
+      });
+      
+      return aggregated.sort((a, b) => 
+        new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+      );
+    };
+    
+    // Aggregate based on selected granularity
+    const aggregatedSnapshots = aggregateSnapshots(allSnapshots, timeGranularity);
+    
     // Create data points with DELTAS (incremental changes)
     // First point shows initial snapshot values, subsequent points show changes
     const data: ChartDataPoint[] = [];
     
-    for (let i = 0; i < allSnapshots.length; i++) {
-      const snapshot = allSnapshots[i];
+    for (let i = 0; i < aggregatedSnapshots.length; i++) {
+      const snapshot = aggregatedSnapshots[i];
       const timestamp = new Date(snapshot.capturedAt);
       
       if (i === 0) {
@@ -308,7 +355,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         data.push(createDataPoint(snapshot, timestamp));
       } else {
         // Subsequent points: show delta/difference from previous snapshot
-        const prevSnapshot = allSnapshots[i - 1];
+        const prevSnapshot = aggregatedSnapshots[i - 1];
         const deltaViews = snapshot.views - prevSnapshot.views;
         const deltaLikes = snapshot.likes - prevSnapshot.likes;
         const deltaComments = snapshot.comments - prevSnapshot.comments;
@@ -339,7 +386,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     }
     
     return data;
-  }, [video?.id, video?.views, video?.likes, video?.comments, video?.shares, video?.snapshots?.length, dateFilter, showPreviousPeriod, periodRanges]);
+  }, [video?.id, video?.views, video?.likes, video?.comments, video?.shares, video?.snapshots?.length, dateFilter, showPreviousPeriod, periodRanges, timeGranularity]);
 
   // Calculate cumulative totals for KPI display based on filtered period
   const cumulativeTotals = useMemo(() => {
