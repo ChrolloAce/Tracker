@@ -57,9 +57,9 @@ service firebase.storage {
       
       // Video thumbnails: organizations/{orgId}/thumbnails/{videoId}.jpg
       match /thumbnails/{videoId} {
-        // Any authenticated user can read thumbnails
-        // (thumbnails are not sensitive data)
-        allow read: if isSignedIn();
+        // Public read for thumbnails (not sensitive data - public social media content)
+        // This allows thumbnails to load without authentication
+        allow read: if true;
         
         // Only org members can upload thumbnails
         allow write: if isOrgPath(orgId) 
