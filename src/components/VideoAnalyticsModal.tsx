@@ -524,65 +524,6 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     };
   }, [video?.snapshots]);
 
-  // Determine trend based on snapshot data (excluding initial upload)
-  const videoTrend = useMemo(() => {
-    if (!video || !video.snapshots || video.snapshots.length < 2) {
-      // No snapshots or only one snapshot, default to positive (green)
-      return { isPositive: true, percentChange: 0 };
-    }
-    
-    // Sort snapshots by date
-    const sortedSnapshots = [...video.snapshots].sort(
-      (a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
-    );
-    
-    // Skip the first snapshot (initial upload) and use subsequent snapshots
-    const snapshotsToAnalyze = sortedSnapshots.slice(1);
-    
-    if (snapshotsToAnalyze.length === 0) {
-      // Only initial upload exists, default to positive
-      return { isPositive: true, percentChange: 0 };
-    }
-    
-    // Calculate average growth rate across snapshots (excluding initial)
-    let totalGrowthRate = 0;
-    let validComparisons = 0;
-    
-    for (let i = 1; i < snapshotsToAnalyze.length; i++) {
-      const prev = snapshotsToAnalyze[i - 1];
-      const current = snapshotsToAnalyze[i];
-      
-      // Calculate growth rate based on views (primary metric)
-      const viewsDelta = current.views - prev.views;
-      const prevViews = prev.views || 1; // Avoid division by zero
-      const growthRate = (viewsDelta / prevViews) * 100;
-      
-      totalGrowthRate += growthRate;
-      validComparisons++;
-    }
-    
-    // If we have snapshot comparisons, use average growth rate
-    if (validComparisons > 0) {
-      const avgGrowthRate = totalGrowthRate / validComparisons;
-      return {
-        isPositive: avgGrowthRate >= 0,
-        percentChange: Math.abs(avgGrowthRate)
-      };
-    }
-    
-    // Compare last snapshot to first (excluding initial upload)
-    const firstSnapshot = snapshotsToAnalyze[0];
-    const lastSnapshot = snapshotsToAnalyze[snapshotsToAnalyze.length - 1];
-    const viewsGrowth = lastSnapshot.views - firstSnapshot.views;
-    
-    return {
-      isPositive: viewsGrowth >= 0,
-      percentChange: firstSnapshot.views > 0 
-        ? Math.abs((viewsGrowth / firstSnapshot.views) * 100)
-        : 0
-    };
-  }, [video?.snapshots]);
-
   if (!isOpen || !video) return null;
 
   const formatNumber = (num: number): string => {
@@ -897,9 +838,10 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
             {/* 6 Metric Charts in 3-Column Grid */}
             <div className="grid grid-cols-3 gap-4 min-w-0">
             {metrics.map((metric) => {
-              // Use video trend (based on snapshot data, excluding initial upload)
-              // Green for positive trend, red for negative trend
-              const displayColor = videoTrend.isPositive ? '#22c55e' : '#ef4444';
+              // Determine color based on individual metric growth
+              // Green for positive growth, red for negative growth
+              const metricGrowth = (metric as any).growth || 0;
+              const displayColor = metricGrowth >= 0 ? '#22c55e' : '#ef4444';
               
               return (
                 <div 
