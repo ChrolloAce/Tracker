@@ -594,9 +594,10 @@ const KPICards: React.FC<KPICardsProps> = ({
 
     // Generate sparkline data based on date filter and metric type
     const generateSparklineData = (metric: 'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts'): { data: any[], intervalType: IntervalType } => {
-      console.log(`📊 Generating sparkline for ${metric}...`);
-      console.log(`   - Current Period submissions (CP):`, submissions.length);
-      console.log(`   - All submissions for PP:`, allSubmissions?.length || submissions.length);
+      // Reduced logging to prevent console spam
+      // console.log(`📊 Generating sparkline for ${metric}...`);
+      // console.log(`   - Current Period submissions (CP):`, submissions.length);
+      // console.log(`   - All submissions for PP:`, allSubmissions?.length || submissions.length);
       
       // Calculate the actual date range
       let actualStartDate: Date;
@@ -611,7 +612,7 @@ const KPICards: React.FC<KPICardsProps> = ({
         actualStartDate.setDate(actualStartDate.getDate() - 30);
       }
       
-      console.log(`   - Date range: ${actualStartDate.toLocaleDateString()} to ${actualEndDate.toLocaleDateString()}`);
+      // console.log(`   - Date range: ${actualStartDate.toLocaleDateString()} to ${actualEndDate.toLocaleDateString()}`);
       
       // Use the granularity prop instead of auto-determining
       const intervalType = granularity as IntervalType;
@@ -622,7 +623,7 @@ const KPICards: React.FC<KPICardsProps> = ({
         intervalType
       );
       
-      console.log(`   - Generated ${intervals.length} intervals for CP`);
+      // console.log(`   - Generated ${intervals.length} intervals for CP`);
       
       // Generate intervals for previous period (PP) - same length as CP
       let ppIntervals: typeof intervals = [];
@@ -637,8 +638,8 @@ const KPICards: React.FC<KPICardsProps> = ({
           intervalType
         );
         
-        console.log(`   - Generated ${ppIntervals.length} intervals for PP`);
-        console.log(`   - PP date range: ${tempPPStartDate.toLocaleDateString()} to ${tempPPEndDate.toLocaleDateString()}`);
+        // console.log(`   - Generated ${ppIntervals.length} intervals for PP`);
+        // console.log(`   - PP date range: ${tempPPStartDate.toLocaleDateString()} to ${tempPPEndDate.toLocaleDateString()}`);
       }
       
       let data = [];
@@ -1294,7 +1295,7 @@ const KPICards: React.FC<KPICardsProps> = ({
     ];
 
     return cards;
-  }, [submissions, linkClicks, dateFilter, customRange, timePeriod, granularity, revenueMetrics, revenueIntegrations]);
+  }, [submissions, allSubmissions, linkClicks, dateFilter, customRange, timePeriod, granularity, revenueMetrics, revenueIntegrations]);
 
   return (
     <>
