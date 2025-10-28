@@ -284,9 +284,11 @@ function DashboardPage() {
   });
   const [platformDropdownOpen, setPlatformDropdownOpen] = useState(false);
   
-  // Dashboard accounts filter state
+  // Dashboard accounts filter state - PROJECT-SCOPED
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>(() => {
-    const saved = localStorage.getItem('dashboardSelectedAccountIds');
+    // Use project-scoped key to prevent account IDs from other projects
+    const projectKey = currentProjectId ? `dashboardSelectedAccountIds_${currentProjectId}` : 'dashboardSelectedAccountIds';
+    const saved = localStorage.getItem(projectKey);
     return saved ? JSON.parse(saved) : [];
   });
 
@@ -350,8 +352,26 @@ function DashboardPage() {
   }, [dashboardPlatformFilter]);
 
   useEffect(() => {
-    localStorage.setItem('dashboardSelectedAccountIds', JSON.stringify(selectedAccountIds));
-  }, [selectedAccountIds]);
+    // Use project-scoped key to prevent account IDs from contaminating other projects
+    if (currentProjectId) {
+      const projectKey = `dashboardSelectedAccountIds_${currentProjectId}`;
+      localStorage.setItem(projectKey, JSON.stringify(selectedAccountIds));
+    }
+  }, [selectedAccountIds, currentProjectId]);
+
+  // Validate selectedAccountIds against loaded accounts
+  // Remove any account IDs that don't exist in this project
+  useEffect(() => {
+    if (trackedAccounts.length > 0 && selectedAccountIds.length > 0) {
+      const validAccountIds = new Set(trackedAccounts.map(a => a.id));
+      const filteredIds = selectedAccountIds.filter(id => validAccountIds.has(id));
+      
+      if (filteredIds.length !== selectedAccountIds.length) {
+        console.warn(`⚠️ Filtered out ${selectedAccountIds.length - filteredIds.length} invalid account IDs from other projects`);
+        setSelectedAccountIds(filteredIds);
+      }
+    }
+  }, [trackedAccounts]); // Only run when accounts are loaded, not on every selectedAccountIds change
 
   // Save selected rules to Firestore (per user, per project)
   // Only save after initial load to avoid overwriting on mount
@@ -500,10 +520,18 @@ function DashboardPage() {
         
         // Use cache if less than 5 minutes old
         if (cacheAge < 5 * 60 * 1000) {
+          // CRITICAL: Filter cached rule IDs to only include rules that exist in this project
+          const validCachedRuleIds = new Set((rules || []).map((r: TrackingRule) => r.id));
+          const filteredCachedRuleIds = (cachedRuleIds || []).filter((id: string) => validCachedRuleIds.has(id));
+          
+          if (filteredCachedRuleIds.length !== (cachedRuleIds || []).length) {
+            console.warn(`⚠️ Cache: Filtered out ${(cachedRuleIds || []).length - filteredCachedRuleIds.length} invalid rule IDs`);
+          }
+          
           setTrackedAccounts(accounts || []);
           setSubmissions(submissions || []);
           setAllRules(rules || []);
-          setSelectedRuleIds(cachedRuleIds || []);
+          setSelectedRuleIds(filteredCachedRuleIds); // Use filtered IDs
           setRulesLoadedFromFirebase(true);
           setDataLoadedFromFirebase(true); // Mark data as loaded from cache
           hasCached = true;
@@ -625,13 +653,26 @@ function DashboardPage() {
       
       const savedSelectedRuleIds = userPrefsDoc.exists() ? (userPrefsDoc.data()?.selectedRuleIds || []) : [];
       
+      // CRITICAL: Filter out rule IDs that don't exist in this project
+      // This prevents rules from other projects from being applied
+      const validRuleIds = new Set(rules.map(r => r.id));
+      const filteredSelectedRuleIds = savedSelectedRuleIds.filter((id: string) => validRuleIds.has(id));
+      
+      if (filteredSelectedRuleIds.length !== savedSelectedRuleIds.length) {
+        console.warn(`⚠️ Filtered out ${savedSelectedRuleIds.length - filteredSelectedRuleIds.length} invalid rule IDs from other projects`);
+        console.warn('  - Saved IDs:', savedSelectedRuleIds);
+        console.warn('  - Valid IDs:', filteredSelectedRuleIds);
+        console.warn('  - Available rule IDs in this project:', Array.from(validRuleIds));
+      }
+      
       console.log('✅ Loaded rules:', rules.length);
       console.log('✅ Loaded selected rules from Firebase:', savedSelectedRuleIds);
+      console.log('✅ Filtered to valid rules for this project:', filteredSelectedRuleIds);
       console.log('🎯 Rule IDs available:', rules.map(r => r.id));
       
       // Set both at the same time to avoid race conditions
       setAllRules(rules);
-      setSelectedRuleIds(savedSelectedRuleIds);
+      setSelectedRuleIds(filteredSelectedRuleIds); // Use filtered IDs
       setRulesLoadedFromFirebase(true);
       setDataLoadedFromFirebase(true); // Mark data as loaded (even if empty)
       console.timeEnd('🚀 Parallel Firebase load');

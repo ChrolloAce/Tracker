@@ -514,26 +514,34 @@ export class AccountTrackingServiceFirebase {
       const existingVideoIds = new Set(existingVideos.map(v => v.videoId).filter((id): id is string => !!id));
       console.log(`📚 Found ${existingVideoIds.size} existing videos in database`);
 
-      // STEP 2: Update snapshots for all existing videos (refresh their metrics)
-      if (existingVideos.length > 0) {
-        console.log(`📸 Updating snapshots for ${existingVideos.length} existing videos...`);
-        await this.updateVideoSnapshots(orgId, projectId, existingVideos);
-      }
-
-      // STEP 3: Fetch NEW videos incrementally (only videos we don't have yet)
-      let videos: AccountVideo[];
+      // STEP 2 & 3: Fetch videos from platform (gets FRESH metrics!)
+      // This returns BOTH new videos AND updated existing videos
+      let syncResult: { newVideos: AccountVideo[], updatedVideos: AccountVideo[] };
       if (account.platform === 'instagram') {
-        videos = await this.syncInstagramVideosIncremental(orgId, account, existingVideoIds);
+        syncResult = await this.syncInstagramVideosIncremental(orgId, projectId, account, existingVideoIds);
       } else if (account.platform === 'tiktok') {
-        videos = await this.syncTikTokVideos(orgId, account);
+        const allVideos = await this.syncTikTokVideos(orgId, account);
+        syncResult = { newVideos: allVideos, updatedVideos: [] };
       } else if (account.platform === 'twitter') {
-        videos = await this.syncTwitterTweets(orgId, account);
+        const allVideos = await this.syncTwitterTweets(orgId, account);
+        syncResult = { newVideos: allVideos, updatedVideos: [] };
       } else {
         // YouTube
-        videos = await this.syncYoutubeShorts(orgId, account);
+        const allVideos = await this.syncYoutubeShorts(orgId, account);
+        syncResult = { newVideos: allVideos, updatedVideos: [] };
       }
 
-      console.log(`📹 Fetched ${videos.length} NEW videos from platform`);
+      console.log(`📹 Fetched ${syncResult.newVideos.length} NEW videos, ${syncResult.updatedVideos.length} updated videos from platform`);
+
+      // STEP 4: Update existing videos with fresh metrics + create snapshots
+      if (syncResult.updatedVideos.length > 0) {
+        console.log(`🔄 Updating ${syncResult.updatedVideos.length} existing videos with fresh metrics...`);
+        await this.updateExistingVideosWithFreshMetrics(orgId, projectId, syncResult.updatedVideos);
+      }
+
+      // Use only new videos for the rest of the sync process
+      const videos = syncResult.newVideos;
+      console.log(`➕ Saving ${videos.length} new videos to database`);
 
       // NOTE: Rules are applied during DISPLAY, not during sync
       // All videos are saved to Firestore, rules filter what's shown in the UI
@@ -602,27 +610,31 @@ export class AccountTrackingServiceFirebase {
   }
 
   /**
-   * NEW: Incremental Instagram sync - Only fetches NEW videos we don't have
+   * NEW: Incremental Instagram sync - Fetches videos and separates new vs existing
    * Uses batches of 2 videos, stops when it hits a known video
    * For new accounts (no existing videos), fetches larger batches to get initial history
+   * Returns BOTH new videos (to add) AND updated videos (to refresh metrics)
    */
   private static async syncInstagramVideosIncremental(
-    orgId: string, 
+    orgId: string,
+    projectId: string,
     account: TrackedAccount,
     existingVideoIds: Set<string>
-  ): Promise<AccountVideo[]> {
+  ): Promise<{ newVideos: AccountVideo[], updatedVideos: AccountVideo[] }> {
     const isNewAccount = existingVideoIds.size === 0;
     console.log(`🎯 Starting ${isNewAccount ? 'FULL' : 'INCREMENTAL'} sync for @${account.username}...`);
     
     const newVideos: AccountVideo[] = [];
+    const updatedVideos: AccountVideo[] = [];
     // For new accounts, fetch more videos per batch to get their full history faster
     const BATCH_SIZE = isNewAccount ? 20 : 2;
     let currentBatch = 0;
-    let hitKnownVideo = false;
+    let consecutiveExistingVideos = 0;
     // For new accounts, allow more batches to get full history (up to 100 videos)
     const MAX_BATCHES = isNewAccount ? 5 : 25; // New: 5 * 20 = 100 videos, Incremental: 25 * 2 = 50 videos
+    const STOP_AFTER_EXISTING = 3; // Stop after hitting 3 existing videos in a row (means we got all new ones)
     
-    while (!hitKnownVideo && currentBatch < MAX_BATCHES) {
+    while (consecutiveExistingVideos < STOP_AFTER_EXISTING && currentBatch < MAX_BATCHES) {
       currentBatch++;
       const maxReels = BATCH_SIZE * currentBatch;
       
@@ -688,14 +700,7 @@ export class AccountTrackingServiceFirebase {
           const videoCode = media.code || media.shortCode || media.id;
           if (!videoCode) continue;
           
-          // CHECK: Have we seen this video before?
-          if (existingVideoIds.has(videoCode)) {
-            console.log(`✅ Hit known video: ${videoCode} - Stopping incremental fetch`);
-            hitKnownVideo = true;
-            break;
-          }
-          
-          // NEW VIDEO! Add it to the list
+          // Extract video data (we need this for both new and existing videos)
           let thumbnailUrl = media.image_versions2?.candidates?.[0]?.url || 
                             media.display_uri || 
                             media.displayUrl || '';
@@ -722,7 +727,7 @@ export class AccountTrackingServiceFirebase {
           const comments = media.comment_count || 0;
           const duration = media.video_duration || 0;
           
-          newVideos.push({
+          const videoData: AccountVideo = {
             id: `${account.id}_${videoCode}`,
             accountId: account.id,
             videoId: videoCode,
@@ -738,19 +743,36 @@ export class AccountTrackingServiceFirebase {
             isSponsored: false,
             hashtags: [],
             mentions: []
-          });
+          };
           
-          console.log(`➕ NEW video found: ${videoCode} (${newVideos.length} total new)`);
-        }
-        
-        if (hitKnownVideo) {
-          console.log(`✅ Incremental sync complete: Found ${newVideos.length} new videos`);
-          break;
+          // CHECK: Is this a NEW video or an EXISTING one?
+          if (existingVideoIds.has(videoCode)) {
+            // EXISTING VIDEO - Add to update list with fresh metrics
+            updatedVideos.push(videoData);
+            consecutiveExistingVideos++;
+            console.log(`🔄 Existing video: ${videoCode} (will update metrics, ${consecutiveExistingVideos} consecutive)`);
+            
+            // If we hit too many existing videos in a row, we've found all new ones
+            if (consecutiveExistingVideos >= STOP_AFTER_EXISTING) {
+              console.log(`✅ Hit ${STOP_AFTER_EXISTING} existing videos in a row - all new videos found`);
+              break;
+            }
+          } else {
+            // NEW VIDEO - Add to new list
+            newVideos.push(videoData);
+            consecutiveExistingVideos = 0; // Reset counter
+            console.log(`➕ NEW video found: ${videoCode} (${newVideos.length} total new)`);
+          }
         }
         
         // If we got fewer items than maxReels, we've reached the end
         if (items.length < maxReels) {
           console.log(`✅ Reached end of account videos (got ${items.length} < ${maxReels})`);
+          break;
+        }
+        
+        // If we hit our stopping condition, break
+        if (consecutiveExistingVideos >= STOP_AFTER_EXISTING) {
           break;
         }
         
@@ -760,53 +782,75 @@ export class AccountTrackingServiceFirebase {
       }
     }
     
-    console.log(`🎉 Incremental sync finished: ${newVideos.length} new videos, ${currentBatch} batches`);
-    return newVideos;
+    console.log(`🎉 Incremental sync finished: ${newVideos.length} new videos, ${updatedVideos.length} updated videos, ${currentBatch} batches`);
+    return { newVideos, updatedVideos };
   }
 
   /**
-   * NEW: Update snapshots for existing videos (refresh their metrics)
+   * NEW: Update existing videos with fresh metrics from platform + create snapshots
+   * This updates BOTH the video document AND creates a new snapshot
    */
-  private static async updateVideoSnapshots(
+  private static async updateExistingVideosWithFreshMetrics(
     orgId: string,
     projectId: string,
     videos: AccountVideo[]
   ): Promise<void> {
-    console.log(`📸 Creating snapshots for ${videos.length} videos...`);
+    if (videos.length === 0) return;
     
-    const batch = writeBatch(db);
+    console.log(`🔄 Updating ${videos.length} existing videos with fresh metrics...`);
+    
+    let batch = writeBatch(db);
     const now = Timestamp.now();
-    let snapshotCount = 0;
+    let updateCount = 0;
+    let operationsInBatch = 0;
     
     for (const video of videos) {
-      const snapshotRef = doc(
-        collection(db, 'organizations', orgId, 'projects', projectId, 'videos', video.id || video.videoId || '', 'snapshots')
-      );
+      const videoId = video.id || video.videoId || '';
+      if (!videoId) continue;
       
-      const snapshot = {
+      // Update the video document with fresh metrics
+      const videoRef = doc(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId);
+      batch.update(videoRef, {
+        views: video.views || 0,
+        likes: video.likes || 0,
+        comments: video.comments || 0,
+        shares: video.shares || 0,
+        duration: video.duration || 0,
+        lastUpdated: now
+      });
+      operationsInBatch++;
+      
+      // Create a snapshot with the fresh metrics
+      const snapshotRef = doc(
+        collection(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId, 'snapshots')
+      );
+      batch.set(snapshotRef, {
         capturedAt: now,
         views: video.views || 0,
         likes: video.likes || 0,
         comments: video.comments || 0,
         shares: video.shares || 0,
         saves: 0
-      };
+      });
+      operationsInBatch++;
       
-      batch.set(snapshotRef, snapshot);
-      snapshotCount++;
+      updateCount++;
       
-      // Firestore batch limit is 500 operations
-      if (snapshotCount % 500 === 0) {
+      // Firestore batch limit is 500 operations (we do 2 operations per video)
+      if (operationsInBatch >= 500) {
         await batch.commit();
-        console.log(`✅ Committed ${snapshotCount} snapshots...`);
+        console.log(`✅ Updated ${updateCount} videos...`);
+        batch = writeBatch(db); // Create new batch
+        operationsInBatch = 0;
       }
     }
     
-    if (snapshotCount % 500 !== 0) {
+    // Commit remaining updates
+    if (operationsInBatch > 0) {
       await batch.commit();
     }
     
-    console.log(`✅ Created ${snapshotCount} snapshots for existing videos`);
+    console.log(`✅ Updated ${updateCount} existing videos with fresh metrics + snapshots`);
   }
 
   /**
