@@ -50,8 +50,6 @@ export const ProxiedImage: React.FC<ProxiedImageProps> = ({
     }
 
     // Try loading through image proxy
-    console.log(`🔄 Image failed to load directly, trying proxy for: ${src.substring(0, 100)}...`);
-    
     setIsLoading(true);
     
     try {
@@ -73,14 +71,12 @@ export const ProxiedImage: React.FC<ProxiedImageProps> = ({
       const data = await response.json();
       
       if (data.success && data.dataUrl) {
-        console.log(`✅ Image loaded successfully through proxy`);
         setImageSrc(data.dataUrl);
         setImageError(false);
       } else {
         throw new Error('No data URL returned');
       }
     } catch (error) {
-      console.error('❌ Image proxy failed:', error);
       setImageError(true);
       onError?.();
     } finally {

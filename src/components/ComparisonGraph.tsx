@@ -14,8 +14,6 @@ type MetricType = 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'vi
 type ChartType = 'line' | 'area' | 'bar';
 
 const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granularity = 'week', dateRange }) => {
-  console.log('🎨 ComparisonGraph rendering with', submissions.length, 'submissions', 'granularity:', granularity, 'dateRange:', dateRange);
-  
   const [metric1, setMetric1] = useState<MetricType>('views');
   const [metric2, setMetric2] = useState<MetricType>('likes');
   const [chartType, setChartType] = useState<ChartType>('bar');
@@ -73,14 +71,12 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
       // Use the filter's date range to show full range even if no data
       startDate = new Date(dateRange.startDate);
       endDate = new Date(dateRange.endDate);
-      console.log('📅 Using provided dateRange:', startDate.toLocaleDateString(), 'to', endDate.toLocaleDateString());
     } else {
       // Fallback: derive from submissions (old behavior)
       if (submissions.length === 0) return [];
       const dates = submissions.map(v => new Date(v.uploadDate || v.dateSubmitted).getTime());
       startDate = new Date(Math.min(...dates));
       endDate = new Date(Math.max(...dates));
-      console.log('📅 Derived dateRange from submissions:', startDate.toLocaleDateString(), 'to', endDate.toLocaleDateString());
     }
     
     // Use granularity as interval type

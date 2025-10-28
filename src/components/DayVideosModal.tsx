@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { X, Calendar, Eye, Heart, MessageCircle, Share2, Activity, Video, Users, MousePointerClick, ChevronLeft, ChevronRight } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { VideoSubmissionsTable } from './VideoSubmissionsTable';
@@ -41,17 +41,6 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
   hourRange
 }) => {
   const [showPreviousPeriod, setShowPreviousPeriod] = useState(false);
-
-  // Debug: Log props on mount
-  useEffect(() => {
-    console.log('📋 DayVideosModal Props:', {
-      dayOfWeek,
-      hourRange,
-      totalVideos: videos.length,
-      date,
-      accountFilter
-    });
-  }, [dayOfWeek, hourRange, videos.length, date, accountFilter]);
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', { 
