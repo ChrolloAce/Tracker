@@ -233,14 +233,25 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
             {/* Links Clicked (grouped) */}
             {tooltipData.point.clicks && tooltipData.point.clicks.length > 0 && (() => {
               // Group clicks by shortCode
-              const clickGroups = new Map<string, { link: TrackedLink | null; clicks: number }>();
+              const clickGroups = new Map<string, { 
+                link: TrackedLink | null; 
+                clicks: number;
+                profilePicture?: string;
+                accountHandle?: string;
+              }>();
+              
               tooltipData.point.clicks.forEach(click => {
                 const shortCode = click.shortCode;
                 if (!shortCode) return;
                 
                 if (!clickGroups.has(shortCode)) {
                   const link = links.find(l => l.shortCode === shortCode);
-                  clickGroups.set(shortCode, { link: link || null, clicks: 0 });
+                  clickGroups.set(shortCode, { 
+                    link: link || null, 
+                    clicks: 0,
+                    profilePicture: click.accountProfilePicture,
+                    accountHandle: click.accountHandle
+                  });
                 }
                 clickGroups.get(shortCode)!.clicks++;
               });
@@ -256,9 +267,7 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
                     Links ({clickGroups.size})
                   </p>
                   <div className="space-y-1">
-                    {sortedGroups.map(([shortCode, { link, clicks: clickCount }]) => {
-                      const linkedAccount = link?.linkedAccountId ? accounts.get(link.linkedAccountId) : null;
-                      
+                    {sortedGroups.map(([shortCode, { link, clicks: clickCount, profilePicture, accountHandle }]) => {
                       return (
                         <div 
                           key={shortCode}
@@ -272,10 +281,10 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
                         >
                           {/* Creator Profile Picture or Link Icon */}
                           <div className="flex-shrink-0">
-                            {linkedAccount?.profilePicture ? (
+                            {profilePicture ? (
                               <img
-                                src={linkedAccount.profilePicture}
-                                alt={linkedAccount.username}
+                                src={profilePicture}
+                                alt={accountHandle || 'User'}
                                 className="w-6 h-6 rounded-full object-cover"
                               />
                             ) : (
@@ -289,6 +298,11 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
                             <p className="text-xs text-white truncate">
                               {link?.title || `/${shortCode}`}
                             </p>
+                            {accountHandle && (
+                              <p className="text-[10px] text-gray-500 truncate">
+                                @{accountHandle}
+                              </p>
+                            )}
                           </div>
                           
                           <span className="text-xs text-gray-400 font-medium">
