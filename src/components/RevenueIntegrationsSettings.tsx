@@ -396,6 +396,7 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
   const [saving, setSaving] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string>(''); // Track uploaded file name
+  const [webhookCopied, setWebhookCopied] = useState(false);
 
   // Handle .p8 file upload for Apple
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -433,6 +434,38 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
     } catch (error) {
       console.error('File upload error:', error);
       alert('❌ Failed to process file');
+    }
+  };
+
+  /**
+   * Generate webhook URL for this provider
+   */
+  const getWebhookUrl = (): string | null => {
+    // Only Superwall and RevenueCat support webhooks
+    if (provider !== 'superwall' && provider !== 'revenuecat') {
+      return null;
+    }
+
+    const baseUrl = window.location.origin;
+    const webhookPath = provider === 'superwall' ? 'superwall-webhook' : 'revenuecat-webhook';
+    
+    return `${baseUrl}/api/${webhookPath}?orgId=${organizationId}&projectId=${projectId}`;
+  };
+
+  /**
+   * Copy webhook URL to clipboard
+   */
+  const copyWebhookUrl = async () => {
+    const webhookUrl = getWebhookUrl();
+    if (!webhookUrl) return;
+
+    try {
+      await navigator.clipboard.writeText(webhookUrl);
+      setWebhookCopied(true);
+      setTimeout(() => setWebhookCopied(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy webhook URL:', error);
+      alert('Failed to copy URL');
     }
   };
 
@@ -728,6 +761,71 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
               </div>
             )}
           </div>
+
+          {/* Webhook URL - Show for Superwall and RevenueCat */}
+          {getWebhookUrl() && (
+            <div className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-lg p-5">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-blue-500/20 rounded-lg">
+                  <LinkIcon className="w-5 h-5 text-blue-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h4 className="text-sm font-semibold text-white">Your Webhook URL</h4>
+                    <div className="px-2 py-0.5 bg-blue-500/20 rounded-full">
+                      <span className="text-xs font-medium text-blue-400">Real-time Events</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-400 mb-3">
+                    Copy this URL and add it to your {provider === 'superwall' ? 'Superwall' : 'RevenueCat'} dashboard to receive real-time transaction events
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 px-3 py-2 bg-black/30 border border-white/10 rounded-lg overflow-hidden">
+                      <p className="text-xs text-gray-300 font-mono truncate">
+                        {getWebhookUrl()}
+                      </p>
+                    </div>
+                    <button
+                      onClick={copyWebhookUrl}
+                      className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium whitespace-nowrap"
+                    >
+                      {webhookCopied ? (
+                        <>
+                          <Check className="w-4 h-4" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" />
+                          Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  {provider === 'superwall' && (
+                    <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                      <p className="text-xs text-amber-400 flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                        <span>
+                          <strong>Next step:</strong> Go to Superwall Dashboard → Settings → Webhooks → Create Webhook and paste this URL. Select all transaction events.
+                        </span>
+                      </p>
+                    </div>
+                  )}
+                  {provider === 'revenuecat' && (
+                    <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                      <p className="text-xs text-amber-400 flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                        <span>
+                          <strong>Next step:</strong> Go to RevenueCat Dashboard → Settings → Webhooks → Add Webhook and paste this URL.
+                        </span>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Help Text */}
           <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
