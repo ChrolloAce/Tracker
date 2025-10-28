@@ -64,44 +64,19 @@ After saving:
 
 ## Important Notes
 
-### Server-Side JWT Generation Required
+### Server-Side Architecture (Already Implemented ✅)
 
-⚠️ **Security Note**: The Apple App Store integration requires server-side JWT token generation for production use.
+✅ **All Apple API calls are handled server-side** via Vercel serverless functions:
 
-For full production deployment, you'll need to create a serverless function:
+1. **`/api/apple-auth-token.ts`** - Generates JWT tokens securely
+2. **`/api/apple-test-connection.ts`** - Tests Apple credentials
+3. **`/api/apple-fetch-transactions.ts`** - Fetches transaction history
 
-**Example:** `/api/apple-auth-token.ts` (Vercel function)
-
-```typescript
-import { SignJWT } from 'jose';
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const { privateKey, keyId, issuerId } = req.body;
-  
-  // Decode the base64 private key
-  const key = Buffer.from(privateKey, 'base64');
-  
-  // Generate JWT
-  const jwt = await new SignJWT({})
-    .setProtectedHeader({
-      alg: 'ES256',
-      kid: keyId,
-      typ: 'JWT'
-    })
-    .setIssuedAt()
-    .setIssuer(issuerId)
-    .setAudience('appstoreconnect-v1')
-    .setExpirationTime('20m')
-    .sign(key);
-    
-  res.json({ token: jwt });
-}
-```
-
-Install required package:
-```bash
-npm install jose
-```
+This architecture ensures:
+- ✅ No CORS issues (Apple's API doesn't allow browser requests)
+- ✅ Private keys never exposed in client-side code
+- ✅ Secure JWT generation using the `jose` library
+- ✅ Works in both local development (`vercel dev`) and production
 
 ### Sandbox vs Production
 
@@ -189,16 +164,21 @@ Once integrated, you'll see:
 
 ## Troubleshooting
 
-### "Failed to generate JWT" Error
+### Connection Test Fails
 
-- Make sure you've base64 encoded your .p8 file correctly
-- Implement the server-side JWT generation endpoint
+**Possible causes:**
+- ✅ Check your .p8 file was uploaded correctly
+- ✅ Verify your Key ID matches the one in App Store Connect (it's auto-filled from filename)
+- ✅ Verify your Issuer ID is correct (UUID format from App Store Connect)
+- ✅ Make sure you're using the correct Bundle ID (e.g., `com.yourcompany.appname`)
+- ✅ Ensure your Key has "In-App Purchase" access enabled in App Store Connect
 
-### "Invalid credentials" Error
+### CORS Errors (should not happen)
 
-- Verify your Key ID matches the one in App Store Connect
-- Verify your Issuer ID is correct (UUID format)
-- Make sure you're using the correct Bundle ID
+If you see CORS errors, it means the serverless endpoints aren't being used. Make sure:
+- ✅ You've deployed to Vercel (serverless functions don't work with just `npm run dev`)
+- ✅ The `/api` directory is deployed with your app
+- ✅ You're running `vercel dev` for local testing (not `npm run dev`)
 
 ### "No data returned"
 

@@ -41,22 +41,30 @@ class AppleAppStoreService {
    */
   static async testConnection(credentials: AppleCredentials, useSandbox = true): Promise<boolean> {
     try {
-      // Generate JWT token for authentication
-      const token = await this.generateJWT(credentials);
-      
-      const baseUrl = useSandbox ? this.SANDBOX_BASE_URL : this.PRODUCTION_BASE_URL;
-      
-      // Test by getting subscription statuses (lightweight call)
-      const response = await fetch(`${baseUrl}/inApps/v1/lookup/12345`, {
-        method: 'GET',
+      // Call serverless function to test connection (avoids CORS issues)
+      const response = await fetch('/api/apple-test-connection', {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          privateKey: credentials.privateKey,
+          keyId: credentials.keyId,
+          issuerId: credentials.issuerId,
+          bundleId: credentials.bundleId,
+          useSandbox,
+        }),
       });
 
-      // 200-299 = success, 404 = valid auth but no data (still success for testing)
-      return response.status < 500;
+      const data = await response.json();
+      
+      if (!response.ok) {
+        console.error('❌ Apple connection test failed:', data.error, data.details);
+        return false;
+      }
+
+      console.log('✅ Apple connection test successful:', data.message);
+      return data.success;
     } catch (error) {
       console.error('❌ Apple connection test failed:', error);
       return false;
@@ -73,43 +81,40 @@ class AppleAppStoreService {
     useSandbox = false
   ): Promise<AppleTransaction[]> {
     try {
-      const token = await this.generateJWT(credentials);
-      const baseUrl = useSandbox ? this.SANDBOX_BASE_URL : this.PRODUCTION_BASE_URL;
-      
-      const transactions: AppleTransaction[] = [];
-      let hasMore = true;
-      let revision: string | undefined;
+      // Call serverless function to fetch transactions (avoids CORS issues)
+      const response = await fetch('/api/apple-fetch-transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          privateKey: credentials.privateKey,
+          keyId: credentials.keyId,
+          issuerId: credentials.issuerId,
+          bundleId: credentials.bundleId,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          useSandbox,
+        }),
+      });
 
-      while (hasMore) {
-        const url = new URL(`${baseUrl}/inApps/v1/history/${credentials.bundleId}`);
-        if (revision) {
-          url.searchParams.append('revision', revision);
-        }
-
-        const response = await fetch(url.toString(), {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`Apple API error: ${response.status}`);
-        }
-
-        const data: AppleServerAPIResponse = await response.json();
-        
-        if (data.data) {
-          const parsedTransactions = await this.parseTransactions(data.data, startDate, endDate);
-          transactions.push(...parsedTransactions);
-        }
-
-        hasMore = data.meta?.hasMore || false;
-        revision = data.meta?.revision;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details || errorData.error || 'Failed to fetch transactions');
       }
 
-      return transactions;
+      const data = await response.json();
+      
+      if (!data.success || !data.transactions) {
+        throw new Error('Invalid response from Apple transactions API');
+      }
+
+      console.log(`✅ Received ${data.transactions.length} transactions from Apple`);
+      
+      // Parse and filter transactions by date range
+      const parsedTransactions = await this.parseTransactions(data.transactions, startDate, endDate);
+      
+      return parsedTransactions;
     } catch (error) {
       console.error('❌ Failed to fetch Apple transactions:', error);
       throw error;
