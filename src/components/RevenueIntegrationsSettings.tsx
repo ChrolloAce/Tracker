@@ -13,6 +13,8 @@ import {
   RefreshCw,
   Eye,
   EyeOff,
+  Copy,
+  Link as LinkIcon,
   AlertCircle,
   CheckCircle,
   Loader2
@@ -33,6 +35,7 @@ export const RevenueIntegrationsSettings: React.FC<RevenueIntegrationsSettingsPr
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [copiedWebhookId, setCopiedWebhookId] = useState<string | null>(null);
 
   // Load integrations on mount
   useEffect(() => {
@@ -48,6 +51,38 @@ export const RevenueIntegrationsSettings: React.FC<RevenueIntegrationsSettingsPr
       console.error('Failed to load integrations:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * Generate webhook URL for an integration
+   */
+  const getWebhookUrl = (integration: RevenueIntegration): string | null => {
+    // Only Superwall and RevenueCat support webhooks for now
+    if (integration.provider !== 'superwall' && integration.provider !== 'revenuecat') {
+      return null;
+    }
+
+    const baseUrl = window.location.origin;
+    const webhookPath = integration.provider === 'superwall' ? 'superwall-webhook' : 'revenuecat-webhook';
+    
+    return `${baseUrl}/api/${webhookPath}?orgId=${organizationId}&projectId=${projectId}`;
+  };
+
+  /**
+   * Copy webhook URL to clipboard
+   */
+  const copyWebhookUrl = async (integration: RevenueIntegration) => {
+    const webhookUrl = getWebhookUrl(integration);
+    if (!webhookUrl) return;
+
+    try {
+      await navigator.clipboard.writeText(webhookUrl);
+      setCopiedWebhookId(integration.id);
+      setTimeout(() => setCopiedWebhookId(null), 2000);
+    } catch (error) {
+      console.error('Failed to copy webhook URL:', error);
+      alert('Failed to copy URL');
     }
   };
 
@@ -259,6 +294,59 @@ export const RevenueIntegrationsSettings: React.FC<RevenueIntegrationsSettingsPr
                       <p className="text-white font-medium mt-1">
                         {integration.settings.currency || 'USD'}
                       </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Webhook URL */}
+              {getWebhookUrl(integration) && (
+                <div className="mt-4 pt-4 border-t border-white/10">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-blue-500/10 rounded-lg">
+                      <LinkIcon className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <p className="text-sm font-medium text-white">Webhook URL</p>
+                        <div className="px-2 py-0.5 bg-blue-500/10 rounded-full">
+                          <span className="text-xs font-medium text-blue-400">Real-time Events</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-400 mb-3">
+                        Configure this URL in your {getProviderName(integration.provider)} dashboard to receive real-time transaction events
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 px-3 py-2 bg-black/20 border border-white/10 rounded-lg overflow-hidden">
+                          <p className="text-xs text-gray-300 font-mono truncate">
+                            {getWebhookUrl(integration)}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => copyWebhookUrl(integration)}
+                          className="px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium whitespace-nowrap"
+                        >
+                          {copiedWebhookId === integration.id ? (
+                            <>
+                              <Check className="w-4 h-4" />
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-4 h-4" />
+                              Copy URL
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      <div className="mt-3 p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+                        <p className="text-xs text-amber-400 flex items-start gap-2">
+                          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                          <span>
+                            Add this webhook URL to your {getProviderName(integration.provider)} dashboard to receive instant updates when transactions occur. No manual syncing needed!
+                          </span>
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
