@@ -17,24 +17,11 @@ interface AppleCredentials {
   bundleId: string; // Your app's bundle ID (e.g., com.yourapp.bundle)
 }
 
-interface AppleServerAPIResponse {
-  data?: any[];
-  meta?: {
-    hasMore: boolean;
-    revision: string;
-  };
-  error?: {
-    errorCode: number;
-    errorMessage: string;
-  };
-}
-
 /**
  * Apple App Store Service for managing subscriptions and transactions
+ * All API calls are handled via serverless functions to avoid CORS issues
  */
 class AppleAppStoreService {
-  private static readonly PRODUCTION_BASE_URL = 'https://api.storekit.itunes.apple.com';
-  private static readonly SANDBOX_BASE_URL = 'https://api.storekit-sandbox.itunes.apple.com';
 
   /**
    * Test Apple App Store credentials
@@ -196,37 +183,6 @@ class AppleAppStoreService {
         updatedAt: new Date()
       };
     });
-  }
-
-  /**
-   * Generate JWT token for Apple API authentication via serverless endpoint
-   */
-  private static async generateJWT(credentials: AppleCredentials): Promise<string> {
-    try {
-      // Call the serverless function to generate JWT
-      const response = await fetch('/api/apple-auth-token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          privateKey: credentials.privateKey,
-          keyId: credentials.keyId,
-          issuerId: credentials.issuerId,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.details || error.error || 'Failed to generate JWT');
-      }
-
-      const data = await response.json();
-      return data.token;
-    } catch (error) {
-      console.error('❌ JWT generation failed:', error);
-      throw new Error(`Failed to generate Apple authentication token: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
   }
 
   /**
