@@ -39,11 +39,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const event = req.body;
 
+    // Log the full payload for debugging
     console.log('🎣 Superwall webhook received:', {
       orgId,
       projectId,
-      eventType: event.event_type,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      fullPayload: JSON.stringify(event, null, 2)
     });
 
     // Verify the integration exists and is enabled
@@ -67,27 +68,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Process the webhook event based on type
-    const eventType = event.event_type || event.type;
+    const eventType = event.event_type || event.type || event.event?.name || 'unknown';
 
-    switch (eventType) {
-      case 'transaction':
-      case 'purchase':
-      case 'subscription_started':
-      case 'subscription_renewed':
-        await processTransactionEvent(orgId, projectId, event);
-        break;
+    console.log(`📋 Processing event type: ${eventType}`);
 
-      case 'subscription_cancelled':
-      case 'subscription_expired':
-        await processSubscriptionEndEvent(orgId, projectId, event);
-        break;
+    try {
+      switch (eventType) {
+        case 'transaction':
+        case 'purchase':
+        case 'subscription_started':
+        case 'subscription_renewed':
+        case 'initial_purchase': // Superwall uses this
+        case 'INITIAL_PURCHASE': // Case variations
+          await processTransactionEvent(orgId, projectId, event);
+          break;
 
-      case 'trial_started':
-        await processTrialEvent(orgId, projectId, event);
-        break;
+        case 'subscription_cancelled':
+        case 'subscription_expired':
+          await processSubscriptionEndEvent(orgId, projectId, event);
+          break;
 
-      default:
-        console.log(`ℹ️ Unhandled event type: ${eventType}`);
+        case 'trial_started':
+          await processTrialEvent(orgId, projectId, event);
+          break;
+
+        default:
+          console.log(`ℹ️ Unhandled event type: ${eventType}`);
+          // Still save it for debugging
+          await processTransactionEvent(orgId, projectId, event);
+      }
+    } catch (processError) {
+      console.error(`❌ Error processing event type ${eventType}:`, processError);
+      // Log error but don't throw - still record the webhook
     }
 
     // Log webhook receipt
@@ -125,39 +137,75 @@ async function processTransactionEvent(
   projectId: string,
   event: any
 ) {
-  const transaction = {
-    id: event.transaction_id || event.id || `superwall_${Date.now()}`,
-    userId: event.user_id || event.customer_id,
-    productId: event.product_id,
-    amount: parseFloat(event.revenue || event.amount || 0),
-    currency: event.currency || 'USD',
-    type: determineTransactionType(event),
-    status: 'completed',
-    platform: event.platform || 'unknown',
-    provider: 'superwall' as const,
-    timestamp: event.timestamp ? new Date(event.timestamp) : new Date(),
-    metadata: {
-      eventType: event.event_type,
-      subscriptionId: event.subscription_id,
-      originalTransactionId: event.original_transaction_id,
-      environment: event.environment,
-      rawEvent: event
-    },
-    createdAt: new Date(),
-    updatedAt: new Date()
-  };
+  try {
+    // Superwall event structure variations
+    const eventData = event.event?.data || event.data || event;
+    
+    console.log('📦 Event data structure:', {
+      hasEvent: !!event.event,
+      hasData: !!event.data,
+      keys: Object.keys(eventData)
+    });
 
-  // Store transaction
-  await db
-    .collection('organizations')
-    .doc(orgId)
-    .collection('projects')
-    .doc(projectId)
-    .collection('revenueTransactions')
-    .doc(transaction.id)
-    .set(transaction, { merge: true });
+    // Extract amount - Superwall might send as 'price', 'proceeds', 'revenue', or 'amount'
+    let amount = 0;
+    const rawAmount = eventData.price || eventData.proceeds || eventData.revenue || eventData.amount || 0;
+    
+    // Handle both cents (integer) and dollars (float)
+    if (typeof rawAmount === 'string') {
+      amount = parseFloat(rawAmount) * 100; // Convert to cents
+    } else if (rawAmount < 1000 && rawAmount > 0) {
+      amount = rawAmount * 100; // Likely dollars, convert to cents
+    } else {
+      amount = rawAmount; // Already in cents
+    }
 
-  console.log(`💰 Transaction stored: ${transaction.id} - $${transaction.amount}`);
+    const transaction = {
+      id: eventData.transaction_id || eventData.id || event.id || `superwall_${Date.now()}`,
+      organizationId: orgId,
+      projectId: projectId,
+      userId: eventData.user_id || eventData.customer_id || eventData.subscriber_id || 'unknown',
+      productId: eventData.product_id || eventData.productId || eventData.name || 'unknown',
+      amount: Math.round(amount),
+      currency: eventData.currency || 'USD',
+      type: determineTransactionType(event, eventData),
+      status: 'completed',
+      platform: (eventData.platform || event.platform || 'other') as 'ios' | 'android' | 'web' | 'other',
+      provider: 'superwall' as const,
+      purchaseDate: eventData.timestamp ? new Date(eventData.timestamp) : 
+                    eventData.purchased_at ? new Date(eventData.purchased_at) :
+                    eventData.created_at ? new Date(eventData.created_at) : new Date(),
+      isRenewal: false,
+      isTrial: false,
+      metadata: {
+        eventType: event.event_type || event.type || event.event?.name,
+        subscriptionId: eventData.subscription_id,
+        originalTransactionId: eventData.original_transaction_id,
+        environment: eventData.environment || event.environment,
+        rawEvent: event
+      },
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    console.log(`💰 Storing transaction: ${transaction.id} - $${(transaction.amount / 100).toFixed(2)}`);
+
+    // Store transaction
+    await db
+      .collection('organizations')
+      .doc(orgId)
+      .collection('projects')
+      .doc(projectId)
+      .collection('revenueTransactions')
+      .doc(transaction.id)
+      .set(transaction, { merge: true });
+
+    console.log(`✅ Transaction stored successfully: ${transaction.id}`);
+  } catch (error) {
+    console.error('❌ Error in processTransactionEvent:', error);
+    console.error('Event that caused error:', JSON.stringify(event, null, 2));
+    throw error; // Re-throw to be caught by outer try-catch
+  }
 }
 
 /**
@@ -236,12 +284,12 @@ async function processTrialEvent(
 /**
  * Determine transaction type from event
  */
-function determineTransactionType(event: any): 'purchase' | 'subscription' | 'refund' | 'renewal' {
-  const eventType = event.event_type || event.type;
+function determineTransactionType(event: any, eventData: any): 'purchase' | 'subscription' | 'refund' | 'renewal' {
+  const eventType = (event.event_type || event.type || event.event?.name || '').toLowerCase();
   
-  if (eventType === 'refund') return 'refund';
-  if (eventType === 'subscription_renewed' || eventType === 'renewal') return 'renewal';
-  if (eventType === 'subscription_started' || event.is_subscription) return 'subscription';
+  if (eventType.includes('refund')) return 'refund';
+  if (eventType.includes('renewed') || eventType.includes('renewal')) return 'renewal';
+  if (eventType.includes('subscription') || eventData?.is_subscription) return 'subscription';
   
   return 'purchase';
 }
