@@ -476,7 +476,7 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
 
       const result = await RevenueDataService.testIntegration(provider, {
         apiKey,
-        appId: (provider === 'superwall' || provider === 'apple') ? appId : undefined,
+        appId: provider === 'apple' ? appId : (provider === 'revenuecat' ? appId : undefined),
         keyId: provider === 'apple' ? keyId : undefined,
         issuerId: provider === 'apple' ? issuerId : undefined,
       });
@@ -501,10 +501,7 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
       return;
     }
 
-    if (provider === 'superwall' && !appId) {
-      alert('Please enter an App ID for Superwall');
-      return;
-    }
+    // Superwall doesn't need App ID - webhooks handle everything!
 
     if (provider === 'apple') {
       if (!appId) {
@@ -530,7 +527,7 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
         provider,
         {
           apiKey,
-          appId: (provider === 'superwall' || provider === 'revenuecat' || provider === 'apple') ? appId : undefined,
+          appId: (provider === 'revenuecat' || provider === 'apple') ? appId : undefined,
           keyId: provider === 'apple' ? keyId : undefined,
           issuerId: provider === 'apple' ? issuerId : undefined,
         }
@@ -656,21 +653,7 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
             </div>
           )}
 
-          {/* App ID (Superwall only) */}
-          {provider === 'superwall' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                App ID *
-              </label>
-              <input
-                type="text"
-                value={appId}
-                onChange={(e) => setAppId(e.target.value)}
-                placeholder="Enter your Superwall App ID"
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-          )}
+          {/* Superwall only needs API Key - webhook is auto-generated! */}
 
           {/* Apple App Store fields */}
           {provider === 'apple' && (
@@ -735,7 +718,6 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
               disabled={
                 testing || 
                 !apiKey || 
-                (provider === 'superwall' && !appId) ||
                 (provider === 'apple' && (!appId || !keyId || !issuerId))
               }
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -837,7 +819,7 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
               )}
               {provider === 'superwall' && (
                 <>
-                  Find your API key and App ID in Superwall dashboard under <strong>Settings → API</strong>
+                  Find your API key in Superwall dashboard under <strong>Settings → API</strong>. Then copy the webhook URL above and add it to <strong>Settings → Webhooks</strong>.
                 </>
               )}
             </p>
