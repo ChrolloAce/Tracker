@@ -18,7 +18,7 @@ interface TrackedLinksKPICardProps {
   icon: LucideIcon;
   sparklineData: SparklineDataPoint[];
   onClick?: () => void;
-  onDayClick?: (date: Date, clicks: LinkClick[]) => void;
+  onLinkClick?: (linkCode: string, date: Date, clicks: LinkClick[]) => void;
 }
 
 export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
@@ -29,7 +29,7 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
   icon: Icon,
   sparklineData,
   onClick,
-  onDayClick
+  onLinkClick
 }) => {
   const [tooltipData, setTooltipData] = useState<{ x: number; y: number; point: SparklineDataPoint; lineX: number } | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -230,8 +230,8 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
                       key={idx}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (onDayClick) {
-                          onDayClick(new Date(tooltipData.point.timestamp), tooltipData.point.clicks || []);
+                        if (onLinkClick && click.linkCode) {
+                          onLinkClick(click.linkCode, new Date(tooltipData.point.timestamp), tooltipData.point.clicks || []);
                         }
                       }}
                       className="flex items-center gap-2 py-1.5 px-2 hover:bg-white/5 rounded-lg transition-colors cursor-pointer"

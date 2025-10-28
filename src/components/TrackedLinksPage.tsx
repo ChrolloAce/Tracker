@@ -471,6 +471,13 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           isIncreasing={stats.isTotalIncreasing}
           icon={MousePointer}
           sparklineData={sparklineData.total}
+          onLinkClick={(linkCode) => {
+            // When clicking on a link in the tooltip, open its analytics modal
+            const link = links.find(l => l.shortCode === linkCode);
+            if (link) {
+              handleViewAnalytics(link);
+            }
+          }}
         />
 
         {/* Unique Clicks Card */}
@@ -481,6 +488,12 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           isIncreasing={stats.isUniqueIncreasing}
           icon={Users}
           sparklineData={sparklineData.unique}
+          onLinkClick={(linkCode) => {
+            const link = links.find(l => l.shortCode === linkCode);
+            if (link) {
+              handleViewAnalytics(link);
+            }
+          }}
         />
 
         {/* Avg CTR Card */}
@@ -490,6 +503,12 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           isIncreasing={stats.isTotalIncreasing}
           icon={TrendingUp}
           sparklineData={sparklineData.ctr}
+          onLinkClick={(linkCode) => {
+            const link = links.find(l => l.shortCode === linkCode);
+            if (link) {
+              handleViewAnalytics(link);
+            }
+          }}
         />
       </div>
 
