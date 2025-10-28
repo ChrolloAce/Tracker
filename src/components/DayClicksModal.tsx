@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { X, Calendar, MousePointer, Link as LinkIcon } from 'lucide-react';
+import { X, Link as LinkIcon } from 'lucide-react';
 import { LinkClick } from '../services/LinkClicksService';
 import { TrackedLink, TrackedAccount } from '../types/firestore';
 

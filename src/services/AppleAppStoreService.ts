@@ -124,13 +124,13 @@ class AppleAppStoreService {
     useSandbox = false
   ): Promise<AppleSubscription[]> {
     try {
-      const token = await this.generateJWT(credentials);
-      const baseUrl = useSandbox ? this.SANDBOX_BASE_URL : this.PRODUCTION_BASE_URL;
+      // const token = await this.generateJWT(credentials);
+      // const baseUrl = useSandbox ? this.SANDBOX_BASE_URL : this.PRODUCTION_BASE_URL;
       
       // This would need to be implemented based on your specific needs
       // You'd typically call /inApps/v1/subscriptions/{transactionId}
       
-      console.log('📱 Fetching active Apple subscriptions...');
+      console.log('📱 Fetching active Apple subscriptions...', useSandbox ? 'sandbox' : 'production', credentials.bundleId);
       
       // Placeholder - implement based on your app's subscription flow
       return [];

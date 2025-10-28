@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, AlertTriangle, Link as LinkIcon } from 'lucide-react';
+import { AlertTriangle, Link as LinkIcon } from 'lucide-react';
 import { TrackedLink } from '../types/firestore';
 
 interface DeleteLinkModalProps {

@@ -617,7 +617,7 @@ export class AccountTrackingServiceFirebase {
    */
   private static async syncInstagramVideosIncremental(
     orgId: string,
-    projectId: string,
+    _projectId: string,
     account: TrackedAccount,
     existingVideoIds: Set<string>
   ): Promise<{ newVideos: AccountVideo[], updatedVideos: AccountVideo[] }> {

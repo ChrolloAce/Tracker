@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AreaChart, Area, ResponsiveContainer, YAxis } from 'recharts';
 import { LinkClick } from '../services/LinkClicksService';
@@ -32,7 +32,7 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
   icon: Icon,
   sparklineData,
   links = [],
-  accounts = new Map(),
+  accounts: _accounts = new Map(),
   onClick,
   onLinkClick
 }) => {

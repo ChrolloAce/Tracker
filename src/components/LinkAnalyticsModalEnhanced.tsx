@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { X, Globe, Monitor, Smartphone, Tablet, ExternalLink, Download, Network, Tag, Bot, Languages } from 'lucide-react';
+import { X, Globe, Monitor, Smartphone, Tablet, ExternalLink, Download, Network, Tag, Bot } from 'lucide-react';
 import { TrackedLink } from '../types/firestore';
 import { LinkAnalytics } from '../types/trackedLinks';
 import TrackedLinksService from '../services/TrackedLinksService';
