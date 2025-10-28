@@ -491,7 +491,8 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
   };
 
   const handleSave = async () => {
-    if (!apiKey) {
+    // Superwall doesn't need any credentials - webhook only!
+    if (provider !== 'superwall' && !apiKey) {
       alert('Please enter an API key / Private key');
       return;
     }
@@ -500,8 +501,6 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
       alert('Please enter a Project ID for RevenueCat');
       return;
     }
-
-    // Superwall doesn't need App ID - webhooks handle everything!
 
     if (provider === 'apple') {
       if (!appId) {
@@ -610,8 +609,8 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
               </div>
             )}
 
-            {/* Regular text input for other providers */}
-            {provider !== 'apple' && (
+            {/* Regular text input for other providers (not Superwall or Apple) */}
+            {provider !== 'apple' && provider !== 'superwall' && (
               <div className="relative">
                 <input
                   type={showApiKey ? 'text' : 'password'}
@@ -633,6 +632,15 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
               </div>
             )}
           </div>
+
+          {/* Superwall: No credentials needed! Just webhook */}
+          {provider === 'superwall' && (
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4">
+              <p className="text-sm text-emerald-300">
+                ✨ <strong>No API key needed!</strong> Just copy the webhook URL below and add it to your Superwall dashboard.
+              </p>
+            </div>
+          )}
 
           {/* Project ID (RevenueCat only) */}
           {provider === 'revenuecat' && (
@@ -711,38 +719,40 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
             </>
           )}
 
-          {/* Test Connection */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleTest}
-              disabled={
-                testing || 
-                !apiKey || 
-                (provider === 'apple' && (!appId || !keyId || !issuerId))
-              }
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <CheckCircle className={`w-4 h-4 ${testing ? 'animate-spin' : ''}`} />
-              Test Connection
-            </button>
-            {testResult && (
-              <div className={`flex items-center gap-2 text-sm ${
-                testResult === 'success' ? 'text-emerald-400' : 'text-red-400'
-              }`}>
-                {testResult === 'success' ? (
-                  <>
-                    <Check className="w-4 h-4" />
-                    <span>Connection successful!</span>
-                  </>
-                ) : (
-                  <>
-                    <X className="w-4 h-4" />
-                    <span>Connection failed</span>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+          {/* Test Connection - Not needed for Superwall */}
+          {provider !== 'superwall' && (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleTest}
+                disabled={
+                  testing || 
+                  !apiKey || 
+                  (provider === 'apple' && (!appId || !keyId || !issuerId))
+                }
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <CheckCircle className={`w-4 h-4 ${testing ? 'animate-spin' : ''}`} />
+                Test Connection
+              </button>
+              {testResult && (
+                <div className={`flex items-center gap-2 text-sm ${
+                  testResult === 'success' ? 'text-emerald-400' : 'text-red-400'
+                }`}>
+                  {testResult === 'success' ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Connection successful!</span>
+                    </>
+                  ) : (
+                    <>
+                      <X className="w-4 h-4" />
+                      <span>Connection failed</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Webhook URL - Show for Superwall and RevenueCat */}
           {getWebhookUrl() && (
@@ -819,7 +829,7 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
               )}
               {provider === 'superwall' && (
                 <>
-                  Find your API key in Superwall dashboard under <strong>Settings → API</strong>. Then copy the webhook URL above and add it to <strong>Settings → Webhooks</strong>.
+                  Simply copy the webhook URL above and add it to your Superwall dashboard under <strong>Settings → Webhooks</strong>. Select all transaction events. That's it!
                 </>
               )}
             </p>
