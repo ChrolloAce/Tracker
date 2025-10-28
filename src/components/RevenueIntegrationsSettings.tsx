@@ -525,7 +525,7 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
         projectId,
         provider,
         {
-          apiKey,
+          apiKey: provider === 'superwall' ? 'webhook-only' : apiKey, // Superwall doesn't need API key
           appId: (provider === 'revenuecat' || provider === 'apple') ? appId : undefined,
           keyId: provider === 'apple' ? keyId : undefined,
           issuerId: provider === 'apple' ? issuerId : undefined,
@@ -846,7 +846,12 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
           </button>
           <button
             onClick={handleSave}
-            disabled={saving || !apiKey || (provider === 'superwall' && !appId)}
+            disabled={
+              saving || 
+              (provider !== 'superwall' && !apiKey) || 
+              (provider === 'revenuecat' && !appId) ||
+              (provider === 'apple' && (!appId || !keyId || !issuerId))
+            }
             className="px-6 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? 'Saving...' : 'Save Integration'}
