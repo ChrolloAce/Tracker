@@ -477,6 +477,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           isIncreasing={stats.isTotalIncreasing}
           icon={MousePointer}
           sparklineData={sparklineData.total}
+          links={links}
+          accounts={accounts}
           onClick={(date, clicks) => {
             // Open modal showing all clicks for this day
             setSelectedDayDate(date);
@@ -500,6 +502,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           isIncreasing={stats.isUniqueIncreasing}
           icon={Users}
           sparklineData={sparklineData.unique}
+          links={links}
+          accounts={accounts}
           onClick={(date, clicks) => {
             setSelectedDayDate(date);
             setSelectedDayClicks(clicks);
@@ -520,6 +524,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           isIncreasing={stats.isTotalIncreasing}
           icon={TrendingUp}
           sparklineData={sparklineData.ctr}
+          links={links}
+          accounts={accounts}
           onClick={(date, clicks) => {
             setSelectedDayDate(date);
             setSelectedDayClicks(clicks);

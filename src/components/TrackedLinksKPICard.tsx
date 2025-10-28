@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { AreaChart, Area, ResponsiveContainer, YAxis } from 'recharts';
 import { LinkClick } from '../services/LinkClicksService';
-import { LucideIcon } from 'lucide-react';
+import { LucideIcon, Link as LinkIcon } from 'lucide-react';
+import { TrackedLink, TrackedAccount } from '../types/firestore';
 
 interface SparklineDataPoint {
   timestamp: number;
@@ -17,6 +18,8 @@ interface TrackedLinksKPICardProps {
   isIncreasing: boolean;
   icon: LucideIcon;
   sparklineData: SparklineDataPoint[];
+  links?: TrackedLink[];
+  accounts?: Map<string, TrackedAccount>;
   onClick?: (date: Date, clicks: LinkClick[]) => void; // Click on card/graph point
   onLinkClick?: (shortCode: string, date: Date, clicks: LinkClick[]) => void; // Click on specific link in tooltip
 }
@@ -28,6 +31,8 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
   isIncreasing,
   icon: Icon,
   sparklineData,
+  links = [],
+  accounts = new Map(),
   onClick,
   onLinkClick
 }) => {
@@ -225,47 +230,82 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
               {formatNumber(tooltipData.point.value)} clicks
             </p>
 
-            {/* Links Clicked (up to 5) */}
-            {tooltipData.point.clicks && tooltipData.point.clicks.length > 0 && (
-              <div className="space-y-2 border-t border-white/10 pt-3">
-                <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
-                  Top Links ({tooltipData.point.clicks.length})
-                </p>
-                <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                  {tooltipData.point.clicks.slice(0, 5).map((click, idx) => (
-                    <div 
-                      key={idx}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (onLinkClick && click.shortCode) {
-                          onLinkClick(click.shortCode, new Date(tooltipData.point.timestamp), tooltipData.point.clicks || []);
-                        }
-                      }}
-                      className="flex items-center gap-2 py-1.5 px-2 hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-white truncate font-medium">
-                          {click.shortCode}
-                        </p>
-                        {click.accountHandle && (
-                          <p className="text-xs text-gray-500">
-                            @{click.accountHandle}
-                          </p>
-                        )}
-                      </div>
-                      <span className="text-xs text-gray-400">
-                        1 click
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                {tooltipData.point.clicks.length > 5 && (
-                  <p className="text-xs text-gray-500 text-center pt-2">
-                    +{tooltipData.point.clicks.length - 5} more
+            {/* Links Clicked (grouped) */}
+            {tooltipData.point.clicks && tooltipData.point.clicks.length > 0 && (() => {
+              // Group clicks by shortCode
+              const clickGroups = new Map<string, { link: TrackedLink | null; clicks: number }>();
+              tooltipData.point.clicks.forEach(click => {
+                const shortCode = click.shortCode;
+                if (!shortCode) return;
+                
+                if (!clickGroups.has(shortCode)) {
+                  const link = links.find(l => l.shortCode === shortCode);
+                  clickGroups.set(shortCode, { link: link || null, clicks: 0 });
+                }
+                clickGroups.get(shortCode)!.clicks++;
+              });
+              
+              // Sort by click count and take top 5
+              const sortedGroups = Array.from(clickGroups.entries())
+                .sort((a, b) => b[1].clicks - a[1].clicks)
+                .slice(0, 5);
+              
+              return (
+                <div className="space-y-1.5 border-t border-white/5 pt-3">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider">
+                    Links ({clickGroups.size})
                   </p>
-                )}
-              </div>
-            )}
+                  <div className="space-y-1">
+                    {sortedGroups.map(([shortCode, { link, clicks: clickCount }]) => {
+                      const linkedAccount = link?.linkedAccountId ? accounts.get(link.linkedAccountId) : null;
+                      
+                      return (
+                        <div 
+                          key={shortCode}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onLinkClick) {
+                              onLinkClick(shortCode, new Date(tooltipData.point.timestamp), tooltipData.point.clicks || []);
+                            }
+                          }}
+                          className="flex items-center gap-2 py-1.5 px-1.5 hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
+                        >
+                          {/* Creator Profile Picture or Link Icon */}
+                          <div className="flex-shrink-0">
+                            {linkedAccount?.profilePicture ? (
+                              <img
+                                src={linkedAccount.profilePicture}
+                                alt={linkedAccount.username}
+                                className="w-6 h-6 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center">
+                                <LinkIcon className="w-3 h-3 text-gray-500" />
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-white truncate">
+                              {link?.title || `/${shortCode}`}
+                            </p>
+                          </div>
+                          
+                          <span className="text-xs text-gray-400 font-medium">
+                            {clickCount}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {clickGroups.size > 5 && (
+                    <p className="text-xs text-gray-500 text-center pt-1">
+                      +{clickGroups.size - 5} more
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>,
         document.body
