@@ -186,6 +186,158 @@ function isPreviewBot(userAgent: string): boolean {
 }
 
 /**
+ * Extract detailed browser and version info
+ */
+function parseBrowserInfo(userAgent: string): { browser: string; browserVersion?: string } {
+  const ua = userAgent.toLowerCase();
+  
+  // Edge (check first as it contains 'chrome')
+  if (ua.includes('edg/')) {
+    const match = userAgent.match(/Edg\/([0-9.]+)/);
+    return { browser: 'Edge', browserVersion: match ? match[1] : undefined };
+  }
+  // Chrome
+  if (ua.includes('chrome/')) {
+    const match = userAgent.match(/Chrome\/([0-9.]+)/);
+    return { browser: 'Chrome', browserVersion: match ? match[1] : undefined };
+  }
+  // Safari
+  if (ua.includes('safari/') && !ua.includes('chrome')) {
+    const match = userAgent.match(/Version\/([0-9.]+)/);
+    return { browser: 'Safari', browserVersion: match ? match[1] : undefined };
+  }
+  // Firefox
+  if (ua.includes('firefox/')) {
+    const match = userAgent.match(/Firefox\/([0-9.]+)/);
+    return { browser: 'Firefox', browserVersion: match ? match[1] : undefined };
+  }
+  
+  return { browser: 'Unknown' };
+}
+
+/**
+ * Extract detailed OS and version info
+ */
+function parseOSInfo(userAgent: string): { os: string; osVersion?: string } {
+  const ua = userAgent.toLowerCase();
+  
+  // Windows
+  if (ua.includes('windows nt')) {
+    const match = userAgent.match(/Windows NT ([0-9.]+)/);
+    const version = match ? match[1] : undefined;
+    return { os: 'Windows', osVersion: version };
+  }
+  // macOS
+  if (ua.includes('mac os x')) {
+    const match = userAgent.match(/Mac OS X ([0-9_]+)/);
+    const version = match ? match[1].replace(/_/g, '.') : undefined;
+    return { os: 'macOS', osVersion: version };
+  }
+  // iOS
+  if (ua.includes('iphone') || ua.includes('ipad')) {
+    const match = userAgent.match(/OS ([0-9_]+)/);
+    const version = match ? match[1].replace(/_/g, '.') : undefined;
+    return { os: 'iOS', osVersion: version };
+  }
+  // Android
+  if (ua.includes('android')) {
+    const match = userAgent.match(/Android ([0-9.]+)/);
+    return { os: 'Android', osVersion: match ? match[1] : undefined };
+  }
+  // Linux
+  if (ua.includes('linux')) {
+    return { os: 'Linux' };
+  }
+  
+  return { os: 'Unknown' };
+}
+
+/**
+ * Detect platform/source from referrer
+ */
+function detectPlatform(referrer: string): string | undefined {
+  if (referrer === 'Direct' || !referrer) return undefined;
+  
+  const refLower = referrer.toLowerCase();
+  
+  if (refLower.includes('instagram.com')) return 'Instagram';
+  if (refLower.includes('tiktok.com')) return 'TikTok';
+  if (refLower.includes('twitter.com') || refLower.includes('x.com')) return 'Twitter/X';
+  if (refLower.includes('facebook.com')) return 'Facebook';
+  if (refLower.includes('youtube.com')) return 'YouTube';
+  if (refLower.includes('linkedin.com')) return 'LinkedIn';
+  if (refLower.includes('reddit.com')) return 'Reddit';
+  if (refLower.includes('pinterest.com')) return 'Pinterest';
+  if (refLower.includes('snapchat.com')) return 'Snapchat';
+  if (refLower.includes('t.co')) return 'Twitter/X';
+  if (refLower.includes('discord.com')) return 'Discord';
+  if (refLower.includes('telegram.org') || refLower.includes('t.me')) return 'Telegram';
+  if (refLower.includes('whatsapp.com')) return 'WhatsApp';
+  
+  return undefined;
+}
+
+/**
+ * Parse URL query parameters
+ */
+function parseQueryParams(url: string): {
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmTerm?: string;
+  utmContent?: string;
+  queryParams?: Record<string, string>;
+} {
+  try {
+    const urlObj = new URL(url);
+    const params = Object.fromEntries(urlObj.searchParams.entries());
+    
+    const result: any = {};
+    const otherParams: Record<string, string> = {};
+    
+    // Extract UTM parameters
+    if (params.utm_source) result.utmSource = params.utm_source;
+    if (params.utm_medium) result.utmMedium = params.utm_medium;
+    if (params.utm_campaign) result.utmCampaign = params.utm_campaign;
+    if (params.utm_term) result.utmTerm = params.utm_term;
+    if (params.utm_content) result.utmContent = params.utm_content;
+    
+    // Collect all other params (excluding UTM params)
+    Object.keys(params).forEach(key => {
+      if (!key.startsWith('utm_')) {
+        otherParams[key] = params[key];
+      }
+    });
+    
+    if (Object.keys(otherParams).length > 0) {
+      result.queryParams = otherParams;
+    }
+    
+    return result;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Get Geo IP data from request (Vercel provides this)
+ */
+function getGeoData(req: VercelRequest): {
+  country?: string;
+  countryCode?: string;
+  city?: string;
+  region?: string;
+} {
+  // Vercel provides geo headers
+  return {
+    country: req.headers['x-vercel-ip-country'] as string | undefined,
+    countryCode: req.headers['x-vercel-ip-country-code'] as string | undefined,
+    city: req.headers['x-vercel-ip-city'] as string | undefined,
+    region: req.headers['x-vercel-ip-country-region'] as string | undefined,
+  };
+}
+
+/**
  * Record click analytics in background (doesn't delay redirect)
  */
 async function recordClickAnalytics(db: any, linkData: any, req: VercelRequest) {
@@ -203,23 +355,35 @@ async function recordClickAnalytics(db: any, linkData: any, req: VercelRequest) 
       deviceType = 'tablet';
     }
 
-    // Browser detection
-    let browser = 'Unknown';
-    if (userAgentLower.includes('chrome')) browser = 'Chrome';
-    else if (userAgentLower.includes('safari')) browser = 'Safari';
-    else if (userAgentLower.includes('firefox')) browser = 'Firefox';
-    else if (userAgentLower.includes('edge')) browser = 'Edge';
+    // Enhanced browser and OS detection
+    const browserInfo = parseBrowserInfo(userAgent);
+    const osInfo = parseOSInfo(userAgent);
 
-    // OS detection
-    let os = 'Unknown';
-    if (userAgentLower.includes('windows')) os = 'Windows';
-    else if (userAgentLower.includes('mac')) os = 'macOS';
-    else if (userAgentLower.includes('linux')) os = 'Linux';
-    else if (userAgentLower.includes('android')) os = 'Android';
-    else if (userAgentLower.includes('ios') || userAgentLower.includes('iphone') || userAgentLower.includes('ipad')) os = 'iOS';
-
-    // Get referrer
+    // Get referrer and extract domain
     const referrer = req.headers['referer'] || req.headers['referrer'] || 'Direct';
+    let referrerDomain: string | undefined;
+    if (referrer !== 'Direct') {
+      try {
+        const refUrl = new URL(referrer);
+        referrerDomain = refUrl.hostname.replace('www.', '');
+      } catch {
+        referrerDomain = undefined;
+      }
+    }
+
+    // Detect platform from referrer
+    const platform = detectPlatform(referrer);
+
+    // Get Geo IP data
+    const geoData = getGeoData(req);
+
+    // Parse query parameters from original request
+    const fullUrl = `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers['x-forwarded-host'] || req.headers.host}${req.url}`;
+    const queryData = parseQueryParams(fullUrl);
+
+    // Get language and timezone from headers
+    const language = req.headers['accept-language']?.split(',')[0];
+    const timezone = req.headers['x-vercel-ip-timezone'] as string | undefined;
 
     // Get IP for unique click tracking
     const ip = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.socket?.remoteAddress || '';
@@ -228,6 +392,10 @@ async function recordClickAnalytics(db: any, linkData: any, req: VercelRequest) 
     // Create IP hash for privacy
     const crypto = await import('crypto');
     const ipHash = crypto.createHash('sha256').update(ipString + linkData.linkId).digest('hex');
+
+    // Get ISP/Organization info (if available from Vercel)
+    const isp = req.headers['x-vercel-ip-isp'] as string | undefined;
+    const organization = req.headers['x-vercel-ip-org'] as string | undefined;
 
     // Create click document (correct path with projects)
     const clickRef = db
@@ -246,10 +414,30 @@ async function recordClickAnalytics(db: any, linkData: any, req: VercelRequest) 
       timestamp: FieldValue.serverTimestamp(),
       userAgent,
       deviceType,
-      browser,
-      os,
+      browser: browserInfo.browser,
+      browserVersion: browserInfo.browserVersion,
+      os: osInfo.os,
+      osVersion: osInfo.osVersion,
       referrer,
+      referrerDomain,
       ipHash,
+      // Geo data
+      country: geoData.country,
+      countryCode: geoData.countryCode,
+      city: geoData.city,
+      region: geoData.region,
+      // ISP data
+      isp,
+      organization,
+      // Platform
+      platform,
+      // Bot detection (already filtered out, but marking as false)
+      isBot: false,
+      // UTM and query params
+      ...queryData,
+      // Language and timezone
+      language,
+      timezone,
     };
 
     console.log(`📊 Recording click for link ${linkData.linkId} in project ${linkData.projectId}`);

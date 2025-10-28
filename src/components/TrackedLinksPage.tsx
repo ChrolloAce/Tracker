@@ -4,7 +4,8 @@ import { Copy, ExternalLink, Trash2, BarChart, Edit2, ArrowUp, ArrowDown, MouseP
 import { TrackedLink, TrackedAccount } from '../types/firestore';
 import FirestoreDataService from '../services/FirestoreDataService';
 import CreateLinkModal from './CreateLinkModal';
-import LinkAnalyticsModal from './LinkAnalyticsModal';
+import LinkAnalyticsModalEnhanced from './LinkAnalyticsModalEnhanced';
+import DeleteLinkModal from './DeleteLinkModal';
 import { DateFilterType } from './DateRangeFilter';
 import { useAuth } from '../contexts/AuthContext';
 import { clsx } from 'clsx';
@@ -36,6 +37,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
   const [selectedLink, setSelectedLink] = useState<TrackedLink | null>(null);
   const [editingLink, setEditingLink] = useState<TrackedLink | null>(null);
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [linkToDelete, setLinkToDelete] = useState<TrackedLink | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sortField, setSortField] = useState<'createdAt' | 'totalClicks' | 'uniqueClicks' | 'title'>('createdAt');
@@ -158,15 +161,23 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     }
   };
 
-  const handleDeleteLink = async (linkId: string) => {
-    if (!currentOrgId || !currentProjectId || !window.confirm('Are you sure you want to delete this link?')) return;
+  const handleDeleteLink = (link: TrackedLink) => {
+    setLinkToDelete(link);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteLink = async () => {
+    if (!currentOrgId || !currentProjectId || !linkToDelete) return;
     
     try {
-      await FirestoreDataService.deleteLink(currentOrgId, currentProjectId, linkId);
+      await FirestoreDataService.deleteLink(currentOrgId, currentProjectId, linkToDelete.id);
       await loadLinks();
+      setIsDeleteModalOpen(false);
+      setLinkToDelete(null);
     } catch (error) {
       console.error('Failed to delete link:', error);
       alert('Failed to delete link. Please try again.');
+      throw error;
     }
   };
 
@@ -263,6 +274,20 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     }
   };
 
+  // Filter out clicks from deleted links (links that no longer exist)
+  const validLinkClicks = useMemo(() => {
+    if (links.length === 0) return linkClicks;
+    
+    const validLinkIds = new Set(links.map(link => link.id));
+    const filtered = linkClicks.filter(click => validLinkIds.has(click.linkId));
+    
+    if (filtered.length !== linkClicks.length) {
+      console.log(`🔗 TrackedLinksPage: Filtered out ${linkClicks.length - filtered.length} clicks from deleted links`);
+    }
+    
+    return filtered;
+  }, [linkClicks, links]);
+
   // Filter clicks by date range
   const filteredClicks = useMemo(() => {
     const now = new Date();
@@ -286,21 +311,21 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         break;
       case 'all':
       default:
-        return linkClicks;
+        return validLinkClicks;
     }
     
     const endDate = dateFilter === 'custom' && customDateRange?.endDate 
       ? customDateRange.endDate 
       : new Date();
     
-    return linkClicks.filter(click => {
+    return validLinkClicks.filter(click => {
       // Convert Firestore Timestamp to Date if necessary
       const clickDate = click.timestamp instanceof Date 
         ? click.timestamp 
         : (click.timestamp as any)?.toDate?.() || new Date(click.timestamp);
       return clickDate >= startDate && clickDate <= endDate;
     });
-  }, [linkClicks, dateFilter, customDateRange]);
+  }, [validLinkClicks, dateFilter, customDateRange]);
 
   // Generate sparkline data for the cards
   const sparklineData = useMemo(() => {
@@ -416,12 +441,12 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       filteredClicks.map(c => `${c.userAgent}-${c.deviceType}`)
     ).size;
     
-    // Previous Period (PP) clicks
+    // Previous Period (PP) clicks (only from valid links)
     let ppTotalClicks = 0;
     let ppUniqueClicks = 0;
     
     if (ppDateRangeStart && ppDateRangeEnd) {
-      const ppClicks = linkClicks.filter(click => {
+      const ppClicks = validLinkClicks.filter(click => {
         const clickDate = new Date(click.timestamp);
         return clickDate >= ppDateRangeStart! && clickDate <= ppDateRangeEnd!;
       });
@@ -449,7 +474,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       isTotalIncreasing: totalClicksGrowth >= 0,
       isUniqueIncreasing: uniqueClicksGrowth >= 0
     };
-  }, [filteredClicks, links, linkClicks, dateFilter, customDateRange]);
+  }, [filteredClicks, links, validLinkClicks, dateFilter, customDateRange]);
 
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
@@ -713,7 +738,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDeleteLink(link.id)}
+                          onClick={() => handleDeleteLink(link)}
                           className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                           title="Delete Link"
                         >
@@ -756,13 +781,26 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       )}
 
       {isAnalyticsModalOpen && selectedLink && (
-        <LinkAnalyticsModal
+        <LinkAnalyticsModalEnhanced
           isOpen={isAnalyticsModalOpen}
           onClose={() => {
             setIsAnalyticsModalOpen(false);
             setSelectedLink(null);
           }}
           link={selectedLink}
+        />
+      )}
+
+      {/* Delete Link Modal */}
+      {linkToDelete && (
+        <DeleteLinkModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => {
+            setIsDeleteModalOpen(false);
+            setLinkToDelete(null);
+          }}
+          onConfirm={confirmDeleteLink}
+          link={linkToDelete}
         />
       )}
 

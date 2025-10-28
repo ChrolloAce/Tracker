@@ -2,7 +2,7 @@
  * Revenue tracking types for RevenueCat and Superwall integrations
  */
 
-export type RevenueProvider = 'revenuecat' | 'superwall' | 'stripe' | 'manual';
+export type RevenueProvider = 'revenuecat' | 'superwall' | 'stripe' | 'apple' | 'manual';
 
 export type RevenuePlatform = 'ios' | 'android' | 'web' | 'stripe' | 'other';
 
@@ -18,9 +18,11 @@ export interface RevenueIntegration {
   provider: RevenueProvider;
   enabled: boolean;
   credentials: {
-    apiKey?: string; // RevenueCat API Key / Superwall API Key
-    appId?: string; // Superwall App ID / RevenueCat Project ID (stored here for RevenueCat)
+    apiKey?: string; // RevenueCat API Key / Superwall API Key / Apple Private Key
+    appId?: string; // Superwall App ID / RevenueCat Project ID / Apple Bundle ID
     secretKey?: string; // For server-side integrations
+    keyId?: string; // Apple App Store Connect Key ID
+    issuerId?: string; // Apple App Store Connect Issuer ID
   };
   settings?: {
     autoSync?: boolean;
@@ -235,5 +237,53 @@ export interface RevenueCatProduct {
   period?: SubscriptionPeriod;
   activeSubscribers: number;
   mrr: number;
+}
+
+/**
+ * Apple App Store specific types
+ */
+export interface AppleSubscription {
+  originalTransactionId: string;
+  productId: string;
+  purchaseDate: Date;
+  expiresDate?: Date;
+  autoRenewStatus?: boolean;
+  autoRenewProductId?: string;
+  isInBillingRetryPeriod?: boolean;
+  isInTrialPeriod?: boolean;
+  isInIntroOfferPeriod?: boolean;
+  subscriptionGroupId?: string;
+  status: 'active' | 'expired' | 'in_billing_retry' | 'billing_issue' | 'refunded' | 'revoked';
+}
+
+export interface AppleTransaction {
+  transactionId: string;
+  originalTransactionId: string;
+  productId: string;
+  purchaseDate: Date;
+  expiresDate?: Date;
+  quantity: number;
+  type: 'auto-renewable-subscription' | 'non-consumable' | 'consumable' | 'non-renewing-subscription';
+  price?: number;
+  currency?: string;
+  subscriptionGroupId?: string;
+  webOrderLineItemId?: string;
+  isUpgraded?: boolean;
+  revocationDate?: Date;
+  revocationReason?: string;
+  offerType?: 'introductory' | 'promotional' | 'offer-code';
+}
+
+export interface AppleNotificationPayload {
+  notificationType: string;
+  subtype?: string;
+  data: {
+    appAppleId: number;
+    bundleId: string;
+    bundleVersion?: string;
+    environment: 'Sandbox' | 'Production';
+    signedTransactionInfo?: string;
+    signedRenewalInfo?: string;
+  };
 }
 

@@ -16,11 +16,33 @@ export interface LinkClick {
   userAgent: string;
   deviceType: 'mobile' | 'tablet' | 'desktop';
   browser: string;
+  browserVersion?: string;
   os: string;
+  osVersion?: string;
   referrer: string;
+  referrerDomain?: string;
   accountHandle?: string;
   accountProfilePicture?: string;
   accountPlatform?: string;
+  
+  // Enhanced tracking
+  country?: string;
+  countryCode?: string;
+  city?: string;
+  region?: string;
+  isp?: string;
+  organization?: string;
+  platform?: string;
+  isBot?: boolean;
+  botType?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmTerm?: string;
+  utmContent?: string;
+  queryParams?: Record<string, string>;
+  language?: string;
+  timezone?: string;
 }
 
 /**
@@ -57,11 +79,32 @@ class LinkClicksService {
             userAgent: clickData.userAgent || 'Unknown',
             deviceType: clickData.deviceType || 'desktop',
             browser: clickData.browser || 'Unknown',
+            browserVersion: clickData.browserVersion,
             os: clickData.os || 'Unknown',
+            osVersion: clickData.osVersion,
             referrer: clickData.referrer || 'Direct',
+            referrerDomain: clickData.referrerDomain,
             accountHandle: clickData.accountHandle,
             accountProfilePicture: clickData.accountProfilePicture,
             accountPlatform: clickData.accountPlatform,
+            // Enhanced tracking
+            country: clickData.country,
+            countryCode: clickData.countryCode,
+            city: clickData.city,
+            region: clickData.region,
+            isp: clickData.isp,
+            organization: clickData.organization,
+            platform: clickData.platform,
+            isBot: clickData.isBot,
+            botType: clickData.botType,
+            utmSource: clickData.utmSource,
+            utmMedium: clickData.utmMedium,
+            utmCampaign: clickData.utmCampaign,
+            utmTerm: clickData.utmTerm,
+            utmContent: clickData.utmContent,
+            queryParams: clickData.queryParams,
+            language: clickData.language,
+            timezone: clickData.timezone,
           });
         });
       } catch (error) {
@@ -96,11 +139,32 @@ class LinkClicksService {
               userAgent: clickData.userAgent || 'Unknown',
               deviceType: clickData.deviceType || 'desktop',
               browser: clickData.browser || 'Unknown',
+              browserVersion: clickData.browserVersion,
               os: clickData.os || 'Unknown',
+              osVersion: clickData.osVersion,
               referrer: clickData.referrer || 'Direct',
+              referrerDomain: clickData.referrerDomain,
               accountHandle: clickData.accountHandle,
               accountProfilePicture: clickData.accountProfilePicture,
               accountPlatform: clickData.accountPlatform,
+              // Enhanced tracking
+              country: clickData.country,
+              countryCode: clickData.countryCode,
+              city: clickData.city,
+              region: clickData.region,
+              isp: clickData.isp,
+              organization: clickData.organization,
+              platform: clickData.platform,
+              isBot: clickData.isBot,
+              botType: clickData.botType,
+              utmSource: clickData.utmSource,
+              utmMedium: clickData.utmMedium,
+              utmCampaign: clickData.utmCampaign,
+              utmTerm: clickData.utmTerm,
+              utmContent: clickData.utmContent,
+              queryParams: clickData.queryParams,
+              language: clickData.language,
+              timezone: clickData.timezone,
             });
           });
         }
@@ -177,6 +241,137 @@ class LinkClicksService {
       deviceBreakdown,
       browserBreakdown,
     };
+  }
+
+  /**
+   * Export link clicks as CSV
+   */
+  static exportClicksAsCSV(clicks: LinkClick[]): string {
+    const headers = [
+      'Timestamp',
+      'Link',
+      'Short Code',
+      'Country',
+      'City',
+      'Platform',
+      'Referrer',
+      'Device Type',
+      'Browser',
+      'OS',
+      'ISP',
+      'UTM Source',
+      'UTM Medium',
+      'UTM Campaign',
+      'Is Bot',
+      'Language'
+    ];
+    
+    const rows = clicks.map(click => [
+      click.timestamp.toISOString(),
+      click.linkTitle,
+      click.shortCode,
+      click.country || '-',
+      click.city || '-',
+      click.platform || '-',
+      click.referrerDomain || click.referrer || 'Direct',
+      click.deviceType,
+      `${click.browser}${click.browserVersion ? ' ' + click.browserVersion : ''}`,
+      `${click.os}${click.osVersion ? ' ' + click.osVersion : ''}`,
+      click.isp || '-',
+      click.utmSource || '-',
+      click.utmMedium || '-',
+      click.utmCampaign || '-',
+      click.isBot ? 'Yes' : 'No',
+      click.language || '-'
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+    
+    return csvContent;
+  }
+
+  /**
+   * Export link clicks as JSON
+   */
+  static exportClicksAsJSON(clicks: LinkClick[]): string {
+    const exportData = clicks.map(click => ({
+      timestamp: click.timestamp.toISOString(),
+      link: {
+        id: click.linkId,
+        title: click.linkTitle,
+        shortCode: click.shortCode,
+        url: click.linkUrl,
+      },
+      location: {
+        country: click.country,
+        countryCode: click.countryCode,
+        city: click.city,
+        region: click.region,
+      },
+      device: {
+        type: click.deviceType,
+        browser: click.browser,
+        browserVersion: click.browserVersion,
+        os: click.os,
+        osVersion: click.osVersion,
+        userAgent: click.userAgent,
+      },
+      traffic: {
+        referrer: click.referrer,
+        referrerDomain: click.referrerDomain,
+        platform: click.platform,
+      },
+      network: {
+        isp: click.isp,
+        organization: click.organization,
+      },
+      campaign: {
+        utmSource: click.utmSource,
+        utmMedium: click.utmMedium,
+        utmCampaign: click.utmCampaign,
+        utmTerm: click.utmTerm,
+        utmContent: click.utmContent,
+        queryParams: click.queryParams,
+      },
+      metadata: {
+        isBot: click.isBot,
+        botType: click.botType,
+        language: click.language,
+        timezone: click.timezone,
+      },
+      account: click.accountHandle ? {
+        handle: click.accountHandle,
+        platform: click.accountPlatform,
+        profilePicture: click.accountProfilePicture,
+      } : undefined,
+    }));
+    
+    return JSON.stringify(exportData, null, 2);
+  }
+
+  /**
+   * Download clicks as a file
+   */
+  static downloadClicks(clicks: LinkClick[], format: 'csv' | 'json', filename?: string) {
+    const content = format === 'csv' 
+      ? this.exportClicksAsCSV(clicks)
+      : this.exportClicksAsJSON(clicks);
+    
+    const blob = new Blob([content], { 
+      type: format === 'csv' ? 'text/csv' : 'application/json' 
+    });
+    
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename || `link-clicks-${new Date().toISOString().split('T')[0]}.${format}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   }
 }
 

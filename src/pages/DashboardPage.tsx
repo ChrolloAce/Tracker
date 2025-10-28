@@ -50,7 +50,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Timestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit, doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { fixVideoPlatforms } from '../services/FixVideoPlatform';
-import { TrackedAccount } from '../types/firestore';
+import { TrackedAccount, TrackedLink } from '../types/firestore';
 import { TrackingRule, RuleCondition, RuleConditionType } from '../types/rules';
 
 interface DateRange {
@@ -82,6 +82,7 @@ function DashboardPage() {
   // State
   const [submissions, setSubmissions] = useState<VideoSubmission[]>([]);
   const [linkClicks, setLinkClicks] = useState<LinkClick[]>([]);
+  const [links, setLinks] = useState<TrackedLink[]>([]);
   const [trackedAccounts, setTrackedAccounts] = useState<TrackedAccount[]>([]);
   const [allRules, setAllRules] = useState<TrackingRule[]>([]);
   const [revenueMetrics, setRevenueMetrics] = useState<RevenueMetrics | null>(null);
@@ -714,6 +715,14 @@ function DashboardPage() {
       console.error('❌ Failed to load link clicks:', error);
     }
     
+    // Load tracked links
+    try {
+      const allLinks = await FirestoreDataService.getLinks(currentOrgId, currentProjectId);
+      setLinks(allLinks);
+    } catch (error) {
+      console.error('❌ Failed to load links:', error);
+    }
+    
     // Load revenue integrations (syncing will be handled by date filter effect)
     try {
       const integrations = await RevenueDataService.getAllIntegrations(currentOrgId, currentProjectId);
@@ -1078,6 +1087,20 @@ function DashboardPage() {
     const combined = [...pendingVideos, ...filteredSubmissions];
     return combined;
   }, [pendingVideos, filteredSubmissions]);
+
+  // Filter link clicks to only include clicks from existing links (exclude deleted links)
+  const filteredLinkClicks = useMemo(() => {
+    if (links.length === 0) return linkClicks;
+    
+    const validLinkIds = new Set(links.map(link => link.id));
+    const filtered = linkClicks.filter(click => validLinkIds.has(click.linkId));
+    
+    if (filtered.length !== linkClicks.length) {
+      console.log(`🔗 Filtered out ${linkClicks.length - filtered.length} clicks from deleted links`);
+    }
+    
+    return filtered;
+  }, [linkClicks, links]);
 
   // Handle date filter changes
   const handleDateFilterChange = useCallback((filter: DateFilterType, customRange?: DateRange) => {
@@ -1543,6 +1566,8 @@ function DashboardPage() {
     const totalAccounts = new Set(filteredSubmissions.map(v => v.uploaderHandle)).size;
     const totalEngagement = totalLikes + totalComments + totalShares;
     const engagementRate = totalViews > 0 ? ((totalEngagement / totalViews) * 100) : 0;
+    
+    // Count total link clicks (already filtered to existing links only)
     const totalLinkClicks = linkClicks.length;
     
     // Format numbers
@@ -1620,7 +1645,7 @@ function DashboardPage() {
         delta: totalLinkClicks > 0 ? { value: 14.8, isPositive: true } : undefined
       }
     };
-  }, [filteredSubmissions, linkClicks, revenueMetrics]);
+  }, [filteredSubmissions, filteredLinkClicks, revenueMetrics]);
 
   // Define Top Performers subsection options
   const topPerformersSubsectionOptions = useMemo(() => [
@@ -2378,7 +2403,9 @@ function DashboardPage() {
                           <KPICards 
                             submissions={filteredSubmissions}
                             allSubmissions={submissionsWithoutDateFilter}
-                            linkClicks={linkClicks}
+                            linkClicks={filteredLinkClicks}
+                            links={links}
+                            accounts={trackedAccounts}
                             dateFilter={dateFilter}
                             customRange={customDateRange}
                             timePeriod="days"
@@ -2682,7 +2709,9 @@ function DashboardPage() {
                 <KPICards 
                   submissions={filteredSubmissions}
                   allSubmissions={submissionsWithoutDateFilter}
-                  linkClicks={linkClicks}
+                  linkClicks={filteredLinkClicks}
+                  links={links}
+                  accounts={trackedAccounts}
                   dateFilter={dateFilter}
                   customRange={customDateRange}
                   timePeriod="days"

@@ -28,6 +28,7 @@ import {
 } from '../types/revenue';
 import RevenueCatService from './RevenueCatService';
 import SuperwallService from './SuperwallService';
+import AppleAppStoreService from './AppleAppStoreService';
 
 /**
  * Revenue Data Service for managing revenue integrations and data
@@ -204,6 +205,18 @@ class RevenueDataService {
       
       if (provider === 'superwall' && credentials.apiKey && credentials.appId) {
         return await SuperwallService.testConnection(credentials.apiKey, credentials.appId);
+      }
+
+      if (provider === 'apple' && credentials.apiKey && credentials.keyId && credentials.issuerId && credentials.appId) {
+        return await AppleAppStoreService.testConnection(
+          {
+            privateKey: credentials.apiKey,
+            keyId: credentials.keyId,
+            issuerId: credentials.issuerId,
+            bundleId: credentials.appId
+          },
+          true // Use sandbox for testing
+        );
       }
 
       return false;
@@ -609,6 +622,69 @@ class RevenueDataService {
   }
 
   /**
+   * Sync Apple App Store data
+   */
+  static async syncApple(
+    orgId: string,
+    projectId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<{ transactionCount: number; revenue: number }> {
+    const integration = await this.getIntegration(orgId, projectId, 'apple');
+    
+    if (!integration || !integration.credentials.apiKey || !integration.credentials.keyId || !integration.credentials.issuerId || !integration.credentials.appId) {
+      throw new Error('Apple App Store integration not configured');
+    }
+
+    console.log('📱 Syncing Apple App Store data...');
+
+    try {
+      // Fetch transactions from Apple
+      const appleTransactions = await AppleAppStoreService.fetchTransactions(
+        {
+          privateKey: integration.credentials.apiKey,
+          keyId: integration.credentials.keyId,
+          issuerId: integration.credentials.issuerId,
+          bundleId: integration.credentials.appId
+        },
+        startDate,
+        endDate,
+        false // Use production by default; could be made configurable
+      );
+
+      console.log(`✅ Fetched ${appleTransactions.length} Apple transactions`);
+
+      // Convert to RevenueTransaction format
+      const transactions = AppleAppStoreService.convertToRevenueTransactions(
+        appleTransactions,
+        orgId,
+        projectId
+      );
+
+      // Save to Firestore
+      if (transactions.length > 0) {
+        await this.saveTransactions(orgId, projectId, transactions);
+      }
+
+      // Calculate metrics
+      const totalRevenue = transactions.reduce((sum, tx) => sum + tx.amount, 0);
+
+      // Update last synced time
+      await this.updateIntegration(orgId, projectId, integration.id, {
+        lastSynced: new Date(),
+      });
+
+      return {
+        transactionCount: transactions.length,
+        revenue: totalRevenue,
+      };
+    } catch (error) {
+      console.error('❌ Failed to sync Apple data:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Sync all enabled integrations
    */
   static async syncAllIntegrations(
@@ -634,6 +710,13 @@ class RevenueDataService {
           results.push({
             provider: 'superwall',
             count: result.eventCount,
+            revenue: result.revenue,
+          });
+        } else if (integration.provider === 'apple') {
+          const result = await this.syncApple(orgId, projectId, startDate, endDate);
+          results.push({
+            provider: 'apple',
+            count: result.transactionCount,
             revenue: result.revenue,
           });
         }

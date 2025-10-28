@@ -119,6 +119,7 @@ export const RevenueIntegrationsSettings: React.FC<RevenueIntegrationsSettingsPr
       revenuecat: 'RevenueCat',
       superwall: 'Superwall',
       stripe: 'Stripe',
+      apple: 'Apple App Store',
       manual: 'Manual Entry',
     };
     return names[provider];
@@ -300,10 +301,52 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
   const [provider, setProvider] = useState<RevenueProvider>('revenuecat');
   const [apiKey, setApiKey] = useState('');
   const [appId, setAppId] = useState('');
+  const [keyId, setKeyId] = useState(''); // For Apple
+  const [issuerId, setIssuerId] = useState(''); // For Apple
   const [showApiKey, setShowApiKey] = useState(false);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string>(''); // Track uploaded file name
+
+  // Handle .p8 file upload for Apple
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Check file extension
+    if (!file.name.endsWith('.p8')) {
+      alert('❌ Please upload a .p8 file from Apple');
+      return;
+    }
+
+    try {
+      // Read the file
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        
+        // Convert to base64
+        const base64 = btoa(content);
+        setApiKey(base64);
+        setUploadedFileName(file.name);
+        
+        // Extract Key ID from filename if it matches Apple's format
+        // AuthKey_XXXXXXXXXX.p8 -> XXXXXXXXXX
+        const match = file.name.match(/AuthKey_([A-Z0-9]+)\.p8/);
+        if (match && match[1] && !keyId) {
+          setKeyId(match[1]);
+        }
+      };
+      reader.onerror = () => {
+        alert('❌ Failed to read file. Please try again.');
+      };
+      reader.readAsText(file);
+    } catch (error) {
+      console.error('File upload error:', error);
+      alert('❌ Failed to process file');
+    }
+  };
 
   const handleTest = async () => {
     try {
@@ -312,7 +355,9 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
 
       const result = await RevenueDataService.testIntegration(provider, {
         apiKey,
-        appId: provider === 'superwall' ? appId : undefined,
+        appId: (provider === 'superwall' || provider === 'apple') ? appId : undefined,
+        keyId: provider === 'apple' ? keyId : undefined,
+        issuerId: provider === 'apple' ? issuerId : undefined,
       });
 
       setTestResult(result ? 'success' : 'error');
@@ -326,7 +371,7 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
 
   const handleSave = async () => {
     if (!apiKey) {
-      alert('Please enter an API key');
+      alert('Please enter an API key / Private key');
       return;
     }
 
@@ -340,6 +385,21 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
       return;
     }
 
+    if (provider === 'apple') {
+      if (!appId) {
+        alert('Please enter a Bundle ID for Apple');
+        return;
+      }
+      if (!keyId) {
+        alert('Please enter a Key ID for Apple');
+        return;
+      }
+      if (!issuerId) {
+        alert('Please enter an Issuer ID for Apple');
+        return;
+      }
+    }
+
     try {
       setSaving(true);
 
@@ -349,7 +409,9 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
         provider,
         {
           apiKey,
-          appId: (provider === 'superwall' || provider === 'revenuecat') ? appId : undefined,
+          appId: (provider === 'superwall' || provider === 'revenuecat' || provider === 'apple') ? appId : undefined,
+          keyId: provider === 'apple' ? keyId : undefined,
+          issuerId: provider === 'apple' ? issuerId : undefined,
         }
       );
 
@@ -388,33 +450,70 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
             >
               <option value="revenuecat">RevenueCat</option>
               <option value="superwall">Superwall</option>
+              <option value="apple">Apple App Store</option>
             </select>
           </div>
 
-          {/* API Key */}
+          {/* API Key / Private Key */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              API Key *
+              {provider === 'apple' ? 'Private Key (.p8 file) *' : 'API Key *'}
             </label>
-            <div className="relative">
-              <input
-                type={showApiKey ? 'text' : 'password'}
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Enter your API key"
-                className="w-full px-4 py-3 pr-12 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-              <button
-                onClick={() => setShowApiKey(!showApiKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-white/5 rounded transition-colors"
-              >
-                {showApiKey ? (
-                  <EyeOff className="w-4 h-4 text-gray-400" />
-                ) : (
-                  <Eye className="w-4 h-4 text-gray-400" />
+            
+            {/* File Upload for Apple */}
+            {provider === 'apple' && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <label className="flex-1">
+                    <input
+                      type="file"
+                      accept=".p8"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      id="apple-key-upload"
+                    />
+                    <div className="w-full px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-400 hover:bg-emerald-500/20 transition-colors cursor-pointer flex items-center justify-center gap-2">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      {uploadedFileName || 'Upload .p8 Key File'}
+                    </div>
+                  </label>
+                </div>
+                {uploadedFileName && (
+                  <div className="flex items-center gap-2 text-sm text-emerald-400">
+                    <CheckCircle className="w-4 h-4" />
+                    <span>Uploaded: {uploadedFileName}</span>
+                  </div>
                 )}
-              </button>
-            </div>
+                <p className="text-xs text-gray-400">
+                  Upload the AuthKey_XXXXXXXXXX.p8 file you downloaded from App Store Connect
+                </p>
+              </div>
+            )}
+
+            {/* Regular text input for other providers */}
+            {provider !== 'apple' && (
+              <div className="relative">
+                <input
+                  type={showApiKey ? 'text' : 'password'}
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="Enter your API key"
+                  className="w-full px-4 py-3 pr-12 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <button
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-white/5 rounded transition-colors"
+                >
+                  {showApiKey ? (
+                    <EyeOff className="w-4 h-4 text-gray-400" />
+                  ) : (
+                    <Eye className="w-4 h-4 text-gray-400" />
+                  )}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Project ID (RevenueCat only) */}
@@ -452,11 +551,72 @@ const AddIntegrationModal: React.FC<AddIntegrationModalProps> = ({
             </div>
           )}
 
+          {/* Apple App Store fields */}
+          {provider === 'apple' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Key ID *
+                </label>
+                <input
+                  type="text"
+                  value={keyId}
+                  onChange={(e) => setKeyId(e.target.value)}
+                  placeholder="e.g. ZDN6JH8DST"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <p className="mt-2 text-sm text-gray-400">
+                  {keyId && uploadedFileName ? 
+                    '✓ Auto-filled from your filename' : 
+                    'Will be auto-filled when you upload your .p8 file, or enter manually'
+                  }
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Issuer ID *
+                </label>
+                <input
+                  type="text"
+                  value={issuerId}
+                  onChange={(e) => setIssuerId(e.target.value)}
+                  placeholder="e.g. 57246542-96fe-1a63-e053-0824d011072a"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <p className="mt-2 text-sm text-gray-400">
+                  Find in App Store Connect → Users and Access → Keys (top of page)
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Bundle ID *
+                </label>
+                <input
+                  type="text"
+                  value={appId}
+                  onChange={(e) => setAppId(e.target.value)}
+                  placeholder="e.g. com.yourcompany.appname"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <p className="mt-2 text-sm text-gray-400">
+                  Your app's Bundle ID from App Store Connect
+                </p>
+              </div>
+            </>
+          )}
+
           {/* Test Connection */}
           <div className="flex items-center gap-3">
             <button
               onClick={handleTest}
-              disabled={testing || !apiKey || (provider === 'superwall' && !appId)}
+              disabled={
+                testing || 
+                !apiKey || 
+                (provider === 'superwall' && !appId) ||
+                (provider === 'apple' && (!appId || !keyId || !issuerId))
+              }
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <CheckCircle className={`w-4 h-4 ${testing ? 'animate-spin' : ''}`} />

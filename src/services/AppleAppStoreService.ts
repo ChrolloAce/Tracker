@@ -1,0 +1,326 @@
+/**
+ * Apple App Store Service - Handles App Store Server API integration
+ * 
+ * Integrates with:
+ * - App Store Server API for subscription status and transaction history
+ * - App Store Server Notifications V2 for real-time updates
+ * 
+ * Documentation: https://developer.apple.com/documentation/appstoreserverapi
+ */
+
+import { RevenueTransaction, AppleSubscription, AppleTransaction } from '../types/revenue';
+
+interface AppleCredentials {
+  privateKey: string; // The .p8 key file content (base64 encoded for storage)
+  keyId: string; // Key ID from App Store Connect
+  issuerId: string; // Issuer ID from App Store Connect
+  bundleId: string; // Your app's bundle ID (e.g., com.yourapp.bundle)
+}
+
+interface AppleServerAPIResponse {
+  data?: any[];
+  meta?: {
+    hasMore: boolean;
+    revision: string;
+  };
+  error?: {
+    errorCode: number;
+    errorMessage: string;
+  };
+}
+
+/**
+ * Apple App Store Service for managing subscriptions and transactions
+ */
+class AppleAppStoreService {
+  private static readonly PRODUCTION_BASE_URL = 'https://api.storekit.itunes.apple.com';
+  private static readonly SANDBOX_BASE_URL = 'https://api.storekit-sandbox.itunes.apple.com';
+
+  /**
+   * Test Apple App Store credentials
+   */
+  static async testConnection(credentials: AppleCredentials, useSandbox = true): Promise<boolean> {
+    try {
+      // Generate JWT token for authentication
+      const token = await this.generateJWT(credentials);
+      
+      const baseUrl = useSandbox ? this.SANDBOX_BASE_URL : this.PRODUCTION_BASE_URL;
+      
+      // Test by getting subscription statuses (lightweight call)
+      const response = await fetch(`${baseUrl}/inApps/v1/lookup/12345`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      // 200-299 = success, 404 = valid auth but no data (still success for testing)
+      return response.status < 500;
+    } catch (error) {
+      console.error('❌ Apple connection test failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Fetch all transactions for a period
+   */
+  static async fetchTransactions(
+    credentials: AppleCredentials,
+    startDate: Date,
+    endDate: Date,
+    useSandbox = false
+  ): Promise<AppleTransaction[]> {
+    try {
+      const token = await this.generateJWT(credentials);
+      const baseUrl = useSandbox ? this.SANDBOX_BASE_URL : this.PRODUCTION_BASE_URL;
+      
+      const transactions: AppleTransaction[] = [];
+      let hasMore = true;
+      let revision: string | undefined;
+
+      while (hasMore) {
+        const url = new URL(`${baseUrl}/inApps/v1/history/${credentials.bundleId}`);
+        if (revision) {
+          url.searchParams.append('revision', revision);
+        }
+
+        const response = await fetch(url.toString(), {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Apple API error: ${response.status}`);
+        }
+
+        const data: AppleServerAPIResponse = await response.json();
+        
+        if (data.data) {
+          const parsedTransactions = await this.parseTransactions(data.data, startDate, endDate);
+          transactions.push(...parsedTransactions);
+        }
+
+        hasMore = data.meta?.hasMore || false;
+        revision = data.meta?.revision;
+      }
+
+      return transactions;
+    } catch (error) {
+      console.error('❌ Failed to fetch Apple transactions:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get active subscriptions
+   */
+  static async getActiveSubscriptions(
+    credentials: AppleCredentials,
+    useSandbox = false
+  ): Promise<AppleSubscription[]> {
+    try {
+      const token = await this.generateJWT(credentials);
+      const baseUrl = useSandbox ? this.SANDBOX_BASE_URL : this.PRODUCTION_BASE_URL;
+      
+      // This would need to be implemented based on your specific needs
+      // You'd typically call /inApps/v1/subscriptions/{transactionId}
+      
+      console.log('📱 Fetching active Apple subscriptions...');
+      
+      // Placeholder - implement based on your app's subscription flow
+      return [];
+    } catch (error) {
+      console.error('❌ Failed to fetch Apple subscriptions:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Convert Apple transactions to RevenueTransaction format
+   */
+  static convertToRevenueTransactions(
+    appleTransactions: AppleTransaction[],
+    orgId: string,
+    projectId: string
+  ): RevenueTransaction[] {
+    return appleTransactions.map(transaction => {
+      const isRenewal = transaction.type === 'auto-renewable-subscription';
+      const isTrial = transaction.offerType === 'introductory';
+      
+      let type: RevenueTransaction['type'] = 'purchase';
+      if (isRenewal) type = 'renewal';
+      if (isTrial) type = 'trial';
+      if (transaction.revocationDate) type = 'refund';
+      
+      let status: RevenueTransaction['status'] = 'active';
+      if (transaction.revocationDate) status = 'refunded';
+      else if (transaction.expiresDate && transaction.expiresDate < new Date()) status = 'expired';
+
+      return {
+        id: transaction.transactionId,
+        organizationId: orgId,
+        projectId,
+        provider: 'apple',
+        platform: 'ios',
+        transactionId: transaction.transactionId,
+        customerId: transaction.originalTransactionId,
+        amount: transaction.price ? Math.round(transaction.price * 100) : 0,
+        currency: transaction.currency || 'USD',
+        netAmount: transaction.price ? Math.round(transaction.price * 0.7 * 100) : 0, // ~70% after Apple's cut
+        productId: transaction.productId,
+        productName: transaction.productId,
+        purchaseDate: transaction.purchaseDate,
+        expirationDate: transaction.expiresDate,
+        refundDate: transaction.revocationDate,
+        type,
+        status,
+        isRenewal,
+        isTrial,
+        metadata: {
+          webOrderLineItemId: transaction.webOrderLineItemId,
+          subscriptionGroupId: transaction.subscriptionGroupId,
+          offerType: transaction.offerType,
+          isUpgraded: transaction.isUpgraded
+        },
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+    });
+  }
+
+  /**
+   * Generate JWT token for Apple API authentication via serverless endpoint
+   */
+  private static async generateJWT(credentials: AppleCredentials): Promise<string> {
+    try {
+      // Call the serverless function to generate JWT
+      const response = await fetch('/api/apple-auth-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          privateKey: credentials.privateKey,
+          keyId: credentials.keyId,
+          issuerId: credentials.issuerId,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.details || error.error || 'Failed to generate JWT');
+      }
+
+      const data = await response.json();
+      return data.token;
+    } catch (error) {
+      console.error('❌ JWT generation failed:', error);
+      throw new Error(`Failed to generate Apple authentication token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Parse transactions from Apple API response
+   */
+  private static async parseTransactions(
+    rawTransactions: any[],
+    startDate: Date,
+    endDate: Date
+  ): Promise<AppleTransaction[]> {
+    const transactions: AppleTransaction[] = [];
+
+    for (const rawTx of rawTransactions) {
+      try {
+        // Decode the signed transaction (JWS format)
+        // In production, verify the signature
+        const decoded = this.decodeJWS(rawTx);
+        
+        const purchaseDate = new Date(decoded.purchaseDate);
+        
+        // Filter by date range
+        if (purchaseDate >= startDate && purchaseDate <= endDate) {
+          transactions.push({
+            transactionId: decoded.transactionId,
+            originalTransactionId: decoded.originalTransactionId,
+            productId: decoded.productId,
+            purchaseDate,
+            expiresDate: decoded.expiresDate ? new Date(decoded.expiresDate) : undefined,
+            quantity: decoded.quantity || 1,
+            type: decoded.type,
+            price: decoded.price,
+            currency: decoded.currency,
+            subscriptionGroupId: decoded.subscriptionGroupIdentifier,
+            webOrderLineItemId: decoded.webOrderLineItemId,
+            isUpgraded: decoded.isUpgraded,
+            revocationDate: decoded.revocationDate ? new Date(decoded.revocationDate) : undefined,
+            revocationReason: decoded.revocationReason,
+            offerType: decoded.offerType
+          });
+        }
+      } catch (error) {
+        console.error('Failed to parse transaction:', error);
+      }
+    }
+
+    return transactions;
+  }
+
+  /**
+   * Decode JWS (JSON Web Signature) from Apple
+   * Note: In production, you must verify the signature
+   */
+  private static decodeJWS(jws: string): any {
+    try {
+      // JWS format: header.payload.signature
+      const parts = jws.split('.');
+      if (parts.length !== 3) {
+        throw new Error('Invalid JWS format');
+      }
+
+      // Decode the payload (base64url)
+      const payload = parts[1];
+      const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+      return JSON.parse(decoded);
+    } catch (error) {
+      console.error('Failed to decode JWS:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Verify webhook notification from Apple
+   */
+  static async verifyNotification(signedPayload: string): Promise<boolean> {
+    // In production, verify the signature using Apple's root certificate
+    // Documentation: https://developer.apple.com/documentation/appstoreservernotifications/jwsdecodedheader
+    
+    console.warn('⚠️ Apple notification verification should be implemented for production');
+    
+    try {
+      const decoded = this.decodeJWS(signedPayload);
+      return !!decoded;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Parse Apple Server Notification
+   */
+  static parseNotification(signedPayload: string): any {
+    try {
+      return this.decodeJWS(signedPayload);
+    } catch (error) {
+      console.error('Failed to parse Apple notification:', error);
+      throw error;
+    }
+  }
+}
+
+export default AppleAppStoreService;
+

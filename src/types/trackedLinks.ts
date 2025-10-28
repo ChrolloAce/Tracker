@@ -32,17 +32,45 @@ export interface LinkClick {
   ipAddress?: string;
   userAgent?: string;
   
-  // Location info
+  // Location info (Geo IP data)
   country?: string;
+  countryCode?: string;
   city?: string;
+  region?: string;
+  
+  // ISP info
+  isp?: string;
+  organization?: string;
   
   // Referrer info
   referrer?: string;
+  referrerDomain?: string;
+  
+  // Platform/Source
+  platform?: string; // e.g., 'Instagram', 'TikTok', 'Twitter', 'Direct'
   
   // Device info
   deviceType?: 'mobile' | 'tablet' | 'desktop';
   browser?: string;
+  browserVersion?: string;
   os?: string;
+  osVersion?: string;
+  
+  // Bot detection
+  isBot?: boolean;
+  botType?: string; // e.g., 'Google Bot', 'Facebook Crawler'
+  
+  // URL Parameters
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmTerm?: string;
+  utmContent?: string;
+  queryParams?: Record<string, string>; // All other query parameters
+  
+  // Additional metadata
+  language?: string;
+  timezone?: string;
 }
 
 export interface LinkAnalytics {

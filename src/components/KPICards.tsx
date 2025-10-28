@@ -16,11 +16,15 @@ import {
 } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { LinkClick } from '../services/LinkClicksService';
+import { TrackedLink, TrackedAccount } from '../types/firestore';
 import { RevenueMetrics, RevenueIntegration } from '../types/revenue';
 import { AreaChart, Area, ResponsiveContainer, Tooltip, YAxis } from 'recharts';
 import { DateFilterType } from './DateRangeFilter';
 import { TimePeriodType } from './TimePeriodSelector';
 import DayVideosModal from './DayVideosModal';
+import DayClicksModal from './DayClicksModal';
+import LinkAnalyticsModalEnhanced from './LinkAnalyticsModalEnhanced';
+import { TrackedLinksKPICard } from './TrackedLinksKPICard';
 import { PlatformIcon } from './ui/PlatformIcon';
 import DataAggregationService, { IntervalType, TimeInterval } from '../services/DataAggregationService';
 import { useNavigate } from 'react-router-dom';
@@ -29,6 +33,8 @@ interface KPICardsProps {
   submissions: VideoSubmission[]; // Filtered submissions for current period
   allSubmissions?: VideoSubmission[]; // All submissions (unfiltered) for PP calculation
   linkClicks?: LinkClick[];
+  links?: TrackedLink[];
+  accounts?: TrackedAccount[];
   dateFilter?: DateFilterType;
   customRange?: { startDate: Date; endDate: Date };
   timePeriod?: TimePeriodType;
@@ -63,6 +69,8 @@ const KPICards: React.FC<KPICardsProps> = ({
   submissions, 
   allSubmissions, // All submissions for PP calculation
   linkClicks = [], 
+  links = [],
+  accounts = [],
   dateFilter = 'all',
   customRange,
   timePeriod = 'weeks', 
@@ -89,11 +97,25 @@ const KPICards: React.FC<KPICardsProps> = ({
   const [hoveredInterval, setHoveredInterval] = useState<TimeInterval | null>(null);
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval | null>(null);
   
+  // Link analytics modal state
+  const [isLinkAnalyticsModalOpen, setIsLinkAnalyticsModalOpen] = useState(false);
+  const [selectedLink, setSelectedLink] = useState<TrackedLink | null>(null);
+  const [isDayClicksModalOpen, setIsDayClicksModalOpen] = useState(false);
+  const [selectedDayClicksDate, setSelectedDayClicksDate] = useState<Date | null>(null);
+  const [selectedDayClicks, setSelectedDayClicks] = useState<LinkClick[]>([]);
+  
   // Drag and drop state
   const [draggedCard, setDraggedCard] = useState<string | null>(null);
   const [dragOverCard, setDragOverCard] = useState<string | null>(null);
   const [selectedPPInterval, setSelectedPPInterval] = useState<TimeInterval | null>(null);
   const [isOverTrash, setIsOverTrash] = useState(false);
+
+  // Convert accounts array to Map for TrackedLinksKPICard
+  const accountsMap = useMemo(() => {
+    const map = new Map<string, TrackedAccount>();
+    accounts.forEach(acc => map.set(acc.id, acc));
+    return map;
+  }, [accounts]);
 
   const handleCardClick = (metricId: string, metricLabel: string) => {
     // If it's link clicks and there are no links, trigger create link callback
@@ -1315,54 +1337,95 @@ const KPICards: React.FC<KPICardsProps> = ({
             });
           }
           
-          return visibleCards.map((card) => (
-            <KPICard 
-              key={card.id} 
-              data={card} 
-              onClick={() => !isEditMode && handleCardClick(card.id, card.label)}
-              onIntervalHover={setHoveredInterval}
-              timePeriod={timePeriod}
-              submissions={submissions}
-              linkClicks={linkClicks}
-              dateFilter={dateFilter}
-              customRange={customRange}
-              isEditMode={isEditMode}
-              isDragging={draggedCard === card.id}
-              isDragOver={dragOverCard === card.id}
-              onDragStart={() => {
-                if (isEditMode) setDraggedCard(card.id);
-              }}
-              onDragEnd={() => {
-                setDraggedCard(null);
-                setDragOverCard(null);
-              }}
-              onDragOver={(e) => {
-                if (isEditMode) {
-                  e.preventDefault();
-                  setDragOverCard(card.id);
-                }
-              }}
-              onDragLeave={() => {
-                setDragOverCard(null);
-              }}
-              onDrop={() => {
-                if (isEditMode && draggedCard && draggedCard !== card.id) {
-                  const currentOrder = cardOrder.length > 0 ? cardOrder : kpiData.map(c => c.id);
-                  const draggedIndex = currentOrder.indexOf(draggedCard);
-                  const targetIndex = currentOrder.indexOf(card.id);
-                  
-                  if (draggedIndex !== -1 && targetIndex !== -1) {
-                    const newOrder = [...currentOrder];
-                    newOrder.splice(draggedIndex, 1);
-                    newOrder.splice(targetIndex, 0, draggedCard);
-                    onReorder?.(newOrder);
+          return visibleCards.map((card) => {
+            // Special handling for link-clicks KPI card
+            if (card.id === 'link-clicks') {
+              return (
+                <TrackedLinksKPICard
+                  key={card.id}
+                  label={card.label}
+                  value={card.value}
+                  growth={card.delta?.absoluteValue}
+                  isIncreasing={card.delta?.isPositive ?? true}
+                  icon={card.icon as any}
+                  sparklineData={card.sparklineData?.map(d => ({
+                    timestamp: d.timestamp || Date.now(),
+                    value: d.value,
+                    clicks: linkClicks.filter(click => {
+                      if (!d.timestamp) return false;
+                      const clickDate = new Date(click.timestamp).setHours(0, 0, 0, 0);
+                      const intervalDate = new Date(d.timestamp).setHours(0, 0, 0, 0);
+                      return clickDate === intervalDate;
+                    })
+                  })) || []}
+                  links={links}
+                  accounts={accountsMap}
+                  onClick={(date, clicks) => {
+                    setSelectedDayClicksDate(date);
+                    setSelectedDayClicks(clicks);
+                    setIsDayClicksModalOpen(true);
+                  }}
+                  onLinkClick={(shortCode) => {
+                    const link = links.find(l => l.shortCode === shortCode);
+                    if (link) {
+                      setSelectedLink(link);
+                      setIsLinkAnalyticsModalOpen(true);
+                    }
+                  }}
+                />
+              );
+            }
+            
+            // Regular KPI card for all other metrics
+            return (
+              <KPICard 
+                key={card.id} 
+                data={card} 
+                onClick={() => !isEditMode && handleCardClick(card.id, card.label)}
+                onIntervalHover={setHoveredInterval}
+                timePeriod={timePeriod}
+                submissions={submissions}
+                linkClicks={linkClicks}
+                dateFilter={dateFilter}
+                customRange={customRange}
+                isEditMode={isEditMode}
+                isDragging={draggedCard === card.id}
+                isDragOver={dragOverCard === card.id}
+                onDragStart={() => {
+                  if (isEditMode) setDraggedCard(card.id);
+                }}
+                onDragEnd={() => {
+                  setDraggedCard(null);
+                  setDragOverCard(null);
+                }}
+                onDragOver={(e) => {
+                  if (isEditMode) {
+                    e.preventDefault();
+                    setDragOverCard(card.id);
                   }
-                }
-                setDraggedCard(null);
-                setDragOverCard(null);
-              }}
-            />
-          ));
+                }}
+                onDragLeave={() => {
+                  setDragOverCard(null);
+                }}
+                onDrop={() => {
+                  if (isEditMode && draggedCard && draggedCard !== card.id) {
+                    const currentOrder = cardOrder.length > 0 ? cardOrder : kpiData.map(c => c.id);
+                    const draggedIndex = currentOrder.indexOf(draggedCard);
+                    const targetIndex = currentOrder.indexOf(card.id);
+                    
+                    if (draggedIndex !== -1 && targetIndex !== -1) {
+                      const newOrder = [...currentOrder];
+                      newOrder.splice(draggedIndex, 1);
+                      newOrder.splice(targetIndex, 0, draggedCard);
+                      onReorder?.(newOrder);
+                    }
+                  }
+                  setDraggedCard(null);
+                  setDragOverCard(null);
+                }}
+              />
+            );
+          });
         })()}
       </div>
 
@@ -1417,6 +1480,39 @@ const KPICards: React.FC<KPICardsProps> = ({
           ppInterval={selectedPPInterval}
           linkClicks={selectedLinkClicks}
           ppLinkClicks={selectedPPLinkClicks}
+        />
+      )}
+
+      {/* Day Clicks Modal for Link Analytics */}
+      {isDayClicksModalOpen && selectedDayClicksDate && (
+        <DayClicksModal
+          isOpen={isDayClicksModalOpen}
+          onClose={() => {
+            setIsDayClicksModalOpen(false);
+            setSelectedDayClicksDate(null);
+            setSelectedDayClicks([]);
+          }}
+          date={selectedDayClicksDate}
+          clicks={selectedDayClicks}
+          links={links}
+          accounts={accountsMap}
+          onLinkClick={(link) => {
+            setIsDayClicksModalOpen(false);
+            setSelectedLink(link);
+            setIsLinkAnalyticsModalOpen(true);
+          }}
+        />
+      )}
+
+      {/* Link Analytics Modal */}
+      {selectedLink && (
+        <LinkAnalyticsModalEnhanced
+          isOpen={isLinkAnalyticsModalOpen}
+          onClose={() => {
+            setIsLinkAnalyticsModalOpen(false);
+            setSelectedLink(null);
+          }}
+          link={selectedLink}
         />
       )}
     </>
