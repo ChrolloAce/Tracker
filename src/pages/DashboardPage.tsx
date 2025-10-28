@@ -298,6 +298,13 @@ function DashboardPage() {
   const [rulesLoadedFromFirebase, setRulesLoadedFromFirebase] = useState(false);
   const [dataLoadedFromFirebase, setDataLoadedFromFirebase] = useState(false);
   
+  // Compute ACTIVE rules count - only count rules that exist in current project
+  // This prevents showing stale counts when switching projects
+  const activeRulesCount = useMemo(() => {
+    const validRuleIds = new Set(allRules.map(r => r.id));
+    return selectedRuleIds.filter(id => validRuleIds.has(id)).length;
+  }, [selectedRuleIds, allRules]);
+  
   // Loading state for skeleton display (only check if data has been loaded, not if it's empty)
   const isInitialLoading = !rulesLoadedFromFirebase || !dataLoadedFromFirebase;
   
@@ -1903,12 +1910,12 @@ function DashboardPage() {
                   <button
                     onClick={handleOpenRuleModal}
                     className="relative p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
-                    title={selectedRuleIds.length === 0 ? 'All Videos' : `${selectedRuleIds.length} rule${selectedRuleIds.length > 1 ? 's' : ''} applied`}
+                    title={activeRulesCount === 0 ? 'All Videos' : `${activeRulesCount} rule${activeRulesCount > 1 ? 's' : ''} applied`}
                   >
                     <Filter className="w-4 h-4" />
-                    {selectedRuleIds.length > 0 && (
+                    {activeRulesCount > 0 && (
                       <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-emerald-500 text-white text-[10px] font-bold rounded-full border-2 border-gray-900">
-                        {selectedRuleIds.length}
+                        {activeRulesCount}
                       </span>
                     )}
                   </button>
@@ -2090,12 +2097,12 @@ function DashboardPage() {
               <button
                 onClick={handleOpenRuleModal}
                 className="relative p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
-                title={selectedRuleIds.length === 0 ? 'All Videos' : `${selectedRuleIds.length} rule${selectedRuleIds.length > 1 ? 's' : ''} applied`}
+                title={activeRulesCount === 0 ? 'All Videos' : `${activeRulesCount} rule${activeRulesCount > 1 ? 's' : ''} applied`}
               >
                 <Filter className="w-4 h-4" />
-                {selectedRuleIds.length > 0 && (
+                {activeRulesCount > 0 && (
                   <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-emerald-500 text-white text-[10px] font-bold rounded-full border-2 border-gray-900">
-                    {selectedRuleIds.length}
+                    {activeRulesCount}
                   </span>
                 )}
               </button>
@@ -2233,12 +2240,12 @@ function DashboardPage() {
               <button
                 onClick={handleOpenRuleModal}
                 className="relative p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
-                title={selectedRuleIds.length === 0 ? 'All Videos' : `${selectedRuleIds.length} rule${selectedRuleIds.length > 1 ? 's' : ''} applied`}
+                title={activeRulesCount === 0 ? 'All Videos' : `${activeRulesCount} rule${activeRulesCount > 1 ? 's' : ''} applied`}
               >
                 <Filter className="w-4 h-4" />
-                {selectedRuleIds.length > 0 && (
-                  <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-18px] px-1 bg-emerald-500 text-white text-[10px] font-bold rounded-full border-2 border-gray-900">
-                    {selectedRuleIds.length}
+                {activeRulesCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-emerald-500 text-white text-[10px] font-bold rounded-full border-2 border-gray-900">
+                    {activeRulesCount}
                   </span>
                 )}
               </button>
@@ -3027,7 +3034,7 @@ function DashboardPage() {
               <p className="text-sm text-gray-400">
                 Select multiple rules to filter videos. Videos matching ANY selected rule will be shown.
               </p>
-              {selectedRuleIds.length > 0 && (
+              {activeRulesCount > 0 && (
                 <button
                   onClick={() => {
                     console.log('🗑️ Clear All clicked - removing all selections');
