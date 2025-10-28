@@ -13,6 +13,7 @@ import Pagination from './ui/Pagination';
 import { LinkClick } from '../services/LinkClicksService';
 import websiteStatsAnimation from '../../public/lottie/Website Statistics Infographic.json';
 import { TrackedLinksKPICard } from './TrackedLinksKPICard';
+import DayClicksModal from './DayClicksModal';
 
 export interface TrackedLinksPageRef {
   openCreateModal: () => void;
@@ -39,6 +40,11 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
   const [loading, setLoading] = useState(true);
   const [sortField, setSortField] = useState<'createdAt' | 'totalClicks' | 'uniqueClicks' | 'title'>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  
+  // Day Clicks Modal state
+  const [isDayClicksModalOpen, setIsDayClicksModalOpen] = useState(false);
+  const [selectedDayDate, setSelectedDayDate] = useState<Date | null>(null);
+  const [selectedDayClicks, setSelectedDayClicks] = useState<LinkClick[]>([]);
   
   // Expose openCreateModal to parent component
   // Refresh data function for parent to call
@@ -471,8 +477,14 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           isIncreasing={stats.isTotalIncreasing}
           icon={MousePointer}
           sparklineData={sparklineData.total}
+          onClick={(date, clicks) => {
+            // Open modal showing all clicks for this day
+            setSelectedDayDate(date);
+            setSelectedDayClicks(clicks);
+            setIsDayClicksModalOpen(true);
+          }}
           onLinkClick={(linkCode) => {
-            // When clicking on a link in the tooltip, open its analytics modal
+            // When clicking on a specific link in the tooltip, open its analytics modal
             const link = links.find(l => l.shortCode === linkCode);
             if (link) {
               handleViewAnalytics(link);
@@ -488,6 +500,11 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           isIncreasing={stats.isUniqueIncreasing}
           icon={Users}
           sparklineData={sparklineData.unique}
+          onClick={(date, clicks) => {
+            setSelectedDayDate(date);
+            setSelectedDayClicks(clicks);
+            setIsDayClicksModalOpen(true);
+          }}
           onLinkClick={(linkCode) => {
             const link = links.find(l => l.shortCode === linkCode);
             if (link) {
@@ -503,6 +520,11 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           isIncreasing={stats.isTotalIncreasing}
           icon={TrendingUp}
           sparklineData={sparklineData.ctr}
+          onClick={(date, clicks) => {
+            setSelectedDayDate(date);
+            setSelectedDayClicks(clicks);
+            setIsDayClicksModalOpen(true);
+          }}
           onLinkClick={(linkCode) => {
             const link = links.find(l => l.shortCode === linkCode);
             if (link) {
@@ -735,6 +757,26 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
             setSelectedLink(null);
           }}
           link={selectedLink}
+        />
+      )}
+
+      {/* Day Clicks Modal */}
+      {isDayClicksModalOpen && selectedDayDate && (
+        <DayClicksModal
+          isOpen={isDayClicksModalOpen}
+          onClose={() => {
+            setIsDayClicksModalOpen(false);
+            setSelectedDayDate(null);
+            setSelectedDayClicks([]);
+          }}
+          date={selectedDayDate}
+          clicks={selectedDayClicks}
+          links={links}
+          onLinkClick={(link) => {
+            // Close day modal and open link analytics
+            setIsDayClicksModalOpen(false);
+            handleViewAnalytics(link);
+          }}
         />
       )}
     </div>

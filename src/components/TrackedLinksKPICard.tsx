@@ -17,8 +17,8 @@ interface TrackedLinksKPICardProps {
   isIncreasing: boolean;
   icon: LucideIcon;
   sparklineData: SparklineDataPoint[];
-  onClick?: () => void;
-  onLinkClick?: (linkCode: string, date: Date, clicks: LinkClick[]) => void;
+  onClick?: (date: Date, clicks: LinkClick[]) => void; // Click on card/graph point
+  onLinkClick?: (linkCode: string, date: Date, clicks: LinkClick[]) => void; // Click on specific link in tooltip
 }
 
 export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
@@ -48,10 +48,17 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
 
   const strokeColor = isIncreasing ? '#22c55e' : '#ef4444';
 
+  const handleCardClick = () => {
+    if (tooltipData && onClick) {
+      // Open modal for the currently hovered day
+      onClick(new Date(tooltipData.point.timestamp), tooltipData.point.clicks || []);
+    }
+  };
+
   return (
     <div
       ref={cardRef}
-      onClick={onClick}
+      onClick={handleCardClick}
       onMouseMove={(e) => {
         if (!sparklineData || sparklineData.length === 0 || !cardRef.current) return;
         
