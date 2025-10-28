@@ -34,12 +34,12 @@ const DayClicksModal: React.FC<DayClicksModalProps> = ({
     const groups = new Map<string, { link: TrackedLink | null; clicks: LinkClick[]; totalClicks: number; uniqueClicks: number }>();
     
     clicks.forEach(click => {
-      const linkCode = click.linkCode;
-      if (!linkCode) return;
+      const shortCode = click.shortCode; // Use shortCode, not linkCode
+      if (!shortCode) return;
       
-      if (!groups.has(linkCode)) {
-        const link = links.find(l => l.shortCode === linkCode);
-        groups.set(linkCode, {
+      if (!groups.has(shortCode)) {
+        const link = links.find(l => l.shortCode === shortCode);
+        groups.set(shortCode, {
           link: link || null,
           clicks: [],
           totalClicks: 0,
@@ -47,13 +47,13 @@ const DayClicksModal: React.FC<DayClicksModalProps> = ({
         });
       }
       
-      const group = groups.get(linkCode)!;
+      const group = groups.get(shortCode)!;
       group.clicks.push(click);
       group.totalClicks++;
     });
     
     // Calculate unique clicks for each group
-    groups.forEach((group, linkCode) => {
+    groups.forEach((group) => {
       const uniqueUsers = new Set(group.clicks.map(c => `${c.userAgent}-${c.deviceType}`));
       group.uniqueClicks = uniqueUsers.size;
     });
@@ -61,7 +61,7 @@ const DayClicksModal: React.FC<DayClicksModalProps> = ({
     // Sort by total clicks descending
     return Array.from(groups.entries())
       .sort((a, b) => b[1].totalClicks - a[1].totalClicks)
-      .map(([linkCode, data]) => ({ linkCode, ...data }));
+      .map(([shortCode, data]) => ({ linkCode: shortCode, ...data }));
   }, [clicks, links]);
 
   const totalClicks = clicks.length;

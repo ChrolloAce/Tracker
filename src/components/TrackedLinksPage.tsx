@@ -483,9 +483,9 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
             setSelectedDayClicks(clicks);
             setIsDayClicksModalOpen(true);
           }}
-          onLinkClick={(linkCode) => {
+          onLinkClick={(shortCode) => {
             // When clicking on a specific link in the tooltip, open its analytics modal
-            const link = links.find(l => l.shortCode === linkCode);
+            const link = links.find(l => l.shortCode === shortCode);
             if (link) {
               handleViewAnalytics(link);
             }
@@ -505,8 +505,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
             setSelectedDayClicks(clicks);
             setIsDayClicksModalOpen(true);
           }}
-          onLinkClick={(linkCode) => {
-            const link = links.find(l => l.shortCode === linkCode);
+          onLinkClick={(shortCode) => {
+            const link = links.find(l => l.shortCode === shortCode);
             if (link) {
               handleViewAnalytics(link);
             }
@@ -525,8 +525,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
             setSelectedDayClicks(clicks);
             setIsDayClicksModalOpen(true);
           }}
-          onLinkClick={(linkCode) => {
-            const link = links.find(l => l.shortCode === linkCode);
+          onLinkClick={(shortCode) => {
+            const link = links.find(l => l.shortCode === shortCode);
             if (link) {
               handleViewAnalytics(link);
             }

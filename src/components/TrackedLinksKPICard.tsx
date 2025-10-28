@@ -18,7 +18,7 @@ interface TrackedLinksKPICardProps {
   icon: LucideIcon;
   sparklineData: SparklineDataPoint[];
   onClick?: (date: Date, clicks: LinkClick[]) => void; // Click on card/graph point
-  onLinkClick?: (linkCode: string, date: Date, clicks: LinkClick[]) => void; // Click on specific link in tooltip
+  onLinkClick?: (shortCode: string, date: Date, clicks: LinkClick[]) => void; // Click on specific link in tooltip
 }
 
 export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
@@ -237,19 +237,19 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
                       key={idx}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (onLinkClick && click.linkCode) {
-                          onLinkClick(click.linkCode, new Date(tooltipData.point.timestamp), tooltipData.point.clicks || []);
+                        if (onLinkClick && click.shortCode) {
+                          onLinkClick(click.shortCode, new Date(tooltipData.point.timestamp), tooltipData.point.clicks || []);
                         }
                       }}
                       className="flex items-center gap-2 py-1.5 px-2 hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
                     >
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-white truncate font-medium">
-                          {click.linkCode}
+                          {click.shortCode}
                         </p>
-                        {click.accountUsername && (
+                        {click.accountHandle && (
                           <p className="text-xs text-gray-500">
-                            @{click.accountUsername}
+                            @{click.accountHandle}
                           </p>
                         )}
                       </div>
