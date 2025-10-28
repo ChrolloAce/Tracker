@@ -772,6 +772,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           date={selectedDayDate}
           clicks={selectedDayClicks}
           links={links}
+          accounts={accounts}
           onLinkClick={(link) => {
             // Close day modal and open link analytics
             setIsDayClicksModalOpen(false);

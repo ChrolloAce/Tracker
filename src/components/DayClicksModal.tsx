@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
-import { X, Calendar, MousePointer, ExternalLink } from 'lucide-react';
+import { X, Calendar, MousePointer, Link as LinkIcon } from 'lucide-react';
 import { LinkClick } from '../services/LinkClicksService';
-import { TrackedLink } from '../types/firestore';
+import { TrackedLink, TrackedAccount } from '../types/firestore';
 
 interface DayClicksModalProps {
   isOpen: boolean;
@@ -9,6 +9,7 @@ interface DayClicksModalProps {
   date: Date;
   clicks: LinkClick[];
   links: TrackedLink[];
+  accounts: Map<string, TrackedAccount>;
   onLinkClick: (link: TrackedLink) => void;
 }
 
@@ -18,6 +19,7 @@ const DayClicksModal: React.FC<DayClicksModalProps> = ({
   date,
   clicks,
   links,
+  accounts,
   onLinkClick
 }) => {
   const formatDate = (date: Date) => {
@@ -132,70 +134,64 @@ const DayClicksModal: React.FC<DayClicksModalProps> = ({
                 <p className="text-gray-400">No clicks recorded for this day</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {linkClickGroups.map(({ linkCode, link, totalClicks, uniqueClicks }) => (
-                  <div
-                    key={linkCode}
-                    onClick={() => {
-                      if (link) {
-                        onLinkClick(link);
-                      }
-                    }}
-                    className="p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all cursor-pointer group"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0">
-                        {/* Link Code */}
-                        <div className="flex items-center gap-2 mb-2">
-                          <code className="text-sm font-mono font-semibold text-white">
-                            /{linkCode}
-                          </code>
-                          {link && (
-                            <ExternalLink className="w-3.5 h-3.5 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                          )}
-                        </div>
-
-                        {/* Link Details */}
-                        {link && (
-                          <div className="space-y-1">
-                            <p className="text-sm text-white truncate">
-                              {link.title}
-                            </p>
-                            <p className="text-xs text-gray-500 truncate">
-                              {link.originalUrl}
-                            </p>
+              <div className="space-y-2">
+                {linkClickGroups.map(({ linkCode, link, totalClicks, uniqueClicks }) => {
+                  const linkedAccount = link?.linkedAccountId ? accounts.get(link.linkedAccountId) : null;
+                  
+                  return (
+                    <div
+                      key={linkCode}
+                      onClick={() => {
+                        if (link) {
+                          onLinkClick(link);
+                        }
+                      }}
+                      className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors cursor-pointer group"
+                    >
+                      {/* Creator Profile Picture or Link Icon */}
+                      <div className="flex-shrink-0">
+                        {linkedAccount?.profilePicture ? (
+                          <img
+                            src={linkedAccount.profilePicture}
+                            alt={linkedAccount.username}
+                            className="w-10 h-10 rounded-full object-cover ring-2 ring-white/10"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+                            <LinkIcon className="w-5 h-5 text-gray-400" />
                           </div>
                         )}
-
-                        {!link && (
-                          <p className="text-xs text-gray-500">
-                            Link not found
-                          </p>
-                        )}
                       </div>
 
-                      {/* Click Stats */}
-                      <div className="flex items-center gap-6 ml-4">
-                        <div className="text-right">
-                          <p className="text-2xl font-bold text-white">
-                            {totalClicks}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {totalClicks === 1 ? 'click' : 'clicks'}
-                          </p>
+                      {/* Link Info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white truncate">
+                          {link?.title || `/${linkCode}`}
+                        </p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {linkedAccount && (
+                            <span className="text-xs text-gray-400">
+                              @{linkedAccount.username}
+                            </span>
+                          )}
+                          <span className="text-xs text-gray-500">
+                            /{linkCode}
+                          </span>
                         </div>
-                        <div className="text-right">
-                          <p className="text-lg font-semibold text-gray-400">
-                            {uniqueClicks}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            unique
-                          </p>
-                        </div>
+                      </div>
+
+                      {/* Click Count */}
+                      <div className="flex-shrink-0 text-right">
+                        <p className="text-lg font-bold text-white">
+                          {totalClicks}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {totalClicks === 1 ? 'click' : 'clicks'}
+                        </p>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
