@@ -69,13 +69,45 @@ const BillingTabContent: React.FC = () => {
 
   const planDetails = SUBSCRIPTION_PLANS[currentPlan];
   
-  // Format dates
+  // Format dates - handle both Timestamp objects and Date objects
   const startDate = subscription?.createdAt 
-    ? new Date(subscription.createdAt.seconds * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    ? (() => {
+        try {
+          // If it's a Firestore Timestamp
+          if (subscription.createdAt.seconds) {
+            return new Date(subscription.createdAt.seconds * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+          }
+          // If it's already a Date object
+          if (subscription.createdAt.toDate) {
+            return subscription.createdAt.toDate().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+          }
+          // If it's a plain Date
+          return new Date(subscription.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        } catch (error) {
+          console.error('Error formatting start date:', error, subscription.createdAt);
+          return 'N/A';
+        }
+      })()
     : 'N/A';
   
   const nextBillingDate = subscription?.currentPeriodEnd
-    ? new Date(subscription.currentPeriodEnd.seconds * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    ? (() => {
+        try {
+          // If it's a Firestore Timestamp
+          if (subscription.currentPeriodEnd.seconds) {
+            return new Date(subscription.currentPeriodEnd.seconds * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+          }
+          // If it's already a Date object
+          if (subscription.currentPeriodEnd.toDate) {
+            return subscription.currentPeriodEnd.toDate().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+          }
+          // If it's a plain Date
+          return new Date(subscription.currentPeriodEnd).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        } catch (error) {
+          console.error('Error formatting next billing date:', error, subscription.currentPeriodEnd);
+          return 'N/A';
+        }
+      })()
     : 'N/A';
 
   // Usage card data
