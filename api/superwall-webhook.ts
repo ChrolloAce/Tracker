@@ -219,21 +219,47 @@ async function processTransactionEvent(
                       eventData.name || 
                       'unknown';
 
-    // Determine purchase date (Superwall sends timestamps in milliseconds)
+    // Determine event date based on event type (Superwall sends timestamps in milliseconds)
+    const eventType = (event.type || event.eventType || event.name || '').toLowerCase();
     let purchaseDate = new Date();
-    if (eventData.purchasedAt) {
-      purchaseDate = new Date(eventData.purchasedAt);
-    } else if (eventData.purchased_at) {
-      purchaseDate = new Date(eventData.purchased_at);
-    } else if (eventData.timestamp) {
-      purchaseDate = new Date(eventData.timestamp);
-    } else if (event.timestamp) {
-      purchaseDate = new Date(event.timestamp);
+    
+    // Use the appropriate date based on event type
+    if (eventType.includes('expiration') || eventType.includes('cancel')) {
+      // For expirations/cancellations, use the expiration date
+      if (eventData.expirationAt) {
+        purchaseDate = new Date(eventData.expirationAt);
+      } else if (eventData.expiration_at) {
+        purchaseDate = new Date(eventData.expiration_at);
+      } else if (event.timestamp) {
+        purchaseDate = new Date(event.timestamp);
+      }
+    } else {
+      // For purchases/renewals, use the purchase date
+      if (eventData.purchasedAt) {
+        purchaseDate = new Date(eventData.purchasedAt);
+      } else if (eventData.purchased_at) {
+        purchaseDate = new Date(eventData.purchased_at);
+      } else if (eventData.timestamp) {
+        purchaseDate = new Date(eventData.timestamp);
+      } else if (event.timestamp) {
+        purchaseDate = new Date(event.timestamp);
+      }
     }
 
     // Determine if renewal
-    const isRenewal = (event.type || event.eventType || '').toLowerCase().includes('renewal') || 
-                      (event.name || '').toLowerCase().includes('renewal');
+    const isRenewal = eventType.includes('renewal');
+
+    // Determine status based on event type
+    let status: 'completed' | 'active' | 'expired' | 'refunded' | 'cancelled' = 'completed';
+    if (eventType.includes('expiration') || eventType.includes('expired')) {
+      status = 'expired';
+    } else if (eventType.includes('cancel')) {
+      status = 'cancelled';
+    } else if (eventType.includes('refund')) {
+      status = 'refunded';
+    } else if (eventType.includes('renewal') || eventType.includes('subscription')) {
+      status = 'active';
+    }
 
     const transaction = {
       id: transactionId,
@@ -246,7 +272,7 @@ async function processTransactionEvent(
       amount: amountInCents,
       currency: eventData.currencyCode || eventData.currency || 'USD',
       type: determineTransactionType(event, eventData),
-      status: 'completed' as const,
+      status,
       platform: ((eventData.store || '').toLowerCase() === 'app_store' ? 'ios' : 
                  (eventData.store || '').toLowerCase() === 'play_store' ? 'android' :
                  'other') as 'ios' | 'android' | 'web' | 'other',
