@@ -119,6 +119,22 @@ service firebase.storage {
         // Only org members can delete campaign covers
         allow delete: if isOrgPath(orgId);
       }
+      
+      // ==================== CAMPAIGN RESOURCES ====================
+      
+      // Campaign resources: organizations/{orgId}/campaign-resources/{campaignId}/{fileName}
+      match /campaign-resources/{campaignId}/{fileName} {
+        // All org members can read resources (for downloads)
+        allow read: if isOrgPath(orgId);
+        
+        // Only org members can upload resources
+        // Max 50MB for resources (documents, videos, etc)
+        allow write: if isOrgPath(orgId) 
+          && request.resource.size < 50 * 1024 * 1024;
+        
+        // Only org members can delete resources
+        allow delete: if isOrgPath(orgId);
+      }
     }
     
     // ==================== DEFAULT DENY ====================

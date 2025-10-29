@@ -139,6 +139,9 @@ export interface Campaign {
   // Tracking Rules
   defaultRuleIds?: string[];    // Default tracking rules for this campaign
   
+  // Resources
+  resources: CampaignResource[];  // Campaign resources (links, files, images)
+  
   // Participants
   participantIds: string[];     // Array of creator user IDs
   participants: CampaignParticipant[];
@@ -181,6 +184,40 @@ export interface CreateCampaignInput {
   metricGuarantees: MetricGuarantee[];  // Minimum metrics per video
   defaultRuleIds?: string[];      // Optional default tracking rules
   participantIds: string[];
+}
+
+/**
+ * Campaign Resource Type
+ */
+export type CampaignResourceType = 
+  | 'link'        // External URL
+  | 'image'       // Image file
+  | 'document'    // PDF, DOC, etc
+  | 'video';      // Video file
+
+/**
+ * Campaign Resource
+ */
+export interface CampaignResource {
+  id: string;
+  type: CampaignResourceType;
+  name: string;
+  description?: string;
+  
+  // For links
+  url?: string;
+  
+  // For files
+  fileUrl?: string;
+  fileName?: string;
+  fileSize?: number;        // In bytes
+  fileType?: string;        // MIME type
+  storagePath?: string;     // Firebase Storage path
+  
+  // Metadata
+  uploadedBy: string;       // User ID
+  uploadedAt: Timestamp | Date;
+  downloadCount: number;    // Track downloads
 }
 
 /**

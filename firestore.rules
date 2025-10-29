@@ -338,6 +338,26 @@ service cloud.firestore {
           // Only admins/managers can update/delete campaigns
           allow update, delete: if canManageOrg(orgId);
           
+          // ==================== CAMPAIGN RESOURCES ====================
+          
+          match /resources/{resourceId} {
+            // All members can read resources
+            allow read: if canReadOrg(orgId);
+            
+            // Admins can create resources
+            allow create: if canManageOrg(orgId) 
+              && request.resource.data.uploadedBy == request.auth.uid;
+            
+            // Admins can update resources (for download count tracking)
+            // Also allow anyone to increment downloadCount
+            allow update: if canManageOrg(orgId)
+              || (canReadOrg(orgId) && 
+                  request.resource.data.diff(resource.data).affectedKeys().hasOnly(['downloadCount']));
+            
+            // Only admins can delete resources
+            allow delete: if canManageOrg(orgId);
+          }
+          
           // ==================== CAMPAIGN VIDEO SUBMISSIONS ====================
           
           match /videoSubmissions/{submissionId} {
