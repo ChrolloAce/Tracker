@@ -1,0 +1,333 @@
+import { db } from './firebase';
+import { 
+  collection, 
+  doc, 
+  getDoc, 
+  setDoc, 
+  updateDoc, 
+  increment,
+  serverTimestamp,
+  Timestamp
+} from 'firebase/firestore';
+import { SUBSCRIPTION_PLANS, PlanTier } from '../types/subscription';
+
+/**
+ * Usage Tracking Service
+ * Tracks and enforces subscription limits for all resources
+ */
+
+export interface UsageMetrics {
+  // Tracked Resources
+  trackedAccounts: number;
+  trackedVideos: number;
+  trackedLinks: number;
+  
+  // Team & Collaboration
+  teamMembers: number;
+  
+  // Manual Additions
+  manualVideos: number; // Videos added manually (not auto-tracked)
+  manualCreators: number;
+  
+  // Monthly Reset Metrics
+  mcpCallsThisMonth: number;
+  
+  // Metadata
+  lastUpdated: Date;
+  currentPeriodStart: Date;
+  currentPeriodEnd: Date;
+}
+
+export interface UsageLimits {
+  maxAccounts: number; // -1 = unlimited
+  maxVideos: number;
+  maxLinks: number;
+  teamSeats: number;
+  mcpCallsPerMonth: number;
+}
+
+export interface UsageStatus {
+  resource: string;
+  current: number;
+  limit: number;
+  percentage: number;
+  isUnlimited: boolean;
+  isOverLimit: boolean;
+  isNearLimit: boolean; // > 80%
+}
+
+class UsageTrackingService {
+  
+  /**
+   * Get current usage for an organization
+   */
+  static async getUsage(orgId: string): Promise<UsageMetrics> {
+    try {
+      const usageRef = doc(db, 'organizations', orgId, 'billing', 'usage');
+      const usageDoc = await getDoc(usageRef);
+      
+      if (!usageDoc.exists()) {
+        // Initialize usage tracking
+        const initialUsage: UsageMetrics = {
+          trackedAccounts: 0,
+          trackedVideos: 0,
+          trackedLinks: 0,
+          teamMembers: 1, // Owner
+          manualVideos: 0,
+          manualCreators: 0,
+          mcpCallsThisMonth: 0,
+          lastUpdated: new Date(),
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: this.getNextMonthDate()
+        };
+        
+        await setDoc(usageRef, {
+          ...initialUsage,
+          lastUpdated: serverTimestamp(),
+          currentPeriodStart: Timestamp.fromDate(initialUsage.currentPeriodStart),
+          currentPeriodEnd: Timestamp.fromDate(initialUsage.currentPeriodEnd)
+        });
+        
+        return initialUsage;
+      }
+      
+      const data = usageDoc.data();
+      return {
+        trackedAccounts: data.trackedAccounts || 0,
+        trackedVideos: data.trackedVideos || 0,
+        trackedLinks: data.trackedLinks || 0,
+        teamMembers: data.teamMembers || 1,
+        manualVideos: data.manualVideos || 0,
+        manualCreators: data.manualCreators || 0,
+        mcpCallsThisMonth: data.mcpCallsThisMonth || 0,
+        lastUpdated: data.lastUpdated?.toDate() || new Date(),
+        currentPeriodStart: data.currentPeriodStart?.toDate() || new Date(),
+        currentPeriodEnd: data.currentPeriodEnd?.toDate() || this.getNextMonthDate()
+      };
+    } catch (error) {
+      console.error('Failed to get usage:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get limits for current subscription plan
+   */
+  static async getLimits(orgId: string): Promise<UsageLimits> {
+    try {
+      const subRef = doc(db, 'organizations', orgId, 'billing', 'subscription');
+      const subDoc = await getDoc(subRef);
+      
+      const planTier: PlanTier = subDoc.exists() 
+        ? (subDoc.data().planTier || 'free') 
+        : 'free';
+      
+      const plan = SUBSCRIPTION_PLANS[planTier];
+      
+      return {
+        maxAccounts: plan.features.maxAccounts,
+        maxVideos: plan.features.maxVideos,
+        maxLinks: plan.features.maxLinks,
+        teamSeats: plan.features.teamSeats,
+        mcpCallsPerMonth: plan.features.mcpCallsPerMonth
+      };
+    } catch (error) {
+      console.error('Failed to get limits:', error);
+      // Default to free plan limits on error
+      return {
+        maxAccounts: 1,
+        maxVideos: 5,
+        maxLinks: 1,
+        teamSeats: 1,
+        mcpCallsPerMonth: 10
+      };
+    }
+  }
+  
+  /**
+   * Get usage status for all resources
+   */
+  static async getUsageStatus(orgId: string): Promise<UsageStatus[]> {
+    const [usage, limits] = await Promise.all([
+      this.getUsage(orgId),
+      this.getLimits(orgId)
+    ]);
+    
+    return [
+      this.calculateStatus('Tracked Accounts', usage.trackedAccounts, limits.maxAccounts),
+      this.calculateStatus('Tracked Videos', usage.trackedVideos, limits.maxVideos),
+      this.calculateStatus('Tracked Links', usage.trackedLinks, limits.maxLinks),
+      this.calculateStatus('Team Members', usage.teamMembers, limits.teamSeats),
+      this.calculateStatus('MCP Calls', usage.mcpCallsThisMonth, limits.mcpCallsPerMonth),
+    ];
+  }
+  
+  /**
+   * Check if action is allowed (within limits)
+   */
+  static async canPerformAction(
+    orgId: string, 
+    resource: 'account' | 'video' | 'link' | 'team' | 'mcp'
+  ): Promise<{ allowed: boolean; reason?: string; current: number; limit: number }> {
+    try {
+      const [usage, limits] = await Promise.all([
+        this.getUsage(orgId),
+        this.getLimits(orgId)
+      ]);
+      
+      let current: number;
+      let limit: number;
+      let resourceName: string;
+      
+      switch (resource) {
+        case 'account':
+          current = usage.trackedAccounts;
+          limit = limits.maxAccounts;
+          resourceName = 'tracked accounts';
+          break;
+        case 'video':
+          current = usage.trackedVideos;
+          limit = limits.maxVideos;
+          resourceName = 'tracked videos';
+          break;
+        case 'link':
+          current = usage.trackedLinks;
+          limit = limits.maxLinks;
+          resourceName = 'tracked links';
+          break;
+        case 'team':
+          current = usage.teamMembers;
+          limit = limits.teamSeats;
+          resourceName = 'team members';
+          break;
+        case 'mcp':
+          current = usage.mcpCallsThisMonth;
+          limit = limits.mcpCallsPerMonth;
+          resourceName = 'MCP API calls';
+          break;
+        default:
+          return { allowed: false, reason: 'Unknown resource', current: 0, limit: 0 };
+      }
+      
+      // -1 means unlimited
+      if (limit === -1) {
+        return { allowed: true, current, limit: -1 };
+      }
+      
+      if (current >= limit) {
+        return { 
+          allowed: false, 
+          reason: `You've reached your limit of ${limit} ${resourceName}. Upgrade your plan to add more.`,
+          current,
+          limit
+        };
+      }
+      
+      return { allowed: true, current, limit };
+    } catch (error) {
+      console.error('Failed to check usage limits:', error);
+      return { allowed: false, reason: 'Failed to verify usage limits', current: 0, limit: 0 };
+    }
+  }
+  
+  /**
+   * Increment usage counter
+   */
+  static async incrementUsage(
+    orgId: string, 
+    resource: 'trackedAccounts' | 'trackedVideos' | 'trackedLinks' | 'teamMembers' | 'manualVideos' | 'manualCreators' | 'mcpCallsThisMonth',
+    amount: number = 1
+  ): Promise<void> {
+    try {
+      const usageRef = doc(db, 'organizations', orgId, 'billing', 'usage');
+      await updateDoc(usageRef, {
+        [resource]: increment(amount),
+        lastUpdated: serverTimestamp()
+      });
+      
+      console.log(`✅ Incremented ${resource} by ${amount} for org ${orgId}`);
+    } catch (error) {
+      console.error(`Failed to increment usage for ${resource}:`, error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Decrement usage counter
+   */
+  static async decrementUsage(
+    orgId: string, 
+    resource: 'trackedAccounts' | 'trackedVideos' | 'trackedLinks' | 'teamMembers',
+    amount: number = 1
+  ): Promise<void> {
+    try {
+      const usageRef = doc(db, 'organizations', orgId, 'billing', 'usage');
+      await updateDoc(usageRef, {
+        [resource]: increment(-amount),
+        lastUpdated: serverTimestamp()
+      });
+      
+      console.log(`✅ Decremented ${resource} by ${amount} for org ${orgId}`);
+    } catch (error) {
+      console.error(`Failed to decrement usage for ${resource}:`, error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Reset monthly usage (for MCP calls)
+   */
+  static async resetMonthlyUsage(orgId: string): Promise<void> {
+    try {
+      const usageRef = doc(db, 'organizations', orgId, 'billing', 'usage');
+      const now = new Date();
+      const nextMonth = this.getNextMonthDate();
+      
+      await updateDoc(usageRef, {
+        mcpCallsThisMonth: 0,
+        currentPeriodStart: Timestamp.fromDate(now),
+        currentPeriodEnd: Timestamp.fromDate(nextMonth),
+        lastUpdated: serverTimestamp()
+      });
+      
+      console.log(`✅ Reset monthly usage for org ${orgId}`);
+    } catch (error) {
+      console.error('Failed to reset monthly usage:', error);
+      throw error;
+    }
+  }
+  
+  // Helper methods
+  
+  private static calculateStatus(
+    resource: string, 
+    current: number, 
+    limit: number
+  ): UsageStatus {
+    const isUnlimited = limit === -1;
+    const percentage = isUnlimited ? 0 : Math.min((current / limit) * 100, 100);
+    const isOverLimit = !isUnlimited && current >= limit;
+    const isNearLimit = !isUnlimited && percentage >= 80;
+    
+    return {
+      resource,
+      current,
+      limit,
+      percentage,
+      isUnlimited,
+      isOverLimit,
+      isNearLimit
+    };
+  }
+  
+  private static getNextMonthDate(): Date {
+    const date = new Date();
+    date.setMonth(date.getMonth() + 1);
+    date.setDate(1);
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }
+}
+
+export default UsageTrackingService;
+
