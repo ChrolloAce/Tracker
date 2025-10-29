@@ -1,11 +1,19 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
+import { buffer } from 'micro';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-11-20.acacia',
 });
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+
+// Disable body parsing for webhook
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
 /**
  * Stripe webhook handler for subscription events
@@ -23,8 +31,11 @@ export default async function handler(
   let event: Stripe.Event;
 
   try {
+    // Get raw body for signature verification
+    const rawBody = await buffer(req);
+    
     event = stripe.webhooks.constructEvent(
-      req.body,
+      rawBody,
       sig,
       webhookSecret
     );
@@ -248,11 +259,3 @@ function getPlanTierFromPriceId(priceId: string): string | null {
   
   return tier || null;
 }
-
-// Disable body parsing for webhook
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
