@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Crown, Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, Building2, User as UserIcon, X, Users, DollarSign, ExternalLink, TrendingUp, MoreHorizontal } from 'lucide-react';
+import { LogOut, Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, Building2, User as UserIcon, X, Users, DollarSign, TrendingUp, MoreHorizontal } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';

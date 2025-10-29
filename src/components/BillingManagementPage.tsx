@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  ExternalLink,
   MoreHorizontal,
   TrendingUp
 } from 'lucide-react';
