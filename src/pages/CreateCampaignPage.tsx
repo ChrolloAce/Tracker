@@ -150,13 +150,9 @@ const CreateCampaignPage: React.FC = () => {
 
     setUploadingImage(true);
     try {
-      const imageUrl = await FirebaseStorageService.downloadAndUpload(
-        currentOrgId,
-        URL.createObjectURL(file),
-        `campaign_${Date.now()}`,
-        'profile'
-      );
+      const imageUrl = await CampaignService.uploadCoverImage(currentOrgId, file);
       setCoverImage(imageUrl);
+      console.log('✅ Cover image uploaded:', imageUrl);
     } catch (error) {
       console.error('Failed to upload image:', error);
       setError('Failed to upload image. Please try again.');
