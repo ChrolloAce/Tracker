@@ -12,7 +12,8 @@ import {
   Timestamp,
   writeBatch,
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { db, storage } from './firebase';
 import type {
   Campaign,
   CreateCampaignInput,
@@ -68,6 +69,7 @@ class CampaignService {
       rewards: input.rewards,
       bonusRewards: input.bonusRewards,
       metricGuarantees: input.metricGuarantees || [],
+      resources: [], // Initialize empty resources array
       participantIds: input.participantIds,
       participants: [],
       totalViews: 0,
@@ -210,6 +212,76 @@ class CampaignService {
       id: snapshot.id,
       ...snapshot.data(),
     } as Campaign;
+  }
+
+  /**
+   * Upload cover image for campaign
+   */
+  static async uploadCoverImage(
+    orgId: string,
+    file: File
+  ): Promise<string> {
+    try {
+      const storagePath = `organizations/${orgId}/campaign-covers/${Date.now()}_${file.name}`;
+      const storageRef = ref(storage, storagePath);
+      
+      console.log('📤 Uploading campaign cover image:', storagePath);
+      await uploadBytes(storageRef, file);
+      
+      const downloadURL = await getDownloadURL(storageRef);
+      console.log('✅ Cover image uploaded:', downloadURL);
+      
+      return downloadURL;
+    } catch (error) {
+      console.error('Failed to upload cover image:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete campaign and its cover image
+   */
+  static async deleteCampaign(
+    orgId: string,
+    projectId: string,
+    campaignId: string,
+    coverImageUrl?: string
+  ): Promise<void> {
+    try {
+      // Delete cover image from storage if exists
+      if (coverImageUrl) {
+        try {
+          // Extract storage path from URL
+          const url = new URL(coverImageUrl);
+          const pathMatch = url.pathname.match(/\/o\/(.+)\?/);
+          if (pathMatch) {
+            const storagePath = decodeURIComponent(pathMatch[1]);
+            const storageRef = ref(storage, storagePath);
+            await deleteObject(storageRef);
+            console.log('✅ Cover image deleted from storage');
+          }
+        } catch (error) {
+          console.warn('Failed to delete cover image (may not exist):', error);
+        }
+      }
+
+      // Delete campaign document
+      const campaignRef = doc(
+        db,
+        'organizations',
+        orgId,
+        'projects',
+        projectId,
+        'campaigns',
+        campaignId
+      );
+      
+      await deleteDoc(campaignRef);
+      console.log('✅ Campaign deleted:', campaignId);
+    } catch (error) {
+      console.error('Failed to delete campaign:', error);
+      throw error;
+    }
   }
 
   /**

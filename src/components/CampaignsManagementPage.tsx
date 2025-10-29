@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Campaign, CampaignStatus } from '../types/campaigns';
@@ -7,7 +7,10 @@ import {
   Trophy, 
   DollarSign,
   MoreVertical,
-  Plus
+  Plus,
+  Edit2,
+  Trash2,
+  Eye
 } from 'lucide-react';
 
 interface CampaignsManagementPageProps {
@@ -135,7 +138,25 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
 const CampaignManagementCard: React.FC<{
   campaign: Campaign;
   onClick?: () => void;
-}> = ({ campaign, onClick }) => {
+  onEdit?: () => void;
+  onDelete?: () => void;
+}> = ({ campaign, onClick, onEdit, onDelete }) => {
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const { currentOrgId, currentProjectId } = useAuth();
+  const navigate = useNavigate();
+
+  // Close menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Calculate CPM/reward from compensation
   const getRewardDisplay = () => {
     if (campaign.compensationType === 'flat_cpm' && campaign.compensationAmount) {
@@ -159,6 +180,33 @@ const CampaignManagementCard: React.FC<{
   // Calculate budget target (assuming rewards * participants)
   const totalBudget = campaign.rewards.reduce((sum, r) => sum + r.amount, 0) + 
                       (campaign.compensationAmount || 0) * campaign.participantIds.length;
+
+  const handleDelete = async () => {
+    if (!currentOrgId || !currentProjectId) return;
+    
+    if (!confirm(`Delete campaign "${campaign.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await CampaignService.deleteCampaign(
+        currentOrgId,
+        currentProjectId,
+        campaign.id,
+        campaign.coverImage
+      );
+      // Refresh the page to show updated list
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to delete campaign:', error);
+      alert('Failed to delete campaign. Please try again.');
+    }
+  };
+
+  const handleEdit = () => {
+    // Navigate to campaign edit page or open edit modal
+    navigate(`/campaigns/edit/${campaign.id}`);
+  };
 
   return (
     <div 
@@ -198,6 +246,57 @@ const CampaignManagementCard: React.FC<{
                 <p className="text-sm text-gray-400">
                   ${campaign.totalEarnings.toFixed(2)} of ${totalBudget.toFixed(2)} paid out
                 </p>
+              </div>
+              
+              {/* 3-dot menu */}
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowMenu(!showMenu);
+                  }}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                >
+                  <MoreVertical className="w-5 h-5 text-gray-400" />
+                </button>
+
+                {showMenu && (
+                  <div className="absolute right-0 mt-2 w-48 bg-zinc-900 border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        onClick?.();
+                      }}
+                      className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-3"
+                    >
+                      <Eye className="w-4 h-4" />
+                      View Details
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        handleEdit();
+                      }}
+                      className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-3"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                      Edit Campaign
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        handleDelete();
+                      }}
+                      className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-3 border-t border-white/10"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete Campaign
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Top-right controls */}

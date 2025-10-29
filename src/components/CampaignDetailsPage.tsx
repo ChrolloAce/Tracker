@@ -17,6 +17,7 @@ import CampaignService from '../services/CampaignService';
 import RulesService from '../services/RulesService';
 import CampaignVideoSubmissionsTable from './CampaignVideoSubmissionsTable';
 import CampaignVideoSubmissionModal from './CampaignVideoSubmissionModal';
+import CampaignResourcesManager from './CampaignResourcesManager';
 
 const CampaignDetailsPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -401,6 +402,14 @@ const CampaignDetailsPage: React.FC = () => {
               </button>
             )}
           </div>
+        </div>
+
+        {/* Campaign Resources Section */}
+        <div className="mt-8 bg-[#121214] rounded-2xl border border-white/10 p-8">
+          <CampaignResourcesManager
+            campaignId={campaignId!}
+            isAdmin={!isCreator}
+          />
         </div>
 
         {/* Video Submissions Section */}
