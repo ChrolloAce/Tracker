@@ -1248,7 +1248,7 @@ const KPICards: React.FC<KPICardsProps> = ({
         
         return {
           id: 'revenue',
-          label: 'MRR (28d)',
+          label: 'Total Revenue',
           value: `$${formatNumber(totalRevenue)}`,
           icon: DollarSign,
           accent: 'emerald' as const,
@@ -1256,7 +1256,7 @@ const KPICards: React.FC<KPICardsProps> = ({
           sparklineData: sparklineData.length > 0 ? sparklineData : undefined,
           intervalType: 'day' as IntervalType,
           isIncreasing: revenueGrowth >= 0,
-          tooltip: 'Monthly Recurring Revenue (fixed 28-day period from RevenueCat)'
+          tooltip: 'Total revenue from all transactions in this period'
         };
       })(),
       // Downloads card (from RevenueCat new subscriptions)

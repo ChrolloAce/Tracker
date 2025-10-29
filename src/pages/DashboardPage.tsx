@@ -1635,12 +1635,12 @@ function DashboardPage() {
         delta: engagementRate > 0 ? { value: 3.4, isPositive: false } : undefined // Example negative trend
       },
       revenue: {
-        value: revenueMetrics ? `$${(revenueMetrics.mrr / 100).toFixed(0)}` : '$0',
-        sparklineData: revenueMetrics && revenueMetrics.mrr > 0 
-          ? generateMiniSparkline(revenueMetrics.mrr) 
+        value: revenueMetrics ? `$${(revenueMetrics.totalRevenue / 100).toFixed(0)}` : '$0',
+        sparklineData: revenueMetrics && revenueMetrics.totalRevenue > 0 
+          ? generateMiniSparkline(revenueMetrics.totalRevenue / 100) 
           : generateMiniSparkline(0, true), // Force show graph even if 0
         accent: 'emerald' as const,
-        delta: revenueMetrics && revenueMetrics.mrr > 0 ? { value: 18.5, isPositive: true } : undefined
+        delta: revenueMetrics && revenueMetrics.totalRevenue > 0 ? { value: 18.5, isPositive: true } : undefined
       },
       downloads: {
         value: revenueMetrics?.activeSubscriptions?.toString() || '0',
