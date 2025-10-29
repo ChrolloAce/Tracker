@@ -358,23 +358,23 @@ class RevenueDataService {
         organizationId: orgId,
         projectId: projectId,
         totalRevenue: 0,
-        totalTransactions: 0,
-        totalRefunds: 0,
-        totalSubscribers: 0,
-        activeSubscribers: 0,
-        churnRate: 0,
+        netRevenue: 0,
+        refunds: 0,
+        activeSubscriptions: 0,
+        newSubscriptions: 0,
+        churnedSubscriptions: 0,
+        trialConversions: 0,
+        averageRevenuePerUser: 0,
+        averageRevenuePerPurchase: 0,
         mrr: 0,
         arr: 0,
-        averageRevenuePerUser: 0,
-        lifetimeValue: 0,
-        platformBreakdown: {
+        revenueByPlatform: {
           ios: 0,
           android: 0,
           web: 0,
           other: 0,
         },
-        revenueByDay: [],
-        revenueByProduct: {},
+        revenueByProduct: [],
         startDate,
         endDate,
         calculatedAt: new Date(),
@@ -386,11 +386,11 @@ class RevenueDataService {
       .filter(t => t.type !== 'refund')
       .reduce((sum, t) => sum + t.amount, 0);
     
-    const totalRefunds = transactions
+    const refunds = transactions
       .filter(t => t.type === 'refund')
       .reduce((sum, t) => sum + t.amount, 0);
     
-    const totalTransactions = transactions.length;
+    const netRevenue = totalRevenue - refunds;
     
     // Unique subscribers
     const uniqueCustomers = new Set(
@@ -400,53 +400,65 @@ class RevenueDataService {
     );
     const totalSubscribers = uniqueCustomers.size;
     
-    // Active subscribers (have active status)
-    const activeSubscribers = transactions.filter(t => t.status === 'active').length;
+    // Active, new, churned subscriptions
+    const activeSubscriptions = transactions.filter(t => t.status === 'active' && t.type !== 'refund').length;
+    const newSubscriptions = transactions.filter(t => !t.isRenewal && t.type !== 'refund').length;
+    const churnedSubscriptions = transactions.filter(t => t.status === 'cancelled' || t.status === 'expired').length;
+    const trialConversions = transactions.filter(t => t.isTrial).length;
     
     // Platform breakdown
-    const platformBreakdown = {
-      ios: transactions.filter(t => t.platform === 'ios').reduce((sum, t) => sum + t.amount, 0),
-      android: transactions.filter(t => t.platform === 'android').reduce((sum, t) => sum + t.amount, 0),
-      web: transactions.filter(t => t.platform === 'web').reduce((sum, t) => sum + t.amount, 0),
-      other: transactions.filter(t => t.platform === 'other').reduce((sum, t) => sum + t.amount, 0),
+    const revenueByPlatform = {
+      ios: transactions.filter(t => t.platform === 'ios' && t.type !== 'refund').reduce((sum, t) => sum + t.amount, 0),
+      android: transactions.filter(t => t.platform === 'android' && t.type !== 'refund').reduce((sum, t) => sum + t.amount, 0),
+      web: transactions.filter(t => t.platform === 'web' && t.type !== 'refund').reduce((sum, t) => sum + t.amount, 0),
+      other: transactions.filter(t => t.platform === 'other' && t.type !== 'refund').reduce((sum, t) => sum + t.amount, 0),
     };
 
-    // Revenue by product
-    const revenueByProduct: Record<string, number> = {};
+    // Revenue by product (as array)
+    const productMap = new Map<string, { revenue: number; count: number; name?: string }>();
     transactions.forEach(t => {
       if (t.type !== 'refund') {
-        revenueByProduct[t.productId] = (revenueByProduct[t.productId] || 0) + t.amount;
+        const existing = productMap.get(t.productId) || { revenue: 0, count: 0, name: t.productName };
+        productMap.set(t.productId, {
+          revenue: existing.revenue + t.amount,
+          count: existing.count + 1,
+          name: existing.name || t.productName
+        });
       }
     });
 
-    // Revenue by day
-    const revenueByDayMap = new Map<string, number>();
-    transactions.forEach(t => {
-      if (t.type !== 'refund') {
-        const dateKey = t.purchaseDate.toISOString().split('T')[0];
-        revenueByDayMap.set(dateKey, (revenueByDayMap.get(dateKey) || 0) + t.amount);
-      }
-    });
+    const revenueByProduct = Array.from(productMap.entries()).map(([productId, data]) => ({
+      productId,
+      productName: data.name || productId,
+      revenue: data.revenue,
+      count: data.count
+    }));
 
-    const revenueByDay = Array.from(revenueByDayMap.entries())
-      .map(([date, amount]) => ({ date: new Date(date), revenue: amount }))
-      .sort((a, b) => a.date.getTime() - b.date.getTime());
+    // Calculate averages
+    const averageRevenuePerUser = totalSubscribers > 0 ? totalRevenue / totalSubscribers : 0;
+    const averageRevenuePerPurchase = transactions.length > 0 ? totalRevenue / transactions.length : 0;
+
+    // Calculate MRR/ARR
+    const daysInPeriod = Math.ceil((endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000));
+    const monthsInPeriod = Math.max(1, daysInPeriod / 30);
+    const mrr = totalRevenue / monthsInPeriod;
+    const arr = mrr * 12;
 
     const metrics: RevenueMetrics = {
       organizationId: orgId,
       projectId: projectId,
       totalRevenue,
-      totalTransactions,
-      totalRefunds,
-      totalSubscribers,
-      activeSubscribers,
-      churnRate: totalSubscribers > 0 ? ((totalSubscribers - activeSubscribers) / totalSubscribers) * 100 : 0,
-      mrr: totalRevenue / Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (30 * 24 * 60 * 60 * 1000))),
-      arr: (totalRevenue / Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (30 * 24 * 60 * 60 * 1000)))) * 12,
-      averageRevenuePerUser: totalSubscribers > 0 ? totalRevenue / totalSubscribers : 0,
-      lifetimeValue: totalSubscribers > 0 ? totalRevenue / totalSubscribers : 0,
-      platformBreakdown,
-      revenueByDay,
+      netRevenue,
+      refunds,
+      activeSubscriptions,
+      newSubscriptions,
+      churnedSubscriptions,
+      trialConversions,
+      averageRevenuePerUser,
+      averageRevenuePerPurchase,
+      mrr,
+      arr,
+      revenueByPlatform,
       revenueByProduct,
       startDate,
       endDate,
@@ -458,8 +470,8 @@ class RevenueDataService {
 
     console.log('✅ Metrics calculated:', {
       totalRevenue: (metrics.totalRevenue / 100).toFixed(2),
-      transactions: metrics.totalTransactions,
-      subscribers: metrics.totalSubscribers
+      transactions: transactions.length,
+      subscribers: totalSubscribers
     });
 
     return metrics;
