@@ -338,6 +338,133 @@ class RevenueDataService {
     } as RevenueMetrics;
   }
 
+  /**
+   * Calculate metrics from transactions in real-time
+   * Use this when webhooks have added new transactions
+   */
+  static async calculateMetricsFromTransactions(
+    orgId: string,
+    projectId: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<RevenueMetrics> {
+    console.log('📊 Calculating metrics from transactions...');
+    
+    const transactions = await this.getTransactions(orgId, projectId, startDate, endDate);
+    
+    if (transactions.length === 0) {
+      console.log('No transactions found for date range');
+      return {
+        organizationId: orgId,
+        projectId: projectId,
+        totalRevenue: 0,
+        totalTransactions: 0,
+        totalRefunds: 0,
+        totalSubscribers: 0,
+        activeSubscribers: 0,
+        churnRate: 0,
+        mrr: 0,
+        arr: 0,
+        averageRevenuePerUser: 0,
+        lifetimeValue: 0,
+        platformBreakdown: {
+          ios: 0,
+          android: 0,
+          web: 0,
+          other: 0,
+        },
+        revenueByDay: [],
+        revenueByProduct: {},
+        startDate,
+        endDate,
+        calculatedAt: new Date(),
+      };
+    }
+
+    // Calculate totals
+    const totalRevenue = transactions
+      .filter(t => t.type !== 'refund')
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const totalRefunds = transactions
+      .filter(t => t.type === 'refund')
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const totalTransactions = transactions.length;
+    
+    // Unique subscribers
+    const uniqueCustomers = new Set(
+      transactions
+        .filter(t => t.customerId)
+        .map(t => t.customerId!)
+    );
+    const totalSubscribers = uniqueCustomers.size;
+    
+    // Active subscribers (have active status)
+    const activeSubscribers = transactions.filter(t => t.status === 'active').length;
+    
+    // Platform breakdown
+    const platformBreakdown = {
+      ios: transactions.filter(t => t.platform === 'ios').reduce((sum, t) => sum + t.amount, 0),
+      android: transactions.filter(t => t.platform === 'android').reduce((sum, t) => sum + t.amount, 0),
+      web: transactions.filter(t => t.platform === 'web').reduce((sum, t) => sum + t.amount, 0),
+      other: transactions.filter(t => t.platform === 'other').reduce((sum, t) => sum + t.amount, 0),
+    };
+
+    // Revenue by product
+    const revenueByProduct: Record<string, number> = {};
+    transactions.forEach(t => {
+      if (t.type !== 'refund') {
+        revenueByProduct[t.productId] = (revenueByProduct[t.productId] || 0) + t.amount;
+      }
+    });
+
+    // Revenue by day
+    const revenueByDayMap = new Map<string, number>();
+    transactions.forEach(t => {
+      if (t.type !== 'refund') {
+        const dateKey = t.purchaseDate.toISOString().split('T')[0];
+        revenueByDayMap.set(dateKey, (revenueByDayMap.get(dateKey) || 0) + t.amount);
+      }
+    });
+
+    const revenueByDay = Array.from(revenueByDayMap.entries())
+      .map(([date, amount]) => ({ date: new Date(date), revenue: amount }))
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    const metrics: RevenueMetrics = {
+      organizationId: orgId,
+      projectId: projectId,
+      totalRevenue,
+      totalTransactions,
+      totalRefunds,
+      totalSubscribers,
+      activeSubscribers,
+      churnRate: totalSubscribers > 0 ? ((totalSubscribers - activeSubscribers) / totalSubscribers) * 100 : 0,
+      mrr: totalRevenue / Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (30 * 24 * 60 * 60 * 1000))),
+      arr: (totalRevenue / Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (30 * 24 * 60 * 60 * 1000)))) * 12,
+      averageRevenuePerUser: totalSubscribers > 0 ? totalRevenue / totalSubscribers : 0,
+      lifetimeValue: totalSubscribers > 0 ? totalRevenue / totalSubscribers : 0,
+      platformBreakdown,
+      revenueByDay,
+      revenueByProduct,
+      startDate,
+      endDate,
+      calculatedAt: new Date(),
+    };
+
+    // Save the calculated metrics
+    await this.saveMetrics(orgId, projectId, metrics);
+
+    console.log('✅ Metrics calculated:', {
+      totalRevenue: (metrics.totalRevenue / 100).toFixed(2),
+      transactions: metrics.totalTransactions,
+      subscribers: metrics.totalSubscribers
+    });
+
+    return metrics;
+  }
+
   // ==================== SNAPSHOTS ====================
 
   /**

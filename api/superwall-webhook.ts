@@ -98,28 +98,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`📋 Processing event type: ${eventType}`);
 
     try {
-      switch (eventType) {
+      const normalizedEventType = eventType.toLowerCase().replace(/_/g, '');
+      
+      switch (normalizedEventType) {
         case 'transaction':
         case 'purchase':
-        case 'subscription_started':
-        case 'subscription_renewed':
-        case 'initial_purchase': // Superwall uses this
-        case 'INITIAL_PURCHASE': // Case variations
+        case 'subscriptionstarted':
+        case 'subscriptionrenewed':
+        case 'initialpurchase': // Superwall uses this
+        case 'renewal': // ✅ Superwall renewal events
+        case 'newsubscription':
           await processTransactionEvent(orgId, projectId, event);
           break;
 
-        case 'subscription_cancelled':
-        case 'subscription_expired':
+        case 'subscriptioncancelled':
+        case 'subscriptionexpired':
+        case 'subscriptioncanceled':
           await processSubscriptionEndEvent(orgId, projectId, event);
           break;
 
-        case 'trial_started':
+        case 'trialstarted':
+        case 'freetrialstarted':
           await processTrialEvent(orgId, projectId, event);
           break;
 
         default:
-          console.log(`ℹ️ Unhandled event type: ${eventType}`);
-          // Still save it for debugging
+          console.log(`ℹ️ Unhandled event type: ${eventType} (normalized: ${normalizedEventType})`);
+          // Still save it as transaction for debugging
           await processTransactionEvent(orgId, projectId, event);
       }
     } catch (processError) {
@@ -180,36 +185,75 @@ async function processTransactionEvent(
       keys: Object.keys(eventData)
     });
 
-    // Extract amount - Superwall might send as 'price', 'proceeds', 'revenue', or 'amount'
-    let amount = 0;
-    const rawAmount = eventData.price || eventData.proceeds || eventData.revenue || eventData.amount || 0;
+    // Extract amount - Superwall sends 'proceeds' (net revenue after fees) in dollars
+    // Use proceeds (what you actually earn), not price (what customer paid)
+    const proceedsInDollars = eventData.proceeds || 
+                              eventData.price || 
+                              eventData.priceInPurchasedCurrency || 
+                              eventData.revenue || 
+                              eventData.amount || 
+                              0;
     
-    // Handle both cents (integer) and dollars (float)
-    if (typeof rawAmount === 'string') {
-      amount = parseFloat(rawAmount) * 100; // Convert to cents
-    } else if (rawAmount < 1000 && rawAmount > 0) {
-      amount = rawAmount * 100; // Likely dollars, convert to cents
-    } else {
-      amount = rawAmount; // Already in cents
+    // Convert to cents for storage
+    const amountInCents = Math.round(proceedsInDollars * 100);
+
+    // Extract all relevant IDs and data from Superwall event
+    const transactionId = eventData.transactionId || 
+                          eventData.transaction_id || 
+                          eventData.id || 
+                          event.id || 
+                          `sw_${Date.now()}`;
+    
+    const originalTransactionId = eventData.originalTransactionId || 
+                                  eventData.original_transaction_id || 
+                                  transactionId;
+
+    const customerId = eventData.originalAppUserId || 
+                       eventData.user_id || 
+                       eventData.customer_id || 
+                       eventData.subscriber_id || 
+                       'anonymous';
+
+    const productId = eventData.productId || 
+                      eventData.product_id || 
+                      eventData.name || 
+                      'unknown';
+
+    // Determine purchase date (Superwall sends timestamps in milliseconds)
+    let purchaseDate = new Date();
+    if (eventData.purchasedAt) {
+      purchaseDate = new Date(eventData.purchasedAt);
+    } else if (eventData.purchased_at) {
+      purchaseDate = new Date(eventData.purchased_at);
+    } else if (eventData.timestamp) {
+      purchaseDate = new Date(eventData.timestamp);
+    } else if (event.timestamp) {
+      purchaseDate = new Date(event.timestamp);
     }
 
+    // Determine if renewal
+    const isRenewal = (event.type || event.eventType || '').toLowerCase().includes('renewal') || 
+                      (event.name || '').toLowerCase().includes('renewal');
+
     const transaction = {
-      id: eventData.transaction_id || eventData.id || event.id || `superwall_${Date.now()}`,
+      id: transactionId,
+      transactionId: transactionId,
       organizationId: orgId,
       projectId: projectId,
-      userId: eventData.user_id || eventData.customer_id || eventData.subscriber_id || 'unknown',
-      productId: eventData.product_id || eventData.productId || eventData.name || 'unknown',
-      amount: Math.round(amount),
-      currency: eventData.currency || 'USD',
+      customerId: customerId,
+      userId: customerId,
+      productId: productId,
+      amount: amountInCents,
+      currency: eventData.currencyCode || eventData.currency || 'USD',
       type: determineTransactionType(event, eventData),
-      status: 'completed',
-      platform: (eventData.platform || event.platform || 'other') as 'ios' | 'android' | 'web' | 'other',
+      status: 'completed' as const,
+      platform: ((eventData.store || '').toLowerCase() === 'app_store' ? 'ios' : 
+                 (eventData.store || '').toLowerCase() === 'play_store' ? 'android' :
+                 'other') as 'ios' | 'android' | 'web' | 'other',
       provider: 'superwall' as const,
-      purchaseDate: eventData.timestamp ? new Date(eventData.timestamp) : 
-                    eventData.purchased_at ? new Date(eventData.purchased_at) :
-                    eventData.created_at ? new Date(eventData.created_at) : new Date(),
-      isRenewal: false,
-      isTrial: false,
+      purchaseDate,
+      isRenewal,
+      isTrial: eventData.isTrialConversion || false,
       metadata: {
         eventType: event.event_type || event.type || event.event?.name,
         subscriptionId: eventData.subscription_id,

@@ -725,11 +725,13 @@ function DashboardPage() {
     
     // Load revenue integrations (syncing will be handled by date filter effect)
     try {
-      const integrations = await RevenueDataService.getAllIntegrations(currentOrgId, currentProjectId);
-      setRevenueIntegrations(integrations);
+      const allIntegrations = await RevenueDataService.getAllIntegrations(currentOrgId, currentProjectId);
+      // ✅ ONLY SET ENABLED INTEGRATIONS
+      const enabledIntegrations = allIntegrations.filter(i => i.enabled);
+      setRevenueIntegrations(enabledIntegrations);
       
       // Load existing metrics immediately (syncing will happen via date filter effect)
-      if (integrations.some(i => i.enabled)) {
+      if (enabledIntegrations.length > 0) {
         const metrics = await RevenueDataService.getLatestMetrics(currentOrgId, currentProjectId);
         setRevenueMetrics(metrics);
       }
@@ -743,7 +745,7 @@ function DashboardPage() {
   // Auto-sync revenue data when date filters change
   useEffect(() => {
     if (!user || !currentOrgId || !currentProjectId) return;
-    if (revenueIntegrations.length === 0 || !revenueIntegrations.some(i => i.enabled)) return;
+    if (revenueIntegrations.length === 0) return;
 
     const syncRevenue = async () => {
       try {
@@ -754,19 +756,31 @@ function DashboardPage() {
 
         console.log(`🔄 Syncing revenue data for ${dateFilter}:`, { startDate, endDate });
 
-        // Sync all integrations with the new date range
-        await RevenueDataService.syncAllIntegrations(
+        // Check which integrations need API syncing vs webhook-only
+        const needsApiSync = revenueIntegrations.some(i => 
+          i.provider === 'revenuecat' || i.provider === 'apple'
+        );
+
+        if (needsApiSync) {
+          // Sync API-based integrations (RevenueCat, Apple)
+          await RevenueDataService.syncAllIntegrations(
+            currentOrgId,
+            currentProjectId,
+            startDate,
+            endDate
+          );
+        }
+
+        // ✅ ALWAYS recalculate metrics from transactions (includes webhook data)
+        const metrics = await RevenueDataService.calculateMetricsFromTransactions(
           currentOrgId,
           currentProjectId,
           startDate,
           endDate
         );
-
-        // Reload metrics after sync
-        const metrics = await RevenueDataService.getLatestMetrics(currentOrgId, currentProjectId);
         setRevenueMetrics(metrics);
 
-        console.log('✅ Revenue data synced for date range');
+        console.log('✅ Revenue data synced and metrics calculated');
       } catch (error) {
         console.error('❌ Failed to sync revenue for date range:', error);
       }
