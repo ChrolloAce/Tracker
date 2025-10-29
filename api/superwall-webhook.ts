@@ -21,13 +21,22 @@ const db = getFirestore();
  * URL format: /api/superwall-webhook?orgId=xxx&projectId=yyy
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Only accept POST requests
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
-
+  // WRAP EVERYTHING IN ERROR HANDLER
   try {
+    console.log('🚀 Webhook handler started', {
+      method: req.method,
+      url: req.url,
+      headers: req.headers
+    });
+
+    // Only accept POST requests
+    if (req.method !== 'POST') {
+      console.log('❌ Method not allowed:', req.method);
+      return res.status(405).json({ error: 'Method Not Allowed', method: req.method });
+    }
+
     const { orgId, projectId } = req.query;
+    console.log('🔍 Query params:', { orgId, projectId });
 
     if (!orgId || !projectId || typeof orgId !== 'string' || typeof projectId !== 'string') {
       console.error('❌ Missing orgId or projectId in webhook URL');
@@ -38,6 +47,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const event = req.body;
+    console.log('📦 Request body received:', { 
+      hasBody: !!event,
+      bodyType: typeof event,
+      bodyKeys: event ? Object.keys(event) : []
+    });
 
     // Log the full payload for debugging
     console.log('🎣 Superwall webhook received:', {
@@ -48,16 +62,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     // Verify the integration exists and is enabled
-    const integrationsSnapshot = await db
-      .collection('organizations')
-      .doc(orgId)
-      .collection('projects')
-      .doc(projectId)
-      .collection('revenueIntegrations')
-      .where('provider', '==', 'superwall')
-      .where('enabled', '==', true)
-      .limit(1)
-      .get();
+    console.log('🔍 Checking for Superwall integration...');
+    let integrationsSnapshot;
+    try {
+      integrationsSnapshot = await db
+        .collection('organizations')
+        .doc(orgId)
+        .collection('projects')
+        .doc(projectId)
+        .collection('revenueIntegrations')
+        .where('provider', '==', 'superwall')
+        .where('enabled', '==', true)
+        .limit(1)
+        .get();
+      
+      console.log('✅ Firestore query successful, found:', integrationsSnapshot.size, 'integrations');
+    } catch (firestoreError) {
+      console.error('❌ Firestore query failed:', firestoreError);
+      throw new Error(`Firestore query failed: ${firestoreError instanceof Error ? firestoreError.message : String(firestoreError)}`);
+    }
 
     if (integrationsSnapshot.empty) {
       console.error('❌ No active Superwall integration found');
@@ -66,6 +89,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         details: 'No active Superwall integration found for this organization/project'
       });
     }
+    
+    console.log('✅ Integration verified');
 
     // Process the webhook event based on type
     const eventType = event.event_type || event.type || event.event?.name || 'unknown';
@@ -121,10 +146,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(200).json({ success: true, message: 'Webhook received' });
 
   } catch (error) {
-    console.error('❌ Webhook processing error:', error);
+    console.error('❌ WEBHOOK PROCESSING ERROR:', error);
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('❌ Error details:', {
+      message: error instanceof Error ? error.message : String(error),
+      name: error instanceof Error ? error.name : typeof error,
+      fullError: JSON.stringify(error, Object.getOwnPropertyNames(error), 2)
+    });
+    
     res.status(500).json({ 
       error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
     });
   }
 }
