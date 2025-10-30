@@ -239,6 +239,38 @@ class CampaignService {
   }
 
   /**
+   * Update campaign
+   */
+  static async updateCampaign(
+    orgId: string,
+    projectId: string,
+    campaignId: string,
+    updates: Partial<Campaign>
+  ): Promise<void> {
+    try {
+      const campaignRef = doc(
+        db,
+        'organizations',
+        orgId,
+        'projects',
+        projectId,
+        'campaigns',
+        campaignId
+      );
+
+      await updateDoc(campaignRef, {
+        ...updates,
+        updatedAt: Timestamp.now(),
+      });
+
+      console.log('✅ Campaign updated:', campaignId);
+    } catch (error) {
+      console.error('Failed to update campaign:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Delete campaign and its cover image
    */
   static async deleteCampaign(
