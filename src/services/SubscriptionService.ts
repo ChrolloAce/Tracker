@@ -29,18 +29,25 @@ class SubscriptionService {
     if (subDoc.exists()) {
       const data = subDoc.data();
       console.log('✅ Subscription found:', data);
-      return {
+      console.log('🎯 PLAN TIER:', data.planTier);
+      console.log('📊 STATUS:', data.status);
+      console.log('💳 STRIPE SUB ID:', data.stripeSubscriptionId);
+      
+      const result = {
         ...data,
-        currentPeriodStart: data.currentPeriodStart.toDate(),
-        currentPeriodEnd: data.currentPeriodEnd.toDate(),
-        trialEnd: data.trialEnd?.toDate(),
+        currentPeriodStart: data.currentPeriodStart?.toDate?.() || new Date(),
+        currentPeriodEnd: data.currentPeriodEnd?.toDate?.() || new Date(),
+        trialEnd: data.trialEnd?.toDate?.() || null,
         usage: {
           ...data.usage,
-          lastReset: data.usage.lastReset.toDate(),
+          lastReset: data.usage?.lastReset?.toDate?.() || new Date(),
         },
-        createdAt: data.createdAt.toDate(),
-        updatedAt: data.updatedAt.toDate(),
+        createdAt: data.createdAt?.toDate?.() || new Date(),
+        updatedAt: data.updatedAt?.toDate?.() || new Date(),
       } as OrganizationSubscription;
+      
+      console.log('📦 Returning subscription with planTier:', result.planTier);
+      return result;
     }
     
     console.warn('⚠️ No subscription document found for org:', orgId);
