@@ -261,6 +261,17 @@ async function processTransactionEvent(
       status = 'active';
     }
 
+    // Build metadata object, filtering out undefined values
+    const metadata: any = {
+      eventType: event.event_type || event.type || event.event?.name || 'unknown',
+      environment: eventData.environment || event.environment || 'production',
+      rawEvent: event
+    };
+    
+    // Only add optional fields if they exist
+    if (eventData.subscription_id) metadata.subscriptionId = eventData.subscription_id;
+    if (eventData.original_transaction_id) metadata.originalTransactionId = eventData.original_transaction_id;
+
     const transaction = {
       id: transactionId,
       transactionId: transactionId,
@@ -280,13 +291,7 @@ async function processTransactionEvent(
       purchaseDate,
       isRenewal,
       isTrial: eventData.isTrialConversion || false,
-      metadata: {
-        eventType: event.event_type || event.type || event.event?.name,
-        subscriptionId: eventData.subscription_id,
-        originalTransactionId: eventData.original_transaction_id,
-        environment: eventData.environment || event.environment,
-        rawEvent: event
-      },
+      metadata,
       createdAt: new Date(),
       updatedAt: new Date()
     };
