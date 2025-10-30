@@ -242,42 +242,54 @@ const CampaignDetailsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Main Content Grid */}
+        {/* Main Content Grid - Reorganized: Videos Left, Resources/Requirements Right */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Requirements */}
+          {/* Left Column - Video Submissions */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Submission Requirements */}
-            <div className="bg-white/5 rounded-xl p-6 border border-white/10">
-              <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-                <CheckCircle className="w-6 h-6 text-emerald-400" />
-                Submission Requirements
-              </h2>
-
-              {/* Metric Guarantees */}
-              {campaign.metricGuarantees && campaign.metricGuarantees.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-white mb-3">Minimum Metrics Per Video</h3>
-                  <div className="space-y-2">
-                    {campaign.metricGuarantees.map((guarantee, index) => (
-                      <div key={index} className="flex items-center gap-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                        <CheckCircle className="w-5 h-5 text-blue-400 flex-shrink-0" />
-                        <div className="text-white">
-                          <span className="font-semibold capitalize">{guarantee.metric.replace(/_/g, ' ')}: </span>
-                          <span className="text-blue-400 font-bold">
-                            {guarantee.minValue.toLocaleString()}
-                            {guarantee.metric === 'engagement_rate' && '%'}
-                          </span>
-                          <span className="text-gray-400 ml-2">minimum</span>
-                        </div>
-                      </div>
-                    ))}
+            {/* Video Submissions Section */}
+            <div className="bg-white/5 rounded-xl border border-white/10">
+              <div className="p-6 border-b border-white/10">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-white mb-1">Video Submissions</h2>
+                    <p className="text-sm text-gray-400">
+                      {submissions.length} submission{submissions.length !== 1 ? 's' : ''} • {submissions.filter(s => s.status === 'approved').length} approved
+                    </p>
                   </div>
+                  {/* Submit Button (for creators) */}
+                  {isCreator && campaign.status === 'active' && (
+                    <button
+                      onClick={() => setShowSubmissionModal(true)}
+                      className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold rounded-xl transition-all hover:scale-105 flex items-center gap-2"
+                    >
+                      <Upload className="w-5 h-5" />
+                      Submit Video
+                    </button>
+                  )}
                 </div>
-              )}
+              </div>
 
-              {/* Description as Requirements */}
-              <div className="prose prose-invert max-w-none">
-                <div className="text-gray-300 whitespace-pre-wrap">{campaign.description}</div>
+              {/* Submissions List */}
+              <div className="p-6">
+                {loadingSubmissions ? (
+                  <div className="text-center py-12 text-gray-400">Loading submissions...</div>
+                ) : submissions.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-white/5 rounded-full mb-4">
+                      <Upload className="w-8 h-8 text-gray-500" />
+                    </div>
+                    <p className="text-gray-400 mb-4">No submissions yet</p>
+                    {isCreator && campaign.status === 'active' && (
+                      <p className="text-sm text-gray-500">Be the first to submit your video!</p>
+                    )}
+                  </div>
+                ) : (
+                  <CampaignVideoSubmissionsTable
+                    submissions={submissions}
+                    isCreator={isCreator}
+                    onRefresh={loadSubmissions}
+                  />
+                )}
               </div>
             </div>
 
@@ -320,8 +332,50 @@ const CampaignDetailsPage: React.FC = () => {
             )}
           </div>
 
-          {/* Right Column - Rewards & Actions */}
+          {/* Right Column - Requirements & Resources */}
           <div className="space-y-6">
+            {/* Submission Requirements */}
+            <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+              <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                <CheckCircle className="w-6 h-6 text-emerald-400" />
+                Submission Requirements
+              </h2>
+
+              {/* Metric Guarantees */}
+              {campaign.metricGuarantees && campaign.metricGuarantees.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-white mb-3">Minimum Metrics Per Video</h3>
+                  <div className="space-y-2">
+                    {campaign.metricGuarantees.map((guarantee, index) => (
+                      <div key={index} className="flex items-center gap-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                        <CheckCircle className="w-5 h-5 text-blue-400 flex-shrink-0" />
+                        <div className="text-white">
+                          <span className="font-semibold capitalize">{guarantee.metric.replace(/_/g, ' ')}: </span>
+                          <span className="text-blue-400 font-bold">
+                            {guarantee.minValue.toLocaleString()}
+                            {guarantee.metric === 'engagement_rate' && '%'}
+                          </span>
+                          <span className="text-gray-400 ml-2">minimum</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Description as Requirements */}
+              <div className="prose prose-invert max-w-none">
+                <div className="text-gray-300 whitespace-pre-wrap">{campaign.description}</div>
+              </div>
+            </div>
+
+            {/* Campaign Resources */}
+            <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+              <CampaignResourcesManager
+                campaignId={campaignId!}
+                isAdmin={!isCreator}
+              />
+            </div>
             {/* Rewards */}
             <div className="bg-white/5 rounded-xl p-6 border border-white/10">
               <h2 className="text-xl font-bold text-white mb-4">Rewards</h2>
@@ -414,76 +468,21 @@ const CampaignDetailsPage: React.FC = () => {
                 </div>
               </div>
             )}
-
-            {/* Submit Button (for creators) */}
-            {isCreator && campaign.status === 'active' && (
-              <button
-                onClick={() => setShowSubmissionModal(true)}
-                className="w-full py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold rounded-xl transition-all hover:scale-105 flex items-center justify-center gap-2"
-              >
-                <Upload className="w-5 h-5" />
-                Submit Your Video
-              </button>
-            )}
           </div>
         </div>
 
-        {/* Campaign Resources Section */}
-        <div className="mt-8 bg-[#121214] rounded-2xl border border-white/10 p-8">
-          <CampaignResourcesManager
-            campaignId={campaignId!}
-            isAdmin={!isCreator}
+        {/* Modal for Video Submission */}
+        {showSubmissionModal && (
+          <CampaignVideoSubmissionModal
+            campaign={campaign}
+            isOpen={showSubmissionModal}
+            onClose={() => setShowSubmissionModal(false)}
+            onSubmit={loadSubmissions}
           />
-        </div>
-
-        {/* Video Submissions Section */}
-        <div className="mt-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-white">Video Submissions</h2>
-              <p className="text-gray-400 text-sm mt-1">
-                {submissions.length} video{submissions.length !== 1 ? 's' : ''} submitted
-              </p>
-            </div>
-            {isCreator && campaign.status === 'active' && (
-              <button
-                onClick={() => setShowSubmissionModal(true)}
-                className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-all flex items-center gap-2"
-              >
-                <Upload className="w-5 h-5" />
-                Submit Video
-              </button>
-            )}
-          </div>
-
-          {loadingSubmissions ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto"></div>
-              <p className="text-gray-400 mt-4">Loading submissions...</p>
-            </div>
-          ) : (
-            <CampaignVideoSubmissionsTable
-              submissions={submissions}
-              campaignId={campaignId!}
-              onRefresh={handleSubmissionSuccess}
-              isCreator={isCreator}
-            />
-          )}
-        </div>
+        )}
       </div>
-
-      {/* Submission Modal */}
-      {showSubmissionModal && (
-        <CampaignVideoSubmissionModal
-          isOpen={showSubmissionModal}
-          onClose={() => setShowSubmissionModal(false)}
-          campaignId={campaignId!}
-          onSuccess={handleSubmissionSuccess}
-        />
-      )}
     </div>
   );
 };
 
 export default CampaignDetailsPage;
-
