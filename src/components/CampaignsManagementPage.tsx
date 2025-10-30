@@ -48,38 +48,18 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
       const userIsCreator = userRole === 'creator';
       setIsCreator(userIsCreator);
 
-      console.log(`👤 User UID: ${user.uid}`);
       console.log(`👤 User role: ${userRole}, isCreator: ${userIsCreator}`);
 
       const allCampaigns = selectedStatus === 'all'
         ? await CampaignService.getCampaigns(currentOrgId, currentProjectId)
         : await CampaignService.getCampaigns(currentOrgId, currentProjectId, selectedStatus);
 
-      console.log(`📊 Total campaigns found: ${allCampaigns.length}`);
-      
-      // Debug: Show all campaign participants
-      allCampaigns.forEach(c => {
-        console.log(`📋 Campaign "${c.name}":`, {
-          participantIds: c.participantIds,
-          totalParticipants: c.participantIds.length
-        });
-      });
-
       // Filter campaigns for creators - only show campaigns they're part of
       const filteredCampaigns = userIsCreator 
-        ? allCampaigns.filter(c => {
-            const isParticipant = c.participantIds.includes(user.uid);
-            console.log(`🔍 Checking campaign "${c.name}": user.uid="${user.uid}" in participantIds=${JSON.stringify(c.participantIds)}? ${isParticipant}`);
-            if (isParticipant) {
-              console.log(`✅ Creator IS participant in campaign: ${c.name}`);
-            } else {
-              console.log(`❌ Creator NOT participant in campaign: ${c.name}`);
-            }
-            return isParticipant;
-          })
+        ? allCampaigns.filter(c => c.participantIds.includes(user.uid))
         : allCampaigns;
 
-      console.log(`📋 Showing ${filteredCampaigns.length} campaigns (total: ${allCampaigns.length})`);
+      console.log(`📋 Loaded ${filteredCampaigns.length} campaign(s)`);
       setCampaigns(filteredCampaigns);
 
       // Update campaign counts

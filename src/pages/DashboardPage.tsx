@@ -384,8 +384,8 @@ function DashboardPage() {
   // Save selected rules to Firestore (per user, per project)
   // Only save after initial load to avoid overwriting on mount
   useEffect(() => {
-    // 🎯 CREATORS: Skip rule saving
-    if (userRole === 'creator') {
+    // 🎯 CREATORS: Skip rule saving (check BEFORE any logs)
+    if (userRole === 'creator' || userRole === '') {
       return;
     }
     
@@ -437,8 +437,8 @@ function DashboardPage() {
 
   // Debug: Log when rules or selectedRuleIds change
   useEffect(() => {
-    // 🎯 CREATORS: Skip debug logs
-    if (userRole === 'creator') {
+    // 🎯 CREATORS: Skip debug logs (check BEFORE any logs)
+    if (userRole === 'creator' || userRole === '') {
       return;
     }
     
@@ -2731,13 +2731,16 @@ function DashboardPage() {
         onVideosFound={handleTikTokVideosFound}
       />
 
-      <VideoAnalyticsModal
-        video={selectedVideoForAnalytics}
-        isOpen={isAnalyticsModalOpen}
-        onClose={handleCloseAnalyticsModal}
-        totalCreatorVideos={totalCreatorVideos}
-        hideDateFilter={true}
-      />
+      {/* Video Analytics Modal - Only render for non-creators */}
+      {userRole !== 'creator' && (
+        <VideoAnalyticsModal
+          video={selectedVideoForAnalytics}
+          isOpen={isAnalyticsModalOpen}
+          onClose={handleCloseAnalyticsModal}
+          totalCreatorVideos={totalCreatorVideos}
+          hideDateFilter={true}
+        />
+      )}
 
       {/* KPI Card Editor Modal */}
       <KPICardEditor
