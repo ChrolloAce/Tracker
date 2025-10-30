@@ -154,81 +154,91 @@ const CampaignDetailsPage: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Cover Image */}
-        {campaign.coverImage && (
-          <div className="w-full h-64 rounded-2xl overflow-hidden mb-8">
-            <img 
-              src={campaign.coverImage} 
-              alt={campaign.name}
-              className="w-full h-full object-cover"
-            />
-          </div>
-        )}
-
-        {/* Campaign Header */}
-        <div className="mb-8">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex-1">
-              <h1 className="text-4xl font-bold text-white mb-2">{campaign.name}</h1>
-              <p className="text-lg text-gray-400">{campaign.description}</p>
+        {/* Campaign Header - Horizontal Layout */}
+        <div className="mb-8 bg-white/5 rounded-2xl border border-white/10 overflow-hidden">
+          <div className="flex flex-col md:flex-row">
+            {/* Left: Campaign Cover Image - Square */}
+            <div className="w-full md:w-80 aspect-square flex-shrink-0 relative overflow-hidden">
+              {campaign.coverImage ? (
+                <img 
+                  src={campaign.coverImage} 
+                  alt={campaign.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-zinc-900 to-zinc-800 flex items-center justify-center">
+                  <Trophy className="w-24 h-24 text-gray-700" />
+                </div>
+              )}
             </div>
-            <div className="ml-6">
-              <div className={`px-4 py-2 rounded-full font-semibold ${
-                campaign.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' :
-                campaign.status === 'draft' ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30' :
-                campaign.status === 'completed' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30' :
-                'bg-gray-500/10 text-gray-400 border border-gray-500/30'
-              }`}>
-                {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
+
+            {/* Right: Campaign Info */}
+            <div className="flex-1 p-8">
+              {/* Name and Status */}
+              <div className="flex items-start justify-between mb-6">
+                <div className="flex-1">
+                  <h1 className="text-3xl font-bold text-white mb-2">{campaign.name}</h1>
+                  <p className="text-base text-gray-400">{campaign.description}</p>
+                </div>
+                <div className="ml-6">
+                  <div className={`px-4 py-2 rounded-full font-semibold whitespace-nowrap ${
+                    campaign.status === 'active' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' :
+                    campaign.status === 'draft' ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30' :
+                    campaign.status === 'completed' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30' :
+                    'bg-gray-500/10 text-gray-400 border border-gray-500/30'
+                  }`}>
+                    {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Key Stats - Compact Grid */}
+              <div className={`grid ${isCreator ? 'grid-cols-2' : 'grid-cols-4'} gap-4 mb-6`}>
+                {/* Hide Reward Rate for creators */}
+                {!isCreator && (
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Reward Rate</div>
+                    <div className="text-xl font-bold text-emerald-400">{getRewardRate()}</div>
+                  </div>
+                )}
+
+                <div>
+                  <div className="text-xs text-gray-500 mb-1">Total Views</div>
+                  <div className="text-xl font-bold text-white">{campaign.totalViews.toLocaleString()}</div>
+                </div>
+
+                <div>
+                  <div className="text-xs text-gray-500 mb-1">Total Paid</div>
+                  <div className="text-xl font-bold text-white">${campaign.totalEarnings.toFixed(2)}</div>
+                </div>
+
+                {/* Hide Participants for creators */}
+                {!isCreator && (
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Participants</div>
+                    <div className="text-xl font-bold text-white">{campaign.participantIds.length}</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Progress Bar - Integrated */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-sm font-semibold text-white">Campaign Progress</div>
+                  <div className="text-lg font-bold text-emerald-400">{campaign.progressPercent.toFixed(1)}%</div>
+                </div>
+                <div className="w-full h-3 bg-zinc-800 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all"
+                    style={{ width: `${Math.min(campaign.progressPercent, 100)}%` }}
+                  ></div>
+                </div>
+                <div className="flex items-center justify-between mt-2 text-xs text-gray-400">
+                  <span>{campaign.currentProgress.toLocaleString()} / {campaign.goalAmount.toLocaleString()}</span>
+                  <span>{campaign.goalType.replace(/_/g, ' ')}</span>
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Key Stats - Hide Reward Rate and Participants for creators */}
-          <div className={`grid grid-cols-2 ${isCreator ? 'md:grid-cols-2' : 'md:grid-cols-4'} gap-4`}>
-            {/* Hide Reward Rate for creators */}
-            {!isCreator && (
-              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                <div className="text-sm text-gray-400 mb-1">Reward Rate</div>
-                <div className="text-2xl font-bold text-emerald-400">{getRewardRate()}</div>
-              </div>
-            )}
-
-            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-              <div className="text-sm text-gray-400 mb-1">Total Views</div>
-              <div className="text-2xl font-bold text-white">{campaign.totalViews.toLocaleString()}</div>
-            </div>
-
-            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-              <div className="text-sm text-gray-400 mb-1">Total Paid</div>
-              <div className="text-2xl font-bold text-white">${campaign.totalEarnings.toFixed(2)}</div>
-            </div>
-
-            {/* Hide Participants for creators */}
-            {!isCreator && (
-              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                <div className="text-sm text-gray-400 mb-1">Participants</div>
-                <div className="text-2xl font-bold text-white">{campaign.participantIds.length}</div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mb-8 bg-white/5 rounded-xl p-6 border border-white/10">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-lg font-semibold text-white">Campaign Progress</div>
-            <div className="text-xl font-bold text-emerald-400">{campaign.progressPercent.toFixed(1)}%</div>
-          </div>
-          <div className="w-full h-3 bg-zinc-800 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all"
-              style={{ width: `${Math.min(campaign.progressPercent, 100)}%` }}
-            ></div>
-          </div>
-          <div className="flex items-center justify-between mt-2 text-sm text-gray-400">
-            <span>{campaign.currentProgress.toLocaleString()} / {campaign.goalAmount.toLocaleString()}</span>
-            <span>{campaign.goalType.replace(/_/g, ' ')}</span>
           </div>
         </div>
 
