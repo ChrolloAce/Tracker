@@ -47,7 +47,7 @@ export default async function handler(
   try {
     // Initialize Firebase Admin
     const { initializeApp, cert, getApps } = await import('firebase-admin/app');
-    const { getFirestore } = await import('firebase-admin/firestore');
+    const { getFirestore, Timestamp } = await import('firebase-admin/firestore');
 
     if (getApps().length === 0) {
       // Handle private key - replace both \\n and literal \n with actual newlines
@@ -78,19 +78,19 @@ export default async function handler(
     switch (event.type) {
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
-        await handleSubscriptionUpdate(db, event.data.object as Stripe.Subscription);
+        await handleSubscriptionUpdate(db, event.data.object as Stripe.Subscription, Timestamp);
         break;
 
       case 'customer.subscription.deleted':
-        await handleSubscriptionDeleted(db, event.data.object as Stripe.Subscription);
+        await handleSubscriptionDeleted(db, event.data.object as Stripe.Subscription, Timestamp);
         break;
 
       case 'invoice.payment_succeeded':
-        await handlePaymentSucceeded(db, event.data.object as Stripe.Invoice);
+        await handlePaymentSucceeded(db, event.data.object as Stripe.Invoice, Timestamp);
         break;
 
       case 'invoice.payment_failed':
-        await handlePaymentFailed(db, event.data.object as Stripe.Invoice);
+        await handlePaymentFailed(db, event.data.object as Stripe.Invoice, Timestamp);
         break;
 
       default:
@@ -136,7 +136,7 @@ async function findOrgByCustomerId(db: any, customerId: string): Promise<{ orgId
 /**
  * Handle subscription creation/update
  */
-async function handleSubscriptionUpdate(db: any, subscription: Stripe.Subscription) {
+async function handleSubscriptionUpdate(db: any, subscription: Stripe.Subscription, Timestamp: any) {
   const customerId = subscription.customer as string;
   const subscriptionId = subscription.id;
   
@@ -164,11 +164,11 @@ async function handleSubscriptionUpdate(db: any, subscription: Stripe.Subscripti
     stripeSubscriptionId: subscriptionId,
     stripePriceId: priceId,
     stripeCustomerId: customerId,
-    currentPeriodStart: new Date(subscription.current_period_start * 1000),
-    currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+    currentPeriodStart: Timestamp.fromMillis(subscription.current_period_start * 1000),
+    currentPeriodEnd: Timestamp.fromMillis(subscription.current_period_end * 1000),
     cancelAtPeriodEnd: subscription.cancel_at_period_end,
-    trialEnd: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
-    updatedAt: new Date(),
+    trialEnd: subscription.trial_end ? Timestamp.fromMillis(subscription.trial_end * 1000) : null,
+    updatedAt: Timestamp.now(),
   });
 
   console.log(`✅ SUCCESS: Updated subscription for org ${org.orgId} to ${planTier} (${subscription.status})`);
@@ -178,7 +178,7 @@ async function handleSubscriptionUpdate(db: any, subscription: Stripe.Subscripti
 /**
  * Handle subscription deletion
  */
-async function handleSubscriptionDeleted(db: any, subscription: Stripe.Subscription) {
+async function handleSubscriptionDeleted(db: any, subscription: Stripe.Subscription, Timestamp: any) {
   const customerId = subscription.customer as string;
   
   const org = await findOrgByCustomerId(db, customerId);
@@ -187,7 +187,7 @@ async function handleSubscriptionDeleted(db: any, subscription: Stripe.Subscript
   await org.subRef.update({
     status: 'canceled',
     planTier: 'basic', // Downgrade to basic
-    updatedAt: new Date(),
+    updatedAt: Timestamp.now(),
   });
 
   console.log('✅ Subscription canceled');
@@ -196,7 +196,7 @@ async function handleSubscriptionDeleted(db: any, subscription: Stripe.Subscript
 /**
  * Handle successful payment
  */
-async function handlePaymentSucceeded(db: any, invoice: Stripe.Invoice) {
+async function handlePaymentSucceeded(db: any, invoice: Stripe.Invoice, Timestamp: any) {
   const customerId = invoice.customer as string;
   
   const org = await findOrgByCustomerId(db, customerId);
@@ -206,8 +206,8 @@ async function handlePaymentSucceeded(db: any, invoice: Stripe.Invoice) {
   await org.subRef.update({
     status: 'active',
     'usage.mcpCalls': 0,
-    'usage.lastReset': new Date(),
-    updatedAt: new Date(),
+    'usage.lastReset': Timestamp.now(),
+    updatedAt: Timestamp.now(),
   });
 
   console.log('✅ Payment succeeded, usage reset');
@@ -216,7 +216,7 @@ async function handlePaymentSucceeded(db: any, invoice: Stripe.Invoice) {
 /**
  * Handle failed payment
  */
-async function handlePaymentFailed(db: any, invoice: Stripe.Invoice) {
+async function handlePaymentFailed(db: any, invoice: Stripe.Invoice, Timestamp: any) {
   const customerId = invoice.customer as string;
   
   const org = await findOrgByCustomerId(db, customerId);
@@ -224,7 +224,7 @@ async function handlePaymentFailed(db: any, invoice: Stripe.Invoice) {
   
   await org.subRef.update({
     status: 'past_due',
-    updatedAt: new Date(),
+    updatedAt: Timestamp.now(),
   });
 
   console.log('❌ Payment failed');
