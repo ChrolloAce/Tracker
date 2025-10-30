@@ -153,6 +153,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   const [newAccountUrl, setNewAccountUrl] = useState('');
   const [detectedPlatform, setDetectedPlatform] = useState<'instagram' | 'tiktok' | 'youtube' | 'twitter' | null>(null);
   const [urlValidationError, setUrlValidationError] = useState<string | null>(null);
+  const [usageLimits, setUsageLimits] = useState<{accounts: number; videos: number; accountsUsed: number; videosUsed: number} | null>(null);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -421,9 +422,28 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
 
   useImperativeHandle(ref, () => ({
     handleBackToTable,
-    openAddModal: () => setIsAddModalOpen(true),
+    openAddModal: async () => {
+      setIsAddModalOpen(true);
+      // Load usage limits when modal opens
+      if (currentOrgId) {
+        try {
+          const [accountCheck, videoCheck] = await Promise.all([
+            UsageTrackingService.canPerformAction(currentOrgId, 'account'),
+            UsageTrackingService.canPerformAction(currentOrgId, 'video')
+          ]);
+          setUsageLimits({
+            accounts: accountCheck.limit,
+            videos: videoCheck.limit,
+            accountsUsed: accountCheck.current,
+            videosUsed: videoCheck.current
+          });
+        } catch (error) {
+          console.error('Failed to load usage limits:', error);
+        }
+      }
+    },
     refreshData
-  }), [handleBackToTable, refreshData]);
+  }), [handleBackToTable, refreshData, currentOrgId]);
 
   // Auto-detect account URL from clipboard when modal opens
   useEffect(() => {
@@ -872,6 +892,61 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     if (accountsToAdd.length === 0) {
       setUrlValidationError('Please enter at least one valid account URL.');
       return;
+    }
+
+    // 🔒 CHECK USAGE LIMITS
+    try {
+      // Check account limit
+      const accountCheck = await UsageTrackingService.canPerformAction(currentOrgId, 'account');
+      
+      if (!accountCheck.allowed && accountsToAdd.length > 0) {
+        setUrlValidationError(
+          `⚠️ Account limit reached! You have ${accountCheck.current}/${accountCheck.limit} accounts. Upgrade to add more.`
+        );
+        return;
+      }
+
+      // Calculate total videos requested
+      const totalVideosRequested = accountsToAdd.reduce((sum, acc) => sum + acc.videoCount, 0);
+      
+      // Check video limit
+      const videoCheck = await UsageTrackingService.canPerformAction(currentOrgId, 'video');
+      const videosAvailable = videoCheck.limit - videoCheck.current;
+      
+      if (!videoCheck.allowed || videosAvailable <= 0) {
+        setUrlValidationError(
+          `🚫 Video limit reached! You have ${videoCheck.current}/${videoCheck.limit} videos. Upgrade to add more.`
+        );
+        return;
+      }
+      
+      // If they don't have enough space for all videos, warn them
+      if (totalVideosRequested > videosAvailable && videoCheck.limit !== -1) {
+        const shouldContinue = window.confirm(
+          `⚠️ VIDEO LIMIT WARNING\n\n` +
+          `You requested ${totalVideosRequested} videos but only have ${videosAvailable} video slots remaining.\n\n` +
+          `• Current: ${videoCheck.current}/${videoCheck.limit} videos\n` +
+          `• Available: ${videosAvailable} videos\n\n` +
+          `The system will only fetch ${videosAvailable} videos total across all accounts.\n\n` +
+          `Click OK to continue with limited videos, or Cancel to upgrade your plan first.`
+        );
+        
+        if (!shouldContinue) {
+          // Redirect to upgrade page
+          setIsAddModalOpen(false);
+          navigate('/subscription');
+          return;
+        }
+        
+        // Adjust video counts proportionally
+        const ratio = videosAvailable / totalVideosRequested;
+        accountsToAdd.forEach(acc => {
+          acc.videoCount = Math.max(1, Math.floor(acc.videoCount * ratio));
+        });
+      }
+    } catch (error) {
+      console.error('Error checking usage limits:', error);
+      // Continue anyway if limit check fails
     }
 
     // Add all to processing accounts immediately AT THE TOP
@@ -2313,12 +2388,74 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                   setDetectedPlatform(null);
                   setUrlValidationError(null);
                   setAccountInputs([{ id: '1', url: '', platform: null, error: null, videoCount: 10 }]);
+                  setUsageLimits(null);
                 }}
                 className="text-white/80 hover:text-white transition-colors p-1"
               >
                 <X className="w-5 h-5" strokeWidth={1.5} />
               </button>
             </div>
+            
+            {/* Usage Limit Warning */}
+            {usageLimits && (
+              <div className={`mb-4 p-4 rounded-lg border ${
+                usageLimits.videosUsed >= usageLimits.videos || usageLimits.accountsUsed >= usageLimits.accounts
+                  ? 'bg-red-500/10 border-red-500/30'
+                  : (usageLimits.videos - usageLimits.videosUsed) < 50 || (usageLimits.accounts - usageLimits.accountsUsed) < 2
+                  ? 'bg-yellow-500/10 border-yellow-500/30'
+                  : 'bg-blue-500/10 border-blue-500/30'
+              }`}>
+                <div className="flex items-start gap-3">
+                  <AlertCircle className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
+                    usageLimits.videosUsed >= usageLimits.videos || usageLimits.accountsUsed >= usageLimits.accounts
+                      ? 'text-red-400'
+                      : (usageLimits.videos - usageLimits.videosUsed) < 50
+                      ? 'text-yellow-400'
+                      : 'text-blue-400'
+                  }`} />
+                  <div className="flex-1">
+                    <p className={`text-sm font-medium mb-2 ${
+                      usageLimits.videosUsed >= usageLimits.videos || usageLimits.accountsUsed >= usageLimits.accounts
+                        ? 'text-red-300'
+                        : (usageLimits.videos - usageLimits.videosUsed) < 50
+                        ? 'text-yellow-300'
+                        : 'text-blue-300'
+                    }`}>
+                      {usageLimits.videosUsed >= usageLimits.videos || usageLimits.accountsUsed >= usageLimits.accounts
+                        ? '🚫 Limit Reached!'
+                        : (usageLimits.videos - usageLimits.videosUsed) < 50
+                        ? '⚠️ Running Low on Space'
+                        : '📊 Current Usage'}
+                    </p>
+                    <div className="text-xs space-y-1">
+                      <div className={`flex items-center justify-between ${
+                        usageLimits.accountsUsed >= usageLimits.accounts ? 'text-red-300' : 'text-gray-400'
+                      }`}>
+                        <span>Accounts:</span>
+                        <span className="font-medium">{usageLimits.accountsUsed}/{usageLimits.accounts === -1 ? '∞' : usageLimits.accounts} ({usageLimits.accounts === -1 ? '∞' : usageLimits.accounts - usageLimits.accountsUsed} left)</span>
+                      </div>
+                      <div className={`flex items-center justify-between ${
+                        usageLimits.videosUsed >= usageLimits.videos ? 'text-red-300' : 'text-gray-400'
+                      }`}>
+                        <span>Videos:</span>
+                        <span className="font-medium">{usageLimits.videosUsed}/{usageLimits.videos === -1 ? '∞' : usageLimits.videos} ({usageLimits.videos === -1 ? '∞' : Math.max(0, usageLimits.videos - usageLimits.videosUsed)} left)</span>
+                      </div>
+                    </div>
+                    {(usageLimits.videosUsed >= usageLimits.videos || usageLimits.accountsUsed >= usageLimits.accounts) && (
+                      <button
+                        onClick={() => {
+                          setIsAddModalOpen(false);
+                          navigate('/subscription');
+                        }}
+                        className="mt-3 text-xs font-medium text-emerald-400 hover:text-emerald-300 underline"
+                      >
+                        Upgrade to add more →
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
             
             {/* Input Fields - Multiple */}
             <div className="space-y-3 mb-6 max-h-[400px] overflow-y-auto">
