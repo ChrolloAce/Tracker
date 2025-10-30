@@ -158,9 +158,25 @@ async function handleSubscriptionUpdate(db: any, subscription: Stripe.Subscripti
   console.log(`📝 Updating Firebase for org ${org.orgId}: ${planTier} (${subscription.status})`);
   console.log(`📅 Period: ${subscription.current_period_start} -> ${subscription.current_period_end}`);
   
-  // Validate timestamps
+  // Handle incomplete subscriptions (payment processing)
+  if (subscription.status === 'incomplete' || subscription.status === 'incomplete_expired') {
+    console.log('⏳ Subscription is incomplete - payment still processing');
+    await org.subRef.update({
+      planTier: 'free', // Keep on free until payment completes
+      status: subscription.status,
+      stripeSubscriptionId: subscriptionId,
+      stripePriceId: priceId,
+      stripeCustomerId: customerId,
+      updatedAt: Timestamp.now(),
+    });
+    console.log('⏳ Subscription marked as incomplete - will upgrade when payment completes');
+    return;
+  }
+  
+  // Validate timestamps for active subscriptions
   if (!subscription.current_period_start || !subscription.current_period_end) {
-    console.error('❌ Missing period timestamps in subscription object');
+    console.error('❌ Missing period timestamps for active subscription');
+    console.error('Subscription object:', JSON.stringify(subscription, null, 2));
     return;
   }
 
