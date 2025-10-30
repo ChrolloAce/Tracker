@@ -29,8 +29,8 @@ const BillingTabContent: React.FC = () => {
   const [usageStatus, setUsageStatus] = useState<any[]>([]);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
+  // Check for success parameter once on mount
   useEffect(() => {
-    // Check for success parameter in URL
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('success') === 'true') {
       setShowSuccessMessage(true);
@@ -38,13 +38,10 @@ const BillingTabContent: React.FC = () => {
       urlParams.delete('success');
       const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
       window.history.replaceState({}, '', newUrl);
-      
-      // Reload billing info after a short delay to let webhook complete
-      setTimeout(() => {
-        loadBillingInfo();
-      }, 2000);
     }
-    
+  }, []); // Run once on mount
+
+  useEffect(() => {
     loadBillingInfo();
   }, [currentOrgId]);
 
@@ -53,6 +50,13 @@ const BillingTabContent: React.FC = () => {
     
     setLoading(true);
     try {
+      // If coming from successful checkout, wait a bit for webhook to complete
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('success') === 'true') {
+        console.log('⏳ Waiting for webhook to complete...');
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+      
       const [tier, sub, usage] = await Promise.all([
         SubscriptionService.getPlanTier(currentOrgId),
         SubscriptionService.getSubscription(currentOrgId),
