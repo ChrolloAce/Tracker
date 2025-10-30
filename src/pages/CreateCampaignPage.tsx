@@ -21,7 +21,6 @@ import OrganizationService from '../services/OrganizationService';
 import RulesService from '../services/RulesService';
 import { OrgMember } from '../types/firestore';
 import { TrackingRule } from '../types/rules';
-import FirebaseStorageService from '../services/FirebaseStorageService';
 
 // Tooltip Component
 const Tooltip: React.FC<{ content: string; children: React.ReactNode }> = ({ content, children }) => {

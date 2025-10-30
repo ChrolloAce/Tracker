@@ -97,11 +97,6 @@ const CampaignDetailsPage: React.FC = () => {
     }
   };
 
-  const handleSubmissionSuccess = () => {
-    loadSubmissions();
-    loadCampaign();
-  };
-
   const getRewardRate = () => {
     if (!campaign) return '';
     
@@ -286,6 +281,7 @@ const CampaignDetailsPage: React.FC = () => {
                 ) : (
                   <CampaignVideoSubmissionsTable
                     submissions={submissions}
+                    campaignId={campaign.id}
                     isCreator={isCreator}
                     onRefresh={loadSubmissions}
                   />
@@ -474,10 +470,10 @@ const CampaignDetailsPage: React.FC = () => {
         {/* Modal for Video Submission */}
         {showSubmissionModal && (
           <CampaignVideoSubmissionModal
-            campaign={campaign}
+            campaignId={campaign.id}
             isOpen={showSubmissionModal}
             onClose={() => setShowSubmissionModal(false)}
-            onSubmit={loadSubmissions}
+            onSuccess={loadSubmissions}
           />
         )}
       </div>

@@ -165,7 +165,7 @@ const CampaignManagementCard: React.FC<{
   onEdit?: () => void;
   onDelete?: () => void;
   isCreator?: boolean;
-}> = ({ campaign, onClick, onEdit, onDelete, isCreator = false }) => {
+}> = ({ campaign, onClick, isCreator = false }) => {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { currentOrgId, currentProjectId } = useAuth();

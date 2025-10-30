@@ -489,27 +489,6 @@ class CampaignService {
   }
 
   /**
-   * Delete a campaign
-   */
-  static async deleteCampaign(
-    orgId: string,
-    projectId: string,
-    campaignId: string
-  ): Promise<void> {
-    const campaignRef = doc(
-      db,
-      'organizations',
-      orgId,
-      'projects',
-      projectId,
-      'campaigns',
-      campaignId
-    );
-
-    await deleteDoc(campaignRef);
-  }
-
-  /**
    * Get campaign statistics
    */
   static async getCampaignStats(
