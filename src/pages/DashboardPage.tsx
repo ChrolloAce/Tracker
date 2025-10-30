@@ -2383,10 +2383,11 @@ function DashboardPage() {
         }
       )} style={{ overflowX: 'hidden', overflowY: 'auto' }}>
         <div className="max-w-7xl mx-auto px-6 py-8" style={{ overflow: 'visible' }}>
-          {/* Dashboard Tab */}
-          <div className={activeTab === 'dashboard' ? '' : 'hidden'}>
-            {/* Render dashboard sections in order */}
-            {dashboardSectionOrder
+          {/* Dashboard Tab - Only render when active to prevent unnecessary calculations */}
+          {activeTab === 'dashboard' && (
+            <div>
+              {/* Render dashboard sections in order */}
+              {dashboardSectionOrder
                 .filter(sectionId => dashboardSectionVisibility[sectionId] !== false)
                 .map((sectionId, index) => {
                   const handleSectionDragStart = () => {
@@ -2581,7 +2582,8 @@ function DashboardPage() {
                   </span>
                 </div>
               )}
-          </div>
+            </div>
+          )}
 
           {/* Accounts Tab */}
           {activeTab === 'accounts' && (
