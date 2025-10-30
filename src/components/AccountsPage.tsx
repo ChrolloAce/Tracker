@@ -124,6 +124,7 @@ interface AccountWithFilteredStats extends TrackedAccount {
 const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   ({ dateFilter, platformFilter, searchQuery = '', onViewModeChange, pendingAccounts = [], selectedRuleIds = [], dashboardRules = [] }, ref) => {
   const { user, currentOrgId, currentProjectId } = useAuth();
+  const navigate = useNavigate();
   
   // Debug props
   useEffect(() => {
@@ -178,7 +179,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     isAtAccountLimit: false,
     isAtVideoLimit: false
   });
-  const navigate = useNavigate();
   const [processingAccounts, setProcessingAccounts] = useState<Array<{username: string; platform: string; startedAt: number}>>(() => {
     // Restore from localStorage and clean up old entries (> 5 minutes old)
     const saved = localStorage.getItem('processingAccounts');

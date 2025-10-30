@@ -2,7 +2,6 @@ import { db } from './firebase';
 import { 
   doc, 
   getDoc, 
-  setDoc, 
   updateDoc, 
   increment,
   serverTimestamp,
@@ -113,12 +112,12 @@ class UsageTrackingService {
         trackedVideos: totalVideos,
         trackedLinks: totalLinks,
         teamMembers: teamMembers,
-        manualVideos: 0,
-        manualCreators: 0,
+          manualVideos: 0,
+          manualCreators: 0,
         mcpCallsThisMonth,
-        lastUpdated: new Date(),
-        currentPeriodStart: new Date(),
-        currentPeriodEnd: this.getNextMonthDate()
+          lastUpdated: new Date(),
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: this.getNextMonthDate()
       };
     } catch (error) {
       console.error('Failed to get usage:', error);
