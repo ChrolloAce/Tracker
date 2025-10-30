@@ -156,7 +156,6 @@ async function handleSubscriptionUpdate(db: any, subscription: Stripe.Subscripti
   }
 
   console.log(`📝 Updating Firebase for org ${org.orgId}: ${planTier} (${subscription.status})`);
-  console.log(`📅 Period: ${subscription.current_period_start} -> ${subscription.current_period_end}`);
   
   // Handle incomplete subscriptions (payment processing)
   if (subscription.status === 'incomplete' || subscription.status === 'incomplete_expired') {
@@ -173,16 +172,30 @@ async function handleSubscriptionUpdate(db: any, subscription: Stripe.Subscripti
     return;
   }
   
-  // Validate timestamps for active subscriptions
-  if (!subscription.current_period_start || !subscription.current_period_end) {
-    console.error('❌ Missing period timestamps for active subscription');
-    console.error('Subscription object:', JSON.stringify(subscription, null, 2));
+  // Get period timestamps - check both top level and items array
+  let periodStartSeconds = subscription.current_period_start;
+  let periodEndSeconds = subscription.current_period_end;
+  
+  // If not at top level, check in items array
+  if (!periodStartSeconds && subscription.items?.data?.[0]) {
+    periodStartSeconds = subscription.items.data[0].current_period_start;
+    periodEndSeconds = subscription.items.data[0].current_period_end;
+    console.log('📅 Using period from subscription item');
+  }
+  
+  console.log(`📅 Period: ${periodStartSeconds} -> ${periodEndSeconds}`);
+  
+  // Validate we have timestamps
+  if (!periodStartSeconds || !periodEndSeconds) {
+    console.error('❌ Missing period timestamps in both subscription and items');
+    console.error('Subscription status:', subscription.status);
+    console.error('Has items:', !!subscription.items?.data?.[0]);
     return;
   }
 
   // Create timestamps safely - Stripe gives Unix timestamps in SECONDS
-  const periodStart = Timestamp.fromDate(new Date(subscription.current_period_start * 1000));
-  const periodEnd = Timestamp.fromDate(new Date(subscription.current_period_end * 1000));
+  const periodStart = Timestamp.fromDate(new Date(periodStartSeconds * 1000));
+  const periodEnd = Timestamp.fromDate(new Date(periodEndSeconds * 1000));
   const trialEnd = subscription.trial_end ? Timestamp.fromDate(new Date(subscription.trial_end * 1000)) : null;
 
   // Update subscription
