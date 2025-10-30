@@ -29,53 +29,49 @@ const BillingTabContent: React.FC = () => {
   const [usageStatus, setUsageStatus] = useState<any[]>([]);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
-  // Check for success parameter once on mount
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('success') === 'true') {
-      setShowSuccessMessage(true);
-      // Remove the parameter from URL
-      urlParams.delete('success');
-      const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
-      window.history.replaceState({}, '', newUrl);
-    }
-  }, []); // Run once on mount
-
-  const loadBillingInfo = React.useCallback(async () => {
     if (!currentOrgId) return;
     
-    setLoading(true);
-    try {
-      // If coming from successful checkout, wait a bit for webhook to complete
+    const loadData = async () => {
+      // Check for success parameter once
       const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('success') === 'true') {
+      const hasSuccess = urlParams.get('success') === 'true';
+      
+      if (hasSuccess) {
+        setShowSuccessMessage(true);
+        // Remove the parameter from URL
+        urlParams.delete('success');
+        const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+        window.history.replaceState({}, '', newUrl);
+        
+        // Wait for webhook to complete
         console.log('⏳ Waiting for webhook to complete...');
         await new Promise(resolve => setTimeout(resolve, 3000));
       }
       
-      const [tier, sub, usage] = await Promise.all([
-        SubscriptionService.getPlanTier(currentOrgId),
-        SubscriptionService.getSubscription(currentOrgId),
-        (async () => {
-          // Import dynamically to avoid circular dependency
-          const { default: UsageTrackingService } = await import('../services/UsageTrackingService');
-          return UsageTrackingService.getUsageStatus(currentOrgId);
-        })()
-      ]);
-      
-      setCurrentPlan(tier);
-      setSubscription(sub);
-      setUsageStatus(usage);
-    } catch (error) {
-      console.error('Failed to load billing info:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentOrgId]);
-
-  useEffect(() => {
-    loadBillingInfo();
-  }, [loadBillingInfo]);
+      setLoading(true);
+      try {
+        const [tier, sub, usage] = await Promise.all([
+          SubscriptionService.getPlanTier(currentOrgId),
+          SubscriptionService.getSubscription(currentOrgId),
+          (async () => {
+            const { default: UsageTrackingService } = await import('../services/UsageTrackingService');
+            return UsageTrackingService.getUsageStatus(currentOrgId);
+          })()
+        ]);
+        
+        setCurrentPlan(tier);
+        setSubscription(sub);
+        setUsageStatus(usage);
+      } catch (error) {
+        console.error('Failed to load billing info:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+  }, [currentOrgId]); // Only re-run when org changes
 
   if (loading) {
     return (
