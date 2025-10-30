@@ -156,6 +156,18 @@ async function handleSubscriptionUpdate(db: any, subscription: Stripe.Subscripti
   }
 
   console.log(`📝 Updating Firebase for org ${org.orgId}: ${planTier} (${subscription.status})`);
+  console.log(`📅 Period: ${subscription.current_period_start} -> ${subscription.current_period_end}`);
+  
+  // Validate timestamps
+  if (!subscription.current_period_start || !subscription.current_period_end) {
+    console.error('❌ Missing period timestamps in subscription object');
+    return;
+  }
+
+  // Create timestamps safely - Stripe gives Unix timestamps in SECONDS
+  const periodStart = Timestamp.fromDate(new Date(subscription.current_period_start * 1000));
+  const periodEnd = Timestamp.fromDate(new Date(subscription.current_period_end * 1000));
+  const trialEnd = subscription.trial_end ? Timestamp.fromDate(new Date(subscription.trial_end * 1000)) : null;
 
   // Update subscription
   await org.subRef.update({
@@ -164,15 +176,15 @@ async function handleSubscriptionUpdate(db: any, subscription: Stripe.Subscripti
     stripeSubscriptionId: subscriptionId,
     stripePriceId: priceId,
     stripeCustomerId: customerId,
-    currentPeriodStart: Timestamp.fromMillis(subscription.current_period_start * 1000),
-    currentPeriodEnd: Timestamp.fromMillis(subscription.current_period_end * 1000),
+    currentPeriodStart: periodStart,
+    currentPeriodEnd: periodEnd,
     cancelAtPeriodEnd: subscription.cancel_at_period_end,
-    trialEnd: subscription.trial_end ? Timestamp.fromMillis(subscription.trial_end * 1000) : null,
+    trialEnd: trialEnd,
     updatedAt: Timestamp.now(),
   });
 
   console.log(`✅ SUCCESS: Updated subscription for org ${org.orgId} to ${planTier} (${subscription.status})`);
-  console.log(`✅ Subscription expires: ${new Date(subscription.current_period_end * 1000).toISOString()}`);
+  console.log(`✅ Subscription expires: ${periodEnd.toDate().toISOString()}`);
 }
 
 /**
