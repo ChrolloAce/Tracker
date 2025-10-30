@@ -41,11 +41,7 @@ const BillingTabContent: React.FC = () => {
     }
   }, []); // Run once on mount
 
-  useEffect(() => {
-    loadBillingInfo();
-  }, [currentOrgId]);
-
-  const loadBillingInfo = async () => {
+  const loadBillingInfo = React.useCallback(async () => {
     if (!currentOrgId) return;
     
     setLoading(true);
@@ -75,7 +71,11 @@ const BillingTabContent: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentOrgId]);
+
+  useEffect(() => {
+    loadBillingInfo();
+  }, [loadBillingInfo]);
 
   if (loading) {
     return (
