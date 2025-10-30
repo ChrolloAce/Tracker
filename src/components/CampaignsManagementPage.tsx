@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Campaign, CampaignStatus } from '../types/campaigns';
 import CampaignService from '../services/CampaignService';
+import OrganizationService from '../services/OrganizationService';
 import { 
   Trophy, 
   DollarSign,
@@ -42,19 +43,29 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
 
     setLoading(true);
     try {
+      // Check user's role in the organization
+      const userRole = await OrganizationService.getUserRole(currentOrgId, user.uid);
+      const userIsCreator = userRole === 'creator';
+      setIsCreator(userIsCreator);
+
+      console.log(`👤 User role: ${userRole}, isCreator: ${userIsCreator}`);
+
       const allCampaigns = selectedStatus === 'all'
         ? await CampaignService.getCampaigns(currentOrgId, currentProjectId)
         : await CampaignService.getCampaigns(currentOrgId, currentProjectId, selectedStatus);
 
-      // Check if user is a creator by seeing if they're a participant in any campaign
-      const userIsCreator = allCampaigns.some(c => c.participantIds.includes(user.uid));
-      setIsCreator(userIsCreator);
-
       // Filter campaigns for creators - only show campaigns they're part of
       const filteredCampaigns = userIsCreator 
-        ? allCampaigns.filter(c => c.participantIds.includes(user.uid))
+        ? allCampaigns.filter(c => {
+            const isParticipant = c.participantIds.includes(user.uid);
+            if (isParticipant) {
+              console.log(`✅ Creator is participant in campaign: ${c.name}`);
+            }
+            return isParticipant;
+          })
         : allCampaigns;
 
+      console.log(`📋 Showing ${filteredCampaigns.length} campaigns (total: ${allCampaigns.length})`);
       setCampaigns(filteredCampaigns);
 
       // Update campaign counts
