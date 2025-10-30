@@ -27,17 +27,18 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
   selectedStatus = 'all',
   onCampaignsLoaded
 }) => {
-  const { currentOrgId, currentProjectId } = useAuth();
+  const { currentOrgId, currentProjectId, user } = useAuth();
   const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isCreator, setIsCreator] = useState(false);
 
   useEffect(() => {
     loadCampaigns();
-  }, [currentOrgId, currentProjectId, selectedStatus]);
+  }, [currentOrgId, currentProjectId, selectedStatus, user]);
 
   const loadCampaigns = async () => {
-    if (!currentOrgId || !currentProjectId) return;
+    if (!currentOrgId || !currentProjectId || !user) return;
 
     setLoading(true);
     try {
@@ -45,15 +46,24 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
         ? await CampaignService.getCampaigns(currentOrgId, currentProjectId)
         : await CampaignService.getCampaigns(currentOrgId, currentProjectId, selectedStatus);
 
-      setCampaigns(allCampaigns);
+      // Check if user is a creator by seeing if they're a participant in any campaign
+      const userIsCreator = allCampaigns.some(c => c.participantIds.includes(user.uid));
+      setIsCreator(userIsCreator);
+
+      // Filter campaigns for creators - only show campaigns they're part of
+      const filteredCampaigns = userIsCreator 
+        ? allCampaigns.filter(c => c.participantIds.includes(user.uid))
+        : allCampaigns;
+
+      setCampaigns(filteredCampaigns);
 
       // Update campaign counts
       if (onCampaignsLoaded) {
         const counts = {
-          active: allCampaigns.filter(c => c.status === 'active').length,
-          draft: allCampaigns.filter(c => c.status === 'draft').length,
-          completed: allCampaigns.filter(c => c.status === 'completed').length,
-          cancelled: allCampaigns.filter(c => c.status === 'cancelled').length,
+          active: filteredCampaigns.filter(c => c.status === 'active').length,
+          draft: filteredCampaigns.filter(c => c.status === 'draft').length,
+          completed: filteredCampaigns.filter(c => c.status === 'completed').length,
+          cancelled: filteredCampaigns.filter(c => c.status === 'cancelled').length,
         };
         onCampaignsLoaded(counts);
       }
@@ -107,17 +117,23 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
           <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500/10 rounded-full border-2 border-emerald-500/20 mb-4">
             <Trophy className="w-8 h-8 text-emerald-400" />
           </div>
-          <h3 className="text-xl font-bold text-white mb-2">No Campaigns Yet</h3>
+          <h3 className="text-xl font-bold text-white mb-2">
+            {isCreator ? 'No Campaigns Yet' : 'No Campaigns Yet'}
+          </h3>
           <p className="text-gray-400 mb-6 max-w-md mx-auto">
-            Create your first campaign to start motivating creators and tracking performance!
+            {isCreator 
+              ? "You haven't been added to any campaigns yet. Check back soon!" 
+              : 'Create your first campaign to start motivating creators and tracking performance!'}
           </p>
-          <button
-            onClick={() => navigate('/campaigns/create')}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-all"
-          >
-            <Plus className="w-5 h-5" />
-            Create Your First Campaign
-          </button>
+          {!isCreator && (
+            <button
+              onClick={() => navigate('/campaigns/create')}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-all"
+            >
+              <Plus className="w-5 h-5" />
+              Create Your First Campaign
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
@@ -126,6 +142,7 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
               key={campaign.id}
               campaign={campaign}
               onClick={() => navigate(`/campaign/${campaign.id}`)}
+              isCreator={isCreator}
             />
           ))}
         </div>
@@ -140,7 +157,8 @@ const CampaignManagementCard: React.FC<{
   onClick?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
-}> = ({ campaign, onClick, onEdit, onDelete }) => {
+  isCreator?: boolean;
+}> = ({ campaign, onClick, onEdit, onDelete, isCreator = false }) => {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { currentOrgId, currentProjectId } = useAuth();
@@ -248,56 +266,58 @@ const CampaignManagementCard: React.FC<{
                 </p>
               </div>
               
-              {/* 3-dot menu */}
-              <div className="relative" ref={menuRef}>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowMenu(!showMenu);
-                  }}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                >
-                  <MoreVertical className="w-5 h-5 text-gray-400" />
-                </button>
+              {/* 3-dot menu - Only show for admins */}
+              {!isCreator && (
+                <div className="relative" ref={menuRef}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowMenu(!showMenu);
+                    }}
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  >
+                    <MoreVertical className="w-5 h-5 text-gray-400" />
+                  </button>
 
-                {showMenu && (
-                  <div className="absolute right-0 mt-2 w-48 bg-zinc-900 border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowMenu(false);
-                        onClick?.();
-                      }}
-                      className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-3"
-                    >
-                      <Eye className="w-4 h-4" />
-                      View Details
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowMenu(false);
-                        handleEdit();
-                      }}
-                      className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-3"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                      Edit Campaign
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowMenu(false);
-                        handleDelete();
-                      }}
-                      className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-3 border-t border-white/10"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      Delete Campaign
-                    </button>
-                  </div>
-                )}
-              </div>
+                  {showMenu && (
+                    <div className="absolute right-0 mt-2 w-48 bg-zinc-900 border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowMenu(false);
+                          onClick?.();
+                        }}
+                        className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-3"
+                      >
+                        <Eye className="w-4 h-4" />
+                        View Details
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowMenu(false);
+                          handleEdit();
+                        }}
+                        className="w-full px-4 py-3 text-left text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-3"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                        Edit Campaign
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowMenu(false);
+                          handleDelete();
+                        }}
+                        className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-3 border-t border-white/10"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete Campaign
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Top-right controls */}
               <div className="flex items-center gap-2 ml-4">
