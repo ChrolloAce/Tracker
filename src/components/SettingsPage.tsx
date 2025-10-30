@@ -73,6 +73,14 @@ const BillingTabContent: React.FC = () => {
     loadData();
   }, [currentOrgId]); // Only re-run when org changes
 
+  // Auto-dismiss success message after 5 seconds - MUST be before any returns!
+  useEffect(() => {
+    if (showSuccessMessage) {
+      const timer = setTimeout(() => setShowSuccessMessage(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccessMessage]);
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -84,14 +92,6 @@ const BillingTabContent: React.FC = () => {
   }
 
   const planDetails = SUBSCRIPTION_PLANS[currentPlan];
-  
-  // Auto-dismiss success message after 5 seconds
-  useEffect(() => {
-    if (showSuccessMessage) {
-      const timer = setTimeout(() => setShowSuccessMessage(false), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [showSuccessMessage]);
   
   // Format dates - handle both Timestamp objects and Date objects
   const startDate = subscription?.createdAt 
