@@ -263,9 +263,18 @@ const BillingTabContent: React.FC = () => {
       )}
 
       {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Your Subscription</h2>
-        <p className="text-gray-600 dark:text-gray-400">Manage your organization's subscription and billing information.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Your Subscription</h2>
+          <p className="text-gray-600 dark:text-gray-400">Manage your organization's subscription and billing information.</p>
+        </div>
+        <button
+          onClick={() => window.location.reload()}
+          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+        >
+          <TrendingUp className="w-4 h-4" />
+          Refresh
+        </button>
       </div>
 
       {/* Usage Summary Cards */}
