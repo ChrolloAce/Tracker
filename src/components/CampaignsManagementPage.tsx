@@ -54,9 +54,9 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
         ? await CampaignService.getCampaigns(currentOrgId, currentProjectId)
         : await CampaignService.getCampaigns(currentOrgId, currentProjectId, selectedStatus);
 
-      // Filter campaigns for creators - only show campaigns they're part of
+      // Filter campaigns for creators - only show campaigns they're part of (excluding drafts)
       const filteredCampaigns = userIsCreator 
-        ? allCampaigns.filter(c => c.participantIds.includes(user.uid))
+        ? allCampaigns.filter(c => c.participantIds.includes(user.uid) && c.status !== 'draft')
         : allCampaigns;
 
       console.log(`📋 Loaded ${filteredCampaigns.length} campaign(s)`);

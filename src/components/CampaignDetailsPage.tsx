@@ -53,10 +53,18 @@ const CampaignDetailsPage: React.FC = () => {
         return;
       }
       
-      setCampaign(campaignData);
-      
       // Check if current user is a participant (creator)
-      setIsCreator(campaignData.participantIds.includes(user?.uid || ''));
+      const userIsCreator = campaignData.participantIds.includes(user?.uid || '');
+      setIsCreator(userIsCreator);
+      
+      // Redirect creators away from draft campaigns
+      if (userIsCreator && campaignData.status === 'draft') {
+        console.log('🚫 Creator cannot access draft campaigns');
+        navigate('/campaigns');
+        return;
+      }
+      
+      setCampaign(campaignData);
 
       // Load associated rules
       if (campaignData.defaultRuleIds && campaignData.defaultRuleIds.length > 0) {
