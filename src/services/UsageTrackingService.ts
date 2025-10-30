@@ -59,49 +59,66 @@ class UsageTrackingService {
   
   /**
    * Get current usage for an organization
+   * COUNTS ACTUAL RESOURCES - no separate tracking needed!
    */
   static async getUsage(orgId: string): Promise<UsageMetrics> {
     try {
-      const usageRef = doc(db, 'organizations', orgId, 'billing', 'usage');
-      const usageDoc = await getDoc(usageRef);
+      // Get all projects for this org
+      const { collection, getDocs, query, where } = await import('firebase/firestore');
       
-      if (!usageDoc.exists()) {
-        // Initialize usage tracking
-        const initialUsage: UsageMetrics = {
-          trackedAccounts: 0,
-          trackedVideos: 0,
-          trackedLinks: 0,
-          teamMembers: 1, // Owner
-          manualVideos: 0,
-          manualCreators: 0,
-          mcpCallsThisMonth: 0,
-          lastUpdated: new Date(),
-          currentPeriodStart: new Date(),
-          currentPeriodEnd: this.getNextMonthDate()
-        };
+      const projectsRef = collection(db, 'organizations', orgId, 'projects');
+      const projectsSnapshot = await getDocs(projectsRef);
+      
+      let totalAccounts = 0;
+      let totalVideos = 0;
+      let totalLinks = 0;
+      
+      // Count across all projects
+      for (const projectDoc of projectsSnapshot.docs) {
+        const projectId = projectDoc.id;
         
-        await setDoc(usageRef, {
-          ...initialUsage,
-          lastUpdated: serverTimestamp(),
-          currentPeriodStart: Timestamp.fromDate(initialUsage.currentPeriodStart),
-          currentPeriodEnd: Timestamp.fromDate(initialUsage.currentPeriodEnd)
-        });
+        // Count active accounts
+        const accountsRef = collection(db, 'organizations', orgId, 'projects', projectId, 'trackedAccounts');
+        const accountsQuery = query(accountsRef, where('isActive', '==', true));
+        const accountsSnapshot = await getDocs(accountsQuery);
+        totalAccounts += accountsSnapshot.size;
         
-        return initialUsage;
+        // Count videos
+        const videosRef = collection(db, 'organizations', orgId, 'projects', projectId, 'videos');
+        const videosSnapshot = await getDocs(videosRef);
+        totalVideos += videosSnapshot.size;
+        
+        // Count active links
+        const linksRef = collection(db, 'organizations', orgId, 'projects', projectId, 'links');
+        const linksQuery = query(linksRef, where('isActive', '==', true));
+        const linksSnapshot = await getDocs(linksQuery);
+        totalLinks += linksSnapshot.size;
       }
       
-      const data = usageDoc.data();
+      // Count team members
+      const membersRef = collection(db, 'organizations', orgId, 'members');
+      const membersQuery = query(membersRef, where('status', '==', 'active'));
+      const membersSnapshot = await getDocs(membersQuery);
+      const teamMembers = membersSnapshot.size;
+      
+      // Get MCP calls from usage doc if it exists
+      const usageRef = doc(db, 'organizations', orgId, 'billing', 'usage');
+      const usageDoc = await getDoc(usageRef);
+      const mcpCallsThisMonth = usageDoc.exists() ? (usageDoc.data()?.mcpCallsThisMonth || 0) : 0;
+      
+      console.log(`📊 Real-time usage for org ${orgId}: ${totalAccounts} accounts, ${totalVideos} videos, ${totalLinks} links, ${teamMembers} members`);
+      
       return {
-        trackedAccounts: data.trackedAccounts || 0,
-        trackedVideos: data.trackedVideos || 0,
-        trackedLinks: data.trackedLinks || 0,
-        teamMembers: data.teamMembers || 1,
-        manualVideos: data.manualVideos || 0,
-        manualCreators: data.manualCreators || 0,
-        mcpCallsThisMonth: data.mcpCallsThisMonth || 0,
-        lastUpdated: data.lastUpdated?.toDate() || new Date(),
-        currentPeriodStart: data.currentPeriodStart?.toDate() || new Date(),
-        currentPeriodEnd: data.currentPeriodEnd?.toDate() || this.getNextMonthDate()
+        trackedAccounts: totalAccounts,
+        trackedVideos: totalVideos,
+        trackedLinks: totalLinks,
+        teamMembers: teamMembers,
+        manualVideos: 0,
+        manualCreators: 0,
+        mcpCallsThisMonth,
+        lastUpdated: new Date(),
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: this.getNextMonthDate()
       };
     } catch (error) {
       console.error('Failed to get usage:', error);
