@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Trash2, AlertCircle, Link as LinkIcon, X, ChevronDown, RefreshCw } from 'lucide-react';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { UrlParserService } from '../services/UrlParserService';
+import UsageTrackingService from '../services/UsageTrackingService';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface AddVideoModalProps {
   isOpen: boolean;
@@ -16,8 +19,12 @@ interface VideoInput {
 }
 
 export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, onAddVideo }) => {
+  const { currentOrgId } = useAuth();
+  const navigate = useNavigate();
   const [videoInputs, setVideoInputs] = useState<VideoInput[]>([{ id: '1', url: '', detectedPlatform: null }]);
   const [urlError, setUrlError] = useState<string | null>(null);
+  const [videosLeft, setVideosLeft] = useState(999999);
+  const [isAtVideoLimit, setIsAtVideoLimit] = useState(false);
 
   // Auto-detect URL from clipboard when modal opens
   useEffect(() => {
@@ -31,12 +38,23 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
       };
       
       checkClipboard();
+      
+      // Load usage limits
+      if (currentOrgId) {
+        UsageTrackingService.getUsage(currentOrgId).then(usage => {
+          UsageTrackingService.getLimits(currentOrgId).then(limits => {
+            const left = limits.maxVideos === -1 ? 999999 : Math.max(0, limits.maxVideos - usage.trackedVideos);
+            setVideosLeft(left);
+            setIsAtVideoLimit(left === 0);
+          });
+        });
+      }
     } else {
       // Reset when modal closes
       setVideoInputs([{ id: '1', url: '', detectedPlatform: null }]);
       setUrlError(null);
     }
-  }, [isOpen]);
+  }, [isOpen, currentOrgId]);
 
   const handleAddVideoInput = () => {
     setVideoInputs([...videoInputs, { id: Date.now().toString(), url: '', detectedPlatform: null }]);
@@ -174,6 +192,59 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
               </span>
             </div>
           )}
+
+          {/* Usage Limit Warnings */}
+          {(() => {
+            const validVideosCount = videoInputs.filter(input => input.url.trim() && input.detectedPlatform).length;
+            const videosOverLimit = validVideosCount > videosLeft;
+            const videosToAdd = Math.min(validVideosCount, videosLeft);
+
+            if (isAtVideoLimit) {
+              return (
+                <div className="flex items-start gap-3 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                  <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-red-300 mb-1">
+                      Video limit reached!
+                    </p>
+                    <p className="text-xs text-red-300/80 mb-2">
+                      You've reached your maximum of tracked videos. Upgrade to add more.
+                    </p>
+                    <button
+                      onClick={() => navigate('/subscription')}
+                      className="text-xs font-medium text-white bg-red-500/20 hover:bg-red-500/30 px-3 py-1.5 rounded-md transition-colors"
+                    >
+                      Upgrade Plan →
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
+            if (videosOverLimit) {
+              return (
+                <div className="flex items-start gap-3 px-4 py-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                  <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-yellow-300 mb-1">
+                      Limit warning
+                    </p>
+                    <p className="text-xs text-yellow-300/80 mb-2">
+                      Only <span className="font-semibold">{videosToAdd} of {validVideosCount} videos</span> will be added. You have {videosLeft} video slots remaining.
+                    </p>
+                    <button
+                      onClick={() => navigate('/subscription')}
+                      className="text-xs font-medium text-white bg-yellow-500/20 hover:bg-yellow-500/30 px-3 py-1.5 rounded-md transition-colors"
+                    >
+                      Upgrade for More →
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
+            return null;
+          })()}
         </div>
 
         {/* Footer */}
@@ -191,10 +262,10 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
             </button>
             <button
               onClick={handleSubmit}
-              disabled={videoInputs.every(input => !input.url.trim())}
+              disabled={isAtVideoLimit || videoInputs.every(input => !input.url.trim())}
               className="px-4 py-2 text-sm font-bold text-black bg-white rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
             >
-              Add Videos
+              {isAtVideoLimit ? 'Limit Reached' : 'Add Videos'}
             </button>
           </div>
         </div>
