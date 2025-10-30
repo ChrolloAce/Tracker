@@ -27,8 +27,24 @@ const BillingTabContent: React.FC = () => {
   const [currentPlan, setCurrentPlan] = useState<PlanTier>('free');
   const [subscription, setSubscription] = useState<any>(null);
   const [usageStatus, setUsageStatus] = useState<any[]>([]);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   useEffect(() => {
+    // Check for success parameter in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success') === 'true') {
+      setShowSuccessMessage(true);
+      // Remove the parameter from URL
+      urlParams.delete('success');
+      const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+      window.history.replaceState({}, '', newUrl);
+      
+      // Reload billing info after a short delay to let webhook complete
+      setTimeout(() => {
+        loadBillingInfo();
+      }, 2000);
+    }
+    
     loadBillingInfo();
   }, [currentOrgId]);
 
@@ -68,6 +84,14 @@ const BillingTabContent: React.FC = () => {
   }
 
   const planDetails = SUBSCRIPTION_PLANS[currentPlan];
+  
+  // Auto-dismiss success message after 5 seconds
+  useEffect(() => {
+    if (showSuccessMessage) {
+      const timer = setTimeout(() => setShowSuccessMessage(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccessMessage]);
   
   // Format dates - handle both Timestamp objects and Date objects
   const startDate = subscription?.createdAt 
@@ -215,6 +239,29 @@ const BillingTabContent: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Success Message */}
+      {showSuccessMessage && (
+        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex items-start gap-3">
+          <div className="flex items-center justify-center w-10 h-10 bg-emerald-500/20 rounded-full flex-shrink-0">
+            <TrendingUp className="w-5 h-5 text-emerald-400" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-emerald-300 mb-1">
+              Subscription Updated Successfully!
+            </h3>
+            <p className="text-sm text-emerald-300/80">
+              Your subscription has been upgraded. Your new plan features and limits are now active. Refresh the page if you don't see updates.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowSuccessMessage(false)}
+            className="text-emerald-400 hover:text-emerald-300 p-1"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Your Subscription</h2>
