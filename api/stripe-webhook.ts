@@ -105,26 +105,43 @@ export default async function handler(
 }
 
 /**
+ * Helper: Find organization by Stripe customer ID
+ */
+async function findOrgByCustomerId(db: any, customerId: string): Promise<{ orgId: string; subRef: any } | null> {
+  console.log(`🔍 Looking for org with Stripe customer ID: ${customerId}`);
+  
+  const orgsSnapshot = await db.collection('organizations').get();
+  
+  for (const orgDoc of orgsSnapshot.docs) {
+    const subDoc = await db
+      .collection('organizations')
+      .doc(orgDoc.id)
+      .collection('billing')
+      .doc('subscription')
+      .get();
+    
+    if (subDoc.exists && subDoc.data()?.stripeCustomerId === customerId) {
+      console.log(`✅ Found organization: ${orgDoc.id}`);
+      return {
+        orgId: orgDoc.id,
+        subRef: subDoc.ref
+      };
+    }
+  }
+  
+  console.error(`❌ No organization found for customer: ${customerId}`);
+  return null;
+}
+
+/**
  * Handle subscription creation/update
  */
 async function handleSubscriptionUpdate(db: any, subscription: Stripe.Subscription) {
   const customerId = subscription.customer as string;
   const subscriptionId = subscription.id;
   
-  // Find org by Stripe customer ID
-  const orgsSnapshot = await db
-    .collectionGroup('subscription')
-    .where('stripeCustomerId', '==', customerId)
-    .limit(1)
-    .get();
-
-  if (orgsSnapshot.empty) {
-    console.error('No organization found for customer:', customerId);
-    return;
-  }
-
-  const subDoc = orgsSnapshot.docs[0];
-  const orgId = subDoc.ref.parent.parent.id;
+  const org = await findOrgByCustomerId(db, customerId);
+  if (!org) return;
 
   // Get plan tier from price ID
   const priceId = subscription.items.data[0].price.id;
@@ -138,14 +155,15 @@ async function handleSubscriptionUpdate(db: any, subscription: Stripe.Subscripti
     return;
   }
 
-  console.log(`📝 Updating Firebase for org ${orgId}: ${planTier} (${subscription.status})`);
+  console.log(`📝 Updating Firebase for org ${org.orgId}: ${planTier} (${subscription.status})`);
 
   // Update subscription
-  await subDoc.ref.update({
+  await org.subRef.update({
     planTier,
     status: subscription.status,
     stripeSubscriptionId: subscriptionId,
     stripePriceId: priceId,
+    stripeCustomerId: customerId,
     currentPeriodStart: new Date(subscription.current_period_start * 1000),
     currentPeriodEnd: new Date(subscription.current_period_end * 1000),
     cancelAtPeriodEnd: subscription.cancel_at_period_end,
@@ -153,7 +171,7 @@ async function handleSubscriptionUpdate(db: any, subscription: Stripe.Subscripti
     updatedAt: new Date(),
   });
 
-  console.log(`✅ SUCCESS: Updated subscription for org ${orgId} to ${planTier} (${subscription.status})`);
+  console.log(`✅ SUCCESS: Updated subscription for org ${org.orgId} to ${planTier} (${subscription.status})`);
   console.log(`✅ Subscription expires: ${new Date(subscription.current_period_end * 1000).toISOString()}`);
 }
 
@@ -163,17 +181,10 @@ async function handleSubscriptionUpdate(db: any, subscription: Stripe.Subscripti
 async function handleSubscriptionDeleted(db: any, subscription: Stripe.Subscription) {
   const customerId = subscription.customer as string;
   
-  const orgsSnapshot = await db
-    .collectionGroup('subscription')
-    .where('stripeCustomerId', '==', customerId)
-    .limit(1)
-    .get();
-
-  if (orgsSnapshot.empty) return;
-
-  const subDoc = orgsSnapshot.docs[0];
+  const org = await findOrgByCustomerId(db, customerId);
+  if (!org) return;
   
-  await subDoc.ref.update({
+  await org.subRef.update({
     status: 'canceled',
     planTier: 'basic', // Downgrade to basic
     updatedAt: new Date(),
@@ -188,18 +199,11 @@ async function handleSubscriptionDeleted(db: any, subscription: Stripe.Subscript
 async function handlePaymentSucceeded(db: any, invoice: Stripe.Invoice) {
   const customerId = invoice.customer as string;
   
-  const orgsSnapshot = await db
-    .collectionGroup('subscription')
-    .where('stripeCustomerId', '==', customerId)
-    .limit(1)
-    .get();
-
-  if (orgsSnapshot.empty) return;
-
-  const subDoc = orgsSnapshot.docs[0];
+  const org = await findOrgByCustomerId(db, customerId);
+  if (!org) return;
   
   // Reset monthly usage counters on payment
-  await subDoc.ref.update({
+  await org.subRef.update({
     status: 'active',
     'usage.mcpCalls': 0,
     'usage.lastReset': new Date(),
@@ -215,17 +219,10 @@ async function handlePaymentSucceeded(db: any, invoice: Stripe.Invoice) {
 async function handlePaymentFailed(db: any, invoice: Stripe.Invoice) {
   const customerId = invoice.customer as string;
   
-  const orgsSnapshot = await db
-    .collectionGroup('subscription')
-    .where('stripeCustomerId', '==', customerId)
-    .limit(1)
-    .get();
-
-  if (orgsSnapshot.empty) return;
-
-  const subDoc = orgsSnapshot.docs[0];
+  const org = await findOrgByCustomerId(db, customerId);
+  if (!org) return;
   
-  await subDoc.ref.update({
+  await org.subRef.update({
     status: 'past_due',
     updatedAt: new Date(),
   });
