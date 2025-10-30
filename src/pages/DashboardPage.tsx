@@ -519,6 +519,13 @@ function DashboardPage() {
       return;
     }
 
+    // 🎯 CREATORS: Skip loading ALL organization data - they only need campaigns
+    if (userRole === 'creator') {
+      console.log('🎯 Creator role detected - skipping organization data load');
+      setRulesLoadedFromFirebase(true);
+      setDataLoadedFromFirebase(true);
+      return;
+    }
     
     // Initialize theme
     ThemeService.initializeTheme();
@@ -747,11 +754,12 @@ function DashboardPage() {
     }
     
     })(); // End of async IIFE
-  }, [user, currentOrgId, currentProjectId]); // Reload when project changes!
+  }, [user, currentOrgId, currentProjectId, userRole]); // Reload when project changes or role is loaded!
 
   // Auto-sync revenue data when date filters change
   useEffect(() => {
     if (!user || !currentOrgId || !currentProjectId) return;
+    if (userRole === 'creator') return; // 🎯 Creators don't see revenue metrics
     if (revenueIntegrations.length === 0) return;
 
     const syncRevenue = async () => {
@@ -799,6 +807,7 @@ function DashboardPage() {
   // Smart sync monitoring - Auto-refresh when accounts finish syncing
   useEffect(() => {
     if (!user || !currentOrgId || !currentProjectId) return;
+    if (userRole === 'creator') return; // 🎯 Creators don't sync accounts
 
 
     const accountsRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts');
@@ -868,7 +877,7 @@ function DashboardPage() {
     return () => {
       unsubscribe();
     };
-  }, [user, currentOrgId, currentProjectId]);
+  }, [user, currentOrgId, currentProjectId, userRole]);
 
   // Apply CSS variables to the root and expose fix function
   useEffect(() => {
