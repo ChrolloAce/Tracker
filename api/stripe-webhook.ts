@@ -160,8 +160,25 @@ async function handleSubscriptionUpdate(db: any, subscription: Stripe.Subscripti
   // Handle incomplete subscriptions (payment processing)
   if (subscription.status === 'incomplete' || subscription.status === 'incomplete_expired') {
     console.log('⏳ Subscription is incomplete - payment still processing');
+    
+    // Check if org already has this subscription upgraded (webhooks can arrive out of order)
+    const currentData = (await org.subRef.get()).data();
+    const currentPlan = currentData?.planTier || 'free';
+    const currentSubId = currentData?.stripeSubscriptionId;
+    
+    // If this is the SAME subscription and already upgraded, don't downgrade!
+    if (currentSubId === subscriptionId && currentPlan !== 'free') {
+      console.log(`⚠️ Subscription ${subscriptionId} already upgraded to ${currentPlan} - ignoring incomplete status (webhook out of order)`);
+      await org.subRef.update({
+        status: subscription.status,
+        updatedAt: Timestamp.now(),
+      });
+      return;
+    }
+    
+    // Otherwise, keep on free until payment completes
     await org.subRef.update({
-      planTier: 'free', // Keep on free until payment completes
+      planTier: 'free',
       status: subscription.status,
       stripeSubscriptionId: subscriptionId,
       stripePriceId: priceId,
