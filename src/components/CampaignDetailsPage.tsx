@@ -176,12 +176,15 @@ const CampaignDetailsPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Key Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-              <div className="text-sm text-gray-400 mb-1">Reward Rate</div>
-              <div className="text-2xl font-bold text-emerald-400">{getRewardRate()}</div>
-            </div>
+          {/* Key Stats - Hide Reward Rate and Participants for creators */}
+          <div className={`grid grid-cols-2 ${isCreator ? 'md:grid-cols-2' : 'md:grid-cols-4'} gap-4`}>
+            {/* Hide Reward Rate for creators */}
+            {!isCreator && (
+              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                <div className="text-sm text-gray-400 mb-1">Reward Rate</div>
+                <div className="text-2xl font-bold text-emerald-400">{getRewardRate()}</div>
+              </div>
+            )}
 
             <div className="bg-white/5 rounded-xl p-4 border border-white/10">
               <div className="text-sm text-gray-400 mb-1">Total Views</div>
@@ -193,10 +196,13 @@ const CampaignDetailsPage: React.FC = () => {
               <div className="text-2xl font-bold text-white">${campaign.totalEarnings.toFixed(2)}</div>
             </div>
 
-            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-              <div className="text-sm text-gray-400 mb-1">Participants</div>
-              <div className="text-2xl font-bold text-white">{campaign.participantIds.length}</div>
-            </div>
+            {/* Hide Participants for creators */}
+            {!isCreator && (
+              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                <div className="text-sm text-gray-400 mb-1">Participants</div>
+                <div className="text-2xl font-bold text-white">{campaign.participantIds.length}</div>
+              </div>
+            )}
           </div>
         </div>
 

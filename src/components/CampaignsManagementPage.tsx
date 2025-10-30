@@ -93,27 +93,32 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
   return (
     <div className="space-y-6">
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Stats Overview - Creators only see Active Campaigns */}
+      <div className={`grid grid-cols-1 ${isCreator ? 'md:grid-cols-1' : 'md:grid-cols-4'} gap-4`}>
         <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
           <div className="text-sm text-gray-400 mb-2">Active Campaigns</div>
           <div className="text-3xl font-bold text-white">{activeCampaigns.length}</div>
         </div>
 
-        <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
-          <div className="text-sm text-gray-400 mb-2">Total Participants</div>
-          <div className="text-3xl font-bold text-white">{totalParticipants}</div>
-        </div>
+        {/* Hide these stats for creators */}
+        {!isCreator && (
+          <>
+            <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
+              <div className="text-sm text-gray-400 mb-2">Total Participants</div>
+              <div className="text-3xl font-bold text-white">{totalParticipants}</div>
+            </div>
 
-        <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
-          <div className="text-sm text-gray-400 mb-2">Total Views</div>
-          <div className="text-3xl font-bold text-white">{totalViews.toLocaleString()}</div>
-        </div>
+            <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
+              <div className="text-sm text-gray-400 mb-2">Total Views</div>
+              <div className="text-3xl font-bold text-white">{totalViews.toLocaleString()}</div>
+            </div>
 
-        <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
-          <div className="text-sm text-gray-400 mb-2">Total Paid Out</div>
-          <div className="text-3xl font-bold text-white">${totalPaidOut.toFixed(2)}</div>
-        </div>
+            <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
+              <div className="text-sm text-gray-400 mb-2">Total Paid Out</div>
+              <div className="text-3xl font-bold text-white">${totalPaidOut.toFixed(2)}</div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Campaigns List */}
@@ -389,8 +394,13 @@ const CampaignManagementCard: React.FC<{
           <div className="flex items-center justify-between pt-3 border-t border-white/5">
             <div className="flex items-center gap-4 text-xs text-gray-500">
               <span>{campaign.totalVideos} submissions</span>
-              <span className="w-1 h-1 bg-gray-600 rounded-full"></span>
-              <span>{campaign.participantIds.length} creators</span>
+              {/* Hide creator count for creators */}
+              {!isCreator && (
+                <>
+                  <span className="w-1 h-1 bg-gray-600 rounded-full"></span>
+                  <span>{campaign.participantIds.length} creators</span>
+                </>
+              )}
             </div>
           </div>
         </div>
