@@ -295,8 +295,8 @@ export const DEFAULT_PERMISSIONS: Record<'owner' | 'admin' | 'member' | 'creator
       rules: false,
       contracts: false,
       team: false,
-      creators: true, // Access to creator portal
-      campaigns: false, // Creators view campaigns in their portal
+      creators: true, // Access to creator portal (Payouts)
+      campaigns: true, // Creators can view their assigned campaigns
       extension: false, // Creators don't need extension
       settings: true,
     },

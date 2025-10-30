@@ -494,6 +494,13 @@ function DashboardPage() {
       try {
         const role = await OrganizationService.getUserRole(currentOrgId, user.uid);
         setUserRole(role || 'member');
+        
+        // 🎯 AUTO-REDIRECT CREATORS TO CAMPAIGNS TAB (they don't see dashboard)
+        if (role === 'creator' && activeTab === 'dashboard') {
+          console.log('🎯 Creator detected! Redirecting to campaigns tab...');
+          setActiveTab('campaigns');
+          localStorage.setItem('activeTab', 'campaigns');
+        }
       } catch (error) {
         console.error('Failed to load user role:', error);
         setUserRole('member');
@@ -501,7 +508,7 @@ function DashboardPage() {
     };
     
     loadUserRole();
-  }, [user, currentOrgId]);
+  }, [user, currentOrgId, activeTab]);
 
   // One-time data loading (no real-time listeners)
   useEffect(() => {
