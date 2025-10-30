@@ -93,33 +93,30 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
   return (
     <div className="space-y-6">
 
-      {/* Stats Overview - Creators only see Active Campaigns */}
-      <div className={`grid grid-cols-1 ${isCreator ? 'md:grid-cols-1' : 'md:grid-cols-4'} gap-4`}>
-        <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
-          <div className="text-sm text-gray-400 mb-2">Active Campaigns</div>
-          <div className="text-3xl font-bold text-white">{activeCampaigns.length}</div>
+      {/* Stats Overview - Hide entirely for creators */}
+      {!isCreator && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
+            <div className="text-sm text-gray-400 mb-2">Active Campaigns</div>
+            <div className="text-3xl font-bold text-white">{activeCampaigns.length}</div>
+          </div>
+
+          <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
+            <div className="text-sm text-gray-400 mb-2">Total Participants</div>
+            <div className="text-3xl font-bold text-white">{totalParticipants}</div>
+          </div>
+
+          <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
+            <div className="text-sm text-gray-400 mb-2">Total Views</div>
+            <div className="text-3xl font-bold text-white">{totalViews.toLocaleString()}</div>
+          </div>
+
+          <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
+            <div className="text-sm text-gray-400 mb-2">Total Paid Out</div>
+            <div className="text-3xl font-bold text-white">${totalPaidOut.toFixed(2)}</div>
+          </div>
         </div>
-
-        {/* Hide these stats for creators */}
-        {!isCreator && (
-          <>
-            <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
-              <div className="text-sm text-gray-400 mb-2">Total Participants</div>
-              <div className="text-3xl font-bold text-white">{totalParticipants}</div>
-            </div>
-
-            <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
-              <div className="text-sm text-gray-400 mb-2">Total Views</div>
-              <div className="text-3xl font-bold text-white">{totalViews.toLocaleString()}</div>
-            </div>
-
-            <div className="rounded-xl border border-white/10 p-6" style={{ backgroundColor: '#121214' }}>
-              <div className="text-sm text-gray-400 mb-2">Total Paid Out</div>
-              <div className="text-3xl font-bold text-white">${totalPaidOut.toFixed(2)}</div>
-            </div>
-          </>
-        )}
-      </div>
+      )}
 
       {/* Campaigns List */}
       {campaigns.length === 0 ? (
