@@ -41,6 +41,9 @@
     },
     "api/create-portal-session.ts": {
       "maxDuration": 30
+    },
+    "api/sync-usage-counts.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
