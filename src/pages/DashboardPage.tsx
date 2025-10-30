@@ -384,6 +384,11 @@ function DashboardPage() {
   // Save selected rules to Firestore (per user, per project)
   // Only save after initial load to avoid overwriting on mount
   useEffect(() => {
+    // 🎯 CREATORS: Skip rule saving
+    if (userRole === 'creator') {
+      return;
+    }
+    
     console.log('💾 Save effect triggered:', {
       hasUser: !!user,
       hasOrg: !!currentOrgId,
@@ -428,15 +433,20 @@ function DashboardPage() {
     };
     
     saveSelectedRules();
-  }, [selectedRuleIds, user, currentOrgId, currentProjectId, rulesLoadedFromFirebase]);
+  }, [selectedRuleIds, user, currentOrgId, currentProjectId, rulesLoadedFromFirebase, userRole]);
 
   // Debug: Log when rules or selectedRuleIds change
   useEffect(() => {
+    // 🎯 CREATORS: Skip debug logs
+    if (userRole === 'creator') {
+      return;
+    }
+    
     console.log('🔄 Rules or selection changed:');
     console.log('  - Selected Rule IDs:', selectedRuleIds);
     console.log('  - Available Rules:', allRules.length);
     console.log('  - Matched Rules:', allRules.filter(r => selectedRuleIds.includes(r.id)).length);
-  }, [selectedRuleIds, allRules]);
+  }, [selectedRuleIds, allRules, userRole]);
 
   // Save accounts page view mode to localStorage
   useEffect(() => {
@@ -520,10 +530,13 @@ function DashboardPage() {
     }
 
     // 🎯 CREATORS: Skip loading ALL organization data - they only need campaigns
-    if (userRole === 'creator') {
-      console.log('🎯 Creator role detected - skipping organization data load');
-      setRulesLoadedFromFirebase(true);
-      setDataLoadedFromFirebase(true);
+    // Also skip if role not loaded yet to prevent unnecessary cache loading
+    if (userRole === 'creator' || userRole === '') {
+      if (userRole === 'creator') {
+        console.log('🎯 Creator role detected - skipping organization data load');
+        setRulesLoadedFromFirebase(true);
+        setDataLoadedFromFirebase(true);
+      }
       return;
     }
     
@@ -954,7 +967,8 @@ function DashboardPage() {
 
   const submissionsWithoutDateFilter = useMemo(() => {
     // 🎯 CREATORS: Skip all video filtering calculations
-    if (userRole === 'creator') {
+    // Also skip if role not loaded yet (userRole === '')
+    if (userRole === 'creator' || userRole === '') {
       return [];
     }
     
@@ -1096,7 +1110,8 @@ function DashboardPage() {
   // Filter submissions based on date range, platform, and accounts (memoized to prevent infinite loops)
   const filteredSubmissions = useMemo(() => {
     // 🎯 CREATORS: Skip all date filtering calculations
-    if (userRole === 'creator') {
+    // Also skip if role not loaded yet (userRole === '')
+    if (userRole === 'creator' || userRole === '') {
       return [];
     }
     
