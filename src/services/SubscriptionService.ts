@@ -308,7 +308,7 @@ class SubscriptionService {
     
     const subscription: Omit<OrganizationSubscription, 'id'> = {
       orgId,
-      planTier: 'basic',
+      planTier: 'free',
       status: 'trialing',
       stripeCustomerId: '',
       stripeSubscriptionId: '',
