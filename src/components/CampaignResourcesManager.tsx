@@ -173,19 +173,19 @@ const CampaignResourcesManager: React.FC<CampaignResourcesManagerProps> = ({
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-1">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h3 className="text-xl font-bold text-white">
             Campaign Resources
           </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-sm text-gray-400 mt-1">
             Links, images, and files for participants
           </p>
         </div>
         {isAdmin && (
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />
             Add Resource
@@ -193,73 +193,79 @@ const CampaignResourcesManager: React.FC<CampaignResourcesManagerProps> = ({
         )}
       </div>
 
-      {/* Resources List */}
+      {/* Resources List - Full Width Cards */}
       {resources.length === 0 ? (
-        <div className="text-center py-8 bg-gray-50 dark:bg-zinc-900 rounded-lg border border-gray-200 dark:border-white/10">
-          <File className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-          <p className="text-gray-500 dark:text-gray-400">No resources yet</p>
+        <div className="text-center py-12 bg-white/5 rounded-xl border border-white/10">
+          <File className="w-12 h-12 text-gray-500 mx-auto mb-3" />
+          <p className="text-gray-400">No resources yet</p>
           {isAdmin && (
-            <p className="text-sm text-gray-400 mt-1">Add links or files to share with participants</p>
+            <p className="text-sm text-gray-500 mt-1">Add links or files to share with participants</p>
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-3">
           {resources.map(resource => (
             <div
               key={resource.id}
-              className="bg-white dark:bg-zinc-900 rounded-lg border border-gray-200 dark:border-white/10 p-4 hover:border-emerald-500 dark:hover:border-emerald-500 transition-colors group"
+              className="bg-white/5 rounded-lg border border-white/10 p-4 hover:bg-white/10 hover:border-emerald-500/50 transition-all group"
             >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl">
-                    {CampaignResourcesService.getFileIcon(resource)}
-                  </span>
+              <div className="flex items-center justify-between">
+                {/* Left: Icon and Info */}
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
+                    <span className="text-2xl">
+                      {CampaignResourcesService.getFileIcon(resource)}
+                    </span>
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-semibold text-gray-900 dark:text-white truncate">
+                    <h4 className="font-semibold text-white text-base mb-1 truncate">
                       {resource.name}
                     </h4>
+                    <div className="flex items-center gap-3 text-sm text-gray-400">
+                      <span className="capitalize">{resource.type}</span>
+                      {resource.downloadCount > 0 && (
+                        <>
+                          <span className="w-1 h-1 bg-gray-600 rounded-full"></span>
+                          <span>{resource.downloadCount} download{resource.downloadCount !== 1 ? 's' : ''}</span>
+                        </>
+                      )}
+                    </div>
                     {resource.description && (
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                      <p className="text-sm text-gray-500 mt-1 line-clamp-1">
                         {resource.description}
                       </p>
                     )}
                   </div>
                 </div>
-                {isAdmin && (
+
+                {/* Right: Actions */}
+                <div className="flex items-center gap-2 ml-4 flex-shrink-0">
                   <button
-                    onClick={() => handleDeleteResource(resource)}
-                    className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => handleDownload(resource)}
+                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors flex items-center gap-2 font-medium"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    {resource.type === 'link' ? (
+                      <>
+                        <ExternalLink className="w-4 h-4" />
+                        Open Link
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        Download
+                      </>
+                    )}
                   </button>
-                )}
+                  {isAdmin && (
+                    <button
+                      onClick={() => handleDeleteResource(resource)}
+                      className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               </div>
-
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500 dark:text-gray-400">
-                  {resource.type === 'link' ? 'Link' : resource.fileSize ? CampaignResourcesService.formatFileSize(resource.fileSize) : '—'}
-                </span>
-                <span className="text-gray-400 dark:text-gray-500">
-                  {resource.downloadCount} downloads
-                </span>
-              </div>
-
-              <button
-                onClick={() => handleDownload(resource)}
-                className="w-full mt-3 px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg transition-colors flex items-center justify-center gap-2 font-medium"
-              >
-                {resource.type === 'link' ? (
-                  <>
-                    <ExternalLink className="w-4 h-4" />
-                    Open Link
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4" />
-                    Download
-                  </>
-                )}
-              </button>
             </div>
           ))}
         </div>
