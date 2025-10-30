@@ -240,8 +240,8 @@ const CampaignManagementCard: React.FC<{
       style={{ backgroundColor: '#0b0b0b' }}
     >
       <div className="flex">
-        {/* Left side - Thumbnail (25-30%) */}
-        <div className="w-1/4 min-w-[200px] relative overflow-hidden">
+        {/* Left side - Thumbnail - Square 1:1 aspect ratio */}
+        <div className="w-64 aspect-square relative overflow-hidden flex-shrink-0">
           {campaign.coverImage ? (
             <img 
               src={campaign.coverImage} 
