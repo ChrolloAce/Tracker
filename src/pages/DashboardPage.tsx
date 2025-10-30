@@ -953,6 +953,11 @@ function DashboardPage() {
   }, [allRules]);
 
   const submissionsWithoutDateFilter = useMemo(() => {
+    // 🎯 CREATORS: Skip all video filtering calculations
+    if (userRole === 'creator') {
+      return [];
+    }
+    
     console.log('🔄 Recalculating submissionsWithoutDateFilter with rule filters...');
     console.log('📊 Raw submissions count:', submissions.length);
     console.log('🎯 Active rules count:', allRules.filter(r => r.isActive).length);
@@ -1086,10 +1091,15 @@ function DashboardPage() {
     console.log('─'.repeat(50));
     
     return filtered;
-  }, [submissions, dashboardPlatformFilter, selectedAccountIds, trackedAccounts, allRules, selectedRuleIds, rulesFingerprint]);
+  }, [submissions, dashboardPlatformFilter, selectedAccountIds, trackedAccounts, allRules, selectedRuleIds, rulesFingerprint, userRole]);
 
   // Filter submissions based on date range, platform, and accounts (memoized to prevent infinite loops)
   const filteredSubmissions = useMemo(() => {
+    // 🎯 CREATORS: Skip all date filtering calculations
+    if (userRole === 'creator') {
+      return [];
+    }
+    
     console.log('📅 Applying date filter to rule-filtered submissions...');
     console.log('📊 Input (submissionsWithoutDateFilter):', submissionsWithoutDateFilter.length);
     console.log('📆 Date filter:', dateFilter);
@@ -1110,7 +1120,7 @@ function DashboardPage() {
     console.log('═'.repeat(50));
     
     return filtered;
-  }, [submissionsWithoutDateFilter, dateFilter, customDateRange]);
+  }, [submissionsWithoutDateFilter, dateFilter, customDateRange, userRole]);
 
   // Combine real submissions with pending videos for immediate UI feedback
   const combinedSubmissions = useMemo(() => {
