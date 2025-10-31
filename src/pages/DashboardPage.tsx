@@ -50,7 +50,8 @@ import { RevenueMetrics, RevenueIntegration } from '../types/revenue';
 import { cssVariables } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { Timestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit, doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { signOut } from 'firebase/auth';
+import { db, auth } from '../services/firebase';
 import { fixVideoPlatforms } from '../services/FixVideoPlatform';
 import { TrackedAccount, TrackedLink } from '../types/firestore';
 import { TrackingRule, RuleCondition, RuleConditionType } from '../types/rules';
@@ -3291,12 +3292,13 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       {/* Sign Out Confirmation Modal */}
       <SignOutModal
         isOpen={isSignOutModalOpen}
-        onConfirm={() => {
-          const { signOut } = require('firebase/auth');
-          const { auth } = require('../services/firebase');
-          signOut(auth).then(() => {
+        onConfirm={async () => {
+          try {
+            await signOut(auth);
             window.location.href = '/login';
-          });
+          } catch (error) {
+            console.error('Failed to sign out:', error);
+          }
         }}
         onCancel={() => setIsSignOutModalOpen(false)}
       />
