@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Link2, Slack, Chrome, ChevronLeft } from 'lucide-react';
-import blackLogo from '../components/blacklogo.png';
+import viewtrackLogo from '/viewtracknewlogo.png';
 import TeamInvitationService from '../services/TeamInvitationService';
 
 const LoginPage: React.FC = () => {
@@ -93,7 +93,7 @@ const LoginPage: React.FC = () => {
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-8">
         <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-12 text-center">
           <div className="mb-6">
-            <img src={blackLogo} alt="ViewTrack" className="h-10 w-auto mx-auto" />
+            <img src={viewtrackLogo} alt="ViewTrack" className="h-10 w-auto mx-auto" />
           </div>
           <div className="flex items-center justify-center mb-6">
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-black"></div>
@@ -126,7 +126,7 @@ const LoginPage: React.FC = () => {
 
           {/* Logo & Branding */}
           <div className="mb-8 mt-4">
-            <img src={blackLogo} alt="ViewTrack" className="h-10 w-auto mb-2" />
+            <img src={viewtrackLogo} alt="ViewTrack" className="h-10 w-auto mb-2" />
           </div>
 
           {/* Title & Subtitle */}

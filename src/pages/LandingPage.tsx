@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TrendingUp, BookOpen, Star, Play, Heart, MessageCircle, Share2, Video, UserPlus } from 'lucide-react';
-import blackLogo from '../components/blacklogo.png';
+import viewtrackLogo from '/viewtracknewlogo.png';
 import dashboardImg from '/dashboard.png';
 import graphsImg from '/LANDINGPAGE-PHOOTS/GRAPHS.png';
 import topAccountsImg from '/LANDINGPAGE-PHOOTS/TOP ACCOUNTS.png';
@@ -24,7 +24,7 @@ const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <img src={blackLogo} alt="ViewTrack" className="h-10 w-auto" />
+              <img src={viewtrackLogo} alt="ViewTrack" className="h-10 w-auto" />
             </div>
             <button
               onClick={handleGetStarted}
@@ -66,9 +66,9 @@ const LandingPage: React.FC = () => {
                 <h1 className="text-6xl font-extrabold text-[#111111] leading-[1.1] tracking-tight">
                   Track, Manage and scale
                 </h1>
-                <h2 className="text-[56px] font-normal text-[#9B9B9B] leading-[1.1] tracking-tight">
+                <h1 className="text-6xl font-extrabold text-[#9B9B9B] leading-[1.1] tracking-tight">
                   your UGC and influencer campaigns
-                </h2>
+                </h1>
               </div>
 
               {/* Supporting Sentence */}
