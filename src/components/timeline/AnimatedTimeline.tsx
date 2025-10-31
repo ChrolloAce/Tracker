@@ -76,8 +76,8 @@ const AnimatedTimeline: React.FC = () => {
 
   useEffect(() => {
     const observerOptions = {
-      threshold: 0.2,
-      rootMargin: '0px 0px -100px 0px'
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px'
     };
 
     const observer = new IntersectionObserver((entries) => {
@@ -85,11 +85,10 @@ const AnimatedTimeline: React.FC = () => {
         const index = Number(entry.target.getAttribute('data-index'));
         if (entry.isIntersecting) {
           entry.target.classList.add('timeline-visible');
-          setActiveCards(prev => new Set([...prev, index]));
           // Add staggered animation
           setTimeout(() => {
             entry.target.classList.add('timeline-animated');
-          }, index * 100);
+          }, index * 50);
         }
       });
     }, observerOptions);
@@ -112,16 +111,25 @@ const AnimatedTimeline: React.FC = () => {
       const visibleStart = scrolled;
       const visibleEnd = scrolled + viewportHeight;
       
-      // Calculate progress
+      // Calculate progress - make it fill completely
       let progress = 0;
       if (visibleEnd > elementTop) {
-        const distanceScrolled = visibleEnd - elementTop;
-        progress = Math.min(1, distanceScrolled / elementHeight);
+        const distanceScrolled = visibleEnd - elementTop + 100; // Add extra to ensure full fill
+        progress = Math.min(1, distanceScrolled / (elementHeight + 200)); // Adjust for full coverage
       }
       
       // Update the line
-      const percentage = progress * 100;
+      const percentage = Math.min(100, progress * 100);
       pathRef.current.style.strokeDasharray = `${percentage}% ${100 - percentage}%`;
+      
+      // Update active cards based on line progress
+      const cardHeight = elementHeight / timelineData.length;
+      const activeCount = Math.floor((percentage / 100) * timelineData.length) + 1;
+      const newActiveCards = new Set<number>();
+      for (let i = 0; i < Math.min(activeCount, timelineData.length); i++) {
+        newActiveCards.add(i);
+      }
+      setActiveCards(newActiveCards);
     };
 
     window.addEventListener('scroll', animatePath);
@@ -145,15 +153,7 @@ const AnimatedTimeline: React.FC = () => {
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Section Header */}
         <div className="text-center mb-20">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-full mb-6">
-            <span className="text-xs font-semibold uppercase tracking-wide">
-              Product Journey
-            </span>
-          </div>
-          <h2 className="text-5xl font-bold text-gray-900 mb-4">Your Path to Success</h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Follow our proven journey from setup to scale
-          </p>
+          <h2 className="text-5xl font-bold text-gray-900">Viewtrack is all you need to scale</h2>
         </div>
 
         {/* Desktop Timeline */}
@@ -203,10 +203,10 @@ const AnimatedTimeline: React.FC = () => {
                 }`}
               >
                 {/* Connection Node */}
-                <div className={`absolute left-1/2 -ml-4 w-8 h-8 rounded-full shadow-lg z-10 transition-all duration-500 ${
+                <div className={`absolute left-1/2 -ml-4 w-8 h-8 rounded-full shadow-lg z-10 transition-all duration-700 ${
                   activeCards.has(index) 
                     ? 'bg-gray-900 scale-110' 
-                    : 'bg-gray-300 scale-100'
+                    : 'bg-gray-200 scale-90'
                 }`}>
                   <div className={`w-full h-full rounded-full ${
                     activeCards.has(index) ? 'animate-pulse' : ''
@@ -217,10 +217,10 @@ const AnimatedTimeline: React.FC = () => {
                 <div className={`timeline-card-content w-5/12 ${
                   index % 2 === 0 ? 'mr-auto pr-12' : 'ml-auto pl-12'
                 }`}>
-                  <div className={`group relative rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 border-2 ${
+                  <div className={`group relative rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-700 border-2 ${
                     activeCards.has(index)
-                      ? 'bg-gray-900 border-gray-900'
-                      : 'bg-white border-gray-200'
+                      ? 'bg-gray-900 border-gray-900 opacity-100'
+                      : 'bg-white border-gray-200 opacity-30'
                   }`}>
                     {/* Image */}
                     <div className="h-48 overflow-hidden border-b border-gray-200">
