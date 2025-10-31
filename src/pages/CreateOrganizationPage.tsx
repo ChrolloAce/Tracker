@@ -208,68 +208,92 @@ const OrganizationOnboarding: React.FC = () => {
     }
   };
 
+  const progressPercent = (step / totalSteps) * 100;
+
   return (
-    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center p-4">
-      <div className="w-full max-w-3xl">
-        {/* Step Counter */}
-        <div className="mb-8">
-          <div className="flex items-center justify-center gap-2">
-            {[1, 2, 3].map((stepNum, idx) => (
-              <React.Fragment key={stepNum}>
-                <div className="flex flex-col items-center">
-                  <div
-                    className={clsx(
-                      'w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 border-2',
-                      stepNum === step
-                        ? 'bg-white text-black border-white'
-                        : stepNum < step
-                        ? 'bg-gray-700 text-white border-gray-700'
-                        : 'bg-transparent text-gray-600 border-gray-700'
-                    )}
-                  >
-                    {stepNum < step ? <Check className="w-5 h-5" /> : stepNum}
-                  </div>
-                  <span className={clsx(
-                    'text-xs mt-2 font-medium',
-                    stepNum === step ? 'text-white' : 'text-gray-600'
-                  )}>
-                    {stepNum === 1 && 'Details'}
-                    {stepNum === 2 && 'Team'}
-                    {stepNum === 3 && 'Finish'}
-                  </span>
-                </div>
-                {idx < 2 && (
-                  <ChevronRight className={clsx(
-                    'w-5 h-5 mb-6',
-                    stepNum < step ? 'text-gray-700' : 'text-gray-800'
-                  )} />
-                )}
-              </React.Fragment>
-            ))}
-          </div>
+    <div className="min-h-screen bg-[#0A0A0A] flex">
+      {/* Left Panel - Gradient Branding */}
+      <div className="hidden lg:flex lg:w-5/12 xl:w-1/2 bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-600 p-12 flex-col justify-between relative overflow-hidden">
+        {/* Background decoration */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-20 right-20 w-96 h-96 bg-white rounded-full blur-3xl"></div>
+          <div className="absolute bottom-20 left-20 w-96 h-96 bg-white rounded-full blur-3xl"></div>
         </div>
 
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center mb-6">
-            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center">
-              <Building2 className="w-8 h-8 text-black" />
+        <div className="relative z-10">
+          <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-8">
+            <Building2 className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="text-4xl font-bold text-white mb-4 leading-tight">
+            {step === 1 && 'Create Your Organization'}
+            {step === 2 && 'Build Your Team'}
+            {step === 3 && 'Personalize Your Workspace'}
+          </h2>
+          <p className="text-white/80 text-lg mb-8">
+            {step === 1 && 'Set up your workspace and start tracking social media analytics'}
+            {step === 2 && 'Invite team members to collaborate on campaigns and content'}
+            {step === 3 && 'Tell us about your business to get personalized recommendations'}
+          </p>
+
+          {/* Progress Bar */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-white/70">Step {step} of {totalSteps}</span>
+              <span className="text-white/70">{Math.round(progressPercent)}%</span>
+            </div>
+            <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-white rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${progressPercent}%` }}
+              />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">
-            {step === 1 && 'Create an Organization'}
-            {step === 2 && 'Invite your Team'}
-            {step === 3 && 'Almost Done!'}
-          </h1>
-          <p className="text-gray-400">
-            {step === 1 && 'Set up your space to get started'}
-            {step === 2 && 'Collaborate with your team members'}
-            {step === 3 && "Let's personalize your experience"}
-          </p>
         </div>
 
-        {/* Content */}
-        <div className="bg-[#161616] rounded-2xl border border-gray-800 p-8">
+        {/* Bottom Feature List */}
+        <div className="relative z-10 space-y-4">
+          <div className="flex items-center gap-3 text-white/90">
+            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+              <Check className="w-5 h-5" />
+            </div>
+            <span>Track unlimited social accounts</span>
+          </div>
+          <div className="flex items-center gap-3 text-white/90">
+            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+              <Check className="w-5 h-5" />
+            </div>
+            <span>Real-time analytics and insights</span>
+          </div>
+          <div className="flex items-center gap-3 text-white/90">
+            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+              <Check className="w-5 h-5" />
+            </div>
+            <span>Team collaboration tools</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Panel - Form Content */}
+      <div className="w-full lg:w-7/12 xl:w-1/2 flex items-center justify-center p-6 lg:p-12">
+        <div className="w-full max-w-2xl">
+          {/* Mobile Header (hidden on desktop) */}
+          <div className="lg:hidden mb-8 text-center">
+            <div className="w-16 h-16 bg-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Building2 className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-white mb-2">Create Organization</h1>
+            <div className="flex items-center justify-center gap-2 mt-4">
+              {[1, 2, 3].map((s) => (
+                <div key={s} className={clsx(
+                  "h-2 rounded-full transition-all duration-300",
+                  s === step ? "w-12 bg-emerald-500" : s < step ? "w-8 bg-gray-600" : "w-8 bg-gray-800"
+                )} />
+              ))}
+            </div>
+          </div>
+
+          {/* Form Card */}
+          <div className="bg-[#161616] rounded-2xl border border-gray-800/50 p-8 shadow-2xl">
           {/* Step 1: Organization Details */}
           {step === 1 && (
             <div className="space-y-6">
@@ -474,63 +498,67 @@ const OrganizationOnboarding: React.FC = () => {
             </div>
           )}
 
-          {/* Error Message */}
-          {error && (
-            <div className="mt-6 px-4 py-3 bg-red-900/20 border border-red-800 rounded-lg">
-              <p className="text-sm text-red-400">{error}</p>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-800">
-            {step > 1 ? (
-              <button
-                onClick={handleBack}
-                disabled={loading}
-                className="px-6 py-3 text-gray-400 hover:text-white transition-colors disabled:opacity-50 font-medium"
-              >
-                Back
-              </button>
-            ) : (
-              <div />
+            {/* Error Message */}
+            {error && (
+              <div className="mt-6 px-4 py-3 bg-red-900/20 border border-red-800 rounded-lg flex items-center gap-2">
+                <X className="w-5 h-5 text-red-400" />
+                <p className="text-sm text-red-400">{error}</p>
+              </div>
             )}
 
-            <div className="flex items-center space-x-3">
-              {step < totalSteps ? (
-                <>
-                  <button
-                    onClick={() => setStep(totalSteps)}
-                    className="px-6 py-3 text-gray-400 hover:text-white transition-colors font-medium"
-                  >
-                    Skip
-                  </button>
-                  <button
-                    onClick={handleNext}
-                    disabled={!canProceed()}
-                    className="px-6 py-3 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
-                  >
-                    Continue
-                  </button>
-                </>
-              ) : (
+            {/* Actions */}
+            <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-800/50">
+              {step > 1 ? (
                 <button
-                  onClick={handleComplete}
-                  disabled={loading || !canProceed()}
-                  className="px-8 py-3 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 font-semibold"
+                  onClick={handleBack}
+                  disabled={loading}
+                  className="flex items-center gap-2 px-6 py-3 text-gray-400 hover:text-white transition-colors disabled:opacity-50 font-medium"
                 >
-                  {loading ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                      <span>Creating...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Check className="w-5 h-5" />
-                      <span>Complete</span>
-                    </>
-                  )}
+                  <ChevronRight className="w-4 h-4 rotate-180" />
+                  Back
                 </button>
+              ) : (
+                <div />
               )}
+
+              <div className="flex items-center gap-3">
+                {step < totalSteps ? (
+                  <>
+                    <button
+                      onClick={() => setStep(totalSteps)}
+                      className="px-6 py-3 text-gray-400 hover:text-white transition-colors font-medium"
+                    >
+                      Skip
+                    </button>
+                    <button
+                      onClick={handleNext}
+                      disabled={!canProceed()}
+                      className="flex items-center gap-2 px-8 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg shadow-emerald-600/20"
+                    >
+                      Continue
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleComplete}
+                    disabled={loading || !canProceed()}
+                    className="px-8 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-semibold shadow-lg shadow-emerald-600/20"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Creating Organization...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-5 h-5" />
+                        <span>Create Organization</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
