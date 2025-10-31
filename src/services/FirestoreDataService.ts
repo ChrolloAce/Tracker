@@ -584,7 +584,13 @@ class FirestoreDataService {
     console.log('✅ Added public link to batch');
     
     console.log('💾 Committing batch...');
-    await batch.commit();
+    try {
+      await batch.commit();
+      console.log(`✅ Batch committed successfully`);
+    } catch (batchError) {
+      console.error('❌ Batch commit failed:', batchError);
+      throw new Error(`Failed to save link to database: ${batchError instanceof Error ? batchError.message : 'Unknown error'}`);
+    }
     console.log(`✅ Created link ${linkData.shortCode} in project ${projectId} - Link ID: ${linkRef.id}`);
     return linkRef.id;
   }
