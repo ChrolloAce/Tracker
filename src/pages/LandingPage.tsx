@@ -358,46 +358,9 @@ const LandingPage: React.FC = () => {
             <p className="text-xl text-gray-600">Choose the perfect plan for your needs</p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
-            {/* Free Plan */}
-            <div className="bg-white rounded-2xl p-8 border-2 border-gray-200 hover:shadow-lg transition-shadow">
-              <div className="mb-6">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Free</h3>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-5xl font-bold text-gray-900">$0</span>
-                  <span className="text-gray-600">/month</span>
-                </div>
-              </div>
-              <ul className="space-y-3 mb-8">
-                <li className="flex items-center gap-2 text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>5 tracked videos</span>
-                </li>
-                <li className="flex items-center gap-2 text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>1 tracked account</span>
-                </li>
-                <li className="flex items-center gap-2 text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
-                  <span>Basic analytics</span>
-                </li>
-              </ul>
-              <button
-                onClick={handleGetStarted}
-                className="w-full px-6 py-3 border-2 border-gray-300 text-gray-900 font-semibold rounded-xl hover:bg-gray-50 transition-colors"
-              >
-                Get Started
-              </button>
-            </div>
-
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {/* Basic Plan */}
-            <div className="bg-white rounded-2xl p-8 border-2 border-gray-200 hover:shadow-lg transition-shadow">
+            <div className="bg-white rounded-2xl p-8 border-2 border-gray-200 hover:shadow-lg transition-shadow flex flex-col">
               <div className="mb-6">
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">Basic</h3>
                 <div className="flex items-baseline gap-1">
@@ -405,7 +368,7 @@ const LandingPage: React.FC = () => {
                   <span className="text-gray-600">/month</span>
                 </div>
               </div>
-              <ul className="space-y-3 mb-8">
+              <ul className="space-y-3 mb-8 flex-grow">
                 <li className="flex items-center gap-2 text-gray-700">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
                     <span className="text-emerald-600 text-xs">✓</span>
@@ -427,14 +390,14 @@ const LandingPage: React.FC = () => {
               </ul>
               <button
                 onClick={handleGetStarted}
-                className="w-full px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors"
+                className="w-full px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors mt-auto"
               >
                 Start Free Trial
               </button>
             </div>
 
             {/* Pro Plan */}
-            <div className="bg-white rounded-2xl p-8 border-2 border-gray-200 hover:shadow-lg transition-shadow relative">
+            <div className="bg-white rounded-2xl p-8 border-2 border-gray-200 hover:shadow-lg transition-shadow relative flex flex-col">
               <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-emerald-600 text-white text-sm font-bold rounded-full">
                 Popular
               </div>
@@ -445,7 +408,7 @@ const LandingPage: React.FC = () => {
                   <span className="text-gray-600">/month</span>
                 </div>
               </div>
-              <ul className="space-y-3 mb-8">
+              <ul className="space-y-3 mb-8 flex-grow">
                 <li className="flex items-center gap-2 text-gray-700">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
                     <span className="text-emerald-600 text-xs">✓</span>
@@ -473,14 +436,14 @@ const LandingPage: React.FC = () => {
               </ul>
               <button
                 onClick={handleGetStarted}
-                className="w-full px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors"
+                className="w-full px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors mt-auto"
               >
                 Start Free Trial
               </button>
             </div>
 
             {/* Ultra Plan */}
-            <div className="bg-white rounded-2xl p-8 border-2 border-gray-200 hover:shadow-lg transition-shadow">
+            <div className="bg-white rounded-2xl p-8 border-2 border-gray-200 hover:shadow-lg transition-shadow flex flex-col">
               <div className="mb-6">
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">Ultra</h3>
                 <div className="flex items-baseline gap-1">
@@ -488,7 +451,7 @@ const LandingPage: React.FC = () => {
                   <span className="text-gray-600">/month</span>
                 </div>
               </div>
-              <ul className="space-y-3 mb-8">
+              <ul className="space-y-3 mb-8 flex-grow">
                 <li className="flex items-center gap-2 text-gray-700">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
                     <span className="text-emerald-600 text-xs">✓</span>
@@ -516,7 +479,7 @@ const LandingPage: React.FC = () => {
               </ul>
               <button
                 onClick={handleGetStarted}
-                className="w-full px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors"
+                className="w-full px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors mt-auto"
               >
                 Start Free Trial
               </button>
