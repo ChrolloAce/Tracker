@@ -50,7 +50,7 @@ const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto relative">
           <div className="flex items-center justify-center min-h-[600px]">
             {/* Central Content Column */}
-            <div className="relative max-w-2xl mx-auto text-center">
+            <div className="relative max-w-4xl mx-auto text-center">
               {/* Logo Mark - 4 Circles */}
               <div className="flex items-center justify-center mb-12">
                 <div className="grid grid-cols-2 gap-2">
@@ -63,10 +63,10 @@ const LandingPage: React.FC = () => {
 
               {/* Main Headline - Two Lines */}
               <div className="space-y-2 mb-8">
-                <h1 className="text-6xl font-extrabold text-[#111111] leading-[1.1] tracking-tight">
+                <h1 className="text-5xl font-extrabold text-[#111111] leading-[1.1] tracking-tight">
                   Track, Manage and scale
                 </h1>
-                <h1 className="text-6xl font-extrabold text-[#111111] leading-[1.1] tracking-tight">
+                <h1 className="text-5xl font-extrabold text-[#111111] leading-[1.1] tracking-tight">
                   your UGC and influencer campaigns
                 </h1>
               </div>
