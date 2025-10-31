@@ -1321,7 +1321,7 @@ const KPICards: React.FC<KPICardsProps> = ({
     ];
 
     return cards;
-  }, [submissions, allSubmissions, linkClicks, dateFilter, customRange, timePeriod, granularity, revenueMetrics, revenueIntegrations]);
+  }, [submissions, allSubmissions, linkClicks, dateFilter, customRange, timePeriod, granularity, revenueMetrics, revenueIntegrations, onOpenRevenueSettings]);
 
   return (
     <>

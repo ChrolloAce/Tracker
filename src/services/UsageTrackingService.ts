@@ -85,7 +85,7 @@ class UsageTrackingService {
             lastUpdated: lastUpdated,
             currentPeriodStart: data.currentPeriodStart?.toDate() || new Date(),
             currentPeriodEnd: data.currentPeriodEnd?.toDate() || this.getNextMonthDate()
-          };
+        };
         }
       }
       
@@ -97,18 +97,18 @@ class UsageTrackingService {
       
       // Return current cached data or zeros while background update runs
       if (usageDoc.exists()) {
-        const data = usageDoc.data();
-        return {
-          trackedAccounts: data.trackedAccounts || 0,
-          trackedVideos: data.trackedVideos || 0,
-          trackedLinks: data.trackedLinks || 0,
-          teamMembers: data.teamMembers || 1,
-          manualVideos: data.manualVideos || 0,
-          manualCreators: data.manualCreators || 0,
-          mcpCallsThisMonth: data.mcpCallsThisMonth || 0,
-          lastUpdated: data.lastUpdated?.toDate() || new Date(),
-          currentPeriodStart: data.currentPeriodStart?.toDate() || new Date(),
-          currentPeriodEnd: data.currentPeriodEnd?.toDate() || this.getNextMonthDate()
+      const data = usageDoc.data();
+      return {
+        trackedAccounts: data.trackedAccounts || 0,
+        trackedVideos: data.trackedVideos || 0,
+        trackedLinks: data.trackedLinks || 0,
+        teamMembers: data.teamMembers || 1,
+        manualVideos: data.manualVideos || 0,
+        manualCreators: data.manualCreators || 0,
+        mcpCallsThisMonth: data.mcpCallsThisMonth || 0,
+        lastUpdated: data.lastUpdated?.toDate() || new Date(),
+        currentPeriodStart: data.currentPeriodStart?.toDate() || new Date(),
+        currentPeriodEnd: data.currentPeriodEnd?.toDate() || this.getNextMonthDate()
         };
       }
       

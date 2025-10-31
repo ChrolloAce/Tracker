@@ -246,7 +246,7 @@ const OrganizationOnboarding: React.FC = () => {
                 className="h-full bg-white rounded-full transition-all duration-500 ease-out"
                 style={{ width: `${progressPercent}%` }}
               />
-            </div>
+                </div>
           </div>
         </div>
 
@@ -290,7 +290,7 @@ const OrganizationOnboarding: React.FC = () => {
                 )} />
               ))}
             </div>
-          </div>
+        </div>
 
           {/* Form Card */}
           <div className="bg-[#161616] rounded-2xl border border-gray-800/50 p-8 shadow-2xl">
@@ -498,66 +498,66 @@ const OrganizationOnboarding: React.FC = () => {
             </div>
           )}
 
-            {/* Error Message */}
-            {error && (
+          {/* Error Message */}
+          {error && (
               <div className="mt-6 px-4 py-3 bg-red-900/20 border border-red-800 rounded-lg flex items-center gap-2">
                 <X className="w-5 h-5 text-red-400" />
-                <p className="text-sm text-red-400">{error}</p>
-              </div>
+              <p className="text-sm text-red-400">{error}</p>
+            </div>
+          )}
+
+          {/* Actions */}
+            <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-800/50">
+            {step > 1 ? (
+              <button
+                onClick={handleBack}
+                disabled={loading}
+                  className="flex items-center gap-2 px-6 py-3 text-gray-400 hover:text-white transition-colors disabled:opacity-50 font-medium"
+              >
+                  <ChevronRight className="w-4 h-4 rotate-180" />
+                Back
+              </button>
+            ) : (
+              <div />
             )}
 
-            {/* Actions */}
-            <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-800/50">
-              {step > 1 ? (
-                <button
-                  onClick={handleBack}
-                  disabled={loading}
-                  className="flex items-center gap-2 px-6 py-3 text-gray-400 hover:text-white transition-colors disabled:opacity-50 font-medium"
-                >
-                  <ChevronRight className="w-4 h-4 rotate-180" />
-                  Back
-                </button>
-              ) : (
-                <div />
-              )}
-
               <div className="flex items-center gap-3">
-                {step < totalSteps ? (
-                  <>
-                    <button
-                      onClick={() => setStep(totalSteps)}
-                      className="px-6 py-3 text-gray-400 hover:text-white transition-colors font-medium"
-                    >
-                      Skip
-                    </button>
-                    <button
-                      onClick={handleNext}
-                      disabled={!canProceed()}
-                      className="flex items-center gap-2 px-8 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg shadow-emerald-600/20"
-                    >
-                      Continue
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </>
-                ) : (
+              {step < totalSteps ? (
+                <>
                   <button
-                    onClick={handleComplete}
-                    disabled={loading || !canProceed()}
-                    className="px-8 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-semibold shadow-lg shadow-emerald-600/20"
+                    onClick={() => setStep(totalSteps)}
+                    className="px-6 py-3 text-gray-400 hover:text-white transition-colors font-medium"
                   >
-                    {loading ? (
-                      <>
+                    Skip
+                  </button>
+                  <button
+                    onClick={handleNext}
+                    disabled={!canProceed()}
+                      className="flex items-center gap-2 px-8 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg shadow-emerald-600/20"
+                  >
+                    Continue
+                      <ChevronRight className="w-4 h-4" />
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={handleComplete}
+                  disabled={loading || !canProceed()}
+                    className="px-8 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-semibold shadow-lg shadow-emerald-600/20"
+                >
+                  {loading ? (
+                    <>
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                         <span>Creating Organization...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Check className="w-5 h-5" />
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-5 h-5" />
                         <span>Create Organization</span>
-                      </>
-                    )}
-                  </button>
-                )}
+                    </>
+                  )}
+                </button>
+              )}
               </div>
             </div>
           </div>

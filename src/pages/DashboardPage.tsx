@@ -34,6 +34,7 @@ import CreatorsManagementPage, { CreatorsManagementPageRef } from '../components
 import CampaignsManagementPage from '../components/CampaignsManagementPage';
 import { CampaignStatus } from '../types/campaigns';
 import ExtensionPromoModal from '../components/ExtensionPromoModal';
+import RevenueIntegrationsModal from '../components/RevenueIntegrationsModal';
 import OrganizationService from '../services/OrganizationService';
 import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
 import { PlatformIcon } from '../components/ui/PlatformIcon';
@@ -2486,6 +2487,7 @@ function DashboardPage() {
                             timePeriod="days"
                             granularity={granularity}
                             onVideoClick={handleVideoClick}
+                            onOpenRevenueSettings={() => setIsRevenueModalOpen(true)}
                             revenueMetrics={revenueMetrics}
                             revenueIntegrations={revenueIntegrations}
                             isEditMode={isEditingLayout}
@@ -2796,6 +2798,7 @@ function DashboardPage() {
                   timePeriod="days"
                   granularity={granularity}
                   onVideoClick={handleVideoClick}
+                  onOpenRevenueSettings={() => setIsRevenueModalOpen(true)}
                   revenueMetrics={revenueMetrics}
                   revenueIntegrations={revenueIntegrations}
                   isEditMode={false}
