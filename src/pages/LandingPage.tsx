@@ -814,7 +814,7 @@ const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center space-x-3">
-              <img src={blackLogo} alt="ViewTrack" className="h-8 w-auto" />
+              <img src={viewtrackLogo} alt="ViewTrack" className="h-8 w-auto" />
             </div>
             <p className="text-sm text-gray-500">
               © 2025 ViewTrack. Track smarter, grow faster.
