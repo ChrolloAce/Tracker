@@ -463,20 +463,24 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const handleSaveProfile = async () => {
-    if (!user) return;
-
-    setSaving(true);
-    try {
-      await updateProfile(user, { displayName });
-      alert('Profile updated successfully!');
-    } catch (error) {
-      console.error('Failed to update profile:', error);
-      alert('Failed to update profile. Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  };
+  // Auto-save display name when it changes (debounced)
+  useEffect(() => {
+    if (!user || !displayName || displayName === user.displayName) return;
+    
+    const timeoutId = setTimeout(async () => {
+      setSaving(true);
+      try {
+        await updateProfile(user, { displayName });
+        console.log('✅ Profile auto-saved');
+      } catch (error) {
+        console.error('Failed to auto-save profile:', error);
+      } finally {
+        setSaving(false);
+      }
+    }, 1000); // Wait 1 second after user stops typing
+    
+    return () => clearTimeout(timeoutId);
+  }, [displayName, user]);
 
   const handleDeleteOrganization = async (organizationId: string) => {
     if (!user) return;
@@ -784,19 +788,13 @@ const SettingsPage: React.FC = () => {
                 </button>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-3">
-                <button className="px-6 py-2.5 border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-900 dark:text-white rounded-lg transition-colors font-medium">
-                  Cancel
-                </button>
-            <button 
-                  onClick={handleSaveProfile}
-                  disabled={saving || !displayName}
-                  className="px-6 py-2.5 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                  {saving ? 'Saving...' : 'Save changes'}
-            </button>
-        </div>
+              {/* Auto-save indicator */}
+              {saving && (
+                <div className="flex items-center justify-end gap-2 text-sm text-gray-500 dark:text-gray-400">
+                  <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                  <span>Saving...</span>
+                </div>
+              )}
 
               {/* Organization Info */}
               {currentOrganization && (
