@@ -460,17 +460,17 @@ const SettingsPage: React.FC = () => {
   // Auto-save display name when it changes (debounced)
   useEffect(() => {
     if (!user || !displayName || displayName === user.displayName) return;
-    
+
     const timeoutId = setTimeout(async () => {
-      setSaving(true);
-      try {
-        await updateProfile(user, { displayName });
+    setSaving(true);
+    try {
+      await updateProfile(user, { displayName });
         console.log('✅ Profile auto-saved');
-      } catch (error) {
+    } catch (error) {
         console.error('Failed to auto-save profile:', error);
-      } finally {
-        setSaving(false);
-      }
+    } finally {
+      setSaving(false);
+    }
     }, 1000); // Wait 1 second after user stops typing
     
     return () => clearTimeout(timeoutId);
@@ -497,7 +497,6 @@ const SettingsPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
       {/* Header */}
       <div className="max-w-6xl mx-auto px-6 pt-8">
-
         {/* Tabs Navigation */}
         <div className="border-b border-gray-200 dark:border-white/10">
           <nav className="flex space-x-8">
@@ -679,9 +678,9 @@ const SettingsPage: React.FC = () => {
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Profile & Organization</h2>
                 <p className="text-gray-600 dark:text-gray-400">Manage your personal information and organization settings.</p>
-              </div>
+          </div>
 
-              {/* Profile Photo */}
+            {/* Profile Photo */}
               <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Profile Photo</h3>
                 
@@ -759,7 +758,7 @@ const SettingsPage: React.FC = () => {
             </div>
           </div>
         </div>
-
+        
               {/* Auto-save indicator */}
               {saving && (
                 <div className="flex items-center justify-end gap-2 text-sm text-gray-500 dark:text-gray-400">
@@ -770,9 +769,9 @@ const SettingsPage: React.FC = () => {
 
               {/* Organization Info */}
               {currentOrganization && (
-                <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
+              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Organization Details</h3>
-                  
+                
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -784,7 +783,7 @@ const SettingsPage: React.FC = () => {
                         disabled
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white"
                       />
-                    </div>
+              </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -819,25 +818,25 @@ const SettingsPage: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                  <button 
+            <button 
                     onClick={() => setIsDeleteModalOpen(true)}
                     className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium inline-flex items-center gap-2"
-                  >
+            >
                     <Trash2 className="w-4 h-4" />
                     Delete Organization
-                  </button>
-                </div>
+            </button>
+        </div>
               )}
 
               {/* App Version */}
               <div className="text-center pt-6 border-t border-gray-200 dark:border-white/10">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  VideoAnalytics Dashboard v1.0.0
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  © 2025 All rights reserved
-                </p>
-              </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              VideoAnalytics Dashboard v1.0.0
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              © 2025 All rights reserved
+            </p>
+          </div>
             </div>
           )}
 
