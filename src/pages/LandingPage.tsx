@@ -8,6 +8,7 @@ import topAccountsImg from '/LANDINGPAGE-PHOOTS/TOP ACCOUNTS.png';
 import instagramIcon from '/Instagram_icon.png';
 import tiktokIcon from '/TiktokLogo.png';
 import youtubeIcon from '/Youtube_shorts_icon.svg.png';
+import xLogo from '/twitter-x-logo.png';
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -87,14 +88,14 @@ const LandingPage: React.FC = () => {
               
               {/* Top-Left: Analytics Graphs */}
               <div className="absolute -left-56 -top-12 transform -rotate-6 hidden lg:block">
-                <div className="relative w-56 bg-white/95 backdrop-blur rounded-2xl shadow-2xl border border-gray-200 p-2 overflow-hidden">
+                <div className="relative w-56 rounded-2xl shadow-2xl overflow-hidden">
                   <img src={graphsImg} alt="Analytics Graphs" className="w-full h-auto rounded-xl" />
                 </div>
               </div>
 
               {/* Top-Right: Top Accounts */}
               <div className="absolute -right-48 -top-8 transform rotate-3 hidden lg:block">
-                <div className="relative w-52 bg-white/95 backdrop-blur rounded-2xl shadow-2xl border border-gray-200 p-2 overflow-hidden">
+                <div className="relative w-52 rounded-2xl shadow-2xl overflow-hidden">
                   <img src={topAccountsImg} alt="Top Accounts" className="w-full h-auto rounded-xl" />
                 </div>
               </div>
@@ -124,27 +125,25 @@ const LandingPage: React.FC = () => {
               <div className="absolute -right-48 bottom-4 transform rotate-2 hidden lg:block">
                 <div className="w-44 bg-white/95 backdrop-blur rounded-2xl shadow-2xl border border-emerald-100 p-5">
                   <p className="text-xs font-semibold text-gray-500 mb-4">Supports all platforms</p>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-3">
                     {/* Instagram */}
-                    <div className="w-16 h-16 bg-white rounded-xl shadow-md flex items-center justify-center transform hover:-translate-y-1 transition-transform p-2">
+                    <div className="w-14 h-14 flex items-center justify-center transform hover:-translate-y-1 transition-transform">
                       <img src={instagramIcon} alt="Instagram" className="w-full h-full object-contain" />
                     </div>
                     
                     {/* TikTok */}
-                    <div className="w-16 h-16 bg-white rounded-xl shadow-md flex items-center justify-center transform hover:-translate-y-1 transition-transform p-2">
+                    <div className="w-14 h-14 flex items-center justify-center transform hover:-translate-y-1 transition-transform">
                       <img src={tiktokIcon} alt="TikTok" className="w-full h-full object-contain" />
                     </div>
                     
                     {/* YouTube */}
-                    <div className="w-16 h-16 bg-white rounded-xl shadow-md flex items-center justify-center transform hover:-translate-y-1 transition-transform p-2">
+                    <div className="w-14 h-14 flex items-center justify-center transform hover:-translate-y-1 transition-transform">
                       <img src={youtubeIcon} alt="YouTube" className="w-full h-full object-contain" />
                     </div>
                     
                     {/* X/Twitter */}
-                    <div className="w-16 h-16 bg-white rounded-xl shadow-md flex items-center justify-center transform hover:-translate-y-1 transition-transform p-3">
-                      <svg className="w-full h-full" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                      </svg>
+                    <div className="w-14 h-14 flex items-center justify-center transform hover:-translate-y-1 transition-transform">
+                      <img src={xLogo} alt="X" className="w-full h-full object-contain" />
                     </div>
                   </div>
                 </div>
