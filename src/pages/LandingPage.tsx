@@ -1,8 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp, BookOpen, Star, Play, Heart, MessageCircle, Share2, Video, UserPlus, Eye, ThumbsUp, Users as UsersIcon } from 'lucide-react';
-import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
-import viewtrackLogo from '/viewtracknewlogo.png';
+import { TrendingUp, BookOpen, Star, Play, Heart, MessageCircle, Share2, Video, UserPlus } from 'lucide-react';
+import blackLogo from '../components/blacklogo.png';
 import dashboardImg from '/dashboard.png';
 
 const LandingPage: React.FC = () => {
@@ -13,13 +12,13 @@ const LandingPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[#FAFAFB]">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <img src={viewtrackLogo} alt="ViewTrack" className="h-10 w-auto" />
+              <img src={blackLogo} alt="ViewTrack" className="h-10 w-auto" />
             </div>
             <button
               onClick={handleGetStarted}
@@ -31,8 +30,147 @@ const LandingPage: React.FC = () => {
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6">
+      {/* Hero Section - Ultra Detailed Design */}
+      <section className="pt-32 pb-20 px-6 relative overflow-hidden">
+        {/* Dotted Background Pattern */}
+        <div 
+          className="absolute inset-0 opacity-40"
+          style={{
+            backgroundImage: 'radial-gradient(circle, #D1D5DB 1px, transparent 1px)',
+            backgroundSize: '24px 24px'
+          }}
+        />
+        
+        <div className="max-w-7xl mx-auto relative">
+          <div className="flex items-center justify-center min-h-[600px]">
+            {/* Central Content Column */}
+            <div className="relative max-w-2xl mx-auto text-center">
+              {/* Logo Mark - 4 Circles */}
+              <div className="flex items-center justify-center mb-12">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-gray-900 to-black shadow-sm"></div>
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 shadow-sm"></div>
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500 to-cyan-600 shadow-sm"></div>
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-teal-400 to-teal-500 shadow-sm"></div>
+                </div>
+              </div>
+
+              {/* Main Headline - Two Lines */}
+              <div className="space-y-1 mb-8">
+                <h1 className="text-6xl font-extrabold text-[#111111] leading-[1.1] tracking-tight">
+                  Think, plan, and track
+                </h1>
+                <h2 className="text-[56px] font-normal text-[#9B9B9B] leading-[1.1] tracking-tight">
+                  all in one place
+                </h2>
+              </div>
+
+              {/* Supporting Sentence */}
+              <p className="text-lg text-[#666666] mb-10 tracking-wide">
+                Efficiently manage your tasks and boost productivity.
+              </p>
+
+              {/* CTA Button */}
+              <button
+                onClick={handleGetStarted}
+                className="px-9 py-4 bg-gradient-to-r from-[#007BFF] to-[#2583FF] hover:from-[#0066DD] hover:to-[#1E6FDD] text-white font-semibold rounded-full shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-200 text-base"
+              >
+                Get free demo
+              </button>
+
+              {/* Floating Cards Around Central Content */}
+              
+              {/* Top-Left: Yellow Sticky Note */}
+              <div className="absolute -left-48 -top-12 transform -rotate-6 hidden lg:block">
+                <div className="relative w-36 h-36 bg-gradient-to-br from-[#FFF47D] to-[#FFED4E] rounded-sm shadow-xl" style={{clipPath: 'polygon(0 0, 100% 0, 98% 98%, 0 100%)'}}>
+                  {/* Pushpin */}
+                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-gradient-to-br from-red-500 to-red-600 rounded-full shadow-md"></div>
+                  <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-3 bg-gradient-to-b from-gray-400 to-gray-500"></div>
+                  
+                  {/* Handwritten Text */}
+                  <div className="p-4 pt-6 text-left">
+                    <p className="text-xs leading-relaxed text-gray-700" style={{fontFamily: 'cursive'}}>
+                      Take notes to keep<br/>
+                      track of crucial details,<br/>
+                      and accomplish more<br/>
+                      tasks with ease.
+                    </p>
+                  </div>
+                  
+                  {/* Blue Checkmark Badge */}
+                  <div className="absolute -bottom-2 -left-2 w-8 h-8 bg-[#007BFF] rounded-full flex items-center justify-center shadow-lg">
+                    <span className="text-white text-lg font-bold">✓</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Top-Right: Reminder Card */}
+              <div className="absolute -right-40 -top-8 transform rotate-3 hidden lg:block">
+                <div className="relative w-48 h-32 bg-white/95 backdrop-blur rounded-2xl shadow-2xl border border-gray-200 p-4">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Reminders</p>
+                  <p className="text-sm font-bold text-gray-900 mb-1">Today's Meeting</p>
+                  <p className="text-xs text-gray-600">12:00–12:35</p>
+                  
+                  {/* Clock Icon */}
+                  <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-12 h-12 bg-white rounded-full border-2 border-gray-300 shadow-lg flex items-center justify-center">
+                    <svg className="w-6 h-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom-Left: Task List Widget */}
+              <div className="absolute -left-52 bottom-0 transform -rotate-2 hidden lg:block">
+                <div className="w-52 bg-white/95 backdrop-blur rounded-2xl shadow-2xl border border-gray-200 p-5">
+                  <p className="text-sm font-semibold text-gray-900 mb-4">Today's tasks</p>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs text-gray-700 mb-1">New ideas for campaign</p>
+                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full w-3/4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full"></div>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-700 mb-1">Design PPT Kit</p>
+                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full w-1/2 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom-Right: Integrations Card */}
+              <div className="absolute -right-48 bottom-4 transform rotate-2 hidden lg:block">
+                <div className="w-44 bg-white/95 backdrop-blur rounded-2xl shadow-2xl border border-blue-100 p-5">
+                  <p className="text-xs font-semibold text-gray-500 mb-4">100+ Integrations</p>
+                  <div className="flex items-center gap-3">
+                    {/* Gmail Icon */}
+                    <div className="w-12 h-12 bg-white rounded-lg shadow-md flex items-center justify-center transform hover:-translate-y-1 transition-transform">
+                      <div className="w-8 h-6 bg-gradient-to-br from-red-500 to-red-600 rounded-sm flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">M</span>
+                      </div>
+                    </div>
+                    
+                    {/* Google Calendar Icon */}
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-md flex items-center justify-center transform hover:-translate-y-1 transition-transform">
+                      <span className="text-white text-xl font-bold">31</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Original Stats Section Removed - Replaced with Hero */}
+      
+      {/* Metrics Section Removed - Integrated into Hero */}
+
+      {/* Features Section */}
+      <section className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             {/* Left Column - Marketing Content */}
@@ -73,7 +211,7 @@ const LandingPage: React.FC = () => {
                   onClick={() => {
                     document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
                   }}
-                  className="px-8 py-4 bg-white hover:bg-[#0A0A0A] text-gray-900 font-semibold rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-2"
+                  className="px-8 py-4 bg-white hover:bg-gray-50 text-gray-900 font-semibold rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-2"
                 >
                   <BookOpen className="w-5 h-5" />
                   Learn more
@@ -132,8 +270,8 @@ const LandingPage: React.FC = () => {
       <section id="features" className="py-20 px-6 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-white mb-4">Real Results, Real Growth</h2>
-            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">Real Results, Real Growth</h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               Track the metrics that matter and watch your influence grow.
             </p>
           </div>
@@ -141,130 +279,97 @@ const LandingPage: React.FC = () => {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               {
-                icon: Eye,
+                icon: Play,
                 title: 'Views',
                 value: '461.9M',
-                delta: '+23.5%',
-                isPositive: true,
+                growth: '+461.9M',
+                color: 'from-emerald-500 to-emerald-600',
+                strokeColor: '#10b981',
               },
               {
-                icon: ThumbsUp,
+                icon: Heart,
                 title: 'Likes',
                 value: '13.4M',
-                delta: '+18.2%',
-                isPositive: true,
+                growth: '+13.4M',
+                color: 'from-pink-500 to-pink-600',
+                strokeColor: '#ec4899',
               },
               {
                 icon: MessageCircle,
                 title: 'Comments',
                 value: '394.7K',
-                delta: '-8.3%',
-                isPositive: false,
+                growth: '+394.7K',
+                color: 'from-blue-500 to-blue-600',
+                strokeColor: '#3b82f6',
               },
               {
                 icon: Share2,
                 title: 'Shares',
                 value: '28.6K',
-                delta: '-12.1%',
-                isPositive: false,
+                growth: '+28.6K',
+                color: 'from-purple-500 to-purple-600',
+                strokeColor: '#a855f7',
               },
               {
                 icon: Video,
                 title: 'Videos',
                 value: '341',
-                delta: '+45',
-                isPositive: true,
+                growth: '+341',
+                color: 'from-orange-500 to-orange-600',
+                strokeColor: '#f97316',
               },
               {
-                icon: UsersIcon,
+                icon: UserPlus,
                 title: 'Accounts',
                 value: '30',
-                delta: '+5',
-                isPositive: true,
+                growth: '+30',
+                color: 'from-indigo-500 to-indigo-600',
+                strokeColor: '#6366f1',
               },
-            ].map((metric, index) => {
-              const Icon = metric.icon;
-              // Generate realistic sparkline data
-              const sparklineData = Array.from({ length: 10 }, (_, i) => ({
-                value: 70 + Math.random() * 30 - i * 2 + index * 5
-              }));
-              const isPositive = metric.isPositive;
-              const strokeColor = isPositive ? '#22c55e' : '#ef4444'; // green-500 or red-500
-              
-              return (
-                <div
-                  key={index}
-                  className="group relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 overflow-hidden"
-                  style={{ minHeight: '180px' }}
-                >
-                  {/* Upper Content - 60% */}
-                  <div className="relative px-5 pt-4 pb-2 z-10" style={{ height: '60%' }}>
-                    {/* Icon (top-right) */}
-                    <div className="absolute top-4 right-4">
-                      <Icon className="w-5 h-5 text-gray-400 opacity-60" />
+            ].map((metric, index) => (
+              <div
+                key={index}
+                className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-700"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 bg-gradient-to-br ${metric.color} rounded-lg flex items-center justify-center shadow-lg`}>
+                      <metric.icon className="w-5 h-5 text-white" />
                     </div>
-
-                    {/* Metric Content */}
-                    <div className="flex flex-col h-full justify-start pt-1">
-                      {/* Label */}
-                      <div className="text-xs font-medium text-zinc-400 tracking-wide mb-2">
-                        {metric.title}
-                      </div>
-
-                      {/* Value + Delta */}
-                      <div className="flex items-baseline gap-3 -mt-1">
-                        <span className="text-3xl lg:text-4xl font-bold tracking-tight text-white">
-                          {metric.value}
-                        </span>
-                        
-                        <span className={`inline-flex items-baseline text-xs font-semibold ${
-                          isPositive ? 'text-green-400' : 'text-red-400'
-                        }`}>
-                          {metric.growth}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bottom Graph - 40% */}
-                  <div className="relative w-full z-10" style={{ height: '40%' }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={sparklineData}>
-                        <defs>
-                          <linearGradient id={`area-gradient-${index}`} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor={strokeColor} stopOpacity={0.3}/>
-                            <stop offset="100%" stopColor={strokeColor} stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <Tooltip 
-                          content={({ active, payload }) => {
-                            if (active && payload && payload[0]) {
-                              return (
-                                <div className="bg-black/90 backdrop-blur-sm border border-white/20 rounded-lg px-3 py-2 shadow-xl">
-                                  <p className="text-xs text-gray-400 mb-1">{metric.title}</p>
-                                  <p className="text-white text-lg font-bold">{metric.value}</p>
-                                  <p className={`text-xs font-semibold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
-                                    {metric.delta}
-                                  </p>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Area 
-                          type="monotone" 
-                          dataKey="value" 
-                          stroke={strokeColor}
-                          fill={`url(#area-gradient-${index})`}
-                          strokeWidth={2}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
+                    <span className="text-sm font-medium text-gray-400 uppercase tracking-wider">{metric.title}</span>
                   </div>
                 </div>
-              );
-            })}
+                
+                <div className="space-y-2">
+                  <div className="flex items-baseline gap-2">
+                    <h3 className="text-3xl font-bold text-white">{metric.value}</h3>
+                    <span className="text-sm font-semibold text-emerald-400">{metric.growth}</span>
+                  </div>
+                  
+                  {/* Mini Graph */}
+                  <div className="h-16 w-full">
+                    <svg className="w-full h-full" viewBox="0 0 200 50" preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient id={`gradient-${index}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={metric.strokeColor} stopOpacity="0.3" />
+                          <stop offset="100%" stopColor={metric.strokeColor} stopOpacity="0" />
+                        </linearGradient>
+                      </defs>
+                      <path
+                        d={`M0,${30 + Math.random() * 10} L${40},${25 + Math.random() * 15} L${80},${20 + Math.random() * 10} L${120},${15 + Math.random() * 15} L${160},${10 + Math.random() * 10} L200,${5 + Math.random() * 10}`}
+                        fill="none"
+                        stroke={metric.strokeColor}
+                        strokeWidth="2"
+                      />
+                      <path
+                        d={`M0,${30 + Math.random() * 10} L${40},${25 + Math.random() * 15} L${80},${20 + Math.random() * 10} L${120},${15 + Math.random() * 15} L${160},${10 + Math.random() * 10} L200,${5 + Math.random() * 10} L200,50 L0,50 Z`}
+                        fill={`url(#gradient-${index})`}
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -597,64 +702,6 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* FAQ Section */}
-      <section className="py-20 px-6 bg-gray-50">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 mb-2">FAQ</h2>
-            <p className="text-xl text-gray-600">Common Questions</p>
-            <p className="text-gray-500 mt-2">We're here to help you get the most out of viral.app</p>
-          </div>
-
-          <div className="space-y-4">
-            {[
-              {
-                question: "What is viral.app?",
-                answer: "viral.app is a comprehensive analytics platform for tracking social media content across Instagram, TikTok, and YouTube. We help creators and brands measure performance, manage campaigns, and optimize their content strategy."
-              },
-              {
-                question: "Who is viral.app for?",
-                answer: "Our platform is designed for content creators, influencers, UGC creators, marketing agencies, and brands who need professional analytics and campaign management tools."
-              },
-              {
-                question: "How does viral.app help optimize marketing ROI?",
-                answer: "We provide revenue tracking integrations with Apple App Store and RevenueCat, allowing you to see which content drives actual sales and conversions, not just vanity metrics."
-              },
-              {
-                question: "What platforms can I track content from?",
-                answer: "Currently we support Instagram, TikTok, and YouTube. We automatically sync your content and provide unified analytics across all platforms."
-              },
-              {
-                question: "How easy is it to set up and add accounts?",
-                answer: "Setup takes less than 2 minutes. Simply add the social media accounts you want to track, and we'll start syncing your data immediately."
-              },
-              {
-                question: "What kind of analytics does viral.app provide?",
-                answer: "We provide comprehensive metrics including views, likes, comments, shares, engagement rates, growth trends, top performers, posting schedules, and revenue attribution."
-              }
-            ].map((faq, index) => (
-              <details key={index} className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow group">
-                <summary className="font-semibold text-gray-900 cursor-pointer list-none flex items-center justify-between">
-                  <span>{faq.question}</span>
-                  <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
-                </summary>
-                <p className="mt-4 text-gray-600 leading-relaxed">{faq.answer}</p>
-              </details>
-            ))}
-          </div>
-
-          <div className="mt-12 text-center">
-            <p className="text-gray-600 mb-4">Have more questions?</p>
-            <a 
-              href="mailto:support@viral.app"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors"
-            >
-              Contact Support
-            </a>
-          </div>
-        </div>
-      </section>
-
       {/* Blog Section */}
       <section className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
@@ -716,12 +763,70 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
+      {/* FAQ Section */}
+      <section className="py-20 px-6 bg-gray-50">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-gray-900 mb-2">FAQ</h2>
+            <p className="text-xl text-gray-600">Common Questions</p>
+            <p className="text-gray-500 mt-2">We're here to help you get the most out of viral.app</p>
+          </div>
+
+          <div className="space-y-4">
+            {[
+              {
+                question: "What is viral.app?",
+                answer: "viral.app is a comprehensive analytics platform for tracking social media content across Instagram, TikTok, and YouTube. We help creators and brands measure performance, manage campaigns, and optimize their content strategy."
+              },
+              {
+                question: "Who is viral.app for?",
+                answer: "Our platform is designed for content creators, influencers, UGC creators, marketing agencies, and brands who need professional analytics and campaign management tools."
+              },
+              {
+                question: "How does viral.app help optimize marketing ROI?",
+                answer: "We provide revenue tracking integrations with Apple App Store and RevenueCat, allowing you to see which content drives actual sales and conversions, not just vanity metrics."
+              },
+              {
+                question: "What platforms can I track content from?",
+                answer: "Currently we support Instagram, TikTok, and YouTube. We automatically sync your content and provide unified analytics across all platforms."
+              },
+              {
+                question: "How easy is it to set up and add accounts?",
+                answer: "Setup takes less than 2 minutes. Simply add the social media accounts you want to track, and we'll start syncing your data immediately."
+              },
+              {
+                question: "What kind of analytics does viral.app provide?",
+                answer: "We provide comprehensive metrics including views, likes, comments, shares, engagement rates, growth trends, top performers, posting schedules, and revenue attribution."
+              }
+            ].map((faq, index) => (
+              <details key={index} className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow group">
+                <summary className="font-semibold text-gray-900 cursor-pointer list-none flex items-center justify-between">
+                  <span>{faq.question}</span>
+                  <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+                </summary>
+                <p className="mt-4 text-gray-600 leading-relaxed">{faq.answer}</p>
+              </details>
+            ))}
+          </div>
+
+          <div className="mt-12 text-center">
+            <p className="text-gray-600 mb-4">Have more questions?</p>
+            <a 
+              href="mailto:support@viral.app"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors"
+            >
+              Contact Support
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="py-12 px-6 border-t border-gray-100">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center space-x-3">
-              <img src={viewtrackLogo} alt="ViewTrack" className="h-8 w-auto" />
+              <img src={blackLogo} alt="ViewTrack" className="h-8 w-auto" />
             </div>
             <p className="text-sm text-gray-500">
               © 2025 ViewTrack. Track smarter, grow faster.
