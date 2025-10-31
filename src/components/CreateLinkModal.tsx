@@ -65,7 +65,7 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
     }
   }, [isDropdownOpen]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -88,19 +88,28 @@ const CreateLinkModal: React.FC<CreateLinkModalProps> = ({ isOpen, onClose, onCr
       return;
     }
 
-    onCreate(
-      formattedUrl,
-      title.trim(),
-      undefined, // description removed
-      undefined, // tags removed
-      linkedAccountId || undefined
-    );
+    // Call onCreate and wait for it to complete
+    try {
+      await onCreate(
+        formattedUrl,
+        title.trim(),
+        undefined, // description removed
+        undefined, // tags removed
+        linkedAccountId || undefined
+      );
 
-    // Reset form
-    setOriginalUrl('');
-    setTitle('');
-    setLinkedAccountId('');
-    setIsDropdownOpen(false);
+      // Reset form
+      setOriginalUrl('');
+      setTitle('');
+      setLinkedAccountId('');
+      setIsDropdownOpen(false);
+      
+      // Close modal after successful creation
+      onClose();
+    } catch (error) {
+      console.error('Failed to create link:', error);
+      setError('Failed to create link. Please try again.');
+    }
   };
 
   const selectedAccount = accounts.find(acc => acc.id === linkedAccountId);
