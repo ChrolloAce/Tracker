@@ -513,12 +513,11 @@ const SettingsPage: React.FC = () => {
         <div className="border-b border-gray-200 dark:border-white/10">
           <nav className="flex space-x-8">
             {[
-              { id: 'billing', label: 'Billing', icon: CreditCard },
-              { id: 'notifications', label: 'Notifications', icon: Bell },
-              { id: 'revenue', label: 'Revenue', icon: DollarSign },
-              { id: 'organization', label: 'Organization', icon: Building2 },
               { id: 'profile', label: 'Profile', icon: UserIcon },
+              { id: 'billing', label: 'Billing', icon: CreditCard },
               { id: 'team', label: 'Team', icon: Users },
+              { id: 'revenue', label: 'Revenue', icon: DollarSign },
+              { id: 'notifications', label: 'Notifications', icon: Bell },
             ].map(tab => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -684,139 +683,16 @@ const SettingsPage: React.FC = () => {
             </div>
           )}
 
-          {/* Organization Tab */}
-          {activeTab === 'organization' && (
-      <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Organization</h2>
-                <p className="text-gray-600 dark:text-gray-400">Manage your teams and permissions.</p>
-              </div>
 
-              {/* Organization Info */}
-              {currentOrganization && (
-                <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Organization Details</h3>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Organization Name
-                      </label>
-                      <input
-                        type="text"
-                        value={currentOrganization.name}
-                        disabled
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white"
-                      />
-            </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Created</p>
-                        <p className="font-medium text-gray-900 dark:text-white mt-1">
-                          {currentOrganization.createdAt?.toDate().toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Your Role</p>
-                        <p className="font-medium text-gray-900 dark:text-white mt-1 capitalize">
-                          {isOwner ? 'Owner' : 'Member'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Team Members */}
-              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Team Members</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                      {orgMembers.length} member{orgMembers.length !== 1 ? 's' : ''} in your organization
-                    </p>
-                  </div>
-                  <button className="px-4 py-2 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-lg transition-colors font-medium inline-flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    Invite member
-                  </button>
-                </div>
-
-                <div className="space-y-3">
-                  {orgMembers.map((member) => (
-                    <div key={member.userId} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-zinc-800/50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gray-900 dark:bg-white rounded-full flex items-center justify-center">
-                          {member.photoURL ? (
-                            <img src={member.photoURL} alt={member.displayName || ''} className="w-10 h-10 rounded-full object-cover" />
-                          ) : (
-                            <span className="text-white dark:text-gray-900 font-semibold">
-                              {member.displayName?.charAt(0) || member.email?.charAt(0) || 'U'}
-                            </span>
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-white">
-                            {member.displayName || 'Unknown'}
-                            {member.userId === user?.uid && (
-                              <span className="ml-2 text-xs text-gray-500">(You)</span>
-                            )}
-                          </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{member.email || 'No email'}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getRoleBadge(member.role)}`}>
-                          {member.role}
-                        </span>
-                        {member.userId !== user?.uid && isOwner && (
-                          <button className="text-gray-400 hover:text-red-600 transition-colors">
-                            <X className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Danger Zone */}
-              {isOwner && currentOrganization && (
-                <div className="bg-white dark:bg-zinc-900 rounded-xl border-2 border-red-200 dark:border-red-900/50 p-6">
-                  <div className="flex items-start gap-3 mb-4">
-                    <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <h3 className="text-lg font-semibold text-red-600 dark:text-red-400">Danger Zone</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        Permanently delete "{currentOrganization.name}" and all its data
-                      </p>
-                      <p className="text-xs text-red-600 dark:text-red-400 mt-2">
-                        This action cannot be undone. All projects, videos, and analytics will be lost.
-                      </p>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => setIsDeleteModalOpen(true)}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium inline-flex items-center gap-2"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Delete Organization
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Profile Tab */}
+          {/* Profile Tab (includes Organization) */}
           {activeTab === 'profile' && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Profile</h2>
-                <p className="text-gray-600 dark:text-gray-400">Manage your personal information.</p>
-          </div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Profile & Organization</h2>
+                <p className="text-gray-600 dark:text-gray-400">Manage your personal information and organization settings.</p>
+              </div>
 
-            {/* Profile Photo */}
+              {/* Profile Photo */}
               <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Profile Photo</h3>
                 
@@ -922,15 +798,76 @@ const SettingsPage: React.FC = () => {
             </button>
         </div>
 
+              {/* Organization Info */}
+              {currentOrganization && (
+                <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Organization Details</h3>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Organization Name
+                      </label>
+                      <input
+                        type="text"
+                        value={currentOrganization.name}
+                        disabled
+                        className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Created</p>
+                        <p className="font-medium text-gray-900 dark:text-white mt-1">
+                          {currentOrganization.createdAt?.toDate().toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Your Role</p>
+                        <p className="font-medium text-gray-900 dark:text-white mt-1 capitalize">
+                          {isOwner ? 'Owner' : 'Member'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Danger Zone - Delete Organization */}
+              {isOwner && currentOrganization && (
+                <div className="bg-white dark:bg-zinc-900 rounded-xl border-2 border-red-200 dark:border-red-900/50 p-6">
+                  <div className="flex items-start gap-3 mb-4">
+                    <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h3 className="text-lg font-semibold text-red-600 dark:text-red-400">Danger Zone</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        Permanently delete "{currentOrganization.name}" and all its data
+                      </p>
+                      <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                        This action cannot be undone. All projects, videos, and analytics will be lost.
+                      </p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setIsDeleteModalOpen(true)}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium inline-flex items-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete Organization
+                  </button>
+                </div>
+              )}
+
               {/* App Version */}
               <div className="text-center pt-6 border-t border-gray-200 dark:border-white/10">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              VideoAnalytics Dashboard v1.0.0
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              © 2025 All rights reserved
-            </p>
-          </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  VideoAnalytics Dashboard v1.0.0
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  © 2025 All rights reserved
+                </p>
+              </div>
             </div>
           )}
 

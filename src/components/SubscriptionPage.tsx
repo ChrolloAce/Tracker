@@ -12,7 +12,6 @@ const SubscriptionPage: React.FC = () => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [currentPlan, setCurrentPlan] = useState<PlanTier>('basic');
   const [loading, setLoading] = useState(false);
-  const [hasStripeCustomer, setHasStripeCustomer] = useState(false);
 
   useEffect(() => {
     loadSubscriptionInfo();
@@ -36,11 +35,6 @@ const SubscriptionPage: React.FC = () => {
       const tier = await SubscriptionService.getPlanTier(currentOrgId);
       console.log('✅ Subscription loaded:', { tier });
       setCurrentPlan(tier);
-      
-      // Check if user has Stripe customer
-      const subscription = await SubscriptionService.getSubscription(currentOrgId);
-      setHasStripeCustomer(!!subscription?.stripeCustomerId);
-      console.log('💳 Has Stripe customer:', !!subscription?.stripeCustomerId);
     } catch (error) {
       console.error('❌ Failed to load subscription info:', error);
     }
@@ -55,7 +49,7 @@ const SubscriptionPage: React.FC = () => {
     }
 
     if (planTier === 'free') {
-      alert('To downgrade to the free plan, please cancel your subscription through the "Manage Billing" portal.');
+      alert('To downgrade to the free plan, please go to Settings → Billing and cancel your subscription.');
       return;
     }
 
@@ -110,26 +104,6 @@ const SubscriptionPage: React.FC = () => {
               <ArrowLeft className="w-5 h-5" />
               <span className="font-medium">Back to Dashboard</span>
             </button>
-            
-            {hasStripeCustomer && (
-              <button
-                onClick={handleManageBilling}
-                disabled={loading}
-                className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Loading...
-                  </>
-                ) : (
-                  <>
-                    <ExternalLink className="w-4 h-4" />
-                    Manage Billing
-                  </>
-                )}
-              </button>
-            )}
           </div>
         </div>
       </div>
