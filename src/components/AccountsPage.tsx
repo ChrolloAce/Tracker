@@ -125,6 +125,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   ({ dateFilter, platformFilter, searchQuery = '', onViewModeChange, pendingAccounts = [], selectedRuleIds = [], dashboardRules = [] }, ref) => {
   const { user, currentOrgId, currentProjectId } = useAuth();
   const navigate = useNavigate();
+  const navigate = useNavigate();
   
   // Debug props
   useEffect(() => {
@@ -311,6 +312,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   // Handle back to table navigation
   const handleBackToTable = useCallback(() => {
     setSelectedAccount(null);
+    navigate('/accounts');
     setAccountVideos([]);
     setViewMode('table');
     onViewModeChange('table');
@@ -826,6 +828,24 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     return sorted;
   }, [filteredAccounts, accounts, platformFilter, searchQuery, sortBy, sortOrder]);
 
+
+  // Listen for URL-based account opening
+  useEffect(() => {
+    const handleOpenAccount = (event: any) => {
+      const accountId = event.detail?.accountId;
+      if (accountId && accounts.length > 0) {
+        const account = accounts.find(a => a.id === accountId);
+        if (account) {
+          setSelectedAccount(account);
+          setViewMode('details');
+        }
+      }
+    };
+    
+    window.addEventListener('openAccount', handleOpenAccount);
+    return () => window.removeEventListener('openAccount', handleOpenAccount);
+  }, [accounts]);
+
   // NOTE: Removed duplicate useEffect - video loading is now handled by loadAccountVideos() 
   // which is called from the useEffect at line ~450 with dashboard rules properly applied
 
@@ -1018,7 +1038,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       setAccounts(prev => prev.filter(a => a.id !== accountToDelete.id));
       
       if (selectedAccount?.id === accountToDelete.id) {
-        setSelectedAccount(null);
+        navigate('/accounts');
         setAccountVideos([]);
       }
       
@@ -1410,7 +1430,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                             'hover:bg-white/5 dark:hover:bg-white/5 cursor-pointer': !isAccountSyncing,
                           }
                         )}
-                        onClick={() => !isAccountSyncing && setSelectedAccount(account)}
+                        onClick={() => !isAccountSyncing && navigate(`/accounts/${account.id}`)}
                       >
                         {/* Username Column */}
                         <td className="px-6 py-4 whitespace-nowrap">
