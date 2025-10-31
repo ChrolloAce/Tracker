@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, Users, DollarSign, TrendingUp } from 'lucide-react';
+import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, Users, DollarSign, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -414,16 +414,6 @@ const SettingsPage: React.FC = () => {
 
     loadOrganization();
   }, [user, currentOrgId]);
-
-  const handleLogout = async () => {
-    if (window.confirm('Are you sure you want to sign out?')) {
-      try {
-        await logout();
-      } catch (error) {
-        console.error('Failed to sign out:', error);
-      }
-    }
-  };
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
