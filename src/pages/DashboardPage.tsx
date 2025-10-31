@@ -74,7 +74,7 @@ const DashboardSkeleton: React.FC<{ height?: string }> = ({ height = 'h-96' }) =
   </div>
 );
 
-function DashboardPage({ initialTab }: { initialTab?: string } = {}) {
+function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string; initialSettingsTab?: string } = {}) {
   // Get authentication state, current organization, and current project
   const { user, currentOrgId, currentProjectId } = useAuth();
   const navigate = useNavigate();
@@ -2693,7 +2693,7 @@ function DashboardPage({ initialTab }: { initialTab?: string } = {}) {
           )}
 
           {/* Settings Tab (includes Team tab inside) */}
-          {activeTab === 'settings' && <SettingsPage />}
+          {activeTab === 'settings' && <SettingsPage initialTab={initialSettingsTab} />}
 
           {/* Cron Management Tab */}
           {activeTab === 'cron' && <CronManagementPage />}

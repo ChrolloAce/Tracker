@@ -356,14 +356,13 @@ const BillingTabContent: React.FC = () => {
  * Purpose: Modern tabbed settings interface
  * Features: Billing, Notifications, Organization, Profile management
  */
-const SettingsPage: React.FC = () => {
+const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTabProp }) => {
   const { user, currentOrgId } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>(() => {
-    // Check if we should open the revenue tab (e.g., from Setup button click)
-    const savedTab = localStorage.getItem('settingsActiveTab');
-    if (savedTab) {
-      localStorage.removeItem('settingsActiveTab'); // Clear after reading
-      return savedTab as TabType;
+    // Use initialTab from URL if provided
+    if (initialTabProp && ['profile', 'billing', 'team', 'notifications'].includes(initialTabProp)) {
+      return initialTabProp as TabType;
     }
     return 'profile';
   });
@@ -499,7 +498,10 @@ const SettingsPage: React.FC = () => {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as TabType)}
+                  onClick={() => {
+                    setActiveTab(tab.id as TabType);
+                    navigate(`/settings/${tab.id}`);
+                  }}
                   className={`
                     flex items-center gap-2 px-1 py-4 border-b-2 font-medium text-sm transition-colors
                     ${isActive 
