@@ -166,21 +166,25 @@ const AnimatedTimeline: React.FC = () => {
                 <stop offset="50%" stopColor="#111111" stopOpacity="0.6" />
                 <stop offset="100%" stopColor="#111111" stopOpacity="0.9" />
               </linearGradient>
-              <filter id="glow">
-                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-                <feMerge>
-                  <feMergeNode in="coloredBlur"/>
-                  <feMergeNode in="SourceGraphic"/>
-                </feMerge>
-              </filter>
             </defs>
+            {/* Base line - always visible */}
+            <line
+              x1="2"
+              y1="0"
+              x2="2"
+              y2="100%"
+              stroke="#E5E7EB"
+              strokeWidth="2"
+              opacity="0.5"
+            />
+            {/* Animated line */}
             <line
               ref={pathRef}
               x1="2"
               y1="0"
               x2="2"
               y2="100%"
-              stroke="url(#pathGradient)"
+              stroke="#111111"
               strokeWidth="3"
               strokeDasharray="0 100%"
               style={{ transition: 'stroke-dasharray 0.3s ease-out' }}
