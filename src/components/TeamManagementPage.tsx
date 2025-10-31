@@ -220,12 +220,6 @@ const TeamManagementPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Team</h2>
-        <p className="text-gray-600 dark:text-gray-400">Manage team members and permissions</p>
-      </div>
-
       {/* Team Members */}
       <div className="bg-black/40 dark:bg-black/40 rounded-xl border border-white/10 overflow-hidden">
         <div className="px-6 py-4 border-b border-white/10">
