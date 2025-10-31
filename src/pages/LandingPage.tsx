@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp, BookOpen, Star, Play, Heart, MessageCircle, Share2, Video, UserPlus } from 'lucide-react';
+import { TrendingUp, BookOpen, Star, Play, Heart, MessageCircle, Share2, Video, UserPlus, Eye, ThumbsUp, Users as UsersIcon } from 'lucide-react';
+import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
 import blackLogo from '../components/blacklogo.png';
 import dashboardImg from '/dashboard.png';
 
@@ -563,6 +564,64 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
+      {/* FAQ Section */}
+      <section className="py-20 px-6 bg-gray-50">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-gray-900 mb-2">FAQ</h2>
+            <p className="text-xl text-gray-600">Common Questions</p>
+            <p className="text-gray-500 mt-2">We're here to help you get the most out of viral.app</p>
+          </div>
+
+          <div className="space-y-4">
+            {[
+              {
+                question: "What is viral.app?",
+                answer: "viral.app is a comprehensive analytics platform for tracking social media content across Instagram, TikTok, and YouTube. We help creators and brands measure performance, manage campaigns, and optimize their content strategy."
+              },
+              {
+                question: "Who is viral.app for?",
+                answer: "Our platform is designed for content creators, influencers, UGC creators, marketing agencies, and brands who need professional analytics and campaign management tools."
+              },
+              {
+                question: "How does viral.app help optimize marketing ROI?",
+                answer: "We provide revenue tracking integrations with Apple App Store and RevenueCat, allowing you to see which content drives actual sales and conversions, not just vanity metrics."
+              },
+              {
+                question: "What platforms can I track content from?",
+                answer: "Currently we support Instagram, TikTok, and YouTube. We automatically sync your content and provide unified analytics across all platforms."
+              },
+              {
+                question: "How easy is it to set up and add accounts?",
+                answer: "Setup takes less than 2 minutes. Simply add the social media accounts you want to track, and we'll start syncing your data immediately."
+              },
+              {
+                question: "What kind of analytics does viral.app provide?",
+                answer: "We provide comprehensive metrics including views, likes, comments, shares, engagement rates, growth trends, top performers, posting schedules, and revenue attribution."
+              }
+            ].map((faq, index) => (
+              <details key={index} className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow group">
+                <summary className="font-semibold text-gray-900 cursor-pointer list-none flex items-center justify-between">
+                  <span>{faq.question}</span>
+                  <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+                </summary>
+                <p className="mt-4 text-gray-600 leading-relaxed">{faq.answer}</p>
+              </details>
+            ))}
+          </div>
+
+          <div className="mt-12 text-center">
+            <p className="text-gray-600 mb-4">Have more questions?</p>
+            <a 
+              href="mailto:support@viral.app"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors"
+            >
+              Contact Support
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* Blog Section */}
       <section className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
@@ -620,64 +679,6 @@ const LandingPage: React.FC = () => {
                 <p className="text-gray-600">UGC-Marketing with the ultimate growth-pilot</p>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ Section */}
-      <section className="py-20 px-6 bg-gray-50">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 mb-2">FAQ</h2>
-            <p className="text-xl text-gray-600">Common Questions</p>
-            <p className="text-gray-500 mt-2">We're here to help you get the most out of viral.app</p>
-          </div>
-
-          <div className="space-y-4">
-            {[
-              {
-                question: "What is viral.app?",
-                answer: "viral.app is a comprehensive analytics platform for tracking social media content across Instagram, TikTok, and YouTube. We help creators and brands measure performance, manage campaigns, and optimize their content strategy."
-              },
-              {
-                question: "Who is viral.app for?",
-                answer: "Our platform is designed for content creators, influencers, UGC creators, marketing agencies, and brands who need professional analytics and campaign management tools."
-              },
-              {
-                question: "How does viral.app help optimize marketing ROI?",
-                answer: "We provide revenue tracking integrations with Apple App Store and RevenueCat, allowing you to see which content drives actual sales and conversions, not just vanity metrics."
-              },
-              {
-                question: "What platforms can I track content from?",
-                answer: "Currently we support Instagram, TikTok, and YouTube. We automatically sync your content and provide unified analytics across all platforms."
-              },
-              {
-                question: "How easy is it to set up and add accounts?",
-                answer: "Setup takes less than 2 minutes. Simply add the social media accounts you want to track, and we'll start syncing your data immediately."
-              },
-              {
-                question: "What kind of analytics does viral.app provide?",
-                answer: "We provide comprehensive metrics including views, likes, comments, shares, engagement rates, growth trends, top performers, posting schedules, and revenue attribution."
-              }
-            ].map((faq, index) => (
-              <details key={index} className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow group">
-                <summary className="font-semibold text-gray-900 cursor-pointer list-none flex items-center justify-between">
-                  <span>{faq.question}</span>
-                  <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
-                </summary>
-                <p className="mt-4 text-gray-600 leading-relaxed">{faq.answer}</p>
-              </details>
-            ))}
-          </div>
-
-          <div className="mt-12 text-center">
-            <p className="text-gray-600 mb-4">Have more questions?</p>
-            <a 
-              href="mailto:support@viral.app"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors"
-            >
-              Contact Support
-            </a>
           </div>
         </div>
       </section>
