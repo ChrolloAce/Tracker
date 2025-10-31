@@ -433,47 +433,47 @@ const LandingPage: React.FC = () => {
               </button>
             </div>
 
-            {/* Pro Plan - Highlighted */}
-            <div className="bg-gradient-to-br from-emerald-600 to-teal-600 rounded-2xl p-8 border-2 border-emerald-500 shadow-xl relative transform scale-105">
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-emerald-500 text-white text-sm font-bold rounded-full">
+            {/* Pro Plan */}
+            <div className="bg-white rounded-2xl p-8 border-2 border-gray-200 hover:shadow-lg transition-shadow relative">
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-emerald-600 text-white text-sm font-bold rounded-full">
                 Popular
               </div>
               <div className="mb-6">
-                <h3 className="text-2xl font-bold text-white mb-2">Pro</h3>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Pro</h3>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-5xl font-bold text-white">$79</span>
-                  <span className="text-emerald-100">/month</span>
+                  <span className="text-5xl font-bold text-gray-900">$79</span>
+                  <span className="text-gray-600">/month</span>
                 </div>
               </div>
               <ul className="space-y-3 mb-8">
-                <li className="flex items-center gap-2 text-white">
-                  <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
-                    <span className="text-white text-xs">✓</span>
+                <li className="flex items-center gap-2 text-gray-700">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <span className="text-emerald-600 text-xs">✓</span>
                   </div>
                   <span>100 tracked videos</span>
                 </li>
-                <li className="flex items-center gap-2 text-white">
-                  <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
-                    <span className="text-white text-xs">✓</span>
+                <li className="flex items-center gap-2 text-gray-700">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <span className="text-emerald-600 text-xs">✓</span>
                   </div>
                   <span>Unlimited accounts</span>
                 </li>
-                <li className="flex items-center gap-2 text-white">
-                  <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
-                    <span className="text-white text-xs">✓</span>
+                <li className="flex items-center gap-2 text-gray-700">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <span className="text-emerald-600 text-xs">✓</span>
                   </div>
                   <span>Campaign management</span>
                 </li>
-                <li className="flex items-center gap-2 text-white">
-                  <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
-                    <span className="text-white text-xs">✓</span>
+                <li className="flex items-center gap-2 text-gray-700">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <span className="text-emerald-600 text-xs">✓</span>
                   </div>
                   <span>Revenue tracking</span>
                 </li>
               </ul>
               <button
                 onClick={handleGetStarted}
-                className="w-full px-6 py-3 bg-white hover:bg-gray-100 text-emerald-600 font-semibold rounded-xl transition-colors"
+                className="w-full px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors"
               >
                 Start Free Trial
               </button>
