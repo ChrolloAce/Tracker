@@ -373,19 +373,31 @@ const LandingPage: React.FC = () => {
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>50 tracked videos</span>
+                  <span>Track 3 accounts</span>
                 </li>
                 <li className="flex items-center gap-2 text-gray-700">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>10 tracked accounts</span>
+                  <span>Up to 100 videos</span>
                 </li>
                 <li className="flex items-center gap-2 text-gray-700">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>Advanced analytics</span>
+                  <span>24-hour data refresh</span>
+                </li>
+                <li className="flex items-center gap-2 text-gray-700">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <span className="text-emerald-600 text-xs">✓</span>
+                  </div>
+                  <span>App Store integration</span>
+                </li>
+                <li className="flex items-center gap-2 text-gray-700">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <span className="text-emerald-600 text-xs">✓</span>
+                  </div>
+                  <span>1 team seat</span>
                 </li>
               </ul>
               <button
@@ -413,25 +425,43 @@ const LandingPage: React.FC = () => {
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>100 tracked videos</span>
-                </li>
-                <li className="flex items-center gap-2 text-gray-700">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
-                    <span className="text-emerald-600 text-xs">✓</span>
-                  </div>
                   <span>Unlimited accounts</span>
                 </li>
                 <li className="flex items-center gap-2 text-gray-700">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>Campaign management</span>
+                  <span>Up to 1,000 videos</span>
+                </li>
+                <li className="flex items-center gap-2 text-gray-700">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <span className="text-emerald-600 text-xs">✓</span>
+                  </div>
+                  <span>24-hour data refresh</span>
+                </li>
+                <li className="flex items-center gap-2 text-gray-700">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <span className="text-emerald-600 text-xs">✓</span>
+                  </div>
+                  <span>On-demand refresh</span>
+                </li>
+                <li className="flex items-center gap-2 text-gray-700">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <span className="text-emerald-600 text-xs">✓</span>
+                  </div>
+                  <span>Creator campaigns</span>
                 </li>
                 <li className="flex items-center gap-2 text-gray-700">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
                   <span>Revenue tracking</span>
+                </li>
+                <li className="flex items-center gap-2 text-gray-700">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <span className="text-emerald-600 text-xs">✓</span>
+                  </div>
+                  <span>1 team seat</span>
                 </li>
               </ul>
               <button
@@ -456,13 +486,37 @@ const LandingPage: React.FC = () => {
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>Unlimited videos</span>
+                  <span>Unlimited accounts</span>
                 </li>
                 <li className="flex items-center gap-2 text-gray-700">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>Unlimited accounts</span>
+                  <span>Up to 5,000 videos</span>
+                </li>
+                <li className="flex items-center gap-2 text-gray-700">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <span className="text-emerald-600 text-xs">✓</span>
+                  </div>
+                  <span>12-hour data refresh</span>
+                </li>
+                <li className="flex items-center gap-2 text-gray-700">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <span className="text-emerald-600 text-xs">✓</span>
+                  </div>
+                  <span>On-demand refresh</span>
+                </li>
+                <li className="flex items-center gap-2 text-gray-700">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <span className="text-emerald-600 text-xs">✓</span>
+                  </div>
+                  <span>Creator portals</span>
+                </li>
+                <li className="flex items-center gap-2 text-gray-700">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <span className="text-emerald-600 text-xs">✓</span>
+                  </div>
+                  <span>Contract management</span>
                 </li>
                 <li className="flex items-center gap-2 text-gray-700">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
@@ -474,7 +528,7 @@ const LandingPage: React.FC = () => {
                   <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
                     <span className="text-emerald-600 text-xs">✓</span>
                   </div>
-                  <span>Priority support</span>
+                  <span>20 team seats</span>
                 </li>
               </ul>
               <button
@@ -505,6 +559,125 @@ const LandingPage: React.FC = () => {
               Get Started for Free
             </button>
             <p className="text-sm text-gray-400 mt-4">No credit card required • Start in 2 minutes</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Blog Section */}
+      <section className="py-20 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-gray-900 mb-2">Our Blog</h2>
+            <p className="text-xl text-gray-600">Insights, Tools, and More</p>
+            <p className="text-gray-500 mt-2">Become an expert in UGC marketing today leveraging our industry knowledge and unique tools</p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Blog Post 1 */}
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
+              <div className="h-48 bg-gradient-to-br from-emerald-500 to-teal-500"></div>
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Felix Vemmer</p>
+                    <p className="text-xs text-gray-500">Sep 30, 2025</p>
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Introducing the viral.app API</h3>
+                <p className="text-gray-600">Build custom workflows and integrations with programmatic access to your analytics</p>
+              </div>
+            </div>
+
+            {/* Blog Post 2 */}
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
+              <div className="h-48 bg-gradient-to-br from-blue-500 to-purple-500"></div>
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Mike Schneider</p>
+                    <p className="text-xs text-gray-500">Sep 10, 2025</p>
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Individual Video Analytics & Daily Breakdowns</h3>
+                <p className="text-gray-600">Track how single videos go viral with detailed performance insights and daily top performer breakdowns</p>
+              </div>
+            </div>
+
+            {/* Blog Post 3 */}
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
+              <div className="h-48 bg-gradient-to-br from-orange-500 to-red-500"></div>
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Mike Schneider</p>
+                    <p className="text-xs text-gray-500">May 19, 2025</p>
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Launching viral.app</h3>
+                <p className="text-gray-600">UGC-Marketing with the ultimate growth-pilot</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="py-20 px-6 bg-gray-50">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-gray-900 mb-2">FAQ</h2>
+            <p className="text-xl text-gray-600">Common Questions</p>
+            <p className="text-gray-500 mt-2">We're here to help you get the most out of viral.app</p>
+          </div>
+
+          <div className="space-y-4">
+            {[
+              {
+                question: "What is viral.app?",
+                answer: "viral.app is a comprehensive analytics platform for tracking social media content across Instagram, TikTok, and YouTube. We help creators and brands measure performance, manage campaigns, and optimize their content strategy."
+              },
+              {
+                question: "Who is viral.app for?",
+                answer: "Our platform is designed for content creators, influencers, UGC creators, marketing agencies, and brands who need professional analytics and campaign management tools."
+              },
+              {
+                question: "How does viral.app help optimize marketing ROI?",
+                answer: "We provide revenue tracking integrations with Apple App Store and RevenueCat, allowing you to see which content drives actual sales and conversions, not just vanity metrics."
+              },
+              {
+                question: "What platforms can I track content from?",
+                answer: "Currently we support Instagram, TikTok, and YouTube. We automatically sync your content and provide unified analytics across all platforms."
+              },
+              {
+                question: "How easy is it to set up and add accounts?",
+                answer: "Setup takes less than 2 minutes. Simply add the social media accounts you want to track, and we'll start syncing your data immediately."
+              },
+              {
+                question: "What kind of analytics does viral.app provide?",
+                answer: "We provide comprehensive metrics including views, likes, comments, shares, engagement rates, growth trends, top performers, posting schedules, and revenue attribution."
+              }
+            ].map((faq, index) => (
+              <details key={index} className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow group">
+                <summary className="font-semibold text-gray-900 cursor-pointer list-none flex items-center justify-between">
+                  <span>{faq.question}</span>
+                  <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+                </summary>
+                <p className="mt-4 text-gray-600 leading-relaxed">{faq.answer}</p>
+              </details>
+            ))}
+          </div>
+
+          <div className="mt-12 text-center">
+            <p className="text-gray-600 mb-4">Have more questions?</p>
+            <a 
+              href="mailto:support@viral.app"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors"
+            >
+              Contact Support
+            </a>
           </div>
         </div>
       </section>
