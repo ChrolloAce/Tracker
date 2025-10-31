@@ -2,7 +2,6 @@ import { db } from './firebase';
 import { 
   doc, 
   getDoc, 
-  setDoc,
   updateDoc, 
   increment,
   serverTimestamp,
@@ -136,7 +135,7 @@ class UsageTrackingService {
    * Update usage cache in background (non-blocking)
    */
   private static async updateUsageCache(orgId: string): Promise<void> {
-    const { collection, getDocs, query, where, setDoc } = await import('firebase/firestore');
+    const { collection, getDocs, query, where, setDoc: setDocFirestore } = await import('firebase/firestore');
     
     const projectsRef = collection(db, 'organizations', orgId, 'projects');
     const projectsSnapshot = await getDocs(projectsRef);
@@ -176,7 +175,7 @@ class UsageTrackingService {
     
     // Update cache
     const usageRef = doc(db, 'organizations', orgId, 'billing', 'usage');
-    await setDoc(usageRef, {
+    await setDocFirestore(usageRef, {
       trackedAccounts: totalAccounts,
       trackedVideos: totalVideos,
       trackedLinks: totalLinks,
