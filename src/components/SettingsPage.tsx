@@ -8,7 +8,6 @@ import { storage } from '../services/firebase';
 import OrganizationService from '../services/OrganizationService';
 import DeleteOrganizationModal from './DeleteOrganizationModal';
 import TeamManagementPage from './TeamManagementPage';
-import PendingInvitationsPage from './PendingInvitationsPage';
 import SubscriptionService from '../services/SubscriptionService';
 import StripeService from '../services/StripeService';
 import { PlanTier, SUBSCRIPTION_PLANS } from '../types/subscription';
