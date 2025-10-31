@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TrendingUp, BookOpen, Star, Play, Heart, MessageCircle, Share2, Video, UserPlus } from 'lucide-react';
-import viewtrackLogo from '/viewtracknewlogo.png';
+import viewtrackLogo from '/Viewtrack Logo Black.png';
 import dashboardImg from '/dashboard.png';
 import graphsImg from '/LANDINGPAGE-PHOOTS/GRAPHS.png';
 import topAccountsImg from '/LANDINGPAGE-PHOOTS/TOP ACCOUNTS.png';
