@@ -1011,7 +1011,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
 
   const confirmDeleteAccount = useCallback(async () => {
     if (!currentOrgId || !currentProjectId || !accountToDelete) return;
-    if (deleteConfirmText !== accountToDelete.username) return;
+    // Simplified - no text confirmation needed
 
     try {
       await AccountTrackingServiceFirebase.removeAccount(currentOrgId, currentProjectId, accountToDelete.id);
@@ -2593,74 +2593,55 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       {/* Delete Confirmation Modal */}
       {showDeleteModal && accountToDelete && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 dark:bg-zinc-900 rounded-2xl p-8 w-full max-w-md shadow-2xl border border-red-500/20">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <AlertCircle className="w-8 h-8 text-red-500" />
-              </div>
-              <h2 className="text-2xl font-bold text-white mb-2">Delete Account</h2>
-              <p className="text-gray-400">
-                This action cannot be undone. All videos and data for this account will be permanently removed.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
-                <div className="flex items-center gap-3 mb-3">
-                  {accountToDelete.profilePicture ? (
-                    <img 
-                      src={accountToDelete.profilePicture} 
-                      alt={accountToDelete.username}
-                      className="w-12 h-12 rounded-full"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
-                      <Users className="w-6 h-6 text-white" />
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <div className="font-semibold text-white">@{accountToDelete.username}</div>
-                    <div className="text-sm text-gray-400 capitalize">{accountToDelete.platform}</div>
+          <div className="bg-[#0A0A0A] rounded-2xl w-full max-w-md border border-white/10 shadow-2xl">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-white/10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center">
+                    <Trash2 className="w-5 h-5 text-red-400" />
                   </div>
+                  <h2 className="text-xl font-bold text-white">Delete Account</h2>
                 </div>
-                <div className="text-sm text-gray-400">
-                  {accountToDelete.totalVideos} videos • {formatNumber(accountToDelete.followerCount || 0)} followers
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Type <span className="font-bold text-white">{accountToDelete.username}</span> to confirm
-                </label>
-                <input
-                  type="text"
-                  value={deleteConfirmText}
-                  onChange={(e) => setDeleteConfirmText(e.target.value)}
-                  placeholder="Enter username to confirm"
-                  className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  autoFocus
-                />
-              </div>
-
-              <div className="flex gap-3">
                 <button
                   onClick={() => {
                     setShowDeleteModal(false);
                     setAccountToDelete(null);
-                    setDeleteConfirmText('');
                   }}
-                  className="flex-1 px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium transition-colors"
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
                 >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmDeleteAccount}
-                  disabled={deleteConfirmText !== accountToDelete.username}
-                  className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-600"
-                >
-                  Delete Account
+                  <X className="w-5 h-5 text-gray-400" />
                 </button>
               </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-6">
+              <p className="text-gray-400 text-sm mb-3">
+                Are you sure you want to delete <span className="text-white font-medium">@{accountToDelete.username}</span>?
+              </p>
+              <p className="text-gray-500 text-xs">
+                This will permanently delete {accountToDelete.totalVideos || 0} videos and all account data
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="px-6 py-4 border-t border-white/10 flex items-center justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setAccountToDelete(null);
+                }}
+                className="px-6 py-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-full transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteAccount}
+                className="px-6 py-2.5 bg-white hover:bg-gray-100 text-black rounded-full transition-colors font-medium"
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>
