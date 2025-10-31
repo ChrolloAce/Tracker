@@ -359,7 +359,7 @@ const BillingTabContent: React.FC = () => {
  * Features: Billing, Notifications, Organization, Profile management
  */
 const SettingsPage: React.FC = () => {
-  const { logout, user, currentOrgId, currentProjectId } = useAuth();
+  const { user, currentOrgId, currentProjectId } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     // Check if we should open the revenue tab (e.g., from Setup button click)
     const savedTab = localStorage.getItem('settingsActiveTab');
