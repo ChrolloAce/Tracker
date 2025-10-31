@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TrendingUp, BookOpen, Star, Play, Heart, MessageCircle, Share2, Video, UserPlus } from 'lucide-react';
+import NavBar from '../components/NavBar';
 import viewtrackLogo from '/Viewtrack Logo Black.png';
 import dashboardImg from '/dashboard.png';
 import graphsImg from '/LANDINGPAGE-PHOOTS/GRAPHS.png';
@@ -19,22 +20,8 @@ const LandingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#FAFAFB]">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <img src={viewtrackLogo} alt="ViewTrack" className="h-10 w-auto" />
-            </div>
-            <button
-              onClick={handleGetStarted}
-              className="px-6 py-2.5 text-sm font-semibold text-gray-900 hover:text-gray-700 transition-colors"
-            >
-              Sign In
-            </button>
-          </div>
-        </div>
-      </nav>
+      {/* Floating Pill Navigation */}
+      <NavBar logo={viewtrackLogo} onGetStarted={handleGetStarted} />
 
       {/* Hero Section - Ultra Detailed Design */}
       <section className="pt-32 pb-20 px-6 relative overflow-hidden">
