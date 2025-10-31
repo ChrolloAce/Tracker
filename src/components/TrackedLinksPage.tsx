@@ -119,10 +119,17 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
   };
 
   const handleCreateLink = async (originalUrl: string, title: string, description?: string, tags?: string[], linkedAccountId?: string) => {
-    if (!currentOrgId || !currentProjectId || !user) return;
+    console.log('🔗 handleCreateLink called:', { originalUrl, title, linkedAccountId });
+    
+    if (!currentOrgId || !currentProjectId || !user) {
+      console.error('❌ Missing required data:', { currentOrgId, currentProjectId, user: !!user });
+      alert('Missing required data. Please refresh and try again.');
+      return;
+    }
     
     try {
       if (editingLink) {
+        console.log('📝 Updating existing link:', editingLink.id);
         // Update existing link - filter out undefined values
         const updateData: any = {
           originalUrl,
@@ -134,9 +141,11 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         if (linkedAccountId !== undefined) updateData.linkedAccountId = linkedAccountId;
         
         await FirestoreDataService.updateLink(currentOrgId, currentProjectId, editingLink.id, updateData);
+        console.log('✅ Link updated successfully');
       } else {
         // Create new link
         const shortCode = generateShortCode();
+        console.log('🆕 Creating new link with shortCode:', shortCode);
         
         const createData: any = {
           shortCode,
@@ -149,15 +158,21 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         if (tags !== undefined) createData.tags = tags;
         if (linkedAccountId !== undefined) createData.linkedAccountId = linkedAccountId;
         
-        await FirestoreDataService.createLink(currentOrgId, currentProjectId, user.uid, createData);
+        console.log('📤 Calling FirestoreDataService.createLink with data:', createData);
+        const linkId = await FirestoreDataService.createLink(currentOrgId, currentProjectId, user.uid, createData);
+        console.log('✅ Link created successfully with ID:', linkId);
       }
       
+      console.log('🔄 Reloading links...');
       await loadLinks();
+      console.log('✅ Links reloaded');
+      
       setIsCreateModalOpen(false);
       setEditingLink(null);
     } catch (error) {
-      console.error(`Failed to ${editingLink ? 'update' : 'create'} link:`, error);
-      alert(`Failed to ${editingLink ? 'update' : 'create'} link. Please try again.`);
+      console.error(`❌ Failed to ${editingLink ? 'update' : 'create'} link:`, error);
+      alert(`Failed to ${editingLink ? 'update' : 'create'} link. ${error instanceof Error ? error.message : 'Please try again.'}`);
+      throw error; // Re-throw so modal can show error
     }
   };
 
