@@ -190,8 +190,15 @@ function App() {
 
       <Route path="/l/:shortId" element={<LinkRedirect />} />
       
-      {/* Public demo route - no authentication required */}
+      {/* Public demo routes - no authentication required */}
       <Route path="/demo" element={<DemoPage />} />
+      <Route path="/demo/dashboard" element={<DemoPage />} />
+      <Route path="/demo/accounts" element={<DemoPage />} />
+      <Route path="/demo/videos" element={<DemoPage />} />
+      <Route path="/demo/links" element={<DemoPage />} />
+      <Route path="/demo/creators" element={<DemoPage />} />
+      <Route path="/demo/campaigns" element={<DemoPage />} />
+      <Route path="/demo/extension" element={<DemoPage />} />
       
       {/* Public contract signing route - no authentication required */}
       <Route path="/contract/:contractId" element={<ContractSigningPage />} />

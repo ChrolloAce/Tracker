@@ -157,10 +157,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [isDayVideosModalOpen, setIsDayVideosModalOpen] = useState(false);
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string | undefined>();
   const [dayVideosDate, setDayVideosDate] = useState<Date>(new Date());
-  const [activeTab] = useState(() => {
-    // Use initialTab prop which is set based on URL route
-    return initialTab || 'dashboard';
-  });
+  const activeTab = initialTab || 'dashboard';
   const [isEditingLayout, setIsEditingLayout] = useState(false);
   const [isCardEditorOpen, setIsCardEditorOpen] = useState(false);
   const [draggedSection, setDraggedSection] = useState<string | null>(null);

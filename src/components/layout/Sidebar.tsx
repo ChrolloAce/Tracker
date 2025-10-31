@@ -50,64 +50,73 @@ const Sidebar: React.FC<SidebarProps> = ({
   const { can, loading: permissionsLoading } = usePermissions();
   const { userRole } = useAuth();
   const location = useLocation();
+  
+  // Check if we're in demo mode
+  const isDemoMode = location.pathname.startsWith('/demo');
 
   // Show ALL navigation items immediately for instant UI, filter by permissions after loaded
   const navigationItems: NavItem[] = useMemo(() => {
+    const baseHref = isDemoMode ? '/demo' : '';
     const allItems: NavItem[] = [
       {
         id: 'dashboard',
         label: 'Dashboard',
         icon: Eye,
-        href: '/dashboard',
+        href: `${baseHref}/dashboard`,
       },
       {
         id: 'accounts',
         label: 'Tracked Accounts',
         icon: Users,
-        href: '/accounts',
+        href: `${baseHref}/accounts`,
       },
       {
         id: 'videos',
         label: 'Videos',
         icon: Film,
-        href: '/videos',
+        href: `${baseHref}/videos`,
       },
       {
         id: 'analytics',
         label: 'Tracked Links',
         icon: Link,
-        href: '/links',
+        href: `${baseHref}/links`,
       },
       {
         id: 'creators',
         label: userRole === 'creator' ? 'Payouts' : 'Creators',
         icon: Video,
-        href: '/creators',
+        href: `${baseHref}/creators`,
       },
       {
         id: 'campaigns',
         label: 'Campaigns',
         icon: Trophy,
-        href: '/campaigns',
+        href: `${baseHref}/campaigns`,
         showSeparatorBefore: true, // Separator before campaigns
       },
       {
         id: 'extension',
         label: 'Extension',
         icon: Puzzle,
-        href: '/extension',
+        href: `${baseHref}/extension`,
       },
       {
         id: 'settings',
         label: 'Settings',
         icon: Settings,
-        href: '/settings',
+        href: `${baseHref}/settings`,
       },
     ];
 
     // If permissions are still loading, show all items for instant UI
     if (permissionsLoading) {
       return allItems;
+    }
+
+    // In demo mode, show all tabs except settings
+    if (isDemoMode) {
+      return allItems.filter(item => item.id !== 'settings');
     }
 
     // After permissions load, filter items based on access
@@ -122,7 +131,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       if (item.id === 'settings') return can.accessTab('settings');
       return true;
     });
-  }, [can, permissionsLoading, userRole, location]);
+  }, [can, permissionsLoading, userRole, isDemoMode]);
 
   const NavItemComponent: React.FC<{ item: NavItem }> = ({ item }) => {
     const Icon = item.icon;
