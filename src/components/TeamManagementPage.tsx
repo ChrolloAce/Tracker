@@ -25,6 +25,18 @@ const TeamManagementPage: React.FC = () => {
     loadData();
   }, [currentOrgId, user]);
 
+  // Listen for floating button click to open invite modal
+  useEffect(() => {
+    const handleOpenInviteModal = () => {
+      if (isAdmin) {
+        setShowInviteModal(true);
+      }
+    };
+    
+    window.addEventListener('openInviteModal', handleOpenInviteModal);
+    return () => window.removeEventListener('openInviteModal', handleOpenInviteModal);
+  }, [isAdmin]);
+
   const loadData = async () => {
     if (!currentOrgId || !user) return;
 

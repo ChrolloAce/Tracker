@@ -3238,7 +3238,7 @@ function DashboardPage() {
       </Modal>
 
       {/* Context-Aware Floating Action Button */}
-      {activeTab !== 'settings' && activeTab !== 'subscription' && activeTab !== 'cron' && activeTab !== 'team' && activeTab !== 'invitations' && activeTab !== 'creators' && (
+      {activeTab !== 'settings' && activeTab !== 'subscription' && activeTab !== 'cron' && activeTab !== 'invitations' && activeTab !== 'creators' && (
         <button
           onClick={() => {
             if (activeTab === 'dashboard') {
@@ -3249,6 +3249,9 @@ function DashboardPage() {
               trackedLinksPageRef.current?.openCreateModal();
             } else if (activeTab === 'campaigns') {
               navigate('/campaigns/create');
+            } else if (activeTab === 'team') {
+              const event = new CustomEvent('openInviteModal');
+              window.dispatchEvent(event);
             }
           }}
           className="fixed bottom-8 right-8 z-50 bg-gray-900 dark:bg-white hover:bg-black dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-full p-4 shadow-2xl transition-all duration-200 hover:scale-110 group"
@@ -3257,6 +3260,7 @@ function DashboardPage() {
             activeTab === 'accounts' ? 'Track Account' :
             activeTab === 'analytics' ? 'Create Link' :
             activeTab === 'campaigns' ? 'Create Campaign' :
+            activeTab === 'team' ? 'Invite Team Member' :
             'Add'
           }
         >
@@ -3278,6 +3282,7 @@ function DashboardPage() {
             {activeTab === 'accounts' && 'Track Account'}
             {activeTab === 'analytics' && 'Create Link'}
             {activeTab === 'campaigns' && 'Create Campaign'}
+            {activeTab === 'team' && 'Invite Team Member'}
           </span>
         </button>
       )}
