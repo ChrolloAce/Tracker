@@ -615,7 +615,7 @@ const LandingPage: React.FC = () => {
               Join creators who are scaling their social presence with ViewTrack.
             </p>
             <button
-              onClick={handleGetStarted}
+              onClick={onGetStarted}
               className="px-10 py-4 bg-white hover:bg-gray-100 text-gray-900 font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
             >
               Get Started for Free
