@@ -51,14 +51,9 @@ const LandingPage: React.FC = () => {
           <div className="flex items-center justify-center min-h-[600px]">
             {/* Central Content Column */}
             <div className="relative max-w-4xl mx-auto text-center">
-              {/* Logo Mark - 4 Circles */}
+              {/* Logo Mark */}
               <div className="flex items-center justify-center mb-12">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-gray-900 to-black shadow-sm"></div>
-                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 shadow-sm"></div>
-                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-cyan-500 to-cyan-600 shadow-sm"></div>
-                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-teal-400 to-teal-500 shadow-sm"></div>
-                </div>
+                <img src={viewtrackLogo} alt="ViewTrack" className="h-16 w-auto" />
               </div>
 
               {/* Main Headline - Two Lines */}
@@ -76,73 +71,30 @@ const LandingPage: React.FC = () => {
                 Monitor content performance across all platforms in one dashboard.
               </p>
 
-              {/* CTA Button */}
-              <button
-                onClick={handleGetStarted}
-                className="px-9 py-4 bg-gradient-to-r from-[#007BFF] to-[#2583FF] hover:from-[#0066DD] hover:to-[#1E6FDD] text-white font-semibold rounded-full shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-200 text-base"
-              >
-                Get free demo
-              </button>
-
-              {/* Floating Cards Around Central Content */}
-              
-              {/* Top-Left: Analytics Graphs */}
-              <div className="absolute -left-56 -top-12 transform -rotate-6 hidden lg:block">
-                <img src={graphsImg} alt="Analytics Graphs" className="w-56 h-auto rounded-2xl" />
+              {/* CTA Buttons */}
+              <div className="flex items-center justify-center gap-4 mb-12">
+                <button
+                  onClick={handleGetStarted}
+                  className="px-9 py-4 bg-gradient-to-r from-[#007BFF] to-[#2583FF] hover:from-[#0066DD] hover:to-[#1E6FDD] text-white font-semibold rounded-full shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-200 text-base"
+                >
+                  Start tracking now
+                </button>
+                <button
+                  onClick={() => {
+                    document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="px-9 py-4 bg-white hover:bg-gray-50 text-gray-900 font-semibold rounded-full border-2 border-gray-300 shadow-sm hover:shadow-md transition-all duration-200 text-base"
+                >
+                  Learn more
+                </button>
               </div>
 
-              {/* Top-Right: Top Accounts */}
-              <div className="absolute -right-48 -top-8 transform rotate-3 hidden lg:block">
-                <img src={topAccountsImg} alt="Top Accounts" className="w-52 h-auto rounded-2xl" />
-              </div>
-
-              {/* Bottom-Left: Task List Widget */}
-              <div className="absolute -left-52 bottom-0 transform -rotate-2 hidden lg:block">
-                <div className="w-52 bg-white/95 backdrop-blur rounded-2xl shadow-2xl border border-gray-200 p-5">
-                  <p className="text-sm font-semibold text-gray-900 mb-4">Today's tasks</p>
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-xs text-gray-700 mb-1">New ideas for campaign</p>
-                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full w-3/4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full"></div>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-700 mb-1">Design PPT Kit</p>
-                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full w-1/2 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full"></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bottom-Right: Supports All Platforms */}
-              <div className="absolute -right-48 bottom-4 transform rotate-2 hidden lg:block">
-                <div className="w-44 bg-white/95 backdrop-blur rounded-2xl shadow-2xl border border-emerald-100 p-5">
-                  <p className="text-xs font-semibold text-gray-500 mb-4">Supports all platforms</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* Instagram */}
-                    <div className="w-14 h-14 flex items-center justify-center transform hover:-translate-y-1 transition-transform">
-                      <img src={instagramIcon} alt="Instagram" className="w-full h-full object-contain" />
-                    </div>
-                    
-                    {/* TikTok */}
-                    <div className="w-14 h-14 flex items-center justify-center transform hover:-translate-y-1 transition-transform">
-                      <img src={tiktokIcon} alt="TikTok" className="w-full h-full object-contain" />
-                    </div>
-                    
-                    {/* YouTube */}
-                    <div className="w-14 h-14 flex items-center justify-center transform hover:-translate-y-1 transition-transform">
-                      <img src={youtubeIcon} alt="YouTube" className="w-full h-full object-contain" />
-                    </div>
-                    
-                    {/* X/Twitter */}
-                    <div className="w-14 h-14 flex items-center justify-center transform hover:-translate-y-1 transition-transform">
-                      <img src={xLogo} alt="X" className="w-full h-full object-contain" />
-                    </div>
-                  </div>
-                </div>
+              {/* Supported Platforms - Simple Row */}
+              <div className="flex items-center justify-center gap-6">
+                <img src={instagramIcon} alt="Instagram" className="h-8 w-8 object-contain opacity-60 hover:opacity-100 transition-opacity" />
+                <img src={tiktokIcon} alt="TikTok" className="h-8 w-8 object-contain opacity-60 hover:opacity-100 transition-opacity" />
+                <img src={youtubeIcon} alt="YouTube" className="h-8 w-8 object-contain opacity-60 hover:opacity-100 transition-opacity" />
+                <img src={xLogo} alt="X" className="h-8 w-8 object-contain opacity-60 hover:opacity-100 transition-opacity" />
               </div>
             </div>
           </div>
