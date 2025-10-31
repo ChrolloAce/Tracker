@@ -1,12 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { X, Check, Sparkles, Eye } from 'lucide-react';
+import React, { useState } from 'react';
+import { Check, Sparkles, Eye } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import StripeService from '../services/StripeService';
-import SubscriptionService from '../services/SubscriptionService';
-import { PlanTier } from '../types/subscription';
-import { signOut } from 'firebase/auth';
-import { auth } from '../services/firebase';
 
 interface PaywallOverlayProps {
   isActive: boolean;

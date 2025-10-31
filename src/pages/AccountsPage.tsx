@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import DashboardPage from './DashboardPage';
 
 /**
@@ -8,7 +8,6 @@ import DashboardPage from './DashboardPage';
  */
 const AccountsPage: React.FC = () => {
   const { accountId } = useParams<{ accountId?: string }>();
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (accountId) {

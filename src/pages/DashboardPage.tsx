@@ -60,7 +60,6 @@ import { db, auth } from '../services/firebase';
 import { fixVideoPlatforms } from '../services/FixVideoPlatform';
 import { TrackedAccount, TrackedLink } from '../types/firestore';
 import { TrackingRule, RuleCondition, RuleConditionType } from '../types/rules';
-import { PlanTier } from '../types/subscription';
 
 interface DateRange {
   startDate: Date;
@@ -104,7 +103,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   console.log('🔍 Dashboard IDs:', { isDemoMode, currentOrgId, currentProjectId, authOrgId, authProjectId });
 
   // Subscription & Paywall State
-  const [currentPlan, setCurrentPlan] = useState<PlanTier>('free');
   const [showPaywall, setShowPaywall] = useState(false);
   const [isDemoOrg, setIsDemoOrg] = useState(isDemoMode);
 
@@ -159,7 +157,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [isDayVideosModalOpen, setIsDayVideosModalOpen] = useState(false);
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string | undefined>();
   const [dayVideosDate, setDayVideosDate] = useState<Date>(new Date());
-  const [activeTab, setActiveTab] = useState(() => {
+  const [activeTab] = useState(() => {
     // Use initialTab prop which is set based on URL route
     return initialTab || 'dashboard';
   });
@@ -251,7 +249,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       
       try {
         const tier = await SubscriptionService.getPlanTier(currentOrgId);
-        setCurrentPlan(tier);
         
         console.log('💳 Plan tier:', tier, 'Tab:', activeTab);
         

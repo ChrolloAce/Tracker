@@ -18,7 +18,6 @@ interface FlowChipsProps {
 export default function FlowChips({ points }: FlowChipsProps) {
   const { chip } = FLOW_CONFIG;
   const halfSize = chip.size / 2;
-  const imageSize = chip.size - chip.imagePadding * 2;
   const borderRadius = halfSize - 1;
 
   // Generate placeholder avatars with different gradients

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Users, Upload, X, Check, ChevronRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import OrganizationService from '../services/OrganizationService';
@@ -34,7 +33,6 @@ interface OnboardingData {
 
 const OrganizationOnboarding: React.FC = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,37 +104,6 @@ const OrganizationOnboarding: React.FC = () => {
     });
   };
 
-  // Handle logo upload
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      
-      // Validate file size (2MB max)
-      if (file.size > 2 * 1024 * 1024) {
-        setError('Image must be less than 2MB');
-        return;
-      }
-
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setData({
-          ...data,
-          logoFile: file,
-          logoPreview: reader.result as string
-        });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleRemoveLogo = () => {
-    setData({
-      ...data,
-      logoFile: null,
-      logoPreview: null
-    });
-  };
 
   // Team member management
   const handleAddTeamMember = () => {
@@ -199,7 +166,7 @@ const OrganizationOnboarding: React.FC = () => {
   // Add tracked account
   const handleAddAccount = () => {
     if (currentAccountUrl && currentAccountUrl.trim().length > 0) {
-      const platform = detectPlatform(currentAccountUrl);
+      const platform = detectPlatform(currentAccountUrl) as 'instagram' | 'tiktok' | 'youtube' | 'twitter';
       setData({
         ...data,
         trackedAccounts: [...data.trackedAccounts, { url: currentAccountUrl, platform }]
@@ -417,7 +384,7 @@ const OrganizationOnboarding: React.FC = () => {
             user.uid,
             {
               username,
-              platform: account.platform,
+              platform: account.platform as 'instagram' | 'tiktok' | 'youtube' | 'twitter',
               accountType: 'my',
               isActive: true,
               displayName: username,
@@ -507,8 +474,6 @@ const OrganizationOnboarding: React.FC = () => {
       return '';
     }
   };
-
-  const progressPercent = (step / totalSteps) * 100;
 
   return (
     <div className="min-h-screen bg-[#FAFAFB] flex">

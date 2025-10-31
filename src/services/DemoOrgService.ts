@@ -39,7 +39,7 @@ class DemoOrgService {
   /**
    * Check if action is allowed in demo mode
    */
-  static canPerformAction(action: 'addAccount' | 'addVideo' | 'inviteTeam' | 'editSettings' | 'delete'): boolean {
+  static canPerformAction(_action: 'addAccount' | 'addVideo' | 'inviteTeam' | 'editSettings' | 'delete'): boolean {
     // All write actions are blocked in demo
     return false;
   }
@@ -47,7 +47,7 @@ class DemoOrgService {
   /**
    * Get demo restrictions message
    */
-  static getRestrictionMessage(action: string): string {
+  static getRestrictionMessage(_action: string): string {
     return `This action is disabled in demo mode. Sign up to unlock full access!`;
   }
 }

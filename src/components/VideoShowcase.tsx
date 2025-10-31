@@ -17,7 +17,6 @@ export default function VideoShowcase({
 }: VideoShowcaseProps) {
   const ref = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [isPlaying, setIsPlaying] = useState(true);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isHovering, setIsHovering] = useState(false);
 
@@ -28,10 +27,9 @@ export default function VideoShowcase({
     // try autoplay on mount
     const play = async () => {
       try { 
-        await v.play(); 
-        setIsPlaying(true); 
-      } catch { 
-        setIsPlaying(false); 
+        await v.play();
+      } catch (error) {
+        console.log('Autoplay blocked:', error);
       }
     };
     
@@ -52,11 +50,9 @@ export default function VideoShowcase({
     if (!v) return;
     
     if (v.paused) { 
-      await v.play(); 
-      setIsPlaying(true); 
+      await v.play();
     } else { 
-      v.pause(); 
-      setIsPlaying(false); 
+      v.pause();
     }
   };
 

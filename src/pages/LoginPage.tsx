@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Link2 } from 'lucide-react';
 import viewtrackLogo from '/Viewtrack Logo Black.png';
 import instagramIcon from '/Instagram_icon.png';
@@ -12,7 +12,6 @@ import TeamInvitationService from '../services/TeamInvitationService';
 const LoginPage: React.FC = () => {
   const { user, signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
