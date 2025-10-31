@@ -12,6 +12,7 @@ import PendingInvitationsPage from './PendingInvitationsPage';
 import { OrgMember } from '../types/firestore';
 import { RevenueIntegrationsSettings } from './RevenueIntegrationsSettings';
 import SubscriptionService from '../services/SubscriptionService';
+import StripeService from '../services/StripeService';
 import { PlanTier, SUBSCRIPTION_PLANS } from '../types/subscription';
 
 type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'team' | 'revenue';
@@ -28,6 +29,7 @@ const BillingTabContent: React.FC = () => {
   const [subscription, setSubscription] = useState<any>(null);
   const [usageStatus, setUsageStatus] = useState<any[]>([]);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [loadingPortal, setLoadingPortal] = useState(false);
 
   useEffect(() => {
     if (!currentOrgId) return;
@@ -48,27 +50,27 @@ const BillingTabContent: React.FC = () => {
         console.log('⏳ Waiting for webhook to complete...');
         await new Promise(resolve => setTimeout(resolve, 3000));
       }
+    
+    setLoading(true);
+    try {
+      const [tier, sub, usage] = await Promise.all([
+        SubscriptionService.getPlanTier(currentOrgId),
+        SubscriptionService.getSubscription(currentOrgId),
+        (async () => {
+          const { default: UsageTrackingService } = await import('../services/UsageTrackingService');
+          return UsageTrackingService.getUsageStatus(currentOrgId);
+        })()
+      ]);
       
-      setLoading(true);
-      try {
-        const [tier, sub, usage] = await Promise.all([
-          SubscriptionService.getPlanTier(currentOrgId),
-          SubscriptionService.getSubscription(currentOrgId),
-          (async () => {
-            const { default: UsageTrackingService } = await import('../services/UsageTrackingService');
-            return UsageTrackingService.getUsageStatus(currentOrgId);
-          })()
-        ]);
-        
-        setCurrentPlan(tier);
-        setSubscription(sub);
-        setUsageStatus(usage);
-      } catch (error) {
-        console.error('Failed to load billing info:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      setCurrentPlan(tier);
+      setSubscription(sub);
+      setUsageStatus(usage);
+    } catch (error) {
+      console.error('Failed to load billing info:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
     
     loadData();
   }, [currentOrgId]); // Only re-run when org changes
@@ -80,6 +82,20 @@ const BillingTabContent: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [showSuccessMessage]);
+
+  const handleManageSubscription = async () => {
+    if (!currentOrgId) return;
+    
+    setLoadingPortal(true);
+    try {
+      await StripeService.createPortalSession(currentOrgId);
+    } catch (error) {
+      console.error('Failed to open portal:', error);
+      alert('Failed to open billing portal. Please try again.');
+    } finally {
+      setLoadingPortal(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -263,18 +279,9 @@ const BillingTabContent: React.FC = () => {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Your Subscription</h2>
-          <p className="text-gray-600 dark:text-gray-400">Manage your organization's subscription and billing information.</p>
-        </div>
-        <button
-          onClick={() => window.location.reload()}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
-        >
-          <TrendingUp className="w-4 h-4" />
-          Refresh
-        </button>
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Your Subscription</h2>
+        <p className="text-gray-600 dark:text-gray-400">Manage your organization's subscription and billing information.</p>
       </div>
 
       {/* Usage Summary Cards */}
@@ -308,16 +315,35 @@ const BillingTabContent: React.FC = () => {
             <DetailRow label="Next Billing Date" value={nextBillingDate} />
           </div>
 
-          <div className="flex items-center justify-end gap-3 mt-6 pt-6 border-t border-white/10">
+          <div className="flex items-center justify-between mt-6 pt-6 border-t border-white/10">
+            <div className="flex items-center gap-3">
+              {currentPlan !== 'free' && subscription?.stripeCustomerId && (
+                <>
+                  <button
+                    onClick={handleManageSubscription}
+                    disabled={loadingPortal}
+                    className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/20 rounded-lg font-medium transition-colors text-white disabled:opacity-50"
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    {loadingPortal ? 'Loading...' : 'Manage Subscription'}
+                  </button>
+                  <button
+                    onClick={handleManageSubscription}
+                    disabled={loadingPortal}
+                    className="flex items-center gap-2 px-4 py-2 text-red-400 hover:bg-red-500/10 border border-red-500/20 rounded-lg font-medium transition-colors disabled:opacity-50"
+                  >
+                    <X className="w-4 h-4" />
+                    Cancel Subscription
+                  </button>
+                </>
+              )}
+            </div>
             <button
               onClick={() => navigate('/subscription')}
               className="flex items-center gap-2 px-6 py-2.5 bg-white/5 hover:bg-white/10 border border-white/20 rounded-lg font-medium transition-colors text-white"
             >
               <TrendingUp className="w-4 h-4" />
-              Upgrade Plan
-            </button>
-            <button className="p-2.5 hover:bg-white/5 rounded-lg transition-colors text-white">
-              <MoreHorizontal className="w-5 h-5" />
+              {currentPlan === 'free' ? 'Upgrade Plan' : 'Change Plan'}
             </button>
           </div>
         </div>
