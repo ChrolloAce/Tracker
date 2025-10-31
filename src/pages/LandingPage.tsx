@@ -236,7 +236,121 @@ const LandingPage: React.FC = () => {
       </section>
 
 
-      {/* CTA Section */}
+      {/* Benefits Sections - Horizontal with Images */}
+      
+      {/* 1. Easy Account Setup */}
+      <section className="py-20 px-6 bg-gray-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="space-y-6">
+              <h2 className="text-4xl font-bold text-gray-900">Easy Account Setup in Seconds</h2>
+              <p className="text-lg text-gray-600 leading-relaxed">
+                Simply add accounts and choose what content to track. Our streamlined setup delivers real-time data after your first sync.
+              </p>
+            </div>
+            <div className="bg-white rounded-2xl p-2 shadow-xl border border-gray-200">
+              <img src={dashboardImg} alt="Dashboard" className="w-full rounded-xl" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 2. Unified KPIs */}
+      <section className="py-20 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="order-2 lg:order-1 bg-white rounded-2xl p-2 shadow-xl border border-gray-200">
+              <img src={dashboardImg} alt="Analytics" className="w-full rounded-xl" />
+            </div>
+            <div className="order-1 lg:order-2 space-y-6">
+              <h2 className="text-4xl font-bold text-gray-900">Unified KPIs & Powerful Filters</h2>
+              <p className="text-lg text-gray-600 leading-relaxed">
+                Aggregate TikTok, Instagram, and YouTube metrics in one place. Use powerful filters to identify your best-performing content.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. Comprehensive Analytics */}
+      <section className="py-20 px-6 bg-gray-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="space-y-6">
+              <h2 className="text-4xl font-bold text-gray-900">Comprehensive Analytics Dashboard</h2>
+              <p className="text-lg text-gray-600 leading-relaxed">
+                Get a bird's-eye view of your performance with our intuitive dashboard. Track engagement, growth trends, and audience metrics all in one place.
+              </p>
+            </div>
+            <div className="bg-white rounded-2xl p-2 shadow-xl border border-gray-200">
+              <img src={dashboardImg} alt="Analytics Dashboard" className="w-full rounded-xl" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. Track Your Conversion */}
+      <section className="py-20 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="order-2 lg:order-1 bg-white rounded-2xl p-2 shadow-xl border border-gray-200">
+              <img src={dashboardImg} alt="Conversion Tracking" className="w-full rounded-xl" />
+            </div>
+            <div className="order-1 lg:order-2 space-y-6">
+              <h2 className="text-4xl font-bold text-gray-900">Track Your Conversion</h2>
+              <p className="text-lg text-gray-600 leading-relaxed">
+                Custom integrations like Apple's App Store Connect enable never-before-seen insights into content conversion and the ROI of your organic marketing. Identify which content really drives sales.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Feature Grid */}
+      <section className="py-20 px-6 bg-gray-50">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-4xl font-bold text-gray-900 text-center mb-16">All-in-One Platform</h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {/* UGC Campaigns */}
+            <div className="bg-white rounded-2xl p-8 border border-gray-200 hover:shadow-lg transition-shadow">
+              <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center mb-4">
+                <TrendingUp className="w-6 h-6 text-emerald-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">UGC & Influencer Campaigns</h3>
+              <p className="text-gray-600">Create and manage creator campaigns with rewards and tracking.</p>
+            </div>
+
+            {/* Contracts & Portals */}
+            <div className="bg-white rounded-2xl p-8 border border-gray-200 hover:shadow-lg transition-shadow">
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4">
+                <BookOpen className="w-6 h-6 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Contracts & Creator Portals</h3>
+              <p className="text-gray-600">All-in-one solution for creator agreements and collaboration.</p>
+            </div>
+
+            {/* Chrome Extension */}
+            <div className="bg-white rounded-2xl p-8 border border-gray-200 hover:shadow-lg transition-shadow">
+              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4">
+                <Play className="w-6 h-6 text-purple-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Chrome Extension</h3>
+              <p className="text-gray-600">Research and discover content directly from your browser.</p>
+            </div>
+
+            {/* Track Links */}
+            <div className="bg-white rounded-2xl p-8 border border-gray-200 hover:shadow-lg transition-shadow">
+              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4">
+                <Share2 className="w-6 h-6 text-orange-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Track Links</h3>
+              <p className="text-gray-600">Monitor click-through rates and conversion from your bio links.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA Section */}
       <section className="py-20 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl p-12 shadow-2xl">
