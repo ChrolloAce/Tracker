@@ -8,7 +8,7 @@ import { PlatformIcon } from './ui/PlatformIcon';
 interface CreateLinkModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreate: (originalUrl: string, title: string, description?: string, tags?: string[], linkedAccountId?: string) => void;
+  onCreate: (originalUrl: string, title: string, description?: string, tags?: string[], linkedAccountId?: string) => Promise<void>;
   editingLink?: any | null;
   preselectedAccountId?: string; // Account ID to pre-select and lock
 }
