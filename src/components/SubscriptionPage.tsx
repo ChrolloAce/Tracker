@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, ArrowLeft, ExternalLink } from 'lucide-react';
+import { Check, ArrowLeft } from 'lucide-react';
 import { SUBSCRIPTION_PLANS, PlanTier } from '../types/subscription';
 import { useAuth } from '../contexts/AuthContext';
 import StripeService from '../services/StripeService';
@@ -59,25 +59,6 @@ const SubscriptionPage: React.FC = () => {
     } catch (error: any) {
       console.error('Failed to create checkout session:', error);
         alert('Failed to start checkout. Please try again or contact support.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleManageBilling = async () => {
-    if (!currentOrgId) return;
-    
-    if (!hasStripeCustomer) {
-      alert('Please subscribe to a paid plan first to access billing management.');
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      await StripeService.createPortalSession(currentOrgId);
-    } catch (error: any) {
-      console.error('Failed to open billing portal:', error);
-      alert('Failed to open billing portal. Please try again or contact support.');
     } finally {
       setLoading(false);
     }

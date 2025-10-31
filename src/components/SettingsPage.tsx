@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, Building2, User as UserIcon, X, Users, DollarSign, TrendingUp, MoreHorizontal } from 'lucide-react';
+import { LogOut, Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, Users, DollarSign, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -379,7 +379,6 @@ const SettingsPage: React.FC = () => {
   const [currentOrganization, setCurrentOrganization] = useState<any>(null);
   const [isOwner, setIsOwner] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [orgMembers, setOrgMembers] = useState<OrgMember[]>([]);
   
   // Notification settings
   const [emailNotifications, setEmailNotifications] = useState({
@@ -408,10 +407,6 @@ const SettingsPage: React.FC = () => {
         if (org) {
           const ownerStatus = await OrganizationService.isOrgOwner(org.id, user.uid);
           setIsOwner(ownerStatus);
-          
-          // Load organization members
-          const members = await OrganizationService.getOrgMembers(org.id);
-          setOrgMembers(members);
         }
       } catch (error) {
         console.error('Failed to load organization:', error);
@@ -498,15 +493,6 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const getRoleBadge = (role: string) => {
-    const styles = {
-      owner: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
-      admin: 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-      member: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-      creator: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-    };
-    return styles[role as keyof typeof styles] || styles.member;
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
