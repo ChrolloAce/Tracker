@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TrendingUp, BookOpen, Star, Play, Heart, MessageCircle, Share2, Video, UserPlus, Eye, ThumbsUp, Users as UsersIcon } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
-import blackLogo from '../components/blacklogo.png';
+import viewtrackLogo from '/viewtracknewlogo.png';
 import dashboardImg from '/dashboard.png';
 
 const LandingPage: React.FC = () => {
@@ -19,7 +19,7 @@ const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <img src={blackLogo} alt="ViewTrack" className="h-10 w-auto" />
+              <img src={viewtrackLogo} alt="ViewTrack" className="h-10 w-auto" />
             </div>
             <button
               onClick={handleGetStarted}
@@ -73,7 +73,7 @@ const LandingPage: React.FC = () => {
                   onClick={() => {
                     document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
                   }}
-                  className="px-8 py-4 bg-white hover:bg-gray-50 text-gray-900 font-semibold rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-2"
+                  className="px-8 py-4 bg-white hover:bg-[#0A0A0A] text-gray-900 font-semibold rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-2"
                 >
                   <BookOpen className="w-5 h-5" />
                   Learn more
@@ -132,8 +132,8 @@ const LandingPage: React.FC = () => {
       <section id="features" className="py-20 px-6 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Real Results, Real Growth</h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <h2 className="text-4xl font-bold text-white mb-4">Real Results, Real Growth</h2>
+            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
               Track the metrics that matter and watch your influence grow.
             </p>
           </div>
@@ -158,15 +158,15 @@ const LandingPage: React.FC = () => {
                 icon: MessageCircle,
                 title: 'Comments',
                 value: '394.7K',
-                delta: '+15.8%',
-                isPositive: true,
+                delta: '-8.3%',
+                isPositive: false,
               },
               {
                 icon: Share2,
                 title: 'Shares',
                 value: '28.6K',
-                delta: '+21.3%',
-                isPositive: true,
+                delta: '-12.1%',
+                isPositive: false,
               },
               {
                 icon: Video,
@@ -721,7 +721,7 @@ const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center space-x-3">
-              <img src={blackLogo} alt="ViewTrack" className="h-8 w-auto" />
+              <img src={viewtrackLogo} alt="ViewTrack" className="h-8 w-auto" />
             </div>
             <p className="text-sm text-gray-500">
               © 2025 ViewTrack. Track smarter, grow faster.
