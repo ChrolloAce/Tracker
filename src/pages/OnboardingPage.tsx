@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import OrganizationService from '../services/OrganizationService';
 import ProjectService from '../services/ProjectService';
 import FirestoreDataService from '../services/FirestoreDataService';
-import blackLogo from '../components/blacklogo.png';
+import viewtrackLogo from '/viewtracknewlogo.png';
 import { clsx } from 'clsx';
 
 interface OnboardingData {
@@ -224,7 +224,7 @@ const UserOnboarding: React.FC = () => {
         <div className="bg-black p-12 flex flex-col justify-between">
           {/* Logo & Branding */}
           <div>
-            <img src={blackLogo} alt="ViewTrack" className="h-10 w-auto mb-12 brightness-0 invert" />
+            <img src={viewtrackLogo} alt="ViewTrack" className="h-10 w-auto mb-12 brightness-0 invert" />
             
             <h1 className="text-4xl font-bold text-white mb-4 leading-tight">
               A few clicks away from setting up your workspace.
