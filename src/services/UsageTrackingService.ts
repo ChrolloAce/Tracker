@@ -2,6 +2,7 @@ import { db } from './firebase';
 import { 
   doc, 
   getDoc, 
+  setDoc,
   updateDoc, 
   increment,
   serverTimestamp,
@@ -58,71 +59,137 @@ class UsageTrackingService {
   
   /**
    * Get current usage for an organization
-   * COUNTS ACTUAL RESOURCES - no separate tracking needed!
+   * Uses cached data from usage document, with fallback to real-time count
    */
   static async getUsage(orgId: string): Promise<UsageMetrics> {
     try {
-      // Get all projects for this org
-      const { collection, getDocs, query, where } = await import('firebase/firestore');
-      
-      const projectsRef = collection(db, 'organizations', orgId, 'projects');
-      const projectsSnapshot = await getDocs(projectsRef);
-      
-      let totalAccounts = 0;
-      let totalVideos = 0;
-      let totalLinks = 0;
-      
-      // Count across all projects
-      for (const projectDoc of projectsSnapshot.docs) {
-        const projectId = projectDoc.id;
-        
-        // Count active accounts
-        const accountsRef = collection(db, 'organizations', orgId, 'projects', projectId, 'trackedAccounts');
-        const accountsQuery = query(accountsRef, where('isActive', '==', true));
-        const accountsSnapshot = await getDocs(accountsQuery);
-        totalAccounts += accountsSnapshot.size;
-        
-        // Count videos
-        const videosRef = collection(db, 'organizations', orgId, 'projects', projectId, 'videos');
-        const videosSnapshot = await getDocs(videosRef);
-        totalVideos += videosSnapshot.size;
-        
-        // Count active links
-        const linksRef = collection(db, 'organizations', orgId, 'projects', projectId, 'links');
-        const linksQuery = query(linksRef, where('isActive', '==', true));
-        const linksSnapshot = await getDocs(linksQuery);
-        totalLinks += linksSnapshot.size;
-      }
-      
-      // Count team members
-      const membersRef = collection(db, 'organizations', orgId, 'members');
-      const membersQuery = query(membersRef, where('status', '==', 'active'));
-      const membersSnapshot = await getDocs(membersQuery);
-      const teamMembers = membersSnapshot.size;
-      
-      // Get MCP calls from usage doc if it exists
       const usageRef = doc(db, 'organizations', orgId, 'billing', 'usage');
       const usageDoc = await getDoc(usageRef);
-      const mcpCallsThisMonth = usageDoc.exists() ? (usageDoc.data()?.mcpCallsThisMonth || 0) : 0;
       
-      console.log(`📊 Real-time usage for org ${orgId}: ${totalAccounts} accounts, ${totalVideos} videos, ${totalLinks} links, ${teamMembers} members`);
+      // If we have recent cached data (< 5 minutes old), use it for speed
+      if (usageDoc.exists()) {
+        const data = usageDoc.data();
+        const lastUpdated = data.lastUpdated?.toDate() || new Date(0);
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+        
+        // Use cached data if it's recent
+        if (lastUpdated > fiveMinutesAgo) {
+          console.log(`⚡ Using cached usage data (updated ${Math.round((Date.now() - lastUpdated.getTime()) / 1000)}s ago)`);
+          return {
+            trackedAccounts: data.trackedAccounts || 0,
+            trackedVideos: data.trackedVideos || 0,
+            trackedLinks: data.trackedLinks || 0,
+            teamMembers: data.teamMembers || 1,
+            manualVideos: data.manualVideos || 0,
+            manualCreators: data.manualCreators || 0,
+            mcpCallsThisMonth: data.mcpCallsThisMonth || 0,
+            lastUpdated: lastUpdated,
+            currentPeriodStart: data.currentPeriodStart?.toDate() || new Date(),
+            currentPeriodEnd: data.currentPeriodEnd?.toDate() || this.getNextMonthDate()
+          };
+        }
+      }
       
+      console.log('🔄 Cache miss or stale - counting resources in background...');
+      
+      // Cache is stale or missing - count in background and update cache
+      // But return approximate data immediately to avoid blocking
+      this.updateUsageCache(orgId).catch(err => console.error('Background cache update failed:', err));
+      
+      // Return current cached data or zeros while background update runs
+      if (usageDoc.exists()) {
+        const data = usageDoc.data();
+        return {
+          trackedAccounts: data.trackedAccounts || 0,
+          trackedVideos: data.trackedVideos || 0,
+          trackedLinks: data.trackedLinks || 0,
+          teamMembers: data.teamMembers || 1,
+          manualVideos: data.manualVideos || 0,
+          manualCreators: data.manualCreators || 0,
+          mcpCallsThisMonth: data.mcpCallsThisMonth || 0,
+          lastUpdated: data.lastUpdated?.toDate() || new Date(),
+          currentPeriodStart: data.currentPeriodStart?.toDate() || new Date(),
+          currentPeriodEnd: data.currentPeriodEnd?.toDate() || this.getNextMonthDate()
+        };
+      }
+      
+      // No cache at all - return zeros and update in background
       return {
-        trackedAccounts: totalAccounts,
-        trackedVideos: totalVideos,
-        trackedLinks: totalLinks,
-        teamMembers: teamMembers,
-          manualVideos: 0,
-          manualCreators: 0,
-        mcpCallsThisMonth,
-          lastUpdated: new Date(),
-          currentPeriodStart: new Date(),
-          currentPeriodEnd: this.getNextMonthDate()
+        trackedAccounts: 0,
+        trackedVideos: 0,
+        trackedLinks: 0,
+        teamMembers: 1,
+        manualVideos: 0,
+        manualCreators: 0,
+        mcpCallsThisMonth: 0,
+        lastUpdated: new Date(),
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: this.getNextMonthDate()
       };
     } catch (error) {
       console.error('Failed to get usage:', error);
       throw error;
     }
+  }
+  
+  /**
+   * Update usage cache in background (non-blocking)
+   */
+  private static async updateUsageCache(orgId: string): Promise<void> {
+    const { collection, getDocs, query, where, setDoc } = await import('firebase/firestore');
+    
+    const projectsRef = collection(db, 'organizations', orgId, 'projects');
+    const projectsSnapshot = await getDocs(projectsRef);
+    
+    let totalAccounts = 0;
+    let totalVideos = 0;
+    let totalLinks = 0;
+    
+    // Count across all projects in parallel
+    const countPromises = projectsSnapshot.docs.map(async (projectDoc) => {
+      const projectId = projectDoc.id;
+      
+      const [accountsSnap, videosSnap, linksSnap] = await Promise.all([
+        getDocs(query(collection(db, 'organizations', orgId, 'projects', projectId, 'trackedAccounts'), where('isActive', '==', true))),
+        getDocs(collection(db, 'organizations', orgId, 'projects', projectId, 'videos')),
+        getDocs(query(collection(db, 'organizations', orgId, 'projects', projectId, 'links'), where('isActive', '==', true)))
+      ]);
+      
+      return {
+        accounts: accountsSnap.size,
+        videos: videosSnap.size,
+        links: linksSnap.size
+      };
+    });
+    
+    const results = await Promise.all(countPromises);
+    results.forEach(r => {
+      totalAccounts += r.accounts;
+      totalVideos += r.videos;
+      totalLinks += r.links;
+    });
+    
+    // Count team members
+    const membersRef = collection(db, 'organizations', orgId, 'members');
+    const membersQuery = query(membersRef, where('status', '==', 'active'));
+    const membersSnapshot = await getDocs(membersQuery);
+    
+    // Update cache
+    const usageRef = doc(db, 'organizations', orgId, 'billing', 'usage');
+    await setDoc(usageRef, {
+      trackedAccounts: totalAccounts,
+      trackedVideos: totalVideos,
+      trackedLinks: totalLinks,
+      teamMembers: membersSnapshot.size,
+      manualVideos: 0,
+      manualCreators: 0,
+      mcpCallsThisMonth: 0,
+      lastUpdated: serverTimestamp(),
+      currentPeriodStart: Timestamp.fromDate(new Date()),
+      currentPeriodEnd: Timestamp.fromDate(this.getNextMonthDate())
+    }, { merge: true });
+    
+    console.log(`✅ Usage cache updated: ${totalAccounts} accounts, ${totalVideos} videos, ${totalLinks} links`);
   }
   
   /**
