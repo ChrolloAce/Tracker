@@ -87,7 +87,42 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
   const totalPaidOut = campaigns.reduce((sum, c) => sum + c.totalEarnings, 0);
 
   if (loading) {
-    return <div className="text-white">Loading campaigns...</div>;
+    return (
+      <div className="space-y-6">
+        {/* Skeleton Stats */}
+        {!isCreator && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="rounded-xl border border-white/10 p-6 bg-black/40">
+                <div className="h-4 bg-white/10 rounded w-24 mb-3 animate-pulse"></div>
+                <div className="h-8 bg-white/10 rounded w-16 animate-pulse"></div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Skeleton Campaign Cards */}
+        <div className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="rounded-xl border border-white/10 p-6 bg-black/40 animate-pulse">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex-1">
+                  <div className="h-6 bg-white/10 rounded w-48 mb-2"></div>
+                  <div className="h-4 bg-white/10 rounded w-64"></div>
+                </div>
+                <div className="h-8 bg-white/10 rounded w-20"></div>
+              </div>
+              <div className="grid grid-cols-4 gap-4 mt-4">
+                <div className="h-12 bg-white/10 rounded"></div>
+                <div className="h-12 bg-white/10 rounded"></div>
+                <div className="h-12 bg-white/10 rounded"></div>
+                <div className="h-12 bg-white/10 rounded"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
