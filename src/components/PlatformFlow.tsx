@@ -67,6 +67,7 @@ const PlatformFlow: React.FC = () => {
               <motion.div
                 key={platform.id}
                 className="absolute top-1/2 -translate-y-1/2"
+                data-flow-anchor={`platform-${platform.id}`}
                 style={{ left: positions[index] }}
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
