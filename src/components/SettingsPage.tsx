@@ -805,21 +805,11 @@ const SettingsPage: React.FC = () => {
           {activeTab === 'team' && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Team Management</h2>
-                <p className="text-gray-600 dark:text-gray-400">Manage your team members and pending invitations.</p>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Team</h2>
+                <p className="text-gray-600 dark:text-gray-400">Manage team members and permissions</p>
               </div>
 
-              {/* Team Members */}
-              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Team Members</h3>
-                <TeamManagementPage />
-              </div>
-
-              {/* Pending Invitations */}
-              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Pending Invitations</h3>
-                <PendingInvitationsPage />
-              </div>
+              <TeamManagementPage />
             </div>
           )}
         </div>
