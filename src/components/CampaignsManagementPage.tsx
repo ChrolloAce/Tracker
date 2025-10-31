@@ -148,7 +148,7 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
             <CampaignManagementCard
               key={campaign.id}
               campaign={campaign}
-              onClick={() => navigate(`/campaign/${campaign.id}`)}
+              onClick={() => navigate(`/campaigns/${campaign.id}`)}
               isCreator={isCreator}
             />
           ))}
