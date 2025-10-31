@@ -53,7 +53,7 @@ const DeleteLinkModal: React.FC<DeleteLinkModalProps> = ({
               <X className="w-5 h-5 text-gray-400" />
             </button>
           </div>
-        </div>
+          </div>
 
         {/* Content */}
         <div className="px-6 py-6">
@@ -62,25 +62,25 @@ const DeleteLinkModal: React.FC<DeleteLinkModalProps> = ({
           </p>
           <p className="text-gray-500 text-xs">
             This will permanently delete all click data ({link.totalClicks || 0} clicks)
-          </p>
-        </div>
+            </p>
+          </div>
 
         {/* Actions */}
         <div className="px-6 py-4 border-t border-white/10 flex items-center justify-end gap-3">
-          <button
+            <button
             onClick={onClose}
-            disabled={isDeleting}
+              disabled={isDeleting}
             className="px-6 py-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-full transition-colors font-medium disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleConfirm}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirm}
             disabled={isDeleting}
             className="px-6 py-2.5 bg-white hover:bg-gray-100 text-black rounded-full transition-colors font-medium disabled:opacity-50"
-          >
+            >
             {isDeleting ? 'Deleting...' : 'Delete'}
-          </button>
+            </button>
         </div>
       </div>
     </div>

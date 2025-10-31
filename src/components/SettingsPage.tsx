@@ -802,7 +802,7 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                 <p className="text-gray-600 dark:text-gray-400">Manage team members and permissions</p>
               </div>
 
-              <TeamManagementPage />
+                <TeamManagementPage />
             </div>
           )}
         </div>
