@@ -3,6 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { TrendingUp, BookOpen, Star, Play, Heart, MessageCircle, Share2, Video, UserPlus } from 'lucide-react';
 import blackLogo from '../components/blacklogo.png';
 import dashboardImg from '/dashboard.png';
+import graphsImg from '/LANDINGPAGE-PHOOTS/GRAPHS.png';
+import topAccountsImg from '/LANDINGPAGE-PHOOTS/TOP ACCOUNTS.png';
+import instagramIcon from '/Instagram_icon.png';
+import tiktokIcon from '/TiktokLogo.png';
+import youtubeIcon from '/Youtube_shorts_icon.svg.png';
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -58,16 +63,16 @@ const LandingPage: React.FC = () => {
               {/* Main Headline - Two Lines */}
               <div className="space-y-1 mb-8">
                 <h1 className="text-6xl font-extrabold text-[#111111] leading-[1.1] tracking-tight">
-                  Think, plan, and track
+                  Track, Manage and scale
                 </h1>
                 <h2 className="text-[56px] font-normal text-[#9B9B9B] leading-[1.1] tracking-tight">
-                  all in one place
+                  your UGC and influencer campaigns
                 </h2>
               </div>
 
               {/* Supporting Sentence */}
               <p className="text-lg text-[#666666] mb-10 tracking-wide">
-                Efficiently manage your tasks and boost productivity.
+                Monitor content performance across all platforms in one dashboard.
               </p>
 
               {/* CTA Button */}
@@ -80,43 +85,17 @@ const LandingPage: React.FC = () => {
 
               {/* Floating Cards Around Central Content */}
               
-              {/* Top-Left: Yellow Sticky Note */}
-              <div className="absolute -left-48 -top-12 transform -rotate-6 hidden lg:block">
-                <div className="relative w-36 h-36 bg-gradient-to-br from-[#FFF47D] to-[#FFED4E] rounded-sm shadow-xl" style={{clipPath: 'polygon(0 0, 100% 0, 98% 98%, 0 100%)'}}>
-                  {/* Pushpin */}
-                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-gradient-to-br from-red-500 to-red-600 rounded-full shadow-md"></div>
-                  <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-3 bg-gradient-to-b from-gray-400 to-gray-500"></div>
-                  
-                  {/* Handwritten Text */}
-                  <div className="p-4 pt-6 text-left">
-                    <p className="text-xs leading-relaxed text-gray-700" style={{fontFamily: 'cursive'}}>
-                      Take notes to keep<br/>
-                      track of crucial details,<br/>
-                      and accomplish more<br/>
-                      tasks with ease.
-                    </p>
-                  </div>
-                  
-                  {/* Blue Checkmark Badge */}
-                  <div className="absolute -bottom-2 -left-2 w-8 h-8 bg-[#007BFF] rounded-full flex items-center justify-center shadow-lg">
-                    <span className="text-white text-lg font-bold">✓</span>
-                  </div>
+              {/* Top-Left: Analytics Graphs */}
+              <div className="absolute -left-56 -top-12 transform -rotate-6 hidden lg:block">
+                <div className="relative w-56 bg-white/95 backdrop-blur rounded-2xl shadow-2xl border border-gray-200 p-2 overflow-hidden">
+                  <img src={graphsImg} alt="Analytics Graphs" className="w-full h-auto rounded-xl" />
                 </div>
               </div>
 
-              {/* Top-Right: Reminder Card */}
-              <div className="absolute -right-40 -top-8 transform rotate-3 hidden lg:block">
-                <div className="relative w-48 h-32 bg-white/95 backdrop-blur rounded-2xl shadow-2xl border border-gray-200 p-4">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Reminders</p>
-                  <p className="text-sm font-bold text-gray-900 mb-1">Today's Meeting</p>
-                  <p className="text-xs text-gray-600">12:00–12:35</p>
-                  
-                  {/* Clock Icon */}
-                  <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-12 h-12 bg-white rounded-full border-2 border-gray-300 shadow-lg flex items-center justify-center">
-                    <svg className="w-6 h-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
+              {/* Top-Right: Top Accounts */}
+              <div className="absolute -right-48 -top-8 transform rotate-3 hidden lg:block">
+                <div className="relative w-52 bg-white/95 backdrop-blur rounded-2xl shadow-2xl border border-gray-200 p-2 overflow-hidden">
+                  <img src={topAccountsImg} alt="Top Accounts" className="w-full h-auto rounded-xl" />
                 </div>
               </div>
 
@@ -141,21 +120,31 @@ const LandingPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Bottom-Right: Integrations Card */}
+              {/* Bottom-Right: Supports All Platforms */}
               <div className="absolute -right-48 bottom-4 transform rotate-2 hidden lg:block">
-                <div className="w-44 bg-white/95 backdrop-blur rounded-2xl shadow-2xl border border-blue-100 p-5">
-                  <p className="text-xs font-semibold text-gray-500 mb-4">100+ Integrations</p>
-                  <div className="flex items-center gap-3">
-                    {/* Gmail Icon */}
-                    <div className="w-12 h-12 bg-white rounded-lg shadow-md flex items-center justify-center transform hover:-translate-y-1 transition-transform">
-                      <div className="w-8 h-6 bg-gradient-to-br from-red-500 to-red-600 rounded-sm flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">M</span>
-                      </div>
+                <div className="w-44 bg-white/95 backdrop-blur rounded-2xl shadow-2xl border border-emerald-100 p-5">
+                  <p className="text-xs font-semibold text-gray-500 mb-4">Supports all platforms</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Instagram */}
+                    <div className="w-16 h-16 bg-white rounded-xl shadow-md flex items-center justify-center transform hover:-translate-y-1 transition-transform p-2">
+                      <img src={instagramIcon} alt="Instagram" className="w-full h-full object-contain" />
                     </div>
                     
-                    {/* Google Calendar Icon */}
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-md flex items-center justify-center transform hover:-translate-y-1 transition-transform">
-                      <span className="text-white text-xl font-bold">31</span>
+                    {/* TikTok */}
+                    <div className="w-16 h-16 bg-white rounded-xl shadow-md flex items-center justify-center transform hover:-translate-y-1 transition-transform p-2">
+                      <img src={tiktokIcon} alt="TikTok" className="w-full h-full object-contain" />
+                    </div>
+                    
+                    {/* YouTube */}
+                    <div className="w-16 h-16 bg-white rounded-xl shadow-md flex items-center justify-center transform hover:-translate-y-1 transition-transform p-2">
+                      <img src={youtubeIcon} alt="YouTube" className="w-full h-full object-contain" />
+                    </div>
+                    
+                    {/* X/Twitter */}
+                    <div className="w-16 h-16 bg-white rounded-xl shadow-md flex items-center justify-center transform hover:-translate-y-1 transition-transform p-3">
+                      <svg className="w-full h-full" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                      </svg>
                     </div>
                   </div>
                 </div>
