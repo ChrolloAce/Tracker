@@ -319,10 +319,10 @@ function App() {
         element={
           !user ? (
             <Navigate to="/login" replace />
-          ) : currentOrgId && currentProjectId ? (
-            <DashboardPage />
+          ) : !currentOrgId || !currentProjectId ? (
+            <Navigate to="/create-organization" replace />
           ) : (
-            <LoadingSkeleton />
+            <DashboardPage />
           )
         } 
       />
@@ -332,10 +332,10 @@ function App() {
         element={
           !user ? (
             <Navigate to="/login" replace />
-          ) : currentOrgId && currentProjectId ? (
-            <AccountsPage />
+          ) : !currentOrgId || !currentProjectId ? (
+            <Navigate to="/create-organization" replace />
           ) : (
-            <LoadingSkeleton />
+            <AccountsPage />
           )
         } 
       />
@@ -345,10 +345,10 @@ function App() {
         element={
           !user ? (
             <Navigate to="/login" replace />
-          ) : currentOrgId && currentProjectId ? (
-            <VideosPage />
+          ) : !currentOrgId || !currentProjectId ? (
+            <Navigate to="/create-organization" replace />
           ) : (
-            <LoadingSkeleton />
+            <VideosPage />
           )
         } 
       />
@@ -358,10 +358,10 @@ function App() {
         element={
           !user ? (
             <Navigate to="/login" replace />
-          ) : currentOrgId && currentProjectId ? (
-            <LinksPage />
+          ) : !currentOrgId || !currentProjectId ? (
+            <Navigate to="/create-organization" replace />
           ) : (
-            <LoadingSkeleton />
+            <LinksPage />
           )
         } 
       />
@@ -371,10 +371,10 @@ function App() {
         element={
           !user ? (
             <Navigate to="/login" replace />
-          ) : currentOrgId && currentProjectId ? (
-            <CreatorsPage />
+          ) : !currentOrgId || !currentProjectId ? (
+            <Navigate to="/create-organization" replace />
           ) : (
-            <LoadingSkeleton />
+            <CreatorsPage />
           )
         } 
       />
@@ -384,10 +384,10 @@ function App() {
         element={
           !user ? (
             <Navigate to="/login" replace />
-          ) : currentOrgId && currentProjectId ? (
-            <CampaignsPage />
+          ) : !currentOrgId || !currentProjectId ? (
+            <Navigate to="/create-organization" replace />
           ) : (
-            <LoadingSkeleton />
+            <CampaignsPage />
           )
         } 
       />
@@ -397,10 +397,10 @@ function App() {
         element={
           !user ? (
             <Navigate to="/login" replace />
-          ) : currentOrgId && currentProjectId ? (
-            <ExtensionPage />
+          ) : !currentOrgId || !currentProjectId ? (
+            <Navigate to="/create-organization" replace />
           ) : (
-            <LoadingSkeleton />
+            <ExtensionPage />
           )
         } 
       />
