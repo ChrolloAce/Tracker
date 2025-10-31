@@ -1,22 +1,13 @@
-import React, { useEffect, useRef } from 'react';
-import { 
-  Settings, 
-  BarChart3, 
-  TrendingUp, 
-  DollarSign,
-  Users,
-  FileText,
-  Globe,
-  Link,
-  Sparkles
-} from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Sparkles } from 'lucide-react';
+import dashboardImg from '/dashboard.png';
 
 interface TimelineStep {
   id: number;
   title: string;
   subtitle?: string;
   description: string;
-  icon: React.ReactNode;
+  image: string;
 }
 
 const timelineData: TimelineStep[] = [
@@ -25,56 +16,56 @@ const timelineData: TimelineStep[] = [
     title: "Easy Account Setup",
     subtitle: "In Seconds",
     description: "Simply add accounts and choose what content to track. Our streamlined setup delivers real-time data after your first sync.",
-    icon: <Settings className="w-5 h-5" />
+    image: dashboardImg
   },
   {
     id: 2,
     title: "Unified KPIs",
     subtitle: "& Powerful Filters",
     description: "Aggregate TikTok, Instagram, and YouTube metrics in one place. Use powerful filters to identify your best-performing content.",
-    icon: <BarChart3 className="w-5 h-5" />
+    image: dashboardImg
   },
   {
     id: 3,
     title: "Comprehensive Analytics",
     subtitle: "Dashboard",
     description: "Get a bird's-eye view of your performance with our intuitive dashboard. Track engagement, growth trends, and audience metrics all in one place.",
-    icon: <TrendingUp className="w-5 h-5" />
+    image: dashboardImg
   },
   {
     id: 4,
     title: "Track Your Conversion",
     subtitle: "ROI Insights",
     description: "Custom integrations like Apple's App Store Connect enable never-before-seen insights into content conversion and ROI. Identify which content really drives sales.",
-    icon: <DollarSign className="w-5 h-5" />
+    image: dashboardImg
   },
   {
     id: 5,
     title: "UGC & Influencer",
     subtitle: "Campaigns",
     description: "Create and manage creator campaigns with rewards and tracking.",
-    icon: <Users className="w-5 h-5" />
+    image: dashboardImg
   },
   {
     id: 6,
     title: "Contracts",
     subtitle: "& Creator Portals",
     description: "All-in-one solution for creator agreements and collaboration.",
-    icon: <FileText className="w-5 h-5" />
+    image: dashboardImg
   },
   {
     id: 7,
     title: "Chrome Extension",
     subtitle: "Browser Research",
     description: "Research and discover content directly from your browser.",
-    icon: <Globe className="w-5 h-5" />
+    image: dashboardImg
   },
   {
     id: 8,
     title: "Track Links",
     subtitle: "Bio Link Analytics",
     description: "Monitor click-through rates and conversion from your bio links.",
-    icon: <Link className="w-5 h-5" />
+    image: dashboardImg
   }
 ];
 
@@ -82,6 +73,7 @@ const AnimatedTimeline: React.FC = () => {
   const timelineRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<(HTMLDivElement | null)[]>([]);
   const pathRef = useRef<SVGPathElement>(null);
+  const [activeCards, setActiveCards] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     const observerOptions = {
@@ -91,10 +83,11 @@ const AnimatedTimeline: React.FC = () => {
 
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
+        const index = Number(entry.target.getAttribute('data-index'));
         if (entry.isIntersecting) {
           entry.target.classList.add('timeline-visible');
+          setActiveCards(prev => new Set([...prev, index]));
           // Add staggered animation
-          const index = Number(entry.target.getAttribute('data-index'));
           setTimeout(() => {
             entry.target.classList.add('timeline-animated');
           }, index * 100);
@@ -110,9 +103,14 @@ const AnimatedTimeline: React.FC = () => {
     const animatePath = () => {
       if (!pathRef.current || !timelineRef.current) return;
       
-      const scrollProgress = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
+      const rect = timelineRef.current.getBoundingClientRect();
+      const scrolled = window.scrollY + window.innerHeight;
+      const start = window.scrollY + rect.top;
+      const end = start + rect.height;
+      
+      const progress = Math.max(0, Math.min(1, (scrolled - start) / (end - start)));
       const pathLength = pathRef.current.getTotalLength();
-      const drawLength = pathLength * Math.min(scrollProgress * 2, 1); // Speed up the drawing
+      const drawLength = pathLength * progress;
       
       pathRef.current.style.strokeDasharray = `${drawLength} ${pathLength}`;
     };
@@ -127,20 +125,20 @@ const AnimatedTimeline: React.FC = () => {
   }, []);
 
   return (
-    <section id="journey" className="relative py-32 px-6 bg-gradient-to-br from-gray-50 via-white to-gray-50 overflow-hidden">
+    <section id="journey" className="relative py-32 px-6 bg-white overflow-hidden">
       {/* Background decoration */}
-      <div className="absolute inset-0 opacity-40">
-        <div className="absolute top-20 left-10 w-96 h-96 bg-emerald-200 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
-        <div className="absolute top-40 right-10 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000"></div>
-        <div className="absolute bottom-20 left-1/2 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-4000"></div>
+      <div className="absolute inset-0 opacity-20">
+        <div className="absolute top-20 left-10 w-96 h-96 bg-gray-100 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
+        <div className="absolute top-40 right-10 w-96 h-96 bg-gray-100 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000"></div>
+        <div className="absolute bottom-20 left-1/2 w-96 h-96 bg-gray-100 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-4000"></div>
       </div>
 
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Section Header */}
         <div className="text-center mb-20">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-200 rounded-full mb-6">
-            <Sparkles className="w-4 h-4 text-emerald-600" />
-            <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-full mb-6">
+            <Sparkles className="w-4 h-4" />
+            <span className="text-xs font-semibold uppercase tracking-wide">
               Product Journey
             </span>
           </div>
@@ -153,15 +151,14 @@ const AnimatedTimeline: React.FC = () => {
         {/* Desktop Timeline */}
         <div ref={timelineRef} className="hidden lg:block relative">
           {/* SVG Path */}
-          <svg className="absolute left-1/2 top-0 w-4 h-full -ml-2 overflow-visible" style={{ zIndex: 0 }}>
+          <svg className="absolute left-1/2 top-0 w-2 h-full -ml-1 overflow-visible" style={{ zIndex: 0 }}>
             <defs>
               <linearGradient id="pathGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#10b981" stopOpacity="0.8" />
-                <stop offset="50%" stopColor="#3b82f6" stopOpacity="0.8" />
-                <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.8" />
+                <stop offset="0%" stopColor="#111111" stopOpacity="0.2" />
+                <stop offset="100%" stopColor="#111111" stopOpacity="0.8" />
               </linearGradient>
               <filter id="glow">
-                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
                 <feMerge>
                   <feMergeNode in="coloredBlur"/>
                   <feMergeNode in="SourceGraphic"/>
@@ -170,9 +167,9 @@ const AnimatedTimeline: React.FC = () => {
             </defs>
             <path
               ref={pathRef}
-              d={`M 8 0 Q 8 100 ${timelineData.length % 2 === 0 ? -50 : 66} 150 T 8 ${150 * (timelineData.length - 1)} L 8 ${150 * timelineData.length}`}
+              d={`M 1 0 L 1 ${200 * timelineData.length}`}
               stroke="url(#pathGradient)"
-              strokeWidth="3"
+              strokeWidth="2"
               fill="none"
               filter="url(#glow)"
               className="path-animation"
@@ -192,39 +189,54 @@ const AnimatedTimeline: React.FC = () => {
                 }`}
               >
                 {/* Connection Node */}
-                <div className="absolute left-1/2 -ml-3 w-6 h-6 bg-white rounded-full border-3 border-gradient shadow-lg z-10">
-                  <div className="w-full h-full rounded-full bg-gradient-to-r from-emerald-400 to-blue-400 animate-pulse-slow" />
+                <div className={`absolute left-1/2 -ml-4 w-8 h-8 rounded-full shadow-lg z-10 transition-all duration-500 ${
+                  activeCards.has(index) 
+                    ? 'bg-gray-900 scale-110' 
+                    : 'bg-gray-300 scale-100'
+                }`}>
+                  <div className={`w-full h-full rounded-full ${
+                    activeCards.has(index) ? 'animate-pulse' : ''
+                  }`} />
                 </div>
 
                 {/* Card */}
                 <div className={`timeline-card-content w-5/12 ${
                   index % 2 === 0 ? 'mr-auto pr-12' : 'ml-auto pl-12'
                 }`}>
-                  <div className="group relative bg-white/80 backdrop-blur-lg rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all duration-500 border border-gray-100 hover:border-emerald-200">
-                    {/* Icon */}
-                    <div className="absolute -top-4 -left-4 w-12 h-12 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                      <div className="text-white">
-                        {step.icon}
-                      </div>
+                  <div className={`group relative rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 border-2 ${
+                    activeCards.has(index)
+                      ? 'bg-gray-900 border-gray-900'
+                      : 'bg-white border-gray-200'
+                  }`}>
+                    {/* Image */}
+                    <div className="h-48 overflow-hidden border-b border-gray-200">
+                      <img 
+                        src={step.image} 
+                        alt={step.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
                     </div>
 
                     {/* Content */}
-                    <div className="pt-2">
-                      <h3 className="text-2xl font-bold text-gray-900 mb-1">
+                    <div className="p-8">
+                      <h3 className={`text-2xl font-bold mb-1 transition-colors duration-500 ${
+                        activeCards.has(index) ? 'text-white' : 'text-gray-900'
+                      }`}>
                         {step.title}
                       </h3>
                       {step.subtitle && (
-                        <p className="text-sm text-emerald-600 font-semibold mb-3">
+                        <p className={`text-sm font-semibold mb-3 transition-colors duration-500 ${
+                          activeCards.has(index) ? 'text-gray-300' : 'text-gray-600'
+                        }`}>
                           {step.subtitle}
                         </p>
                       )}
-                      <p className="text-gray-600 leading-relaxed">
+                      <p className={`leading-relaxed transition-colors duration-500 ${
+                        activeCards.has(index) ? 'text-gray-200' : 'text-gray-600'
+                      }`}>
                         {step.description}
                       </p>
                     </div>
-
-                    {/* Hover Effect */}
-                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-emerald-400/0 to-blue-400/0 group-hover:from-emerald-400/10 group-hover:to-blue-400/10 transition-all duration-500" />
                   </div>
                 </div>
               </div>
@@ -233,12 +245,12 @@ const AnimatedTimeline: React.FC = () => {
             {/* Launch Node */}
             <div className="relative flex items-center justify-center pt-12">
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-purple-600 rounded-full blur-xl animate-pulse-slow" />
-                <div className="relative w-24 h-24 bg-gradient-to-r from-emerald-500 to-purple-600 rounded-full flex items-center justify-center shadow-2xl">
+                <div className="absolute inset-0 bg-gray-900 rounded-full blur-xl animate-pulse-slow" />
+                <div className="relative w-24 h-24 bg-gray-900 rounded-full flex items-center justify-center shadow-2xl">
                   <Sparkles className="w-10 h-10 text-white animate-spin-slow" />
                 </div>
                 <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap">
-                  <span className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-purple-600 bg-clip-text text-transparent">
+                  <span className="text-2xl font-bold text-gray-900">
                     Launch
                   </span>
                 </div>
@@ -255,33 +267,37 @@ const AnimatedTimeline: React.FC = () => {
                 key={step.id}
                 className="snap-center shrink-0 w-80"
               >
-                <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-xl border border-gray-100 h-full">
-                  {/* Icon */}
-                  <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-xl flex items-center justify-center shadow-lg mb-4">
-                    <div className="text-white">
-                      {step.icon}
-                    </div>
+                <div className="bg-white rounded-2xl overflow-hidden shadow-xl border border-gray-200 h-full">
+                  {/* Image */}
+                  <div className="h-32 overflow-hidden">
+                    <img 
+                      src={step.image} 
+                      alt={step.title}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
 
                   {/* Content */}
-                  <h3 className="text-xl font-bold text-gray-900 mb-1">
-                    {step.title}
-                  </h3>
-                  {step.subtitle && (
-                    <p className="text-sm text-emerald-600 font-semibold mb-3">
-                      {step.subtitle}
+                  <div className="p-6">
+                    <h3 className="text-xl font-bold text-gray-900 mb-1">
+                      {step.title}
+                    </h3>
+                    {step.subtitle && (
+                      <p className="text-sm text-gray-600 font-semibold mb-3">
+                        {step.subtitle}
+                      </p>
+                    )}
+                    <p className="text-gray-600 text-sm leading-relaxed">
+                      {step.description}
                     </p>
-                  )}
-                  <p className="text-gray-600 text-sm leading-relaxed">
-                    {step.description}
-                  </p>
+                  </div>
                 </div>
               </div>
             ))}
             
             {/* Launch Card */}
             <div className="snap-center shrink-0 w-80">
-              <div className="bg-gradient-to-br from-emerald-500 to-purple-600 rounded-2xl p-6 shadow-xl h-full flex items-center justify-center">
+              <div className="bg-gray-900 rounded-2xl p-6 shadow-xl h-full flex items-center justify-center">
                 <div className="text-center">
                   <Sparkles className="w-16 h-16 text-white mx-auto mb-4 animate-spin-slow" />
                   <span className="text-2xl font-bold text-white">
