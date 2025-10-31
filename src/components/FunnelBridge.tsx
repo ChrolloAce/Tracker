@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 const FunnelBridge: React.FC = () => {
   return (
     <div className="relative mx-auto max-w-6xl px-4 md:px-6 py-12">
+      {/* Flow Anchor - Funnel */}
+      <div data-flow-anchor="funnel" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[1px] w-[1px]" />
       <svg 
         className="w-full h-32"
         viewBox="0 0 1200 120"

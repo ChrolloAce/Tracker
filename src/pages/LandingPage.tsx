@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TrendingUp, BookOpen, Star, Play, Heart, MessageCircle, Share2, Video, UserPlus } from 'lucide-react';
 import NavBar from '../components/NavBar';
+import FlowCanvas from '../components/FlowCanvas';
 import PlatformFlow from '../components/PlatformFlow';
 import FloatingProfiles from '../components/FloatingProfiles';
 import FunnelBridge from '../components/FunnelBridge';
@@ -23,7 +24,10 @@ const LandingPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAFB]">
+    <div className="min-h-screen bg-[#FAFAFB] relative">
+      {/* Seamless Flow Canvas - Continuous animated path */}
+      <FlowCanvas />
+      
       {/* Floating Pill Navigation */}
       <NavBar logo={viewtrackLogo} onGetStarted={handleGetStarted} />
 
@@ -62,8 +66,11 @@ const LandingPage: React.FC = () => {
                 Monitor content performance across all platforms in one dashboard.
               </p>
 
+              {/* Flow Anchor - Hero Center */}
+              <div data-flow-anchor="hero-center" className="absolute left-1/2 -translate-x-1/2 h-[1px] w-[1px]" style={{top: '50%'}} />
+
               {/* CTA Buttons */}
-              <div className="flex items-center justify-center gap-4 mb-12">
+              <div className="flex items-center justify-center gap-4 mb-12 relative z-10">
                 <button
                   onClick={handleGetStarted}
                   className="px-9 py-4 bg-gradient-to-r from-[#007BFF] to-[#2583FF] hover:from-[#0066DD] hover:to-[#1E6FDD] text-white font-semibold rounded-full shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-200 text-base"

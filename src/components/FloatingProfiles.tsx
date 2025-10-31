@@ -37,6 +37,9 @@ const FloatingProfiles: React.FC = () => {
         />
       </svg>
 
+      {/* Flow Anchor - Profiles Field */}
+      <div data-flow-anchor="profiles-field" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[1px] w-[1px] z-0" />
+
       {/* Floating Avatars */}
       <div className="relative h-[400px] flex items-center justify-center">
         {PROFILES.map((profile, index) => {
