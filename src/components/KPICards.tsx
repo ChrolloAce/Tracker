@@ -41,6 +41,7 @@ interface KPICardsProps {
   granularity?: 'day' | 'week' | 'month' | 'year';
   onCreateLink?: () => void;
   onVideoClick?: (video: VideoSubmission) => void;
+  onOpenRevenueSettings?: () => void;
   revenueMetrics?: RevenueMetrics | null;
   revenueIntegrations?: RevenueIntegration[];
   isEditMode?: boolean;
@@ -77,6 +78,7 @@ const KPICards: React.FC<KPICardsProps> = ({
   granularity = 'day',
   onCreateLink,
   onVideoClick,
+  onOpenRevenueSettings,
   revenueMetrics,
   revenueIntegrations = [],
   isEditMode = false,
@@ -1256,7 +1258,8 @@ const KPICards: React.FC<KPICardsProps> = ({
           sparklineData: sparklineData.length > 0 ? sparklineData : undefined,
           intervalType: 'day' as IntervalType,
           isIncreasing: revenueGrowth >= 0,
-          tooltip: 'Total revenue from all transactions in this period'
+          tooltip: 'Total revenue from all transactions in this period',
+          onClick: onOpenRevenueSettings
         };
       })(),
       // Downloads card (from RevenueCat new subscriptions)
@@ -1311,7 +1314,8 @@ const KPICards: React.FC<KPICardsProps> = ({
           sparklineData: sparklineData.length > 0 ? sparklineData : undefined,
           intervalType: 'day' as IntervalType,
           isIncreasing: true,
-          tooltip: 'Active Subscriptions from RevenueCat'
+          tooltip: 'Active Subscriptions from RevenueCat',
+          onClick: onOpenRevenueSettings
         };
       })()
     ];
