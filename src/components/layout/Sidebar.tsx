@@ -126,15 +126,18 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const NavItemComponent: React.FC<{ item: NavItem }> = ({ item }) => {
     const Icon = item.icon;
+    const isActive = location.pathname === item.href || location.pathname.startsWith((item.href || '') + '/');
+    
+    if (!item.href) return null;
     
     return (
-      <button
-        onClick={item.onClick}
+      <NavLink
+        to={item.href}
         className={clsx(
           'w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group',
           {
-            'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-r-2 border-gray-300 dark:border-gray-600': item.isActive,
-            'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700': !item.isActive,
+            'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-r-2 border-gray-300 dark:border-gray-600': isActive,
+            'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700': !isActive,
           }
         )}
       >
@@ -142,8 +145,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           className={clsx(
             'flex-shrink-0 w-5 h-5 transition-colors duration-200',
             {
-              'text-gray-900 dark:text-white': item.isActive,
-              'text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300': !item.isActive,
+              'text-gray-900 dark:text-white': isActive,
+              'text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300': !isActive,
             }
           )} 
         />
@@ -157,7 +160,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             )}
           </>
         )}
-      </button>
+      </NavLink>
     );
   };
 
