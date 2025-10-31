@@ -2,6 +2,10 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TrendingUp, BookOpen, Star, Play, Heart, MessageCircle, Share2, Video, UserPlus } from 'lucide-react';
 import NavBar from '../components/NavBar';
+import PlatformFlow from '../components/PlatformFlow';
+import FloatingProfiles from '../components/FloatingProfiles';
+import FunnelBridge from '../components/FunnelBridge';
+import FeatureTimeline from '../components/FeatureTimeline';
 import viewtrackLogo from '/Viewtrack Logo Black.png';
 import dashboardImg from '/dashboard.png';
 import graphsImg from '/LANDINGPAGE-PHOOTS/GRAPHS.png';
@@ -88,12 +92,14 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Original Stats Section Removed - Replaced with Hero */}
-      
-      {/* Metrics Section Removed - Integrated into Hero */}
+      {/* Animated Flow Visualization */}
+      <PlatformFlow />
+      <FloatingProfiles />
+      <FunnelBridge />
+      <FeatureTimeline />
 
       {/* Features Section */}
-      <section className="py-20 px-6">
+      <section id="features" className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             {/* Left Column - Marketing Content */}
