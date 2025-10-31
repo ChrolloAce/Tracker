@@ -534,10 +534,13 @@ class FirestoreDataService {
     userId: string,
     linkData: Omit<TrackedLink, 'id' | 'orgId' | 'createdAt' | 'createdBy' | 'totalClicks' | 'uniqueClicks' | 'last7DaysClicks'>
   ): Promise<string> {
+    console.log('📍 FirestoreDataService.createLink called:', { orgId, projectId, userId, linkData });
+    
     const batch = writeBatch(db);
     
     // Create link in project
     const linkRef = doc(collection(db, 'organizations', orgId, 'projects', projectId, 'links'));
+    console.log('📝 Generated link ref with ID:', linkRef.id);
     
     // Remove undefined fields (Firestore doesn't accept undefined)
     const cleanLinkData: any = { ...linkData };
@@ -558,7 +561,9 @@ class FirestoreDataService {
       last7DaysClicks: 0
     };
     
+    console.log('📦 Full link data to save:', fullLinkData);
     batch.set(linkRef, fullLinkData);
+    console.log('✅ Added link to batch');
     
     // Increment project link count
     const projectRef = doc(db, 'organizations', orgId, 'projects', projectId);
@@ -566,6 +571,7 @@ class FirestoreDataService {
       linkCount: increment(1),
       updatedAt: Timestamp.now()
     });
+    console.log('✅ Added project update to batch');
     
     // Create public link lookup (for redirects) - includes URL, org, project for instant redirect
     const publicLinkRef = doc(db, 'publicLinks', linkData.shortCode);
@@ -575,9 +581,11 @@ class FirestoreDataService {
       linkId: linkRef.id, 
       url: cleanLinkData.originalUrl 
     });
+    console.log('✅ Added public link to batch');
     
+    console.log('💾 Committing batch...');
     await batch.commit();
-    console.log(`✅ Created link ${linkData.shortCode} in project ${projectId}`);
+    console.log(`✅ Created link ${linkData.shortCode} in project ${projectId} - Link ID: ${linkRef.id}`);
     return linkRef.id;
   }
 
