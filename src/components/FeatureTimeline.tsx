@@ -26,7 +26,7 @@ const FeatureTimeline: React.FC = () => {
   return (
     <div ref={containerRef} className="relative mx-auto max-w-6xl px-4 md:px-6 py-24">
       {/* Flow Anchor - Timeline Start */}
-      <div data-flow-anchor="timeline-start" className="absolute left-1/2 top-0 -translate-x-1/2 h-[1px] w-[1px]" />
+      <div data-flow="timeline" className="absolute left-1/2 top-0 -translate-x-1/2 h-[1px] w-[1px]" />
       {/* Center Spine */}
       <div className="absolute left-1/2 top-0 bottom-0 w-[2px] -translate-x-1/2 bg-gradient-to-b from-indigo-500/20 to-cyan-400/20">
         <motion.div

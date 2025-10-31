@@ -99,11 +99,19 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Animated Flow Visualization */}
-      <PlatformFlow />
-      <FloatingProfiles />
-      <FunnelBridge />
-      <FeatureTimeline />
+      {/* Animated Flow Visualization - Container-based */}
+      <section id="flow-container" className="relative z-[3]">
+        {/* Hero Anchors */}
+        <div className="relative mx-auto max-w-5xl pt-10 pb-10">
+          <div data-flow="hero-left" className="absolute left-[10%] top-[55%] h-px w-px" />
+          <div data-flow="hero-right" className="absolute right-[10%] top-[55%] h-px w-px" />
+        </div>
+
+        <PlatformFlow />
+        <FloatingProfiles />
+        <FunnelBridge />
+        <FeatureTimeline />
+      </section>
 
       {/* Features Section */}
       <section id="features" className="py-20 px-6">
