@@ -3280,6 +3280,16 @@ function DashboardPage() {
           </span>
         </button>
       )}
+
+      {/* Revenue Integrations Modal */}
+      {currentOrgId && currentProjectId && (
+        <RevenueIntegrationsModal
+          isOpen={isRevenueModalOpen}
+          onClose={() => setIsRevenueModalOpen(false)}
+          organizationId={currentOrgId}
+          projectId={currentProjectId}
+        />
+      )}
     </div>
   );
 }
