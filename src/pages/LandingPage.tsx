@@ -188,50 +188,84 @@ const LandingPage: React.FC = () => {
                 color: 'from-indigo-500 to-indigo-600',
                 strokeColor: '#6366f1',
               },
-            ].map((metric, index) => (
-              <div
-                key={index}
-                className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-700"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 bg-gradient-to-br ${metric.color} rounded-lg flex items-center justify-center shadow-lg`}>
-                      <metric.icon className="w-5 h-5 text-white" />
+            ].map((metric, index) => {
+              const Icon = metric.icon;
+              // Generate realistic sparkline data
+              const sparklineData = Array.from({ length: 10 }, (_, i) => ({
+                value: 70 + Math.random() * 30 - i * 2 + index * 5
+              }));
+              const isPositive = metric.growth.startsWith('+');
+              
+              return (
+                <div
+                  key={index}
+                  className="group relative rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 overflow-hidden"
+                  style={{ minHeight: '180px' }}
+                >
+                  {/* Upper Content - 60% */}
+                  <div className="relative px-5 pt-4 pb-2 z-10" style={{ height: '60%' }}>
+                    {/* Icon (top-right) */}
+                    <div className="absolute top-4 right-4">
+                      <Icon className="w-5 h-5 text-gray-400 opacity-60" />
                     </div>
-                    <span className="text-sm font-medium text-gray-400 uppercase tracking-wider">{metric.title}</span>
+
+                    {/* Metric Content */}
+                    <div className="flex flex-col h-full justify-start pt-1">
+                      {/* Label */}
+                      <div className="text-xs font-medium text-zinc-400 tracking-wide mb-2">
+                        {metric.title}
+                      </div>
+
+                      {/* Value + Delta */}
+                      <div className="flex items-baseline gap-3 -mt-1">
+                        <span className="text-3xl lg:text-4xl font-bold tracking-tight text-white">
+                          {metric.value}
+                        </span>
+                        
+                        <span className={`inline-flex items-baseline text-xs font-semibold ${
+                          isPositive ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                          {metric.growth}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom Graph - 40% */}
+                  <div className="relative w-full z-10" style={{ height: '40%' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={sparklineData}>
+                        <defs>
+                          <linearGradient id={`area-gradient-${index}`} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={metric.strokeColor} stopOpacity={0.3}/>
+                            <stop offset="100%" stopColor={metric.strokeColor} stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <Tooltip 
+                          content={({ active, payload }) => {
+                            if (active && payload && payload[0]) {
+                              return (
+                                <div className="bg-black/90 border border-white/20 rounded-lg px-3 py-2">
+                                  <p className="text-white text-sm font-medium">{Math.round(payload[0].value as number)}</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="value" 
+                          stroke={metric.strokeColor}
+                          fill={`url(#area-gradient-${index})`}
+                          strokeWidth={2}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
-                
-                <div className="space-y-2">
-                  <div className="flex items-baseline gap-2">
-                    <h3 className="text-3xl font-bold text-white">{metric.value}</h3>
-                    <span className="text-sm font-semibold text-emerald-400">{metric.growth}</span>
-                  </div>
-                  
-                  {/* Mini Graph */}
-                  <div className="h-16 w-full">
-                    <svg className="w-full h-full" viewBox="0 0 200 50" preserveAspectRatio="none">
-                      <defs>
-                        <linearGradient id={`gradient-${index}`} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor={metric.strokeColor} stopOpacity="0.3" />
-                          <stop offset="100%" stopColor={metric.strokeColor} stopOpacity="0" />
-                        </linearGradient>
-                      </defs>
-                      <path
-                        d={`M0,${30 + Math.random() * 10} L${40},${25 + Math.random() * 15} L${80},${20 + Math.random() * 10} L${120},${15 + Math.random() * 15} L${160},${10 + Math.random() * 10} L200,${5 + Math.random() * 10}`}
-                        fill="none"
-                        stroke={metric.strokeColor}
-                        strokeWidth="2"
-                      />
-                      <path
-                        d={`M0,${30 + Math.random() * 10} L${40},${25 + Math.random() * 15} L${80},${20 + Math.random() * 10} L${120},${15 + Math.random() * 15} L${160},${10 + Math.random() * 10} L200,${5 + Math.random() * 10} L200,50 L0,50 Z`}
-                        fill={`url(#gradient-${index})`}
-                      />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
