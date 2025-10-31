@@ -235,66 +235,6 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Pain Points Section */}
-      <section className="py-20 px-6 bg-red-600">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                title: 'Lost in the Numbers',
-                description: 'Tracking views across Instagram, TikTok, and YouTube feels like juggling chaos. You know your content is performing, but proving it? Impossible.',
-              },
-              {
-                title: 'Spreadsheet Hell',
-                description: 'Manual data entry is eating your time. Hours wasted copying numbers, building reports, and still missing the bigger picture of what actually works.',
-              },
-              {
-                title: 'No Clear ROI',
-                description: 'Brands ask for proof of performance, but your messy tracking makes you look unprofessional. Lost deals. Lost credibility. Lost revenue.',
-              },
-            ].map((pain, index) => (
-              <div key={index} className="bg-red-700/50 backdrop-blur-sm rounded-2xl p-8 border border-red-500/30">
-                <h3 className="text-2xl font-bold text-white mb-4">{pain.title}</h3>
-                <p className="text-red-100 text-lg leading-relaxed">{pain.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* We Got You Covered Section */}
-      <section className="py-20 px-6 bg-blue-600">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-white mb-4">We Got You Covered</h2>
-            <p className="text-xl text-blue-100 max-w-2xl mx-auto">
-              Everything you need to track, prove, and grow your influence.
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                title: 'One Dashboard. All Platforms.',
-                description: 'Track Instagram, TikTok, and YouTube videos from a single, beautiful dashboard. No more tab-switching nightmares.',
-              },
-              {
-                title: 'Automatic Tracking',
-                description: 'Set it and forget it. We refresh your metrics automatically, so your reports are always up-to-date without lifting a finger.',
-              },
-              {
-                title: 'Professional Reports',
-                description: 'Impress brands with clean, comprehensive analytics. Export beautiful reports that prove your worth and close deals faster.',
-              },
-            ].map((solution, index) => (
-              <div key={index} className="bg-blue-700/50 backdrop-blur-sm rounded-2xl p-8 border border-blue-400/30">
-                <h3 className="text-2xl font-bold text-white mb-4">{solution.title}</h3>
-                <p className="text-blue-100 text-lg leading-relaxed">{solution.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* CTA Section */}
       <section className="py-20 px-6">
