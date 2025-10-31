@@ -2,11 +2,8 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TrendingUp, BookOpen, Star, Play, Heart, MessageCircle, Share2, Video, UserPlus } from 'lucide-react';
 import NavBar from '../components/NavBar';
-import FlowCanvas from '../components/FlowCanvas';
-import PlatformFlow from '../components/PlatformFlow';
-import FloatingProfiles from '../components/FloatingProfiles';
-import FunnelBridge from '../components/FunnelBridge';
-import FeatureTimeline from '../components/FeatureTimeline';
+import FlowLines from '../components/FlowLines';
+import { PLATFORMS } from '../lib/flow-data';
 import viewtrackLogo from '/Viewtrack Logo Black.png';
 import dashboardImg from '/dashboard.png';
 import graphsImg from '/LANDINGPAGE-PHOOTS/GRAPHS.png';
@@ -24,15 +21,17 @@ const LandingPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAFB] relative">
-      {/* Seamless Flow Canvas - Continuous animated path */}
-      <FlowCanvas />
-      
+    <div className="min-h-screen bg-[#FAFAFB]">
       {/* Floating Pill Navigation */}
       <NavBar logo={viewtrackLogo} onGetStarted={handleGetStarted} />
 
-      {/* Hero Section - Ultra Detailed Design */}
-      <section className="pt-32 pb-20 px-6 relative overflow-hidden">
+      {/* Flow Container - Wraps hero → platforms → timeline */}
+      <section id="flow-container" className="relative">
+        {/* Flow Lines Overlay */}
+        <FlowLines />
+
+        {/* Hero Section - Ultra Detailed Design */}
+        <div id="hero" className="relative pt-32 pb-20 px-6 overflow-hidden">
         {/* Dotted Background Pattern */}
         <div 
           className="absolute inset-0 opacity-40"
@@ -46,6 +45,10 @@ const LandingPage: React.FC = () => {
           <div className="flex items-center justify-center min-h-[600px]">
             {/* Central Content Column */}
             <div className="relative max-w-4xl mx-auto text-center">
+              {/* Flow Anchors - Left and Right exits from hero */}
+              <div data-flow="hero-left" className="absolute left-[10%] top-[55%] h-px w-px" />
+              <div data-flow="hero-right" className="absolute right-[10%] top-[55%] h-px w-px" />
+
               {/* Logo Mark */}
               <div className="flex items-center justify-center mb-12">
                 <img src={viewtrackLogo} alt="ViewTrack" className="h-16 w-auto" />
@@ -66,11 +69,8 @@ const LandingPage: React.FC = () => {
                 Monitor content performance across all platforms in one dashboard.
               </p>
 
-              {/* Flow Anchor - Hero Center */}
-              <div data-flow-anchor="hero-center" className="absolute left-1/2 -translate-x-1/2 h-[1px] w-[1px]" style={{top: '50%'}} />
-
               {/* CTA Buttons */}
-              <div className="flex items-center justify-center gap-4 mb-12 relative z-10">
+              <div className="flex items-center justify-center gap-4 mb-12">
                 <button
                   onClick={handleGetStarted}
                   className="px-9 py-4 bg-gradient-to-r from-[#007BFF] to-[#2583FF] hover:from-[#0066DD] hover:to-[#1E6FDD] text-white font-semibold rounded-full shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-200 text-base"
@@ -97,20 +97,31 @@ const LandingPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </section>
 
-      {/* Animated Flow Visualization - Container-based */}
-      <section id="flow-container" className="relative z-[3]">
-        {/* Hero Anchors */}
-        <div className="relative mx-auto max-w-5xl pt-10 pb-10">
-          <div data-flow="hero-left" className="absolute left-[10%] top-[55%] h-px w-px" />
-          <div data-flow="hero-right" className="absolute right-[10%] top-[55%] h-px w-px" />
+        {/* Platform Row with Anchors */}
+        <div id="platforms" className="relative mx-auto mt-10 mb-20 grid max-w-4xl grid-cols-4 place-items-center gap-6 px-6">
+          {PLATFORMS.map((platform) => (
+            <div key={platform.id} className="relative">
+              <img src={platform.icon} alt={platform.label} className="h-12 w-12 object-contain opacity-70 hover:opacity-100 transition-opacity" />
+              <div data-flow={`platform-${platform.id}`} className="absolute inset-0 m-auto h-px w-px" />
+            </div>
+          ))}
         </div>
 
-        <PlatformFlow />
-        <FloatingProfiles />
-        <FunnelBridge />
-        <FeatureTimeline />
+        {/* Merge Point */}
+        <div className="relative mx-auto mt-16 h-6 w-6">
+          <div data-flow="merge" className="absolute inset-0 m-auto h-px w-px" />
+        </div>
+
+        {/* Timeline Start Point */}
+        <div className="relative mx-auto h-6 w-6">
+          <div data-flow="timeline" className="absolute inset-0 m-auto h-px w-px" />
+        </div>
+
+        {/* Placeholder for timeline - can add FeatureTimeline component here later */}
+        <div className="relative mt-8 min-h-[400px]">
+          {/* Timeline will go here */}
+        </div>
       </section>
 
       {/* Features Section */}
