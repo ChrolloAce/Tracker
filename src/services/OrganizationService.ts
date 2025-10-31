@@ -38,25 +38,43 @@ class OrganizationService {
     const userDoc = await getDoc(userRef);
     
     if (!userDoc.exists()) {
-      const userData: UserAccount = {
+      const userData: any = {
         uid,
         email,
-        displayName,
-        photoURL,
         createdAt: Timestamp.now(),
         lastLoginAt: Timestamp.now(),
         plan: 'free'
       };
       
+      // Only add displayName and photoURL if they have actual values
+      if (displayName) {
+        userData.displayName = displayName;
+      }
+      if (photoURL) {
+        userData.photoURL = photoURL;
+      }
+      
       await setDoc(userRef, userData);
       console.log(`✅ Created user account for ${email}`);
     } else {
       // Update last login and refresh profile data (displayName, photoURL) on every login
-      await setDoc(userRef, {
-        lastLoginAt: Timestamp.now(),
-        displayName: displayName || userDoc.data()?.displayName,
-        photoURL: photoURL || userDoc.data()?.photoURL
-      }, { merge: true });
+      const updateData: any = {
+        lastLoginAt: Timestamp.now()
+      };
+      
+      if (displayName) {
+        updateData.displayName = displayName;
+      } else if (userDoc.data()?.displayName) {
+        updateData.displayName = userDoc.data()?.displayName;
+      }
+      
+      if (photoURL) {
+        updateData.photoURL = photoURL;
+      } else if (userDoc.data()?.photoURL) {
+        updateData.photoURL = userDoc.data()?.photoURL;
+      }
+      
+      await setDoc(userRef, updateData, { merge: true });
       // console.log(`✅ Updated user profile for ${email}`);
     }
   }

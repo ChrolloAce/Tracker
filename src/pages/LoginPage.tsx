@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, Link2, Slack, Chrome, ChevronLeft } from 'lucide-react';
-import viewtrackLogo from '/viewtracknewlogo.png';
+import { Mail, Lock, Eye, EyeOff, Link2 } from 'lucide-react';
+import viewtrackLogo from '/Viewtrack Logo Black.png';
+import instagramIcon from '/Instagram_icon.png';
+import tiktokIcon from '/TiktokLogo.png';
+import youtubeIcon from '/Youtube_shorts_icon.svg.png';
+import xLogo from '/twitter-x-logo.png';
 import TeamInvitationService from '../services/TeamInvitationService';
 
 const LoginPage: React.FC = () => {
@@ -63,10 +67,27 @@ const LoginPage: React.FC = () => {
     setLoading(true);
 
     try {
-      if (isSignUp) {
-        await signUpWithEmail(email, password);
+      // Special handling for demo account - auto-create if doesn't exist
+      if (email === 'demo@viewtrack.app' && password === 'demo123456') {
+        try {
+          // Try to sign in first
+          await signInWithEmail(email, password);
+        } catch (signInError: any) {
+          // If user doesn't exist, create it
+          if (signInError.code === 'auth/invalid-credential' || signInError.code === 'auth/user-not-found') {
+            console.log('📝 Demo account not found. Creating...');
+            await signUpWithEmail(email, password);
+          } else {
+            throw signInError;
+          }
+        }
       } else {
-        await signInWithEmail(email, password);
+        // Regular login flow
+        if (isSignUp) {
+          await signUpWithEmail(email, password);
+        } else {
+          await signInWithEmail(email, password);
+        }
       }
     } catch (err: any) {
       setError(err.message || 'Authentication failed');
@@ -115,17 +136,8 @@ const LoginPage: React.FC = () => {
         
         {/* Left Column - Login Form */}
         <div className="p-12 relative">
-          {/* Back Button */}
-          <button
-            onClick={() => navigate('/')}
-            className="absolute top-6 left-6 p-2 hover:bg-gray-100 rounded-full transition-colors group"
-            aria-label="Go back"
-          >
-            <ChevronLeft className="w-6 h-6 text-gray-600 group-hover:text-gray-900" />
-          </button>
-
           {/* Logo & Branding */}
-          <div className="mb-8 mt-4">
+          <div className="mb-8">
             <img src={viewtrackLogo} alt="ViewTrack" className="h-10 w-auto mb-2" />
           </div>
 
@@ -155,6 +167,21 @@ const LoginPage: React.FC = () => {
               </p>
             </div>
           )}
+
+          {/* Demo Login Button */}
+          <div className="mb-4">
+            <button
+              onClick={() => {
+                setEmail('demo@viewtrack.app');
+                setPassword('demo123456');
+                handleEmailAuth({ preventDefault: () => {} } as React.FormEvent);
+              }}
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-[#2282FF] to-[#1b6dd9] hover:from-[#1b6dd9] hover:to-[#2282FF] text-white rounded-lg transition-all disabled:opacity-50 font-medium shadow-lg shadow-[#2282FF]/20"
+            >
+              <span className="text-sm font-medium">Try Demo Account</span>
+            </button>
+          </div>
 
           {/* Social Login Button */}
           <div className="mb-6">
@@ -280,50 +307,34 @@ const LoginPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Slack Icon - Top */}
+              {/* Instagram Icon - Top */}
               <div className="absolute top-0 left-1/2 transform -translate-x-1/2">
-                <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center shadow-xl">
-                  <Slack className="w-7 h-7 text-purple-500" />
+                <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center shadow-xl p-2">
+                  <img src={instagramIcon} alt="Instagram" className="w-8 h-8 object-contain" />
                 </div>
                 <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0.5 h-16 bg-gradient-to-b from-gray-600 to-transparent"></div>
               </div>
 
-              {/* Google Icon - Left */}
+              {/* TikTok Icon - Left */}
               <div className="absolute top-1/2 left-0 transform -translate-y-1/2">
-                <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center shadow-xl">
-                  <svg className="w-7 h-7" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                  </svg>
+                <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center shadow-xl p-2">
+                  <img src={tiktokIcon} alt="TikTok" className="w-8 h-8 object-contain" />
                 </div>
                 <div className="absolute top-1/2 left-full transform -translate-y-1/2 w-16 h-0.5 bg-gradient-to-r from-gray-600 to-transparent"></div>
               </div>
 
-              {/* Chrome Icon - Bottom */}
+              {/* YouTube Icon - Bottom */}
               <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2">
-                <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center shadow-xl">
-                  <Chrome className="w-7 h-7 text-blue-500" />
+                <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center shadow-xl p-2">
+                  <img src={youtubeIcon} alt="YouTube" className="w-8 h-8 object-contain" />
                 </div>
                 <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0.5 h-16 bg-gradient-to-t from-gray-600 to-transparent"></div>
               </div>
 
-              {/* Dashboard Preview - Right */}
+              {/* X (Twitter) Icon - Right */}
               <div className="absolute top-1/2 right-0 transform -translate-y-1/2">
-                <div className="w-40 h-32 bg-white rounded-lg shadow-2xl p-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full"></div>
-                    <div className="flex-1 h-2 bg-gray-200 rounded"></div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full"></div>
-                    <div className="flex-1 h-2 bg-gray-200 rounded"></div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full"></div>
-                    <div className="flex-1 h-2 bg-gray-200 rounded"></div>
-                  </div>
+                <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center shadow-xl p-2">
+                  <img src={xLogo} alt="X" className="w-8 h-8 object-contain" />
                 </div>
                 <div className="absolute top-1/2 right-full transform -translate-y-1/2 w-16 h-0.5 bg-gradient-to-l from-gray-600 to-transparent"></div>
               </div>
@@ -332,18 +343,11 @@ const LoginPage: React.FC = () => {
 
           {/* Tagline */}
           <h2 className="text-3xl font-bold text-white mb-4 relative z-10">
-            Connect with every application.
+            Start tracking now
           </h2>
           <p className="text-gray-400 text-lg relative z-10 max-w-md">
-            Everything you need in an easily customizable dashboard.
+            Track all your social media content performance in one place.
           </p>
-
-          {/* Pagination Dots */}
-          <div className="flex gap-2 mt-8 relative z-10">
-            <div className="w-2 h-2 bg-white rounded-full"></div>
-            <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-            <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-          </div>
         </div>
       </div>
     </div>

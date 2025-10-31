@@ -36,9 +36,14 @@ service cloud.firestore {
       );
     }
     
+    // Check if organization is a demo org (public access)
+    function isDemoOrg(orgId) {
+      return orgId == 'vu4XD8yUegyiZe9Nw1Li';
+    }
+    
     // Check if user can read org data
     function canReadOrg(orgId) {
-      return isOrgMember(orgId);
+      return isOrgMember(orgId) || isDemoOrg(orgId);
     }
     
     // Check if user can write org data (all members can write)
@@ -105,8 +110,8 @@ service cloud.firestore {
     // ==================== ORGANIZATIONS ====================
     
     match /organizations/{orgId} {
-      // Can read if member
-      allow read: if canReadOrg(orgId);
+      // Can read if member OR if demo org (public access)
+      allow read: if canReadOrg(orgId) || isDemoOrg(orgId);
       
       // Can create if signed in (becomes owner automatically)
       // Allow batch writes for creating org + initial member in same transaction

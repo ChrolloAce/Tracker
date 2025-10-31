@@ -32,11 +32,15 @@ import TrackedLinksPage, { TrackedLinksPageRef } from '../components/TrackedLink
 import CreatorPortalPage from '../components/CreatorPortalPage';
 import CreatorsManagementPage, { CreatorsManagementPageRef } from '../components/CreatorsManagementPage';
 import CampaignsManagementPage from '../components/CampaignsManagementPage';
+import PaywallOverlay from '../components/PaywallOverlay';
+import DemoBanner from '../components/DemoBanner';
 import { CampaignStatus } from '../types/campaigns';
 import ExtensionPromoModal from '../components/ExtensionPromoModal';
 import RevenueIntegrationsModal from '../components/RevenueIntegrationsModal';
 import SignOutModal from '../components/SignOutModal';
 import OrganizationService from '../services/OrganizationService';
+import SubscriptionService from '../services/SubscriptionService';
+import DemoOrgService from '../services/DemoOrgService';
 import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
 import { PlatformIcon } from '../components/ui/PlatformIcon';
 import { VideoSubmission, InstagramVideoData } from '../types';
@@ -49,12 +53,14 @@ import RevenueDataService from '../services/RevenueDataService';
 import { RevenueMetrics, RevenueIntegration } from '../types/revenue';
 import { cssVariables } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
+import { useDemoContext } from './DemoPage';
 import { Timestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit, doc, getDoc, setDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../services/firebase';
 import { fixVideoPlatforms } from '../services/FixVideoPlatform';
 import { TrackedAccount, TrackedLink } from '../types/firestore';
 import { TrackingRule, RuleCondition, RuleConditionType } from '../types/rules';
+import { PlanTier } from '../types/subscription';
 
 interface DateRange {
   startDate: Date;
@@ -78,9 +84,29 @@ const DashboardSkeleton: React.FC<{ height?: string }> = ({ height = 'h-96' }) =
 
 function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string; initialSettingsTab?: string } = {}) {
   // Get authentication state, current organization, and current project
-  const { user, currentOrgId, currentProjectId } = useAuth();
+  const { user, currentOrgId: authOrgId, currentProjectId: authProjectId } = useAuth();
   const navigate = useNavigate();
+  
+  // Check if we're in demo mode
+  let demoContext;
+  try {
+    demoContext = useDemoContext();
+  } catch {
+    demoContext = { isDemoMode: false, demoOrgId: '', demoProjectId: '' };
+  }
+  
+  const isDemoMode = demoContext.isDemoMode;
+  
+  // Use demo IDs if in demo mode, otherwise use auth IDs
+  const currentOrgId = isDemoMode ? demoContext.demoOrgId : authOrgId;
+  const currentProjectId = isDemoMode ? demoContext.demoProjectId : authProjectId;
+  
+  console.log('🔍 Dashboard IDs:', { isDemoMode, currentOrgId, currentProjectId, authOrgId, authProjectId });
 
+  // Subscription & Paywall State
+  const [currentPlan, setCurrentPlan] = useState<PlanTier>('free');
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [isDemoOrg, setIsDemoOrg] = useState(isDemoMode);
 
   // State
   const [submissions, setSubmissions] = useState<VideoSubmission[]>([]);
@@ -191,6 +217,55 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     
     return defaultOrder;
   });
+
+  // Check subscription plan and show paywall if on free plan
+  useEffect(() => {
+    const checkSubscription = async () => {
+      console.log('🔍 Checking subscription...', { isDemoMode, userEmail: user?.email, activeTab });
+      
+      // Skip paywall check if in demo mode (public /demo page)
+      if (isDemoMode) {
+        console.log('🎭 Demo mode active - paywall disabled');
+        setIsDemoOrg(true);
+        setShowPaywall(false);
+        return;
+      }
+      
+      if (!user) {
+        // No user means we're on public demo route - disable paywall
+        setShowPaywall(false);
+        return;
+      }
+      
+      // Check if demo user - NEVER show paywall for demo account
+      const isDemo = DemoOrgService.isDemoUser(user.email);
+      setIsDemoOrg(isDemo);
+      
+      if (isDemo) {
+        console.log('🎭 Demo user logged in - paywall permanently disabled');
+        setShowPaywall(false);
+        return;
+      }
+      
+      if (!currentOrgId) return;
+      
+      try {
+        const tier = await SubscriptionService.getPlanTier(currentOrgId);
+        setCurrentPlan(tier);
+        
+        console.log('💳 Plan tier:', tier, 'Tab:', activeTab);
+        
+        // Show paywall if free plan and NOT on settings tab
+        const shouldShowPaywall = tier === 'free' && activeTab !== 'settings';
+        console.log('🚧 Show paywall?', shouldShowPaywall);
+        setShowPaywall(shouldShowPaywall);
+      } catch (error) {
+        console.error('Failed to check subscription:', error);
+      }
+    };
+    
+    checkSubscription();
+  }, [currentOrgId, activeTab, user, isDemoMode]);
   
   const [dashboardSectionVisibility, setDashboardSectionVisibility] = useState<Record<string, boolean>>(() => {
     const defaults = {
@@ -1784,8 +1859,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   }, [kpiCardOrder, kpiCardVisibility, dashboardSectionOrder, dashboardSectionVisibility, topPerformersSubsectionOptions]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
-      {/* Fixed Sidebar */}
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A] relative">
+      {/* Fixed Sidebar - Always visible */}
       <Sidebar 
         onCollapsedChange={setIsSidebarCollapsed}
         initialCollapsed={isSidebarCollapsed}
@@ -1795,13 +1870,45 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       {isEditingLayout && (
         <div className="fixed inset-y-0 left-0 w-64 bg-black/30 backdrop-blur-sm z-40 pointer-events-none" />
       )}
+
+      {/* Paywall Overlay - Only covers main content area */}
+      {showPaywall && (
+        <div 
+          className="fixed top-0 right-0 bottom-0 z-50 flex items-center justify-center p-6 transition-all duration-300"
+          style={{ left: isSidebarCollapsed ? '4rem' : '16rem' }}
+        >
+          {/* Blur Background */}
+          <div className="absolute inset-0 bg-[#0A0A0A]/90 backdrop-blur-lg"></div>
+
+          {/* Pricing Cards */}
+          <PaywallOverlay isActive={true} />
+        </div>
+      )}
+
+      {/* Main Content - Blur when paywall active */}
+      <div className={showPaywall ? 'filter blur-sm pointer-events-none' : ''}>
       
+      {/* Demo Banner - Shows at top if demo account */}
+      {isDemoOrg && (
+        <div className={clsx(
+          'fixed top-0 right-0 z-30 transition-all duration-300',
+          {
+            'left-64': !isSidebarCollapsed,
+            'left-16': isSidebarCollapsed,
+          }
+        )}>
+          <DemoBanner />
+        </div>
+      )}
+
       {/* Fixed Header */}
       <header className={clsx(
-        'fixed top-0 right-0 bg-white dark:bg-[#111111] border-b border-gray-200 dark:border-gray-800 px-6 py-4 z-20 transition-all duration-300',
+        'fixed right-0 bg-white dark:bg-[#111111] border-b border-gray-200 dark:border-gray-800 px-6 py-4 z-20 transition-all duration-300',
         {
           'left-64': !isSidebarCollapsed,
           'left-16': isSidebarCollapsed,
+          'top-0': !isDemoOrg,
+          'top-[60px]': isDemoOrg, // Push down if demo banner is showing
         }
       )}>
         <div className="flex items-center justify-between w-full gap-4">
@@ -2404,8 +2511,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
       {/* Main Content with dynamic margins for sidebar and header */}
       <main className={clsx(
-        'pt-24 overflow-auto min-h-screen transition-all duration-300',
+        'overflow-auto min-h-screen transition-all duration-300',
         {
+          'pt-24': !isDemoOrg,
+          'pt-[7.5rem]': isDemoOrg, // Extra padding when demo banner is showing
           'ml-64': !isSidebarCollapsed,
           'ml-16': isSidebarCollapsed,
         }
@@ -3302,6 +3411,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         }}
         onCancel={() => setIsSignOutModalOpen(false)}
       />
+      </div>
+      {/* Close blur wrapper */}
     </div>
   );
 }

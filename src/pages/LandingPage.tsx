@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AnimatedTimeline from '../components/timeline/AnimatedTimeline';
+import { useAuth } from '../contexts/AuthContext';
 import NavBar from '../components/NavBar';
+import VideoShowcase from '../components/VideoShowcase';
+import FeaturesTimeline from '../components/FeaturesTimeline';
+import StripeService from '../services/StripeService';
 import viewtrackLogo from '/Viewtrack Logo Black.png';
 import instagramIcon from '/Instagram_icon.png';
 import tiktokIcon from '/TiktokLogo.png';
@@ -10,18 +13,47 @@ import xLogo from '/twitter-x-logo.png';
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user, currentOrgId } = useAuth();
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
   const onGetStarted = () => {
     navigate('/login');
   };
 
+  const handleSelectPlan = async (plan: 'basic' | 'pro' | 'ultra') => {
+    // If not logged in, go to login first
+    if (!user) {
+      localStorage.setItem('selectedPlan', plan);
+      navigate('/login');
+      return;
+    }
+
+    // If logged in but no org, go to onboarding
+    if (!currentOrgId) {
+      localStorage.setItem('selectedPlan', plan);
+      navigate('/create-organization');
+      return;
+    }
+
+    // If logged in with org, create checkout session
+    setLoadingPlan(plan);
+    try {
+      await StripeService.createCheckoutSession(currentOrgId, plan, 'monthly');
+      // Redirect happens automatically inside the service
+    } catch (error) {
+      console.error('Failed to create checkout session:', error);
+      alert('Failed to start checkout. Please try again.');
+      setLoadingPlan(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#FAFAFB]">
-      {/* Floating Pill Navigation */}
+      {/* Fixed Glassmorphism Navigation */}
       <NavBar logo={viewtrackLogo} onGetStarted={onGetStarted} />
 
       {/* Hero Section - Ultra Detailed Design */}
-      <section id="hero" className="pt-32 pb-20 px-6 relative overflow-hidden">
+      <section id="hero" className="pt-40 pb-20 px-6 relative overflow-hidden">
         {/* Dotted Background Pattern */}
         <div 
           className="absolute inset-0 opacity-40"
@@ -43,7 +75,7 @@ const LandingPage: React.FC = () => {
               {/* Main Headline - Two Lines */}
               <div className="space-y-2 mb-8">
                 <h1 className="text-5xl font-extrabold text-[#111111] leading-[1.1] tracking-tight">
-                  Track, Manage and scale
+                  <span className="text-[#2282FF]">Track</span><span className="text-[#2282FF]">,</span> <span className="text-[#2282FF]">Manage</span> and <span className="text-[#2282FF]">Scale</span>
                 </h1>
                 <h1 className="text-5xl font-extrabold text-[#111111] leading-[1.1] tracking-tight">
                   your UGC and influencer campaigns
@@ -74,32 +106,36 @@ const LandingPage: React.FC = () => {
               </div>
 
               {/* Supported Platforms - Simple Row */}
-              <div className="flex items-center justify-center gap-6">
+              <div className="flex items-center justify-center gap-6 mb-12">
                 <img src={instagramIcon} alt="Instagram" className="h-8 w-8 object-contain opacity-60 hover:opacity-100 transition-opacity" />
                 <img src={tiktokIcon} alt="TikTok" className="h-8 w-8 object-contain opacity-60 hover:opacity-100 transition-opacity" />
                 <img src={youtubeIcon} alt="YouTube" className="h-8 w-8 object-contain opacity-60 hover:opacity-100 transition-opacity" />
                 <img src={xLogo} alt="X" className="h-8 w-8 object-contain opacity-60 hover:opacity-100 transition-opacity" />
+              </div>
+
+              {/* Product Video Showcase - Inside Hero */}
+              <div className="mt-8">
+                <VideoShowcase
+                  src="/demo/overview.mp4"
+                  caption="Analytics Dashboard · 14-day view"
+                />
               </div>
             </div>
                 </div>
               </div>
       </section>
 
-      {/* Original Stats Section Removed - Replaced with Hero */}
-      
-      {/* Metrics Section Removed - Integrated into Hero */}
-
-      {/* Animated Product Journey Timeline */}
-      <AnimatedTimeline />
-
-      {/* Benefits and Feature Grid removed in favor of animated journey timeline */}
+      {/* Features Timeline */}
+      <div id="features">
+        <FeaturesTimeline />
+      </div>
 
       {/* Pricing Section */}
-      <section className="py-20 px-6 bg-gray-50">
+      <section id="pricing" className="py-20 px-6 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Simple, Transparent Pricing</h2>
-            <p className="text-xl text-gray-600">Choose the perfect plan for your needs</p>
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">Pay as you go</h2>
+            <p className="text-xl text-gray-600">Start small and scale your account limits as you scale your brand</p>
           </div>
           
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -145,16 +181,17 @@ const LandingPage: React.FC = () => {
                 </li>
               </ul>
               <button
-                onClick={onGetStarted}
-                className="w-full px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors mt-auto"
+                onClick={() => handleSelectPlan('basic')}
+                disabled={loadingPlan === 'basic'}
+                className="w-full px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors mt-auto disabled:opacity-50"
               >
-                Start Free Trial
+                {loadingPlan === 'basic' ? 'Loading...' : 'Get Started'}
               </button>
             </div>
 
             {/* Pro Plan */}
-            <div className="bg-white rounded-2xl p-8 border-2 border-gray-200 hover:shadow-lg transition-shadow relative flex flex-col">
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-emerald-600 text-white text-sm font-bold rounded-full">
+            <div className="bg-white rounded-2xl p-8 border-2 border-[#2282FF] hover:shadow-lg transition-shadow relative flex flex-col">
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-[#2282FF] text-white text-sm font-bold rounded-full">
                 Popular
               </div>
               <div className="mb-6">
@@ -209,10 +246,11 @@ const LandingPage: React.FC = () => {
                 </li>
               </ul>
               <button
-                onClick={onGetStarted}
-                className="w-full px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors mt-auto"
+                onClick={() => handleSelectPlan('pro')}
+                disabled={loadingPlan === 'pro'}
+                className="w-full px-6 py-3 bg-[#2282FF] hover:bg-[#1b6dd9] text-white font-semibold rounded-xl transition-colors mt-auto disabled:opacity-50 shadow-lg shadow-[#2282FF]/20"
               >
-                Start Free Trial
+                {loadingPlan === 'pro' ? 'Loading...' : 'Get Started'}
               </button>
             </div>
 
@@ -276,10 +314,11 @@ const LandingPage: React.FC = () => {
                 </li>
               </ul>
               <button
-                onClick={onGetStarted}
-                className="w-full px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors mt-auto"
+                onClick={() => handleSelectPlan('ultra')}
+                disabled={loadingPlan === 'ultra'}
+                className="w-full px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors mt-auto disabled:opacity-50"
               >
-                Start Free Trial
+                {loadingPlan === 'ultra' ? 'Loading...' : 'Get Started'}
               </button>
             </div>
           </div>
@@ -307,88 +346,28 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Blog Section */}
-      <section className="py-20 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 mb-2">Our Blog</h2>
-            <p className="text-xl text-gray-600">Insights, Tools, and More</p>
-            <p className="text-gray-500 mt-2">Become an expert in UGC marketing today leveraging our industry knowledge and unique tools</p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {/* Blog Post 1 */}
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
-              <div className="h-48 bg-gradient-to-br from-emerald-500 to-teal-500"></div>
-              <div className="p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">Felix Vemmer</p>
-                    <p className="text-xs text-gray-500">Sep 30, 2025</p>
-                  </div>
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Introducing the viral.app API</h3>
-                <p className="text-gray-600">Build custom workflows and integrations with programmatic access to your analytics</p>
-              </div>
-            </div>
-
-            {/* Blog Post 2 */}
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
-              <div className="h-48 bg-gradient-to-br from-blue-500 to-purple-500"></div>
-              <div className="p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">Mike Schneider</p>
-                    <p className="text-xs text-gray-500">Sep 10, 2025</p>
-                  </div>
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Individual Video Analytics & Daily Breakdowns</h3>
-                <p className="text-gray-600">Track how single videos go viral with detailed performance insights and daily top performer breakdowns</p>
-              </div>
-            </div>
-
-            {/* Blog Post 3 */}
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
-              <div className="h-48 bg-gradient-to-br from-orange-500 to-red-500"></div>
-              <div className="p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">Mike Schneider</p>
-                    <p className="text-xs text-gray-500">May 19, 2025</p>
-                  </div>
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Launching viral.app</h3>
-                <p className="text-gray-600">UGC-Marketing with the ultimate growth-pilot</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* FAQ Section */}
-      <section className="py-20 px-6 bg-gray-50">
+      <section id="faq" className="py-20 px-6 bg-gray-50">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-gray-900 mb-2">FAQ</h2>
             <p className="text-xl text-gray-600">Common Questions</p>
-            <p className="text-gray-500 mt-2">We're here to help you get the most out of viral.app</p>
+            <p className="text-gray-500 mt-2">We're here to help you get the most out of ViewTrack</p>
           </div>
 
           <div className="space-y-4">
             {[
               {
-                question: "What is viral.app?",
-                answer: "viral.app is a comprehensive analytics platform for tracking social media content across Instagram, TikTok, and YouTube. We help creators and brands measure performance, manage campaigns, and optimize their content strategy."
+                question: "What is ViewTrack?",
+                answer: "ViewTrack is a comprehensive analytics platform for tracking social media content across Instagram, TikTok, and YouTube. We help creators and brands measure performance, manage campaigns, and optimize their content strategy."
               },
               {
-                question: "Who is viral.app for?",
+                question: "Who is ViewTrack for?",
                 answer: "Our platform is designed for content creators, influencers, UGC creators, marketing agencies, and brands who need professional analytics and campaign management tools."
               },
               {
-                question: "How does viral.app help optimize marketing ROI?",
+                question: "How does ViewTrack help optimize marketing ROI?",
                 answer: "We provide revenue tracking integrations with Apple App Store and RevenueCat, allowing you to see which content drives actual sales and conversions, not just vanity metrics."
               },
               {
@@ -400,7 +379,7 @@ const LandingPage: React.FC = () => {
                 answer: "Setup takes less than 2 minutes. Simply add the social media accounts you want to track, and we'll start syncing your data immediately."
               },
               {
-                question: "What kind of analytics does viral.app provide?",
+                question: "What kind of analytics does ViewTrack provide?",
                 answer: "We provide comprehensive metrics including views, likes, comments, shares, engagement rates, growth trends, top performers, posting schedules, and revenue attribution."
               }
             ].map((faq, index) => (
@@ -417,7 +396,7 @@ const LandingPage: React.FC = () => {
           <div className="mt-12 text-center">
             <p className="text-gray-600 mb-4">Have more questions?</p>
             <a 
-              href="mailto:support@viral.app"
+              href="mailto:support@viewtrack.app"
               className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors"
             >
               Contact Support

@@ -2,6 +2,7 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
+import DemoPage from './pages/DemoPage';
 import OnboardingPage from './pages/OnboardingPage';
 import CreateOrganizationPage from './pages/CreateOrganizationPage';
 import CreateProjectPage from './pages/CreateProjectPage';
@@ -188,6 +189,9 @@ function App() {
       />
 
       <Route path="/l/:shortId" element={<LinkRedirect />} />
+      
+      {/* Public demo route - no authentication required */}
+      <Route path="/demo" element={<DemoPage />} />
       
       {/* Public contract signing route - no authentication required */}
       <Route path="/contract/:contractId" element={<ContractSigningPage />} />

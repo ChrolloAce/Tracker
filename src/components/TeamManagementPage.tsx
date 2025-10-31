@@ -220,6 +220,19 @@ const TeamManagementPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header with Invite Button */}
+      {isAdmin && (
+        <div className="flex items-center justify-end">
+          <button
+            onClick={() => setShowInviteModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-[#2282FF] hover:bg-[#1b6dd9] text-white rounded-full transition-colors shadow-lg"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span className="font-medium">Invite Member</span>
+          </button>
+        </div>
+      )}
+
       {/* Team Members - Sleek single-layer design */}
       <div className="bg-black/40 rounded-xl border border-white/10 overflow-hidden">
         <div className="overflow-x-auto">
