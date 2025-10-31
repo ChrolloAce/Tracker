@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, Users, DollarSign, TrendingUp } from 'lucide-react';
+import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, Users, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -9,7 +9,6 @@ import OrganizationService from '../services/OrganizationService';
 import DeleteOrganizationModal from './DeleteOrganizationModal';
 import TeamManagementPage from './TeamManagementPage';
 import PendingInvitationsPage from './PendingInvitationsPage';
-import { RevenueIntegrationsSettings } from './RevenueIntegrationsSettings';
 import SubscriptionService from '../services/SubscriptionService';
 import StripeService from '../services/StripeService';
 import { PlanTier, SUBSCRIPTION_PLANS } from '../types/subscription';
@@ -494,7 +493,6 @@ const SettingsPage: React.FC = () => {
               { id: 'profile', label: 'Profile', icon: UserIcon },
               { id: 'billing', label: 'Billing', icon: CreditCard },
               { id: 'team', label: 'Team', icon: Users },
-              { id: 'revenue', label: 'Revenue', icon: DollarSign },
               { id: 'notifications', label: 'Notifications', icon: Bell },
             ].map(tab => {
               const Icon = tab.icon;
@@ -634,32 +632,6 @@ const SettingsPage: React.FC = () => {
             </div>
           )}
 
-          {/* Revenue Tab */}
-          {activeTab === 'revenue' && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Revenue Integrations</h2>
-                <p className="text-gray-600 dark:text-gray-400">Connect RevenueCat, Superwall, or other revenue sources to track performance alongside your video metrics.</p>
-              </div>
-
-              {currentOrgId && currentProjectId ? (
-                <RevenueIntegrationsSettings 
-                  organizationId={currentOrgId}
-                  projectId={currentProjectId}
-                />
-              ) : (
-                <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-12 text-center">
-                  <DollarSign className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                    Select an Organization and Project
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Please select an organization and project to manage revenue integrations.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
 
 
           {/* Profile Tab (includes Organization) */}
