@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Sparkles } from 'lucide-react';
 import dashboardImg from '/dashboard.png';
 
 interface TimelineStep {
@@ -104,15 +103,25 @@ const AnimatedTimeline: React.FC = () => {
       if (!pathRef.current || !timelineRef.current) return;
       
       const rect = timelineRef.current.getBoundingClientRect();
-      const scrolled = window.scrollY + window.innerHeight;
-      const start = window.scrollY + rect.top;
-      const end = start + rect.height;
+      const viewportHeight = window.innerHeight;
+      const scrolled = window.scrollY;
+      const elementTop = scrolled + rect.top;
+      const elementHeight = rect.height;
       
-      const progress = Math.max(0, Math.min(1, (scrolled - start) / (end - start)));
-      const pathLength = pathRef.current.getTotalLength();
-      const drawLength = pathLength * progress;
+      // Calculate how much of the timeline is visible
+      const visibleStart = scrolled;
+      const visibleEnd = scrolled + viewportHeight;
       
-      pathRef.current.style.strokeDasharray = `${drawLength} ${pathLength}`;
+      // Calculate progress
+      let progress = 0;
+      if (visibleEnd > elementTop) {
+        const distanceScrolled = visibleEnd - elementTop;
+        progress = Math.min(1, distanceScrolled / elementHeight);
+      }
+      
+      // Update the line
+      const percentage = progress * 100;
+      pathRef.current.style.strokeDasharray = `${percentage}% ${100 - percentage}%`;
     };
 
     window.addEventListener('scroll', animatePath);
@@ -137,7 +146,6 @@ const AnimatedTimeline: React.FC = () => {
         {/* Section Header */}
         <div className="text-center mb-20">
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-full mb-6">
-            <Sparkles className="w-4 h-4" />
             <span className="text-xs font-semibold uppercase tracking-wide">
               Product Journey
             </span>
@@ -151,11 +159,12 @@ const AnimatedTimeline: React.FC = () => {
         {/* Desktop Timeline */}
         <div ref={timelineRef} className="hidden lg:block relative">
           {/* SVG Path */}
-          <svg className="absolute left-1/2 top-0 w-2 h-full -ml-1 overflow-visible" style={{ zIndex: 0 }}>
+          <svg className="absolute left-1/2 top-0 w-4 h-full -ml-2 overflow-visible" style={{ zIndex: 0 }}>
             <defs>
               <linearGradient id="pathGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#111111" stopOpacity="0.2" />
-                <stop offset="100%" stopColor="#111111" stopOpacity="0.8" />
+                <stop offset="0%" stopColor="#111111" stopOpacity="0.3" />
+                <stop offset="50%" stopColor="#111111" stopOpacity="0.6" />
+                <stop offset="100%" stopColor="#111111" stopOpacity="0.9" />
               </linearGradient>
               <filter id="glow">
                 <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
@@ -165,15 +174,16 @@ const AnimatedTimeline: React.FC = () => {
                 </feMerge>
               </filter>
             </defs>
-            <path
+            <line
               ref={pathRef}
-              d={`M 1 0 L 1 ${200 * timelineData.length}`}
+              x1="2"
+              y1="0"
+              x2="2"
+              y2="100%"
               stroke="url(#pathGradient)"
-              strokeWidth="2"
-              fill="none"
-              filter="url(#glow)"
-              className="path-animation"
-              strokeDasharray="0 9999"
+              strokeWidth="3"
+              strokeDasharray="0 100%"
+              style={{ transition: 'stroke-dasharray 0.3s ease-out' }}
             />
           </svg>
 
@@ -242,20 +252,6 @@ const AnimatedTimeline: React.FC = () => {
               </div>
             ))}
 
-            {/* Launch Node */}
-            <div className="relative flex items-center justify-center pt-12">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gray-900 rounded-full blur-xl animate-pulse-slow" />
-                <div className="relative w-24 h-24 bg-gray-900 rounded-full flex items-center justify-center shadow-2xl">
-                  <Sparkles className="w-10 h-10 text-white animate-spin-slow" />
-                </div>
-                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap">
-                  <span className="text-2xl font-bold text-gray-900">
-                    Launch
-                  </span>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -294,18 +290,6 @@ const AnimatedTimeline: React.FC = () => {
                 </div>
               </div>
             ))}
-            
-            {/* Launch Card */}
-            <div className="snap-center shrink-0 w-80">
-              <div className="bg-gray-900 rounded-2xl p-6 shadow-xl h-full flex items-center justify-center">
-                <div className="text-center">
-                  <Sparkles className="w-16 h-16 text-white mx-auto mb-4 animate-spin-slow" />
-                  <span className="text-2xl font-bold text-white">
-                    Launch Your Success
-                  </span>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
