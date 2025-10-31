@@ -11,6 +11,7 @@ import {
   Puzzle,
   Trophy
 } from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
 import ProjectSwitcher from '../ProjectSwitcher';
 import OrganizationSwitcher from '../OrganizationSwitcher';
@@ -41,13 +42,14 @@ interface NavItem {
 const Sidebar: React.FC<SidebarProps> = ({ 
   onCollapsedChange,
   initialCollapsed = false,
-  activeTab = 'dashboard',
-  onTabChange
+  activeTab: _unusedActiveTab,
+  onTabChange: _unusedOnTabChange
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const { can, loading: permissionsLoading } = usePermissions();
   const { userRole } = useAuth();
+  const location = useLocation();
 
   // Show ALL navigation items immediately for instant UI, filter by permissions after loaded
   const navigationItems: NavItem[] = useMemo(() => {
@@ -56,29 +58,25 @@ const Sidebar: React.FC<SidebarProps> = ({
         id: 'dashboard',
         label: 'Dashboard',
         icon: Eye,
-        isActive: activeTab === 'dashboard',
-        onClick: () => onTabChange?.('dashboard'),
+        href: '/dashboard',
       },
       {
         id: 'accounts',
         label: 'Tracked Accounts',
         icon: Users,
-        isActive: activeTab === 'accounts',
-        onClick: () => onTabChange?.('accounts'),
+        href: '/accounts',
       },
       {
         id: 'videos',
         label: 'Videos',
         icon: Film,
-        isActive: activeTab === 'videos',
-        onClick: () => onTabChange?.('videos'),
+        href: '/videos',
       },
       {
         id: 'analytics',
         label: 'Tracked Links',
         icon: Link,
-        isActive: activeTab === 'analytics',
-        onClick: () => onTabChange?.('analytics'),
+        href: '/links',
       },
       {
         id: 'creators',
@@ -91,23 +89,20 @@ const Sidebar: React.FC<SidebarProps> = ({
         id: 'campaigns',
         label: 'Campaigns',
         icon: Trophy,
-        isActive: activeTab === 'campaigns',
-        onClick: () => onTabChange?.('campaigns'),
+        href: '/campaigns',
         showSeparatorBefore: true, // Separator before campaigns
       },
       {
         id: 'extension',
         label: 'Extension',
         icon: Puzzle,
-        isActive: activeTab === 'extension',
-        onClick: () => onTabChange?.('extension'),
+        href: '/extension',
       },
       {
         id: 'settings',
         label: 'Settings',
         icon: Settings,
-        isActive: activeTab === 'settings',
-        onClick: () => onTabChange?.('settings'),
+        href: '/settings',
       },
     ];
 
@@ -128,7 +123,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       if (item.id === 'settings') return can.accessTab('settings');
       return true;
     });
-  }, [activeTab, can, permissionsLoading, onTabChange, userRole]);
+  }, [can, permissionsLoading, userRole, location]);
 
   const NavItemComponent: React.FC<{ item: NavItem }> = ({ item }) => {
     const Icon = item.icon;

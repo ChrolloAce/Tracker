@@ -6,6 +6,13 @@ import OnboardingPage from './pages/OnboardingPage';
 import CreateOrganizationPage from './pages/CreateOrganizationPage';
 import CreateProjectPage from './pages/CreateProjectPage';
 import DashboardPage from './pages/DashboardPage';
+import AccountsPage from './pages/AccountsPage';
+import VideosPage from './pages/VideosPage';
+import LinksPage from './pages/LinksPage';
+import CreatorsPage from './pages/CreatorsPage';
+import CampaignsPage from './pages/CampaignsPage';
+import ExtensionPage from './pages/ExtensionPage';
+import SettingsPageWrapper from './pages/SettingsPageWrapper';
 import LinkRedirect from './components/LinkRedirect';
 import ContractSigningPage from './pages/ContractSigningPage';
 import ContractEditorPage from './pages/ContractEditorPage';
@@ -306,6 +313,7 @@ function App() {
         } 
       />
 
+      {/* Main Dashboard and Pages */}
       <Route 
         path="/dashboard" 
         element={
@@ -314,7 +322,97 @@ function App() {
           ) : currentOrgId && currentProjectId ? (
             <DashboardPage />
           ) : (
-            // Show loading while org/project are being created/loaded
+            <LoadingSkeleton />
+          )
+        } 
+      />
+
+      <Route 
+        path="/accounts" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : currentOrgId && currentProjectId ? (
+            <AccountsPage />
+          ) : (
+            <LoadingSkeleton />
+          )
+        } 
+      />
+
+      <Route 
+        path="/videos" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : currentOrgId && currentProjectId ? (
+            <VideosPage />
+          ) : (
+            <LoadingSkeleton />
+          )
+        } 
+      />
+
+      <Route 
+        path="/links" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : currentOrgId && currentProjectId ? (
+            <LinksPage />
+          ) : (
+            <LoadingSkeleton />
+          )
+        } 
+      />
+
+      <Route 
+        path="/creators" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : currentOrgId && currentProjectId ? (
+            <CreatorsPage />
+          ) : (
+            <LoadingSkeleton />
+          )
+        } 
+      />
+
+      <Route 
+        path="/campaigns" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : currentOrgId && currentProjectId ? (
+            <CampaignsPage />
+          ) : (
+            <LoadingSkeleton />
+          )
+        } 
+      />
+
+      <Route 
+        path="/extension" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : currentOrgId && currentProjectId ? (
+            <ExtensionPage />
+          ) : (
+            <LoadingSkeleton />
+          )
+        } 
+      />
+
+      <Route 
+        path="/settings" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : currentOrgId ? (
+            <SettingsPageWrapper />
+          ) : (
             <LoadingSkeleton />
           )
         } 

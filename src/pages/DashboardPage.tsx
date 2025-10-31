@@ -74,7 +74,7 @@ const DashboardSkeleton: React.FC<{ height?: string }> = ({ height = 'h-96' }) =
   </div>
 );
 
-function DashboardPage() {
+function DashboardPage({ initialTab }: { initialTab?: string } = {}) {
   // Get authentication state, current organization, and current project
   const { user, currentOrgId, currentProjectId } = useAuth();
   const navigate = useNavigate();
@@ -131,7 +131,8 @@ function DashboardPage() {
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string | undefined>();
   const [dayVideosDate, setDayVideosDate] = useState<Date>(new Date());
   const [activeTab, setActiveTab] = useState(() => {
-    // Restore active tab from localStorage on mount
+    // Use initialTab prop if provided, otherwise restore from localStorage
+    if (initialTab) return initialTab;
     const savedTab = localStorage.getItem('activeTab');
     return savedTab || 'dashboard';
   });
@@ -1787,8 +1788,6 @@ function DashboardPage() {
       <Sidebar 
         onCollapsedChange={setIsSidebarCollapsed}
         initialCollapsed={isSidebarCollapsed}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
       />
       
       {/* Sidebar overlay when in edit mode */}
