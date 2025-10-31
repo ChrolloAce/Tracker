@@ -35,6 +35,7 @@ import CampaignsManagementPage from '../components/CampaignsManagementPage';
 import { CampaignStatus } from '../types/campaigns';
 import ExtensionPromoModal from '../components/ExtensionPromoModal';
 import RevenueIntegrationsModal from '../components/RevenueIntegrationsModal';
+import SignOutModal from '../components/SignOutModal';
 import OrganizationService from '../services/OrganizationService';
 import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
 import { PlatformIcon } from '../components/ui/PlatformIcon';
@@ -97,6 +98,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
   const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
+  const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false);
   const [campaignStatusFilter, setCampaignStatusFilter] = useState<'all' | CampaignStatus>('all');
   const [campaignCounts, setCampaignCounts] = useState({ active: 0, draft: 0, completed: 0, cancelled: 0 });
   
@@ -1841,15 +1843,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           </div>
           {activeTab === 'settings' && (
             <button
-              onClick={() => {
-                if (window.confirm('Are you sure you want to sign out?')) {
-                  const { signOut } = require('firebase/auth');
-                  const { auth } = require('../services/firebase');
-                  signOut(auth).then(() => {
-                    window.location.href = '/login';
-                  });
-                }
-              }}
+              onClick={() => setIsSignOutModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors border border-gray-200 dark:border-white/10"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -3293,6 +3287,19 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           projectId={currentProjectId}
         />
       )}
+
+      {/* Sign Out Confirmation Modal */}
+      <SignOutModal
+        isOpen={isSignOutModalOpen}
+        onConfirm={() => {
+          const { signOut } = require('firebase/auth');
+          const { auth } = require('../services/firebase');
+          signOut(auth).then(() => {
+            window.location.href = '/login';
+          });
+        }}
+        onCancel={() => setIsSignOutModalOpen(false)}
+      />
     </div>
   );
 }
