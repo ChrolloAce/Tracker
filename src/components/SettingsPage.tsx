@@ -526,16 +526,16 @@ const SettingsPage: React.FC = () => {
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Notifications</h2>
-                <p className="text-gray-600 dark:text-gray-400">Configure how you receive updates.</p>
+                <p className="text-gray-600 dark:text-gray-400">Configure how you receive updates</p>
               </div>
 
               {/* Email Notifications */}
-              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
+              <div className="bg-black/40 rounded-xl border border-white/10 p-6">
                 <div className="flex items-center gap-3 mb-6">
-                  <Mail className="w-6 h-6 text-gray-900 dark:text-white" />
+                  <Mail className="w-5 h-5 text-emerald-400" />
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Email Notifications</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Receive updates via email</p>
+                    <h3 className="text-lg font-semibold text-white">Email Notifications</h3>
+                    <p className="text-sm text-gray-500">Receive updates via email</p>
                   </div>
                 </div>
 
@@ -560,7 +560,7 @@ const SettingsPage: React.FC = () => {
                         onClick={() => setEmailNotifications(prev => ({ ...prev, [key]: !value }))}
                         className={`
                           relative inline-flex h-6 w-11 items-center rounded-full transition-colors
-                          ${value ? 'bg-gray-900 dark:bg-white' : 'bg-gray-200 dark:bg-zinc-700'}
+                          ${value ? 'bg-emerald-600' : 'bg-gray-700'}
                         `}
                       >
                         <span
@@ -576,12 +576,12 @@ const SettingsPage: React.FC = () => {
               </div>
 
               {/* In-App Notifications */}
-              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
+              <div className="bg-black/40 rounded-xl border border-white/10 p-6">
                 <div className="flex items-center gap-3 mb-6">
-                  <Bell className="w-6 h-6 text-gray-900 dark:text-white" />
+                  <Bell className="w-5 h-5 text-emerald-400" />
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">In-App Notifications</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Notifications within the application</p>
+                    <h3 className="text-lg font-semibold text-white">In-App Notifications</h3>
+                    <p className="text-sm text-gray-500">Notifications within the application</p>
                   </div>
                 </div>
 
@@ -604,7 +604,7 @@ const SettingsPage: React.FC = () => {
                         onClick={() => setInAppNotifications(prev => ({ ...prev, [key]: !value }))}
                         className={`
                           relative inline-flex h-6 w-11 items-center rounded-full transition-colors
-                          ${value ? 'bg-gray-900 dark:bg-white' : 'bg-gray-200 dark:bg-zinc-700'}
+                          ${value ? 'bg-emerald-600' : 'bg-gray-700'}
                         `}
                       >
                         <span
@@ -619,15 +619,6 @@ const SettingsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-3">
-                <button className="px-6 py-2.5 border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-900 dark:text-white rounded-lg transition-colors font-medium">
-                  Cancel
-                </button>
-                <button className="px-6 py-2.5 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-lg transition-colors font-medium">
-                  Save changes
-                </button>
-              </div>
             </div>
           )}
 
@@ -642,8 +633,8 @@ const SettingsPage: React.FC = () => {
           </div>
 
             {/* Profile Photo */}
-              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Profile Photo</h3>
+              <div className="bg-black/40 rounded-xl border border-white/10 p-6">
+                <h3 className="text-lg font-semibold text-white mb-6">Profile Photo</h3>
                 
             <div className="flex items-center gap-6">
               <div className="relative">
@@ -686,8 +677,8 @@ const SettingsPage: React.FC = () => {
               </div>
 
               {/* Personal Information */}
-              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Personal Information</h3>
+              <div className="bg-black/40 rounded-xl border border-white/10 p-6">
+                <h3 className="text-lg font-semibold text-white mb-6">Personal Information</h3>
 
                 <div className="space-y-4">
             <div>
@@ -730,8 +721,8 @@ const SettingsPage: React.FC = () => {
 
               {/* Organization Info */}
               {currentOrganization && (
-              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-white/10 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Organization Details</h3>
+                <div className="bg-black/40 rounded-xl border border-white/10 p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Organization Details</h3>
                 
                   <div className="space-y-4">
                     <div>
@@ -766,7 +757,7 @@ const SettingsPage: React.FC = () => {
 
               {/* Danger Zone - Delete Organization */}
               {isOwner && currentOrganization && (
-                <div className="bg-white dark:bg-zinc-900 rounded-xl border-2 border-red-200 dark:border-red-900/50 p-6">
+                <div className="bg-black/40 rounded-xl border border-red-500/30 p-6">
                   <div className="flex items-start gap-3 mb-4">
                     <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
                     <div>
