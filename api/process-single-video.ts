@@ -1,6 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 
 // Initialize Firebase Admin (same as sync-single-account)
 if (!getApps().length) {
@@ -24,6 +25,7 @@ if (!getApps().length) {
 }
 
 const db = getFirestore();
+const storage = getStorage();
 
 interface VideoData {
   id: string;
@@ -156,12 +158,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       accountId = accountSnapshot.docs[0].id;
     }
 
+    // Download and upload thumbnail to Firebase Storage for permanent URL
+    let permanentThumbnail = '';
+    if (videoData.thumbnail_url) {
+      try {
+        console.log('📥 Downloading thumbnail to Firebase Storage...');
+        permanentThumbnail = await downloadAndUploadThumbnail(
+          videoData.thumbnail_url,
+          orgId,
+          `${videoData.id}_thumb.jpg`
+        );
+        console.log('✅ Thumbnail uploaded to Firebase Storage');
+      } catch (error) {
+        console.error('Failed to upload thumbnail:', error);
+        permanentThumbnail = videoData.thumbnail_url; // Fallback to original
+      }
+    }
+
     // Update video with fetched data
     await videoRef.update({
       videoId: videoData.id,
       title: videoData.caption?.split('\n')[0] || 'Untitled Video',
       description: videoData.caption || '',
-      thumbnail: videoData.thumbnail_url || '',
+      thumbnail: permanentThumbnail || videoData.thumbnail_url || '',
       uploadDate: Timestamp.fromDate(uploadDate),
       views: videoData.view_count || 0,
       likes: videoData.like_count || 0,
@@ -357,6 +376,72 @@ function transformVideoData(rawData: any, platform: string): VideoData {
   
   // Fallback for unknown platforms
   return rawData as VideoData;
+}
+
+/**
+ * Download thumbnail and upload to Firebase Storage for permanent URL
+ */
+async function downloadAndUploadThumbnail(
+  thumbnailUrl: string,
+  orgId: string,
+  filename: string
+): Promise<string> {
+  try {
+    const isInstagram = thumbnailUrl.includes('cdninstagram') || thumbnailUrl.includes('fbcdn');
+    
+    // Download image with proper headers
+    const fetchOptions: any = {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9'
+      }
+    };
+    
+    if (isInstagram) {
+      fetchOptions.headers['Referer'] = 'https://www.instagram.com/';
+    }
+    
+    const response = await fetch(thumbnailUrl, fetchOptions);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to download: ${response.status}`);
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    if (buffer.length < 100) {
+      throw new Error(`Data too small (${buffer.length} bytes)`);
+    }
+    
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    
+    // Upload to Firebase Storage
+    const bucket = storage.bucket();
+    const storagePath = `organizations/${orgId}/thumbnails/${filename}`;
+    const file = bucket.file(storagePath);
+    
+    await file.save(buffer, {
+      metadata: {
+        contentType: contentType,
+        metadata: {
+          uploadedAt: new Date().toISOString(),
+          originalUrl: thumbnailUrl
+        }
+      },
+      public: true
+    });
+    
+    await file.makePublic();
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
+    
+    return publicUrl;
+  } catch (error) {
+    console.error(`Failed to download/upload thumbnail:`, error);
+    // Return placeholder instead of CDN URL
+    return 'https://via.placeholder.com/640x360?text=Thumbnail+Unavailable';
+  }
 }
 
 /**
