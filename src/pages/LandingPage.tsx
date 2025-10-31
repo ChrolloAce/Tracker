@@ -62,11 +62,11 @@ const LandingPage: React.FC = () => {
               </div>
 
               {/* Main Headline - Two Lines */}
-              <div className="space-y-1 mb-8">
+              <div className="space-y-2 mb-8">
                 <h1 className="text-6xl font-extrabold text-[#111111] leading-[1.1] tracking-tight">
                   Track, Manage and scale
                 </h1>
-                <h1 className="text-6xl font-extrabold text-[#9B9B9B] leading-[1.1] tracking-tight">
+                <h1 className="text-6xl font-extrabold text-[#111111] leading-[1.1] tracking-tight">
                   your UGC and influencer campaigns
                 </h1>
               </div>
@@ -88,16 +88,12 @@ const LandingPage: React.FC = () => {
               
               {/* Top-Left: Analytics Graphs */}
               <div className="absolute -left-56 -top-12 transform -rotate-6 hidden lg:block">
-                <div className="relative w-56 rounded-2xl shadow-2xl overflow-hidden">
-                  <img src={graphsImg} alt="Analytics Graphs" className="w-full h-auto rounded-xl" />
-                </div>
+                <img src={graphsImg} alt="Analytics Graphs" className="w-56 h-auto rounded-2xl" />
               </div>
 
               {/* Top-Right: Top Accounts */}
               <div className="absolute -right-48 -top-8 transform rotate-3 hidden lg:block">
-                <div className="relative w-52 rounded-2xl shadow-2xl overflow-hidden">
-                  <img src={topAccountsImg} alt="Top Accounts" className="w-full h-auto rounded-xl" />
-                </div>
+                <img src={topAccountsImg} alt="Top Accounts" className="w-52 h-auto rounded-2xl" />
               </div>
 
               {/* Bottom-Left: Task List Widget */}
