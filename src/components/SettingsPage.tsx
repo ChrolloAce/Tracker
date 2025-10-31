@@ -9,7 +9,6 @@ import OrganizationService from '../services/OrganizationService';
 import DeleteOrganizationModal from './DeleteOrganizationModal';
 import TeamManagementPage from './TeamManagementPage';
 import PendingInvitationsPage from './PendingInvitationsPage';
-import { OrgMember } from '../types/firestore';
 import { RevenueIntegrationsSettings } from './RevenueIntegrationsSettings';
 import SubscriptionService from '../services/SubscriptionService';
 import StripeService from '../services/StripeService';
