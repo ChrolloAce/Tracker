@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, Building2, Check, Crown, Shield, User, Plus } from 'lucide-react';
+import { ChevronDown, Building2, Check, Crown, Shield, User, Plus, Lock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import OrganizationService from '../services/OrganizationService';
 import { Organization, Role } from '../types/firestore';
 import { clsx } from 'clsx';
+import { useDemoContext } from '../pages/DemoPage';
 
 const OrganizationSwitcher: React.FC = () => {
   const { user, currentOrgId, switchOrganization } = useAuth();
@@ -12,6 +13,15 @@ const OrganizationSwitcher: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Check if in demo mode
+  let demoContext;
+  try {
+    demoContext = useDemoContext();
+  } catch {
+    demoContext = { isDemoMode: false, demoOrgId: '', demoProjectId: '' };
+  }
+  const isDemoMode = demoContext.isDemoMode;
 
   useEffect(() => {
     loadOrganizations();
@@ -84,6 +94,24 @@ const OrganizationSwitcher: React.FC = () => {
   };
 
   const currentOrg = organizations.find(o => o.id === currentOrgId);
+
+  // Demo mode - show locked demo org
+  if (isDemoMode) {
+    return (
+      <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+        <div className={clsx(
+          'flex items-center justify-between px-3 py-2 rounded-lg',
+          'bg-white/5 border border-white/10 cursor-not-allowed opacity-75'
+        )}>
+          <div className="flex items-center space-x-2">
+            <Building2 className="w-4 h-4 text-white/50" />
+            <span className="text-sm font-medium text-white/70">Demo Organization</span>
+          </div>
+          <Lock className="w-3 h-3 text-white/40" />
+        </div>
+      </div>
+    );
+  }
 
   if (loading || !currentOrg) {
     return (

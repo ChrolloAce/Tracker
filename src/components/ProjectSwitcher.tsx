@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, FolderOpen, Plus, Check, Edit3 } from 'lucide-react';
+import { ChevronDown, FolderOpen, Plus, Check, Edit3, Lock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ProjectService from '../services/ProjectService';
 import CreatorLinksService from '../services/CreatorLinksService';
 import { ProjectWithStats } from '../types/projects';
 import { clsx } from 'clsx';
 import EditProjectModal from './EditProjectModal';
+import { useDemoContext } from '../pages/DemoPage';
 
 interface ProjectSwitcherProps {
   onCreateProject?: () => void;
@@ -18,6 +19,15 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
   const [isOpen, setIsOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<ProjectWithStats | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Check if in demo mode
+  let demoContext;
+  try {
+    demoContext = useDemoContext();
+  } catch {
+    demoContext = { isDemoMode: false, demoOrgId: '', demoProjectId: '' };
+  }
+  const isDemoMode = demoContext.isDemoMode;
 
   useEffect(() => {
     loadProjects();
@@ -69,6 +79,24 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
   };
 
   const currentProject = projects.find(p => p.id === currentProjectId);
+
+  // Demo mode - show locked demo project
+  if (isDemoMode) {
+    return (
+      <div className="relative w-full">
+        <div className={clsx(
+          'w-full flex items-center space-x-2 px-3 py-2 rounded-lg',
+          'bg-white/5 border border-white/10 cursor-not-allowed opacity-75'
+        )}>
+          <FolderOpen className="w-4 h-4 text-white/50" />
+          <span className="text-sm font-medium text-white/70">
+            Demo Project
+          </span>
+          <Lock className="w-3 h-3 text-white/40 ml-auto" />
+        </div>
+      </div>
+    );
+  }
 
   if (loading || !currentProject) {
     return (
