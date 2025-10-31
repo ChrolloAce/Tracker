@@ -125,7 +125,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   ({ dateFilter, platformFilter, searchQuery = '', onViewModeChange, pendingAccounts = [], selectedRuleIds = [], dashboardRules = [] }, ref) => {
   const { user, currentOrgId, currentProjectId } = useAuth();
   const navigate = useNavigate();
-  const navigate = useNavigate();
   
   // Debug props
   useEffect(() => {
