@@ -218,56 +218,56 @@ function App() {
         } 
       />
 
-      {/* Creator details route - requires authentication */}
+      {/* Creator details */}
       <Route 
         path="/creators/:creatorId" 
         element={
           !user ? (
             <Navigate to="/login" replace />
           ) : !currentOrgId || !currentProjectId ? (
-            <LoadingSkeleton />
+            <Navigate to="/create-organization" replace />
           ) : (
             <CreatorDetailsPageWrapper />
           )
         } 
       />
 
-      {/* Campaign details route - requires authentication */}
+      {/* Campaign details - accessible from /campaigns/:id */}
       <Route 
-        path="/campaign/:campaignId" 
+        path="/campaigns/:campaignId" 
         element={
           !user ? (
             <Navigate to="/login" replace />
           ) : !currentOrgId || !currentProjectId ? (
-            <LoadingSkeleton />
+            <Navigate to="/create-organization" replace />
           ) : (
             <CampaignDetailsPage />
           )
         } 
       />
 
-      {/* Create campaign route - requires authentication */}
+      {/* Create campaign */}
       <Route 
         path="/campaigns/create" 
         element={
           !user ? (
             <Navigate to="/login" replace />
           ) : !currentOrgId || !currentProjectId ? (
-            <LoadingSkeleton />
+            <Navigate to="/create-organization" replace />
           ) : (
             <CreateCampaignPage />
           )
         } 
       />
 
-      {/* Edit campaign route - requires authentication */}
+      {/* Edit campaign */}
       <Route 
-        path="/campaigns/edit/:campaignId" 
+        path="/campaigns/:campaignId/edit" 
         element={
           !user ? (
             <Navigate to="/login" replace />
           ) : !currentOrgId || !currentProjectId ? (
-            <LoadingSkeleton />
+            <Navigate to="/create-organization" replace />
           ) : (
             <EditCampaignPage />
           )
