@@ -131,10 +131,8 @@ function DashboardPage({ initialTab }: { initialTab?: string } = {}) {
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string | undefined>();
   const [dayVideosDate, setDayVideosDate] = useState<Date>(new Date());
   const [activeTab, setActiveTab] = useState(() => {
-    // Use initialTab prop if provided, otherwise restore from localStorage
-    if (initialTab) return initialTab;
-    const savedTab = localStorage.getItem('activeTab');
-    return savedTab || 'dashboard';
+    // Use initialTab prop which is set based on URL route
+    return initialTab || 'dashboard';
   });
   const [isEditingLayout, setIsEditingLayout] = useState(false);
   const [isCardEditorOpen, setIsCardEditorOpen] = useState(false);
@@ -511,7 +509,7 @@ function DashboardPage({ initialTab }: { initialTab?: string } = {}) {
         // 🎯 AUTO-REDIRECT CREATORS TO CAMPAIGNS TAB (they don't see dashboard)
         if (role === 'creator' && activeTab === 'dashboard') {
           console.log('🎯 Creator detected! Redirecting to campaigns tab...');
-          setActiveTab('campaigns');
+          navigate('/campaigns');
           localStorage.setItem('activeTab', 'campaigns');
         }
       } catch (error) {
@@ -2690,7 +2688,7 @@ function DashboardPage({ initialTab }: { initialTab?: string } = {}) {
           {activeTab === 'extension' && (
             <ExtensionPromoModal
               isOpen={true}
-              onClose={() => setActiveTab('dashboard')}
+              onClose={() => navigate('/dashboard')}
             />
           )}
 
