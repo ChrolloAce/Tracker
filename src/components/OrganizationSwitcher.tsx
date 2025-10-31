@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, Building2, Check, Crown, Shield, User, Plus, LogOut } from 'lucide-react';
+import { ChevronDown, Building2, Check, Crown, Shield, User, Plus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import OrganizationService from '../services/OrganizationService';
 import { Organization, Role } from '../types/firestore';
 import { clsx } from 'clsx';
 
 const OrganizationSwitcher: React.FC = () => {
-  const { user, currentOrgId, switchOrganization, logout } = useAuth();
+  const { user, currentOrgId, switchOrganization } = useAuth();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [userRoles, setUserRoles] = useState<Map<string, Role>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -95,50 +95,10 @@ const OrganizationSwitcher: React.FC = () => {
     );
   }
 
-  const handleSignOut = async () => {
-    if (window.confirm('Are you sure you want to sign out?')) {
-      try {
-        await logout();
-      } catch (error) {
-        console.error('Failed to sign out:', error);
-      }
-    }
-  };
-
   return (
     <>
-      {/* User Profile & Organization at Bottom */}
-      <div className="p-4 border-t border-white/10 space-y-2">
-        {/* User Profile with Sign Out */}
-        <div className="flex items-center justify-between px-3 py-2 bg-white/5 rounded-lg border border-white/10">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            {user?.photoURL ? (
-              <img 
-                src={user.photoURL} 
-                alt={user.displayName || 'User'} 
-                className="w-8 h-8 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-8 h-8 bg-emerald-600 rounded-full flex items-center justify-center">
-                <span className="text-sm font-semibold text-white">
-                  {user?.displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-                </span>
-              </div>
-            )}
-            <span className="text-sm font-medium text-white/90 truncate">
-              {user?.displayName || user?.email?.split('@')[0] || 'User'}
-            </span>
-          </div>
-          <button
-            onClick={handleSignOut}
-            className="p-1.5 text-white/50 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors flex-shrink-0"
-            title="Sign Out"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Organization Switcher */}
+      {/* Organization at Bottom */}
+      <div className="p-4 border-t border-white/10">
         <button
           onClick={() => setIsOpen(!isOpen)}
           className={clsx(

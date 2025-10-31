@@ -207,45 +207,31 @@ const TeamManagementPage: React.FC = () => {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Team & Access</h1>
-          <p className="text-gray-400 mt-1">
-            Manage team members and their permissions (Owners, Admins, Members)
-          </p>
-        </div>
-        {isAdmin && (
-          <Button
-            onClick={() => setShowInviteModal(true)}
-            className="flex items-center gap-2"
-            title="Invite team member by email and set their role"
-          >
-            <UserPlus className="w-4 h-4" />
-            Add Team Member
-          </Button>
-        )}
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Team</h2>
+        <p className="text-gray-600 dark:text-gray-400">Manage team members and permissions</p>
       </div>
 
       {/* Team Members */}
-      <div className="bg-gray-800/50 rounded-lg border border-gray-700 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-700">
-          <h2 className="text-xl font-semibold text-white">
-            Team Members ({members.length})
-          </h2>
+      <div className="bg-black/40 dark:bg-black/40 rounded-xl border border-white/10 overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/10">
+          <h3 className="text-lg font-semibold text-white">
+            {members.length} {members.length === 1 ? 'Member' : 'Members'}
+          </h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-800/50">
+            <thead className="bg-black/20">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Member
                 </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Role
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Joined
                   </th>
                 {isAdmin && (
@@ -348,19 +334,19 @@ const TeamManagementPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Pending Invitations */}
+      {/* Pending Invitations - Only show if there are any */}
       {isAdmin && invitations.length > 0 && (
-        <div className="bg-gray-800/50 rounded-lg border border-gray-700 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-700">
-            <h2 className="text-xl font-semibold text-white">
-              Pending Invitations ({invitations.length})
-            </h2>
+        <div className="bg-black/40 dark:bg-black/40 rounded-xl border border-white/10 overflow-hidden">
+          <div className="px-6 py-4 border-b border-white/10">
+            <h3 className="text-lg font-semibold text-white">
+              {invitations.length} Pending {invitations.length === 1 ? 'Invitation' : 'Invitations'}
+            </h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-800/50">
+              <thead className="bg-black/20">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Email
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
