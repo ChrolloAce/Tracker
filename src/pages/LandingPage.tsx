@@ -97,6 +97,7 @@ const LandingPage: React.FC = () => {
             </div>
           </div>
         </div>
+        </div>
 
         {/* Platform Row with Anchors */}
         <div id="platforms" className="relative mx-auto mt-10 mb-20 grid max-w-4xl grid-cols-4 place-items-center gap-6 px-6">
