@@ -81,10 +81,10 @@ const EditMemberPermissionsModal: React.FC<EditMemberPermissionsModalProps> = ({
     onChange: () => void;
     icon?: React.ReactNode;
   }> = ({ label, checked, onChange, icon }) => (
-    <label className="flex items-center justify-between px-4 py-3 hover:bg-gray-800/30 rounded-lg cursor-pointer transition-colors group">
+    <label className="flex items-center justify-between px-4 py-3 hover:bg-white/5 rounded-lg cursor-pointer transition-colors group">
       <div className="flex items-center gap-3">
-        {icon && <span className="text-gray-400 group-hover:text-gray-300">{icon}</span>}
-        <span className="text-sm text-gray-300 group-hover:text-white">{label}</span>
+        {icon && <span className="text-gray-500 group-hover:text-gray-400">{icon}</span>}
+        <span className="text-sm text-gray-400 group-hover:text-white">{label}</span>
       </div>
       <button
         type="button"
@@ -92,8 +92,8 @@ const EditMemberPermissionsModal: React.FC<EditMemberPermissionsModalProps> = ({
           e.preventDefault();
           onChange();
         }}
-        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
-          checked ? 'bg-gray-900 dark:bg-white' : 'bg-gray-700'
+        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-600/50 focus:ring-offset-2 focus:ring-offset-[#0A0A0A] ${
+          checked ? 'bg-emerald-600' : 'bg-gray-700'
         }`}
       >
         <span
@@ -111,27 +111,27 @@ const EditMemberPermissionsModal: React.FC<EditMemberPermissionsModalProps> = ({
     icon: React.ReactNode;
     children: React.ReactNode;
   }> = ({ title, description, icon, children }) => (
-    <div className="bg-gray-800/50 rounded-lg border border-gray-700 overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-700 bg-gray-800/30">
+    <div className="bg-black/40 rounded-xl border border-white/10 overflow-hidden">
+      <div className="px-5 py-4 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-purple-900/30 flex items-center justify-center text-gray-900 dark:text-white">
-            {icon}
+          <div className="w-10 h-10 rounded-lg bg-emerald-600/20 flex items-center justify-center">
+            <span className="text-emerald-400">{icon}</span>
           </div>
           <div>
             <h3 className="text-base font-semibold text-white">{title}</h3>
-            <p className="text-xs text-gray-400 mt-0.5">{description}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{description}</p>
           </div>
         </div>
       </div>
-      <div className="p-3 space-y-1">{children}</div>
+      <div className="p-4 space-y-1">{children}</div>
     </div>
   );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-gray-900 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-gray-800 flex flex-col">
+      <div className="bg-[#0A0A0A] rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-white/10 flex flex-col">
         {/* Header */}
-        <div className="px-6 py-5 border-b border-gray-800 bg-gradient-to-r from-purple-900/20 to-pink-900/20">
+        <div className="px-6 py-5 border-b border-white/10 bg-gradient-to-r from-black/20 to-black/20">
           <div className="flex items-start justify-between">
             <div>
               <h2 className="text-2xl font-bold text-white">Edit Permissions</h2>
@@ -139,7 +139,7 @@ const EditMemberPermissionsModal: React.FC<EditMemberPermissionsModalProps> = ({
                 <p className="text-sm text-gray-300">
                   {member.displayName || member.email}
                 </p>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-900/30 text-purple-300 border border-purple-500/30">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-black/30 text-emerald-400 border border-emerald-600/30">
                   <Shield className="w-3 h-3" />
                   {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
                 </span>
@@ -153,7 +153,7 @@ const EditMemberPermissionsModal: React.FC<EditMemberPermissionsModalProps> = ({
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+              className="p-2 hover:bg-black rounded-lg transition-colors"
             >
               <X className="w-5 h-5 text-gray-400" />
             </button>
@@ -185,7 +185,7 @@ const EditMemberPermissionsModal: React.FC<EditMemberPermissionsModalProps> = ({
 
           {/* Presets Dropdown */}
           {showPresets && (
-            <div className="mt-3 p-3 bg-gray-800/80 rounded-lg border border-gray-700 space-y-2">
+            <div className="mt-3 p-3 bg-black/80 rounded-lg border border-white/10 space-y-2">
               <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-2">
                 Quick Presets
               </p>
@@ -502,7 +502,7 @@ const EditMemberPermissionsModal: React.FC<EditMemberPermissionsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-800 bg-gray-900 flex items-center justify-between">
+        <div className="px-6 py-4 border-t border-white/10 bg-[#0A0A0A] flex items-center justify-between">
           <p className="text-sm text-gray-400">
             Changes will take effect immediately after saving
           </p>
