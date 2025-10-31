@@ -141,52 +141,46 @@ const LandingPage: React.FC = () => {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               {
-                icon: Play,
+                icon: Eye,
                 title: 'Views',
                 value: '461.9M',
-                growth: '+461.9M',
-                color: 'from-emerald-500 to-emerald-600',
-                strokeColor: '#10b981',
+                delta: '+23.5%',
+                isPositive: true,
               },
               {
-                icon: Heart,
+                icon: ThumbsUp,
                 title: 'Likes',
                 value: '13.4M',
-                growth: '+13.4M',
-                color: 'from-pink-500 to-pink-600',
-                strokeColor: '#ec4899',
+                delta: '+18.2%',
+                isPositive: true,
               },
               {
                 icon: MessageCircle,
                 title: 'Comments',
                 value: '394.7K',
-                growth: '+394.7K',
-                color: 'from-blue-500 to-blue-600',
-                strokeColor: '#3b82f6',
+                delta: '+15.8%',
+                isPositive: true,
               },
               {
                 icon: Share2,
                 title: 'Shares',
                 value: '28.6K',
-                growth: '+28.6K',
-                color: 'from-purple-500 to-purple-600',
-                strokeColor: '#a855f7',
+                delta: '+21.3%',
+                isPositive: true,
               },
               {
                 icon: Video,
                 title: 'Videos',
                 value: '341',
-                growth: '+341',
-                color: 'from-orange-500 to-orange-600',
-                strokeColor: '#f97316',
+                delta: '+45',
+                isPositive: true,
               },
               {
-                icon: UserPlus,
+                icon: UsersIcon,
                 title: 'Accounts',
                 value: '30',
-                growth: '+30',
-                color: 'from-indigo-500 to-indigo-600',
-                strokeColor: '#6366f1',
+                delta: '+5',
+                isPositive: true,
               },
             ].map((metric, index) => {
               const Icon = metric.icon;
@@ -194,7 +188,8 @@ const LandingPage: React.FC = () => {
               const sparklineData = Array.from({ length: 10 }, (_, i) => ({
                 value: 70 + Math.random() * 30 - i * 2 + index * 5
               }));
-              const isPositive = metric.growth.startsWith('+');
+              const isPositive = metric.isPositive;
+              const strokeColor = isPositive ? '#22c55e' : '#ef4444'; // green-500 or red-500
               
               return (
                 <div
@@ -237,16 +232,20 @@ const LandingPage: React.FC = () => {
                       <AreaChart data={sparklineData}>
                         <defs>
                           <linearGradient id={`area-gradient-${index}`} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor={metric.strokeColor} stopOpacity={0.3}/>
-                            <stop offset="100%" stopColor={metric.strokeColor} stopOpacity={0}/>
+                            <stop offset="0%" stopColor={strokeColor} stopOpacity={0.3}/>
+                            <stop offset="100%" stopColor={strokeColor} stopOpacity={0}/>
                           </linearGradient>
                         </defs>
                         <Tooltip 
                           content={({ active, payload }) => {
                             if (active && payload && payload[0]) {
                               return (
-                                <div className="bg-black/90 border border-white/20 rounded-lg px-3 py-2">
-                                  <p className="text-white text-sm font-medium">{Math.round(payload[0].value as number)}</p>
+                                <div className="bg-black/90 backdrop-blur-sm border border-white/20 rounded-lg px-3 py-2 shadow-xl">
+                                  <p className="text-xs text-gray-400 mb-1">{metric.title}</p>
+                                  <p className="text-white text-lg font-bold">{metric.value}</p>
+                                  <p className={`text-xs font-semibold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                                    {metric.delta}
+                                  </p>
                                 </div>
                               );
                             }
@@ -256,7 +255,7 @@ const LandingPage: React.FC = () => {
                         <Area 
                           type="monotone" 
                           dataKey="value" 
-                          stroke={metric.strokeColor}
+                          stroke={strokeColor}
                           fill={`url(#area-gradient-${index})`}
                           strokeWidth={2}
                         />
