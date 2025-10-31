@@ -7,19 +7,16 @@ interface NavBarProps {
 }
 
 const NavBar: React.FC<NavBarProps> = ({ logo, onGetStarted }) => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navLinks = [
-    { id: 'features', label: 'Features' },
-    { id: 'benefits', label: 'Benefits' },
-    { id: 'pricing', label: 'Pricing' },
-    { id: 'faq', label: 'FAQs' },
+    { label: 'Start Here', href: '#hero' },
+    { label: 'Benefits', href: '#features' },
+    { label: 'Process', href: '#how-it-works' },
+    { label: 'Compare', href: '#comparison' },
+    { label: 'Pricing', href: '#pricing' },
+    { label: 'FAQs', href: '#faq' },
   ];
-
-  const scrollToSection = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
-    setMobileMenuOpen(false);
-  };
 
   return (
     <div className="relative z-50 mt-6 md:mt-8">
@@ -27,23 +24,25 @@ const NavBar: React.FC<NavBarProps> = ({ logo, onGetStarted }) => {
         <nav 
           role="navigation" 
           aria-label="Primary"
-          className="flex items-center justify-between rounded-full bg-white border border-black/[0.06] py-2.5 pl-3 pr-2 md:py-3 shadow-[0_8px_24px_rgba(0,0,0,0.08),0_1px_0_rgba(0,0,0,0.04)]"
+          className="flex items-center justify-between rounded-full bg-white border border-black/[0.06] px-2.5 py-2.5 md:px-3 md:py-3 shadow-[0_8px_24px_rgba(0,0,0,0.08),0_1px_0_rgba(0,0,0,0.04)]"
         >
           {/* Left: Logo */}
           <a href="/" className="flex items-center gap-2 pl-2.5 md:pl-3 pr-2">
             <img src={logo} alt="ViewTrack" className="h-7 w-auto" />
           </a>
 
-          {/* Center: Desktop Links */}
+          {/* Center: Links (Desktop) */}
           <ul className="hidden md:flex items-center gap-8 lg:gap-10 text-[15px]">
             {navLinks.map((link) => (
-              <li key={link.id} className="relative">
-                <button
-                  onClick={() => scrollToSection(link.id)}
-                  className="text-gray-700 hover:text-black transition-colors duration-200 font-medium focus:outline-none focus-visible:text-black"
+              <li key={link.label} className="relative">
+                <a
+                  href={link.href}
+                  className="text-gray-700 hover:text-black transition-colors font-medium relative group"
                 >
                   {link.label}
-                </button>
+                  {/* Active indicator dot */}
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-black rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                </a>
               </li>
             ))}
           </ul>
@@ -56,14 +55,14 @@ const NavBar: React.FC<NavBarProps> = ({ logo, onGetStarted }) => {
             >
               View Plans
             </button>
-            
+
             {/* Mobile Menu Button */}
             <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="md:hidden p-2 hover:bg-gray-100 rounded-full transition-colors"
               aria-label="Toggle menu"
             >
-              {mobileMenuOpen ? (
+              {isMobileMenuOpen ? (
                 <X className="w-5 h-5 text-gray-700" />
               ) : (
                 <Menu className="w-5 h-5 text-gray-700" />
@@ -72,18 +71,19 @@ const NavBar: React.FC<NavBarProps> = ({ logo, onGetStarted }) => {
           </div>
         </nav>
 
-        {/* Mobile Menu Sheet */}
-        {mobileMenuOpen && (
-          <div className="md:hidden mt-2 bg-white border border-black/[0.06] rounded-2xl shadow-xl p-4">
-            <ul className="space-y-2">
+        {/* Mobile Menu Dropdown */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden absolute top-full left-4 right-4 mt-2 bg-white rounded-2xl border border-black/[0.06] shadow-xl overflow-hidden">
+            <ul className="py-3">
               {navLinks.map((link) => (
-                <li key={link.id}>
-                  <button
-                    onClick={() => scrollToSection(link.id)}
-                    className="w-full text-left px-4 py-2.5 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors font-medium"
+                <li key={link.label}>
+                  <a
+                    href={link.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="block px-6 py-3 text-gray-700 hover:bg-gray-50 hover:text-black transition-colors font-medium"
                   >
                     {link.label}
-                  </button>
+                  </a>
                 </li>
               ))}
             </ul>

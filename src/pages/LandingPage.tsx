@@ -2,8 +2,6 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TrendingUp, BookOpen, Star, Play, Heart, MessageCircle, Share2, Video, UserPlus } from 'lucide-react';
 import NavBar from '../components/NavBar';
-import FlowLines from '../components/FlowLines';
-import { PLATFORMS } from '../lib/flow-data';
 import viewtrackLogo from '/Viewtrack Logo Black.png';
 import dashboardImg from '/dashboard.png';
 import graphsImg from '/LANDINGPAGE-PHOOTS/GRAPHS.png';
@@ -16,22 +14,17 @@ import xLogo from '/twitter-x-logo.png';
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
 
-  const handleGetStarted = () => {
+  const onGetStarted = () => {
     navigate('/login');
   };
 
   return (
     <div className="min-h-screen bg-[#FAFAFB]">
       {/* Floating Pill Navigation */}
-      <NavBar logo={viewtrackLogo} onGetStarted={handleGetStarted} />
+      <NavBar logo={viewtrackLogo} onGetStarted={onGetStarted} />
 
-      {/* Flow Container - Wraps hero → platforms → timeline */}
-      <section id="flow-container" className="relative">
-        {/* Flow Lines Overlay */}
-        <FlowLines />
-
-        {/* Hero Section - Ultra Detailed Design */}
-        <div id="hero" className="relative pt-32 pb-20 px-6 overflow-hidden">
+      {/* Hero Section - Ultra Detailed Design */}
+      <section id="hero" className="pt-32 pb-20 px-6 relative overflow-hidden">
         {/* Dotted Background Pattern */}
         <div 
           className="absolute inset-0 opacity-40"
@@ -45,10 +38,6 @@ const LandingPage: React.FC = () => {
           <div className="flex items-center justify-center min-h-[600px]">
             {/* Central Content Column */}
             <div className="relative max-w-4xl mx-auto text-center">
-              {/* Flow Anchors - Left and Right exits from hero */}
-              <div data-flow="hero-left" className="absolute left-[10%] top-[55%] h-px w-px" />
-              <div data-flow="hero-right" className="absolute right-[10%] top-[55%] h-px w-px" />
-
               {/* Logo Mark */}
               <div className="flex items-center justify-center mb-12">
                 <img src={viewtrackLogo} alt="ViewTrack" className="h-16 w-auto" />
@@ -72,7 +61,7 @@ const LandingPage: React.FC = () => {
               {/* CTA Buttons */}
               <div className="flex items-center justify-center gap-4 mb-12">
                 <button
-                  onClick={handleGetStarted}
+                  onClick={onGetStarted}
                   className="px-9 py-4 bg-gradient-to-r from-[#007BFF] to-[#2583FF] hover:from-[#0066DD] hover:to-[#1E6FDD] text-white font-semibold rounded-full shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-200 text-base"
                 >
                   Start tracking now
@@ -97,36 +86,14 @@ const LandingPage: React.FC = () => {
             </div>
           </div>
         </div>
-        </div>
-
-        {/* Platform Row with Anchors */}
-        <div id="platforms" className="relative mx-auto mt-10 mb-20 grid max-w-4xl grid-cols-4 place-items-center gap-6 px-6">
-          {PLATFORMS.map((platform) => (
-            <div key={platform.id} className="relative">
-              <img src={platform.icon} alt={platform.label} className="h-12 w-12 object-contain opacity-70 hover:opacity-100 transition-opacity" />
-              <div data-flow={`platform-${platform.id}`} className="absolute inset-0 m-auto h-px w-px" />
-            </div>
-          ))}
-        </div>
-
-        {/* Merge Point */}
-        <div className="relative mx-auto mt-16 h-6 w-6">
-          <div data-flow="merge" className="absolute inset-0 m-auto h-px w-px" />
-        </div>
-
-        {/* Timeline Start Point */}
-        <div className="relative mx-auto h-6 w-6">
-          <div data-flow="timeline" className="absolute inset-0 m-auto h-px w-px" />
-        </div>
-
-        {/* Placeholder for timeline - can add FeatureTimeline component here later */}
-        <div className="relative mt-8 min-h-[400px]">
-          {/* Timeline will go here */}
-        </div>
       </section>
 
+      {/* Original Stats Section Removed - Replaced with Hero */}
+      
+      {/* Metrics Section Removed - Integrated into Hero */}
+
       {/* Features Section */}
-      <section id="features" className="py-20 px-6">
+      <section className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             {/* Left Column - Marketing Content */}
@@ -158,7 +125,7 @@ const LandingPage: React.FC = () => {
               {/* CTA Buttons */}
               <div className="flex items-center gap-4">
                 <button
-                  onClick={handleGetStarted}
+                  onClick={onGetStarted}
                   className="px-8 py-4 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
                 >
                   Start tracking now
@@ -452,7 +419,7 @@ const LandingPage: React.FC = () => {
             <h2 className="text-4xl font-bold text-gray-900 mb-4">Simple, Transparent Pricing</h2>
             <p className="text-xl text-gray-600">Choose the perfect plan for your needs</p>
           </div>
-
+          
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {/* Basic Plan */}
             <div className="bg-white rounded-2xl p-8 border-2 border-gray-200 hover:shadow-lg transition-shadow flex flex-col">
@@ -496,7 +463,7 @@ const LandingPage: React.FC = () => {
                 </li>
               </ul>
               <button
-                onClick={handleGetStarted}
+                onClick={onGetStarted}
                 className="w-full px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors mt-auto"
               >
                 Start Free Trial
@@ -560,7 +527,7 @@ const LandingPage: React.FC = () => {
                 </li>
               </ul>
               <button
-                onClick={handleGetStarted}
+                onClick={onGetStarted}
                 className="w-full px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors mt-auto"
               >
                 Start Free Trial
@@ -627,7 +594,7 @@ const LandingPage: React.FC = () => {
                 </li>
               </ul>
               <button
-                onClick={handleGetStarted}
+                onClick={onGetStarted}
                 className="w-full px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors mt-auto"
               >
                 Start Free Trial
