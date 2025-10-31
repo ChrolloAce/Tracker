@@ -413,7 +413,63 @@ function App() {
           ) : currentOrgId ? (
             <SettingsPageWrapper />
           ) : (
-            <LoadingSkeleton />
+            <Navigate to="/create-organization" replace />
+          )
+        } 
+      />
+
+      {/* Settings sub-routes */}
+      <Route 
+        path="/settings/:tab" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : currentOrgId ? (
+            <SettingsPageWrapper />
+          ) : (
+            <Navigate to="/create-organization" replace />
+          )
+        } 
+      />
+
+      {/* Account details with modal */}
+      <Route 
+        path="/accounts/:accountId" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : !currentOrgId || !currentProjectId ? (
+            <Navigate to="/create-organization" replace />
+          ) : (
+            <AccountsPage />
+          )
+        } 
+      />
+
+      {/* Video details with analytics modal */}
+      <Route 
+        path="/videos/:videoId" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : !currentOrgId || !currentProjectId ? (
+            <Navigate to="/create-organization" replace />
+          ) : (
+            <VideosPage />
+          )
+        } 
+      />
+
+      {/* Link analytics modal */}
+      <Route 
+        path="/links/:linkId" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : !currentOrgId || !currentProjectId ? (
+            <Navigate to="/create-organization" replace />
+          ) : (
+            <LinksPage />
           )
         } 
       />
