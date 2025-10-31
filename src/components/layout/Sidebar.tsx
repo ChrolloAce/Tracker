@@ -82,8 +82,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         id: 'creators',
         label: userRole === 'creator' ? 'Payouts' : 'Creators',
         icon: Video,
-        isActive: activeTab === 'creators',
-        onClick: () => onTabChange?.('creators'),
+        href: '/creators',
       },
       {
         id: 'campaigns',
