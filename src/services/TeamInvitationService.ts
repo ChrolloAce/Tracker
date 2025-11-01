@@ -82,6 +82,16 @@ class TeamInvitationService {
     await setDoc(inviteRef, inviteData);
     console.log(`✅ Created invitation for ${email}`);
     
+    // Create lookup document for easy invitation retrieval
+    const lookupRef = doc(db, 'invitationsLookup', inviteRef.id);
+    await setDoc(lookupRef, {
+      invitationId: inviteRef.id,
+      orgId: orgId,
+      email: email.toLowerCase(),
+      createdAt: Timestamp.now()
+    });
+    console.log(`✅ Created invitation lookup for ${email}`);
+    
     // Send email notification
     try {
       // Use production URL for invite links

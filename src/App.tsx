@@ -29,6 +29,7 @@ import { PreLaunchCover } from './components/PreLaunchCover';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import SupportPage from './pages/SupportPage';
+import CreatorInvitationPage from './pages/CreatorInvitationPage';
 import { useEffect, useState } from 'react';
 import { AlertCircle } from 'lucide-react';
 
@@ -188,6 +189,9 @@ function App() {
         <Route path="/terms" element={<TermsOfServicePage />} />
         <Route path="/support" element={<SupportPage />} />
         <Route path="/l/:shortId" element={<LinkRedirect />} />
+        
+        {/* Creator invitation portal - public route */}
+        <Route path="/invitations/:invitationId" element={<CreatorInvitationPage />} />
         
         {/* Main app routes - COVERED by pre-launch */}
       <Route 
