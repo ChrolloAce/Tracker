@@ -75,50 +75,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           user.photoURL || undefined
         );
         
-        // Get or create default organization
-        console.log('🔍 Getting default org for user:', user.uid);
-        let orgId = await OrganizationService.getOrCreateDefaultOrg(user.uid, user.email!, user.displayName || undefined);
-        console.log('📋 getOrCreateDefaultOrg returned:', orgId);
+        // FIRST: Always check if user has ANY organizations
+        console.log('🔍 Checking user organizations for:', user.uid);
+        const userOrgs = await OrganizationService.getUserOrganizations(user.uid);
+        console.log('📊 User has', userOrgs.length, 'organizations:', userOrgs.map(o => o.id));
         
-        // If no default org set, check if user has ANY organizations
-        if (!orgId) {
-          console.log('🔍 No default org found, checking all user orgs...');
-          const userOrgs = await OrganizationService.getUserOrganizations(user.uid);
-          console.log('📊 User has', userOrgs.length, 'organizations:', userOrgs.map(o => o.id));
+        let orgId: string | null = null;
+        
+        if (userOrgs.length === 0) {
+          // No organizations at all - redirect to onboarding
+          console.log('❌ User has no organizations - redirecting to onboarding');
+          setCurrentOrgId(null);
+          setCurrentProjectId(null);
+          setUserRole(null);
+          setLoading(false);
           
-          if (userOrgs.length > 0) {
-            // User has orgs! Set first one as default
-            orgId = userOrgs[0].id;
-            console.log('✅ Setting first org as default:', orgId);
-            await OrganizationService.setDefaultOrg(user.uid, orgId);
-            
-            // Mark onboarding as complete if not already marked
-            const org = await OrganizationService.getOrganization(orgId);
-            if (org && !org.metadata?.onboardingCompletedAt) {
-              console.log('📝 Marking onboarding as complete for existing org');
-              const orgRef = doc(db, 'organizations', orgId);
-              await setDoc(orgRef, {
-                metadata: {
-                  ...org.metadata,
-                  onboardingCompletedAt: new Date().toISOString()
-                }
-              }, { merge: true });
-            }
-            console.log('✅ Default org set successfully');
-          } else {
-            // No orgs at all - redirect to onboarding
-            console.log('❌ User has no organizations - redirecting to onboarding');
-            setCurrentOrgId(null);
-            setCurrentProjectId(null);
-            setUserRole(null);
-            setLoading(false);
-            
-            // Redirect to create organization page
-            if (window.location.pathname !== '/create-organization') {
-              console.log('🔀 Redirecting to /create-organization');
-              window.location.href = '/create-organization';
-            }
-            return;
+          if (window.location.pathname !== '/create-organization') {
+            console.log('🔀 Redirecting to /create-organization');
+            window.location.href = '/create-organization';
+          }
+          return;
+        }
+        
+        // User has orgs! Get the default org or use first one
+        const userAccount = await OrganizationService.getUserAccount(user.uid);
+        
+        if (userAccount?.defaultOrgId && userOrgs.find(o => o.id === userAccount.defaultOrgId)) {
+          // Use saved default org
+          orgId = userAccount.defaultOrgId;
+          console.log('✅ Using saved default org:', orgId);
+        } else {
+          // No default set or default doesn't exist - use first org
+          orgId = userOrgs[0].id;
+          console.log('✅ Using first org as default:', orgId);
+          await OrganizationService.setDefaultOrg(user.uid, orgId);
+          
+          // Mark onboarding as complete if not already marked
+          const org = await OrganizationService.getOrganization(orgId);
+          if (org && !org.metadata?.onboardingCompletedAt) {
+            console.log('📝 Marking onboarding as complete for existing org');
+            const orgRef = doc(db, 'organizations', orgId);
+            await setDoc(orgRef, {
+              metadata: {
+                ...org.metadata,
+                onboardingCompletedAt: new Date().toISOString()
+              }
+            }, { merge: true });
           }
         }
         
