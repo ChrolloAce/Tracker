@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { X, Globe, Monitor, Smartphone, Tablet, ExternalLink, Download, Network, Tag, Bot } from 'lucide-react';
+import { X, Globe, Monitor, Smartphone, Tablet, ExternalLink, Network, Tag, Bot } from 'lucide-react';
 import { TrackedLink } from '../types/firestore';
 import { LinkAnalytics } from '../types/trackedLinks';
 import TrackedLinksService from '../services/TrackedLinksService';
@@ -57,14 +57,6 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
     
     loadAnalytics();
   }, [isOpen, link, period, currentOrgId, currentProjectId]);
-
-  const handleExport = (format: 'csv' | 'json') => {
-    if (rawClicks.length === 0) {
-      alert('No data to export');
-      return;
-    }
-    LinkClicksService.downloadClicks(rawClicks, format, `${link.shortCode}-analytics-${Date.now()}`);
-  };
 
   // Calculate additional breakdowns
   const platformBreakdown = useMemo(() => {
@@ -130,26 +122,31 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
               <h2 className="text-2xl font-bold text-white">Link Analytics</h2>
               <p className="text-sm text-gray-400 mt-1">{link.title}</p>
             </div>
-            <div className="flex items-center gap-2">
-              {/* Export Buttons */}
-              <button
-                onClick={() => handleExport('csv')}
-                disabled={loading || rawClicks.length === 0}
-                className="px-4 py-2 text-sm bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 border border-emerald-500/30 hover:border-emerald-500/50"
-                title="Export as CSV"
+            <div className="flex items-center gap-3">
+              {/* Timeframe Selector */}
+              <select
+                value={timeframe}
+                onChange={(e) => setTimeframe(e.target.value as TimeframeType)}
+                disabled={loading}
+                className="px-3 py-2 text-sm bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-white/20 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-white/20"
               >
-                <Download className="w-4 h-4" />
-                CSV
-              </button>
-              <button
-                onClick={() => handleExport('json')}
-                disabled={loading || rawClicks.length === 0}
-                className="px-4 py-2 text-sm bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 border border-emerald-500/30 hover:border-emerald-500/50"
-                title="Export as JSON"
+                <option value="today">Today</option>
+                <option value="last7days">Last 7 Days</option>
+                <option value="last30days">Last 30 Days</option>
+                <option value="last90days">Last 90 Days</option>
+              </select>
+
+              {/* Granularity Selector */}
+              <select
+                value={granularity}
+                onChange={(e) => setGranularity(e.target.value as GranularityType)}
+                disabled={loading || (timeframe !== 'today' && timeframe !== 'last7days' && granularity === 'hourly')}
+                className="px-3 py-2 text-sm bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-white/20 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-white/20"
               >
-                <Download className="w-4 h-4" />
-                JSON
-              </button>
+                <option value="hourly" disabled={timeframe !== 'today' && timeframe !== 'last7days'}>Hourly</option>
+                <option value="daily">Daily</option>
+              </select>
+
               <button
                 onClick={onClose}
                 className="p-2 hover:bg-white/10 rounded-full transition-colors"
@@ -160,7 +157,7 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
           </div>
 
           {/* Link Details - Moved to Top */}
-          <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5 mb-6">
+          <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
             <h3 className="text-sm font-medium text-zinc-300 mb-3">Link Details</h3>
             <div className="space-y-2">
               <div className="flex items-start space-x-2">
@@ -180,53 +177,6 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                   {link.originalUrl}
                 </a>
               </div>
-            </div>
-          </div>
-
-          {/* Timeframe & Granularity Selector */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm text-zinc-400">Timeframe:</span>
-              {[
-                { value: 'today', label: 'Today' },
-                { value: 'last7days', label: 'Last 7 Days' },
-                { value: 'last30days', label: 'Last 30 Days' },
-                { value: 'last90days', label: 'Last 90 Days' }
-              ].map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => setTimeframe(option.value as TimeframeType)}
-                  disabled={loading}
-                  className={`px-4 py-2 text-sm rounded-full transition-all ${
-                    timeframe === option.value
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                      : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10 hover:border-white/20'
-                  } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-zinc-400">Display:</span>
-              {[
-                { value: 'hourly', label: 'Hourly', available: timeframe === 'today' || timeframe === 'last7days' },
-                { value: 'daily', label: 'Daily', available: true }
-              ].map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => setGranularity(option.value as GranularityType)}
-                  disabled={loading || !option.available}
-                  className={`px-4 py-2 text-sm rounded-full transition-all ${
-                    granularity === option.value
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                      : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10 hover:border-white/20'
-                  } ${(loading || !option.available) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {option.label}
-                </button>
-              ))}
             </div>
           </div>
         </div>
