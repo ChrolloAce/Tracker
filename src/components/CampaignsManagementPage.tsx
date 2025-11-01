@@ -14,6 +14,7 @@ import {
   Eye
 } from 'lucide-react';
 import { EmptyState } from './ui/EmptyState';
+import messagingCampaignAnimation from '../../public/lottie/Messaging Campaign.json';
 
 interface CampaignsManagementPageProps {
   selectedStatus?: 'all' | CampaignStatus;
@@ -179,6 +180,7 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
             title="Launch Your First Campaign"
             description="Create campaigns to motivate creators, track performance goals, and reward top performers with prizes and recognition."
             tooltipText="Campaigns help you organize content creation around specific goals, themes, or contests. Set rules for what content counts, track submissions, calculate winners, and reward your best creators. Perfect for seasonal promotions, product launches, or ongoing challenges."
+            animation={messagingCampaignAnimation}
             actions={[
               {
                 label: 'Create Campaign',
@@ -334,7 +336,7 @@ const CampaignManagementCard: React.FC<{
                   </button>
 
                   {showMenu && (
-                    <div className="absolute right-0 mt-2 w-48 bg-zinc-900 border border-white/10 rounded-lg shadow-xl z-50 overflow-hidden">
+                    <div className="absolute right-0 mt-2 w-48 bg-zinc-900 border border-white/10 rounded-lg shadow-xl z-[9999] overflow-hidden">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

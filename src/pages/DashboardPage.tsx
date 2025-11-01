@@ -50,7 +50,7 @@ import { VideoSubmission, InstagramVideoData } from '../types';
 import DateFilterService from '../services/DateFilterService';
 import ThemeService from '../services/ThemeService';
 import profileAnimation from '../../public/lottie/Profile.json';
-import videoMaterialAnimation from '../../public/lottie/Video Material.json';
+import videoMaterialAnimation from '../../public/lottie/Posting Picture.json';
 import FirestoreDataService from '../services/FirestoreDataService';
 import LinkClicksService, { LinkClick } from '../services/LinkClicksService';
 import RulesService from '../services/RulesService';
@@ -2577,9 +2577,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             <div>
               {/* Empty State - Show when no accounts AND no videos */}
               {trackedAccounts.length === 0 && submissions.length === 0 && (
-                <EmptyState
+                <BlurEmptyState
                   title="Start Tracking Your Content"
-                  description="Add your first social media account or video to begin tracking performance and growing your audience."
+                  description="Add your first social media account or video to start monitoring performance and growing your audience."
+                  animation={videoMaterialAnimation}
                   tooltipText="Track Instagram, TikTok, YouTube, and X accounts. Monitor video performance, engagement rates, and audience growth in real-time."
                   actions={[
                     {
@@ -2746,8 +2747,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                       case 'videos-table':
                         return combinedSubmissions.length === 0 ? (
                           <BlurEmptyState
-                            title="Start Tracking Your Content"
-                            description="Add your first video to begin tracking performance and growing your audience."
+                            title="Track Your First Video"
+                            description="Add your first video to start monitoring views, engagement, and performance across platforms."
                             animation={videoMaterialAnimation}
                             tooltipText="Track videos from Instagram, TikTok, YouTube, and X to analyze engagement, reach, and performance trends."
                             actions={[
@@ -2901,8 +2902,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           {activeTab === 'videos' && (
             combinedSubmissions.length === 0 ? (
               <BlurEmptyState
-                title="Start Tracking Your Content"
-                description="Add your first video to begin tracking performance and growing your audience."
+                title="Track Your First Video"
+                description="Add your first video to start monitoring views, engagement, and performance across platforms."
                 animation={videoMaterialAnimation}
                 tooltipText="Track videos from Instagram, TikTok, YouTube, and X to analyze engagement, reach, and performance trends."
                 actions={[
@@ -3080,8 +3081,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             case 'tracked-accounts':
               return trackedAccounts.length === 0 ? (
                 <BlurEmptyState
-                  title="No Accounts Yet"
-                  description="Start tracking social media accounts to monitor their performance and growth."
+                  title="Add Your First Account to Track"
+                  description="Track social media accounts to monitor followers, engagement, and content performance."
                   animation={profileAnimation}
                   tooltipText="Track Instagram, TikTok, YouTube, and X accounts to monitor followers, engagement, and content performance over time."
                   actions={[
@@ -3119,8 +3120,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             case 'videos-table':
               return combinedSubmissions.length === 0 ? (
                 <BlurEmptyState
-                  title="No Videos Yet"
-                  description="Add videos to track performance metrics like views, likes, comments, and more."
+                  title="Track Your First Video"
+                  description="Add videos to monitor views, likes, comments, and engagement across all platforms."
                   animation={videoMaterialAnimation}
                   tooltipText="Track videos from Instagram, TikTok, YouTube, and X to analyze engagement, reach, and performance trends."
                   actions={[

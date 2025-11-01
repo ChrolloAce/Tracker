@@ -12,7 +12,7 @@ import { clsx } from 'clsx';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import Pagination from './ui/Pagination';
 import { LinkClick } from '../services/LinkClicksService';
-import websiteStatsAnimation from '../../public/lottie/Website Statistics Infographic.json';
+import websiteStatsAnimation from '../../public/lottie/Binoculars.json';
 import { TrackedLinksKPICard } from './TrackedLinksKPICard';
 import DayClicksModal from './DayClicksModal';
 import { EmptyState } from './ui/EmptyState';

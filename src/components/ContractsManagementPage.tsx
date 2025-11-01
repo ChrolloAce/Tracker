@@ -345,12 +345,12 @@ const ContractsManagementPage: React.FC = () => {
                           <>
                             {/* Backdrop to close menu */}
                             <div 
-                              className="fixed inset-0 z-10"
+                              className="fixed inset-0 z-[9998]"
                               onClick={() => setOpenMenuId(null)}
                             />
                             
                             {/* Menu */}
-                            <div className="absolute right-0 top-8 w-48 bg-zinc-800 border border-white/10 rounded-lg shadow-xl z-20 overflow-hidden">
+                            <div className="absolute right-0 top-8 w-48 bg-zinc-800 border border-white/10 rounded-lg shadow-xl z-[9999] overflow-hidden">
                               {/* Download */}
                               <button
                                 onClick={() => handleDownloadContract(contract)}
@@ -418,10 +418,11 @@ const ContractsManagementPage: React.FC = () => {
       {/* Floating Action Button - Create Contract */}
       <button
         onClick={() => navigate('/contracts/create')}
-        className="fixed bottom-8 right-8 w-14 h-14 bg-white text-black rounded-full shadow-2xl hover:bg-gray-100 transition-all duration-200 flex items-center justify-center z-40 hover:scale-110"
+        className="fixed bottom-8 right-8 flex items-center gap-2 px-6 py-3 rounded-full font-medium transition-all transform hover:scale-105 active:scale-95 bg-white/10 hover:bg-white/15 text-white border border-white/20 hover:border-white/30 shadow-2xl z-40"
         title="Create Contract"
       >
-        <Plus className="w-6 h-6" />
+        <Plus className="w-5 h-5" />
+        <span>Create Contract</span>
       </button>
 
       {/* Delete Confirmation Modal */}

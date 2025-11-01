@@ -21,7 +21,7 @@ import {
   ChevronDown,
   MoreVertical
   } from 'lucide-react';
-import profileAnimation from '../../public/lottie/Profile.json';
+import profileAnimation from '../../public/lottie/Target Audience.json';
 import { AccountVideo } from '../types/accounts';
 import { TrackedAccount } from '../types/firestore';
 import { VideoSubmissionsTable } from './VideoSubmissionsTable';
@@ -1189,8 +1189,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           {/* Accounts Table */}
           {accounts.length === 0 && processingAccounts.length === 0 ? (
             <BlurEmptyState
-              title="Start Tracking Your Content"
-              description="Add your first social media account to begin tracking performance and growing your audience."
+              title="Add Your First Account to Track"
+              description="Track Instagram, TikTok, YouTube, and X accounts to monitor followers, engagement, and growth."
               animation={profileAnimation}
               tooltipText="Track Instagram, TikTok, YouTube, and X accounts to monitor followers, engagement rates, content performance, and audience growth over time."
               actions={[
@@ -1348,25 +1348,22 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                   {processingAccounts.map((procAccount, index) => (
                     <tr 
                       key={`processing-${index}`}
-                      className="bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-blue-500/5 dark:from-blue-500/10 dark:via-purple-500/10 dark:to-blue-500/10 border-l-4 border-blue-500 animate-pulse-slow"
+                      className="bg-white/5 dark:bg-white/5 border-l-2 border-white/20"
                     >
                       {/* Username Column */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center space-x-3">
                           <div className="relative w-10 h-10">
-                            <div className="w-10 h-10 rounded-full flex items-center justify-center relative overflow-hidden">
-                              {/* Animated gradient background */}
-                              <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 animate-spin-slow"></div>
-                              <div className="absolute inset-[2px] bg-[#0A0A0A] rounded-full"></div>
-                              <RefreshCw className="w-5 h-5 text-blue-400 animate-spin relative z-10" />
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center relative overflow-hidden bg-white/10">
+                              <RefreshCw className="w-5 h-5 text-white/60 animate-spin" />
                             </div>
                           </div>
                           <div>
                             <div className="text-sm font-bold text-white">
                               @{procAccount.username}
                             </div>
-                            <div className="text-xs text-blue-400 font-medium flex items-center gap-1">
-                              <span className="inline-block w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse"></span>
+                            <div className="text-xs text-white/40 font-medium flex items-center gap-1">
+                              <span className="inline-block w-1.5 h-1.5 bg-white/40 rounded-full animate-pulse"></span>
                               Adding account...
                             </div>
                           </div>
@@ -1383,22 +1380,22 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
 
                       {/* Other columns with loading placeholders */}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="w-16 h-4 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full animate-pulse"></div>
+                        <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse"></div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="w-12 h-4 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="w-12 h-4 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="w-16 h-4 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
+                        <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="w-12 h-4 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="w-12 h-4 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
                       </td>
 
                       {/* Actions Column */}
@@ -1438,7 +1435,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                           'transition-colors',
                           {
                             'bg-gray-200 dark:bg-gray-800': selectedAccount?.id === account.id && !isAccountSyncing,
-                            'bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-blue-500/5 dark:from-blue-500/10 dark:via-purple-500/10 dark:to-blue-500/10 border-l-4 border-blue-500 animate-pulse-slow': isAccountSyncing,
+                            'bg-white/5 dark:bg-white/5 border-l-2 border-white/20 animate-pulse-slow': isAccountSyncing,
                             'hover:bg-white/5 dark:hover:bg-white/5 cursor-pointer': !isAccountSyncing,
                           }
                         )}
@@ -1523,7 +1520,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                           {(() => {
                             const creatorName = accountCreatorNames.get(account.id);
                             return creatorName ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-900/30 text-purple-400 border border-purple-500/30">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
                                 <Users className="w-3 h-3 mr-1" />
                                 {creatorName}
                               </span>
@@ -1582,13 +1579,13 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                             {openDropdownId === account.id && (
                               <>
                                 <div 
-                                  className="fixed inset-0 z-10" 
+                                  className="fixed inset-0 z-[9998]" 
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setOpenDropdownId(null);
                                   }}
                                 />
-                                <div className="absolute right-0 top-8 mt-1 w-48 bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-xl z-20 py-1">
+                                <div className="absolute right-0 top-8 mt-1 w-48 bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-xl z-[9999] py-1">
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -1704,7 +1701,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                       return creatorName ? (
                         <button
                           onClick={() => setShowAttachCreatorModal(true)}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-purple-900/30 hover:bg-purple-900/50 text-purple-400 text-xs font-medium rounded-lg transition-colors border border-purple-500/30"
+                          className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/15 text-white text-xs font-medium rounded-lg transition-colors border border-white/20"
                         >
                           <Users className="w-3 h-3" />
                           {creatorName}
@@ -1712,7 +1709,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                       ) : (
                         <button
                           onClick={() => setShowAttachCreatorModal(true)}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 dark:bg-white hover:bg-purple-700 text-white dark:text-gray-900 text-xs font-medium rounded-lg transition-colors"
+                          className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/15 text-white text-xs font-medium rounded-lg transition-colors border border-white/20"
                         >
                           <Plus className="w-3 h-3" />
                           Attach to Creator
@@ -2694,7 +2691,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           <div className="bg-zinc-900 dark:bg-zinc-900 rounded-2xl p-8 w-full max-w-md shadow-2xl border border-gray-300 dark:border-gray-700">
             <div className="text-center mb-6">
               <div className="w-16 h-16 bg-gray-200 dark:bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Users className="w-8 h-8 text-purple-500" />
+                <Users className="w-8 h-8 text-white" />
               </div>
               <h2 className="text-2xl font-bold text-white mb-2">Attach to Creator</h2>
               <p className="text-gray-400">
@@ -2712,7 +2709,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                       className="w-12 h-12 rounded-full"
                     />
                   ) : (
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center">
                       <Users className="w-6 h-6 text-white" />
                     </div>
                   )}
@@ -2792,7 +2789,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                         }
                       }}
                       disabled={!selectedCreatorId}
-                      className="flex-1 px-4 py-3 bg-gray-900 dark:bg-white hover:bg-purple-700 text-white dark:text-gray-900 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 px-4 py-3 bg-white/10 hover:bg-white/15 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-white/20"
                     >
                       Attach Account
                     </button>
@@ -2808,7 +2805,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                     <p className="text-sm text-gray-400 mb-4">
                       You need to create a creator profile first before linking accounts
                     </p>
-                    <div className="inline-flex items-center gap-2 px-3 py-2 bg-gray-200 dark:bg-gray-800 rounded-lg text-sm text-purple-300">
+                    <div className="inline-flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg text-sm text-white/60 border border-white/20">
                       <AlertCircle className="w-4 h-4" />
                       Go to <span className="font-semibold">Creators</span> tab to create one
                     </div>

@@ -321,29 +321,35 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   return (
     <div className="space-y-6">
       {/* Tab Navigation */}
-      <div className="flex items-center gap-4 border-b border-white/5 pb-3">
+      <div className="border-b border-gray-200 dark:border-white/10">
+        <nav className="flex space-x-8">
         <button
           onClick={() => setActiveTab('accounts')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${
-            activeTab === 'accounts'
-              ? 'bg-white text-black'
-              : 'text-gray-400 hover:text-white hover:bg-white/5'
-          }`}
+            className={`
+              flex items-center gap-2 px-1 py-4 border-b-2 font-medium text-sm transition-colors
+              ${activeTab === 'accounts'
+                ? 'border-gray-900 text-gray-900 dark:border-white dark:text-white'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+              }
+            `}
         >
           <User className="w-4 h-4" />
           Creators
         </button>
         <button
           onClick={() => setActiveTab('contracts')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium ${
-            activeTab === 'contracts'
-              ? 'bg-white text-black'
-              : 'text-gray-400 hover:text-white hover:bg-white/5'
-          }`}
+            className={`
+              flex items-center gap-2 px-1 py-4 border-b-2 font-medium text-sm transition-colors
+              ${activeTab === 'contracts'
+                ? 'border-gray-900 text-gray-900 dark:border-white dark:text-white'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+              }
+            `}
         >
           <FileText className="w-4 h-4" />
           Contracts
         </button>
+        </nav>
       </div>
 
       {/* Contracts Tab */}
@@ -620,10 +626,11 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
           {/* Floating Action Button - Add Creator (only on Accounts tab) */}
           <button
             onClick={() => setShowInviteModal(true)}
-            className="fixed bottom-8 right-8 w-14 h-14 bg-white text-black rounded-full shadow-2xl hover:bg-gray-100 transition-all duration-200 flex items-center justify-center z-40 hover:scale-110"
+            className="fixed bottom-8 right-8 flex items-center gap-2 px-6 py-3 rounded-full font-medium transition-all transform hover:scale-105 active:scale-95 bg-white/10 hover:bg-white/15 text-white border border-white/20 hover:border-white/30 shadow-2xl z-40"
             title="Add Creator (Space)"
           >
-            <Plus className="w-6 h-6" />
+            <Plus className="w-5 h-5" />
+            <span>Add Creator</span>
           </button>
         </>
       )}
