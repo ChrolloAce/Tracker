@@ -2881,6 +2881,49 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             </div>
           )}
 
+          {/* Accounts Tab */}
+          {activeTab === 'accounts' && (
+            <AccountsPage 
+              ref={accountsPageRef}
+              dateFilter={dateFilter}
+              platformFilter={dashboardPlatformFilter}
+              searchQuery={accountsSearchQuery}
+              onViewModeChange={setAccountsViewMode}
+              pendingAccounts={pendingAccounts}
+              selectedRuleIds={selectedRuleIds}
+              dashboardRules={allRules}
+              organizationId={currentOrgId || undefined}
+              projectId={currentProjectId || undefined}
+            />
+          )}
+
+          {/* Videos Tab */}
+          {activeTab === 'videos' && (
+            combinedSubmissions.length === 0 ? (
+              <BlurEmptyState
+                title="Start Tracking Your Content"
+                description="Add your first video to begin tracking performance and growing your audience."
+                animation={videoMaterialAnimation}
+                tooltipText="Track videos from Instagram, TikTok, YouTube, and X to analyze engagement, reach, and performance trends."
+                actions={[
+                  {
+                    label: 'Add Video',
+                    onClick: () => setIsModalOpen(true),
+                    icon: Video,
+                    primary: true
+                  }
+                ]}
+              />
+            ) : (
+              <VideoSubmissionsTable
+                submissions={combinedSubmissions}
+                onStatusUpdate={handleStatusUpdate}
+                onDelete={handleDelete}
+                onVideoClick={handleVideoClick}
+              />
+            )
+          )}
+
           {/* Subscription Tab */}
           {activeTab === 'subscription' && <SubscriptionPage />}
 
