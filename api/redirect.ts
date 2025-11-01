@@ -108,9 +108,11 @@ export default async function handler(
 
     if (!isBot) {
       // Only record analytics for real human clicks
-      recordClickAnalytics(db, linkData, req).catch(err => 
-        console.error('Analytics error:', err)
-      );
+      recordClickAnalytics(db, linkData, req).catch(err => {
+        console.error('❌ Analytics error:', err);
+        console.error('Link data:', JSON.stringify(linkData, null, 2));
+        console.error('Error details:', err.message, err.stack);
+      });
     } else {
       console.log(`🤖 Bot/preview detected, not recording click: ${userAgent.substring(0, 50)}...`);
     }
@@ -408,42 +410,52 @@ async function recordClickAnalytics(db: any, linkData: any, req: VercelRequest) 
       .collection('clicks')
       .doc();
 
-    const clickData = {
+    // Build click data - filter out undefined values to avoid Firestore errors
+    const clickData: Record<string, any> = {
       id: clickRef.id,
       linkId: linkData.linkId,
       timestamp: FieldValue.serverTimestamp(),
       userAgent,
       deviceType,
       browser: browserInfo.browser,
-      browserVersion: browserInfo.browserVersion,
-      os: osInfo.os,
-      osVersion: osInfo.osVersion,
       referrer,
-      referrerDomain,
       ipHash,
-      // Geo data
-      country: geoData.country,
-      countryCode: geoData.countryCode,
-      city: geoData.city,
-      region: geoData.region,
-      // ISP data
-      isp,
-      organization,
-      // Platform
-      platform,
-      // Bot detection (already filtered out, but marking as false)
       isBot: false,
-      // UTM and query params
-      ...queryData,
-      // Language and timezone
-      language,
-      timezone,
     };
 
+    // Add optional fields only if they have values
+    if (browserInfo.browserVersion) clickData.browserVersion = browserInfo.browserVersion;
+    if (osInfo.os) clickData.os = osInfo.os;
+    if (osInfo.osVersion) clickData.osVersion = osInfo.osVersion;
+    if (referrerDomain) clickData.referrerDomain = referrerDomain;
+    if (geoData.country) clickData.country = geoData.country;
+    if (geoData.countryCode) clickData.countryCode = geoData.countryCode;
+    if (geoData.city) clickData.city = geoData.city;
+    if (geoData.region) clickData.region = geoData.region;
+    if (isp) clickData.isp = isp;
+    if (organization) clickData.organization = organization;
+    if (platform) clickData.platform = platform;
+    if (language) clickData.language = language;
+    if (timezone) clickData.timezone = timezone;
+
+    // Add UTM and query params (spread only adds defined values)
+    Object.entries(queryData).forEach(([key, value]) => {
+      if (value !== undefined) {
+        clickData[key] = value;
+      }
+    });
+
     console.log(`📊 Recording click for link ${linkData.linkId} in project ${linkData.projectId}`);
+    console.log(`📍 Click path: organizations/${linkData.orgId}/projects/${linkData.projectId}/links/${linkData.linkId}/clicks/${clickRef.id}`);
+
+    // Validate required fields
+    if (!linkData.orgId || !linkData.projectId || !linkData.linkId) {
+      throw new Error(`Missing required fields: orgId=${linkData.orgId}, projectId=${linkData.projectId}, linkId=${linkData.linkId}`);
+    }
 
     // Write click document
     await clickRef.set(clickData);
+    console.log(`✅ Click document created successfully`);
 
     // Update link stats using atomic increment (correct path with projects)
     const linkRef = db
