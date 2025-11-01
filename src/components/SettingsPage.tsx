@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, Users, TrendingUp } from 'lucide-react';
+import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, Users, TrendingUp, RefreshCw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -307,9 +307,10 @@ const BillingTabContent: React.FC = () => {
           <div className="space-y-4">
             <DetailRow label="Active Plan" value={planDetails.displayName + ' Plan'} />
             <DetailRow label="Billing Cycle" value={subscription?.interval === 'year' ? 'Yearly' : 'Monthly'} />
+            <DetailRow label="Auto-Renew" value={subscription?.cancelAtPeriodEnd ? 'Cancelled - Expires at period end' : 'Active'} />
             <DetailRow label="Started On" value={startDate} />
             <DetailRow label={subscription?.interval === 'year' ? 'Yearly Price' : 'Monthly Price'} value={`$${subscription?.interval === 'year' ? planDetails.yearlyPrice.toFixed(2) : planDetails.monthlyPrice.toFixed(2)}`} />
-            <DetailRow label="Next Billing Date" value={nextBillingDate} />
+            <DetailRow label="Next Billing Date" value={subscription?.cancelAtPeriodEnd ? `Expires: ${nextBillingDate}` : nextBillingDate} />
           </div>
 
           <div className="flex items-center justify-between mt-6 pt-6 border-t border-white/10">
@@ -327,10 +328,23 @@ const BillingTabContent: React.FC = () => {
                   <button
                     onClick={handleManageSubscription}
                     disabled={loadingPortal}
-                    className="flex items-center gap-2 px-4 py-2 text-red-400 hover:bg-red-500/10 border border-red-500/20 rounded-lg font-medium transition-colors disabled:opacity-50"
+                    className={`flex items-center gap-2 px-4 py-2 border rounded-lg font-medium transition-colors disabled:opacity-50 ${
+                      subscription?.cancelAtPeriodEnd
+                        ? 'text-emerald-400 hover:bg-emerald-500/10 border-emerald-500/20'
+                        : 'text-red-400 hover:bg-red-500/10 border-red-500/20'
+                    }`}
                   >
-                    <X className="w-4 h-4" />
-                    Cancel Subscription
+                    {subscription?.cancelAtPeriodEnd ? (
+                      <>
+                        <RefreshCw className="w-4 h-4" />
+                        Reactivate Subscription
+                      </>
+                    ) : (
+                      <>
+                        <X className="w-4 h-4" />
+                        Cancel Subscription
+                      </>
+                    )}
                   </button>
                 </>
               )}
