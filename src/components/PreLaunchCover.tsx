@@ -4,7 +4,7 @@ import { Lock, Unlock, Clock } from 'lucide-react';
 import vtLogo from '/vtlogo.png';
 
 const LAUNCH_DATE = new Date('2025-11-01T22:00:00').getTime(); // Nov 1, 2025 at 10:00 PM (EST)
-const BYPASS_PIN = '1111'; // Change this to your secure PIN
+const BYPASS_PIN = '9434'; // Secure PIN for early access
 const BYPASS_KEY = 'prelaunch_bypass_v2'; // Changed key to force reset
 const FORCE_LOCK = true; // ALWAYS show cover, ignore date completely
 
