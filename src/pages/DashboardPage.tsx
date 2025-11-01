@@ -86,7 +86,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const { user, currentOrgId: authOrgId, currentProjectId: authProjectId } = useAuth();
   const navigate = useNavigate();
   
-  // Check if we're in demo mode
+  // Check if we're in demo mode - demo IDs ALWAYS override auth IDs
   let demoContext;
   try {
     demoContext = useDemoContext();
@@ -96,11 +96,19 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   
   const isDemoMode = demoContext.isDemoMode;
   
-  // Use demo IDs if in demo mode, otherwise use auth IDs
-  const currentOrgId = isDemoMode ? demoContext.demoOrgId : authOrgId;
-  const currentProjectId = isDemoMode ? demoContext.demoProjectId : authProjectId;
+  // CRITICAL: Use demo IDs if in demo mode, IGNORE auth IDs completely
+  const currentOrgId = isDemoMode && demoContext.demoOrgId ? demoContext.demoOrgId : authOrgId;
+  const currentProjectId = isDemoMode && demoContext.demoProjectId ? demoContext.demoProjectId : authProjectId;
   
-  console.log('🔍 Dashboard IDs:', { isDemoMode, currentOrgId, currentProjectId, authOrgId, authProjectId });
+  console.log('🔍 Dashboard Data Source:', { 
+    isDemoMode, 
+    usingOrgId: currentOrgId, 
+    usingProjectId: currentProjectId,
+    authOrgId, 
+    authProjectId,
+    demoOrgId: demoContext.demoOrgId,
+    demoProjectId: demoContext.demoProjectId
+  });
 
   // Subscription & Paywall State
   const [showPaywall, setShowPaywall] = useState(false);
