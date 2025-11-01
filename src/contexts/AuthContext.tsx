@@ -117,7 +117,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 onboardingCompletedAt: new Date().toISOString()
               }
             }, { merge: true });
-          }
+        }
         }
         
         console.log('✅ Final org ID to use:', orgId);

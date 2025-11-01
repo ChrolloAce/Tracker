@@ -85,7 +85,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   // Get authentication state, current organization, and current project
   const { user, currentOrgId: authOrgId, currentProjectId: authProjectId } = useAuth();
   const navigate = useNavigate();
-  
+
   // Check if we're in demo mode - demo IDs ALWAYS override auth IDs
   let demoContext;
   try {
@@ -1909,7 +1909,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           <DemoBanner />
         </div>
       )}
-
+      
       {/* Fixed Header */}
       <header className={clsx(
         'fixed right-0 bg-white dark:bg-[#111111] border-b border-gray-200 dark:border-gray-800 px-6 py-4 z-20 transition-all duration-300',
@@ -2131,29 +2131,29 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   
                   {/* Edit Layout Button - Icon Only (Hidden in demo mode) */}
                   {!isDemoMode && (
-                    <button
-                      onClick={() => setIsEditingLayout(true)}
-                      className="p-2 rounded-lg transition-all bg-white/5 text-white/90 border border-white/10 hover:border-white/20"
-                      title="Customize dashboard layout"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
+                  <button
+                    onClick={() => setIsEditingLayout(true)}
+                    className="p-2 rounded-lg transition-all bg-white/5 text-white/90 border border-white/10 hover:border-white/20"
+                    title="Customize dashboard layout"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
                   )}
                   
                   {/* Manual Refresh Button - Temporary for testing (Hidden in demo mode) */}
                   {!isDemoMode && (
-                    <button
-                      onClick={handleManualRefresh}
-                      disabled={isRefreshing}
-                      className={`p-2 rounded-lg transition-all border ${
-                        isRefreshing 
-                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 cursor-wait' 
-                          : 'bg-white/5 text-white/90 border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-400'
-                      }`}
-                      title="Manually refresh all video data"
-                    >
-                      <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                    </button>
+                  <button
+                    onClick={handleManualRefresh}
+                    disabled={isRefreshing}
+                    className={`p-2 rounded-lg transition-all border ${
+                      isRefreshing 
+                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 cursor-wait' 
+                        : 'bg-white/5 text-white/90 border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-400'
+                    }`}
+                    title="Manually refresh all video data"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  </button>
                   )}
                 </>
                ) : (

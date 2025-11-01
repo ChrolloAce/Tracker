@@ -317,6 +317,8 @@ function App() {
         element={
           !user ? (
             <Navigate to="/login" replace />
+          ) : loading ? (
+            <LoadingSkeleton />
           ) : currentOrgId ? (
             <Navigate to="/dashboard" replace />
           ) : (

@@ -82,10 +82,10 @@ const LoginPage: React.FC = () => {
         }
       } else {
         // Regular login flow
-        if (isSignUp) {
-          await signUpWithEmail(email, password);
-        } else {
-          await signInWithEmail(email, password);
+      if (isSignUp) {
+        await signUpWithEmail(email, password);
+      } else {
+        await signInWithEmail(email, password);
         }
       }
     } catch (err: any) {

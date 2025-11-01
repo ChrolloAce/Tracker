@@ -341,8 +341,8 @@ const BillingTabContent: React.FC = () => {
                       </>
                     ) : (
                       <>
-                        <X className="w-4 h-4" />
-                        Cancel Subscription
+                    <X className="w-4 h-4" />
+                    Cancel Subscription
                       </>
                     )}
                   </button>

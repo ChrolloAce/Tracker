@@ -50,7 +50,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const { can, loading: permissionsLoading } = usePermissions();
   const { userRole } = useAuth();
   const location = useLocation();
-  
+
   // Check if we're in demo mode
   const isDemoMode = location.pathname.startsWith('/demo');
 

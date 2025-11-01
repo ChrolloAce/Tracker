@@ -318,7 +318,7 @@ const OrganizationOnboarding: React.FC = () => {
       // Create organization
       console.log('🏢 Creating organization:', orgData);
       const orgId = await OrganizationService.createOrganization(user.uid, orgData);
-      
+
       // Set as default org for the user
       await OrganizationService.setDefaultOrg(user.uid, orgId);
       console.log('✅ Set as default organization');
@@ -601,7 +601,7 @@ const OrganizationOnboarding: React.FC = () => {
                   Add your first project and start tracking social accounts
                 </p>
               </div>
-              
+
               {/* Project Name & Icon - Horizontal */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -612,30 +612,30 @@ const OrganizationOnboarding: React.FC = () => {
                   <div className="relative group">
                     {data.projectIconPreview ? (
                       <div className="relative">
-                        <img
+                      <img
                           src={data.projectIconPreview}
                           alt="Project icon"
                           className="w-12 h-12 rounded-lg object-cover border border-gray-300"
-                        />
-                        <button
+                      />
+                      <button
                           onClick={handleRemoveProjectIcon}
                           className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white rounded-full items-center justify-center hover:bg-red-700 transition-colors opacity-0 group-hover:opacity-100 hidden group-hover:flex"
-                        >
+                      >
                           <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ) : (
+                      </button>
+                    </div>
+                  ) : (
                       <label className="cursor-pointer w-12 h-12 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center hover:border-[#2282FF] transition-colors">
                         <Upload className="w-5 h-5 text-gray-400" />
-                        <input
-                          type="file"
-                          accept="image/png,image/jpeg,image/gif"
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/gif"
                           onChange={handleProjectIconChange}
-                          className="hidden"
-                        />
-                      </label>
-                    )}
-                  </div>
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
                   
                   {/* Project Name Input */}
                   <input
@@ -881,12 +881,12 @@ const OrganizationOnboarding: React.FC = () => {
               {step < totalSteps ? (
                 <>
                   {step === 3 && ( /* Only allow skip on Team step */
-                    <button
-                      onClick={() => setStep(totalSteps)}
+                  <button
+                    onClick={() => setStep(totalSteps)}
                       className="px-6 py-3 text-gray-500 hover:text-gray-900 transition-colors font-medium"
-                    >
-                      Skip
-                    </button>
+                  >
+                    Skip
+                  </button>
                   )}
                   <button
                     onClick={handleNext}
