@@ -140,7 +140,7 @@ export const SUBSCRIPTION_PLANS: Record<PlanTier, SubscriptionPlan> = {
       teamSeats: 1,
       flexibleSeats: false,
       maxAccounts: 3,
-      maxVideos: 100,
+      maxVideos: 150,
       dataRefreshHours: 24,
       refreshOnDemand: false,
       mcpCallsPerMonth: 100,
