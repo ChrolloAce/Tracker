@@ -13,15 +13,27 @@ interface LinkAnalyticsModalEnhancedProps {
   link: TrackedLink;
 }
 
-type TabType = 'overview' | 'details' | 'raw';
+type TimeframeType = 'today' | 'last7days' | 'last30days' | 'last90days';
+type GranularityType = 'hourly' | 'daily';
 
 const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({ isOpen, onClose, link }) => {
   const { currentOrgId, currentProjectId } = useAuth();
   const [analytics, setAnalytics] = useState<LinkAnalytics | null>(null);
-  const [period, setPeriod] = useState(30);
+  const [timeframe, setTimeframe] = useState<TimeframeType>('last7days');
+  const [granularity, setGranularity] = useState<GranularityType>('daily');
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [rawClicks, setRawClicks] = useState<any[]>([]);
+  
+  // Convert timeframe to period days for API
+  const period = useMemo(() => {
+    switch (timeframe) {
+      case 'today': return 1;
+      case 'last7days': return 7;
+      case 'last30days': return 30;
+      case 'last90days': return 90;
+      default: return 7;
+    }
+  }, [timeframe]);
 
   useEffect(() => {
     const loadAnalytics = async () => {
@@ -113,7 +125,7 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
       >
         {/* Header */}
         <div className="p-6 border-b border-white/10 flex-shrink-0">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-2xl font-bold text-white">Link Analytics</h2>
               <p className="text-sm text-gray-400 mt-1">{link.title}</p>
@@ -123,7 +135,7 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
               <button
                 onClick={() => handleExport('csv')}
                 disabled={loading || rawClicks.length === 0}
-                className="px-4 py-2 text-sm bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 border border-emerald-500/30 hover:border-emerald-500/50"
+                className="px-4 py-2 text-sm bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 border border-emerald-500/30 hover:border-emerald-500/50"
                 title="Export as CSV"
               >
                 <Download className="w-4 h-4" />
@@ -132,7 +144,7 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
               <button
                 onClick={() => handleExport('json')}
                 disabled={loading || rawClicks.length === 0}
-                className="px-4 py-2 text-sm bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 border border-emerald-500/30 hover:border-emerald-500/50"
+                className="px-4 py-2 text-sm bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 border border-emerald-500/30 hover:border-emerald-500/50"
                 title="Export as JSON"
               >
                 <Download className="w-4 h-4" />
@@ -147,62 +159,90 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="flex gap-2 mt-6">
-            {[
-              { id: 'overview', label: 'Overview' },
-              { id: 'details', label: 'Detailed Analytics' },
-              { id: 'raw', label: 'Raw Data' },
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as TabType)}
-                className={`px-5 py-2.5 text-sm font-medium rounded-lg transition-all ${
-                  activeTab === tab.id
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                    : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10 hover:border-white/20'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          {/* Link Details - Moved to Top */}
+          <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5 mb-6">
+            <h3 className="text-sm font-medium text-zinc-300 mb-3">Link Details</h3>
+            <div className="space-y-2">
+              <div className="flex items-start space-x-2">
+                <span className="text-sm text-zinc-400 min-w-[100px]">Short URL:</span>
+                <code className="text-sm font-mono bg-zinc-800/50 px-2 py-0.5 rounded text-emerald-400">
+                  {TrackedLinksService.getTrackingUrl(link.shortCode)}
+                </code>
+              </div>
+              <div className="flex items-start space-x-2">
+                <span className="text-sm text-zinc-400 min-w-[100px]">Destination:</span>
+                <a 
+                  href={link.originalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-400 hover:text-blue-300 hover:underline break-all"
+                >
+                  {link.originalUrl}
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* Timeframe & Granularity Selector */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm text-zinc-400">Timeframe:</span>
+              {[
+                { value: 'today', label: 'Today' },
+                { value: 'last7days', label: 'Last 7 Days' },
+                { value: 'last30days', label: 'Last 30 Days' },
+                { value: 'last90days', label: 'Last 90 Days' }
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => setTimeframe(option.value as TimeframeType)}
+                  disabled={loading}
+                  className={`px-4 py-2 text-sm rounded-full transition-all ${
+                    timeframe === option.value
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                      : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10 hover:border-white/20'
+                  } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-zinc-400">Display:</span>
+              {[
+                { value: 'hourly', label: 'Hourly', available: timeframe === 'today' || timeframe === 'last7days' },
+                { value: 'daily', label: 'Daily', available: true }
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => setGranularity(option.value as GranularityType)}
+                  disabled={loading || !option.available}
+                  className={`px-4 py-2 text-sm rounded-full transition-all ${
+                    granularity === option.value
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                      : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10 hover:border-white/20'
+                  } ${(loading || !option.available) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
-          {/* Period Selector */}
-          <div className="flex items-center space-x-2 mb-6">
-            <span className="text-sm text-gray-400">Period:</span>
-            {[7, 30, 90].map((days) => (
-              <button
-                key={days}
-                onClick={() => setPeriod(days)}
-                disabled={loading}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-all ${
-                  period === days
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                    : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10 hover:border-white/20'
-                } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                {days} days
-              </button>
-            ))}
-          </div>
-
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-4 border-white/10 border-t-blue-600 dark:border-t-blue-500"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-white/10 border-t-emerald-500"></div>
             </div>
           ) : !analytics ? (
             <div className="text-center py-12 text-zinc-400">
               No analytics data available
             </div>
           ) : (
-            <>
-              {/* Overview Tab */}
-              {activeTab === 'overview' && (
-                <div className="space-y-6">
+            <div className="space-y-6">
                   {/* Stats Overview */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5 hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all">
@@ -213,7 +253,7 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                       <p className="text-xs font-medium text-zinc-400 tracking-wide mb-2">Unique Clicks</p>
                       <p className="text-3xl font-bold text-white">{analytics.uniqueClicks}</p>
                     </div>
-                    <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5 hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all">
+                    <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5 hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all group relative">
                       <p className="text-xs font-medium text-zinc-400 tracking-wide mb-2">Click Rate</p>
                       <p className="text-3xl font-bold text-white">
                         {analytics.uniqueClicks > 0 
@@ -221,6 +261,15 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                           : '0%'
                         }
                       </p>
+                      <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="relative">
+                          <div className="bg-zinc-800 border border-white/20 rounded-lg p-3 text-xs text-zinc-300 w-64 shadow-xl">
+                            <p className="font-semibold mb-1">Click Rate Formula:</p>
+                            <p className="text-zinc-400">(Unique Clicks ÷ Total Clicks) × 100</p>
+                            <p className="text-zinc-500 mt-2 text-[10px]">Shows what % of clicks came from unique visitors vs repeat clicks</p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5 hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all">
                       <p className="text-xs font-medium text-zinc-400 tracking-wide mb-2">Avg Daily</p>
@@ -342,35 +391,8 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                     )}
                   </div>
 
-                  {/* Link Details */}
-                  <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
-                    <h3 className="text-sm font-medium text-zinc-300 mb-3">Link Details</h3>
-                    <div className="space-y-2">
-                      <div className="flex items-start space-x-2">
-                        <span className="text-sm text-zinc-400 min-w-[100px]">Short URL:</span>
-                        <code className="text-sm font-mono bg-zinc-800/50 px-2 py-0.5 rounded">
-                          {TrackedLinksService.getTrackingUrl(link.shortCode)}
-                        </code>
-                      </div>
-                      <div className="flex items-start space-x-2">
-                        <span className="text-sm text-zinc-400 min-w-[100px]">Destination:</span>
-                        <a 
-                          href={link.originalUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-blue-600 dark:text-blue-400 hover:underline break-all"
-                        >
-                          {link.originalUrl}
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Details Tab */}
-              {activeTab === 'details' && (
-                <div className="space-y-6">
+                  {/* Additional Analytics */}
+                  <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Platforms */}
                     {platformBreakdown.length > 0 && (
@@ -445,66 +467,7 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                     </div>
                   </div>
                 </div>
-              )}
-
-              {/* Raw Data Tab */}
-              {activeTab === 'raw' && (
-                <div className="space-y-4">
-                  <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
-                    <p className="text-sm text-gray-400 mb-4">
-                      Showing {rawClicks.length} click{rawClicks.length !== 1 ? 's' : ''} for this link
-                    </p>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-white/10">
-                            <th className="text-left py-2 px-2 font-medium text-zinc-300">Time</th>
-                            <th className="text-left py-2 px-2 font-medium text-zinc-300">Country</th>
-                            <th className="text-left py-2 px-2 font-medium text-zinc-300">Platform</th>
-                            <th className="text-left py-2 px-2 font-medium text-zinc-300">Referrer</th>
-                            <th className="text-left py-2 px-2 font-medium text-zinc-300">Device</th>
-                            <th className="text-left py-2 px-2 font-medium text-zinc-300">Browser</th>
-                            <th className="text-left py-2 px-2 font-medium text-zinc-300">ISP</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {rawClicks.slice(0, 100).map((click, index) => (
-                            <tr key={index} className="border-b border-gray-100 dark:border-gray-800">
-                              <td className="py-2 px-2 text-zinc-400">
-                                {new Date(click.timestamp).toLocaleString()}
-                              </td>
-                              <td className="py-2 px-2 text-zinc-400">
-                                {click.country || '-'}
-                              </td>
-                              <td className="py-2 px-2 text-zinc-400">
-                                {click.platform || '-'}
-                              </td>
-                              <td className="py-2 px-2 text-zinc-400 truncate max-w-[150px]">
-                                {click.referrerDomain || click.referrer || 'Direct'}
-                              </td>
-                              <td className="py-2 px-2 text-zinc-400 capitalize">
-                                {click.deviceType}
-                              </td>
-                              <td className="py-2 px-2 text-zinc-400">
-                                {click.browser}
-                              </td>
-                              <td className="py-2 px-2 text-zinc-400 truncate max-w-[150px]">
-                                {click.isp || '-'}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      {rawClicks.length > 100 && (
-                        <p className="text-sm text-zinc-400 mt-4 text-center">
-                          Showing first 100 clicks. Export to see all data.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
+            </div>
           )}
         </div>
       </div>
