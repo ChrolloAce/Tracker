@@ -157,16 +157,16 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
 
           {/* Link Details - Moved to Top */}
           <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
-            <h3 className="text-sm font-medium text-zinc-300 mb-3">Link Details</h3>
-            <div className="space-y-2">
-              <div className="flex items-start space-x-2">
-                <span className="text-sm text-zinc-400 min-w-[100px]">Short URL:</span>
-                <code className="text-sm font-mono bg-zinc-800/50 px-2 py-0.5 rounded text-zinc-300">
-                  {TrackedLinksService.getTrackingUrl(link.shortCode)}
-                </code>
-              </div>
-              <div className="flex items-start space-x-2">
-                <span className="text-sm text-zinc-400 min-w-[100px]">Destination:</span>
+                <h3 className="text-sm font-medium text-zinc-300 mb-3">Link Details</h3>
+                <div className="space-y-2">
+                  <div className="flex items-start space-x-2">
+                    <span className="text-sm text-zinc-400 min-w-[100px]">Tracking Link:</span>
+                    <code className="text-sm font-mono bg-zinc-800/50 px-2 py-0.5 rounded text-zinc-300">
+                      {TrackedLinksService.getTrackingUrl(link.shortCode)}
+                    </code>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <span className="text-sm text-zinc-400 min-w-[100px]">Destination:</span>
                 <a 
                   href={link.originalUrl}
                   target="_blank"
@@ -322,96 +322,26 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                     )}
                   </div>
 
-                  {/* Traffic Sources Summary - Always Visible */}
-                  <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <Network className="w-5 h-5 text-emerald-400" />
-                        <h3 className="text-base font-semibold text-white">Traffic Sources</h3>
-                      </div>
-                      {rawClicks.filter(c => c.referrer === 'Direct').length === rawClicks.length && rawClicks.length > 0 && (
-                        <span className="text-xs text-zinc-400 bg-zinc-800/50 px-2 py-1 rounded">
-                          💡 All traffic is direct - see breakdown below
-                        </span>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* Referrer Breakdown */}
-                      <div>
-                        <h4 className="text-xs font-medium text-zinc-400 mb-3">Referrers</h4>
-                        <div className="space-y-2">
-                          {topReferrers.length > 0 ? (
-                            topReferrers.map(([referrer, clicks]) => (
-                              <div key={referrer} className="flex items-center justify-between">
-                                <div className="flex items-center space-x-2 min-w-0">
-                                  <ExternalLink className="w-3 h-3 text-zinc-500 flex-shrink-0" />
-                                  <span className="text-sm text-zinc-300 truncate">
-                                    {referrer}
-                                  </span>
-                                </div>
-                                <span className="text-sm font-medium text-white flex-shrink-0 ml-2">
-                                  {clicks}
-                                </span>
-                              </div>
-                            ))
-                          ) : (
-                            <p className="text-xs text-zinc-500">No referrers tracked</p>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Platform Breakdown */}
-                      <div>
-                        <h4 className="text-xs font-medium text-zinc-400 mb-3">Platforms</h4>
-                        <div className="space-y-2">
-                          {platformBreakdown.length > 0 ? (
-                            platformBreakdown.map(([platform, count]) => (
-                              <div key={platform} className="flex items-center justify-between">
-                                <span className="text-sm text-zinc-300">{platform}</span>
-                                <span className="text-sm font-medium text-white">{count}</span>
-                              </div>
-                            ))
-                          ) : (
-                            <p className="text-xs text-zinc-500">No platforms detected</p>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* UTM Campaigns */}
-                      <div>
-                        <h4 className="text-xs font-medium text-zinc-400 mb-3">UTM Campaigns</h4>
-                        <div className="space-y-2">
-                          {utmCampaigns.length > 0 ? (
-                            utmCampaigns.map(([campaign, count]) => (
-                              <div key={campaign} className="flex items-center justify-between">
-                                <span className="text-sm text-zinc-300 truncate">{campaign}</span>
-                                <span className="text-sm font-medium text-white flex-shrink-0 ml-2">{count}</span>
-                              </div>
-                            ))
-                          ) : (
-                            <p className="text-xs text-zinc-500">No UTM campaigns tracked</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Help Text for Direct Traffic */}
-                    {rawClicks.filter(c => c.referrer === 'Direct').length === rawClicks.length && rawClicks.length > 0 && (
-                      <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                        <p className="text-xs text-blue-300">
-                          <strong>Why is all traffic "Direct"?</strong> This means clicks weren't referred from a website. 
-                          They could be from native apps (WhatsApp, Discord), typed URLs, bookmarks, or email clients. 
-                          <span className="block mt-1">
-                            💡 <strong>Tip:</strong> Add <code className="bg-blue-900/30 px-1 rounded">?utm_source=whatsapp</code> to your links to track specific sources!
-                          </span>
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
                   {/* Additional Analytics */}
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Platforms */}
+                    {platformBreakdown.length > 0 && (
+                      <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                          <Network className="w-4 h-4 text-zinc-400" />
+                          <h3 className="text-sm font-medium text-zinc-300">Top Platforms</h3>
+                        </div>
+                        <div className="space-y-3">
+                          {platformBreakdown.map(([platform, count]) => (
+                            <div key={platform} className="flex items-center justify-between">
+                              <span className="text-sm text-zinc-300">{platform}</span>
+                              <span className="text-sm font-medium text-white">{count}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* ISPs */}
                     {ispBreakdown.length > 0 && (
@@ -430,6 +360,24 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                         </div>
                       </div>
                     )}
+
+                    {/* UTM Campaigns */}
+                    {utmCampaigns.length > 0 && (
+                      <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                          <Tag className="w-4 h-4 text-zinc-400" />
+                          <h3 className="text-sm font-medium text-zinc-300">UTM Campaigns</h3>
+                        </div>
+                        <div className="space-y-3">
+                          {utmCampaigns.map(([campaign, count]) => (
+                            <div key={campaign} className="flex items-center justify-between">
+                              <span className="text-sm text-zinc-300 truncate">{campaign}</span>
+                              <span className="text-sm font-medium text-white flex-shrink-0 ml-2">{count}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -440,18 +388,18 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                     <p className="text-sm text-zinc-400 text-center py-8">No clicks recorded yet</p>
                   ) : (
                     <>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
                             <tr className="border-b border-white/10">
                               <th className="text-left py-3 px-2 font-medium text-zinc-300">Time</th>
                               <th className="text-left py-3 px-2 font-medium text-zinc-300">Country</th>
                               <th className="text-left py-3 px-2 font-medium text-zinc-300">Device</th>
                               <th className="text-left py-3 px-2 font-medium text-zinc-300">Browser</th>
                               <th className="text-left py-3 px-2 font-medium text-zinc-300">Referrer</th>
-                            </tr>
-                          </thead>
-                          <tbody>
+                          </tr>
+                        </thead>
+                        <tbody>
                             {rawClicks
                               .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                               .map((click, index) => (
@@ -463,23 +411,23 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                                       hour: '2-digit',
                                       minute: '2-digit'
                                     })}
-                                  </td>
+                              </td>
                                   <td className="py-3 px-2 text-zinc-400">
-                                    {click.country || '-'}
-                                  </td>
+                                {click.country || '-'}
+                              </td>
                                   <td className="py-3 px-2 text-zinc-400 capitalize">
                                     {click.deviceType || '-'}
                                   </td>
                                   <td className="py-3 px-2 text-zinc-400">
                                     {click.browser || '-'}
-                                  </td>
+                              </td>
                                   <td className="py-3 px-2 text-zinc-400 truncate max-w-[200px]">
-                                    {click.referrerDomain || click.referrer || 'Direct'}
-                                  </td>
-                                </tr>
-                              ))}
-                          </tbody>
-                        </table>
+                                {click.referrerDomain || click.referrer || 'Direct'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                       </div>
 
                       {/* Pagination */}
@@ -497,9 +445,9 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                         }}
                       />
             </>
-                  )}
-                </div>
-            </div>
+                      )}
+                    </div>
+                  </div>
           )}
         </div>
       </div>
@@ -508,5 +456,4 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
 };
 
 export default LinkAnalyticsModalEnhanced;
-
 

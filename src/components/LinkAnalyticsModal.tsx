@@ -244,7 +244,7 @@ const LinkAnalyticsModal: React.FC<LinkAnalyticsModalProps> = ({ isOpen, onClose
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Link Details</h3>
             <div className="space-y-2">
               <div className="flex items-start space-x-2">
-                <span className="text-sm text-gray-500 dark:text-gray-400">Short URL:</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">Tracking Link:</span>
                 <code className="text-sm font-mono bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
                   {TrackedLinksService.getTrackingUrl(link.shortCode)}
                 </code>

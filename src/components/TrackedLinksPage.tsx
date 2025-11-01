@@ -600,28 +600,6 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
             }
           }}
         />
-
-        {/* Avg CTR Card */}
-        <TrackedLinksKPICard
-          label="Avg CTR"
-          value={`${stats.avgCTR}%`}
-          isIncreasing={stats.isTotalIncreasing}
-          icon={TrendingUp}
-          sparklineData={sparklineData.ctr}
-          links={links}
-          accounts={accounts}
-          onClick={(date, clicks) => {
-            setSelectedDayDate(date);
-            setSelectedDayClicks(clicks);
-            setIsDayClicksModalOpen(true);
-          }}
-          onLinkClick={(shortCode) => {
-            const link = links.find(l => l.shortCode === shortCode);
-            if (link) {
-              handleViewAnalytics(link);
-            }
-          }}
-        />
       </div>
 
       {/* Links Table */}
@@ -671,7 +649,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                       </div>
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
-                      Short URL
+                      Tracking Link
                     </th>
                     <th 
                       className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-zinc-300 transition-colors"
