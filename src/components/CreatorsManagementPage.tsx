@@ -1,6 +1,5 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Lottie from 'lottie-react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,8 +10,9 @@ import FirestoreDataService from '../services/FirestoreDataService';
 import DateFilterService from '../services/DateFilterService';
 import TeamInvitationService from '../services/TeamInvitationService';
 import { DateFilterType } from './DateRangeFilter';
-import { User, TrendingUp, Plus, Mail, Clock, X, FileText } from 'lucide-react';
+import { User, TrendingUp, Plus, Mail, Clock, X, FileText, UserPlus } from 'lucide-react';
 import { Button } from './ui/Button';
+import { EmptyState } from './ui/EmptyState';
 import Pagination from './ui/Pagination';
 import CreateCreatorModal from './CreateCreatorModal';
 import EditCreatorModal from './EditCreatorModal';
@@ -355,15 +355,20 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
         <>
           {/* Creators List - Dashboard Style */}
           {creators.length === 0 ? (
-        <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-12 text-center">
-          <div className="w-64 h-64 mx-auto mb-4">
-            <Lottie animationData={userProfileAnimation} loop={true} />
-          </div>
-          <h3 className="text-lg font-medium text-white mb-2">No creators yet</h3>
-          <p className="text-gray-400">
-            Invite content creators to track their accounts and manage payouts
-          </p>
-        </div>
+        <EmptyState
+          title="Invite Your First Creator"
+          description="Add content creators to your team, link their social accounts, track performance, and manage payments all in one place."
+          tooltipText="Creators can be influencers, team members, or partners. Link their social accounts to track their content performance, calculate earnings based on views/engagement, and manage contracts. Perfect for agencies, brands, and creator networks."
+          animation={userProfileAnimation}
+          actions={[
+            {
+              label: 'Invite Creator',
+              onClick: () => setShowInviteModal(true),
+              icon: UserPlus,
+              primary: true
+            }
+          ]}
+        />
       ) : (
         <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg overflow-hidden">
           {/* Table Header */}

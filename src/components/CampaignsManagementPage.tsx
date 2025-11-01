@@ -13,6 +13,7 @@ import {
   Trash2,
   Eye
 } from 'lucide-react';
+import { EmptyState } from './ui/EmptyState';
 
 interface CampaignsManagementPageProps {
   selectedStatus?: 'all' | CampaignStatus;
@@ -163,28 +164,31 @@ const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({
 
       {/* Campaigns List */}
       {campaigns.length === 0 ? (
-        <div className="rounded-2xl border border-white/10 p-12 text-center" style={{ backgroundColor: '#121214' }}>
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500/10 rounded-full border-2 border-emerald-500/20 mb-4">
-            <Trophy className="w-8 h-8 text-emerald-400" />
+        isCreator ? (
+          <div className="rounded-2xl border border-white/10 p-12 text-center" style={{ backgroundColor: '#121214' }}>
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500/10 rounded-full border-2 border-emerald-500/20 mb-4">
+              <Trophy className="w-8 h-8 text-emerald-400" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">No Campaigns Yet</h3>
+            <p className="text-gray-400 mb-6 max-w-md mx-auto">
+              You haven't been added to any campaigns yet. Check back soon!
+            </p>
           </div>
-          <h3 className="text-xl font-bold text-white mb-2">
-            {isCreator ? 'No Campaigns Yet' : 'No Campaigns Yet'}
-          </h3>
-          <p className="text-gray-400 mb-6 max-w-md mx-auto">
-            {isCreator 
-              ? "You haven't been added to any campaigns yet. Check back soon!" 
-              : 'Create your first campaign to start motivating creators and tracking performance!'}
-          </p>
-          {!isCreator && (
-            <button
-              onClick={() => navigate('/campaigns/create')}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-all"
-            >
-              <Plus className="w-5 h-5" />
-              Create Your First Campaign
-            </button>
-          )}
-        </div>
+        ) : (
+          <EmptyState
+            title="Launch Your First Campaign"
+            description="Create campaigns to motivate creators, track performance goals, and reward top performers with prizes and recognition."
+            tooltipText="Campaigns help you organize content creation around specific goals, themes, or contests. Set rules for what content counts, track submissions, calculate winners, and reward your best creators. Perfect for seasonal promotions, product launches, or ongoing challenges."
+            actions={[
+              {
+                label: 'Create Campaign',
+                onClick: () => navigate('/campaigns/create'),
+                icon: Plus,
+                primary: true
+              }
+            ]}
+          />
+        )
       ) : (
         <div className="space-y-4">
           {campaigns.map((campaign) => (

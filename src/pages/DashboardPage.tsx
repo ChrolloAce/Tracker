@@ -24,6 +24,7 @@ import TopPlatformsRaceChart from '../components/TopPlatformsRaceChart';
 import ComparisonGraph from '../components/ComparisonGraph';
 import PostingActivityHeatmap from '../components/PostingActivityHeatmap';
 import DayVideosModal from '../components/DayVideosModal';
+import { EmptyState } from '../components/ui/EmptyState';
 import AccountsPage, { AccountsPageRef } from '../components/AccountsPage';
 import SettingsPage from '../components/SettingsPage';
 import SubscriptionPage from '../components/SubscriptionPage';
@@ -2571,6 +2572,34 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           {/* Dashboard Tab - Only render when active to prevent unnecessary calculations */}
           {activeTab === 'dashboard' && (
             <div>
+              {/* Empty State - Show when no accounts AND no videos */}
+              {trackedAccounts.length === 0 && submissions.length === 0 && (
+                <EmptyState
+                  title="Start Tracking Your Content"
+                  description="Add your first social media account or video to begin tracking performance and growing your audience."
+                  tooltipText="Track Instagram, TikTok, YouTube, and X accounts. Monitor video performance, engagement rates, and audience growth in real-time."
+                  actions={[
+                    {
+                      label: 'Add Account',
+                      onClick: () => {
+                        navigate('/accounts');
+                        localStorage.setItem('activeTab', 'accounts');
+                      },
+                      icon: Users,
+                      primary: true
+                    },
+                    {
+                      label: 'Add Video',
+                      onClick: () => navigate('/videos'),
+                      icon: Video
+                    }
+                  ]}
+                />
+              )}
+              
+              {/* Dashboard Content - Show when there's data */}
+              {(trackedAccounts.length > 0 || submissions.length > 0) && (
+              <div>
               {/* Render dashboard sections in order */}
               {dashboardSectionOrder
                 .filter(sectionId => dashboardSectionVisibility[sectionId] !== false)
@@ -2783,24 +2812,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             </div>
           )}
 
-          {/* Accounts Tab */}
-          {activeTab === 'accounts' && (
-            <AccountsPage 
-              ref={accountsPageRef}
-              dateFilter={dateFilter}
-              platformFilter={dashboardPlatformFilter}
-              searchQuery={accountsSearchQuery}
-              onViewModeChange={setAccountsViewMode}
-              pendingAccounts={pendingAccounts}
-              selectedRuleIds={selectedRuleIds}
-              dashboardRules={allRules}
-              organizationId={currentOrgId || undefined}
-              projectId={currentProjectId || undefined}
-            />
-          )}
-
-          {/* Videos Tab */}
-          {activeTab === 'videos' && (
+          {/* Accounts Tab and Videos Tab are now separate routes (/accounts, /videos)
+              This code is legacy and not used since activeTab is always 'dashboard' in this component */}
+          {false && (
             <div className="space-y-6">
               {isInitialLoading ? (
                 <DashboardSkeleton height="h-96" />
@@ -2843,6 +2857,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 />
                   </div>
                 </>
+              )}
+              </div>
               )}
             </div>
           )}

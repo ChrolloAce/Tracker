@@ -1,6 +1,6 @@
 import { useState, useEffect, forwardRef, useImperativeHandle, useMemo } from 'react';
 import Lottie from 'lottie-react';
-import { Copy, ExternalLink, Trash2, BarChart, Edit2, ArrowUp, ArrowDown, MousePointer, Users, TrendingUp } from 'lucide-react';
+import { Copy, ExternalLink, Trash2, BarChart, Edit2, ArrowUp, ArrowDown, MousePointer, Users, TrendingUp, Link as LinkIcon } from 'lucide-react';
 import { TrackedLink, TrackedAccount } from '../types/firestore';
 import FirestoreDataService from '../services/FirestoreDataService';
 import CreateLinkModal from './CreateLinkModal';
@@ -15,6 +15,7 @@ import { LinkClick } from '../services/LinkClicksService';
 import websiteStatsAnimation from '../../public/lottie/Website Statistics Infographic.json';
 import { TrackedLinksKPICard } from './TrackedLinksKPICard';
 import DayClicksModal from './DayClicksModal';
+import { EmptyState } from './ui/EmptyState';
 
 export interface TrackedLinksPageRef {
   openCreateModal: () => void;
@@ -583,15 +584,32 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       {/* Links Table */}
       <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 overflow-hidden">
         {paginatedLinks.length === 0 ? (
-          <div className="p-12 text-center">
-            <div className="w-64 h-64 mx-auto mb-4">
-              <Lottie animationData={websiteStatsAnimation} loop={true} />
+          searchQuery ? (
+            <div className="p-12 text-center">
+              <div className="w-64 h-64 mx-auto mb-4">
+                <Lottie animationData={websiteStatsAnimation} loop={true} />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Links Found</h3>
+              <p className="text-gray-500 dark:text-gray-400 mb-4">
+                No links found matching your search
+              </p>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Links Yet</h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-4">
-              {searchQuery ? 'No links found matching your search' : 'Create your first tracked link to get started'}
-            </p>
-          </div>
+          ) : (
+            <EmptyState
+              title="Create Your First Tracked Link"
+              description="Generate short links to track clicks, monitor traffic sources, and measure campaign performance across all platforms."
+              tooltipText="Tracked links help you understand where your traffic comes from, which campaigns perform best, and how your audience engages with your content. Perfect for bio links, campaigns, and partnerships."
+              animation={websiteStatsAnimation}
+              actions={[
+                {
+                  label: 'Create Link',
+                  onClick: () => setIsCreateModalOpen(true),
+                  icon: LinkIcon,
+                  primary: true
+                }
+              ]}
+            />
+          )
         ) : (
           <>
             <div className="overflow-x-auto">
