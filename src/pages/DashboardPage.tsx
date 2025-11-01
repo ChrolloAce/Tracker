@@ -2012,23 +2012,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                       title={dashboardPlatformFilter === 'all' ? 'All Platforms' : dashboardPlatformFilter.charAt(0).toUpperCase() + dashboardPlatformFilter.slice(1)}
                     >
                       {dashboardPlatformFilter === 'all' ? (
-                        <>
-                          <div className="relative flex items-center" style={{ width: '28px', height: '16px' }}>
-                            <div className="absolute left-0" style={{ zIndex: 4 }}>
-                              <PlatformIcon platform="instagram" size="sm" />
-                            </div>
-                            <div className="absolute" style={{ left: '6px', zIndex: 3 }}>
-                              <PlatformIcon platform="tiktok" size="sm" />
-                            </div>
-                            <div className="absolute" style={{ left: '12px', zIndex: 2 }}>
-                              <PlatformIcon platform="youtube" size="sm" />
-                            </div>
-                            <div className="absolute" style={{ left: '18px', zIndex: 1 }}>
-                              <PlatformIcon platform="twitter" size="sm" />
-                            </div>
-                          </div>
-                          <span className="ml-2">All</span>
-                        </>
+                        <span>All Platforms</span>
                       ) : (
                         <>
                           <PlatformIcon platform={dashboardPlatformFilter as 'instagram' | 'tiktok' | 'youtube' | 'twitter'} size="sm" />
@@ -2052,21 +2036,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                               : 'text-white/90 hover:bg-white/5'
                           }`}
                         >
-                          <div className="relative flex items-center" style={{ width: '28px', height: '16px' }}>
-                            <div className="absolute left-0" style={{ zIndex: 4 }}>
-                              <PlatformIcon platform="instagram" size="sm" />
-                            </div>
-                            <div className="absolute" style={{ left: '6px', zIndex: 3 }}>
-                              <PlatformIcon platform="tiktok" size="sm" />
-                            </div>
-                            <div className="absolute" style={{ left: '12px', zIndex: 2 }}>
-                              <PlatformIcon platform="youtube" size="sm" />
-                            </div>
-                            <div className="absolute" style={{ left: '18px', zIndex: 1 }}>
-                              <PlatformIcon platform="twitter" size="sm" />
-                            </div>
-                          </div>
-                          <span className="ml-2">All Platforms</span>
+                          <span>All Platforms</span>
                         </button>
                         <button
                           onClick={() => {
@@ -2239,20 +2209,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   title={dashboardPlatformFilter === 'all' ? 'All Platforms' : dashboardPlatformFilter.charAt(0).toUpperCase() + dashboardPlatformFilter.slice(1)}
                 >
                   {dashboardPlatformFilter === 'all' ? (
-                    <>
-                      <div className="relative flex items-center" style={{ width: '20px', height: '16px' }}>
-                        <div className="absolute left-0" style={{ zIndex: 3 }}>
-                          <PlatformIcon platform="instagram" size="sm" />
-                        </div>
-                        <div className="absolute left-1.5" style={{ zIndex: 2 }}>
-                          <PlatformIcon platform="tiktok" size="sm" />
-                        </div>
-                        <div className="absolute left-3" style={{ zIndex: 1 }}>
-                          <PlatformIcon platform="youtube" size="sm" />
-                        </div>
-                      </div>
-                      <span className="ml-2">All</span>
-                    </>
+                    <span>All Platforms</span>
                   ) : (
                     <>
                       <PlatformIcon platform={dashboardPlatformFilter as 'instagram' | 'tiktok' | 'youtube'} size="sm" />
@@ -2276,18 +2233,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                           : 'text-white/90 hover:bg-white/5'
                       }`}
                     >
-                      <div className="relative flex items-center" style={{ width: '20px', height: '16px' }}>
-                        <div className="absolute left-0" style={{ zIndex: 3 }}>
-                          <PlatformIcon platform="instagram" size="sm" />
-                        </div>
-                        <div className="absolute left-1.5" style={{ zIndex: 2 }}>
-                          <PlatformIcon platform="tiktok" size="sm" />
-                        </div>
-                        <div className="absolute left-3" style={{ zIndex: 1 }}>
-                          <PlatformIcon platform="youtube" size="sm" />
-                        </div>
-                      </div>
-                      <span className="ml-2">All Platforms</span>
+                      <span>All Platforms</span>
                     </button>
                     <button
                       onClick={() => {
@@ -2382,20 +2328,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   title={dashboardPlatformFilter === 'all' ? 'All Platforms' : dashboardPlatformFilter.charAt(0).toUpperCase() + dashboardPlatformFilter.slice(1)}
                 >
                   {dashboardPlatformFilter === 'all' ? (
-                    <>
-                      <div className="relative flex items-center" style={{ width: '20px', height: '16px' }}>
-                        <div className="absolute left-0" style={{ zIndex: 3 }}>
-                          <PlatformIcon platform="instagram" size="sm" />
-                        </div>
-                        <div className="absolute left-1.5" style={{ zIndex: 2 }}>
-                          <PlatformIcon platform="tiktok" size="sm" />
-                        </div>
-                        <div className="absolute left-3" style={{ zIndex: 1 }}>
-                          <PlatformIcon platform="youtube" size="sm" />
-                        </div>
-                      </div>
-                      <span className="ml-2">All</span>
-                    </>
+                    <span>All Platforms</span>
                   ) : (
                     <>
                       <PlatformIcon platform={dashboardPlatformFilter as 'instagram' | 'tiktok' | 'youtube'} size="sm" />
@@ -2419,18 +2352,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                           : 'text-white/90 hover:bg-white/5'
                       }`}
                     >
-                      <div className="relative flex items-center" style={{ width: '20px', height: '16px' }}>
-                        <div className="absolute left-0" style={{ zIndex: 3 }}>
-                          <PlatformIcon platform="instagram" size="sm" />
-                        </div>
-                        <div className="absolute left-1.5" style={{ zIndex: 2 }}>
-                          <PlatformIcon platform="tiktok" size="sm" />
-                        </div>
-                        <div className="absolute left-3" style={{ zIndex: 1 }}>
-                          <PlatformIcon platform="youtube" size="sm" />
-                        </div>
-                      </div>
-                      <span className="ml-2">All Platforms</span>
+                      <span>All Platforms</span>
                     </button>
                     <button
                       onClick={() => {

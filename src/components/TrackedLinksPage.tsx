@@ -348,10 +348,12 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     // Limit data points for performance
       let numPoints = 30;
       let intervalMs = 24 * 60 * 60 * 1000; // 1 day
+      let useHourlyIntervals = false;
       
       if (dateFilter === 'today') {
         numPoints = 24;
         intervalMs = 60 * 60 * 1000; // 1 hour
+        useHourlyIntervals = true;
       } else if (dateFilter === 'last7days') {
         numPoints = 7;
       } else if (dateFilter === 'last30days') {
@@ -367,37 +369,78 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         ? click.timestamp.getTime()
         : ((click.timestamp as any)?.toDate?.() || new Date(click.timestamp)).getTime(),
       userAgent: click.userAgent,
-      deviceType: click.deviceType
+      deviceType: click.deviceType,
+      originalClick: click
     }));
     
     // Generate all metrics in ONE pass through the data
-    const now = Date.now();
+    // IMPORTANT: Align intervals to day boundaries for accurate date display
+    const now = new Date();
     const dataPoints = [];
+    
+    if (useHourlyIntervals) {
+      // For "today" view, use hourly intervals starting from midnight
+      const todayStart = new Date(now);
+      todayStart.setHours(0, 0, 0, 0);
       
-      for (let i = numPoints - 1; i >= 0; i--) {
-      const pointStart = now - i * intervalMs;
-      const pointEnd = pointStart + intervalMs;
-      
-      // Filter clicks for this time period
-      const clicksInPeriod = clicksWithDates.filter(c => 
-        c.timestamp >= pointStart && c.timestamp < pointEnd
-      );
-      
-      const uniqueSet = new Set(clicksInPeriod.map(c => `${c.userAgent}-${c.deviceType}`));
-      
-      dataPoints.push({
-        timestamp: pointStart,
-        total: clicksInPeriod.length,
-        unique: uniqueSet.size,
-        ctr: uniqueSet.size
+      for (let i = 0; i < numPoints; i++) {
+        const pointStart = todayStart.getTime() + (i * intervalMs);
+        const pointEnd = pointStart + intervalMs;
+        
+        // Filter clicks for this time period
+        const clicksInPeriod = clicksWithDates.filter(c => 
+          c.timestamp >= pointStart && c.timestamp < pointEnd
+        );
+        
+        const uniqueSet = new Set(clicksInPeriod.map(c => `${c.userAgent}-${c.deviceType}`));
+        
+        dataPoints.push({
+          timestamp: pointStart,
+          total: clicksInPeriod.length,
+          unique: uniqueSet.size,
+          ctr: uniqueSet.size,
+          clicks: clicksInPeriod.map(c => c.originalClick)
         });
       }
+    } else {
+      // For day/week/month views, align to day boundaries (midnight to midnight)
+      for (let i = numPoints - 1; i >= 0; i--) {
+        const date = new Date(now);
+        date.setHours(0, 0, 0, 0);
+        
+        if (dateFilter === 'last90days') {
+          // For 90-day view, use 3-day intervals
+          date.setDate(date.getDate() - (i * 3));
+        } else {
+          // Regular daily intervals
+          date.setDate(date.getDate() - i);
+        }
+        
+        const pointStart = date.getTime();
+        const pointEnd = pointStart + intervalMs;
+        
+        // Filter clicks for this time period
+        const clicksInPeriod = clicksWithDates.filter(c => 
+          c.timestamp >= pointStart && c.timestamp < pointEnd
+        );
+        
+        const uniqueSet = new Set(clicksInPeriod.map(c => `${c.userAgent}-${c.deviceType}`));
+        
+        dataPoints.push({
+          timestamp: pointStart,
+          total: clicksInPeriod.length,
+          unique: uniqueSet.size,
+          ctr: uniqueSet.size,
+          clicks: clicksInPeriod.map(c => c.originalClick)
+        });
+      }
+    }
       
     // Return all metrics efficiently
     return {
-      total: dataPoints.map(d => ({ value: d.total, timestamp: d.timestamp, clicks: [] })),
-      unique: dataPoints.map(d => ({ value: d.unique, timestamp: d.timestamp, clicks: [] })),
-      ctr: dataPoints.map(d => ({ value: d.ctr, timestamp: d.timestamp, clicks: [] }))
+      total: dataPoints.map(d => ({ value: d.total, timestamp: d.timestamp, clicks: d.clicks || [] })),
+      unique: dataPoints.map(d => ({ value: d.unique, timestamp: d.timestamp, clicks: d.clicks || [] })),
+      ctr: dataPoints.map(d => ({ value: d.ctr, timestamp: d.timestamp, clicks: d.clicks || [] }))
     };
   }, [filteredClicks, dateFilter]);
 

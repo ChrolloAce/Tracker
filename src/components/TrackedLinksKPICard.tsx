@@ -46,7 +46,9 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
   };
 
   const formatDate = (timestamp: number): string => {
+    // Align to start of day in local timezone for accurate date display
     const date = new Date(timestamp);
+    date.setHours(0, 0, 0, 0);
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
   };
@@ -54,9 +56,24 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
   const strokeColor = isIncreasing ? '#22c55e' : '#ef4444';
 
   const handleCardClick = () => {
-    if (tooltipData && onClick) {
-      // Open modal for the currently hovered day
+    if (!onClick) return;
+    
+    if (tooltipData) {
+      // If hovering over a specific point, open modal for that day
       onClick(new Date(tooltipData.point.timestamp), tooltipData.point.clicks || []);
+    } else if (sparklineData && sparklineData.length > 0) {
+      // If clicking anywhere else on the card, show all links from all periods
+      // Collect all clicks from all sparkline data points
+      const allClicks = sparklineData.reduce((acc, point) => {
+        if (point.clicks && point.clicks.length > 0) {
+          acc.push(...point.clicks);
+        }
+        return acc;
+      }, [] as LinkClick[]);
+      
+      // Use the most recent timestamp (last data point) as the reference date
+      const mostRecentPoint = sparklineData[sparklineData.length - 1];
+      onClick(new Date(mostRecentPoint.timestamp), allClicks);
     }
   };
 

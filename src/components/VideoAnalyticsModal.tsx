@@ -205,8 +205,37 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         break;
       case 'all':
       default:
+        // For 'all' time: use the earliest date from the video's upload date or first snapshot
+        if (video) {
+          const videoUploadDate = video.uploadDate || video.dateSubmitted || video.timestamp;
+          if (videoUploadDate) {
+            currentStart = new Date(videoUploadDate);
+            currentStart.setHours(0, 0, 0, 0);
+            
+            // Check if there are snapshots with earlier dates
+            if (video.snapshots && video.snapshots.length > 0) {
+              const snapshotDates = video.snapshots.map(s => new Date(s.capturedAt).getTime());
+              const earliestSnapshot = Math.min(...snapshotDates);
+              const earliestSnapshotDate = new Date(earliestSnapshot);
+              if (earliestSnapshotDate < currentStart) {
+                currentStart = earliestSnapshotDate;
+                currentStart.setHours(0, 0, 0, 0);
+              }
+            }
+            
+            currentEnd = new Date();
+            currentEnd.setHours(23, 59, 59, 999);
+            daysBack = Math.ceil((currentEnd.getTime() - currentStart.getTime()) / (24 * 60 * 60 * 1000));
+          } else {
+            // Fallback if no valid date found
         currentStart.setTime(0);
         daysBack = 0;
+          }
+        } else {
+          // Fallback if no video provided
+          currentStart.setTime(0);
+          daysBack = 0;
+        }
         break;
     }
     
@@ -225,7 +254,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     });
     
     return { currentStart, currentEnd, prevStart, prevEnd };
-  }, [dateFilter, customDateRange]);
+  }, [dateFilter, customDateRange, video]);
 
   const chartData = useMemo((): ChartDataPoint[] => {
     if (!video) return [];

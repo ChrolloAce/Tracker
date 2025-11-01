@@ -80,6 +80,16 @@ class FirestoreDataService {
     });
     
     await batch.commit();
+    
+    // Increment organization usage counter
+    try {
+      const UsageTrackingService = (await import('./UsageTrackingService')).default;
+      await UsageTrackingService.incrementUsage(orgId, 'trackedAccounts', 1);
+      console.log(`✅ Incremented usage counter for org ${orgId}`);
+    } catch (error) {
+      console.error('⚠️ Failed to increment usage counter (non-critical):', error);
+    }
+    
     console.log(`✅ Added tracked account ${accountData.username} to project ${projectId} with sync status: ${skipSync ? 'completed' : 'pending'}`);
     
     if (!skipSync) {
@@ -165,6 +175,16 @@ class FirestoreDataService {
     });
     
     await batch.commit();
+    
+    // Decrement organization usage counter
+    try {
+      const UsageTrackingService = (await import('./UsageTrackingService')).default;
+      await UsageTrackingService.decrementUsage(orgId, 'trackedAccounts', 1);
+      console.log(`✅ Decremented usage counter for org ${orgId}`);
+    } catch (error) {
+      console.error('⚠️ Failed to decrement usage counter (non-critical):', error);
+    }
+    
     console.log(`✅ Deleted tracked account ${accountId}`);
   }
 
@@ -569,15 +589,19 @@ class FirestoreDataService {
     
     // Create public link lookup (for redirects) - includes URL, org, project for instant redirect
     const publicLinkRef = doc(db, 'publicLinks', linkData.shortCode);
-    batch.set(publicLinkRef, { 
+    const publicLinkData = { 
       orgId, 
       projectId,
       linkId: linkRef.id, 
-      url: cleanLinkData.originalUrl 
-    });
+      url: cleanLinkData.originalUrl,
+      createdAt: Timestamp.now()
+    };
+    batch.set(publicLinkRef, publicLinkData);
     
     await batch.commit();
     console.log(`✅ Created link ${linkData.shortCode} in project ${projectId}`);
+    console.log(`📍 Public link data:`, publicLinkData);
+    console.log(`🔗 Short URL: ${window.location.origin}/l/${linkData.shortCode}`);
     return linkRef.id;
   }
 
