@@ -28,6 +28,7 @@ import { TrackedAccount } from '../types/firestore';
 import { VideoSubmissionsTable } from './VideoSubmissionsTable';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import FirestoreDataService from '../services/FirestoreDataService';
+import { ProxiedImage } from './ProxiedImage';
 import RulesService from '../services/RulesService';
 import CreatorLinksService from '../services/CreatorLinksService';
 import { TrackingRule } from '../types/rules';
@@ -1666,24 +1667,22 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
             <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 p-8">
               <div className="flex items-center space-x-6">
                 <div className="relative">
-                  {selectedAccount.profilePicture && (
-                    <img
+                  {selectedAccount.profilePicture ? (
+                    <ProxiedImage
                       src={selectedAccount.profilePicture}
                       alt={`@${selectedAccount.username}`}
                       className="w-24 h-24 rounded-2xl object-cover border-4 border-gray-100"
-                      onError={(e) => {
-                        // Fallback to placeholder if image fails to load
-                        e.currentTarget.style.display = 'none';
-                        const placeholder = e.currentTarget.parentElement?.querySelector('.placeholder-icon');
-                        if (placeholder) {
-                          placeholder.classList.remove('hidden');
-                        }
-                      }}
+                      fallback={
+                        <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center border-4 border-gray-100">
+                          <Users className="w-12 h-12 text-gray-500" />
+                        </div>
+                      }
                     />
-                  )}
-                  <div className={`placeholder-icon w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center border-4 border-gray-100 ${selectedAccount.profilePicture ? 'hidden' : ''}`}>
+                  ) : (
+                    <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center border-4 border-gray-100">
                       <Users className="w-12 h-12 text-gray-500" />
                     </div>
+                  )}
                   <div className="absolute -bottom-2 -right-2">
                     <PlatformIcon platform={selectedAccount.platform} size="lg" />
                   </div>

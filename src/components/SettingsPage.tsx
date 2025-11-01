@@ -11,6 +11,7 @@ import TeamManagementPage from './TeamManagementPage';
 import SubscriptionService from '../services/SubscriptionService';
 import StripeService from '../services/StripeService';
 import { PlanTier, SUBSCRIPTION_PLANS } from '../types/subscription';
+import { ProxiedImage } from './ProxiedImage';
 
 type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'team' | 'revenue';
 
@@ -655,10 +656,17 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
             <div className="flex items-center gap-6">
               <div className="relative">
                 {user?.photoURL ? (
-                  <img 
+                  <ProxiedImage 
                     src={user.photoURL} 
                     alt={user.displayName || 'User'} 
-                        className="w-20 h-20 rounded-full object-cover border-4 border-gray-200 dark:border-zinc-800"
+                    className="w-20 h-20 rounded-full object-cover border-4 border-gray-200 dark:border-zinc-800"
+                    fallback={
+                      <div className="w-20 h-20 bg-gray-900 dark:bg-white rounded-full flex items-center justify-center border-4 border-gray-200 dark:border-zinc-800">
+                        <span className="text-2xl font-bold text-white dark:text-gray-900">
+                          {user?.displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                        </span>
+                      </div>
+                    }
                   />
                 ) : (
                       <div className="w-20 h-20 bg-gray-900 dark:bg-white rounded-full flex items-center justify-center border-4 border-gray-200 dark:border-zinc-800">

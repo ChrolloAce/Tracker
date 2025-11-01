@@ -20,6 +20,7 @@ import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import ContractsManagementPage from './ContractsManagementPage';
 import userProfileAnimation from '../../public/lottie/User Profile.json';
+import { ProxiedImage } from './ProxiedImage';
 
 export interface CreatorsManagementPageRef {
   openInviteModal: () => void;
@@ -418,22 +419,21 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
                         <div className="flex items-center gap-3">
                           <div className="relative w-10 h-10 flex-shrink-0">
                             {creator.photoURL ? (
-                              <img
+                              <ProxiedImage
                                 src={creator.photoURL}
                                 alt={creator.displayName || 'Creator'}
                                 className="w-10 h-10 rounded-full object-cover ring-2 ring-white/10"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                  const placeholder = e.currentTarget.parentElement?.querySelector('.placeholder-icon');
-                                  if (placeholder) {
-                                    (placeholder as HTMLElement).classList.remove('hidden');
-                                  }
-                                }}
+                                fallback={
+                                  <div className="w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center ring-2 ring-white/10">
+                                    <User className="w-5 h-5 text-gray-500" />
+                                  </div>
+                                }
                               />
-                            ) : null}
-                            <div className={`placeholder-icon w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center ring-2 ring-white/10 ${creator.photoURL ? 'hidden' : ''}`}>
-                              <User className="w-5 h-5 text-gray-500" />
-                            </div>
+                            ) : (
+                              <div className="w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center ring-2 ring-white/10">
+                                <User className="w-5 h-5 text-gray-500" />
+                              </div>
+                            )}
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
