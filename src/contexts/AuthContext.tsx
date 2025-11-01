@@ -8,7 +8,8 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword
 } from 'firebase/auth';
-import { auth } from '../services/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../services/firebase';
 import OrganizationService from '../services/OrganizationService';
 import ProjectService from '../services/ProjectService';
 
@@ -58,18 +59,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         );
         
         // Get or create default organization
+        console.log('🔍 Getting default org for user:', user.uid);
         let orgId = await OrganizationService.getOrCreateDefaultOrg(user.uid, user.email!, user.displayName || undefined);
+        console.log('📋 getOrCreateDefaultOrg returned:', orgId);
         
         // If no default org set, check if user has ANY organizations
         if (!orgId) {
           console.log('🔍 No default org found, checking all user orgs...');
           const userOrgs = await OrganizationService.getUserOrganizations(user.uid);
+          console.log('📊 User has', userOrgs.length, 'organizations:', userOrgs.map(o => o.id));
           
           if (userOrgs.length > 0) {
             // User has orgs! Set first one as default
             orgId = userOrgs[0].id;
+            console.log('✅ Setting first org as default:', orgId);
             await OrganizationService.setDefaultOrg(user.uid, orgId);
-            console.log('✅ Found existing org, set as default:', orgId);
+            
+            // Mark onboarding as complete if not already marked
+            const org = await OrganizationService.getOrganization(orgId);
+            if (org && !org.metadata?.onboardingCompletedAt) {
+              console.log('📝 Marking onboarding as complete for existing org');
+              const orgRef = doc(db, 'organizations', orgId);
+              await setDoc(orgRef, {
+                metadata: {
+                  ...org.metadata,
+                  onboardingCompletedAt: new Date().toISOString()
+                }
+              }, { merge: true });
+            }
+            console.log('✅ Default org set successfully');
           } else {
             // No orgs at all - redirect to onboarding
             console.log('❌ User has no organizations - redirecting to onboarding');
@@ -80,12 +98,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             // Redirect to create organization page
             if (window.location.pathname !== '/create-organization') {
+              console.log('🔀 Redirecting to /create-organization');
               window.location.href = '/create-organization';
             }
             return;
           }
         }
         
+        console.log('✅ Final org ID to use:', orgId);
         setCurrentOrgId(orgId);
 
         // Get or create default project
