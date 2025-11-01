@@ -26,6 +26,8 @@ export interface CreatorsManagementPageRef {
 
 interface CreatorsManagementPageProps {
   dateFilter?: DateFilterType;
+  organizationId?: string;
+  projectId?: string;
 }
 
 /**
@@ -33,9 +35,13 @@ interface CreatorsManagementPageProps {
  * Admin interface to manage creators, link accounts, and track payouts
  */
 const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsManagementPageProps>((props, ref) => {
-  const { dateFilter = 'all' } = props;
-  const { user, currentOrgId, currentProjectId } = useAuth();
+  const { dateFilter = 'all', organizationId, projectId } = props;
+  const { user, currentOrgId: authOrgId, currentProjectId: authProjectId } = useAuth();
   const navigate = useNavigate();
+  
+  // Use props if provided (for demo mode), otherwise use auth
+  const currentOrgId = organizationId || authOrgId;
+  const currentProjectId = projectId || authProjectId;
   const [activeTab, setActiveTab] = useState<'accounts' | 'contracts'>('accounts');
   const [creators, setCreators] = useState<OrgMember[]>([]);
   const [creatorProfiles, setCreatorProfiles] = useState<Map<string, Creator>>(new Map());

@@ -18,6 +18,8 @@ interface CampaignsManagementPageProps {
   selectedStatus?: 'all' | CampaignStatus;
   onStatusChange?: (status: 'all' | CampaignStatus) => void;
   onCampaignsLoaded?: (counts: { active: number; draft: number; completed: number; cancelled: number }) => void;
+  organizationId?: string;
+  projectId?: string;
 }
 
 /**
@@ -26,10 +28,16 @@ interface CampaignsManagementPageProps {
  */
 const CampaignsManagementPage: React.FC<CampaignsManagementPageProps> = ({ 
   selectedStatus = 'all',
-  onCampaignsLoaded
+  onCampaignsLoaded,
+  organizationId,
+  projectId
 }) => {
-  const { currentOrgId, currentProjectId, user } = useAuth();
+  const { currentOrgId: authOrgId, currentProjectId: authProjectId, user } = useAuth();
   const navigate = useNavigate();
+  
+  // Use props if provided (for demo mode), otherwise use auth
+  const currentOrgId = organizationId || authOrgId;
+  const currentProjectId = projectId || authProjectId;
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreator, setIsCreator] = useState(false);

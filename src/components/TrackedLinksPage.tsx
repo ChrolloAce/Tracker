@@ -26,11 +26,17 @@ interface TrackedLinksPageProps {
   linkClicks?: LinkClick[];
   dateFilter: DateFilterType;
   customDateRange?: { startDate: Date; endDate: Date };
+  organizationId?: string;
+  projectId?: string;
 }
 
 const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
-  ({ searchQuery, linkClicks = [], dateFilter, customDateRange }, ref) => {
-  const { currentOrgId, currentProjectId, user } = useAuth();
+  ({ searchQuery, linkClicks = [], dateFilter, customDateRange, organizationId, projectId }, ref) => {
+  const { currentOrgId: authOrgId, currentProjectId: authProjectId, user } = useAuth();
+  
+  // Use props if provided (for demo mode), otherwise use auth
+  const currentOrgId = organizationId || authOrgId;
+  const currentProjectId = projectId || authProjectId;
   const [links, setLinks] = useState<TrackedLink[]>([]);
   const [accounts, setAccounts] = useState<Map<string, TrackedAccount>>(new Map());
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);

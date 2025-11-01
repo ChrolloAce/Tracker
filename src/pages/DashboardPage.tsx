@@ -2825,12 +2825,14 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               linkClicks={linkClicks}
               dateFilter={linksDateFilter}
               customDateRange={linksCustomDateRange}
+              organizationId={currentOrgId || undefined}
+              projectId={currentProjectId || undefined}
             />
           )}
 
           {/* Creators Tab - Show appropriate view based on role */}
           {activeTab === 'creators' && (
-            userRole === 'creator' ? <CreatorPortalPage /> : <CreatorsManagementPage ref={creatorsPageRef} dateFilter={creatorsDateFilter} />
+            userRole === 'creator' ? <CreatorPortalPage /> : <CreatorsManagementPage ref={creatorsPageRef} dateFilter={creatorsDateFilter} organizationId={currentOrgId || undefined} projectId={currentProjectId || undefined} />
           )}
 
           {/* Campaigns Tab */}
@@ -2839,6 +2841,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               selectedStatus={campaignStatusFilter}
               onStatusChange={setCampaignStatusFilter}
               onCampaignsLoaded={setCampaignCounts}
+              organizationId={currentOrgId || undefined}
+              projectId={currentProjectId || undefined}
             />
           )}
 
