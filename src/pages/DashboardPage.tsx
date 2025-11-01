@@ -41,6 +41,7 @@ import SignOutModal from '../components/SignOutModal';
 import OrganizationService from '../services/OrganizationService';
 import SubscriptionService from '../services/SubscriptionService';
 import DemoOrgService from '../services/DemoOrgService';
+import DashboardPreferencesService from '../services/DashboardPreferencesService';
 import MultiSelectDropdown from '../components/ui/MultiSelectDropdown';
 import { PlatformIcon } from '../components/ui/PlatformIcon';
 import { VideoSubmission, InstagramVideoData } from '../types';
@@ -607,6 +608,43 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     
     loadUserRole();
   }, [user, currentOrgId]); // Removed activeTab - user role doesn't change on tab switch!
+
+  // Load user's dashboard preferences from Firebase
+  useEffect(() => {
+    if (!user || !currentOrgId) return;
+    
+    const loadDashboardPreferences = async () => {
+      try {
+        console.log('📊 Loading dashboard preferences for user:', user.uid);
+        const prefs = await DashboardPreferencesService.getUserPreferences(currentOrgId, user.uid);
+        
+        if (prefs) {
+          console.log('✅ Loaded preferences from Firebase:', {
+            hasKpiOrder: prefs.kpiCardOrder.length > 0,
+            inheritedFrom: prefs.inheritedFromUserId || 'own layout'
+          });
+          
+          // Apply preferences
+          if (prefs.kpiCardOrder.length > 0) {
+            setKpiCardOrder(prefs.kpiCardOrder);
+          }
+          setKpiCardVisibility(prefs.kpiCardVisibility);
+          setDashboardSectionOrder(prefs.dashboardSectionOrder);
+          setDashboardSectionVisibility(prefs.dashboardSectionVisibility);
+          
+          // Sync to localStorage as backup
+          localStorage.setItem('kpiCardOrder', JSON.stringify(prefs.kpiCardOrder));
+          localStorage.setItem('kpiCardVisibility', JSON.stringify(prefs.kpiCardVisibility));
+          localStorage.setItem('dashboardSectionOrder', JSON.stringify(prefs.dashboardSectionOrder));
+          localStorage.setItem('dashboardSectionVisibility', JSON.stringify(prefs.dashboardSectionVisibility));
+        }
+      } catch (error) {
+        console.error('Failed to load dashboard preferences:', error);
+      }
+    };
+    
+    loadDashboardPreferences();
+  }, [user?.uid, currentOrgId]); // Load when user or org changes
 
   // One-time data loading (no real-time listeners)
   useEffect(() => {
@@ -1571,6 +1609,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
   // KPI Card Editor handlers
   const handleToggleCard = useCallback((cardId: string) => {
+    if (!user || !currentOrgId) return;
+    
     // Check if it's a section, a KPI card, or a Top Performers subsection
     const allSections = ['kpi-cards', 'top-performers', 'posting-activity', 'tracked-accounts', 'videos-table'];
     const topPerformersSubsections = ['top-videos', 'top-accounts', 'top-gainers', 'top-creators', 'posting-times', 'top-platforms', 'comparison'];
@@ -1580,6 +1620,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       setDashboardSectionVisibility(prev => {
         const updated = { ...prev, [cardId]: !prev[cardId] };
         localStorage.setItem('dashboardSectionVisibility', JSON.stringify(updated));
+        // Save to Firebase
+        DashboardPreferencesService.saveUserPreferences(currentOrgId, user.uid, {
+          dashboardSectionVisibility: updated
+        });
         return updated;
       });
     } else if (topPerformersSubsections.includes(cardId)) {
@@ -1587,6 +1631,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       setTopPerformersSubsectionVisibility(prev => {
         const updated = { ...prev, [cardId]: !prev[cardId] };
         localStorage.setItem('topPerformersSubsectionVisibility', JSON.stringify(updated));
+        // Save to Firebase
+        DashboardPreferencesService.saveUserPreferences(currentOrgId, user.uid, {
+          topPerformersSubsectionVisibility: updated
+        });
         return updated;
       });
     } else {
@@ -1594,10 +1642,14 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       setKpiCardVisibility(prev => {
         const updated = { ...prev, [cardId]: !prev[cardId] };
         localStorage.setItem('kpiCardVisibility', JSON.stringify(updated));
+        // Save to Firebase
+        DashboardPreferencesService.saveUserPreferences(currentOrgId, user.uid, {
+          kpiCardVisibility: updated
+        });
         return updated;
       });
     }
-  }, []);
+  }, [user, currentOrgId]);
 
   const handleReorderCard = useCallback((cardId: string, direction: 'up' | 'down') => {
     // Check if it's a section or a KPI card
@@ -2555,6 +2607,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                         newOrder.splice(targetIndex, 0, draggedSection);
                         setDashboardSectionOrder(newOrder);
                         localStorage.setItem('dashboardSectionOrder', JSON.stringify(newOrder));
+                        // Save to Firebase
+                        if (user && currentOrgId) {
+                          DashboardPreferencesService.saveUserPreferences(currentOrgId, user.uid, {
+                            dashboardSectionOrder: newOrder
+                          });
+                        }
                       }
                     }
                     setDraggedSection(null);
@@ -2594,6 +2652,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             onReorder={(newOrder) => {
                               setKpiCardOrder(newOrder);
                               localStorage.setItem('kpiCardOrder', JSON.stringify(newOrder));
+                              // Save to Firebase
+                              if (user && currentOrgId) {
+                                DashboardPreferencesService.saveUserPreferences(currentOrgId, user.uid, {
+                                  kpiCardOrder: newOrder
+                                });
+                              }
                             }}
                             onToggleCard={handleToggleCard}
                           />
