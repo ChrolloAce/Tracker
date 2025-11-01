@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { X, Globe, Monitor, Smartphone, Tablet, ExternalLink, Network, Tag, Bot } from 'lucide-react';
+import { X, Globe, Monitor, Smartphone, Tablet, ExternalLink, Network, Tag } from 'lucide-react';
 import { TrackedLink } from '../types/firestore';
 import { LinkAnalytics } from '../types/trackedLinks';
 import TrackedLinksService from '../services/TrackedLinksService';
@@ -23,6 +23,8 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
   const [granularity, setGranularity] = useState<GranularityType>('daily');
   const [loading, setLoading] = useState(false);
   const [rawClicks, setRawClicks] = useState<any[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const clicksPerPage = 10;
   
   // Convert timeframe to period days for API
   const period = useMemo(() => {
@@ -87,10 +89,6 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
       }
     });
     return Object.entries(campaigns).sort(([, a], [, b]) => b - a).slice(0, 5);
-  }, [rawClicks]);
-
-  const botClicks = useMemo(() => {
-    return rawClicks.filter(c => c.isBot).length;
   }, [rawClicks]);
 
   if (!isOpen) return null;
@@ -162,7 +160,7 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
             <div className="space-y-2">
               <div className="flex items-start space-x-2">
                 <span className="text-sm text-zinc-400 min-w-[100px]">Short URL:</span>
-                <code className="text-sm font-mono bg-zinc-800/50 px-2 py-0.5 rounded text-emerald-400">
+                <code className="text-sm font-mono bg-zinc-800/50 px-2 py-0.5 rounded text-zinc-300">
                   {TrackedLinksService.getTrackingUrl(link.shortCode)}
                 </code>
               </div>
@@ -172,7 +170,7 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                   href={link.originalUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-blue-400 hover:text-blue-300 hover:underline break-all"
+                  className="text-sm text-zinc-300 hover:text-white hover:underline break-all"
                 >
                   {link.originalUrl}
                 </a>
@@ -194,7 +192,7 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
           ) : (
             <div className="space-y-6">
                   {/* Stats Overview */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5 hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all">
                       <p className="text-xs font-medium text-zinc-400 tracking-wide mb-2">Total Clicks</p>
                       <p className="text-3xl font-bold text-white">{analytics.clicks}</p>
@@ -202,24 +200,6 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                     <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5 hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all">
                       <p className="text-xs font-medium text-zinc-400 tracking-wide mb-2">Unique Clicks</p>
                       <p className="text-3xl font-bold text-white">{analytics.uniqueClicks}</p>
-                    </div>
-                    <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5 hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all group relative">
-                      <p className="text-xs font-medium text-zinc-400 tracking-wide mb-2">Click Rate</p>
-                      <p className="text-3xl font-bold text-white">
-                        {analytics.uniqueClicks > 0 
-                          ? `${((analytics.uniqueClicks / analytics.clicks) * 100).toFixed(1)}%`
-                          : '0%'
-                        }
-                      </p>
-                      <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="relative">
-                          <div className="bg-zinc-800 border border-white/20 rounded-lg p-3 text-xs text-zinc-300 w-64 shadow-xl">
-                            <p className="font-semibold mb-1">Click Rate Formula:</p>
-                            <p className="text-zinc-400">(Unique Clicks ÷ Total Clicks) × 100</p>
-                            <p className="text-zinc-500 mt-2 text-[10px]">Shows what % of clicks came from unique visitors vs repeat clicks</p>
-                          </div>
-                        </div>
-                      </div>
                     </div>
                     <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5 hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all">
                       <p className="text-xs font-medium text-zinc-400 tracking-wide mb-2">Avg Daily</p>
@@ -397,25 +377,87 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                         </div>
                       </div>
                     )}
-
-                    {/* Bot Detection */}
-                    <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Bot className="w-4 h-4 text-zinc-400" />
-                        <h3 className="text-sm font-medium text-zinc-300">Bot Detection</h3>
-                      </div>
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-zinc-300">Human Clicks</span>
-                          <span className="text-sm font-medium text-white">{rawClicks.length - botClicks}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-zinc-300">Bot Clicks (Filtered)</span>
-                          <span className="text-sm font-medium text-white">{botClicks}</span>
-                        </div>
-                      </div>
-                    </div>
                   </div>
+                </div>
+
+                {/* Link Clicks List */}
+                <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
+                  <h3 className="text-sm font-medium text-zinc-300 mb-4">Recent Clicks</h3>
+                  {rawClicks.length === 0 ? (
+                    <p className="text-sm text-zinc-400 text-center py-8">No clicks recorded yet</p>
+                  ) : (
+                    <>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-white/10">
+                              <th className="text-left py-3 px-2 font-medium text-zinc-300">Time</th>
+                              <th className="text-left py-3 px-2 font-medium text-zinc-300">Country</th>
+                              <th className="text-left py-3 px-2 font-medium text-zinc-300">Device</th>
+                              <th className="text-left py-3 px-2 font-medium text-zinc-300">Browser</th>
+                              <th className="text-left py-3 px-2 font-medium text-zinc-300">Referrer</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {rawClicks
+                              .slice((currentPage - 1) * clicksPerPage, currentPage * clicksPerPage)
+                              .map((click, index) => (
+                                <tr key={index} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                  <td className="py-3 px-2 text-zinc-400">
+                                    {new Date(click.timestamp).toLocaleString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </td>
+                                  <td className="py-3 px-2 text-zinc-400">
+                                    {click.country || '-'}
+                                  </td>
+                                  <td className="py-3 px-2 text-zinc-400 capitalize">
+                                    {click.deviceType || '-'}
+                                  </td>
+                                  <td className="py-3 px-2 text-zinc-400">
+                                    {click.browser || '-'}
+                                  </td>
+                                  <td className="py-3 px-2 text-zinc-400 truncate max-w-[200px]">
+                                    {click.referrerDomain || click.referrer || 'Direct'}
+                                  </td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Pagination */}
+                      {rawClicks.length > clicksPerPage && (
+                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
+                          <p className="text-sm text-zinc-400">
+                            Showing {((currentPage - 1) * clicksPerPage) + 1} to {Math.min(currentPage * clicksPerPage, rawClicks.length)} of {rawClicks.length} clicks
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                              disabled={currentPage === 1}
+                              className="px-3 py-1.5 text-sm bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-white/20 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Previous
+                            </button>
+                            <span className="text-sm text-zinc-400">
+                              Page {currentPage} of {Math.ceil(rawClicks.length / clicksPerPage)}
+                            </span>
+                            <button
+                              onClick={() => setCurrentPage(prev => Math.min(Math.ceil(rawClicks.length / clicksPerPage), prev + 1))}
+                              disabled={currentPage === Math.ceil(rawClicks.length / clicksPerPage)}
+                              className="px-3 py-1.5 text-sm bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-white/20 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
             </div>
           )}
