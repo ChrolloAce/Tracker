@@ -557,7 +557,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Metric Comparison Graph */}
         <LinksMetricComparisonCard
-          linkClicks={filteredClicks}
+          linkClicks={validLinkClicks}
           dateFilter={dateFilter}
           customDateRange={customDateRange}
         />
@@ -565,8 +565,10 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         {/* Top Performers */}
         <TopLinksPerformers
           links={links}
-          linkClicks={filteredClicks}
+          linkClicks={validLinkClicks}
           accounts={accounts}
+          dateFilter={dateFilter}
+          customDateRange={customDateRange}
           onLinkClick={handleViewAnalytics}
         />
       </div>

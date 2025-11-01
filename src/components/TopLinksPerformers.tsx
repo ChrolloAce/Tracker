@@ -2,26 +2,70 @@ import React, { useState, useMemo } from 'react';
 import { ChevronDown, Info, Link as LinkIcon, Users, Globe } from 'lucide-react';
 import { TrackedLink, TrackedAccount } from '../types/firestore';
 import { LinkClick } from '../services/LinkClicksService';
+import { DateFilterType } from './DateRangeFilter';
 
 interface TopLinksPerformersProps {
   links: TrackedLink[];
   linkClicks: LinkClick[];
   accounts: Map<string, TrackedAccount>;
+  dateFilter: DateFilterType;
+  customDateRange?: { startDate: Date; endDate: Date };
   onLinkClick?: (link: TrackedLink) => void;
 }
 
 type SectionType = 'clicks' | 'unique' | 'referrers';
 
-const TopLinksPerformers: React.FC<TopLinksPerformersProps> = ({ links, linkClicks, accounts, onLinkClick }) => {
+const TopLinksPerformers: React.FC<TopLinksPerformersProps> = ({ 
+  links, 
+  linkClicks, 
+  accounts, 
+  dateFilter, 
+  customDateRange, 
+  onLinkClick 
+}) => {
   const [activeSection, setActiveSection] = useState<SectionType>('clicks');
   const [topCount, setTopCount] = useState(5);
   const [showInfo, setShowInfo] = useState(false);
+
+  // Filter clicks based on date range
+  const filteredClicks = useMemo(() => {
+    const now = new Date();
+    let dateRangeStart: Date | null = null;
+    let dateRangeEnd: Date = new Date();
+    
+    if (dateFilter === 'today') {
+      dateRangeStart = new Date(now);
+      dateRangeStart.setHours(0, 0, 0, 0);
+      dateRangeEnd.setHours(23, 59, 59, 999);
+    } else if (dateFilter === 'last7days') {
+      dateRangeStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    } else if (dateFilter === 'last30days') {
+      dateRangeStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    } else if (dateFilter === 'last90days') {
+      dateRangeStart = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+    } else if (dateFilter === 'custom' && customDateRange) {
+      dateRangeStart = new Date(customDateRange.startDate);
+      dateRangeStart.setHours(0, 0, 0, 0);
+      dateRangeEnd = new Date(customDateRange.endDate);
+      dateRangeEnd.setHours(23, 59, 59, 999);
+    } else if (dateFilter === 'all') {
+      // For 'all', include all clicks
+      return linkClicks;
+    }
+    
+    // Filter clicks within date range
+    return linkClicks.filter(click => {
+      if (!dateRangeStart) return true;
+      const clickDate = new Date(click.timestamp);
+      return clickDate >= dateRangeStart && clickDate <= dateRangeEnd;
+    });
+  }, [linkClicks, dateFilter, customDateRange]);
 
   // Calculate top links by total clicks
   const topLinksByClicks = useMemo(() => {
     const linkClickCounts = new Map<string, number>();
     
-    linkClicks.forEach(click => {
+    filteredClicks.forEach(click => {
       const shortCode = click.shortCode;
       if (shortCode) {
         linkClickCounts.set(shortCode, (linkClickCounts.get(shortCode) || 0) + 1);
@@ -35,13 +79,13 @@ const TopLinksPerformers: React.FC<TopLinksPerformersProps> = ({ links, linkClic
       }))
       .sort((a, b) => b.clicks - a.clicks)
       .slice(0, topCount);
-  }, [links, linkClicks, topCount]);
+  }, [links, filteredClicks, topCount]);
 
   // Calculate top links by unique clicks
   const topLinksByUniqueClicks = useMemo(() => {
     const linkUniqueClicks = new Map<string, Set<string>>();
     
-    linkClicks.forEach(click => {
+    filteredClicks.forEach(click => {
       const shortCode = click.shortCode;
       if (shortCode) {
         if (!linkUniqueClicks.has(shortCode)) {
@@ -58,13 +102,13 @@ const TopLinksPerformers: React.FC<TopLinksPerformersProps> = ({ links, linkClic
       }))
       .sort((a, b) => b.uniqueClicks - a.uniqueClicks)
       .slice(0, topCount);
-  }, [links, linkClicks, topCount]);
+  }, [links, filteredClicks, topCount]);
 
   // Calculate top referrers
   const topReferrers = useMemo(() => {
     const referrerCounts = new Map<string, number>();
     
-    linkClicks.forEach(click => {
+    filteredClicks.forEach(click => {
       const referrer = click.referrerDomain || click.referrer || 'Direct';
       referrerCounts.set(referrer, (referrerCounts.get(referrer) || 0) + 1);
     });
@@ -73,7 +117,7 @@ const TopLinksPerformers: React.FC<TopLinksPerformersProps> = ({ links, linkClic
       .map(([referrer, count]) => ({ referrer, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, topCount);
-  }, [linkClicks, topCount]);
+  }, [filteredClicks, topCount]);
 
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
@@ -220,21 +264,20 @@ const TopLinksPerformers: React.FC<TopLinksPerformersProps> = ({ links, linkClic
 
                         {/* Animated Bar */}
                         <div className="ml-14 flex-1 relative flex items-center">
-                          <div 
-                            className="race-bar absolute left-0 h-full rounded-r-lg transition-all duration-500 ease-out"
-                            style={{
-                              width: `${percentage}%`,
-                              background: 'linear-gradient(to right, #52525B, #3F3F46)',
-                              boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-                            }}
-                          />
-                          
-                          {/* Referrer Name */}
-                          <div className="relative z-10 px-4 flex items-center justify-between w-full">
-                            <span className="text-sm font-medium text-white truncate">
-                              {item.referrer}
-                            </span>
-                            <span className="text-sm font-bold text-white ml-4">
+                          <div className="h-10 rounded-lg overflow-hidden flex-1">
+                            <div 
+                              className="race-bar h-full relative transition-all duration-300 ease-out rounded-lg"
+                              style={{
+                                width: `${percentage}%`,
+                                minWidth: '8%',
+                                background: 'linear-gradient(to right, #52525B, #3F3F46)'
+                              }}
+                            >
+                            </div>
+                          </div>
+                          {/* Metric Value - Always on Right */}
+                          <div className="ml-4 min-w-[100px] text-right">
+                            <span className="text-lg font-semibold text-white tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
                               {formatNumber(item.count)}
                             </span>
                           </div>
@@ -287,23 +330,20 @@ const TopLinksPerformers: React.FC<TopLinksPerformersProps> = ({ links, linkClic
 
                         {/* Animated Bar */}
                         <div className="ml-14 flex-1 relative flex items-center">
-                          <div 
-                            className="race-bar absolute left-0 h-full rounded-r-lg transition-all duration-500 ease-out group-hover:brightness-125"
-                            style={{
-                              width: `${percentage}%`,
-                              background: 'linear-gradient(to right, #52525B, #3F3F46)',
-                              boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-                            }}
-                          />
-                          
-                          {/* Link Details */}
-                          <div className="relative z-10 px-4 flex items-center justify-between w-full">
-                            <div className="flex-1 min-w-0">
-                              <span className="text-sm font-medium text-white truncate block">
-                                {link.title || `/${link.shortCode}`}
-                              </span>
+                          <div className="h-10 rounded-lg overflow-hidden flex-1">
+                            <div 
+                              className="race-bar h-full relative transition-all duration-300 ease-out rounded-lg"
+                              style={{
+                                width: `${percentage}%`,
+                                minWidth: '8%',
+                                background: 'linear-gradient(to right, #52525B, #3F3F46)'
+                              }}
+                            >
                             </div>
-                            <span className="text-sm font-bold text-white ml-4 flex-shrink-0">
+                          </div>
+                          {/* Metric Value - Always on Right */}
+                          <div className="ml-4 min-w-[100px] text-right">
+                            <span className="text-lg font-semibold text-white tabular-nums tracking-tight" style={{ fontFamily: 'Inter, SF Pro Display, system-ui, sans-serif' }}>
                               {formatNumber(value)}
                             </span>
                           </div>
