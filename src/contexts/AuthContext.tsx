@@ -6,7 +6,8 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword
+  createUserWithEmailAndPassword,
+  sendEmailVerification
 } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
@@ -49,6 +50,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(user);
       
       if (user) {
+        // Check email verification (skip for demo account and Google sign-ins)
+        if (user.email !== 'demo@viewtrack.app' && !user.emailVerified && user.providerData[0]?.providerId === 'password') {
+          console.log('⚠️ Email not verified for:', user.email);
+          setUser(user);
+          setCurrentOrgId(null);
+          setCurrentProjectId(null);
+          setUserRole(null);
+          setLoading(false);
+          // Don't redirect - let the app show verification screen
+          return;
+        }
         
         // Create user account in Firestore if doesn't exist
         await OrganizationService.createUserAccount(
@@ -203,7 +215,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUpWithEmail = async (email: string, password: string) => {
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      // Skip verification for demo account
+      if (email === 'demo@viewtrack.app') {
+        await createUserWithEmailAndPassword(auth, email, password);
+        return;
+      }
+      
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Send verification email
+      await sendEmailVerification(userCredential.user);
+      console.log('✅ Verification email sent to:', email);
     } catch (error) {
       console.error('Failed to sign up with email:', error);
       throw error;

@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
+import EmailVerificationScreen from './components/EmailVerificationScreen';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import DemoPage from './pages/DemoPage';
@@ -160,6 +161,17 @@ function App() {
   // Show loading skeleton while checking authentication
   if (loading) {
     return <LoadingSkeleton />;
+  }
+
+  // Check if user needs email verification (skip for demo and Google)
+  const needsVerification = user && 
+    user.email !== 'demo@viewtrack.app' && 
+    !user.emailVerified && 
+    user.providerData[0]?.providerId === 'password';
+
+  // If user is logged in but email not verified, show verification screen
+  if (needsVerification) {
+    return <EmailVerificationScreen />;
   }
 
   return (
