@@ -315,10 +315,10 @@ function App() {
       <Route 
         path="/create-organization" 
         element={
-          !user ? (
-            <Navigate to="/login" replace />
-          ) : loading ? (
+          loading ? (
             <LoadingSkeleton />
+          ) : !user ? (
+            <Navigate to="/login" replace />
           ) : currentOrgId ? (
             <Navigate to="/dashboard" replace />
           ) : (
