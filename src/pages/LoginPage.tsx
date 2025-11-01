@@ -20,6 +20,7 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [processingInvite, setProcessingInvite] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   
   // Get invite parameters from URL
   const inviteId = searchParams.get('invite');
@@ -71,28 +72,32 @@ const LoginPage: React.FC = () => {
         try {
           // Try to sign in first
           await signInWithEmail(email, password);
+          setRedirecting(true); // Show loading screen while redirecting
         } catch (signInError: any) {
           // If user doesn't exist, create it
           if (signInError.code === 'auth/invalid-credential' || signInError.code === 'auth/user-not-found') {
             console.log('📝 Demo account not found. Creating...');
             await signUpWithEmail(email, password);
+            setRedirecting(true); // Show loading screen while redirecting
           } else {
             throw signInError;
           }
         }
       } else {
         // Regular login flow
-      if (isSignUp) {
-        await signUpWithEmail(email, password);
-      } else {
-        await signInWithEmail(email, password);
+        if (isSignUp) {
+          await signUpWithEmail(email, password);
+          setRedirecting(true); // Show loading screen while redirecting
+        } else {
+          await signInWithEmail(email, password);
+          setRedirecting(true); // Show loading screen while redirecting
         }
       }
     } catch (err: any) {
       setError(err.message || 'Authentication failed');
-    } finally {
       setLoading(false);
     }
+    // Don't set loading to false - keep it true to show loading screen
   };
 
   const handleGoogleSignIn = async () => {
@@ -100,15 +105,16 @@ const LoginPage: React.FC = () => {
     setLoading(true);
     try {
       await signInWithGoogle();
+      setRedirecting(true); // Show loading screen while redirecting
     } catch (err: any) {
       setError(err.message || 'Google sign-in failed');
-    } finally {
       setLoading(false);
     }
+    // Don't set loading to false - keep it true to show loading screen
   };
 
-  // Show loading state if processing invitation
-  if (processingInvite) {
+  // Show loading state if processing invitation or redirecting after login
+  if (processingInvite || redirecting) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-8">
         <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-12 text-center">
@@ -116,13 +122,13 @@ const LoginPage: React.FC = () => {
             <img src={viewtrackLogo} alt="ViewTrack" className="h-10 w-auto mx-auto" />
           </div>
           <div className="flex items-center justify-center mb-6">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-black"></div>
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#2282FF]"></div>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Setting up your account...
+            {processingInvite ? 'Setting up your account...' : 'Logging you in...'}
           </h2>
           <p className="text-gray-500">
-            We're creating your creator profile. This will only take a moment!
+            {processingInvite ? "We're creating your creator profile. This will only take a moment!" : 'Please wait while we load your dashboard.'}
           </p>
         </div>
       </div>
