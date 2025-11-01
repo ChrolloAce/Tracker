@@ -83,17 +83,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         let orgId: string | null = null;
         
         if (userOrgs.length === 0) {
-          // No organizations at all - redirect to onboarding
-          console.log('❌ User has no organizations - redirecting to onboarding');
+          // No organizations at all - let routing handle redirect
+          console.log('❌ User has no organizations');
           setCurrentOrgId(null);
           setCurrentProjectId(null);
           setUserRole(null);
           setLoading(false);
-          
-          if (window.location.pathname !== '/create-organization') {
-            console.log('🔀 Redirecting to /create-organization');
-            window.location.href = '/create-organization';
-          }
+          // Don't manually redirect - App.tsx routing will handle it
           return;
         }
         
