@@ -114,8 +114,8 @@ const LoginPage: React.FC = () => {
   };
 
   // Show loading state if processing invitation or redirecting after login
-  if (processingInvite || redirecting || (loading && (email || user))) {
-    console.log('🔄 Showing loading screen:', { processingInvite, redirecting, loading, hasEmail: !!email, hasUser: !!user });
+  if (processingInvite || redirecting) {
+    console.log('🔄 Showing loading screen:', { processingInvite, redirecting });
     return (
       <div className="min-h-screen bg-[#FAFAFB] flex items-center justify-center p-8">
         <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-12 text-center">
