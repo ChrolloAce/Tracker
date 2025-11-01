@@ -1047,7 +1047,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
             type="button"
             onClick={currentStep === totalSteps ? handleSubmit : nextStep}
             disabled={!canProceed() || loading}
-            className="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold rounded-lg transition-all flex items-center gap-2"
+            className="px-6 py-2 bg-white/10 hover:bg-white/15 disabled:bg-gray-700 disabled:text-gray-500 text-white font-semibold rounded-xl border border-white/20 hover:border-white/30 transition-all flex items-center gap-2"
           >
             {loading ? (
               'Creating...'

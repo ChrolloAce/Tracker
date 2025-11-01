@@ -418,11 +418,10 @@ const ContractsManagementPage: React.FC = () => {
       {/* Floating Action Button - Create Contract */}
       <button
         onClick={() => navigate('/contracts/create')}
-        className="fixed bottom-8 right-8 flex items-center gap-2 px-6 py-3 rounded-full font-medium transition-all transform hover:scale-105 active:scale-95 bg-white/10 hover:bg-white/15 text-white border border-white/20 hover:border-white/30 shadow-2xl z-40"
+        className="fixed bottom-8 right-8 flex items-center justify-center p-4 rounded-full font-medium transition-all transform hover:scale-105 active:scale-95 bg-white/10 hover:bg-white/15 text-white border border-white/20 hover:border-white/30 shadow-2xl z-40"
         title="Create Contract"
       >
-        <Plus className="w-5 h-5" />
-        <span>Create Contract</span>
+        <Plus className="w-6 h-6" />
       </button>
 
       {/* Delete Confirmation Modal */}

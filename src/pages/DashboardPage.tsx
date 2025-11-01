@@ -147,6 +147,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [campaignCounts, setCampaignCounts] = useState({ active: 0, draft: 0, completed: 0, cancelled: 0 });
   
   // Loading/pending state for immediate UI feedback
+  const [loadingDashboard, setLoadingDashboard] = useState(true);
   const [pendingVideos, setPendingVideos] = useState<VideoSubmission[]>([]);
   const [pendingAccounts, setPendingAccounts] = useState<TrackedAccount[]>([]);
   const [dateFilter, setDateFilter] = useState<DateFilterType>(() => {
@@ -655,8 +656,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       // Reset loading states when context is missing
       setRulesLoadedFromFirebase(false);
       setDataLoadedFromFirebase(false);
+      setLoadingDashboard(false);
       return;
     }
+
+    // Start loading - set loading state to true
+    setLoadingDashboard(true);
 
     // 🎯 CREATORS: Skip loading ALL organization data - they only need campaigns
     // Also skip if role not loaded yet to prevent unnecessary cache loading
@@ -665,6 +670,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         console.log('🎯 Creator role detected - skipping organization data load');
         setRulesLoadedFromFirebase(true);
         setDataLoadedFromFirebase(true);
+        setLoadingDashboard(false);
       }
       return;
     }
@@ -700,6 +706,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           setLinkClicks(cachedClicks || []);
           setRulesLoadedFromFirebase(true);
           setDataLoadedFromFirebase(true);
+          setLoadingDashboard(false);
           hasCached = true;
           console.log(`⚡ Loaded from cache (${Math.round(cacheAge / 1000)}s old) - including ${cachedLinks?.length || 0} links & ${cachedClicks?.length || 0} clicks`);
         }
@@ -829,6 +836,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       
       setRulesLoadedFromFirebase(true);
       setDataLoadedFromFirebase(true);
+      setLoadingDashboard(false);
       console.timeEnd('🚀 Parallel Firebase load');
       console.log('✅ All data loaded in parallel!');
       
@@ -853,6 +861,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       console.error('❌ Failed to load data:', error);
       setDataLoadedFromFirebase(true);
       setRulesLoadedFromFirebase(true);
+      setLoadingDashboard(false);
       console.timeEnd('🚀 Parallel Firebase load');
     }
     
@@ -1095,16 +1104,17 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     }
     
     // Apply specific rule filter(s) if selected
-    if (selectedRuleIds.length > 0) {
+    // When no rules are selected, show ALL videos (default behavior)
+    if (selectedRuleIds && selectedRuleIds.length > 0) {
       const beforeRuleFilter = filtered.length;
-      const selectedRules = allRules.filter(rule => selectedRuleIds.includes(rule.id));
+      const selectedRules = allRules.filter(rule => rule && selectedRuleIds.includes(rule.id));
       
       console.log(`🎯 Trying to apply ${selectedRuleIds.length} selected rule ID(s):`, selectedRuleIds);
       console.log(`📚 Found ${selectedRules.length} matching rules in allRules (${allRules.length} total)`);
       
       if (selectedRules.length > 0) {
         console.log(`📋 Applying ${selectedRules.length} specific rule(s)...`);
-        const activeSelectedRules = selectedRules.filter(r => r.isActive);
+        const activeSelectedRules = selectedRules.filter(r => r && r.isActive);
         
         if (activeSelectedRules.length > 0) {
           // Log TikTok videos for debugging
@@ -1148,47 +1158,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         console.warn(`⚠️ Rules selected but not found in allRules. Selected: ${selectedRuleIds.length}, All rules: ${allRules.length}`);
       }
     } else {
-      // Apply default rules filtering for tracked accounts (all active rules)
-      if (allRules.length > 0) {
-        const beforeRulesFilter = filtered.length;
-        const activeRules = allRules.filter(r => r.isActive);
-        console.log(`📋 Applying ${activeRules.length} active rules...`);
-        
-        filtered = filtered.filter(video => {
-          if (!video.uploaderHandle) return true; // Keep videos without uploader handle
-          
-          // Find the account for this video (match by both username AND platform)
-          const account = trackedAccounts.find(
-            acc => acc.username.toLowerCase() === video.uploaderHandle?.toLowerCase() &&
-                   acc.platform === video.platform
-          );
-          
-          if (!account) return true; // Keep videos without matching account
-          
-          // Get rules that apply to this account
-          const accountRules = activeRules.filter(rule => {
-            const { platforms, accountIds } = rule.appliesTo;
-            
-            // Check platform match
-            const platformMatch = !platforms || platforms.length === 0 || platforms.includes(account.platform);
-            
-            // Check account match
-            const accountMatch = !accountIds || accountIds.length === 0 || accountIds.includes(account.id);
-            
-            return platformMatch && accountMatch;
-          });
-          
-          if (accountRules.length === 0) return true; // No rules = show all videos
-          
-          // Check if video matches any of the account's rules
-          const matches = accountRules.some((rule: any) => 
-            RulesService.checkVideoMatchesRule(video as any, rule).matches
-          );
-          
-          return matches;
-        });
-        console.log(`✅ After default rules filter:`, filtered.length, `(removed ${beforeRulesFilter - filtered.length})`);
-      }
+      // NO rules selected - show ALL videos (no filtering by rules)
+      console.log('📝 No rules selected - showing all videos without rule filtering');
     }
     
     console.log(`🎬 FINAL filtered count:`, filtered.length);
@@ -2496,8 +2467,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           {/* Dashboard Tab - Only render when active to prevent unnecessary calculations */}
           {activeTab === 'dashboard' && (
             <div>
-              {/* Empty State - Show when no accounts AND no videos */}
-              {trackedAccounts.length === 0 && submissions.length === 0 && (
+              {/* Empty State - Show when no accounts AND no videos (and not loading) */}
+              {!loadingDashboard && trackedAccounts.length === 0 && submissions.length === 0 && (
                 <BlurEmptyState
                   title="Start Tracking Your Content"
                   description="Add your first social media account or video to start monitoring performance and growing your audience."
@@ -2821,7 +2792,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
           {/* Videos Tab */}
           {activeTab === 'videos' && (
-            combinedSubmissions.length === 0 ? (
+            !loadingDashboard && combinedSubmissions.length === 0 ? (
               <BlurEmptyState
                 title="Track Your First Video"
                 description="Add your first video to start monitoring views, engagement, and performance across platforms."
@@ -3450,7 +3421,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               window.dispatchEvent(event);
             }
           }}
-          className="fixed bottom-8 right-8 z-50 bg-gray-900 dark:bg-white hover:bg-black dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-full p-4 shadow-2xl transition-all duration-200 hover:scale-110 group"
+          className="fixed bottom-8 right-8 z-50 flex items-center justify-center p-4 rounded-full transition-all transform hover:scale-105 active:scale-95 bg-white/10 hover:bg-white/15 text-white border border-white/20 hover:border-white/30 shadow-2xl group"
           aria-label={
             activeTab === 'dashboard' ? 'Add Video' :
             activeTab === 'accounts' ? 'Track Account' :

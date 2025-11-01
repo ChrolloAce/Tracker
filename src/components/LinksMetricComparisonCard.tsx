@@ -3,11 +3,16 @@ import { LinkClick } from '../services/LinkClicksService';
 import { DateFilterType } from './DateRangeFilter';
 import { AreaChart, Area, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, TrendingDown, BarChart2, Activity, Info, ChevronDown } from 'lucide-react';
+import DayClicksModal from './DayClicksModal';
+import { TrackedLink, TrackedAccount } from '../types/firestore';
 
 interface LinksMetricComparisonCardProps {
   linkClicks: LinkClick[];
   dateFilter: DateFilterType;
   customDateRange?: { startDate: Date; endDate: Date };
+  links: TrackedLink[];
+  accounts: Map<string, TrackedAccount>;
+  onLinkClick: (link: TrackedLink) => void;
 }
 
 type ChartType = 'line' | 'area' | 'bar';
@@ -16,47 +21,120 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
   linkClicks,
   dateFilter,
   customDateRange,
+  links,
+  accounts,
+  onLinkClick,
 }) => {
   const [hoveredMetric, setHoveredMetric] = useState<'links' | 'unique' | null>(null);
   const [chartType, setChartType] = useState<ChartType>('area');
   const [showTooltipInfo, setShowTooltipInfo] = useState(false);
+  const [isDayClicksModalOpen, setIsDayClicksModalOpen] = useState(false);
+  const [selectedDayClicksDate, setSelectedDayClicksDate] = useState<Date | null>(null);
+  const [selectedDayClicks, setSelectedDayClicks] = useState<LinkClick[]>([]);
 
   const chartData = useMemo(() => {
+    // First, filter clicks by date range
+    const now = new Date();
+    let dateRangeStart: Date | null = null;
+    let dateRangeEnd: Date = new Date();
+    
+    // Calculate date ranges based on filter
+    if (dateFilter === 'today') {
+      dateRangeStart = new Date(now);
+      dateRangeStart.setHours(0, 0, 0, 0);
+      dateRangeEnd = new Date(now);
+      dateRangeEnd.setHours(23, 59, 59, 999);
+    } else if (dateFilter === 'yesterday') {
+      dateRangeStart = new Date(now);
+      dateRangeStart.setDate(dateRangeStart.getDate() - 1);
+      dateRangeStart.setHours(0, 0, 0, 0);
+      dateRangeEnd = new Date(now);
+      dateRangeEnd.setDate(dateRangeEnd.getDate() - 1);
+      dateRangeEnd.setHours(23, 59, 59, 999);
+    } else if (dateFilter === 'last7days') {
+      dateRangeEnd = new Date(now);
+      dateRangeEnd.setHours(23, 59, 59, 999);
+      dateRangeStart = new Date(now);
+      dateRangeStart.setDate(dateRangeStart.getDate() - 6); // Last 7 days including today
+      dateRangeStart.setHours(0, 0, 0, 0);
+    } else if (dateFilter === 'last14days') {
+      dateRangeEnd = new Date(now);
+      dateRangeEnd.setHours(23, 59, 59, 999);
+      dateRangeStart = new Date(now);
+      dateRangeStart.setDate(dateRangeStart.getDate() - 13); // Last 14 days including today
+      dateRangeStart.setHours(0, 0, 0, 0);
+    } else if (dateFilter === 'last30days') {
+      dateRangeEnd = new Date(now);
+      dateRangeEnd.setHours(23, 59, 59, 999);
+      dateRangeStart = new Date(now);
+      dateRangeStart.setDate(dateRangeStart.getDate() - 29); // Last 30 days including today
+      dateRangeStart.setHours(0, 0, 0, 0);
+    } else if (dateFilter === 'last90days') {
+      dateRangeEnd = new Date(now);
+      dateRangeEnd.setHours(23, 59, 59, 999);
+      dateRangeStart = new Date(now);
+      dateRangeStart.setDate(dateRangeStart.getDate() - 89); // Last 90 days including today
+      dateRangeStart.setHours(0, 0, 0, 0);
+    } else if (dateFilter === 'mtd') {
+      // Month to date
+      dateRangeStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      dateRangeStart.setHours(0, 0, 0, 0);
+      dateRangeEnd = new Date(now);
+      dateRangeEnd.setHours(23, 59, 59, 999);
+    } else if (dateFilter === 'lastmonth') {
+      // Last month
+      dateRangeStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      dateRangeStart.setHours(0, 0, 0, 0);
+      dateRangeEnd = new Date(now.getFullYear(), now.getMonth(), 0); // Last day of previous month
+      dateRangeEnd.setHours(23, 59, 59, 999);
+    } else if (dateFilter === 'ytd') {
+      // Year to date
+      dateRangeStart = new Date(now.getFullYear(), 0, 1);
+      dateRangeStart.setHours(0, 0, 0, 0);
+      dateRangeEnd = new Date(now);
+      dateRangeEnd.setHours(23, 59, 59, 999);
+    } else if (dateFilter === 'custom' && customDateRange) {
+      dateRangeStart = new Date(customDateRange.startDate);
+      dateRangeStart.setHours(0, 0, 0, 0);
+      dateRangeEnd = new Date(customDateRange.endDate);
+      dateRangeEnd.setHours(23, 59, 59, 999);
+    } else if (dateFilter === 'all') {
+      // All time - no filter
+      dateRangeStart = null;
+      dateRangeEnd = new Date(now);
+      dateRangeEnd.setHours(23, 59, 59, 999);
+    }
+    
+    // Filter clicks by date range
+    const filteredClicks = dateRangeStart 
+      ? linkClicks.filter(click => {
+          const clickDate = new Date(click.timestamp);
+          return clickDate >= dateRangeStart! && clickDate <= dateRangeEnd;
+        })
+      : linkClicks;
+
     // Group clicks by date
     const dataByDate: { [key: string]: { totalClicks: number; uniqueClicks: Set<string> } } = {};
 
-    // Find actual date range from data
-    let minDate: Date | null = null;
-    let maxDate: Date | null = null;
+    // Use the filter boundaries for chart range
+    let minDate = dateRangeStart || new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    let maxDate = dateRangeEnd;
+    
+    // Normalize to date-only (no time component)
+    minDate = new Date(minDate.getFullYear(), minDate.getMonth(), minDate.getDate());
+    maxDate = new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate());
 
-    // Get date range from link clicks
-    linkClicks.forEach((click) => {
-      const date = new Date(click.timestamp);
-      if (!minDate || date < minDate) minDate = date;
-      if (!maxDate || date > maxDate) maxDate = date;
-    });
-
-    // If no data, use last 7 days
-    if (!minDate || !maxDate) {
-      maxDate = new Date();
-      minDate = new Date();
-      minDate.setDate(minDate.getDate() - 7);
-    }
-
-    // Extend range slightly for padding
-    const startDate = new Date(minDate);
-    startDate.setDate(startDate.getDate() - 1);
-    const endDate = new Date(maxDate);
-    endDate.setDate(endDate.getDate() + 1);
-
-    // Initialize all dates in range with 0
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      const dateKey = d.toISOString().split('T')[0];
+    // Initialize all dates in range with 0 - fixed loop to avoid mutation issues
+    const dayCount = Math.ceil((maxDate.getTime() - minDate.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+    for (let i = 0; i < dayCount; i++) {
+      const currentDate = new Date(minDate);
+      currentDate.setDate(currentDate.getDate() + i);
+      const dateKey = currentDate.toISOString().split('T')[0];
       dataByDate[dateKey] = { totalClicks: 0, uniqueClicks: new Set() };
     }
 
-    // Aggregate click data
-    linkClicks.forEach((click) => {
+    // Aggregate filtered click data
+    filteredClicks.forEach((click) => {
       const dateKey = new Date(click.timestamp).toISOString().split('T')[0];
       if (dataByDate[dateKey]) {
         dataByDate[dateKey].totalClicks += 1;
@@ -75,7 +153,7 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     return chartDataArray;
-  }, [linkClicks]);
+  }, [linkClicks, dateFilter, customDateRange]);
 
   // Calculate totals and growth
   const stats = useMemo(() => {
@@ -96,24 +174,87 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
       ppDateRangeStart.setDate(ppDateRangeStart.getDate() - 1);
       ppDateRangeEnd = new Date(ppDateRangeStart);
       ppDateRangeEnd.setHours(23, 59, 59, 999);
+    } else if (dateFilter === 'yesterday') {
+      dateRangeStart = new Date(now);
+      dateRangeStart.setDate(dateRangeStart.getDate() - 1);
+      dateRangeStart.setHours(0, 0, 0, 0);
+      dateRangeEnd = new Date(now);
+      dateRangeEnd.setDate(dateRangeEnd.getDate() - 1);
+      dateRangeEnd.setHours(23, 59, 59, 999);
+      
+      // PP = day before yesterday
+      ppDateRangeStart = new Date(dateRangeStart);
+      ppDateRangeStart.setDate(ppDateRangeStart.getDate() - 1);
+      ppDateRangeEnd = new Date(ppDateRangeStart);
+      ppDateRangeEnd.setHours(23, 59, 59, 999);
     } else if (dateFilter === 'last7days') {
-      dateRangeStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      dateRangeStart = new Date(now);
+      dateRangeStart.setDate(dateRangeStart.getDate() - 6);
+      dateRangeStart.setHours(0, 0, 0, 0);
       
       // PP = previous 7 days
       ppDateRangeStart = new Date(dateRangeStart.getTime() - 7 * 24 * 60 * 60 * 1000);
       ppDateRangeEnd = new Date(dateRangeStart);
+    } else if (dateFilter === 'last14days') {
+      dateRangeStart = new Date(now);
+      dateRangeStart.setDate(dateRangeStart.getDate() - 13);
+      dateRangeStart.setHours(0, 0, 0, 0);
+      
+      // PP = previous 14 days
+      ppDateRangeStart = new Date(dateRangeStart.getTime() - 14 * 24 * 60 * 60 * 1000);
+      ppDateRangeEnd = new Date(dateRangeStart);
     } else if (dateFilter === 'last30days') {
-      dateRangeStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      dateRangeStart = new Date(now);
+      dateRangeStart.setDate(dateRangeStart.getDate() - 29);
+      dateRangeStart.setHours(0, 0, 0, 0);
       
       // PP = previous 30 days
       ppDateRangeStart = new Date(dateRangeStart.getTime() - 30 * 24 * 60 * 60 * 1000);
       ppDateRangeEnd = new Date(dateRangeStart);
     } else if (dateFilter === 'last90days') {
-      dateRangeStart = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      dateRangeStart = new Date(now);
+      dateRangeStart.setDate(dateRangeStart.getDate() - 89);
+      dateRangeStart.setHours(0, 0, 0, 0);
       
       // PP = previous 90 days
       ppDateRangeStart = new Date(dateRangeStart.getTime() - 90 * 24 * 60 * 60 * 1000);
       ppDateRangeEnd = new Date(dateRangeStart);
+    } else if (dateFilter === 'mtd') {
+      // Month to date
+      dateRangeStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      dateRangeStart.setHours(0, 0, 0, 0);
+      dateRangeEnd = new Date(now);
+      dateRangeEnd.setHours(23, 59, 59, 999);
+      
+      // PP = same days in previous month
+      ppDateRangeStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      ppDateRangeStart.setHours(0, 0, 0, 0);
+      ppDateRangeEnd = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+      ppDateRangeEnd.setHours(23, 59, 59, 999);
+    } else if (dateFilter === 'lastmonth') {
+      // Last month
+      dateRangeStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      dateRangeStart.setHours(0, 0, 0, 0);
+      dateRangeEnd = new Date(now.getFullYear(), now.getMonth(), 0); // Last day of previous month
+      dateRangeEnd.setHours(23, 59, 59, 999);
+      
+      // PP = month before last month
+      ppDateRangeStart = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+      ppDateRangeStart.setHours(0, 0, 0, 0);
+      ppDateRangeEnd = new Date(now.getFullYear(), now.getMonth() - 1, 0);
+      ppDateRangeEnd.setHours(23, 59, 59, 999);
+    } else if (dateFilter === 'ytd') {
+      // Year to date
+      dateRangeStart = new Date(now.getFullYear(), 0, 1);
+      dateRangeStart.setHours(0, 0, 0, 0);
+      dateRangeEnd = new Date(now);
+      dateRangeEnd.setHours(23, 59, 59, 999);
+      
+      // PP = same period last year
+      ppDateRangeStart = new Date(now.getFullYear() - 1, 0, 1);
+      ppDateRangeStart.setHours(0, 0, 0, 0);
+      ppDateRangeEnd = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+      ppDateRangeEnd.setHours(23, 59, 59, 999);
     } else if (dateFilter === 'custom' && customDateRange) {
       dateRangeStart = new Date(customDateRange.startDate);
       dateRangeStart.setHours(0, 0, 0, 0);
@@ -124,6 +265,11 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
       const duration = dateRangeEnd.getTime() - dateRangeStart.getTime();
       ppDateRangeEnd = new Date(dateRangeStart);
       ppDateRangeStart = new Date(dateRangeStart.getTime() - duration);
+    } else if (dateFilter === 'all') {
+      // All time - no PP comparison
+      dateRangeStart = null;
+      dateRangeEnd = new Date(now);
+      dateRangeEnd.setHours(23, 59, 59, 999);
     }
     
     // Current Period clicks
@@ -171,6 +317,46 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
     return num.toString();
   };
 
+  const handleChartClick = (data: any) => {
+    // Recharts onClick event structure
+    if (!data) return;
+    
+    // Try multiple possible event structures
+    let dateStr: string | undefined;
+    
+    // Check if it's from activeLabel (common in newer Recharts versions)
+    if (data.activeLabel) {
+      dateStr = data.activeLabel;
+    }
+    // Check if it's from activePayload
+    else if (data.activePayload && data.activePayload[0] && data.activePayload[0].payload) {
+      dateStr = data.activePayload[0].payload.date;
+    }
+    // Check if it's from the direct payload
+    else if (data.date) {
+      dateStr = data.date;
+    }
+    
+    if (!dateStr) {
+      console.log('Unable to extract date from click event:', data);
+      return;
+    }
+    
+    const clickDate = new Date(dateStr);
+    
+    // Filter clicks for this specific day
+    const dayClicks = linkClicks.filter(click => {
+      const clickDateObj = new Date(click.timestamp);
+      return clickDateObj.toISOString().split('T')[0] === dateStr;
+    });
+    
+    if (dayClicks.length > 0) {
+      setSelectedDayClicksDate(clickDate);
+      setSelectedDayClicks(dayClicks);
+      setIsDayClicksModalOpen(true);
+    }
+  };
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -201,6 +387,9 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
               </div>
             ))}
           </div>
+          <p className="text-[10px] text-gray-500 mt-2 pt-2 border-t border-white/10 text-center">
+            Click to view details
+          </p>
         </div>
       );
     }
@@ -208,8 +397,8 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
   };
 
   // Colors for metrics
-  const totalClicksColor = '#10b981'; // Emerald
-  const uniqueClicksColor = '#3b82f6'; // Blue
+  const totalClicksColor = '#10b981'; // Green
+  const uniqueClicksColor = '#6b7280'; // Gray
 
   // Render chart based on type
   const renderChart = () => {
@@ -221,7 +410,7 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
     switch (chartType) {
       case 'bar':
         return (
-          <BarChart {...commonProps}>
+          <BarChart {...commonProps} onClick={handleChartClick}>
             <defs>
               <linearGradient id="barGradientTotal" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={totalClicksColor} stopOpacity={1} />
@@ -265,7 +454,7 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
               axisLine={false}
               tickFormatter={formatNumber}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.02)' }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.02)', cursor: 'pointer' }} />
             <Bar
               yAxisId="left"
               dataKey="totalClicks"
@@ -287,7 +476,7 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
 
       case 'line':
         return (
-          <LineChart {...commonProps}>
+          <LineChart {...commonProps} onClick={handleChartClick}>
             <CartesianGrid 
               strokeDasharray="3 3" 
               stroke="rgba(255, 255, 255, 0.05)" 
@@ -321,7 +510,7 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
               axisLine={false}
               tickFormatter={formatNumber}
             />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3', stroke: 'rgba(255, 255, 255, 0.2)' }} />
             <Line
               yAxisId="left"
               type="monotone"
@@ -347,7 +536,7 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
 
       case 'area':
         return (
-          <AreaChart {...commonProps}>
+          <AreaChart {...commonProps} onClick={handleChartClick}>
             <defs>
               <linearGradient id="totalClicksGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={totalClicksColor} stopOpacity={0.5} />
@@ -387,7 +576,7 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
               axisLine={false}
               tickFormatter={formatNumber}
             />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255, 255, 255, 0.2)', strokeWidth: 2 }} />
             <Area
               yAxisId="left"
               type="monotone"
@@ -520,7 +709,7 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
 
           <div 
             className={`p-4 rounded-xl bg-white/5 border transition-all cursor-pointer ${
-              hoveredMetric === 'unique' ? 'border-[#3B82F6] bg-[#3B82F6]/10' : 'border-white/5'
+              hoveredMetric === 'unique' ? 'border-[#6B7280] bg-[#6B7280]/10' : 'border-white/5'
             }`}
             onMouseEnter={() => setHoveredMetric('unique')}
             onMouseLeave={() => setHoveredMetric(null)}
@@ -545,12 +734,32 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
         </div>
 
         {/* Chart */}
-        <div className="h-64">
+        <div className="h-64 cursor-pointer">
           <ResponsiveContainer width="100%" height="100%">
             {renderChart()}
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* Day Clicks Modal */}
+      {isDayClicksModalOpen && selectedDayClicksDate && (
+        <DayClicksModal
+          isOpen={isDayClicksModalOpen}
+          onClose={() => {
+            setIsDayClicksModalOpen(false);
+            setSelectedDayClicksDate(null);
+            setSelectedDayClicks([]);
+          }}
+          date={selectedDayClicksDate}
+          clicks={selectedDayClicks}
+          links={links}
+          accounts={accounts}
+          onLinkClick={(link) => {
+            setIsDayClicksModalOpen(false);
+            onLinkClick(link);
+          }}
+        />
+      )}
     </div>
   );
 };

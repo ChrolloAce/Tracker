@@ -338,10 +338,13 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, currentProjectId, accountId);
     
     // Apply dashboard rules to filter videos
+    // When no rules are selected, show ALL videos (default behavior)
     let rulesFilteredVideos = videos;
-    if (selectedRuleIds.length > 0 && dashboardRules.length > 0) {
+    
+    // Only filter if rules are actively selected
+    if (selectedRuleIds && selectedRuleIds.length > 0 && dashboardRules && dashboardRules.length > 0) {
       const activeRules = dashboardRules.filter(r => 
-        selectedRuleIds.includes(r.id) && r.isActive
+        r && selectedRuleIds.includes(r.id) && r.isActive
       );
       console.log('🎯 Active Rules to Apply:', activeRules.map(r => ({
         id: r.id,
@@ -349,6 +352,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         conditions: r.conditions
       })));
       
+      // Apply filtering only if we have valid active rules
       if (activeRules.length > 0) {
         rulesFilteredVideos = videos.filter(video => {
           const matches = activeRules.some(rule => {
@@ -366,7 +370,11 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           return matches;
         });
         console.log(`✅ Filtered from ${videos.length} to ${rulesFilteredVideos.length} videos`);
+      } else {
+        console.log('📝 No active rules selected - showing all videos');
       }
+    } else {
+      console.log('📝 Rules filtering disabled - showing all videos');
     }
     
     // Store rules-filtered videos (without date filter) for PP calculations
@@ -720,11 +728,16 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           const accountVideos = videosByAccount.get(account.id) || [];
           
           // 🔑 STEP 1: Apply rules filtering (using dashboard's selected rules)
+          // When no rules are selected, show ALL videos (default behavior)
           let rulesFilteredVideos = accountVideos;
-          if (selectedRuleIds.length > 0 && dashboardRules.length > 0) {
+          
+          // Only filter if rules are actively selected
+          if (selectedRuleIds && selectedRuleIds.length > 0 && dashboardRules && dashboardRules.length > 0) {
             const activeRules = dashboardRules.filter(r => 
-              selectedRuleIds.includes(r.id) && r.isActive
+              r && selectedRuleIds.includes(r.id) && r.isActive
             );
+            
+            // Apply filtering only if we have valid active rules
             if (activeRules.length > 0) {
               rulesFilteredVideos = accountVideos.filter(video => {
                 return activeRules.some(rule => RulesService.videoMatchesRules(video, [rule]));
@@ -1187,7 +1200,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       {viewMode === 'table' ? (
         <div className="space-y-6">
           {/* Accounts Table */}
-          {accounts.length === 0 && processingAccounts.length === 0 ? (
+          {!loading && accounts.length === 0 && processingAccounts.length === 0 ? (
             <BlurEmptyState
               title="Add Your First Account to Track"
               description="Track Instagram, TikTok, YouTube, and X accounts to monitor followers, engagement, and growth."

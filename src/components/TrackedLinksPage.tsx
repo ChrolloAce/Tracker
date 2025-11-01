@@ -313,7 +313,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     
     switch (dateFilter) {
       case 'today':
-        startDate = new Date(now.setHours(0, 0, 0, 0));
+        startDate = new Date(now);
+        startDate.setHours(0, 0, 0, 0);
         break;
       case 'last7days':
         startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -560,6 +561,12 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           linkClicks={validLinkClicks}
           dateFilter={dateFilter}
           customDateRange={customDateRange}
+          links={links}
+          accounts={accounts}
+          onLinkClick={(link) => {
+            setSelectedLink(link);
+            setIsAnalyticsModalOpen(true);
+          }}
         />
 
         {/* Top Performers */}

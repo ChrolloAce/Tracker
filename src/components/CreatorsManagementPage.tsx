@@ -361,7 +361,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
       {activeTab === 'accounts' && (
         <>
           {/* Creators List - Dashboard Style */}
-          {creators.length === 0 ? (
+          {creators.length === 0 && pendingInvitations.length === 0 ? (
         <EmptyState
           title="Invite Your First Creator"
           description="Add content creators to your team, link their social accounts, track performance, and manage payments all in one place."
@@ -626,11 +626,10 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
           {/* Floating Action Button - Add Creator (only on Accounts tab) */}
           <button
             onClick={() => setShowInviteModal(true)}
-            className="fixed bottom-8 right-8 flex items-center gap-2 px-6 py-3 rounded-full font-medium transition-all transform hover:scale-105 active:scale-95 bg-white/10 hover:bg-white/15 text-white border border-white/20 hover:border-white/30 shadow-2xl z-40"
+            className="fixed bottom-8 right-8 flex items-center justify-center p-4 rounded-full font-medium transition-all transform hover:scale-105 active:scale-95 bg-white/10 hover:bg-white/15 text-white border border-white/20 hover:border-white/30 shadow-2xl z-40"
             title="Add Creator (Space)"
           >
-            <Plus className="w-5 h-5" />
-            <span>Add Creator</span>
+            <Plus className="w-6 h-6" />
           </button>
         </>
       )}
