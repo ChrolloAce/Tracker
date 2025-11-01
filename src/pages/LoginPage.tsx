@@ -114,9 +114,10 @@ const LoginPage: React.FC = () => {
   };
 
   // Show loading state if processing invitation or redirecting after login
-  if (processingInvite || redirecting) {
+  if (processingInvite || redirecting || (loading && (email || user))) {
+    console.log('🔄 Showing loading screen:', { processingInvite, redirecting, loading, hasEmail: !!email, hasUser: !!user });
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-8">
+      <div className="min-h-screen bg-[#FAFAFB] flex items-center justify-center p-8">
         <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-12 text-center">
           <div className="mb-6">
             <img src={viewtrackLogo} alt="ViewTrack" className="h-10 w-auto mx-auto" />
@@ -128,7 +129,7 @@ const LoginPage: React.FC = () => {
             {processingInvite ? 'Setting up your account...' : 'Logging you in...'}
           </h2>
           <p className="text-gray-500">
-            {processingInvite ? "We're creating your creator profile. This will only take a moment!" : 'Please wait while we load your dashboard.'}
+            {processingInvite ? "We're creating your creator profile. This will only take a moment!" : 'Please wait while we set up your workspace.'}
           </p>
         </div>
       </div>
