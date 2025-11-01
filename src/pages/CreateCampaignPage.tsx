@@ -62,7 +62,7 @@ const CreateCampaignPage: React.FC = () => {
   // Form data
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [coverImage, setCoverImage] = useState<string>('');
+  const [coverImage] = useState<string>('');
   const [campaignType, setCampaignType] = useState<CampaignType>('competition');
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['instagram', 'tiktok', 'youtube']);
   
