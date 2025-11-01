@@ -868,7 +868,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     const syncRevenue = async () => {
       try {
         // Calculate date range based on current filter
-        const range = DateFilterService.getDateRange(dateFilter, customDateRange);
+        const range = DateFilterService.getDateRange(dateFilter, customDateRange, submissions);
         const startDate = range.startDate;
         const endDate = range.endDate;
 
@@ -2696,7 +2696,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                         );
                       case 'top-performers':
                         {
-                          const topPerformersDateRange = DateFilterService.getDateRange(dateFilter, customDateRange);
+                          const topPerformersDateRange = DateFilterService.getDateRange(dateFilter, customDateRange, submissions);
                           return (
                             <TopPerformersSection
                               submissions={filteredSubmissions}
@@ -3055,7 +3055,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               );
             case 'top-performers':
               {
-                const topPerformersDateRangePreview = DateFilterService.getDateRange(dateFilter, customDateRange);
+                const topPerformersDateRangePreview = DateFilterService.getDateRange(dateFilter, customDateRange, submissions);
                 return (
                   <TopPerformersSection
                     submissions={filteredSubmissions}
@@ -3215,7 +3215,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             
             case 'comparison':
               // Get current filter's date range to pass to ComparisonGraph
-              const currentDateRange = DateFilterService.getDateRange(dateFilter, customDateRange);
+              const currentDateRange = DateFilterService.getDateRange(dateFilter, customDateRange, submissions);
               return (
                 <ComparisonGraph
                   submissions={filteredSubmissions}

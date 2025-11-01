@@ -10,7 +10,7 @@ class DateFilterService {
   /**
    * Get date range based on filter type
    */
-  static getDateRange(filterType: DateFilterType, customRange?: DateRange): DateRange {
+  static getDateRange(filterType: DateFilterType, customRange?: DateRange, submissions?: VideoSubmission[]): DateRange {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
@@ -92,6 +92,23 @@ class DateFilterService {
         
       case 'all':
       default:
+        // For 'all' time: find the earliest video upload date
+        if (submissions && submissions.length > 0) {
+          const dates = submissions.map(v => {
+            const uploadDate = v.uploadDate || v.dateSubmitted || v.timestamp;
+            return new Date(uploadDate).getTime();
+          });
+          const earliestTime = Math.min(...dates);
+          const startDate = new Date(earliestTime);
+          startDate.setHours(0, 0, 0, 0);
+          const endDate = new Date();
+          endDate.setHours(23, 59, 59, 999);
+          return {
+            startDate,
+            endDate
+          };
+        }
+        // Fallback if no submissions provided
         return {
           startDate: new Date(2020, 0, 1), // Far past date
           endDate: new Date(2030, 11, 31)  // Far future date
