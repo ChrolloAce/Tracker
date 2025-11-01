@@ -2114,28 +2114,32 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     )}
                   </button>
                   
-                  {/* Edit Layout Button - Icon Only */}
-                  <button
-                    onClick={() => setIsEditingLayout(true)}
-                    className="p-2 rounded-lg transition-all bg-white/5 text-white/90 border border-white/10 hover:border-white/20"
-                    title="Customize dashboard layout"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
+                  {/* Edit Layout Button - Icon Only (Hidden in demo mode) */}
+                  {!isDemoMode && (
+                    <button
+                      onClick={() => setIsEditingLayout(true)}
+                      className="p-2 rounded-lg transition-all bg-white/5 text-white/90 border border-white/10 hover:border-white/20"
+                      title="Customize dashboard layout"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                  )}
                   
-                  {/* Manual Refresh Button - Temporary for testing */}
-                  <button
-                    onClick={handleManualRefresh}
-                    disabled={isRefreshing}
-                    className={`p-2 rounded-lg transition-all border ${
-                      isRefreshing 
-                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 cursor-wait' 
-                        : 'bg-white/5 text-white/90 border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-400'
-                    }`}
-                    title="Manually refresh all video data"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                  </button>
+                  {/* Manual Refresh Button - Temporary for testing (Hidden in demo mode) */}
+                  {!isDemoMode && (
+                    <button
+                      onClick={handleManualRefresh}
+                      disabled={isRefreshing}
+                      className={`p-2 rounded-lg transition-all border ${
+                        isRefreshing 
+                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 cursor-wait' 
+                          : 'bg-white/5 text-white/90 border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-400'
+                      }`}
+                      title="Manually refresh all video data"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    </button>
+                  )}
                 </>
                ) : (
                  <>
