@@ -25,6 +25,8 @@ import BillingManagementPage from './components/BillingManagementPage';
 import CampaignDetailsPage from './components/CampaignDetailsPage';
 import CreateCampaignPage from './pages/CreateCampaignPage';
 import EditCampaignPage from './pages/EditCampaignPage';
+import { PreLaunchCover } from './components/PreLaunchCover';
+import { TestCover } from './components/TestCover';
 import { useEffect, useState } from 'react';
 import { AlertCircle } from 'lucide-react';
 
@@ -177,6 +179,8 @@ function App() {
   }
 
   return (
+    <TestCover>
+    <PreLaunchCover>
     <Routes>
       <Route 
         path="/" 
@@ -531,6 +535,8 @@ function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </PreLaunchCover>
+    </TestCover>
   );
 }
 

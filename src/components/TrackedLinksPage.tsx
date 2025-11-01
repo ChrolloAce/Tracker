@@ -47,6 +47,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
   const [linkToDelete, setLinkToDelete] = useState<TrackedLink | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [sortField, setSortField] = useState<'createdAt' | 'totalClicks' | 'uniqueClicks' | 'title'>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   
@@ -123,6 +124,14 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       setLoading(false);
     }
   };
+
+  // Track when initial load is complete (both links and linkClicks)
+  useEffect(() => {
+    if (!loading) {
+      // Mark complete immediately - no artificial delay!
+      setInitialLoadComplete(true);
+    }
+  }, [loading]);
 
   const handleCreateLink = async (originalUrl: string, title: string, description?: string, tags?: string[], linkedAccountId?: string) => {
     if (!currentOrgId || !currentProjectId || !user) return;
@@ -333,9 +342,9 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     });
   }, [validLinkClicks, dateFilter, customDateRange]);
 
-  // Generate sparkline data for the cards
+  // Generate sparkline data for the cards - OPTIMIZED for performance
   const sparklineData = useMemo(() => {
-    const generateData = (metric: 'total' | 'unique' | 'ctr') => {
+    // Limit data points for performance
       let numPoints = 30;
       let intervalMs = 24 * 60 * 60 * 1000; // 1 day
       
@@ -347,48 +356,47 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       } else if (dateFilter === 'last30days') {
         numPoints = 30;
       } else if (dateFilter === 'last90days') {
-        numPoints = 90;
-      }
-      
-      const data = [];
-      const now = new Date();
+      numPoints = 30; // Reduced from 90 for performance!
+      intervalMs = 3 * 24 * 60 * 60 * 1000; // 3-day intervals
+    }
+    
+    // Pre-convert all timestamps ONCE (not in the loop!)
+    const clicksWithDates = filteredClicks.map(click => ({
+      timestamp: click.timestamp instanceof Date 
+        ? click.timestamp.getTime()
+        : ((click.timestamp as any)?.toDate?.() || new Date(click.timestamp)).getTime(),
+      userAgent: click.userAgent,
+      deviceType: click.deviceType
+    }));
+    
+    // Generate all metrics in ONE pass through the data
+    const now = Date.now();
+    const dataPoints = [];
       
       for (let i = numPoints - 1; i >= 0; i--) {
-        const pointDate = new Date(now.getTime() - i * intervalMs);
-        const nextPointDate = new Date(pointDate.getTime() + intervalMs);
-        
-        const clicksInPeriod = filteredClicks.filter(click => {
-          // Convert Firestore Timestamp to Date if necessary
-          const clickDate = click.timestamp instanceof Date 
-            ? click.timestamp 
-            : (click.timestamp as any)?.toDate?.() || new Date(click.timestamp);
-          return clickDate >= pointDate && clickDate < nextPointDate;
-        });
-        
-        let value = 0;
-        if (metric === 'total') {
-          value = clicksInPeriod.length;
-        } else if (metric === 'unique') {
-          value = new Set(clicksInPeriod.map(c => `${c.userAgent}-${c.deviceType}`)).size;
-        } else if (metric === 'ctr') {
-          const uniqueClicks = new Set(clicksInPeriod.map(c => `${c.userAgent}-${c.deviceType}`)).size;
-          value = uniqueClicks;
-        }
-        
-        data.push({ 
-          value, 
-          timestamp: pointDate.getTime(),
-          clicks: clicksInPeriod // Include clicks for tooltip
+      const pointStart = now - i * intervalMs;
+      const pointEnd = pointStart + intervalMs;
+      
+      // Filter clicks for this time period
+      const clicksInPeriod = clicksWithDates.filter(c => 
+        c.timestamp >= pointStart && c.timestamp < pointEnd
+      );
+      
+      const uniqueSet = new Set(clicksInPeriod.map(c => `${c.userAgent}-${c.deviceType}`));
+      
+      dataPoints.push({
+        timestamp: pointStart,
+        total: clicksInPeriod.length,
+        unique: uniqueSet.size,
+        ctr: uniqueSet.size
         });
       }
       
-      return data;
-    };
-    
+    // Return all metrics efficiently
     return {
-      total: generateData('total'),
-      unique: generateData('unique'),
-      ctr: generateData('ctr')
+      total: dataPoints.map(d => ({ value: d.total, timestamp: d.timestamp, clicks: [] })),
+      unique: dataPoints.map(d => ({ value: d.unique, timestamp: d.timestamp, clicks: [] })),
+      ctr: dataPoints.map(d => ({ value: d.ctr, timestamp: d.timestamp, clicks: [] }))
     };
   }, [filteredClicks, dateFilter]);
 
@@ -491,7 +499,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     return num.toString();
   };
 
-  if (loading) {
+  // Show loading skeleton during initial load OR if we haven't received linkClicks yet
+  if (loading || (links.length > 0 && !initialLoadComplete)) {
     return <PageLoadingSkeleton type="links" />;
   }
 

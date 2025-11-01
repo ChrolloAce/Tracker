@@ -367,9 +367,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const creatorsPageRef = useRef<CreatorsManagementPageRef | null>(null);
 
   // Dashboard platform filter state
-  const [dashboardPlatformFilter, setDashboardPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'youtube'>(() => {
+  const [dashboardPlatformFilter, setDashboardPlatformFilter] = useState<'all' | 'instagram' | 'tiktok' | 'youtube' | 'twitter'>(() => {
     const saved = localStorage.getItem('dashboardPlatformFilter');
-    return (saved as 'all' | 'instagram' | 'tiktok' | 'youtube') || 'all';
+    return (saved as 'all' | 'instagram' | 'tiktok' | 'youtube' | 'twitter') || 'all';
   });
   const [platformDropdownOpen, setPlatformDropdownOpen] = useState(false);
   
@@ -606,7 +606,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     };
     
     loadUserRole();
-  }, [user, currentOrgId, activeTab]);
+  }, [user, currentOrgId]); // Removed activeTab - user role doesn't change on tab switch!
 
   // One-time data loading (no real-time listeners)
   useEffect(() => {
@@ -638,7 +638,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     try {
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
-        const { accounts, submissions, rules, selectedRuleIds: cachedRuleIds, timestamp } = JSON.parse(cached);
+        const { accounts, submissions, rules, selectedRuleIds: cachedRuleIds, links: cachedLinks, linkClicks: cachedClicks, timestamp } = JSON.parse(cached);
         const cacheAge = Date.now() - timestamp;
         
         // Use cache if less than 5 minutes old
@@ -654,11 +654,13 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           setTrackedAccounts(accounts || []);
           setSubmissions(submissions || []);
           setAllRules(rules || []);
-          setSelectedRuleIds(filteredCachedRuleIds); // Use filtered IDs
+          setSelectedRuleIds(filteredCachedRuleIds);
+          setLinks(cachedLinks || []);
+          setLinkClicks(cachedClicks || []);
           setRulesLoadedFromFirebase(true);
-          setDataLoadedFromFirebase(true); // Mark data as loaded from cache
+          setDataLoadedFromFirebase(true);
           hasCached = true;
-          console.log(`⚡ Loaded from cache in ${Math.round(cacheAge / 1000)}s old`);
+          console.log(`⚡ Loaded from cache (${Math.round(cacheAge / 1000)}s old) - including ${cachedLinks?.length || 0} links & ${cachedClicks?.length || 0} clicks`);
         }
       }
     } catch (error) {
@@ -666,53 +668,65 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     }
     console.timeEnd('⚡ Cache load');
     
-    // Load ALL data in PARALLEL for maximum speed!
+    // Load ALL data in TRUE PARALLEL for maximum speed!
     (async () => {
       console.time('🚀 Parallel Firebase load');
       
-      // One-time load for tracked accounts
-    const accountsRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts');
-    const accountsQuery = query(accountsRef, orderBy('dateAdded', 'desc'));
-    
     try {
-      const accountsSnapshot = await getDocs(accountsQuery);
+      // PHASE 1: Load ALL top-level collections in parallel
+      const [accountsSnapshot, videosSnapshot, rulesSnapshot, allLinks, allClicks, allIntegrations, userPrefsDoc] = await Promise.all([
+        // 1. Accounts
+        getDocs(query(
+          collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts'),
+          orderBy('dateAdded', 'desc')
+        )),
+        
+        // 2. Videos  
+        getDocs(query(
+          collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'videos'),
+          orderBy('dateAdded', 'desc'),
+          limit(1000)
+        )),
+        
+        // 3. Rules
+        getDocs(collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackingRules')),
+        
+        // 4. Links
+        FirestoreDataService.getLinks(currentOrgId, currentProjectId),
+        
+        // 5. Link Clicks (OPTIMIZED!)
+        LinkClicksService.getProjectLinkClicks(currentOrgId, currentProjectId),
+        
+        // 6. Revenue Integrations
+        RevenueDataService.getAllIntegrations(currentOrgId, currentProjectId),
+        
+        // 7. User Preferences
+        getDoc(doc(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'userPreferences', user.uid))
+      ]);
+      
+      // Process accounts
       const accounts: TrackedAccount[] = accountsSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       } as TrackedAccount));
-      
       setTrackedAccounts(accounts);
-    } catch (error) {
-      console.error('❌ Failed to load accounts:', error);
-    }
-    
-    // One-time load for videos
-    const videosRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'videos');
-    const videosQuery = query(videosRef, orderBy('dateAdded', 'desc'), limit(1000));
-    
-    try {
-      const videosSnapshot = await getDocs(videosQuery);
-      
-      // Get current accounts for mapping
-      const accounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
       const accountsMap = new Map(accounts.map(acc => [acc.id, acc]));
       
-      // Get video IDs for snapshot fetching
-      const videoIds = videosSnapshot.docs.map(doc => doc.id);
       
-      // Fetch snapshots for all videos in parallel
+      // PHASE 2: Load video snapshots (depends on videoIds from phase 1)
+      const videoIds = videosSnapshot.docs.map(doc => doc.id);
       const snapshotsMap = await FirestoreDataService.getVideoSnapshotsBatch(
         currentOrgId, 
         currentProjectId, 
         videoIds
       );
       
+      // Process videos
       const allSubmissions: VideoSubmission[] = videosSnapshot.docs.map(doc => {
         const video = { id: doc.id, ...doc.data() } as any;
         const account = video.trackedAccountId ? accountsMap.get(video.trackedAccountId) : null;
         const snapshots = snapshotsMap.get(video.id) || [];
         
-        // Load caption from Firestore fields - use actual field names from Firestore
         const caption = video.caption || video.videoTitle || '';
         const title = video.videoTitle || video.caption || '';
         
@@ -739,119 +753,66 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           snapshots: snapshots
         };
       });
-      
       setSubmissions(allSubmissions);
-    } catch (error) {
-      console.error('❌ Error loading videos:', error);
-    }
     
-    // One-time load for rules AND user's selected rules
-    try {
-      const rulesRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackingRules');
-      const rulesSnapshot = await getDocs(rulesRef);
+      // Process rules
       const rules = rulesSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as TrackingRule[];
       
-      // Load user's selected rules from their preferences
-      const userPrefsPath = `organizations/${currentOrgId}/projects/${currentProjectId}/userPreferences/${user.uid}`;
-      console.log('📂 Loading user preferences from:', userPrefsPath);
-      
-      const userPrefsRef = doc(
-        db, 
-        'organizations', 
-        currentOrgId, 
-        'projects', 
-        currentProjectId, 
-        'userPreferences', 
-        user.uid
-      );
-      const userPrefsDoc = await getDoc(userPrefsRef);
-      
-      console.log('📄 User prefs doc exists?', userPrefsDoc.exists());
-      if (userPrefsDoc.exists()) {
-        console.log('📄 User prefs data:', userPrefsDoc.data());
-      }
-      
       const savedSelectedRuleIds = userPrefsDoc.exists() ? (userPrefsDoc.data()?.selectedRuleIds || []) : [];
-      
-      // CRITICAL: Filter out rule IDs that don't exist in this project
-      // This prevents rules from other projects from being applied
       const validRuleIds = new Set(rules.map(r => r.id));
       const filteredSelectedRuleIds = savedSelectedRuleIds.filter((id: string) => validRuleIds.has(id));
       
       if (filteredSelectedRuleIds.length !== savedSelectedRuleIds.length) {
         console.warn(`⚠️ Filtered out ${savedSelectedRuleIds.length - filteredSelectedRuleIds.length} invalid rule IDs from other projects`);
-        console.warn('  - Saved IDs:', savedSelectedRuleIds);
-        console.warn('  - Valid IDs:', filteredSelectedRuleIds);
-        console.warn('  - Available rule IDs in this project:', Array.from(validRuleIds));
       }
       
-      console.log('✅ Loaded rules:', rules.length);
-      console.log('✅ Loaded selected rules from Firebase:', savedSelectedRuleIds);
-      console.log('✅ Filtered to valid rules for this project:', filteredSelectedRuleIds);
-      console.log('🎯 Rule IDs available:', rules.map(r => r.id));
-      
-      // Set both at the same time to avoid race conditions
       setAllRules(rules);
-      setSelectedRuleIds(filteredSelectedRuleIds); // Use filtered IDs
-      setRulesLoadedFromFirebase(true);
-      setDataLoadedFromFirebase(true); // Mark data as loaded (even if empty)
-      console.timeEnd('🚀 Parallel Firebase load');
-      console.log('✅ All data loaded successfully');
+      setSelectedRuleIds(filteredSelectedRuleIds);
       
-      // Cache everything for instant next load!
+      // Set links and clicks (already loaded in parallel!)
+      setLinks(allLinks);
+      setLinkClicks(allClicks);
+      
+      // Process revenue integrations
+      const enabledIntegrations = allIntegrations.filter(i => i.enabled);
+      setRevenueIntegrations(enabledIntegrations);
+      
+      // Load revenue metrics if integrations exist
+      if (enabledIntegrations.length > 0) {
+        const metrics = await RevenueDataService.getLatestMetrics(currentOrgId, currentProjectId);
+        setRevenueMetrics(metrics);
+      }
+      
+      setRulesLoadedFromFirebase(true);
+      setDataLoadedFromFirebase(true);
+      console.timeEnd('🚀 Parallel Firebase load');
+      console.log('✅ All data loaded in parallel!');
+      
+      // Cache everything including links and clicks!
       if (!hasCached) {
         try {
           localStorage.setItem(cacheKey, JSON.stringify({
-            accounts: trackedAccounts,
-            submissions,
+            accounts,
+            submissions: allSubmissions,
             rules,
             selectedRuleIds: savedSelectedRuleIds,
+            links: allLinks,
+            linkClicks: allClicks,
             timestamp: Date.now()
           }));
-          console.log('💾 Dashboard cached for next time');
+          console.log('💾 Dashboard cached (including links & clicks)');
         } catch (error) {
           console.error('Cache save error:', error);
         }
       }
     } catch (error) {
-      console.error('❌ Failed to load rules:', error);
-      setDataLoadedFromFirebase(true); // Mark as loaded even on error to prevent infinite loading
+      console.error('❌ Failed to load data:', error);
+      setDataLoadedFromFirebase(true);
+      setRulesLoadedFromFirebase(true);
       console.timeEnd('🚀 Parallel Firebase load');
-    }
-    
-    // One-time load for link clicks
-    try {
-      const allClicks = await LinkClicksService.getProjectLinkClicks(currentOrgId, currentProjectId);
-      setLinkClicks(allClicks);
-    } catch (error) {
-      console.error('❌ Failed to load link clicks:', error);
-    }
-    
-    // Load tracked links
-    try {
-      const allLinks = await FirestoreDataService.getLinks(currentOrgId, currentProjectId);
-      setLinks(allLinks);
-    } catch (error) {
-      console.error('❌ Failed to load links:', error);
-    }
-    
-    // Load revenue integrations (syncing will be handled by date filter effect)
-    try {
-      const allIntegrations = await RevenueDataService.getAllIntegrations(currentOrgId, currentProjectId);
-      // ✅ ONLY SET ENABLED INTEGRATIONS
-      const enabledIntegrations = allIntegrations.filter(i => i.enabled);
-      setRevenueIntegrations(enabledIntegrations);
-      
-      // Load existing metrics immediately (syncing will happen via date filter effect)
-      if (enabledIntegrations.length > 0) {
-        const metrics = await RevenueDataService.getLatestMetrics(currentOrgId, currentProjectId);
-        setRevenueMetrics(metrics);
-      }
-    } catch (error) {
-      console.error('❌ Failed to load revenue data:', error);
     }
     
     })(); // End of async IIFE
@@ -1996,23 +1957,26 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     >
                       {dashboardPlatformFilter === 'all' ? (
                         <>
-                          <div className="relative flex items-center" style={{ width: '20px', height: '16px' }}>
-                            <div className="absolute left-0" style={{ zIndex: 3 }}>
+                          <div className="relative flex items-center" style={{ width: '28px', height: '16px' }}>
+                            <div className="absolute left-0" style={{ zIndex: 4 }}>
                               <PlatformIcon platform="instagram" size="sm" />
                             </div>
-                            <div className="absolute left-1.5" style={{ zIndex: 2 }}>
+                            <div className="absolute" style={{ left: '6px', zIndex: 3 }}>
                               <PlatformIcon platform="tiktok" size="sm" />
                             </div>
-                            <div className="absolute left-3" style={{ zIndex: 1 }}>
+                            <div className="absolute" style={{ left: '12px', zIndex: 2 }}>
                               <PlatformIcon platform="youtube" size="sm" />
+                            </div>
+                            <div className="absolute" style={{ left: '18px', zIndex: 1 }}>
+                              <PlatformIcon platform="twitter" size="sm" />
                             </div>
                           </div>
                           <span className="ml-2">All</span>
                         </>
                       ) : (
                         <>
-                          <PlatformIcon platform={dashboardPlatformFilter as 'instagram' | 'tiktok' | 'youtube'} size="sm" />
-                          <span className="capitalize">{dashboardPlatformFilter}</span>
+                          <PlatformIcon platform={dashboardPlatformFilter as 'instagram' | 'tiktok' | 'youtube' | 'twitter'} size="sm" />
+                          <span className="capitalize">{dashboardPlatformFilter === 'twitter' ? 'X' : dashboardPlatformFilter}</span>
                         </>
                       )}
                       <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-white/50" />
@@ -2032,15 +1996,18 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                               : 'text-white/90 hover:bg-white/5'
                           }`}
                         >
-                          <div className="relative flex items-center" style={{ width: '20px', height: '16px' }}>
-                            <div className="absolute left-0" style={{ zIndex: 3 }}>
+                          <div className="relative flex items-center" style={{ width: '28px', height: '16px' }}>
+                            <div className="absolute left-0" style={{ zIndex: 4 }}>
                               <PlatformIcon platform="instagram" size="sm" />
                             </div>
-                            <div className="absolute left-1.5" style={{ zIndex: 2 }}>
+                            <div className="absolute" style={{ left: '6px', zIndex: 3 }}>
                               <PlatformIcon platform="tiktok" size="sm" />
                             </div>
-                            <div className="absolute left-3" style={{ zIndex: 1 }}>
+                            <div className="absolute" style={{ left: '12px', zIndex: 2 }}>
                               <PlatformIcon platform="youtube" size="sm" />
+                            </div>
+                            <div className="absolute" style={{ left: '18px', zIndex: 1 }}>
+                              <PlatformIcon platform="twitter" size="sm" />
                             </div>
                           </div>
                           <span className="ml-2">All Platforms</span>
@@ -2089,6 +2056,21 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                         >
                           <PlatformIcon platform="youtube" size="sm" />
                           <span>YouTube</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setDashboardPlatformFilter('twitter');
+                            localStorage.setItem('dashboardPlatformFilter', 'twitter');
+                            setPlatformDropdownOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${
+                            dashboardPlatformFilter === 'twitter' 
+                              ? 'bg-emerald-500/20 text-emerald-400' 
+                              : 'text-white/90 hover:bg-white/5'
+                          }`}
+                        >
+                          <PlatformIcon platform="twitter" size="sm" />
+                          <span>X (Twitter)</span>
                         </button>
                       </div>
                     )}

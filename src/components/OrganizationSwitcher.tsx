@@ -13,6 +13,7 @@ const OrganizationSwitcher: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const hasLoadedRef = useRef(false); // Track if we've loaded already
   
   // Check if in demo mode
   let demoContext;
@@ -23,9 +24,17 @@ const OrganizationSwitcher: React.FC = () => {
   }
   const isDemoMode = demoContext.isDemoMode;
 
+  // ONLY load organizations once, not on every render!
   useEffect(() => {
+    if (hasLoadedRef.current) {
+      return; // Already loaded
+    }
+    
+    if (user) {
     loadOrganizations();
-  }, [user]);
+      hasLoadedRef.current = true;
+    }
+  }, [user?.uid]); // Only when user ID changes (login/logout)
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -42,7 +51,12 @@ const OrganizationSwitcher: React.FC = () => {
     if (!user) return;
 
     try {
+      // Don't show skeleton on reload, keep existing data visible
+      const isInitialLoad = organizations.length === 0;
+      if (isInitialLoad) {
       setLoading(true);
+      }
+      
       const orgsData = await OrganizationService.getUserOrganizations(user.uid);
       setOrganizations(orgsData);
 

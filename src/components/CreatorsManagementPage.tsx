@@ -1,6 +1,8 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Lottie from 'lottie-react';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../services/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { OrgMember, Creator, TeamInvitation } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
@@ -88,29 +90,24 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
     }
   }));
 
-  const calculateCreatorEarnings = async (creatorId: string, profile: Creator): Promise<{ earnings: number; videoCount: number }> => {
+  // Optimized: accepts pre-loaded accounts and links (no redundant fetching!)
+  const calculateCreatorEarningsOptimized = async (
+    creatorId: string, 
+    profile: Creator,
+    projectAccounts: any[],
+    creatorLinks: any[]
+  ): Promise<{ earnings: number; videoCount: number }> => {
     if (!currentOrgId || !currentProjectId) {
       return { earnings: 0, videoCount: 0 };
     }
 
     try {
-      // Get linked accounts
-      const links = await CreatorLinksService.getCreatorLinkedAccounts(
-        currentOrgId,
-        currentProjectId,
-        creatorId
-      );
-      
-      if (links.length === 0) return { earnings: 0, videoCount: 0 };
+      // Use pre-loaded links (no Firestore query!)
+      if (creatorLinks.length === 0) return { earnings: 0, videoCount: 0 };
 
-      const accountIds = links.map(link => link.accountId);
+      const accountIds = creatorLinks.map(link => link.accountId);
       
-      // Load all accounts
-      const projectAccounts = await FirestoreDataService.getTrackedAccounts(
-        currentOrgId,
-        currentProjectId
-      );
-      
+      // Use pre-loaded accounts (no Firestore query!)
       const linkedAccounts = projectAccounts.filter(acc => accountIds.includes(acc.id));
       
       if (linkedAccounts.length === 0) return { earnings: 0, videoCount: 0 };
@@ -205,15 +202,17 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
 
     setLoading(true);
     try {
-      // Check if user is admin
-      const role = await OrganizationService.getUserRole(currentOrgId, user.uid);
-      setIsAdmin(role === 'owner' || role === 'admin');
-
-      // Load creators for THIS PROJECT
-      const creatorProfilesList = await CreatorLinksService.getAllCreators(currentOrgId, currentProjectId);
+      // PHASE 1: Load ALL basic data in PARALLEL
+      const [role, creatorProfilesList, membersData, invitesData, projectAccounts, allCreatorLinksSnapshot] = await Promise.all([
+        OrganizationService.getUserRole(currentOrgId, user.uid),
+        CreatorLinksService.getAllCreators(currentOrgId, currentProjectId),
+        OrganizationService.getOrgMembers(currentOrgId),
+        TeamInvitationService.getOrgInvitations(currentOrgId),
+        FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId),
+        getDocs(collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'creatorLinks'))
+      ]);
       
-      // Load member data for each creator
-      const membersData = await OrganizationService.getOrgMembers(currentOrgId);
+      setIsAdmin(role === 'owner' || role === 'admin');
       
       // Create a combined list:
       // 1. Creators with member accounts (accepted invitations)
@@ -245,19 +244,30 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
       });
       setCreatorProfiles(creatorProfilesMap);
 
-      // Load pending creator invitations (only for admins)
-      if (role === 'owner' || role === 'admin') {
-        const invitesData = await TeamInvitationService.getOrgInvitations(currentOrgId);
+      // Filter for creator invitations (already loaded in parallel!)
         const creatorInvitations = invitesData.filter(inv => inv.role === 'creator');
         setPendingInvitations(creatorInvitations);
-      }
 
-      // Calculate real-time earnings and video counts for each creator
+      // Create a map of creatorId -> links for O(1) lookup
+      const creatorLinksMap = new Map<string, any[]>();
+      allCreatorLinksSnapshot.docs.forEach(doc => {
+        const link = { id: doc.id, ...doc.data() };
+        const creatorId = (link as any).creatorId;
+        if (!creatorLinksMap.has(creatorId)) {
+          creatorLinksMap.set(creatorId, []);
+        }
+        creatorLinksMap.get(creatorId)!.push(link);
+      });
+
+      // PHASE 2: Calculate earnings for all creators in parallel
+      // Reuse pre-loaded accounts and links!
       const earningsMap = new Map<string, number>();
       const videoCountsMap = new Map<string, number>();
+      
       await Promise.all(
         creatorProfilesList.map(async (profile) => {
-          const { earnings, videoCount } = await calculateCreatorEarnings(profile.id, profile);
+          const creatorLinks = creatorLinksMap.get(profile.id) || [];
+          const { earnings, videoCount } = await calculateCreatorEarningsOptimized(profile.id, profile, projectAccounts, creatorLinks);
           earningsMap.set(profile.id, earnings);
           videoCountsMap.set(profile.id, videoCount);
         })

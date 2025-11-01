@@ -19,6 +19,7 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
   const [isOpen, setIsOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<ProjectWithStats | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const hasLoadedRef = useRef<string | null>(null); // Track which org we've loaded
   
   // Check if in demo mode
   let demoContext;
@@ -29,9 +30,17 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
   }
   const isDemoMode = demoContext.isDemoMode;
 
+  // ONLY load projects once per org, not on every render!
   useEffect(() => {
+    if (hasLoadedRef.current === currentOrgId) {
+      return; // Already loaded for this org
+    }
+    
+    if (currentOrgId) {
     loadProjects();
-  }, [currentOrgId, userRole, user]);
+      hasLoadedRef.current = currentOrgId;
+    }
+  }, [currentOrgId]); // Only when org changes!
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -48,7 +57,12 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
     if (!currentOrgId || !user) return;
 
     try {
+      // Don't show skeleton on reload, keep existing data visible
+      const isInitialLoad = projects.length === 0;
+      if (isInitialLoad) {
       setLoading(true);
+      }
+      
       const projectsData = await ProjectService.getProjectsWithStats(currentOrgId, false);
       
       // If user is a creator, filter to only projects they're assigned to
