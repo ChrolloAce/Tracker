@@ -25,6 +25,7 @@ import ComparisonGraph from '../components/ComparisonGraph';
 import PostingActivityHeatmap from '../components/PostingActivityHeatmap';
 import DayVideosModal from '../components/DayVideosModal';
 import { EmptyState } from '../components/ui/EmptyState';
+import { BlurEmptyState } from '../components/ui/BlurEmptyState';
 import AccountsPage, { AccountsPageRef } from '../components/AccountsPage';
 import SettingsPage from '../components/SettingsPage';
 import SubscriptionPage from '../components/SubscriptionPage';
@@ -48,6 +49,8 @@ import { PlatformIcon } from '../components/ui/PlatformIcon';
 import { VideoSubmission, InstagramVideoData } from '../types';
 import DateFilterService from '../services/DateFilterService';
 import ThemeService from '../services/ThemeService';
+import profileAnimation from '../../public/lottie/Profile.json';
+import videoMaterialAnimation from '../../public/lottie/Video Material.json';
 import FirestoreDataService from '../services/FirestoreDataService';
 import LinkClicksService, { LinkClick } from '../services/LinkClicksService';
 import RulesService from '../services/RulesService';
@@ -3017,7 +3020,22 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 />
               );
             case 'tracked-accounts':
-              return (
+              return trackedAccounts.length === 0 ? (
+                <BlurEmptyState
+                  title="No Accounts Yet"
+                  description="Start tracking social media accounts to monitor their performance and growth."
+                  animation={profileAnimation}
+                  tooltipText="Track Instagram, TikTok, YouTube, and X accounts to monitor followers, engagement, and content performance over time."
+                  actions={[
+                    {
+                      label: 'Add Account',
+                      onClick: () => navigate('/accounts'),
+                      icon: AtSign,
+                      primary: true
+                    }
+                  ]}
+                />
+              ) : (
                 <div className="bg-zinc-900 rounded-lg p-4 border border-white/10">
                   <h3 className="text-lg font-semibold text-white mb-4">Tracked Accounts</h3>
                   <div className="text-white/60 text-sm">
@@ -3041,7 +3059,22 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 </div>
               );
             case 'videos-table':
-              return (
+              return combinedSubmissions.length === 0 ? (
+                <BlurEmptyState
+                  title="No Videos Yet"
+                  description="Add videos to track performance metrics like views, likes, comments, and more."
+                  animation={videoMaterialAnimation}
+                  tooltipText="Track videos from Instagram, TikTok, YouTube, and X to analyze engagement, reach, and performance trends."
+                  actions={[
+                    {
+                      label: 'Add Video',
+                      onClick: () => setIsModalOpen(true),
+                      icon: Video,
+                      primary: true
+                    }
+                  ]}
+                />
+              ) : (
                 <VideoSubmissionsTable
                   submissions={combinedSubmissions.slice(0, 5)}
                   onStatusUpdate={() => {}}
