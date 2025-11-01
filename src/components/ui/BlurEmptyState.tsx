@@ -29,8 +29,11 @@ export const BlurEmptyState: React.FC<BlurEmptyStateProps> = ({
   return (
     <div className="flex items-center justify-center min-h-[400px] py-8">
       <div className="relative">
-        {/* Blur background */}
-        <div className="absolute inset-0 bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10"></div>
+        {/* Transparent gradient background with blur */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] via-white/[0.02] to-transparent backdrop-blur-xl rounded-2xl border border-white/10"></div>
+        
+        {/* Subtle glow effect */}
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-blue-500/5 rounded-2xl opacity-50"></div>
         
         {/* Content */}
         <div className="relative max-w-xl mx-auto text-center px-8 py-12">
