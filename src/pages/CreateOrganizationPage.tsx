@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { Users, Upload, X, Check, ChevronRight } from 'lucide-react';
+import { Users, Upload, X, Check, ChevronRight, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { signOut } from 'firebase/auth';
 import OrganizationService from '../services/OrganizationService';
 import ProjectService from '../services/ProjectService';
 import FirebaseStorageService from '../services/FirebaseStorageService';
 import FirestoreDataService from '../services/FirestoreDataService';
 import TeamInvitationService from '../services/TeamInvitationService';
 import { doc, setDoc } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { auth, db } from '../services/firebase';
 import { clsx } from 'clsx';
 import viewtrackLogo from '/vtlogo.png';
 import instagramIcon from '/Instagram_icon.png';
@@ -475,10 +476,24 @@ const OrganizationOnboarding: React.FC = () => {
     }
   };
 
+  const handleBackToLogin = async () => {
+    await signOut(auth);
+    window.location.href = '/login';
+  };
+
   return (
     <div className="min-h-screen bg-[#FAFAFB] flex">
       {/* Left Panel - Dotted Black Grid */}
       <div className="hidden lg:flex lg:w-5/12 xl:w-1/2 bg-black relative overflow-hidden">
+        {/* Back to Login Button */}
+        <button
+          onClick={handleBackToLogin}
+          className="absolute top-6 left-6 flex items-center gap-2 text-white/70 hover:text-white transition-colors z-10"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span className="text-sm font-medium">Back to Login</span>
+        </button>
+        
         {/* Dotted Background Pattern */}
         <div 
           className="absolute inset-0 opacity-20"
