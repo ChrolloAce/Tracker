@@ -1,17 +1,18 @@
 import React, { useState, useMemo } from 'react';
 import { ChevronDown, Info, Link as LinkIcon, Users, Globe } from 'lucide-react';
-import { TrackedLink } from '../types/firestore';
+import { TrackedLink, TrackedAccount } from '../types/firestore';
 import { LinkClick } from '../services/LinkClicksService';
 
 interface TopLinksPerformersProps {
   links: TrackedLink[];
   linkClicks: LinkClick[];
+  accounts: Map<string, TrackedAccount>;
   onLinkClick?: (link: TrackedLink) => void;
 }
 
 type SectionType = 'clicks' | 'unique' | 'referrers';
 
-const TopLinksPerformers: React.FC<TopLinksPerformersProps> = ({ links, linkClicks, onLinkClick }) => {
+const TopLinksPerformers: React.FC<TopLinksPerformersProps> = ({ links, linkClicks, accounts, onLinkClick }) => {
   const [activeSection, setActiveSection] = useState<SectionType>('clicks');
   const [topCount, setTopCount] = useState(5);
   const [showInfo, setShowInfo] = useState(false);
@@ -254,6 +255,7 @@ const TopLinksPerformers: React.FC<TopLinksPerformersProps> = ({ links, linkClic
                   const value = activeSection === 'clicks' ? item.clicks : (item as any).uniqueClicks;
                   const percentage = sectionData.maxValue > 0 ? (value / sectionData.maxValue) * 100 : 0;
                   const link = item.link;
+                  const linkedAccount = link.linkedAccountId ? accounts.get(link.linkedAccountId) : null;
                   
                   return (
                     <div 
@@ -266,10 +268,20 @@ const TopLinksPerformers: React.FC<TopLinksPerformersProps> = ({ links, linkClic
                     >
                       {/* Bar Container */}
                       <div className="relative h-10 flex items-center">
-                        {/* Link Icon (Spearhead) */}
+                        {/* Profile Image or Link Icon (Spearhead) */}
                         <div className="absolute left-0 z-10 flex-shrink-0">
-                          <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/10 bg-gray-800/50 backdrop-blur-sm flex items-center justify-center">
-                            <LinkIcon className="w-5 h-5 text-gray-400" />
+                          <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/10 bg-gray-800/50 backdrop-blur-sm">
+                            {linkedAccount?.profilePicture ? (
+                              <img
+                                src={linkedAccount.profilePicture}
+                                alt={linkedAccount.username}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <LinkIcon className="w-5 h-5 text-gray-400" />
+                              </div>
+                            )}
                           </div>
                         </div>
 

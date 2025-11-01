@@ -566,6 +566,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         <TopLinksPerformers
           links={links}
           linkClicks={filteredClicks}
+          accounts={accounts}
           onLinkClick={handleViewAnalytics}
         />
       </div>

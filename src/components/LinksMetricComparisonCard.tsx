@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { LinkClick } from '../services/LinkClicksService';
 import { DateFilterType } from './DateRangeFilter';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import { AreaChart, Area, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { TrendingUp, TrendingDown, BarChart2, Activity, Info, ChevronDown } from 'lucide-react';
 
 interface LinksMetricComparisonCardProps {
   linkClicks: LinkClick[];
@@ -10,12 +10,16 @@ interface LinksMetricComparisonCardProps {
   customDateRange?: { startDate: Date; endDate: Date };
 }
 
+type ChartType = 'line' | 'area' | 'bar';
+
 const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
   linkClicks,
   dateFilter,
   customDateRange,
 }) => {
   const [hoveredMetric, setHoveredMetric] = useState<'links' | 'unique' | null>(null);
+  const [chartType, setChartType] = useState<ChartType>('area');
+  const [showTooltipInfo, setShowTooltipInfo] = useState(false);
 
   const chartData = useMemo(() => {
     // Group clicks by date
@@ -170,19 +174,30 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-[#1a1a1a] border border-white/10 rounded-lg p-3 shadow-xl">
-          <p className="text-xs text-gray-400 mb-2">
+        <div 
+          className="backdrop-blur-xl text-white rounded-xl border shadow-2xl"
+          style={{
+            backgroundColor: 'rgba(26, 26, 26, 0.95)',
+            borderColor: 'rgba(255, 255, 255, 0.1)',
+            padding: '12px 16px'
+          }}
+        >
+          <p className="text-sm font-semibold text-white mb-2">
             {new Date(label).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           </p>
           <div className="space-y-1">
             {payload.map((entry: any, index: number) => (
               <div key={index} className="flex items-center justify-between gap-4">
-                <span className="text-xs" style={{ color: entry.color }}>
-                  {entry.name}:
-                </span>
-                <span className="text-xs font-semibold text-white">
-                  {formatNumber(entry.value)}
-                </span>
+                <div className="flex items-center gap-2">
+                  <div 
+                    className="w-2.5 h-2.5 rounded-sm" 
+                    style={{ backgroundColor: entry.color }}
+                  />
+                  <span className="text-xs text-gray-300">
+                    {entry.dataKey === 'totalClicks' ? 'Total Clicks' : 'Unique Clicks'}:
+                  </span>
+                </div>
+                <span className="text-sm font-bold text-white">{formatNumber(entry.value)}</span>
               </div>
             ))}
           </div>
@@ -190,6 +205,210 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
       );
     }
     return null;
+  };
+
+  // Colors for metrics
+  const totalClicksColor = '#10b981'; // Emerald
+  const uniqueClicksColor = '#3b82f6'; // Blue
+
+  // Render chart based on type
+  const renderChart = () => {
+    const commonProps = {
+      data: chartData,
+      margin: { top: 10, right: 10, left: 0, bottom: 0 }
+    };
+
+    switch (chartType) {
+      case 'bar':
+        return (
+          <BarChart {...commonProps}>
+            <defs>
+              <linearGradient id="barGradientTotal" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={totalClicksColor} stopOpacity={1} />
+                <stop offset="100%" stopColor={totalClicksColor} stopOpacity={0.6} />
+              </linearGradient>
+              <linearGradient id="barGradientUnique" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={uniqueClicksColor} stopOpacity={1} />
+                <stop offset="100%" stopColor={uniqueClicksColor} stopOpacity={0.6} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid 
+              strokeDasharray="3 3" 
+              stroke="rgba(255, 255, 255, 0.05)" 
+              vertical={false}
+            />
+            <XAxis 
+              dataKey="date"
+              stroke="rgba(255, 255, 255, 0.15)" 
+              tick={{ fill: 'rgba(255, 255, 255, 0.4)', fontSize: 11 }}
+              tickLine={false}
+              axisLine={{ stroke: 'rgba(255, 255, 255, 0.1)' }}
+              tickFormatter={(value) => {
+                const date = new Date(value);
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+              }}
+            />
+            <YAxis 
+              yAxisId="left"
+              stroke={totalClicksColor}
+              tick={{ fill: totalClicksColor, fontSize: 11 }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={formatNumber}
+            />
+            <YAxis 
+              yAxisId="right"
+              orientation="right"
+              stroke={uniqueClicksColor}
+              tick={{ fill: uniqueClicksColor, fontSize: 11 }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={formatNumber}
+            />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.02)' }} />
+            <Bar
+              yAxisId="left"
+              dataKey="totalClicks"
+              fill="url(#barGradientTotal)"
+              radius={[4, 4, 0, 0]}
+              maxBarSize={24}
+              opacity={hoveredMetric === 'unique' ? 0.3 : 1}
+            />
+            <Bar
+              yAxisId="right"
+              dataKey="uniqueClicks"
+              fill="url(#barGradientUnique)"
+              radius={[4, 4, 0, 0]}
+              maxBarSize={24}
+              opacity={hoveredMetric === 'links' ? 0.3 : 1}
+            />
+          </BarChart>
+        );
+
+      case 'line':
+        return (
+          <LineChart {...commonProps}>
+            <CartesianGrid 
+              strokeDasharray="3 3" 
+              stroke="rgba(255, 255, 255, 0.05)" 
+              vertical={false}
+            />
+            <XAxis 
+              dataKey="date"
+              stroke="rgba(255, 255, 255, 0.15)" 
+              tick={{ fill: 'rgba(255, 255, 255, 0.4)', fontSize: 11 }}
+              tickLine={false}
+              axisLine={{ stroke: 'rgba(255, 255, 255, 0.1)' }}
+              tickFormatter={(value) => {
+                const date = new Date(value);
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+              }}
+            />
+            <YAxis 
+              yAxisId="left"
+              stroke={totalClicksColor}
+              tick={{ fill: totalClicksColor, fontSize: 11 }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={formatNumber}
+            />
+            <YAxis 
+              yAxisId="right"
+              orientation="right"
+              stroke={uniqueClicksColor}
+              tick={{ fill: uniqueClicksColor, fontSize: 11 }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={formatNumber}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Line
+              yAxisId="left"
+              type="monotone"
+              dataKey="totalClicks"
+              stroke={totalClicksColor}
+              strokeWidth={2.5}
+              dot={{ fill: totalClicksColor, r: 3, strokeWidth: 0 }}
+              activeDot={{ r: 5, fill: totalClicksColor, stroke: '#fff', strokeWidth: 2 }}
+              opacity={hoveredMetric === 'unique' ? 0.3 : 1}
+            />
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="uniqueClicks"
+              stroke={uniqueClicksColor}
+              strokeWidth={2.5}
+              dot={{ fill: uniqueClicksColor, r: 3, strokeWidth: 0 }}
+              activeDot={{ r: 5, fill: uniqueClicksColor, stroke: '#fff', strokeWidth: 2 }}
+              opacity={hoveredMetric === 'links' ? 0.3 : 1}
+            />
+          </LineChart>
+        );
+
+      case 'area':
+        return (
+          <AreaChart {...commonProps}>
+            <defs>
+              <linearGradient id="totalClicksGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={totalClicksColor} stopOpacity={0.5} />
+                <stop offset="100%" stopColor={totalClicksColor} stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="uniqueClicksGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={uniqueClicksColor} stopOpacity={0.5} />
+                <stop offset="100%" stopColor={uniqueClicksColor} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+            <XAxis 
+              dataKey="date" 
+              stroke="rgba(255, 255, 255, 0.15)" 
+              tick={{ fill: 'rgba(255, 255, 255, 0.4)', fontSize: 11 }}
+              tickLine={false}
+              axisLine={{ stroke: 'rgba(255, 255, 255, 0.1)' }}
+              tickFormatter={(value) => {
+                const date = new Date(value);
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+              }}
+            />
+            <YAxis 
+              yAxisId="left"
+              stroke={totalClicksColor}
+              tick={{ fill: totalClicksColor, fontSize: 11 }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={formatNumber}
+            />
+            <YAxis 
+              yAxisId="right"
+              orientation="right"
+              stroke={uniqueClicksColor}
+              tick={{ fill: uniqueClicksColor, fontSize: 11 }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={formatNumber}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Area
+              yAxisId="left"
+              type="monotone"
+              dataKey="totalClicks"
+              stroke={totalClicksColor}
+              strokeWidth={2.5}
+              fill="url(#totalClicksGradient)"
+              opacity={hoveredMetric === 'unique' ? 0.3 : 1}
+            />
+            <Area
+              yAxisId="right"
+              type="monotone"
+              dataKey="uniqueClicks"
+              stroke={uniqueClicksColor}
+              strokeWidth={2.5}
+              fill="url(#uniqueClicksGradient)"
+              opacity={hoveredMetric === 'links' ? 0.3 : 1}
+            />
+          </AreaChart>
+        );
+    }
   };
 
   return (
@@ -205,9 +424,71 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
       {/* Content Layer */}
       <div className="relative z-10">
         {/* Header */}
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-white mb-1">Metric Comparison</h2>
-          <p className="text-sm text-gray-400">Track your link performance over time</p>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-white">Metric Comparison</h2>
+            <div className="relative">
+              <button
+                onMouseEnter={() => setShowTooltipInfo(true)}
+                onMouseLeave={() => setShowTooltipInfo(false)}
+                className="text-gray-500 hover:text-gray-400 transition-colors"
+              >
+                <Info className="w-4 h-4" style={{ opacity: 0.5 }} />
+              </button>
+              
+              {/* Info Tooltip */}
+              {showTooltipInfo && (
+                <div 
+                  className="absolute left-0 top-full mt-2 w-64 p-3 rounded-lg border shadow-xl z-50"
+                  style={{
+                    backgroundColor: 'rgba(26, 26, 26, 0.98)',
+                    borderColor: 'rgba(255, 255, 255, 0.1)'
+                  }}
+                >
+                  <p className="text-xs text-gray-300 leading-relaxed">
+                    Compare total clicks vs unique clicks to understand traffic patterns and audience reach.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Chart Type Icons */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setChartType('bar')}
+              className={`p-1.5 rounded-md transition-all ${
+                chartType === 'bar' 
+                  ? 'bg-white/15 text-white' 
+                  : 'text-gray-500 hover:bg-white/5 hover:text-gray-400'
+              }`}
+              title="Bar Chart"
+            >
+              <BarChart2 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setChartType('line')}
+              className={`p-1.5 rounded-md transition-all ${
+                chartType === 'line' 
+                  ? 'bg-white/15 text-white' 
+                  : 'text-gray-500 hover:bg-white/5 hover:text-gray-400'
+              }`}
+              title="Line Chart"
+            >
+              <TrendingUp className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setChartType('area')}
+              className={`p-1.5 rounded-md transition-all ${
+                chartType === 'area' 
+                  ? 'bg-white/15 text-white' 
+                  : 'text-gray-500 hover:bg-white/5 hover:text-gray-400'
+              }`}
+              title="Area Chart"
+            >
+              <Activity className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
         {/* Stats Summary */}
@@ -266,59 +547,7 @@ const LinksMetricComparisonCard: React.FC<LinksMetricComparisonCardProps> = ({
         {/* Chart */}
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="totalClicksGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#10B981" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="#10B981" stopOpacity={0.05} />
-                </linearGradient>
-                <linearGradient id="uniqueClicksGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="#3B82F6" stopOpacity={0.05} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis 
-                dataKey="date" 
-                stroke="#6B7280"
-                fontSize={11}
-                tickFormatter={(value) => {
-                  const date = new Date(value);
-                  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                }}
-              />
-              <YAxis 
-                stroke="#6B7280"
-                fontSize={11}
-                tickFormatter={formatNumber}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend 
-                wrapperStyle={{ paddingTop: '20px' }}
-                iconType="circle"
-                formatter={(value) => (
-                  <span className="text-xs text-gray-300">{value}</span>
-                )}
-              />
-              <Area
-                type="monotone"
-                dataKey="totalClicks"
-                name="Total Clicks"
-                stroke="#10B981"
-                strokeWidth={2}
-                fill="url(#totalClicksGradient)"
-                opacity={hoveredMetric === 'unique' ? 0.3 : 1}
-              />
-              <Area
-                type="monotone"
-                dataKey="uniqueClicks"
-                name="Unique Clicks"
-                stroke="#3B82F6"
-                strokeWidth={2}
-                fill="url(#uniqueClicksGradient)"
-                opacity={hoveredMetric === 'links' ? 0.3 : 1}
-              />
-            </AreaChart>
+            {renderChart()}
           </ResponsiveContainer>
         </div>
       </div>
