@@ -6,6 +6,7 @@ import TrackedLinksService from '../services/TrackedLinksService';
 import LinkClicksService from '../services/LinkClicksService';
 import { useAuth } from '../contexts/AuthContext';
 import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import Pagination from './ui/Pagination';
 
 interface LinkAnalyticsModalEnhancedProps {
   isOpen: boolean;
@@ -24,7 +25,7 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
   const [loading, setLoading] = useState(false);
   const [rawClicks, setRawClicks] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const clicksPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   // Convert timeframe to period days for API
   const period = useMemo(() => {
@@ -171,7 +172,7 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-zinc-300 hover:text-white hover:underline break-all"
-                >
+              >
                   {link.originalUrl}
                 </a>
               </div>
@@ -190,7 +191,7 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
               No analytics data available
             </div>
           ) : (
-            <div className="space-y-6">
+                <div className="space-y-6">
                   {/* Stats Overview */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5 hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all">
@@ -322,7 +323,7 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                   </div>
 
                   {/* Additional Analytics */}
-                  <div className="space-y-6">
+                <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Platforms */}
                     {platformBreakdown.length > 0 && (
@@ -400,7 +401,7 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                           </thead>
                           <tbody>
                             {rawClicks
-                              .slice((currentPage - 1) * clicksPerPage, currentPage * clicksPerPage)
+                              .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                               .map((click, index) => (
                                 <tr key={index} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                                   <td className="py-3 px-2 text-zinc-400">
@@ -430,33 +431,20 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                       </div>
 
                       {/* Pagination */}
-                      {rawClicks.length > clicksPerPage && (
-                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
-                          <p className="text-sm text-zinc-400">
-                            Showing {((currentPage - 1) * clicksPerPage) + 1} to {Math.min(currentPage * clicksPerPage, rawClicks.length)} of {rawClicks.length} clicks
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                              disabled={currentPage === 1}
-                              className="px-3 py-1.5 text-sm bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-white/20 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              Previous
-                            </button>
-                            <span className="text-sm text-zinc-400">
-                              Page {currentPage} of {Math.ceil(rawClicks.length / clicksPerPage)}
-                            </span>
-                            <button
-                              onClick={() => setCurrentPage(prev => Math.min(Math.ceil(rawClicks.length / clicksPerPage), prev + 1))}
-                              disabled={currentPage === Math.ceil(rawClicks.length / clicksPerPage)}
-                              className="px-3 py-1.5 text-sm bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-white/20 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              Next
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </>
+                      <Pagination
+                        currentPage={currentPage}
+                        totalPages={Math.ceil(rawClicks.length / itemsPerPage)}
+                        totalItems={rawClicks.length}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={(page) => {
+                          setCurrentPage(page);
+                        }}
+                        onItemsPerPageChange={(newItemsPerPage) => {
+                          setItemsPerPage(newItemsPerPage);
+                          setCurrentPage(1);
+                        }}
+                      />
+            </>
                   )}
                 </div>
             </div>

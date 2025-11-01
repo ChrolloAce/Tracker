@@ -377,7 +377,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     // IMPORTANT: Align intervals to day boundaries for accurate date display
     const now = new Date();
     const dataPoints = [];
-    
+      
     if (useHourlyIntervals) {
       // For "today" view, use hourly intervals starting from midnight
       const todayStart = new Date(now);
@@ -417,24 +417,24 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         }
         
         const pointStart = date.getTime();
-        const pointEnd = pointStart + intervalMs;
-        
-        // Filter clicks for this time period
-        const clicksInPeriod = clicksWithDates.filter(c => 
-          c.timestamp >= pointStart && c.timestamp < pointEnd
-        );
-        
-        const uniqueSet = new Set(clicksInPeriod.map(c => `${c.userAgent}-${c.deviceType}`));
-        
-        dataPoints.push({
-          timestamp: pointStart,
-          total: clicksInPeriod.length,
-          unique: uniqueSet.size,
+      const pointEnd = pointStart + intervalMs;
+      
+      // Filter clicks for this time period
+      const clicksInPeriod = clicksWithDates.filter(c => 
+        c.timestamp >= pointStart && c.timestamp < pointEnd
+      );
+      
+      const uniqueSet = new Set(clicksInPeriod.map(c => `${c.userAgent}-${c.deviceType}`));
+      
+      dataPoints.push({
+        timestamp: pointStart,
+        total: clicksInPeriod.length,
+        unique: uniqueSet.size,
           ctr: uniqueSet.size,
           clicks: clicksInPeriod.map(c => c.originalClick)
         });
       }
-    }
+      }
       
     // Return all metrics efficiently
     return {

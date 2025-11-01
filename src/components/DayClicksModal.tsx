@@ -144,40 +144,40 @@ const DayClicksModal: React.FC<DayClicksModalProps> = ({
                       className="p-4 rounded-lg bg-white/3 hover:bg-white/8 transition-all cursor-pointer border border-white/5 hover:border-white/10"
                     >
                       <div className="flex items-center gap-3">
-                        {/* Creator Profile Picture or Link Icon */}
-                        <div className="flex-shrink-0">
-                          {linkedAccount?.profilePicture ? (
-                            <img
-                              src={linkedAccount.profilePicture}
-                              alt={linkedAccount.username}
-                              className="w-12 h-12 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center">
-                              <LinkIcon className="w-5 h-5 text-gray-500" />
-                            </div>
-                          )}
-                        </div>
+                      {/* Creator Profile Picture or Link Icon */}
+                      <div className="flex-shrink-0">
+                        {linkedAccount?.profilePicture ? (
+                          <img
+                            src={linkedAccount.profilePicture}
+                            alt={linkedAccount.username}
+                            className="w-12 h-12 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center">
+                            <LinkIcon className="w-5 h-5 text-gray-500" />
+                          </div>
+                        )}
+                      </div>
 
-                        {/* Link Info */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-white truncate mb-1">
-                            {link?.title || `/${linkCode}`}
-                          </p>
-                          <p className="text-xs text-gray-400 truncate">
-                            /{linkCode}
-                          </p>
-                        </div>
+                      {/* Link Info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white truncate mb-1">
+                          {link?.title || `/${linkCode}`}
+                        </p>
+                        <p className="text-xs text-gray-400 truncate">
+                          /{linkCode}
+                        </p>
+                      </div>
 
-                        {/* Click Count */}
-                        <div className="flex-shrink-0 text-right">
-                          <p className="text-2xl font-bold text-white">
-                            {totalClicks}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {totalClicks === 1 ? 'click' : 'clicks'}
-                          </p>
-                        </div>
+                      {/* Click Count */}
+                      <div className="flex-shrink-0 text-right">
+                        <p className="text-2xl font-bold text-white">
+                          {totalClicks}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {totalClicks === 1 ? 'click' : 'clicks'}
+                        </p>
+                      </div>
                       </div>
                       
                       {/* Top Referrers */}
