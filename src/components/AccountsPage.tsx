@@ -104,6 +104,8 @@ export interface AccountsPageProps {
   searchQuery?: string;
   onViewModeChange: (mode: 'table' | 'details') => void;
   pendingAccounts?: TrackedAccount[];
+  organizationId?: string;
+  projectId?: string;
   selectedRuleIds?: string[];
   dashboardRules?: TrackingRule[];
 }
@@ -122,8 +124,12 @@ interface AccountWithFilteredStats extends TrackedAccount {
 }
 
 const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
-  ({ dateFilter, platformFilter, searchQuery = '', onViewModeChange, pendingAccounts = [], selectedRuleIds = [], dashboardRules = [] }, ref) => {
-  const { user, currentOrgId, currentProjectId } = useAuth();
+  ({ dateFilter, platformFilter, searchQuery = '', onViewModeChange, pendingAccounts = [], selectedRuleIds = [], dashboardRules = [], organizationId, projectId }, ref) => {
+  const { user, currentOrgId: authOrgId, currentProjectId: authProjectId } = useAuth();
+  
+  // Use props if provided (for demo mode), otherwise use auth
+  const currentOrgId = organizationId || authOrgId;
+  const currentProjectId = projectId || authProjectId;
   const navigate = useNavigate();
   
   // Debug props

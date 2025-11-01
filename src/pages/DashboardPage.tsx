@@ -97,8 +97,15 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const isDemoMode = demoContext.isDemoMode;
   
   // CRITICAL: Use demo IDs if in demo mode, IGNORE auth IDs completely
-  const currentOrgId = isDemoMode && demoContext.demoOrgId ? demoContext.demoOrgId : authOrgId;
-  const currentProjectId = isDemoMode && demoContext.demoProjectId ? demoContext.demoProjectId : authProjectId;
+  const currentOrgId = isDemoMode ? demoContext.demoOrgId : authOrgId;
+  const currentProjectId = isDemoMode ? demoContext.demoProjectId : authProjectId;
+  
+  // Force override check
+  if (isDemoMode) {
+    console.log('🎭 DEMO MODE ACTIVE - Using hardcoded demo IDs');
+    console.log('Demo Org ID:', demoContext.demoOrgId);
+    console.log('Demo Project ID:', demoContext.demoProjectId);
+  }
   
   console.log('🔍 Dashboard Data Source:', { 
     isDemoMode, 
@@ -2740,6 +2747,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               pendingAccounts={pendingAccounts}
               selectedRuleIds={selectedRuleIds}
               dashboardRules={allRules}
+              organizationId={currentOrgId || undefined}
+              projectId={currentProjectId || undefined}
             />
           )}
 
