@@ -58,20 +58,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         );
         
         // Get or create default organization
-        const orgId = await OrganizationService.getOrCreateDefaultOrg(user.uid, user.email!, user.displayName || undefined);
+        let orgId = await OrganizationService.getOrCreateDefaultOrg(user.uid, user.email!, user.displayName || undefined);
         
-        // If no organization exists, redirect to create organization page
+        // If no default org set, check if user has ANY organizations
         if (!orgId) {
-          setCurrentOrgId(null);
-          setCurrentProjectId(null);
-          setUserRole(null);
-          setLoading(false);
+          console.log('🔍 No default org found, checking all user orgs...');
+          const userOrgs = await OrganizationService.getUserOrganizations(user.uid);
           
-          // Redirect to create organization page
-          if (window.location.pathname !== '/create-organization') {
-            window.location.href = '/create-organization';
+          if (userOrgs.length > 0) {
+            // User has orgs! Set first one as default
+            orgId = userOrgs[0].id;
+            await OrganizationService.setDefaultOrg(user.uid, orgId);
+            console.log('✅ Found existing org, set as default:', orgId);
+          } else {
+            // No orgs at all - redirect to onboarding
+            console.log('❌ User has no organizations - redirecting to onboarding');
+            setCurrentOrgId(null);
+            setCurrentProjectId(null);
+            setUserRole(null);
+            setLoading(false);
+            
+            // Redirect to create organization page
+            if (window.location.pathname !== '/create-organization') {
+              window.location.href = '/create-organization';
+            }
+            return;
           }
-          return;
         }
         
         setCurrentOrgId(orgId);
