@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle, useRef } from 'react';
 import { collection, query, where, getDocs, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
-import Lottie from 'lottie-react';
 import { 
   Plus, 
   Users, 
@@ -22,13 +21,14 @@ import {
   ChevronDown,
   MoreVertical
   } from 'lucide-react';
-import pricingPlansAnimation from '../../public/lottie/Pricing Plans.json';
+import profileAnimation from '../../public/lottie/Profile.json';
 import { AccountVideo } from '../types/accounts';
 import { TrackedAccount } from '../types/firestore';
 import { VideoSubmissionsTable } from './VideoSubmissionsTable';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import FirestoreDataService from '../services/FirestoreDataService';
 import { ProxiedImage } from './ProxiedImage';
+import { BlurEmptyState } from './ui/BlurEmptyState';
 import RulesService from '../services/RulesService';
 import CreatorLinksService from '../services/CreatorLinksService';
 import { TrackingRule } from '../types/rules';
@@ -1187,18 +1187,24 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       {viewMode === 'table' ? (
         <div className="space-y-6">
           {/* Accounts Table */}
-          <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 overflow-hidden">
-          {accounts.length === 0 ? (
-            <div className="p-12 text-center">
-              <div className="w-64 h-64 mx-auto mb-4">
-                <Lottie animationData={pricingPlansAnimation} loop={true} />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No accounts tracked yet</h3>
-              <p className="text-gray-500 dark:text-gray-400">
-                Start tracking Instagram or TikTok accounts to monitor their content performance
-              </p>
-            </div>
+          {accounts.length === 0 && processingAccounts.length === 0 ? (
+            <BlurEmptyState
+              title="Start Tracking Your Content"
+              description="Add your first social media account to begin tracking performance and growing your audience."
+              animation={profileAnimation}
+              tooltipText="Track Instagram, TikTok, YouTube, and X accounts to monitor followers, engagement rates, content performance, and audience growth over time."
+              actions={[
+                {
+                  label: 'Add Account',
+                  onClick: () => setIsAddModalOpen(true),
+                  icon: Plus,
+                  primary: true
+                }
+              ]}
+            />
           ) : (
+          <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 overflow-hidden">
+          {(
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-zinc-900/40 border-b border-gray-200 dark:border-white/5">
@@ -1626,6 +1632,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
             />
           </div>
           </div>
+          )}
         </div>
       ) : (
         /* Account Details View */
