@@ -6,10 +6,9 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  sendEmailVerification
+  createUserWithEmailAndPassword
 } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
 import OrganizationService from '../services/OrganizationService';
 import ProjectService from '../services/ProjectService';
@@ -50,16 +49,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(user);
       
       if (user) {
-        // Check email verification (skip for demo account and Google sign-ins)
-        if (user.email !== 'demo@viewtrack.app' && !user.emailVerified && user.providerData[0]?.providerId === 'password') {
-          console.log('⚠️ Email not verified for:', user.email);
-          setUser(user);
-          setCurrentOrgId(null);
-          setCurrentProjectId(null);
-          setUserRole(null);
-          setLoading(false);
-          // Don't redirect - let the app show verification screen
-          return;
+        // Check custom email verification (skip for demo account and Google sign-ins)
+        if (user.email !== 'demo@viewtrack.app' && user.providerData[0]?.providerId === 'password') {
+          // Check if user has verified their email via our custom code system
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          const isVerified = userDoc.exists() && userDoc.data()?.emailVerified === true;
+          
+          if (!isVerified) {
+            console.log('⚠️ Email not verified for:', user.email);
+            setUser(user);
+            setCurrentOrgId(null);
+            setCurrentProjectId(null);
+            setUserRole(null);
+            setLoading(false);
+            // Don't redirect - let the app show verification screen
+            return;
+          }
         }
         
         // Create user account in Firestore if doesn't exist
@@ -215,17 +220,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUpWithEmail = async (email: string, password: string) => {
     try {
-      // Skip verification for demo account
-      if (email === 'demo@viewtrack.app') {
-        await createUserWithEmailAndPassword(auth, email, password);
-        return;
-      }
-      
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      
-      // Send verification email
-      await sendEmailVerification(userCredential.user);
-      console.log('✅ Verification email sent to:', email);
+      await createUserWithEmailAndPassword(auth, email, password);
+      // Note: Verification code is sent by EmailVerificationScreen component
+      console.log('✅ User created:', email);
     } catch (error) {
       console.error('Failed to sign up with email:', error);
       throw error;

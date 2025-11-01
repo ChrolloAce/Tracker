@@ -164,9 +164,11 @@ function App() {
   }
 
   // Check if user needs email verification (skip for demo and Google)
+  // Note: We use custom verification system, not Firebase's emailVerified
   const needsVerification = user && 
     user.email !== 'demo@viewtrack.app' && 
-    !user.emailVerified && 
+    !currentOrgId && 
+    !currentProjectId &&
     user.providerData[0]?.providerId === 'password';
 
   // If user is logged in but email not verified, show verification screen
