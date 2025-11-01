@@ -182,7 +182,7 @@ function App() {
 
   return (
     <PreLaunchCover>
-      <Routes>
+    <Routes>
         {/* Public pages - NOT covered by pre-launch */}
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/terms" element={<TermsOfServicePage />} />
@@ -190,29 +190,29 @@ function App() {
         <Route path="/l/:shortId" element={<LinkRedirect />} />
         
         {/* Main app routes - COVERED by pre-launch */}
-        <Route 
-          path="/" 
-          element={
-            !user ? (
-              <LandingPage />
-            ) : (
-              <Navigate to="/dashboard" replace />
-            )
-          } 
-        />
-        
-        <Route 
-          path="/login" 
-          element={
-            loading ? (
-              <LoadingSkeleton />
-            ) : !user ? (
-              <LoginPage />
-            ) : (
-              <Navigate to="/dashboard" replace />
-            )
-          } 
-        />
+      <Route 
+        path="/" 
+        element={
+          !user ? (
+            <LandingPage />
+          ) : (
+            <Navigate to="/dashboard" replace />
+          )
+        } 
+      />
+      
+      <Route 
+        path="/login" 
+        element={
+          loading ? (
+            <LoadingSkeleton />
+          ) : !user ? (
+            <LoginPage />
+          ) : (
+            <Navigate to="/dashboard" replace />
+          )
+        } 
+      />
       
       {/* Public demo routes - no authentication required */}
       <Route path="/demo" element={<DemoPage />} />
