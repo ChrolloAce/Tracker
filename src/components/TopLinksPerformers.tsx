@@ -295,7 +295,7 @@ const TopLinksPerformers: React.FC<TopLinksPerformersProps> = ({
                 </div>
               ) : (
                 (activeSection === 'clicks' ? topLinksByClicks : topLinksByUniqueClicks).map((item, index) => {
-                  const value = activeSection === 'clicks' ? item.clicks : (item as any).uniqueClicks;
+                  const value = 'clicks' in item ? item.clicks : item.uniqueClicks;
                   const percentage = sectionData.maxValue > 0 ? (value / sectionData.maxValue) * 100 : 0;
                   const link = item.link;
                   const linkedAccount = link.linkedAccountId ? accounts.get(link.linkedAccountId) : null;

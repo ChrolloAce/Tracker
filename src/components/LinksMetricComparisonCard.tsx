@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { LinkClick } from '../services/LinkClicksService';
 import { DateFilterType } from './DateRangeFilter';
 import { AreaChart, Area, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, TrendingDown, BarChart2, Activity, Info, ChevronDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, BarChart2, Activity, Info } from 'lucide-react';
 import DayClicksModal from './DayClicksModal';
 import { TrackedLink, TrackedAccount } from '../types/firestore';
 
