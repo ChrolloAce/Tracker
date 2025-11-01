@@ -114,9 +114,9 @@ const Sidebar: React.FC<SidebarProps> = ({
       return allItems;
     }
 
-    // In demo mode, show all tabs except settings
+    // In demo mode, show all tabs except settings and extension
     if (isDemoMode) {
-      return allItems.filter(item => item.id !== 'settings');
+      return allItems.filter(item => item.id !== 'settings' && item.id !== 'extension');
     }
 
     // After permissions load, filter items based on access
