@@ -192,7 +192,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   });
   
   const [dashboardSectionOrder, setDashboardSectionOrder] = useState<string[]>(() => {
-    const defaultOrder = ['kpi-cards', 'top-performers', 'top-platforms', 'posting-activity', 'tracked-accounts', 'videos-table'];
+    const defaultOrder = ['kpi-cards', 'posting-activity', 'top-performers', 'top-platforms', 'videos-table', 'tracked-accounts'];
     const saved = localStorage.getItem('dashboardSectionOrder');
     
     if (saved) {
