@@ -34,7 +34,7 @@ const DemoPage: React.FC = () => {
     const path = location.pathname;
     if (path.includes('/accounts')) return 'accounts';
     if (path.includes('/videos')) return 'videos';
-    if (path.includes('/links')) return 'links';
+    if (path.includes('/links')) return 'analytics'; // Note: links maps to analytics tab
     if (path.includes('/creators')) return 'creators';
     if (path.includes('/campaigns')) return 'campaigns';
     if (path.includes('/extension')) return 'extension';
