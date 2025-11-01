@@ -16,6 +16,8 @@ import websiteStatsAnimation from '../../public/lottie/Binoculars.json';
 import { TrackedLinksKPICard } from './TrackedLinksKPICard';
 import DayClicksModal from './DayClicksModal';
 import { EmptyState } from './ui/EmptyState';
+import LinksMetricComparisonCard from './LinksMetricComparisonCard';
+import TopLinksPerformers from './TopLinksPerformers';
 
 export interface TrackedLinksPageRef {
   openCreateModal: () => void;
@@ -551,54 +553,20 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
   return (
     <div className="space-y-6">
 
-      {/* Stats Overview - Dashboard Style */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Total Clicks Card */}
-        <TrackedLinksKPICard
-          label="Total Clicks"
-          value={formatNumber(stats.totalClicks)}
-          growth={dateFilter !== 'all' ? stats.totalClicksGrowth : undefined}
-          isIncreasing={stats.isTotalIncreasing}
-          icon={MousePointer}
-          sparklineData={sparklineData.total}
-          links={links}
-          accounts={accounts}
-          onClick={(date, clicks) => {
-            // Open modal showing all clicks for this day
-            setSelectedDayDate(date);
-            setSelectedDayClicks(clicks);
-            setIsDayClicksModalOpen(true);
-          }}
-          onLinkClick={(shortCode) => {
-            // When clicking on a specific link in the tooltip, open its analytics modal
-            const link = links.find(l => l.shortCode === shortCode);
-            if (link) {
-              handleViewAnalytics(link);
-            }
-          }}
+      {/* Metric Comparison & Top Performers */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Metric Comparison Graph */}
+        <LinksMetricComparisonCard
+          linkClicks={filteredClicks}
+          dateFilter={dateFilter}
+          customDateRange={customDateRange}
         />
 
-        {/* Unique Clicks Card */}
-        <TrackedLinksKPICard
-          label="Unique Clicks"
-          value={formatNumber(stats.uniqueClicks)}
-          growth={dateFilter !== 'all' ? stats.uniqueClicksGrowth : undefined}
-          isIncreasing={stats.isUniqueIncreasing}
-          icon={Users}
-          sparklineData={sparklineData.unique}
+        {/* Top Performers */}
+        <TopLinksPerformers
           links={links}
-          accounts={accounts}
-          onClick={(date, clicks) => {
-            setSelectedDayDate(date);
-            setSelectedDayClicks(clicks);
-            setIsDayClicksModalOpen(true);
-          }}
-          onLinkClick={(shortCode) => {
-            const link = links.find(l => l.shortCode === shortCode);
-            if (link) {
-              handleViewAnalytics(link);
-            }
-          }}
+          linkClicks={filteredClicks}
+          onLinkClick={handleViewAnalytics}
         />
       </div>
 
