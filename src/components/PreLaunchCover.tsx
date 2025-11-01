@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Lock, Unlock, Clock } from 'lucide-react';
 import vtLogo from '/vtlogo.png';
 
@@ -12,6 +13,7 @@ interface PreLaunchCoverProps {
 }
 
 export const PreLaunchCover: React.FC<PreLaunchCoverProps> = ({ children }) => {
+  const location = useLocation();
   const [isBypassed, setIsBypassed] = useState(false);
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState(false);
@@ -21,6 +23,10 @@ export const PreLaunchCover: React.FC<PreLaunchCoverProps> = ({ children }) => {
     minutes: 0,
     seconds: 0
   });
+
+  // Pages that should NOT be covered (always accessible)
+  const publicPages = ['/privacy', '/terms', '/support', '/l/'];
+  const isPublicPage = publicPages.some(page => location.pathname.startsWith(page));
 
   useEffect(() => {
     console.log('🚀 PreLaunchCover mounted');
@@ -103,7 +109,13 @@ export const PreLaunchCover: React.FC<PreLaunchCoverProps> = ({ children }) => {
     setPinError(false);
   };
 
-  // ALWAYS show cover unless explicitly bypassed with PIN
+  // Don't cover public pages (privacy, terms, support, link redirects)
+  if (isPublicPage) {
+    console.log('📄 Public page - no cover');
+    return <>{children}</>;
+  }
+
+  // Show app if bypassed with PIN
   if (isBypassed) {
     console.log('✅ Rendering app (bypassed)');
     return <>{children}</>;

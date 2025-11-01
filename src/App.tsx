@@ -26,7 +26,9 @@ import CampaignDetailsPage from './components/CampaignDetailsPage';
 import CreateCampaignPage from './pages/CreateCampaignPage';
 import EditCampaignPage from './pages/EditCampaignPage';
 import { PreLaunchCover } from './components/PreLaunchCover';
-import { TestCover } from './components/TestCover';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import TermsOfServicePage from './pages/TermsOfServicePage';
+import SupportPage from './pages/SupportPage';
 import { useEffect, useState } from 'react';
 import { AlertCircle } from 'lucide-react';
 
@@ -179,34 +181,38 @@ function App() {
   }
 
   return (
-    <TestCover>
     <PreLaunchCover>
-    <Routes>
-      <Route 
-        path="/" 
-        element={
-          !user ? (
-            <LandingPage />
-          ) : (
-            <Navigate to="/dashboard" replace />
-          )
-        } 
-      />
-      
-      <Route 
-        path="/login" 
-        element={
-          loading ? (
-            <LoadingSkeleton />
-          ) : !user ? (
-            <LoginPage />
-          ) : (
-            <Navigate to="/dashboard" replace />
-          )
-        } 
-      />
-
-      <Route path="/l/:shortId" element={<LinkRedirect />} />
+      <Routes>
+        {/* Public pages - NOT covered by pre-launch */}
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms" element={<TermsOfServicePage />} />
+        <Route path="/support" element={<SupportPage />} />
+        <Route path="/l/:shortId" element={<LinkRedirect />} />
+        
+        {/* Main app routes - COVERED by pre-launch */}
+        <Route 
+          path="/" 
+          element={
+            !user ? (
+              <LandingPage />
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
+          } 
+        />
+        
+        <Route 
+          path="/login" 
+          element={
+            loading ? (
+              <LoadingSkeleton />
+            ) : !user ? (
+              <LoginPage />
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
+          } 
+        />
       
       {/* Public demo routes - no authentication required */}
       <Route path="/demo" element={<DemoPage />} />
@@ -536,7 +542,6 @@ function App() {
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
     </PreLaunchCover>
-    </TestCover>
   );
 }
 
