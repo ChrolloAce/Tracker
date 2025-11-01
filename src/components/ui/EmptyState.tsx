@@ -80,9 +80,9 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
                   key={index}
                   onClick={action.onClick}
                   className={`
-                    flex items-center gap-2 px-6 py-3 rounded-full font-medium transition-all transform hover:scale-105 active:scale-95
+                    flex items-center gap-2 px-8 py-3.5 rounded-xl font-semibold transition-all transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl
                     ${action.primary 
-                      ? 'bg-white/10 hover:bg-white/15 text-white border border-white/20 hover:border-white/30' 
+                      ? 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 hover:text-emerald-200 border border-emerald-500/30 hover:border-emerald-500/50 ring-2 ring-emerald-500/20 hover:ring-emerald-500/30' 
                       : 'bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 hover:border-white/20'
                     }
                   `}

@@ -106,21 +106,24 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
     .slice(0, 5) : [];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-[#161616] rounded-xl shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-3">
+      <div 
+        className="rounded-xl shadow-2xl border border-white/10 w-full max-w-6xl max-h-[92vh] overflow-hidden flex flex-col"
+        style={{ backgroundColor: '#121214' }}
+      >
         {/* Header */}
-        <div className="p-6 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
+        <div className="p-6 border-b border-white/10 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Link Analytics</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{link.title}</p>
+              <h2 className="text-2xl font-bold text-white">Link Analytics</h2>
+              <p className="text-sm text-gray-400 mt-1">{link.title}</p>
             </div>
             <div className="flex items-center gap-2">
               {/* Export Buttons */}
               <button
                 onClick={() => handleExport('csv')}
                 disabled={loading || rawClicks.length === 0}
-                className="px-3 py-2 text-sm bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-4 py-2 text-sm bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 border border-emerald-500/30 hover:border-emerald-500/50"
                 title="Export as CSV"
               >
                 <Download className="w-4 h-4" />
@@ -129,7 +132,7 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
               <button
                 onClick={() => handleExport('json')}
                 disabled={loading || rawClicks.length === 0}
-                className="px-3 py-2 text-sm bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-4 py-2 text-sm bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 border border-emerald-500/30 hover:border-emerald-500/50"
                 title="Export as JSON"
               >
                 <Download className="w-4 h-4" />
@@ -137,15 +140,15 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
               </button>
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                className="p-2 hover:bg-white/10 rounded-full transition-colors"
               >
-                <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                <X className="w-5 h-5 text-gray-400" />
               </button>
             </div>
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-2 mt-4">
+          <div className="flex gap-2 mt-6">
             {[
               { id: 'overview', label: 'Overview' },
               { id: 'details', label: 'Detailed Analytics' },
@@ -154,10 +157,10 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as TabType)}
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                className={`px-5 py-2.5 text-sm font-medium rounded-lg transition-all ${
                   activeTab === tab.id
-                    ? 'bg-blue-600 dark:bg-blue-500 text-white'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10 hover:border-white/20'
                 }`}
               >
                 {tab.label}
@@ -170,16 +173,16 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
         <div className="flex-1 overflow-y-auto p-6">
           {/* Period Selector */}
           <div className="flex items-center space-x-2 mb-6">
-            <span className="text-sm text-gray-600 dark:text-gray-400">Period:</span>
+            <span className="text-sm text-gray-400">Period:</span>
             {[7, 30, 90].map((days) => (
               <button
                 key={days}
                 onClick={() => setPeriod(days)}
                 disabled={loading}
-                className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                className={`px-3 py-1.5 text-sm rounded-lg transition-all ${
                   period === days
-                    ? 'bg-blue-600 dark:bg-blue-500 text-white'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10 hover:border-white/20'
                 } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {days} days
@@ -189,10 +192,10 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
 
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 dark:border-gray-700 border-t-blue-600 dark:border-t-blue-500"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-white/10 border-t-blue-600 dark:border-t-blue-500"></div>
             </div>
           ) : !analytics ? (
-            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+            <div className="text-center py-12 text-zinc-400">
               No analytics data available
             </div>
           ) : (
@@ -202,34 +205,34 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                 <div className="space-y-6">
                   {/* Stats Overview */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Total Clicks</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{analytics.clicks}</p>
+                    <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5 hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all">
+                      <p className="text-xs font-medium text-zinc-400 tracking-wide mb-2">Total Clicks</p>
+                      <p className="text-3xl font-bold text-white">{analytics.clicks}</p>
                     </div>
-                    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Unique Clicks</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{analytics.uniqueClicks}</p>
+                    <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5 hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all">
+                      <p className="text-xs font-medium text-zinc-400 tracking-wide mb-2">Unique Clicks</p>
+                      <p className="text-3xl font-bold text-white">{analytics.uniqueClicks}</p>
                     </div>
-                    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Click Rate</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5 hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all">
+                      <p className="text-xs font-medium text-zinc-400 tracking-wide mb-2">Click Rate</p>
+                      <p className="text-3xl font-bold text-white">
                         {analytics.uniqueClicks > 0 
                           ? `${((analytics.uniqueClicks / analytics.clicks) * 100).toFixed(1)}%`
                           : '0%'
                         }
                       </p>
                     </div>
-                    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Avg Daily</p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5 hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all">
+                      <p className="text-xs font-medium text-zinc-400 tracking-wide mb-2">Avg Daily</p>
+                      <p className="text-3xl font-bold text-white">
                         {Math.round(analytics.clicks / period)}
                       </p>
                     </div>
                   </div>
 
                   {/* Click Trend Chart */}
-                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Click Trend</h3>
+                  <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
+                    <h3 className="text-sm font-medium text-zinc-300 mb-4">Click Trend</h3>
                     <div className="h-48">
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={analytics.clicksByDay}>
@@ -250,11 +253,11 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                             content={({ active, payload }) => {
                               if (active && payload && payload.length) {
                                 return (
-                                  <div className="bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
-                                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                  <div className="bg-white dark:bg-gray-800 p-2 border border-white/10 rounded-lg shadow-lg">
+                                    <p className="text-sm font-medium text-white">
                                       {payload[0].value} clicks
                                     </p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    <p className="text-xs text-zinc-400">
                                       {new Date(payload[0].payload.date).toLocaleDateString()}
                                     </p>
                                   </div>
@@ -278,16 +281,16 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Device Breakdown */}
                     {deviceData.length > 0 && (
-                      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Devices</h3>
+                      <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
+                        <h3 className="text-sm font-medium text-zinc-300 mb-4">Devices</h3>
                         <div className="space-y-3">
                           {deviceData.map((device) => (
                             <div key={device.name} className="flex items-center justify-between">
                               <div className="flex items-center space-x-2">
-                                <device.icon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                                <span className="text-sm text-gray-700 dark:text-gray-300">{device.name}</span>
+                                <device.icon className="w-4 h-4 text-zinc-400" />
+                                <span className="text-sm text-zinc-300">{device.name}</span>
                               </div>
-                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              <span className="text-sm font-medium text-white">
                                 {device.value}
                               </span>
                             </div>
@@ -298,16 +301,16 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
 
                     {/* Top Countries */}
                     {topCountries.length > 0 && (
-                      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Top Countries</h3>
+                      <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
+                        <h3 className="text-sm font-medium text-zinc-300 mb-4">Top Countries</h3>
                         <div className="space-y-3">
                           {topCountries.map(([country, clicks]) => (
                             <div key={country} className="flex items-center justify-between">
                               <div className="flex items-center space-x-2">
-                                <Globe className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                                <span className="text-sm text-gray-700 dark:text-gray-300">{country}</span>
+                                <Globe className="w-4 h-4 text-zinc-400" />
+                                <span className="text-sm text-zinc-300">{country}</span>
                               </div>
-                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              <span className="text-sm font-medium text-white">
                                 {clicks}
                               </span>
                             </div>
@@ -318,18 +321,18 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
 
                     {/* Top Referrers */}
                     {topReferrers.length > 0 && (
-                      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Top Referrers</h3>
+                      <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
+                        <h3 className="text-sm font-medium text-zinc-300 mb-4">Top Referrers</h3>
                         <div className="space-y-3">
                           {topReferrers.map(([referrer, clicks]) => (
                             <div key={referrer} className="flex items-center justify-between">
                               <div className="flex items-center space-x-2 min-w-0">
-                                <ExternalLink className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
-                                <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
+                                <ExternalLink className="w-4 h-4 text-zinc-400 flex-shrink-0" />
+                                <span className="text-sm text-zinc-300 truncate">
                                   {referrer}
                                 </span>
                               </div>
-                              <span className="text-sm font-medium text-gray-900 dark:text-white flex-shrink-0 ml-2">
+                              <span className="text-sm font-medium text-white flex-shrink-0 ml-2">
                                 {clicks}
                               </span>
                             </div>
@@ -340,17 +343,17 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                   </div>
 
                   {/* Link Details */}
-                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Link Details</h3>
+                  <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
+                    <h3 className="text-sm font-medium text-zinc-300 mb-3">Link Details</h3>
                     <div className="space-y-2">
                       <div className="flex items-start space-x-2">
-                        <span className="text-sm text-gray-500 dark:text-gray-400 min-w-[100px]">Short URL:</span>
-                        <code className="text-sm font-mono bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
+                        <span className="text-sm text-zinc-400 min-w-[100px]">Short URL:</span>
+                        <code className="text-sm font-mono bg-zinc-800/50 px-2 py-0.5 rounded">
                           {TrackedLinksService.getTrackingUrl(link.shortCode)}
                         </code>
                       </div>
                       <div className="flex items-start space-x-2">
-                        <span className="text-sm text-gray-500 dark:text-gray-400 min-w-[100px]">Destination:</span>
+                        <span className="text-sm text-zinc-400 min-w-[100px]">Destination:</span>
                         <a 
                           href={link.originalUrl}
                           target="_blank"
@@ -371,16 +374,16 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Platforms */}
                     {platformBreakdown.length > 0 && (
-                      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                      <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
                         <div className="flex items-center gap-2 mb-4">
-                          <Network className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Top Platforms</h3>
+                          <Network className="w-4 h-4 text-zinc-400" />
+                          <h3 className="text-sm font-medium text-zinc-300">Top Platforms</h3>
                         </div>
                         <div className="space-y-3">
                           {platformBreakdown.map(([platform, count]) => (
                             <div key={platform} className="flex items-center justify-between">
-                              <span className="text-sm text-gray-700 dark:text-gray-300">{platform}</span>
-                              <span className="text-sm font-medium text-gray-900 dark:text-white">{count}</span>
+                              <span className="text-sm text-zinc-300">{platform}</span>
+                              <span className="text-sm font-medium text-white">{count}</span>
                             </div>
                           ))}
                         </div>
@@ -389,16 +392,16 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
 
                     {/* ISPs */}
                     {ispBreakdown.length > 0 && (
-                      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                      <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
                         <div className="flex items-center gap-2 mb-4">
-                          <Network className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Top ISPs</h3>
+                          <Network className="w-4 h-4 text-zinc-400" />
+                          <h3 className="text-sm font-medium text-zinc-300">Top ISPs</h3>
                         </div>
                         <div className="space-y-3">
                           {ispBreakdown.map(([isp, count]) => (
                             <div key={isp} className="flex items-center justify-between">
-                              <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{isp}</span>
-                              <span className="text-sm font-medium text-gray-900 dark:text-white flex-shrink-0 ml-2">{count}</span>
+                              <span className="text-sm text-zinc-300 truncate">{isp}</span>
+                              <span className="text-sm font-medium text-white flex-shrink-0 ml-2">{count}</span>
                             </div>
                           ))}
                         </div>
@@ -407,16 +410,16 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
 
                     {/* UTM Campaigns */}
                     {utmCampaigns.length > 0 && (
-                      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                      <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
                         <div className="flex items-center gap-2 mb-4">
-                          <Tag className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">UTM Campaigns</h3>
+                          <Tag className="w-4 h-4 text-zinc-400" />
+                          <h3 className="text-sm font-medium text-zinc-300">UTM Campaigns</h3>
                         </div>
                         <div className="space-y-3">
                           {utmCampaigns.map(([campaign, count]) => (
                             <div key={campaign} className="flex items-center justify-between">
-                              <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{campaign}</span>
-                              <span className="text-sm font-medium text-gray-900 dark:text-white flex-shrink-0 ml-2">{count}</span>
+                              <span className="text-sm text-zinc-300 truncate">{campaign}</span>
+                              <span className="text-sm font-medium text-white flex-shrink-0 ml-2">{count}</span>
                             </div>
                           ))}
                         </div>
@@ -424,19 +427,19 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                     )}
 
                     {/* Bot Detection */}
-                    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+                    <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
                       <div className="flex items-center gap-2 mb-4">
-                        <Bot className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Bot Detection</h3>
+                        <Bot className="w-4 h-4 text-zinc-400" />
+                        <h3 className="text-sm font-medium text-zinc-300">Bot Detection</h3>
                       </div>
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-700 dark:text-gray-300">Human Clicks</span>
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">{rawClicks.length - botClicks}</span>
+                          <span className="text-sm text-zinc-300">Human Clicks</span>
+                          <span className="text-sm font-medium text-white">{rawClicks.length - botClicks}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-700 dark:text-gray-300">Bot Clicks (Filtered)</span>
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">{botClicks}</span>
+                          <span className="text-sm text-zinc-300">Bot Clicks (Filtered)</span>
+                          <span className="text-sm font-medium text-white">{botClicks}</span>
                         </div>
                       </div>
                     </div>
@@ -447,45 +450,45 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
               {/* Raw Data Tab */}
               {activeTab === 'raw' && (
                 <div className="space-y-4">
-                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 shadow-lg p-5">
+                    <p className="text-sm text-gray-400 mb-4">
                       Showing {rawClicks.length} click{rawClicks.length !== 1 ? 's' : ''} for this link
                     </p>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="border-b border-gray-200 dark:border-gray-700">
-                            <th className="text-left py-2 px-2 font-medium text-gray-700 dark:text-gray-300">Time</th>
-                            <th className="text-left py-2 px-2 font-medium text-gray-700 dark:text-gray-300">Country</th>
-                            <th className="text-left py-2 px-2 font-medium text-gray-700 dark:text-gray-300">Platform</th>
-                            <th className="text-left py-2 px-2 font-medium text-gray-700 dark:text-gray-300">Referrer</th>
-                            <th className="text-left py-2 px-2 font-medium text-gray-700 dark:text-gray-300">Device</th>
-                            <th className="text-left py-2 px-2 font-medium text-gray-700 dark:text-gray-300">Browser</th>
-                            <th className="text-left py-2 px-2 font-medium text-gray-700 dark:text-gray-300">ISP</th>
+                          <tr className="border-b border-white/10">
+                            <th className="text-left py-2 px-2 font-medium text-zinc-300">Time</th>
+                            <th className="text-left py-2 px-2 font-medium text-zinc-300">Country</th>
+                            <th className="text-left py-2 px-2 font-medium text-zinc-300">Platform</th>
+                            <th className="text-left py-2 px-2 font-medium text-zinc-300">Referrer</th>
+                            <th className="text-left py-2 px-2 font-medium text-zinc-300">Device</th>
+                            <th className="text-left py-2 px-2 font-medium text-zinc-300">Browser</th>
+                            <th className="text-left py-2 px-2 font-medium text-zinc-300">ISP</th>
                           </tr>
                         </thead>
                         <tbody>
                           {rawClicks.slice(0, 100).map((click, index) => (
                             <tr key={index} className="border-b border-gray-100 dark:border-gray-800">
-                              <td className="py-2 px-2 text-gray-600 dark:text-gray-400">
+                              <td className="py-2 px-2 text-zinc-400">
                                 {new Date(click.timestamp).toLocaleString()}
                               </td>
-                              <td className="py-2 px-2 text-gray-600 dark:text-gray-400">
+                              <td className="py-2 px-2 text-zinc-400">
                                 {click.country || '-'}
                               </td>
-                              <td className="py-2 px-2 text-gray-600 dark:text-gray-400">
+                              <td className="py-2 px-2 text-zinc-400">
                                 {click.platform || '-'}
                               </td>
-                              <td className="py-2 px-2 text-gray-600 dark:text-gray-400 truncate max-w-[150px]">
+                              <td className="py-2 px-2 text-zinc-400 truncate max-w-[150px]">
                                 {click.referrerDomain || click.referrer || 'Direct'}
                               </td>
-                              <td className="py-2 px-2 text-gray-600 dark:text-gray-400 capitalize">
+                              <td className="py-2 px-2 text-zinc-400 capitalize">
                                 {click.deviceType}
                               </td>
-                              <td className="py-2 px-2 text-gray-600 dark:text-gray-400">
+                              <td className="py-2 px-2 text-zinc-400">
                                 {click.browser}
                               </td>
-                              <td className="py-2 px-2 text-gray-600 dark:text-gray-400 truncate max-w-[150px]">
+                              <td className="py-2 px-2 text-zinc-400 truncate max-w-[150px]">
                                 {click.isp || '-'}
                               </td>
                             </tr>
@@ -493,7 +496,7 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                         </tbody>
                       </table>
                       {rawClicks.length > 100 && (
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-4 text-center">
+                        <p className="text-sm text-zinc-400 mt-4 text-center">
                           Showing first 100 clicks. Export to see all data.
                         </p>
                       )}
