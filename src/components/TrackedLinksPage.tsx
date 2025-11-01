@@ -305,46 +305,6 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     return filtered;
   }, [linkClicks, links]);
 
-  // Filter clicks by date range
-  const filteredClicks = useMemo(() => {
-    const now = new Date();
-    let startDate: Date;
-    
-    switch (dateFilter) {
-      case 'today':
-        startDate = new Date(now);
-        startDate.setHours(0, 0, 0, 0);
-        break;
-      case 'last7days':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case 'last30days':
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        break;
-      case 'last90days':
-        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-        break;
-      case 'custom':
-        startDate = customDateRange?.startDate || new Date(0);
-        break;
-      case 'all':
-      default:
-        return validLinkClicks;
-    }
-    
-    const endDate = dateFilter === 'custom' && customDateRange?.endDate 
-      ? customDateRange.endDate 
-      : new Date();
-    
-    return validLinkClicks.filter(click => {
-      // Convert Firestore Timestamp to Date if necessary
-      const clickDate = click.timestamp instanceof Date 
-        ? click.timestamp 
-        : (click.timestamp as any)?.toDate?.() || new Date(click.timestamp);
-      return clickDate >= startDate && clickDate <= endDate;
-    });
-  }, [validLinkClicks, dateFilter, customDateRange]);
-
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
       return `${(num / 1000000).toFixed(1)}M`;
