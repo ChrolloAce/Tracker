@@ -167,21 +167,6 @@ const LoginPage: React.FC = () => {
             </div>
           )}
 
-          {/* Demo Login Button */}
-          <div className="mb-4">
-            <button
-              onClick={() => {
-                setEmail('demo@viewtrack.app');
-                setPassword('demo123456');
-                handleEmailAuth({ preventDefault: () => {} } as React.FormEvent);
-              }}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-[#2282FF] to-[#1b6dd9] hover:from-[#1b6dd9] hover:to-[#2282FF] text-white rounded-lg transition-all disabled:opacity-50 font-medium shadow-lg shadow-[#2282FF]/20"
-            >
-              <span className="text-sm font-medium">Try Demo Account</span>
-            </button>
-          </div>
-
           {/* Social Login Button */}
           <div className="mb-6">
             <button
