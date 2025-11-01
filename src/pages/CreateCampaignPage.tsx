@@ -7,8 +7,6 @@ import {
   Plus,
   Trash2,
   Check,
-  Upload,
-  X,
   Info,
   Instagram,
   Music,
@@ -65,7 +63,6 @@ const CreateCampaignPage: React.FC = () => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [coverImage, setCoverImage] = useState<string>('');
-  const [uploadingImage, setUploadingImage] = useState(false);
   const [campaignType, setCampaignType] = useState<CampaignType>('competition');
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['instagram', 'tiktok', 'youtube']);
   
@@ -140,23 +137,6 @@ const CreateCampaignPage: React.FC = () => {
       console.error('Failed to load creators:', error);
     } finally {
       setLoadingCreators(false);
-    }
-  };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !currentOrgId) return;
-
-    setUploadingImage(true);
-    try {
-      const imageUrl = await CampaignService.uploadCoverImage(currentOrgId, file);
-      setCoverImage(imageUrl);
-      console.log('✅ Cover image uploaded:', imageUrl);
-    } catch (error) {
-      console.error('Failed to upload image:', error);
-      setError('Failed to upload image. Please try again.');
-    } finally {
-      setUploadingImage(false);
     }
   };
 
@@ -333,8 +313,6 @@ const CreateCampaignPage: React.FC = () => {
       setLoading(false);
     }
   };
-
-  const progressPercent = (currentStep / totalSteps) * 100;
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-8">
