@@ -5,31 +5,40 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { TeamInvitation } from '../types/firestore';
 import TeamInvitationService from '../services/TeamInvitationService';
-import { Mail, Lock, Eye, EyeOff, Loader2, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Mail, Loader2, CheckCircle, AlertCircle, UserPlus, Shield, Crown } from 'lucide-react';
 import viewtrackLogo from '/Viewtrack Logo Black.png';
 
 /**
- * CreatorInvitationPage
+ * CreatorInvitationPage (renamed but handles all roles)
  * 
- * Custom portal for creators to accept invitations directly from email links.
+ * Custom portal for team members to accept invitations directly from email links.
  * Bypasses normal onboarding and takes them straight to the dashboard.
+ * Supports all roles: member, admin, creator
  */
 const CreatorInvitationPage: React.FC = () => {
   const { invitationId } = useParams<{ invitationId: string }>();
   const navigate = useNavigate();
-  const { user, signInWithEmail, signUpWithEmail, signInWithGoogle, logout } = useAuth();
+  const { user, signInWithGoogle, logout } = useAuth();
 
   // States
   const [invitation, setInvitation] = useState<TeamInvitation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [processingInvite, setProcessingInvite] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  
+  // Helper to get role icon and display name
+  const getRoleInfo = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return { icon: Shield, label: 'Admin', color: 'text-blue-600 dark:text-blue-400' };
+      case 'creator':
+        return { icon: Crown, label: 'Creator', color: 'text-purple-600 dark:text-purple-400' };
+      default:
+        return { icon: UserPlus, label: 'Member', color: 'text-gray-600 dark:text-gray-400' };
+    }
+  };
 
   // Load invitation details
   useEffect(() => {
@@ -94,7 +103,6 @@ const CreatorInvitationPage: React.FC = () => {
       }
 
       setInvitation(inviteData);
-      setEmail(inviteData.email); // Pre-fill email
       setLoading(false);
     } catch (err: any) {
       console.error('Failed to load invitation:', err);
@@ -141,46 +149,7 @@ const CreatorInvitationPage: React.FC = () => {
     }
   };
 
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!email || !password) {
-      setError('Please enter both email and password');
-      return;
-    }
-
-    if (!invitation) {
-      setError('Invitation not found');
-      return;
-    }
-
-    // Verify email matches invitation
-    if (email.toLowerCase() !== invitation.email.toLowerCase()) {
-      setError(`This invitation is for ${invitation.email}. Please use that email address.`);
-      return;
-    }
-
-    setAuthLoading(true);
-    setError('');
-
-    try {
-      if (isSignUp) {
-        // Sign up new user
-        await signUpWithEmail(email, password);
-        // User will be auto-logged in, and the useEffect will handle acceptance
-      } else {
-        // Sign in existing user
-        await signInWithEmail(email, password);
-        // User will be auto-logged in, and the useEffect will handle acceptance
-      }
-    } catch (err: any) {
-      console.error('Authentication error:', err);
-      setError(err.message || 'Authentication failed. Please try again.');
-      setAuthLoading(false);
-    }
-  };
-
-  const handleGoogleAuth = async () => {
+  const handleGoogleSignIn = async () => {
     if (!invitation) return;
 
     setAuthLoading(true);
@@ -200,11 +169,11 @@ const CreatorInvitationPage: React.FC = () => {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-red-500 flex items-center justify-center p-6">
-        <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-purple-600 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Loading Invitation...</h2>
-          <p className="text-gray-600">Please wait while we fetch your invitation details.</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A] flex items-center justify-center p-6">
+        <div className="bg-white dark:bg-[#161616] rounded-3xl shadow-2xl border border-gray-200 dark:border-white/10 p-8 max-w-md w-full text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-gray-900 dark:text-white mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Loading Invitation...</h2>
+          <p className="text-gray-600 dark:text-gray-400">Please wait while we fetch your invitation details.</p>
         </div>
       </div>
     );
