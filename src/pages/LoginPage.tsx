@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Link2 } from 'lucide-react';
 import viewtrackLogo from '/Viewtrack Logo Black.png';
 import instagramIcon from '/Instagram_icon.png';
@@ -12,6 +12,7 @@ import TeamInvitationService from '../services/TeamInvitationService';
 const LoginPage: React.FC = () => {
   const { user, signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -72,13 +73,17 @@ const LoginPage: React.FC = () => {
         try {
           // Try to sign in first
           await signInWithEmail(email, password);
-          setRedirecting(true); // Show loading screen while redirecting
+          setRedirecting(true);
+          // Redirect to preparing workspace page
+          navigate('/preparing-workspace', { replace: true });
         } catch (signInError: any) {
           // If user doesn't exist, create it
           if (signInError.code === 'auth/invalid-credential' || signInError.code === 'auth/user-not-found') {
             console.log('📝 Demo account not found. Creating...');
             await signUpWithEmail(email, password);
-            setRedirecting(true); // Show loading screen while redirecting
+            setRedirecting(true);
+            // Redirect to preparing workspace page
+            navigate('/preparing-workspace', { replace: true });
           } else {
             throw signInError;
           }
@@ -87,17 +92,20 @@ const LoginPage: React.FC = () => {
         // Regular login flow
         if (isSignUp) {
           await signUpWithEmail(email, password);
-          setRedirecting(true); // Show loading screen while redirecting
+          setRedirecting(true);
+          // Redirect to preparing workspace page
+          navigate('/preparing-workspace', { replace: true });
         } else {
           await signInWithEmail(email, password);
-          setRedirecting(true); // Show loading screen while redirecting
+          setRedirecting(true);
+          // Redirect to preparing workspace page
+          navigate('/preparing-workspace', { replace: true });
         }
       }
     } catch (err: any) {
       setError(err.message || 'Authentication failed');
       setLoading(false);
     }
-    // Don't set loading to false - keep it true to show loading screen
   };
 
   const handleGoogleSignIn = async () => {
@@ -105,12 +113,13 @@ const LoginPage: React.FC = () => {
     setLoading(true);
     try {
       await signInWithGoogle();
-      setRedirecting(true); // Show loading screen while redirecting
+      setRedirecting(true);
+      // Redirect to preparing workspace page
+      navigate('/preparing-workspace', { replace: true });
     } catch (err: any) {
       setError(err.message || 'Google sign-in failed');
       setLoading(false);
     }
-    // Don't set loading to false - keep it true to show loading screen
   };
 
   // Show loading state if processing invitation or redirecting after login

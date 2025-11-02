@@ -53,6 +53,15 @@ body {
   scrollbar-color: rgba(255, 255, 255, 0.2) #0A0A0A;
 }
 
+/* Animation delays for preparing workspace page */
+.delay-150 {
+  animation-delay: 150ms;
+}
+
+.delay-300 {
+  animation-delay: 300ms;
+}
+
 /* Custom components */
 @layer components {
   .shadow-card {

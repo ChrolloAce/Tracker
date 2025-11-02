@@ -3,6 +3,7 @@ import { useAuth } from './contexts/AuthContext';
 import EmailVerificationScreen from './components/EmailVerificationScreen';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
+import PreparingWorkspacePage from './pages/PreparingWorkspacePage';
 import DemoPage from './pages/DemoPage';
 import OnboardingPage from './pages/OnboardingPage';
 import CreateOrganizationPage from './pages/CreateOrganizationPage';
@@ -214,6 +215,18 @@ function App() {
             <LoginPage />
           ) : (
             <Navigate to="/dashboard" replace />
+          )
+        } 
+      />
+      
+      {/* Preparing workspace page - shown after login while checking org status */}
+      <Route 
+        path="/preparing-workspace" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : (
+            <PreparingWorkspacePage />
           )
         } 
       />
