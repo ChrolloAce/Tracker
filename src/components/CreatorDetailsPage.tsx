@@ -17,18 +17,14 @@ import {
   User,
   Play,
   Eye,
-  Save,
   Trash2,
   Target,
-  Calendar,
-  TrendingUp
+  Calendar
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import LinkCreatorAccountsModal from './LinkCreatorAccountsModal';
-import TieredPaymentBuilder from './TieredPaymentBuilder';
-import PaymentInvoicePreview from './PaymentInvoicePreview';
 import { TieredPaymentStructure } from '../types/payments';
 
 interface CreatorDetailsPageProps {
@@ -43,7 +39,7 @@ interface CreatorDetailsPageProps {
 const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   creator,
   onBack,
-  onUpdate,
+  onUpdate: _onUpdate,
 }) => {
   const { currentOrgId, currentProjectId } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -62,7 +58,6 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   const [tempName, setTempName] = useState('');
   const [tempEmail, setTempEmail] = useState('');
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [creatorProfile, setCreatorProfile] = useState<Creator | null>(null);
   const [linkedAccounts, setLinkedAccounts] = useState<TrackedAccount[]>([]);
   const [allAccounts, setAllAccounts] = useState<TrackedAccount[]>([]);
@@ -299,31 +294,6 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
     }
   };
 
-  const handleSavePaymentRules = async () => {
-    if (!currentOrgId || !currentProjectId) return;
-
-    setSaving(true);
-    try {
-      await CreatorLinksService.updateCreatorPaymentInfo(
-        currentOrgId,
-        currentProjectId,
-        creator.userId,
-        {
-          isPaid: true,
-          tieredStructure: tieredPaymentStructure,
-          updatedAt: new Date()
-        }
-      );
-
-      await loadData();
-      onUpdate();
-    } catch (error) {
-      console.error('Failed to save payment structure:', error);
-      alert('Failed to save payment structure');
-    } finally {
-      setSaving(false);
-    }
-  };
 
 
   if (loading) {

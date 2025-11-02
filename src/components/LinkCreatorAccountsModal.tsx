@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { OrgMember, TrackedAccount } from '../types/firestore';
-import { X, Link as LinkIcon, Search, Check, AlertCircle, User } from 'lucide-react';
+import { X, Link as LinkIcon, Search, Check, AlertCircle } from 'lucide-react';
 import { Button } from './ui/Button';
 import { PlatformIcon } from './ui/PlatformIcon';
 import CreatorLinksService from '../services/CreatorLinksService';
