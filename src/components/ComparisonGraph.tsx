@@ -361,7 +361,7 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
       {/* Content */}
       <div className="relative z-10 p-5">
         {/* Header - "Metrics" with Info Icon + Dropdowns on Right */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-6">
           {/* Title with Info Icon */}
           <div className="flex items-center gap-2">
             <h3 className="text-lg font-bold text-white">Metrics</h3>
@@ -377,7 +377,7 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
               {/* Info Tooltip */}
               {showTooltipInfo && (
                 <div 
-                  className="absolute left-0 top-full mt-2 w-64 p-3 rounded-lg border shadow-xl z-50"
+                  className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 w-64 max-w-[calc(100vw-2rem)] p-3 rounded-lg border shadow-xl z-50"
                   style={{
                     backgroundColor: 'rgba(26, 26, 26, 0.98)',
                     borderColor: 'rgba(255, 255, 255, 0.1)'
@@ -392,7 +392,7 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
           </div>
 
           {/* Metric Selectors + Chart Type Icons */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             {/* Metric 1 Dropdown */}
             <div 
               className="relative rounded-lg border transition-all cursor-pointer hover:border-emerald-500/40"

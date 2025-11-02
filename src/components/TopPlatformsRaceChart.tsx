@@ -175,7 +175,7 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({ submissio
             {/* Info Tooltip */}
             {showInfo && (
               <div 
-                className="absolute left-0 top-full mt-2 w-64 p-3 rounded-lg border shadow-xl z-50"
+                className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 w-64 max-w-[calc(100vw-2rem)] p-3 rounded-lg border shadow-xl z-50"
                 style={{
                   backgroundColor: 'rgba(26, 26, 26, 0.98)',
                   borderColor: 'rgba(255, 255, 255, 0.1)'

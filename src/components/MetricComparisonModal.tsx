@@ -272,16 +272,16 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-2 sm:p-4"
       onClick={handleBackdropClick}
     >
-      <div className="bg-[#0A0A0A] rounded-3xl max-w-6xl w-full max-h-[90vh] overflow-y-auto border border-gray-800/50 shadow-2xl shadow-purple-900/20">
+      <div className="bg-[#0A0A0A] rounded-2xl sm:rounded-3xl max-w-6xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto border border-gray-800/50 shadow-2xl shadow-purple-900/20">
         {/* Header */}
-        <div className="flex items-center justify-between px-8 py-6 border-b border-gray-800/30">
-          <h2 className="text-2xl font-bold text-white tracking-tight">Metrics</h2>
-          <div className="flex items-center space-x-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 sm:px-6 md:px-8 py-4 sm:py-6 border-b border-gray-800/30">
+          <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Metrics</h2>
+          <div className="flex items-center space-x-2 sm:space-x-3 w-full sm:w-auto justify-between sm:justify-end">
             {onDateFilterChange && (
-              <div className="transform scale-90">
+              <div className="transform scale-75 sm:scale-90 origin-left sm:origin-center">
                 <DateRangeFilter
                   selectedFilter={dateFilter}
                   customRange={customRange}
@@ -299,7 +299,7 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
         </div>
 
         {/* Metric Selectors */}
-        <div className="flex items-center space-x-3 px-8 pt-6 flex-wrap gap-y-3">
+        <div className="flex items-center space-x-2 sm:space-x-3 px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 flex-wrap gap-y-2 sm:gap-y-3">
           {/* Primary Metric */}
           <div className="relative">
             <div className="flex items-center space-x-2 bg-gray-900/50 border border-purple-500/30 rounded-xl px-4 py-2.5 backdrop-blur-sm">
@@ -371,17 +371,17 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
         </div>
 
         {/* Chart */}
-        <div className="px-8 py-6">
-          <div className="bg-gradient-to-br from-[#0F0F0F] to-[#080808] rounded-2xl p-8 relative border border-gray-800/30 shadow-inner">
+        <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-6">
+          <div className="bg-gradient-to-br from-[#0F0F0F] to-[#080808] rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 relative border border-gray-800/30 shadow-inner">
             {/* Y-axis labels */}
-            <div className="absolute left-4 top-8 bottom-16 flex flex-col justify-between text-xs font-medium text-gray-500">
+            <div className="absolute left-2 sm:left-4 top-4 sm:top-8 bottom-12 sm:bottom-16 flex flex-col justify-between text-[10px] sm:text-xs font-medium text-gray-500">
               {yAxisLabels.map((label, i) => (
-                <span key={i} className="text-right w-12">{label}</span>
+                <span key={i} className="text-right w-8 sm:w-12">{label}</span>
               ))}
             </div>
 
             {/* Chart area with grid */}
-            <div className="ml-16 mr-4 relative" style={{ height: '420px' }}>
+            <div className="ml-10 sm:ml-16 mr-2 sm:mr-4 relative h-[300px] sm:h-[420px]">
               {/* Grid lines */}
               <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
                 {yAxisLabels.map((_, i) => (
@@ -701,12 +701,12 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
               )}
 
               {/* X-axis labels */}
-              <div className="flex justify-between mt-4 px-1">
+              <div className="flex justify-between mt-4 px-1 overflow-x-auto">
                 {chartData.filter((_, i) => {
-                  const step = Math.max(1, Math.ceil(chartData.length / 10));
+                  const step = Math.max(1, Math.ceil(chartData.length / (window.innerWidth < 640 ? 5 : 10)));
                   return i % step === 0 || i === chartData.length - 1;
                 }).map((data, index) => (
-                  <span key={index} className="text-xs font-medium text-gray-500">
+                  <span key={index} className="text-[10px] sm:text-xs font-medium text-gray-500 whitespace-nowrap">
                     {formatDate(data.date)}
                   </span>
                 ))}

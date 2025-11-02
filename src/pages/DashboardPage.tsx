@@ -2126,10 +2126,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     />
                   </div>
                   
-                  {/* Rule Filter Button - Icon with Badge */}
+                  {/* Rule Filter Button - Icon with Badge - Hidden on mobile */}
                   <button
                     onClick={handleOpenRuleModal}
-                    className="relative p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
+                    className="hidden lg:block relative p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
                     title={activeRulesCount === 0 ? 'All Videos' : `${activeRulesCount} rule${activeRulesCount > 1 ? 's' : ''} applied`}
                   >
                     <Filter className="w-4 h-4" />
@@ -2310,20 +2310,34 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           )}
           {activeTab === 'videos' && (
             <div className="flex items-center space-x-2 flex-shrink-0">
-              {/* Accounts Filter */}
-              <MultiSelectDropdown
-                options={trackedAccounts.map(account => ({
-                  id: account.id,
-                  label: account.displayName || `@${account.username}`,
-                  avatar: account.profilePicture
-                }))}
-                selectedIds={selectedAccountIds}
-                onChange={setSelectedAccountIds}
-                placeholder="All Accounts"
-              />
+              {/* Mobile Filter Button - Shows on small screens */}
+              <button
+                onClick={() => setIsMobileFiltersOpen(true)}
+                className="lg:hidden p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 transition-all backdrop-blur-sm relative"
+                title="Filters"
+              >
+                <Filter className="w-4 h-4" />
+                {(selectedAccountIds.length > 0 || dashboardPlatformFilter !== 'all' || activeRulesCount > 0) && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full border border-gray-900"></span>
+                )}
+              </button>
+
+              {/* Accounts Filter - Hide on mobile */}
+              <div className="hidden lg:block">
+                <MultiSelectDropdown
+                  options={trackedAccounts.map(account => ({
+                    id: account.id,
+                    label: account.displayName || `@${account.username}`,
+                    avatar: account.profilePicture
+                  }))}
+                  selectedIds={selectedAccountIds}
+                  onChange={setSelectedAccountIds}
+                  placeholder="All Accounts"
+                />
+              </div>
               
-              {/* Platform Filter - Icon Based */}
-              <div className="relative">
+              {/* Platform Filter - Icon Based - Hide on mobile */}
+              <div className="relative hidden sm:block">
                 <button
                   onClick={() => setPlatformDropdownOpen(!platformDropdownOpen)}
                   onBlur={() => setTimeout(() => setPlatformDropdownOpen(false), 200)}
@@ -2406,16 +2420,18 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 )}
               </div>
               
-              <DateRangeFilter
-                selectedFilter={dateFilter}
-                customRange={customDateRange}
-                onFilterChange={handleDateFilterChange}
-              />
+              <div className="hidden sm:block">
+                <DateRangeFilter
+                  selectedFilter={dateFilter}
+                  customRange={customDateRange}
+                  onFilterChange={handleDateFilterChange}
+                />
+              </div>
               
-              {/* Rule Filter Button - Icon with Badge */}
+              {/* Rule Filter Button - Icon with Badge - Hide on mobile */}
               <button
                 onClick={handleOpenRuleModal}
-                className="relative p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
+                className="hidden lg:block relative p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
                 title={activeRulesCount === 0 ? 'All Videos' : `${activeRulesCount} rule${activeRulesCount > 1 ? 's' : ''} applied`}
               >
                 <Filter className="w-4 h-4" />
@@ -3703,8 +3719,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               </div>
             </div>
 
-            {/* Footer with Apply/Reset buttons */}
-            <div className="sticky bottom-0 bg-[#1A1A1A] border-t border-white/10 px-4 py-3 flex gap-2">
+            {/* Footer with Reset button */}
+            <div className="sticky bottom-0 bg-[#1A1A1A] border-t border-white/10 px-4 py-3">
               <button
                 onClick={() => {
                   // Reset all filters
@@ -3716,15 +3732,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   setSelectedRuleIds([]);
                   localStorage.setItem('dashboardSelectedRuleIds', JSON.stringify([]));
                 }}
-                className="flex-1 px-4 py-2.5 bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 transition-all"
+                className="w-full px-4 py-2.5 bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 transition-all"
               >
-                Reset All
-              </button>
-              <button
-                onClick={() => setIsMobileFiltersOpen(false)}
-                className="flex-1 px-4 py-2.5 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 transition-all"
-              >
-                Apply Filters
+                Reset All Filters
               </button>
             </div>
           </div>
