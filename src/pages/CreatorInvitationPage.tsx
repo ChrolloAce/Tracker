@@ -5,7 +5,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { TeamInvitation } from '../types/firestore';
 import TeamInvitationService from '../services/TeamInvitationService';
-import { Mail, Loader2, CheckCircle, AlertCircle, UserPlus, Shield, Crown } from 'lucide-react';
+import { Mail, Loader2, CheckCircle, XCircle, AlertCircle, UserPlus, Shield, Crown } from 'lucide-react';
 import viewtrackLogo from '/Viewtrack Logo Black.png';
 
 /**
@@ -182,16 +182,16 @@ const CreatorInvitationPage: React.FC = () => {
   // Error state
   if (error && !invitation) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-red-500 flex items-center justify-center p-6">
-        <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center">
-          <div className="bg-red-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-            <XCircle className="w-10 h-10 text-red-600" />
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A] flex items-center justify-center p-6">
+        <div className="bg-white dark:bg-[#161616] rounded-3xl shadow-2xl border border-gray-200 dark:border-white/10 p-8 max-w-md w-full text-center">
+          <div className="bg-red-100 dark:bg-red-500/10 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+            <XCircle className="w-10 h-10 text-red-600 dark:text-red-400" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Invitation Error</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Invitation Error</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">{error}</p>
           <button
             onClick={() => navigate('/login')}
-            className="w-full bg-purple-600 text-white py-3 rounded-xl font-semibold hover:bg-purple-700 transition-colors"
+            className="w-full bg-black dark:bg-white text-white dark:text-black py-3 rounded-xl font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
           >
             Go to Login
           </button>
@@ -203,15 +203,15 @@ const CreatorInvitationPage: React.FC = () => {
   // Success state
   if (successMessage) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-red-500 flex items-center justify-center p-6">
-        <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center">
-          <div className="bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-10 h-10 text-green-600" />
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A] flex items-center justify-center p-6">
+        <div className="bg-white dark:bg-[#161616] rounded-3xl shadow-2xl border border-gray-200 dark:border-white/10 p-8 max-w-md w-full text-center">
+          <div className="bg-green-100 dark:bg-green-500/10 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-10 h-10 text-green-600 dark:text-green-400" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Success!</h2>
-          <p className="text-gray-600 mb-2">{successMessage}</p>
-          <p className="text-gray-500 text-sm mb-6">Redirecting you to the dashboard...</p>
-          <Loader2 className="w-8 h-8 animate-spin text-purple-600 mx-auto" />
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Success!</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-2">{successMessage}</p>
+          <p className="text-gray-500 dark:text-gray-500 text-sm mb-6">Redirecting you to the dashboard...</p>
+          <Loader2 className="w-8 h-8 animate-spin text-gray-900 dark:text-white mx-auto" />
         </div>
       </div>
     );
@@ -220,46 +220,56 @@ const CreatorInvitationPage: React.FC = () => {
   // Processing state (after login, accepting invitation)
   if (processingInvite) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-red-500 flex items-center justify-center p-6">
-        <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-purple-600 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Accepting Invitation...</h2>
-          <p className="text-gray-600">Please wait while we set up your account.</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A] flex items-center justify-center p-6">
+        <div className="bg-white dark:bg-[#161616] rounded-3xl shadow-2xl border border-gray-200 dark:border-white/10 p-8 max-w-md w-full text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-gray-900 dark:text-white mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Accepting Invitation...</h2>
+          <p className="text-gray-600 dark:text-gray-400">Please wait while we set up your account.</p>
         </div>
       </div>
     );
   }
 
+  // Get role info for display
+  const roleInfo = getRoleInfo(invitation?.role || 'member');
+  const RoleIcon = roleInfo.icon;
+
   // Main invitation acceptance UI
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-red-500 flex items-center justify-center p-6">
-      <div className="bg-white rounded-3xl shadow-2xl overflow-hidden max-w-md w-full">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A] flex items-center justify-center p-6">
+      <div className="bg-white dark:bg-[#161616] rounded-3xl shadow-2xl border border-gray-200 dark:border-white/10 overflow-hidden max-w-md w-full">
         {/* Header */}
-        <div className="bg-gradient-to-r from-purple-600 to-pink-500 p-8 text-center">
-          <img src={viewtrackLogo} alt="ViewTrack" className="h-12 mx-auto mb-4 filter brightness-0 invert" />
-          <h1 className="text-3xl font-bold text-white mb-2">You're Invited! 🎨</h1>
-          <p className="text-white/90 text-sm">
-            Join <span className="font-semibold">{invitation?.organizationName}</span> as a Creator
-          </p>
+        <div className="bg-black dark:bg-white p-8 text-center border-b border-gray-200 dark:border-white/10">
+          <img src={viewtrackLogo} alt="ViewTrack" className="h-12 mx-auto mb-4 dark:filter dark:brightness-0" />
+          <h1 className="text-3xl font-bold text-white dark:text-black mb-2">You're Invited!</h1>
+          <div className="flex items-center justify-center gap-2 text-white/90 dark:text-black/90 text-sm">
+            <span>Join</span>
+            <span className="font-semibold">{invitation?.organizationName}</span>
+            <span>as</span>
+            <span className={`inline-flex items-center gap-1 font-semibold ${roleInfo.color}`}>
+              <RoleIcon className="w-4 h-4" />
+              {roleInfo.label}
+            </span>
+          </div>
         </div>
 
         {/* Content */}
         <div className="p-8">
           {/* Invitation Details */}
-          <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 mb-6">
-            <p className="text-gray-700 text-center mb-4">
-              <span className="font-semibold">{invitation?.invitedByName}</span> has invited you to join their team on ViewTrack!
+          <div className="bg-gray-50 dark:bg-white/5 rounded-2xl p-6 mb-6 border border-gray-200 dark:border-white/10">
+            <p className="text-gray-700 dark:text-gray-300 text-center mb-4">
+              <span className="font-semibold text-gray-900 dark:text-white">{invitation?.invitedByName}</span> has invited you to join their team on ViewTrack!
             </p>
-            <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <Mail className="w-4 h-4" />
               <span>{invitation?.email}</span>
             </div>
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-700">{error}</p>
+            <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl p-4 mb-6 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
             </div>
           )}
 
