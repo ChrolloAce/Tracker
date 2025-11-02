@@ -27,6 +27,11 @@ const LoginPage: React.FC = () => {
   const inviteId = searchParams.get('invite');
   const orgId = searchParams.get('org');
 
+  // Track login page visit with DataFast
+  useEffect(() => {
+    (window as any)?.datafast?.("login_page_view");
+  }, []);
+
   // Track signup page view with DataFast
   useEffect(() => {
     if (isSignUp) {
