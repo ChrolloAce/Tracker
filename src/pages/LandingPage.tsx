@@ -183,6 +183,10 @@ const LandingPage: React.FC = () => {
               <button
                 onClick={() => handleSelectPlan('basic')}
                 disabled={loadingPlan === 'basic'}
+                data-fast-goal="landing_pricing_basic_monthly"
+                data-fast-goal-plan="basic"
+                data-fast-goal-billing-cycle="monthly"
+                data-fast-goal-price="24"
                 className="w-full px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors mt-auto disabled:opacity-50"
               >
                 {loadingPlan === 'basic' ? 'Loading...' : 'Get Started'}
@@ -248,6 +252,10 @@ const LandingPage: React.FC = () => {
               <button
                 onClick={() => handleSelectPlan('pro')}
                 disabled={loadingPlan === 'pro'}
+                data-fast-goal="landing_pricing_pro_monthly"
+                data-fast-goal-plan="pro"
+                data-fast-goal-billing-cycle="monthly"
+                data-fast-goal-price="79"
                 className="w-full px-6 py-3 bg-[#2282FF] hover:bg-[#1b6dd9] text-white font-semibold rounded-xl transition-colors mt-auto disabled:opacity-50 shadow-lg shadow-[#2282FF]/20"
               >
                 {loadingPlan === 'pro' ? 'Loading...' : 'Get Started'}
@@ -316,6 +324,10 @@ const LandingPage: React.FC = () => {
               <button
                 onClick={() => handleSelectPlan('ultra')}
                 disabled={loadingPlan === 'ultra'}
+                data-fast-goal="landing_pricing_ultra_monthly"
+                data-fast-goal-plan="ultra"
+                data-fast-goal-billing-cycle="monthly"
+                data-fast-goal-price="199"
                 className="w-full px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-xl transition-colors mt-auto disabled:opacity-50"
               >
                 {loadingPlan === 'ultra' ? 'Loading...' : 'Get Started'}

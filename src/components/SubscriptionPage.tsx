@@ -204,6 +204,10 @@ const SubscriptionPage: React.FC = () => {
                 <button
                   onClick={() => handleSelectPlan(plan.id)}
                   disabled={loading || isCurrentPlan}
+                  data-fast-goal={plan.id !== 'free' ? `pricing_${plan.id}_${billingCycle}` : undefined}
+                  data-fast-goal-plan={plan.id}
+                  data-fast-goal-billing-cycle={billingCycle}
+                  data-fast-goal-price={price}
                   className={`w-full py-2.5 px-4 rounded-lg font-semibold text-sm transition-all mb-5 ${
                     isCurrentPlan
                       ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-500 cursor-not-allowed'

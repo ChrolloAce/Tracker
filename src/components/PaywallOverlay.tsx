@@ -85,6 +85,10 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
             <button
               onClick={() => handleUpgrade('basic')}
               disabled={loading}
+              data-fast-goal="paywall_pricing_basic_monthly"
+              data-fast-goal-plan="basic"
+              data-fast-goal-billing-cycle="monthly"
+              data-fast-goal-price="24"
               className="w-full px-6 py-3 bg-white hover:bg-gray-100 text-gray-900 font-semibold rounded-full transition-colors disabled:opacity-50"
             >
               {loading ? 'Loading...' : 'Upgrade to Basic'}
@@ -128,6 +132,10 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
             <button
               onClick={() => handleUpgrade('pro')}
               disabled={loading}
+              data-fast-goal="paywall_pricing_pro_monthly"
+              data-fast-goal-plan="pro"
+              data-fast-goal-billing-cycle="monthly"
+              data-fast-goal-price="79"
               className="w-full px-6 py-3 bg-[#2282FF] hover:bg-[#1b6dd9] text-white font-semibold rounded-full transition-colors disabled:opacity-50 shadow-lg shadow-[#2282FF]/20"
             >
               {loading ? 'Loading...' : 'Upgrade to Pro'}
@@ -172,6 +180,10 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
             <button
               onClick={() => handleUpgrade('ultra')}
               disabled={loading}
+              data-fast-goal="paywall_pricing_ultra_monthly"
+              data-fast-goal-plan="ultra"
+              data-fast-goal-billing-cycle="monthly"
+              data-fast-goal-price="199"
               className="w-full px-6 py-3 bg-white hover:bg-gray-100 text-gray-900 font-semibold rounded-full transition-colors disabled:opacity-50"
             >
               {loading ? 'Loading...' : 'Upgrade to Ultra'}

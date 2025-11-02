@@ -27,6 +27,13 @@ const LoginPage: React.FC = () => {
   const inviteId = searchParams.get('invite');
   const orgId = searchParams.get('org');
 
+  // Track signup page view with DataFast
+  useEffect(() => {
+    if (isSignUp) {
+      (window as any)?.datafast?.("signup_page_view");
+    }
+  }, [isSignUp]);
+
   // Auto-accept invitation when user is authenticated
   useEffect(() => {
     const autoAcceptInvitation = async () => {

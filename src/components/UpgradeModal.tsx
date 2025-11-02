@@ -192,6 +192,10 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
             </button>
             <button
               onClick={handleUpgrade}
+              data-fast-goal="upgrade_modal_view_plans"
+              data-fast-goal-resource-type={resourceType}
+              data-fast-goal-current-limit={currentLimit.toString()}
+              data-fast-goal-current-usage={currentUsage.toString()}
               className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white rounded-lg font-medium transition-all shadow-lg shadow-emerald-500/20"
             >
               View Plans →

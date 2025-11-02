@@ -22,6 +22,12 @@
         window.global = window;
       }
     </script>
+    <script id="datafast-queue">
+      window.datafast = window.datafast || function() {
+        window.datafast.q = window.datafast.q || [];
+        window.datafast.q.push(arguments);
+      };
+    </script>
     <script
       defer
       data-website-id="dfid_R6PytF03ubOupQ2FtpE6N"
