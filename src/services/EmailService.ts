@@ -135,8 +135,6 @@ class EmailService {
     role: string;
     inviteLink: string;
   }): string {
-    const signInUrl = 'https://viewtrack.app/login';
-    
     return `
       <!DOCTYPE html>
       <html>
@@ -182,7 +180,7 @@ class EmailService {
               
               <!-- CTA Buttons -->
               <div style="text-align: center; margin: 40px 0;">
-                <a href="${signInUrl}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 18px 50px; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 18px; box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4); transition: transform 0.2s;">
+                <a href="${params.inviteLink}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 18px 50px; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 18px; box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4); transition: transform 0.2s;">
                   Join ${params.organizationName} →
                 </a>
               </div>
@@ -191,10 +189,10 @@ class EmailService {
               <div style="background: #f8f9fa; padding: 25px; border-radius: 12px; margin: 35px 0;">
                 <h3 style="margin: 0 0 15px; font-size: 16px; color: #1a1a1a; font-weight: 600;">What happens next?</h3>
                 <ol style="margin: 0; padding-left: 20px; color: #666; font-size: 14px; line-height: 1.8;">
-                  <li>Click the button above to sign in to ViewTrack</li>
-                  <li>Create your account or sign in if you already have one</li>
-                  <li>You'll automatically join ${params.organizationName}</li>
-                  <li>Start collaborating with your team!</li>
+                  <li>Click the button above to join ${params.organizationName}</li>
+                  <li>Set up your password or continue with Google</li>
+                  <li>You'll be automatically added to the team</li>
+                  <li>Start collaborating right away!</li>
                 </ol>
               </div>
               
@@ -204,7 +202,7 @@ class EmailService {
                   Or copy and paste this link into your browser:
                 </p>
                 <p style="font-size: 12px; color: #667eea; word-break: break-all; text-align: center; background: #f8f9ff; padding: 12px; border-radius: 8px; margin: 0; font-family: 'Courier New', monospace;">
-                  ${signInUrl}
+                  ${params.inviteLink}
                 </p>
               </div>
               
@@ -239,8 +237,6 @@ class EmailService {
     projectName: string;
     inviteLink: string;
   }): string {
-    const signInUrl = 'https://viewtrack.app/login';
-    
     return `
       <!DOCTYPE html>
       <html>
@@ -300,7 +296,7 @@ class EmailService {
               
               <!-- CTA Button -->
               <div style="text-align: center; margin: 40px 0;">
-                <a href="${signInUrl}" style="display: inline-block; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 18px 50px; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 18px; box-shadow: 0 10px 30px rgba(245, 87, 108, 0.4); transition: transform 0.2s;">
+                <a href="${params.inviteLink}" style="display: inline-block; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 18px 50px; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 18px; box-shadow: 0 10px 30px rgba(245, 87, 108, 0.4); transition: transform 0.2s;">
                   Join ${params.organizationName} →
                 </a>
               </div>
@@ -309,9 +305,9 @@ class EmailService {
               <div style="background: #f8f9fa; padding: 25px; border-radius: 12px; margin: 35px 0;">
                 <h3 style="margin: 0 0 15px; font-size: 16px; color: #1a1a1a; font-weight: 600;">Getting started:</h3>
                 <ol style="margin: 0; padding-left: 20px; color: #666; font-size: 14px; line-height: 1.8;">
-                  <li>Click the button above to sign in to ViewTrack</li>
-                  <li>Create your account or sign in if you already have one</li>
-                  <li>You'll automatically join ${params.organizationName}</li>
+                  <li>Click the button above to join ${params.organizationName}</li>
+                  <li>Set up your password or continue with Google</li>
+                  <li>You'll be automatically added as a creator</li>
                   <li>Access your Creator Portal and start tracking!</li>
                 </ol>
               </div>
@@ -322,7 +318,7 @@ class EmailService {
                   Or copy and paste this link into your browser:
                 </p>
                 <p style="font-size: 12px; color: #f5576c; word-break: break-all; text-align: center; background: #fff5f7; padding: 12px; border-radius: 8px; margin: 0; font-family: 'Courier New', monospace;">
-                  ${signInUrl}
+                  ${params.inviteLink}
                 </p>
               </div>
               
