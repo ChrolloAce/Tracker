@@ -2190,21 +2190,21 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             </div>
           )}
           {activeTab === 'accounts' && (
-            <div className="flex items-center space-x-2 flex-shrink-0">
-              {/* Search Bar */}
+            <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
+              {/* Search Bar - Responsive width */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
                 <input
                   type="text"
-                  placeholder="Search accounts..."
+                  placeholder="Search..."
                   value={accountsSearchQuery}
                   onChange={(e) => setAccountsSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-64 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-transparent bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white"
+                  className="pl-10 pr-2 sm:pr-4 py-2 w-24 sm:w-40 md:w-64 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-transparent bg-white dark:bg-[#1A1A1A] text-gray-900 dark:text-white"
                 />
               </div>
               
-              {/* Platform Filter - Icon Based */}
-              <div className="relative">
+              {/* Platform Filter - Icon Based - Hidden on mobile */}
+              <div className="relative hidden sm:block">
                 <button
                   onClick={() => setPlatformDropdownOpen(!platformDropdownOpen)}
                   onBlur={() => setTimeout(() => setPlatformDropdownOpen(false), 200)}
