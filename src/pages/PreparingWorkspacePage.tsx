@@ -1,85 +1,77 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import viewtrackLogo from '/Viewtrack Logo Black.png';
 
 /**
- * PreparingWorkspacePage - Shows a loading screen after login while checking organization status
- * Redirects to either dashboard or create organization based on user's status
+ * PreparingWorkspacePage - Shows a loading screen while auth initializes
+ * Then redirects based on user's organization status
  */
 const PreparingWorkspacePage: React.FC = () => {
   const auth = useAuth();
-  const navigate = useNavigate();
-  const [checkComplete, setCheckComplete] = useState(false);
-  const hasChecked = useRef(false);
+  const [shouldRedirect, setShouldRedirect] = useState(false);
+  const [redirectPath, setRedirectPath] = useState<string>('');
+  const hasStartedCheck = React.useRef(false);
   
-  // Store latest auth values in refs so we can access fresh values in async function
-  const authRef = useRef(auth);
+  // Store latest auth in ref so we can read fresh values in setTimeout
+  const authRef = React.useRef(auth);
   authRef.current = auth;
 
   useEffect(() => {
-    // Prevent multiple checks
-    if (hasChecked.current) {
+    // Only run once
+    if (hasStartedCheck.current) {
       return;
     }
 
-    const checkAccountStatus = async () => {
-      const { user, loading } = authRef.current;
-      console.log('🔍 Starting account check...', { loading, user: !!user });
+    const { user, loading } = authRef.current;
 
-      // Wait for auth to finish loading FIRST
-      if (loading) {
-        console.log('⏳ Auth still loading, waiting...');
-        return;
-      }
+    // Don't do anything while auth is loading
+    if (loading) {
+      console.log('⏳ Auth loading...');
+      return;
+    }
 
-      // If no user, redirect to login
-      if (!user) {
-        console.log('❌ No user found, redirecting to login');
-        hasChecked.current = true;
-        navigate('/login', { replace: true });
-        return;
-      }
+    // If no user, redirect to login
+    if (!user) {
+      console.log('❌ No user, redirecting to login');
+      hasStartedCheck.current = true;
+      setRedirectPath('/login');
+      setShouldRedirect(true);
+      return;
+    }
 
-      // Mark as checked to prevent re-runs
-      hasChecked.current = true;
+    // Mark that we've started the check
+    hasStartedCheck.current = true;
 
-      // Give Firebase extra time to fully initialize the auth context
-      // This prevents race conditions where currentOrgId hasn't been set yet
-      console.log('⏳ Waiting 2 seconds for auth context to fully initialize...');
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // NOW read the FRESH values from the ref (not stale closure values)
+    // Wait for auth context to fully initialize
+    console.log('⏳ Waiting 1.5s for auth to fully initialize...');
+    const timer = setTimeout(() => {
+      // Read FRESH values from ref
       const { currentOrgId, currentProjectId } = authRef.current;
+      console.log('🔍 Checking org status:', { currentOrgId, currentProjectId });
       
-      console.log('🔍 Final check after delay:', { 
-        userId: user.uid, 
-        email: user.email,
-        hasOrg: !!currentOrgId,
-        hasProject: !!currentProjectId,
-        currentOrgId, 
-        currentProjectId 
-      });
-
-      // Check if user has an organization
       if (currentOrgId && currentProjectId) {
-        console.log('✅ User has organization, redirecting to dashboard');
-        setCheckComplete(true);
-        await new Promise(resolve => setTimeout(resolve, 300)); // Small delay for smooth transition
-        navigate('/dashboard', { replace: true });
+        console.log('✅ Has organization, going to dashboard');
+        setRedirectPath('/dashboard');
       } else {
-        console.log('📝 User has no organization, redirecting to create organization');
-        setCheckComplete(true);
-        await new Promise(resolve => setTimeout(resolve, 300)); // Small delay for smooth transition
-        navigate('/create-organization', { replace: true });
+        console.log('📝 No organization, going to create org');
+        setRedirectPath('/create-organization');
       }
-    };
+      setShouldRedirect(true);
+    }, 1500); // Give auth 1.5 seconds to fully initialize
 
-    checkAccountStatus();
-    // Only depend on loading and user - once these are stable, we check once
-    // navigate is stable and doesn't need to be in dependencies
+    return () => clearTimeout(timer);
+    // Only depend on user and loading to trigger the check once they're ready
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth.loading, auth.user]);
+  }, [auth.user, auth.loading]);
+
+  // Handle redirect
+  if (shouldRedirect && redirectPath) {
+    console.log(`🔀 Redirecting to: ${redirectPath}`);
+    return <Navigate to={redirectPath} replace />;
+  }
+
+  // Show loading screen
 
   return (
     <div className="min-h-screen bg-[#FAFAFB] flex items-center justify-center p-8">
