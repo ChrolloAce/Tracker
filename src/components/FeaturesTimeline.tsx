@@ -1,5 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import dashboardImg from '/dashboard.png';
+
+// Import new landing page images
+import trackViewImg from '/LANDINGPAGE-PHOOTS/TrackView.png';
+import createCampaignsImg from '/LANDINGPAGE-PHOOTS/CreateCampaigns.png';
+import signContractsImg from '/LANDINGPAGE-PHOOTS/SignContracts.png';
+import trackLinksImg from '/LANDINGPAGE-PHOOTS/TrackLinks.png';
+import chromeExtensionImg from '/LANDINGPAGE-PHOOTS/ChromeExtension.png';
 
 interface Feature {
   title: string;
@@ -11,42 +17,42 @@ const features: Feature[] = [
   {
     title: "Unified KPIs",
     description: "All your metrics in one place across all platforms.",
-    image: dashboardImg
+    image: trackViewImg
   },
   {
     title: "Revenue Tracking",
     description: "See which content drives real sales and conversions.",
-    image: dashboardImg
+    image: trackViewImg
   },
   {
     title: "UGC Campaigns",
     description: "Manage creator campaigns effortlessly from start to finish.",
-    image: dashboardImg
+    image: createCampaignsImg
   },
   {
     title: "Contracts",
     description: "Handle creator agreements seamlessly in one place.",
-    image: dashboardImg
+    image: signContractsImg
   },
   {
     title: "Link Tracking",
     description: "Monitor bio link performance and conversions.",
-    image: dashboardImg
+    image: trackLinksImg
   },
   {
     title: "Auto Refresh",
     description: "24-hour automated data updates, plus on-demand refresh.",
-    image: dashboardImg
+    image: trackViewImg
   },
   {
     title: "Chrome Extension",
     description: "Research and track content directly from your browser.",
-    image: dashboardImg
+    image: chromeExtensionImg
   },
   {
     title: "Growth Analytics",
     description: "Track performance trends and identify viral patterns.",
-    image: dashboardImg
+    image: trackViewImg
   }
 ];
 
