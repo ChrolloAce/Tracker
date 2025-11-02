@@ -1325,7 +1325,7 @@ const KPICards: React.FC<KPICardsProps> = ({
 
   return (
     <>
-      <div className="grid gap-4 md:gap-5 xl:gap-6 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" style={{ overflow: 'visible' }}>
+      <div className="grid gap-3 sm:gap-4 md:gap-5 xl:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" style={{ overflow: 'visible' }}>
         {(() => {
           // Filter cards based on visibility
           let visibleCards = kpiData.filter(card => cardVisibility[card.id] !== false);
@@ -1804,28 +1804,28 @@ const KPICard: React.FC<{
 
 
       {/* Upper Solid Portion - 60% (reduced to give more space to graph) */}
-      <div className="relative px-5 pt-4 pb-2 z-10" style={{ height: '60%' }}>
+      <div className="relative px-3 sm:px-4 md:px-5 pt-3 sm:pt-4 pb-2 z-10" style={{ height: '60%' }}>
         {/* Icon (top-right) */}
-        <div className="absolute top-4 right-4">
-          <Icon className="w-5 h-5 text-gray-400 opacity-60" />
+        <div className="absolute top-3 sm:top-4 right-3 sm:right-4">
+          <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 opacity-60" />
         </div>
 
         {/* Metric Content - Pushed Higher */}
         <div className="flex flex-col h-full justify-start pt-1">
           {/* Label - Smaller */}
-          <div className="text-xs font-medium text-zinc-400 tracking-wide mb-2">
+          <div className="text-[10px] sm:text-xs font-medium text-zinc-400 tracking-wide mb-1.5 sm:mb-2">
             {data.label}
           </div>
 
           {/* Value Row - Number + Delta Badge aligned horizontally */}
-          <div className="flex items-baseline gap-3 -mt-1">
-            <span className={`text-3xl lg:text-4xl font-bold tracking-tight ${data.isEmpty ? 'text-zinc-600' : 'text-white'}`}>
+          <div className="flex items-baseline gap-2 sm:gap-3 -mt-1">
+            <span className={`text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight ${data.isEmpty ? 'text-zinc-600' : 'text-white'}`}>
               {data.value}
             </span>
             
             {/* Delta Badge (if exists) - Aligned with number baseline */}
             {data.delta && data.delta.absoluteValue !== undefined && (
-              <span className={`inline-flex items-baseline text-xs font-semibold ${
+              <span className={`inline-flex items-baseline text-[10px] sm:text-xs font-semibold ${
                 data.delta.isPositive ? 'text-green-400' : 'text-red-400'
               }`} style={{ letterSpacing: '-0.02em' }}>
                 <span className="mr-0">{data.delta.isPositive ? '+' : '−'}</span>
@@ -1838,8 +1838,8 @@ const KPICard: React.FC<{
 
           {/* Period/Subtitle */}
           {data.period && (
-            <span className="text-xs text-zinc-500 mt-1.5 flex items-center gap-1">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-zinc-700"></span>
+            <span className="text-[10px] sm:text-xs text-zinc-500 mt-1 sm:mt-1.5 flex items-center gap-1">
+              <span className="inline-block w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full bg-zinc-700"></span>
               {data.period}
             </span>
           )}
@@ -1847,9 +1847,9 @@ const KPICard: React.FC<{
 
         {/* CTA Button (if exists) */}
       {!data.delta && data.ctaText && (
-          <button className="absolute bottom-3 right-5 inline-flex items-center gap-0.5 rounded-full px-2.5 py-1 text-xs text-zinc-400 bg-white/5 hover:bg-white/10 transition-colors">
+          <button className="absolute bottom-2 sm:bottom-3 right-3 sm:right-5 inline-flex items-center gap-0.5 rounded-full px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs text-zinc-400 bg-white/5 hover:bg-white/10 transition-colors">
           {data.ctaText}
-          <ChevronRight className="w-3 h-3" />
+          <ChevronRight className="w-2.5 sm:w-3 h-2.5 sm:h-3" />
         </button>
       )}
       </div>

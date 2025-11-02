@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Video, 
   Users, 
@@ -9,7 +9,9 @@ import {
   Link,
   Film,
   Puzzle,
-  Trophy
+  Trophy,
+  Menu,
+  X
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
@@ -26,6 +28,8 @@ interface SidebarProps {
   initialCollapsed?: boolean;
   activeTab?: string;
   onTabChange?: (tab: string) => void;
+  isMobileOpen?: boolean;
+  onMobileToggle?: (open: boolean) => void;
 }
 
 interface NavItem {
@@ -43,7 +47,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   onCollapsedChange,
   initialCollapsed = false,
   activeTab: _unusedActiveTab,
-  onTabChange: _unusedOnTabChange
+  onTabChange: _unusedOnTabChange,
+  isMobileOpen = false,
+  onMobileToggle
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
   const [showCreateProject, setShowCreateProject] = useState(false);
@@ -53,6 +59,13 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   // Check if we're in demo mode
   const isDemoMode = location.pathname.startsWith('/demo');
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    if (isMobileOpen && onMobileToggle) {
+      onMobileToggle(false);
+    }
+  }, [location.pathname]);
 
   // Show ALL navigation items immediately for instant UI, filter by permissions after loaded
   const navigationItems: NavItem[] = useMemo(() => {
@@ -175,11 +188,22 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
+    {/* Mobile Backdrop */}
+    {isMobileOpen && (
+      <div 
+        className="fixed inset-0 bg-black/50 z-40 md:hidden"
+        onClick={() => onMobileToggle?.(false)}
+      />
+    )}
+
     <div className={clsx(
-      'fixed left-0 top-0 flex flex-col h-screen bg-white dark:bg-[#111111] border-r border-gray-200 dark:border-gray-800 transition-all duration-300 z-30',
+      'fixed left-0 top-0 flex flex-col h-screen bg-white dark:bg-[#111111] border-r border-gray-200 dark:border-gray-800 transition-all duration-300 z-50',
       {
         'w-64': !isCollapsed,
         'w-16': isCollapsed,
+        // Mobile: hide by default, show when open
+        '-translate-x-full md:translate-x-0': !isMobileOpen,
+        'translate-x-0': isMobileOpen,
       }
     )}>
       {/* Header */}
@@ -204,6 +228,14 @@ const Sidebar: React.FC<SidebarProps> = ({
             />
           </div>
         )}
+        {/* Mobile Close Button */}
+        <button
+          onClick={() => onMobileToggle?.(false)}
+          className="md:hidden p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+        {/* Desktop Collapse Button */}
         <button
           onClick={() => {
             const newCollapsed = !isCollapsed;
@@ -211,7 +243,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             onCollapsedChange?.(newCollapsed);
           }}
           className={clsx(
-            "p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors",
+            "hidden md:block p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors",
             isCollapsed && "absolute -right-3 top-5 bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700"
           )}
         >
@@ -223,8 +255,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
 
-      {/* Project Switcher */}
-      {!isCollapsed && (
+      {/* Project Switcher - Always visible on mobile when sidebar is open */}
+      {(!isCollapsed || isMobileOpen) && (
         <div className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
           <div>
             <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">
@@ -247,13 +279,13 @@ const Sidebar: React.FC<SidebarProps> = ({
         ))}
       </nav>
 
-      {/* Refresh Countdown Timer */}
-      {!isCollapsed && (
+      {/* Refresh Countdown Timer - Show on mobile when open */}
+      {(!isCollapsed || isMobileOpen) && (
         <RefreshCountdown />
       )}
 
-      {/* Organization Switcher at Bottom */}
-      {!isCollapsed && (
+      {/* Organization Switcher at Bottom - Show on mobile when open */}
+      {(!isCollapsed || isMobileOpen) && (
         <OrganizationSwitcher />
       )}
 

@@ -168,6 +168,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [selectedVideoForAnalytics, setSelectedVideoForAnalytics] = useState<VideoSubmission | null>(null);
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [granularity, setGranularity] = useState<'day' | 'week' | 'month' | 'year'>(() => {
     const saved = localStorage.getItem('dashboardGranularity');
     return (saved as 'day' | 'week' | 'month' | 'year') || 'day';
@@ -1861,6 +1862,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       <Sidebar 
         onCollapsedChange={setIsSidebarCollapsed}
         initialCollapsed={isSidebarCollapsed}
+        isMobileOpen={isMobileSidebarOpen}
+        onMobileToggle={setIsMobileSidebarOpen}
       />
       
       {/* Sidebar overlay when in edit mode */}
@@ -1900,16 +1903,28 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       
       {/* Fixed Header */}
       <header className={clsx(
-        'fixed right-0 bg-white dark:bg-[#111111] border-b border-gray-200 dark:border-gray-800 px-6 py-4 z-20 transition-all duration-300',
+        'fixed right-0 bg-white dark:bg-[#111111] border-b border-gray-200 dark:border-gray-800 z-20 transition-all duration-300',
+        'px-3 sm:px-4 md:px-6 py-3 md:py-4', // Responsive padding
         {
-          'left-64': !isSidebarCollapsed,
-          'left-16': isSidebarCollapsed,
+          'left-0 md:left-64': !isSidebarCollapsed, // Full width on mobile, adjust for sidebar on desktop
+          'left-0 md:left-16': isSidebarCollapsed,
           'top-0': !isDemoOrg,
           'top-[60px]': isDemoOrg, // Push down if demo banner is showing
         }
       )}>
-        <div className="flex items-center justify-between w-full gap-4">
-          <div className="flex items-center space-x-4 flex-1 min-w-0">
+        <div className="flex items-center justify-between w-full gap-2 md:gap-4">
+          {/* Left Section: Hamburger + Title + Back Button */}
+          <div className="flex items-center space-x-2 md:space-x-4 flex-1 min-w-0">
+            {/* Mobile Hamburger Menu */}
+            <button
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="md:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
+            >
+              <svg className="w-6 h-6 text-gray-900 dark:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            
             {activeTab === 'accounts' && accountsViewMode === 'details' && (
               <button
                 onClick={() => accountsPageRef.current?.handleBackToTable()}
@@ -1919,7 +1934,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               </button>
             )}
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white whitespace-nowrap">
+              <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate">
                 {activeTab === 'dashboard' && (isEditingLayout ? 'EDIT MODE' : 'Dashboard')}
                 {activeTab === 'accounts' && 'Tracked Accounts'}
                 {activeTab === 'videos' && 'Videos'}
@@ -1932,7 +1947,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 {activeTab === 'settings' && 'Settings'}
               </h1>
               {activeTab !== 'analytics' && (
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                <p className="hidden sm:block text-xs md:text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">
                   {activeTab === 'dashboard' && isEditingLayout && 'Drag sections around to make your unique dashboard'}
                   {activeTab === 'accounts' && 'Monitor entire Instagram and TikTok accounts'}
                   {activeTab === 'videos' && 'View and manage all tracked videos'}
@@ -1958,28 +1973,30 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             </button>
           )}
           {activeTab === 'dashboard' && (
-            <div className="flex items-center space-x-2 flex-shrink-0">
+            <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
               {!isEditingLayout ? (
                 <>
                   {/* All filters aligned to the right */}
-                  {/* Accounts Filter */}
-                  <MultiSelectDropdown
-                    options={trackedAccounts.map(account => ({
-                      id: account.id,
-                      label: account.displayName || `@${account.username}`,
-                      avatar: account.profilePicture
-                    }))}
-                    selectedIds={selectedAccountIds}
-                    onChange={setSelectedAccountIds}
-                    placeholder="All Accounts"
-                  />
+                  {/* Accounts Filter - Hide on mobile */}
+                  <div className="hidden lg:block">
+                    <MultiSelectDropdown
+                      options={trackedAccounts.map(account => ({
+                        id: account.id,
+                        label: account.displayName || `@${account.username}`,
+                        avatar: account.profilePicture
+                      }))}
+                      selectedIds={selectedAccountIds}
+                      onChange={setSelectedAccountIds}
+                      placeholder="All Accounts"
+                    />
+                  </div>
                   
-                  {/* Platform Filter - Icon Based */}
-                  <div className="relative">
+                  {/* Platform Filter - Icon Based - Hide text on mobile */}
+                  <div className="relative hidden sm:block">
                     <button
                       onClick={() => setPlatformDropdownOpen(!platformDropdownOpen)}
                       onBlur={() => setTimeout(() => setPlatformDropdownOpen(false), 200)}
-                      className="flex items-center gap-2 pl-3 pr-8 py-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm min-w-[140px]"
+                      className="flex items-center gap-2 pl-2 sm:pl-3 pr-6 sm:pr-8 py-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg text-xs sm:text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm min-w-[100px] sm:min-w-[140px]"
                       title={dashboardPlatformFilter === 'all' ? 'All Platforms' : dashboardPlatformFilter.charAt(0).toUpperCase() + dashboardPlatformFilter.slice(1)}
                     >
                       {dashboardPlatformFilter === 'all' ? (
@@ -2073,8 +2090,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     )}
                   </div>
                   
-                  {/* Granularity Selector - Dropdown */}
-                  <div className="relative">
+                  {/* Granularity Selector - Dropdown - Hide on small screens */}
+                  <div className="relative hidden md:block">
                     <select
                       value={granularity}
                       onChange={(e) => setGranularity(e.target.value as 'day' | 'week' | 'month' | 'year')}
@@ -2088,11 +2105,13 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-white/50 pointer-events-none" />
                   </div>
                   
-                  <DateRangeFilter
-                    selectedFilter={dateFilter}
-                    customRange={customDateRange}
-                    onFilterChange={handleDateFilterChange}
-                  />
+                  <div className="hidden sm:block">
+                    <DateRangeFilter
+                      selectedFilter={dateFilter}
+                      customRange={customDateRange}
+                      onFilterChange={handleDateFilterChange}
+                    />
+                  </div>
                   
                   {/* Rule Filter Button - Icon with Badge */}
                   <button
@@ -2108,23 +2127,23 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     )}
                   </button>
                   
-                  {/* Edit Layout Button - Icon Only (Hidden in demo mode) */}
+                  {/* Edit Layout Button - Icon Only (Hidden in demo mode and on mobile) */}
                   {!isDemoMode && (
                   <button
                     onClick={() => setIsEditingLayout(true)}
-                    className="p-2 rounded-lg transition-all bg-white/5 text-white/90 border border-white/10 hover:border-white/20"
+                    className="hidden sm:block p-2 rounded-lg transition-all bg-white/5 text-white/90 border border-white/10 hover:border-white/20"
                     title="Customize dashboard layout"
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
                   )}
                   
-                  {/* Manual Refresh Button - Temporary for testing (Hidden in demo mode) */}
+                  {/* Manual Refresh Button - Temporary for testing (Hidden in demo mode and on mobile) */}
                   {!isDemoMode && (
                   <button
                     onClick={handleManualRefresh}
                     disabled={isRefreshing}
-                    className={`p-2 rounded-lg transition-all border ${
+                    className={`hidden sm:block p-2 rounded-lg transition-all border ${
                       isRefreshing 
                         ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 cursor-wait' 
                         : 'bg-white/5 text-white/90 border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-400'
@@ -2457,13 +2476,13 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       <main className={clsx(
         'overflow-auto min-h-screen transition-all duration-300',
         {
-          'pt-24': !isDemoOrg,
-          'pt-[7.5rem]': isDemoOrg, // Extra padding when demo banner is showing
-          'ml-64': !isSidebarCollapsed,
-          'ml-16': isSidebarCollapsed,
+          'pt-16 md:pt-24': !isDemoOrg, // Responsive top padding
+          'pt-[5.5rem] md:pt-[7.5rem]': isDemoOrg, // Extra padding when demo banner is showing
+          'ml-0 md:ml-64': !isSidebarCollapsed, // No left margin on mobile
+          'ml-0 md:ml-16': isSidebarCollapsed,
         }
       )} style={{ overflowX: 'hidden', overflowY: 'auto' }}>
-        <div className="max-w-7xl mx-auto px-6 py-8" style={{ overflow: 'visible' }}>
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 md:py-8" style={{ overflow: 'visible' }}>
           {/* Dashboard Tab - Only render when active to prevent unnecessary calculations */}
           {activeTab === 'dashboard' && (
             <div>
@@ -2702,9 +2721,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     setIsOverSectionTrash(false);
                   }}
                   className={`
-                    fixed bottom-8 left-1/2 transform -translate-x-1/2 z-[100]
+                    fixed bottom-4 md:bottom-8 left-1/2 transform -translate-x-1/2 z-[100]
                     flex flex-col items-center justify-center gap-2
-                    px-6 py-4 rounded-xl border-2 border-dashed
+                    px-4 py-3 md:px-6 md:py-4 rounded-xl border-2 border-dashed
                     transition-all duration-200
                     ${isOverSectionTrash 
                       ? 'bg-red-500/20 border-red-500 scale-105' 
@@ -3421,7 +3440,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               window.dispatchEvent(event);
             }
           }}
-          className="fixed bottom-8 right-8 z-50 flex items-center justify-center p-4 rounded-full transition-all transform hover:scale-105 active:scale-95 bg-white/10 hover:bg-white/15 text-white border border-white/20 hover:border-white/30 shadow-2xl group"
+          className="fixed bottom-4 right-4 md:bottom-8 md:right-8 z-50 flex items-center justify-center p-3 md:p-4 rounded-full transition-all transform hover:scale-105 active:scale-95 bg-white/10 hover:bg-white/15 text-white border border-white/20 hover:border-white/30 shadow-2xl group"
           aria-label={
             activeTab === 'dashboard' ? 'Add Video' :
             activeTab === 'accounts' ? 'Track Account' :

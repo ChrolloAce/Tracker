@@ -1218,12 +1218,12 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           ) : (
           <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 overflow-hidden">
           {(
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <div className="overflow-x-auto -mx-3 sm:-mx-0">
+              <table className="w-full min-w-max">
                 <thead className="bg-gray-50 dark:bg-zinc-900/40 border-b border-gray-200 dark:border-white/5">
                   <tr>
                     <th 
-                      className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
+                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
                       onClick={() => {
                         if (sortBy === 'username') {
                           setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -1242,17 +1242,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                         )}
                       </div>
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Platform
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
+                    <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
                       Creator
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Last post
                     </th>
                     <th 
-                      className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
+                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
                       onClick={() => {
                         if (sortBy === 'followers') {
                           setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -1272,7 +1272,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                       </div>
                     </th>
                     <th 
-                      className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
+                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
                       onClick={() => {
                         if (sortBy === 'videos') {
                           setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -1282,7 +1282,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                         }
                       }}
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 sm:gap-2">
                         Posts
                         {sortBy === 'videos' && (
                           <span className="text-white">
@@ -1292,7 +1292,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                       </div>
                     </th>
                     <th 
-                      className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
+                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
                       onClick={() => {
                         if (sortBy === 'views') {
                           setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -1302,7 +1302,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                         }
                       }}
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 sm:gap-2">
                         Views
                         {sortBy === 'views' && (
                           <span className="text-white">
@@ -1312,7 +1312,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                       </div>
                     </th>
                     <th 
-                      className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
+                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
                       onClick={() => {
                         if (sortBy === 'likes') {
                           setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -1322,7 +1322,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                         }
                       }}
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 sm:gap-2">
                         Likes
                         {sortBy === 'likes' && (
                           <span className="text-white">
@@ -1332,7 +1332,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                       </div>
                     </th>
                     <th 
-                      className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
+                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
                       onClick={() => {
                         if (sortBy === 'comments') {
                           setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');

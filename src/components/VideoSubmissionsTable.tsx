@@ -320,23 +320,23 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   }> = ({ column, children, className }) => (
     <th 
       className={clsx(
-        'px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none',
+        'px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none',
         className
       )}
       onClick={() => handleSort(column)}
     >
-      <div className="flex items-center space-x-1">
+      <div className="flex items-center space-x-0.5 sm:space-x-1">
         <span>{children}</span>
         <div className="flex flex-col">
           <ChevronUp 
             className={clsx(
-              'w-3 h-3 -mb-1',
+              'w-2.5 sm:w-3 h-2.5 sm:h-3 -mb-1',
               sortBy === column && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-300'
             )} 
           />
           <ChevronDown 
             className={clsx(
-              'w-3 h-3',
+              'w-2.5 sm:w-3 h-2.5 sm:h-3',
               sortBy === column && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-300'
             )} 
           />
@@ -400,20 +400,20 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
       />
       
       {/* Table Header */}
-      <div className="relative px-6 py-5 border-b border-white/5 z-10" style={{ backgroundColor: 'rgba(18, 18, 20, 0.6)' }}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{headerTitle || 'Recent Activity'}</h2>
+      <div className="relative px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 border-b border-white/5 z-10" style={{ backgroundColor: 'rgba(18, 18, 20, 0.6)' }}>
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">{headerTitle || 'Recent Activity'}</h2>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
             {/* Column Visibility Toggle */}
             <div className="relative">
               <button
                 onClick={() => setShowColumnToggle(!showColumnToggle)}
-                className="flex items-center space-x-2 px-3 py-1.5 text-sm text-gray-400 hover:text-white border border-white/10 rounded-lg hover:border-white/20 transition-colors"
+                className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 text-sm text-gray-400 hover:text-white border border-white/10 rounded-lg hover:border-white/20 transition-colors"
               >
                 <Filter className="w-4 h-4" />
-                <span>Columns</span>
+                <span className="hidden sm:inline">Columns</span>
               </button>
               
               {showColumnToggle && (
@@ -455,22 +455,22 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
       </div>
 
       {/* Table */}
-      <div className="relative overflow-x-auto z-10">
+      <div className="relative overflow-x-auto z-10 -mx-3 sm:-mx-0">
         <table className="w-full min-w-max">
           <thead>
             <tr className="border-b border-white/5">
               {visibleColumns.video && (
-                <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider sticky left-0 z-20 min-w-[280px]" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}>
+                <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-zinc-400 uppercase tracking-wider sticky left-0 z-20 min-w-[200px] sm:min-w-[280px]" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}>
                   Video
                 </th>
               )}
               {visibleColumns.preview && (
-                <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[100px]">
+                <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[80px] sm:min-w-[100px]">
                   Preview
                 </th>
               )}
               {visibleColumns.trend && (
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[80px]">
+                <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[60px] sm:min-w-[80px]">
                   Trend
                 </th>
               )}
@@ -495,12 +495,12 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                 </SortableHeader>
               )}
               {visibleColumns.bookmarks && (
-                <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
+                <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[90px] sm:min-w-[120px]">
                   Bookmarks
                 </th>
               )}
               {visibleColumns.duration && (
-                <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[100px]">
+                <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[80px] sm:min-w-[100px]">
                   Length
                 </th>
               )}
@@ -510,7 +510,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                 </SortableHeader>
               )}
               {visibleColumns.outlier && (
-                <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[160px]">
+                <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px] sm:min-w-[160px]">
                   Outlier Factor
                 </th>
               )}
@@ -525,11 +525,11 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                 </SortableHeader>
               )}
               {visibleColumns.lastRefresh && (
-                <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px]">
+                <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[100px] sm:min-w-[120px]">
                   Last Refresh
                 </th>
               )}
-              <th className="w-12 px-6 py-4 text-left"></th>
+              <th className="w-8 sm:w-12 px-2 sm:px-4 md:px-6 py-3 sm:py-4 text-left"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -555,14 +555,14 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   style={{ backgroundColor: isLoading ? undefined : '#121214' }}
                 >
                   {visibleColumns.video && (
-                    <td className="px-6 py-5 sticky left-0 z-20 group-hover:bg-white/5" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}>
-                      <div className="flex items-center space-x-4">
-                        <div className="relative">
+                    <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 sticky left-0 z-20 group-hover:bg-white/5" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}>
+                      <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4">
+                        <div className="relative flex-shrink-0">
                           {submission.uploaderProfilePicture ? (
                             <img
                               src={submission.uploaderProfilePicture}
                               alt={submission.uploaderHandle || submission.uploader || 'Account'}
-                              className="w-10 h-10 rounded-full object-cover flex-shrink-0 ring-2 ring-white shadow-sm"
+                              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover flex-shrink-0 ring-1 sm:ring-2 ring-white shadow-sm"
                               onError={(e) => {
                                 // Fallback to default avatar if profile picture fails to load
                                 const target = e.target as HTMLImageElement;
@@ -577,19 +577,19 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                               }}
                             />
                           ) : (
-                            <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 ring-2 ring-white shadow-sm">
-                              <span className="text-sm font-bold text-gray-900 dark:text-white">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 ring-1 sm:ring-2 ring-white shadow-sm">
+                              <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">
                                 {(submission.uploaderHandle || submission.uploader || 'U').charAt(0).toUpperCase()}
                               </span>
                             </div>
                           )}
-                          <div className="absolute -bottom-1 -right-1">
+                          <div className="absolute -bottom-0.5 sm:-bottom-1 -right-0.5 sm:-right-1">
                             <PlatformIcon platform={submission.platform} size="sm" />
                           </div>
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white" title={submission.title || submission.caption || ''} style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word' }}>
+                          <div className="flex items-center gap-1 sm:gap-2">
+                            <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate" title={submission.title || submission.caption || ''}>
                               {(() => {
                                 const fullTitle = submission.title || submission.caption || '(No caption)';
                                 return fullTitle.length > 20 ? fullTitle.substring(0, 20) + '...' : fullTitle;
@@ -602,7 +602,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                               </svg>
                             )}
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1 truncate">
                             @{submission.uploaderHandle || submission.uploader || 'unknown'}
                           </p>
                         </div>
@@ -610,7 +610,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                     </td>
                   )}
                   {visibleColumns.preview && (
-                    <td className="px-6 py-5">
+                    <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
