@@ -84,7 +84,7 @@ const LandingPage: React.FC = () => {
 
               {/* Supporting Sentence */}
               <p className="text-base md:text-lg text-[#666666] mb-8 md:mb-10 tracking-wide px-4">
-                Monitor content performance across all platforms in one dashboard.
+                ViewTrack handles contracts, performance analytics, creator communication, and campaigns across all platforms—so you can focus on scaling your brand.
               </p>
 
               {/* CTA Buttons */}
