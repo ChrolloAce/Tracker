@@ -169,6 +169,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [granularity, setGranularity] = useState<'day' | 'week' | 'month' | 'year'>(() => {
     const saved = localStorage.getItem('dashboardGranularity');
     return (saved as 'day' | 'week' | 'month' | 'year') || 'day';
@@ -1976,6 +1977,18 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
               {!isEditingLayout ? (
                 <>
+                  {/* Mobile Filter Button - Shows on small screens, opens modal */}
+                  <button
+                    onClick={() => setIsMobileFiltersOpen(true)}
+                    className="lg:hidden p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 transition-all backdrop-blur-sm relative"
+                    title="Filters"
+                  >
+                    <Filter className="w-4 h-4" />
+                    {(selectedAccountIds.length > 0 || dashboardPlatformFilter !== 'all' || activeRulesCount > 0) && (
+                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full border border-gray-900"></span>
+                    )}
+                  </button>
+
                   {/* All filters aligned to the right */}
                   {/* Accounts Filter - Hide on mobile */}
                   <div className="hidden lg:block">
@@ -3496,6 +3509,227 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         }}
         onCancel={() => setIsSignOutModalOpen(false)}
       />
+
+      {/* Mobile Filters Modal */}
+      {isMobileFiltersOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setIsMobileFiltersOpen(false)}
+          />
+          
+          {/* Modal Content */}
+          <div className="relative bg-[#1A1A1A] border border-white/10 rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[85vh] sm:max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-[#1A1A1A] border-b border-white/10 px-4 py-3 flex items-center justify-between z-10">
+              <h3 className="text-lg font-semibold text-white">Filters</h3>
+              <button
+                onClick={() => setIsMobileFiltersOpen(false)}
+                className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Filters Content */}
+            <div className="p-4 space-y-6">
+              {/* Accounts Filter */}
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-2">Accounts</label>
+                <MultiSelectDropdown
+                  options={trackedAccounts.map(account => ({
+                    id: account.id,
+                    label: account.displayName || `@${account.username}`,
+                    avatar: account.profilePicture
+                  }))}
+                  selectedIds={selectedAccountIds}
+                  onChange={setSelectedAccountIds}
+                  placeholder="All Accounts"
+                />
+              </div>
+
+              {/* Platform Filter */}
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-2">Platform</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      setDashboardPlatformFilter('all');
+                      localStorage.setItem('dashboardPlatformFilter', 'all');
+                    }}
+                    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      dashboardPlatformFilter === 'all' 
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
+                        : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    All Platforms
+                  </button>
+                  <button
+                    onClick={() => {
+                      setDashboardPlatformFilter('instagram');
+                      localStorage.setItem('dashboardPlatformFilter', 'instagram');
+                    }}
+                    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      dashboardPlatformFilter === 'instagram' 
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
+                        : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <PlatformIcon platform="instagram" size="sm" />
+                    Instagram
+                  </button>
+                  <button
+                    onClick={() => {
+                      setDashboardPlatformFilter('tiktok');
+                      localStorage.setItem('dashboardPlatformFilter', 'tiktok');
+                    }}
+                    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      dashboardPlatformFilter === 'tiktok' 
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
+                        : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <PlatformIcon platform="tiktok" size="sm" />
+                    TikTok
+                  </button>
+                  <button
+                    onClick={() => {
+                      setDashboardPlatformFilter('youtube');
+                      localStorage.setItem('dashboardPlatformFilter', 'youtube');
+                    }}
+                    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      dashboardPlatformFilter === 'youtube' 
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
+                        : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <PlatformIcon platform="youtube" size="sm" />
+                    YouTube
+                  </button>
+                  <button
+                    onClick={() => {
+                      setDashboardPlatformFilter('twitter');
+                      localStorage.setItem('dashboardPlatformFilter', 'twitter');
+                    }}
+                    className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      dashboardPlatformFilter === 'twitter' 
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
+                        : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <PlatformIcon platform="twitter" size="sm" />
+                    X (Twitter)
+                  </button>
+                </div>
+              </div>
+
+              {/* Granularity Filter */}
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-2">Granularity</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setGranularity('day')}
+                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      granularity === 'day' 
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
+                        : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    Daily
+                  </button>
+                  <button
+                    onClick={() => setGranularity('week')}
+                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      granularity === 'week' 
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
+                        : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    Weekly
+                  </button>
+                  <button
+                    onClick={() => setGranularity('month')}
+                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      granularity === 'month' 
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
+                        : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    Monthly
+                  </button>
+                  <button
+                    onClick={() => setGranularity('year')}
+                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      granularity === 'year' 
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
+                        : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    Yearly
+                  </button>
+                </div>
+              </div>
+
+              {/* Date Range Filter */}
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-2">Date Range</label>
+                <DateRangeFilter
+                  selectedFilter={dateFilter}
+                  customRange={customDateRange}
+                  onFilterChange={handleDateFilterChange}
+                />
+              </div>
+
+              {/* Rules Filter */}
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-2">Rules</label>
+                <button
+                  onClick={() => {
+                    setIsMobileFiltersOpen(false);
+                    handleOpenRuleModal();
+                  }}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 transition-all"
+                >
+                  <span className="flex items-center gap-2">
+                    <Filter className="w-4 h-4" />
+                    {activeRulesCount === 0 ? 'All Videos' : `${activeRulesCount} rule${activeRulesCount > 1 ? 's' : ''} applied`}
+                  </span>
+                  <ChevronDown className="w-4 h-4 text-white/50 -rotate-90" />
+                </button>
+              </div>
+            </div>
+
+            {/* Footer with Apply/Reset buttons */}
+            <div className="sticky bottom-0 bg-[#1A1A1A] border-t border-white/10 px-4 py-3 flex gap-2">
+              <button
+                onClick={() => {
+                  // Reset all filters
+                  setSelectedAccountIds([]);
+                  setDashboardPlatformFilter('all');
+                  localStorage.setItem('dashboardPlatformFilter', 'all');
+                  setGranularity('day');
+                  setDateFilter('last7days');
+                  setSelectedRuleIds([]);
+                  localStorage.setItem('dashboardSelectedRuleIds', JSON.stringify([]));
+                }}
+                className="flex-1 px-4 py-2.5 bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 transition-all"
+              >
+                Reset All
+              </button>
+              <button
+                onClick={() => setIsMobileFiltersOpen(false)}
+                className="flex-1 px-4 py-2.5 bg-emerald-500 text-white rounded-lg text-sm font-medium hover:bg-emerald-600 transition-all"
+              >
+                Apply Filters
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
       {/* Close blur wrapper */}
     </div>
