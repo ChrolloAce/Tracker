@@ -85,17 +85,15 @@ const LoginPage: React.FC = () => {
         try {
           // Try to sign in first
           await signInWithEmail(email, password);
-          setRedirecting(true);
-          // Redirect to preparing workspace page
-          navigate('/preparing-workspace', { replace: true });
+          // Use window.location for hard navigation to prevent React Router from intercepting
+          window.location.href = '/preparing-workspace';
         } catch (signInError: any) {
           // If user doesn't exist, create it
           if (signInError.code === 'auth/invalid-credential' || signInError.code === 'auth/user-not-found') {
             console.log('📝 Demo account not found. Creating...');
             await signUpWithEmail(email, password);
-            setRedirecting(true);
-            // Redirect to preparing workspace page
-            navigate('/preparing-workspace', { replace: true });
+            // Use window.location for hard navigation to prevent React Router from intercepting
+            window.location.href = '/preparing-workspace';
           } else {
             throw signInError;
           }
@@ -104,14 +102,12 @@ const LoginPage: React.FC = () => {
         // Regular login flow
         if (isSignUp) {
           await signUpWithEmail(email, password);
-          setRedirecting(true);
-          // Redirect to preparing workspace page
-          navigate('/preparing-workspace', { replace: true });
+          // Use window.location for hard navigation to prevent React Router from intercepting
+          window.location.href = '/preparing-workspace';
         } else {
           await signInWithEmail(email, password);
-          setRedirecting(true);
-          // Redirect to preparing workspace page
-          navigate('/preparing-workspace', { replace: true });
+          // Use window.location for hard navigation to prevent React Router from intercepting
+          window.location.href = '/preparing-workspace';
         }
       }
     } catch (err: any) {
@@ -125,9 +121,8 @@ const LoginPage: React.FC = () => {
     setLoading(true);
     try {
       await signInWithGoogle();
-      setRedirecting(true);
-      // Redirect to preparing workspace page
-      navigate('/preparing-workspace', { replace: true });
+      // Use window.location for hard navigation to prevent React Router from intercepting
+      window.location.href = '/preparing-workspace';
     } catch (err: any) {
       setError(err.message || 'Google sign-in failed');
       setLoading(false);
