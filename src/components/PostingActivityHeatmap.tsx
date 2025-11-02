@@ -207,38 +207,38 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
   }, [heatmapData]);
 
   return (
-    <div className="bg-zinc-900 rounded-lg shadow-lg p-6 border border-white/10">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-white">Posting Activity</h2>
-        <div className="text-sm text-white/60">
+    <div className="bg-zinc-900 rounded-lg shadow-lg p-3 sm:p-4 md:p-6 border border-white/10">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 mb-4 sm:mb-6">
+        <h2 className="text-base sm:text-lg md:text-xl font-semibold text-white">Posting Activity</h2>
+        <div className="text-[10px] sm:text-xs md:text-sm text-white/60">
           {stats.totalPosts} posts • {stats.activeDays} active days
         </div>
       </div>
 
       {/* Day labels and Heatmap grid */}
-      <div className="flex items-start gap-3 mb-2">
-        <div className="w-10 flex flex-col gap-[2px] text-xs text-white/40 pt-1">
-          <div className="h-4">M</div>
-          <div className="h-4">T</div>
-          <div className="h-4">W</div>
-          <div className="h-4">T</div>
-          <div className="h-4">F</div>
-          <div className="h-4">S</div>
-          <div className="h-4">S</div>
+      <div className="flex items-start gap-2 sm:gap-3 mb-2 overflow-x-auto -mx-3 sm:-mx-0 px-3 sm:px-0 pb-2">
+        <div className="w-6 sm:w-8 md:w-10 flex-shrink-0 flex flex-col gap-[3px] text-[10px] sm:text-xs text-white/40 pt-1">
+          <div className="h-3 sm:h-4 leading-none">M</div>
+          <div className="h-3 sm:h-4 leading-none">T</div>
+          <div className="h-3 sm:h-4 leading-none">W</div>
+          <div className="h-3 sm:h-4 leading-none">T</div>
+          <div className="h-3 sm:h-4 leading-none">F</div>
+          <div className="h-3 sm:h-4 leading-none">S</div>
+          <div className="h-3 sm:h-4 leading-none">S</div>
         </div>
 
-        {/* Heatmap grid - FULL WIDTH with responsive cells */}
-        <div className="flex-1">
-          <div className="grid gap-[2px]" style={{ 
-            gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))`,
+        {/* Heatmap grid - Fixed minimum cell size for readability */}
+        <div className="flex-1 min-w-max">
+          <div className="grid gap-[2px] sm:gap-[3px]" style={{ 
+            gridTemplateColumns: `repeat(${weeks.length}, minmax(10px, 16px))`,
             gridAutoFlow: 'column'
           }}>
             {weeks.map((week, weekIndex) => (
-              <div key={weekIndex} className="flex flex-col gap-[2px]">
+              <div key={weekIndex} className="flex flex-col gap-[2px] sm:gap-[3px]">
                 {/* Fill empty days at the start of the first week */}
                 {weekIndex === 0 && week[0] && week[0].date.getDay() > 0 && (
                   Array.from({ length: week[0].date.getDay() }).map((_, i) => (
-                    <div key={`empty-${i}`} className="aspect-square w-full" />
+                    <div key={`empty-${i}`} className="w-[10px] sm:w-[12px] md:w-[16px] h-[10px] sm:h-[12px] md:h-[16px]" />
                   ))
                 )}
                 
@@ -246,9 +246,9 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
                   <div
                     key={format(day.date, 'yyyy-MM-dd')}
                     className={`
-                      aspect-square w-full rounded-sm transition-all cursor-pointer
+                      w-[10px] sm:w-[12px] md:w-[16px] h-[10px] sm:h-[12px] md:h-[16px] rounded-sm transition-all cursor-pointer
                       ${getColorIntensity(day.count)}
-                      ${day.count > 0 ? 'hover:ring-2 hover:ring-emerald-400 hover:ring-offset-1 hover:ring-offset-zinc-900' : ''}
+                      ${day.count > 0 ? 'hover:ring-1 sm:hover:ring-2 hover:ring-emerald-400 hover:ring-offset-1 hover:ring-offset-zinc-900' : ''}
                     `}
                     onClick={() => handleCellClick(day)}
                     onMouseEnter={(e) => handleMouseEnter(day, e)}
@@ -263,16 +263,18 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
       </div>
 
       {/* Legend */}
-      <div className="flex items-center justify-between mt-4 text-xs text-white/40">
-        <div>Fewer Posts</div>
+      <div className="flex items-center justify-between mt-3 sm:mt-4 text-[10px] sm:text-xs text-white/40">
+        <div className="hidden sm:block">Fewer Posts</div>
+        <div className="sm:hidden">Less</div>
         <div className="flex items-center gap-[2px]">
-          <div className="w-4 h-4 rounded-sm bg-zinc-800/50" />
-          <div className="w-4 h-4 rounded-sm bg-emerald-500/20" />
-          <div className="w-4 h-4 rounded-sm bg-emerald-500/40" />
-          <div className="w-4 h-4 rounded-sm bg-emerald-500/60" />
-          <div className="w-4 h-4 rounded-sm bg-emerald-500/80" />
+          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm bg-zinc-800/50" />
+          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm bg-emerald-500/20" />
+          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm bg-emerald-500/40" />
+          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm bg-emerald-500/60" />
+          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm bg-emerald-500/80" />
         </div>
-        <div>More Posts</div>
+        <div className="hidden sm:block">More Posts</div>
+        <div className="sm:hidden">More</div>
       </div>
 
       {/* KPI-Style Tooltip with Videos */}

@@ -1992,16 +1992,16 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   {/* All filters aligned to the right */}
                   {/* Accounts Filter - Hide on mobile */}
                   <div className="hidden lg:block">
-                    <MultiSelectDropdown
-                      options={trackedAccounts.map(account => ({
-                        id: account.id,
-                        label: account.displayName || `@${account.username}`,
-                        avatar: account.profilePicture
-                      }))}
-                      selectedIds={selectedAccountIds}
-                      onChange={setSelectedAccountIds}
-                      placeholder="All Accounts"
-                    />
+                  <MultiSelectDropdown
+                    options={trackedAccounts.map(account => ({
+                      id: account.id,
+                      label: account.displayName || `@${account.username}`,
+                      avatar: account.profilePicture
+                    }))}
+                    selectedIds={selectedAccountIds}
+                    onChange={setSelectedAccountIds}
+                    placeholder="All Accounts"
+                  />
                   </div>
                   
                   {/* Platform Filter - Icon Based - Hide text on mobile */}
@@ -2119,11 +2119,11 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   </div>
                   
                   <div className="hidden sm:block">
-                    <DateRangeFilter
-                      selectedFilter={dateFilter}
-                      customRange={customDateRange}
-                      onFilterChange={handleDateFilterChange}
-                    />
+                  <DateRangeFilter
+                    selectedFilter={dateFilter}
+                    customRange={customDateRange}
+                    onFilterChange={handleDateFilterChange}
+                  />
                   </div>
                   
                   {/* Rule Filter Button - Icon with Badge - Hidden on mobile */}
@@ -2301,11 +2301,11 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               
               {/* Date Range Filter - Hidden on mobile */}
               <div className="hidden sm:block">
-                <DateRangeFilter
-                  selectedFilter={dateFilter}
-                  customRange={customDateRange}
-                  onFilterChange={handleDateFilterChange}
-                />
+              <DateRangeFilter
+                selectedFilter={dateFilter}
+                customRange={customDateRange}
+                onFilterChange={handleDateFilterChange}
+              />
               </div>
               
               {/* Rule Filter Button - Icon with Badge - Hidden on mobile */}
@@ -2339,16 +2339,16 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
               {/* Accounts Filter - Hide on mobile */}
               <div className="hidden lg:block">
-                <MultiSelectDropdown
-                  options={trackedAccounts.map(account => ({
-                    id: account.id,
-                    label: account.displayName || `@${account.username}`,
-                    avatar: account.profilePicture
-                  }))}
-                  selectedIds={selectedAccountIds}
-                  onChange={setSelectedAccountIds}
-                  placeholder="All Accounts"
-                />
+              <MultiSelectDropdown
+                options={trackedAccounts.map(account => ({
+                  id: account.id,
+                  label: account.displayName || `@${account.username}`,
+                  avatar: account.profilePicture
+                }))}
+                selectedIds={selectedAccountIds}
+                onChange={setSelectedAccountIds}
+                placeholder="All Accounts"
+              />
               </div>
               
               {/* Platform Filter - Icon Based - Hide on mobile */}
@@ -2436,11 +2436,11 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               </div>
               
               <div className="hidden sm:block">
-                <DateRangeFilter
-                  selectedFilter={dateFilter}
-                  customRange={customDateRange}
-                  onFilterChange={handleDateFilterChange}
-                />
+              <DateRangeFilter
+                selectedFilter={dateFilter}
+                customRange={customDateRange}
+                onFilterChange={handleDateFilterChange}
+              />
               </div>
               
               {/* Rule Filter Button - Icon with Badge - Hide on mobile */}

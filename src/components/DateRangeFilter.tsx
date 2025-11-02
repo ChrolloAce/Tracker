@@ -22,6 +22,8 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isSelectingRange, setIsSelectingRange] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState<'right' | 'left'>('right');
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
   
   // Helper function to get preset date range (defined early so it can be used in initialization)
   const getPresetDateRange = (filterType: DateFilterType): DateRange | null => {
@@ -252,18 +254,37 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
   const prevMonth = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
   };
+  
+  // Calculate dropdown position to keep it within viewport
+  React.useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      const dropdownWidth = 680;
+      const viewportWidth = window.innerWidth;
+      
+      // On mobile, always center; on desktop, check for overflow
+      if (viewportWidth < 640) {
+        setDropdownPosition('left'); // Will be overridden by mobile styles
+      } else if (buttonRect.right < dropdownWidth) {
+        setDropdownPosition('left');
+      } else {
+        setDropdownPosition('right');
+      }
+    }
+  }, [isOpen]);
 
   return (
     <div className="relative">
       <button
+        ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 hover:border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/20 transition-all backdrop-blur-sm"
+        className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-white/5 border border-white/10 hover:border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/20 transition-all backdrop-blur-sm"
       >
-        <Calendar className="w-4 h-4 text-white/50" />
-        <span className="text-sm font-medium text-white/90">
+        <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white/50" />
+        <span className="text-xs sm:text-sm font-medium text-white/90">
           {getFilterLabel()}
         </span>
-        <ChevronDown className={`w-4 h-4 text-white/50 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-white/50 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
@@ -280,17 +301,24 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
           />
           
           {/* Main Dropdown */}
-          <div className="absolute top-full right-0 mt-2 bg-black border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"
-               style={{ width: '680px' }}>
-            <div className="flex">
+          <div 
+            className={`fixed sm:absolute left-1/2 sm:left-auto -translate-x-1/2 sm:translate-x-0 top-1/2 sm:top-full -translate-y-1/2 sm:translate-y-0 sm:mt-2 ${
+              dropdownPosition === 'right' ? 'sm:right-0' : 'sm:left-0'
+            } bg-black border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden`}
+            style={{ 
+              width: 'min(680px, calc(100vw - 2rem))',
+              maxHeight: 'calc(100vh - 2rem)'
+            }}
+          >
+            <div className="flex flex-col sm:flex-row overflow-y-auto max-h-[calc(100vh-2rem)]">
               {/* LEFT PANEL - Presets */}
-              <div className="w-56 bg-gradient-to-b from-black to-[#0A0A0A] border-r border-white/5 p-3">
-                <div className="space-y-1">
+              <div className="w-full sm:w-56 bg-gradient-to-b from-black to-[#0A0A0A] sm:border-r border-b sm:border-b-0 border-white/5 p-2 sm:p-3">
+                <div className="space-y-0.5 sm:space-y-1">
                   {presetOptions.map((option) => (
                     <button
                       key={option.value}
                       onClick={() => handlePresetSelect(option.value)}
-                      className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      className={`w-full text-left px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 ${
                         selectedFilter === option.value && !isSelectingRange
                           ? 'bg-white text-black shadow-lg'
                           : 'text-white/70 hover:text-white hover:bg-white/5'
@@ -303,36 +331,36 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
               </div>
 
               {/* RIGHT PANEL - Calendar */}
-              <div className="flex-1 bg-[#0D0D0D] p-6">
+              <div className="flex-1 bg-[#0D0D0D] p-3 sm:p-4 md:p-6">
                 {/* Calendar Header */}
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-3 sm:mb-4 md:mb-6">
                   <button
                     onClick={prevMonth}
-                    className="p-1.5 hover:bg-white/5 rounded-lg transition-colors"
+                    className="p-1 sm:p-1.5 hover:bg-white/5 rounded-lg transition-colors"
                   >
-                    <ChevronLeft className="w-5 h-5 text-white/70" />
+                    <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-white/70" />
                   </button>
                   
-                  <h3 className="text-base font-semibold text-white">
+                  <h3 className="text-sm sm:text-base font-semibold text-white">
                     {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                   </h3>
                   
                   <button
                     onClick={nextMonth}
-                    className="p-1.5 hover:bg-white/5 rounded-lg transition-colors"
+                    className="p-1 sm:p-1.5 hover:bg-white/5 rounded-lg transition-colors"
                   >
-                    <ChevronRight className="w-5 h-5 text-white/70" />
+                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-white/70" />
                   </button>
                 </div>
 
                 {/* Calendar Grid */}
                 <div className="space-y-1">
                   {/* Weekday Labels */}
-                  <div className="grid grid-cols-7 gap-1 mb-2">
+                  <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-1 sm:mb-2">
                     {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
                       <div
                         key={day}
-                        className="h-9 flex items-center justify-center text-xs font-medium text-white/40 uppercase"
+                        className="h-7 sm:h-9 flex items-center justify-center text-[10px] sm:text-xs font-medium text-white/40 uppercase"
                       >
                         {day}
                       </div>
@@ -340,7 +368,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
                   </div>
 
                   {/* Date Grid */}
-                  <div className="grid grid-cols-7 gap-1">
+                  <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
                     {calendarDays.map((date, index) => {
                       if (!date) return <div key={index} />;
                       
@@ -356,7 +384,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
                           onClick={() => handleDateClick(date)}
                           disabled={!currentMonthDate}
                           className={`
-                            h-9 flex items-center justify-center text-sm font-medium rounded-lg
+                            h-7 sm:h-9 flex items-center justify-center text-xs sm:text-sm font-medium rounded-md sm:rounded-lg
                             transition-all duration-150 relative
                             ${!currentMonthDate ? 'text-white/20 cursor-not-allowed' : 'cursor-pointer'}
                             ${(isStart || isEnd) ? 'bg-white text-black font-semibold shadow-lg hover:bg-white/95' : 
@@ -366,7 +394,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
                         >
                           {date.getDate()}
                           {today && !isStart && !isEnd && (
-                            <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-white/50 rounded-full" />
+                            <div className="absolute bottom-0.5 sm:bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-white/50 rounded-full" />
                           )}
                         </button>
                       );
@@ -376,7 +404,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
 
                 {/* Status Text */}
                 {isSelectingRange && tempStartDate && (
-                  <div className="mt-4 text-xs text-white/50 text-center">
+                  <div className="mt-3 sm:mt-4 text-[10px] sm:text-xs text-white/50 text-center">
                     Select end date
                   </div>
                 )}
