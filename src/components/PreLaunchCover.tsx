@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { Lock, Unlock, Clock } from 'lucide-react';
 import vtLogo from '/vtlogo.png';
 
-const LAUNCH_DATE = new Date('2025-11-01T22:00:00').getTime(); // Nov 1, 2025 at 10:00 PM (EST)
+const LAUNCH_DATE = new Date('2025-11-02T17:00:00').getTime(); // Nov 2, 2025 at 5:00 PM (EST)
 const BYPASS_PIN = '9434'; // Change this to your secure PIN
 const BYPASS_KEY = 'prelaunch_bypass_v2'; // Changed key to force reset
 const FORCE_LOCK = true; // ALWAYS show cover, ignore date completely
@@ -134,65 +134,65 @@ export const PreLaunchCover: React.FC<PreLaunchCoverProps> = ({ children }) => {
       {/* Main content */}
       <div className="relative z-10 max-w-2xl mx-auto px-6 text-center">
         {/* Logo */}
-        <div className="mb-12 flex justify-center">
-          <img src={vtLogo} alt="ViewTrack" className="h-16 w-auto" />
+        <div className="mb-8 sm:mb-12 flex justify-center">
+          <img src={vtLogo} alt="ViewTrack" className="h-12 sm:h-14 md:h-16 w-auto" />
         </div>
 
         {/* Title */}
-        <h1 className="text-5xl md:text-6xl font-bold text-white mb-4 tracking-tight">
+        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 tracking-tight">
           Coming Soon
         </h1>
-        <p className="text-xl text-gray-400 mb-12">
+        <p className="text-base sm:text-lg md:text-xl text-gray-400 mb-8 sm:mb-10 md:mb-12 px-4">
           We're putting the finishing touches on something amazing
         </p>
 
         {/* Countdown Timer */}
-        <div className="mb-12">
-          <div className="grid grid-cols-4 gap-4 md:gap-6 mb-6">
+        <div className="mb-8 sm:mb-10 md:mb-12">
+          <div className="grid grid-cols-4 gap-2 sm:gap-4 md:gap-6 mb-6">
             {/* Days */}
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-all">
-              <div className="text-4xl md:text-5xl font-bold text-emerald-400 mb-2">
+            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-6 hover:bg-white/10 transition-all">
+              <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-emerald-400 mb-1 sm:mb-2">
                 {String(timeRemaining.days).padStart(2, '0')}
               </div>
-              <div className="text-xs md:text-sm text-gray-400 uppercase tracking-wider">
+              <div className="text-[10px] sm:text-xs md:text-sm text-gray-400 uppercase tracking-wider">
                 Days
               </div>
             </div>
 
             {/* Hours */}
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-all">
-              <div className="text-4xl md:text-5xl font-bold text-emerald-400 mb-2">
+            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-6 hover:bg-white/10 transition-all">
+              <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-emerald-400 mb-1 sm:mb-2">
                 {String(timeRemaining.hours).padStart(2, '0')}
               </div>
-              <div className="text-xs md:text-sm text-gray-400 uppercase tracking-wider">
+              <div className="text-[10px] sm:text-xs md:text-sm text-gray-400 uppercase tracking-wider">
                 Hours
               </div>
             </div>
 
             {/* Minutes */}
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-all">
-              <div className="text-4xl md:text-5xl font-bold text-emerald-400 mb-2">
+            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-6 hover:bg-white/10 transition-all">
+              <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-emerald-400 mb-1 sm:mb-2">
                 {String(timeRemaining.minutes).padStart(2, '0')}
               </div>
-              <div className="text-xs md:text-sm text-gray-400 uppercase tracking-wider">
+              <div className="text-[10px] sm:text-xs md:text-sm text-gray-400 uppercase tracking-wider">
                 Minutes
               </div>
             </div>
 
             {/* Seconds */}
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-all">
-              <div className="text-4xl md:text-5xl font-bold text-emerald-400 mb-2">
+            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-6 hover:bg-white/10 transition-all">
+              <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-emerald-400 mb-1 sm:mb-2">
                 {String(timeRemaining.seconds).padStart(2, '0')}
               </div>
-              <div className="text-xs md:text-sm text-gray-400 uppercase tracking-wider">
+              <div className="text-[10px] sm:text-xs md:text-sm text-gray-400 uppercase tracking-wider">
                 Seconds
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-center gap-2 text-gray-500">
-            <Clock className="w-4 h-4" />
-            <span className="text-sm">Launching November 1st, 2025 at 10:00 PM</span>
+          <div className="flex items-center justify-center gap-2 text-gray-500 px-4">
+            <Clock className="w-4 h-4 flex-shrink-0" />
+            <span className="text-xs sm:text-sm">Launching November 2nd, 2025 at 5:00 PM</span>
           </div>
         </div>
 
