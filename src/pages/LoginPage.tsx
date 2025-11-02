@@ -74,6 +74,8 @@ const LoginPage: React.FC = () => {
           // Try to sign in first
           await signInWithEmail(email, password);
           setRedirecting(true);
+          // Small delay to ensure auth state updates
+          await new Promise(resolve => setTimeout(resolve, 500));
           // Redirect to preparing workspace page
           navigate('/preparing-workspace', { replace: true });
         } catch (signInError: any) {
@@ -82,6 +84,8 @@ const LoginPage: React.FC = () => {
             console.log('📝 Demo account not found. Creating...');
             await signUpWithEmail(email, password);
             setRedirecting(true);
+            // Small delay to ensure auth state updates
+            await new Promise(resolve => setTimeout(resolve, 500));
             // Redirect to preparing workspace page
             navigate('/preparing-workspace', { replace: true });
           } else {
@@ -93,11 +97,15 @@ const LoginPage: React.FC = () => {
         if (isSignUp) {
           await signUpWithEmail(email, password);
           setRedirecting(true);
+          // Small delay to ensure auth state updates
+          await new Promise(resolve => setTimeout(resolve, 500));
           // Redirect to preparing workspace page
           navigate('/preparing-workspace', { replace: true });
         } else {
           await signInWithEmail(email, password);
           setRedirecting(true);
+          // Small delay to ensure auth state updates
+          await new Promise(resolve => setTimeout(resolve, 500));
           // Redirect to preparing workspace page
           navigate('/preparing-workspace', { replace: true });
         }
@@ -114,6 +122,8 @@ const LoginPage: React.FC = () => {
     try {
       await signInWithGoogle();
       setRedirecting(true);
+      // Wait a bit longer for Google popup to close and auth to propagate
+      await new Promise(resolve => setTimeout(resolve, 800));
       // Redirect to preparing workspace page
       navigate('/preparing-workspace', { replace: true });
     } catch (err: any) {

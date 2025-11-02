@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import viewtrackLogo from '/Viewtrack Logo Black.png';
@@ -11,8 +11,17 @@ const PreparingWorkspacePage: React.FC = () => {
   const { user, loading, currentOrgId, currentProjectId } = useAuth();
   const navigate = useNavigate();
   const [checkComplete, setCheckComplete] = useState(false);
+  const hasRedirected = useRef(false);
+  const checkAttempts = useRef(0);
+  const maxAttempts = 10; // Maximum 10 attempts (5 seconds total)
 
   useEffect(() => {
+    // Prevent multiple redirects
+    if (hasRedirected.current) {
+      console.log('🚫 Already redirected, skipping');
+      return;
+    }
+
     const checkAccountStatus = async () => {
       // Wait for auth to finish loading
       if (loading) {
@@ -23,37 +32,52 @@ const PreparingWorkspacePage: React.FC = () => {
       // If no user, redirect to login
       if (!user) {
         console.log('❌ No user found, redirecting to login');
+        hasRedirected.current = true;
         navigate('/login', { replace: true });
         return;
       }
 
-      // Give Firebase a moment to fully initialize the auth context
-      // This prevents race conditions where currentOrgId hasn't been set yet
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      console.log('🔍 Checking account status:', { 
+      // Increment check attempts
+      checkAttempts.current++;
+      console.log(`🔍 Check attempt ${checkAttempts.current}/${maxAttempts}:`, { 
         userId: user.uid, 
         email: user.email,
         currentOrgId, 
-        currentProjectId 
+        currentProjectId,
+        loading
       });
 
-      // Check if user has an organization
-      if (currentOrgId && currentProjectId) {
-        console.log('✅ User has organization, redirecting to dashboard');
-        setCheckComplete(true);
-        // Use replace to prevent back button from returning here
-        navigate('/dashboard', { replace: true });
-      } else {
-        console.log('📝 User has no organization, redirecting to onboarding');
-        setCheckComplete(true);
-        // Use replace to prevent back button from returning here
-        navigate('/create-organization', { replace: true });
+      // Give Firebase time to initialize, but check periodically
+      if (!currentOrgId || !currentProjectId) {
+        if (checkAttempts.current < maxAttempts) {
+          // Wait 500ms and check again
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Trigger another check by updating state
+          setCheckComplete(false);
+          return;
+        } else {
+          // After max attempts, assume no org exists
+          console.log('📝 Max attempts reached with no org, redirecting to create organization');
+          hasRedirected.current = true;
+          setCheckComplete(true);
+          navigate('/create-organization', { replace: true });
+          return;
+        }
       }
+
+      // User has organization and project
+      console.log('✅ User has organization, redirecting to dashboard');
+      hasRedirected.current = true;
+      setCheckComplete(true);
+      
+      // Small delay before redirect to ensure smooth transition
+      await new Promise(resolve => setTimeout(resolve, 300));
+      navigate('/dashboard', { replace: true });
     };
 
     checkAccountStatus();
-  }, [user, loading, currentOrgId, currentProjectId, navigate]);
+  }, [user, loading, currentOrgId, currentProjectId, navigate, checkComplete]);
 
   return (
     <div className="min-h-screen bg-[#FAFAFB] flex items-center justify-center p-8">
