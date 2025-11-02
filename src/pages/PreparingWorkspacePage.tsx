@@ -44,21 +44,35 @@ const PreparingWorkspacePage: React.FC = () => {
     hasStartedCheck.current = true;
 
     // Wait for auth context to fully initialize
-    console.log('⏳ Waiting 1.5s for auth to fully initialize...');
+    // AuthContext needs time to: load user orgs, set currentOrgId, create/load project, set currentProjectId
+    console.log('⏳ Waiting 3 seconds for auth to fully initialize...');
+    console.log('🔍 Current state at start:', { 
+      userId: user.uid,
+      email: user.email,
+      currentOrgId: authRef.current.currentOrgId, 
+      currentProjectId: authRef.current.currentProjectId 
+    });
+    
     const timer = setTimeout(() => {
       // Read FRESH values from ref
       const { currentOrgId, currentProjectId } = authRef.current;
-      console.log('🔍 Checking org status:', { currentOrgId, currentProjectId });
+      console.log('🔍 Checking org status after 3s delay:', { 
+        userId: user.uid,
+        currentOrgId, 
+        currentProjectId,
+        hasOrg: !!currentOrgId,
+        hasProject: !!currentProjectId
+      });
       
       if (currentOrgId && currentProjectId) {
-        console.log('✅ Has organization, going to dashboard');
+        console.log('✅ User HAS organization and project, redirecting to dashboard');
         setRedirectPath('/dashboard');
       } else {
-        console.log('📝 No organization, going to create org');
+        console.log('📝 User has NO organization, redirecting to create organization page');
         setRedirectPath('/create-organization');
       }
       setShouldRedirect(true);
-    }, 1500); // Give auth 1.5 seconds to fully initialize
+    }, 3000); // Give auth 3 seconds to fully initialize
 
     return () => clearTimeout(timer);
     // Only depend on user and loading to trigger the check once they're ready
