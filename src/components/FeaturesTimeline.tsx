@@ -6,6 +6,7 @@ import createCampaignsImg from '/LANDINGPAGE-PHOOTS/CreateCampaigns.png';
 import signContractsImg from '/LANDINGPAGE-PHOOTS/SignContracts.png';
 import trackLinksImg from '/LANDINGPAGE-PHOOTS/TrackLinks.png';
 import chromeExtensionImg from '/LANDINGPAGE-PHOOTS/ChromeExtension.png';
+import creatorPortalImg from '/LANDINGPAGE-PHOOTS/Creator Portal.png';
 
 interface Feature {
   title: string;
@@ -20,9 +21,9 @@ const features: Feature[] = [
     image: trackViewImg
   },
   {
-    title: "Revenue Tracking",
+    title: "Creator Portal",
     description: "See which content drives real sales and conversions.",
-    image: trackViewImg
+    image: creatorPortalImg
   },
   {
     title: "UGC Campaigns",
@@ -48,11 +49,6 @@ const features: Feature[] = [
     title: "Chrome Extension",
     description: "Research and track content directly from your browser.",
     image: chromeExtensionImg
-  },
-  {
-    title: "Growth Analytics",
-    description: "Track performance trends and identify viral patterns.",
-    image: trackViewImg
   }
 ];
 
