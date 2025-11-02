@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { Lock, Unlock, Clock } from 'lucide-react';
 import vtLogo from '/vtlogo.png';
 
-const LAUNCH_DATE = new Date('2025-11-02T17:00:00').getTime(); // Nov 2, 2025 at 5:00 PM (EST)
+const LAUNCH_DATE = new Date('2025-11-02T21:00:00').getTime(); // Nov 2, 2025 at 9:00 PM (EST)
 const BYPASS_PIN = '9434'; // Change this to your secure PIN
 const BYPASS_KEY = 'prelaunch_bypass_v2'; // Changed key to force reset
 const FORCE_LOCK = true; // ALWAYS show cover, ignore date completely
@@ -192,7 +192,7 @@ export const PreLaunchCover: React.FC<PreLaunchCoverProps> = ({ children }) => {
 
           <div className="flex items-center justify-center gap-2 text-gray-500 px-4">
             <Clock className="w-4 h-4 flex-shrink-0" />
-            <span className="text-xs sm:text-sm">Launching November 2nd, 2025 at 5:00 PM</span>
+            <span className="text-xs sm:text-sm">Launching November 2nd, 2025 at 9:00 PM</span>
           </div>
         </div>
 
