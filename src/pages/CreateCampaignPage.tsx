@@ -362,14 +362,14 @@ const CreateCampaignPage: React.FC = () => {
       {/* Left Panel - Dotted Black Grid */}
       <div className="hidden lg:flex lg:w-1/2 bg-black relative overflow-hidden">
         {/* Back Button */}
-        <button
-          onClick={() => navigate(-1)}
+          <button
+            onClick={() => navigate(-1)}
           className="absolute top-6 left-6 flex items-center gap-2 text-white/70 hover:text-white transition-colors z-10"
-        >
-          <ArrowLeft className="w-5 h-5" />
+          >
+            <ArrowLeft className="w-5 h-5" />
           <span className="text-sm font-medium">Back to Campaigns</span>
-        </button>
-        
+          </button>
+
         {/* Dotted Background Pattern */}
         <div 
           className="absolute inset-0 opacity-20"
@@ -385,11 +385,11 @@ const CreateCampaignPage: React.FC = () => {
             <div className="mb-8">
               <h1 className="text-5xl font-bold text-white mb-4 leading-tight">
                 Create Your Campaign
-              </h1>
+          </h1>
               <p className="text-white/60 text-lg">
-                Design competitions or challenges that motivate your creators and reward excellence.
-              </p>
-            </div>
+              Design competitions or challenges that motivate your creators and reward excellence.
+          </p>
+        </div>
 
             {/* Progress Steps */}
             <div className="mt-12">
@@ -403,7 +403,7 @@ const CreateCampaignPage: React.FC = () => {
                     )}
                   />
                 ))}
-              </div>
+          </div>
               <p className="text-white/40 text-sm">
                 Step {currentStep} of {totalSteps}
               </p>
@@ -422,7 +422,7 @@ const CreateCampaignPage: React.FC = () => {
               className="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors mb-4"
             >
               <ArrowLeft className="w-5 h-5" />
-              <span className="text-sm font-medium">Back</span>
+                <span className="text-sm font-medium">Back</span>
             </button>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Create Campaign</h1>
             <div className="flex items-center gap-2 mt-4">
@@ -433,21 +433,21 @@ const CreateCampaignPage: React.FC = () => {
                 )} />
               ))}
             </div>
-          </div>
-
+            </div>
+            
           {/* Form Card */}
           <div className="space-y-6">
             {/* Error Message */}
             {error && (
               <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-600">{error}</p>
+              <p className="text-sm text-red-600">{error}</p>
               </div>
             )}
 
             {/* Step 1: Campaign Basics */}
             {currentStep === 1 && (
               <div className="space-y-6">
-                <div>
+              <div>
                   <h2 className="text-3xl font-bold text-gray-900 mb-2">Campaign Basics</h2>
                   <p className="text-gray-600">Set up the foundation of your campaign</p>
                 </div>
@@ -456,14 +456,14 @@ const CreateCampaignPage: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Campaign Name <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
                     placeholder="Summer Challenge 2024"
                     className="w-full px-0 py-3 bg-transparent border-0 border-b border-gray-300 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-black transition-colors"
-                    autoFocus
-                  />
+                      autoFocus
+                    />
                 </div>
 
                 <div>
@@ -486,16 +486,16 @@ const CreateCampaignPage: React.FC = () => {
                   </label>
                   <div className="flex gap-3">
                     {['instagram', 'tiktok', 'youtube', 'twitter'].map((platform) => (
-                      <button
-                        key={platform}
-                        type="button"
-                        onClick={() => togglePlatform(platform)}
+                        <button
+                          key={platform}
+                          type="button"
+                          onClick={() => togglePlatform(platform)}
                         className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${
-                          selectedPlatforms.includes(platform)
+                            selectedPlatforms.includes(platform)
                             ? 'bg-black border-black text-white'
                             : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
-                        }`}
-                      >
+                          }`}
+                        >
                         {getPlatformIcon(platform) && (
                           <img 
                             src={getPlatformIcon(platform)!} 
@@ -503,7 +503,7 @@ const CreateCampaignPage: React.FC = () => {
                             className="w-5 h-5 object-contain"
                           />
                         )}
-                      </button>
+                        </button>
                     ))}
                   </div>
                 </div>
@@ -586,8 +586,8 @@ const CreateCampaignPage: React.FC = () => {
                         >
                           <Plus className="w-4 h-4" />
                         </button>
-                      </div>
-                    )}
+              </div>
+            )}
 
                     {currentResourceType === 'link' && (
                       <div className="space-y-2">
@@ -692,7 +692,7 @@ const CreateCampaignPage: React.FC = () => {
                 </div>
 
                 {/* Requirements */}
-                <div>
+              <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Requirements
                   </label>
@@ -821,11 +821,11 @@ const CreateCampaignPage: React.FC = () => {
             {/* Step 4: Goals & Rules */}
             {currentStep === 4 && (
               <div className="space-y-6">
-                <div>
+              <div>
                   <h2 className="text-3xl font-bold text-gray-900 mb-2">Goals & Tracking</h2>
                   <p className="text-gray-600">Define success metrics and tracking rules</p>
                 </div>
-
+                
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                     Goal Type <span className="text-red-500">*</span>
@@ -860,31 +860,31 @@ const CreateCampaignPage: React.FC = () => {
                 <div className="border-t border-gray-200 pt-6">
                   <div className="flex items-center justify-between mb-3">
                     <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                      <Target className="w-4 h-4" />
-                      Tracking Rule (Optional)
-                    </label>
-                    <button
-                      type="button"
+                        <Target className="w-4 h-4" />
+                        Tracking Rule (Optional)
+                      </label>
+                      <button
+                        type="button"
                       onClick={() => setShowCreateRuleModal(true)}
-                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-all flex items-center gap-2"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Create Rule
-                    </button>
+                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-all flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Create Rule
+                      </button>
                   </div>
 
-                  <select
-                    value={defaultRuleId}
-                    onChange={(e) => setDefaultRuleId(e.target.value)}
+                    <select
+                      value={defaultRuleId}
+                      onChange={(e) => setDefaultRuleId(e.target.value)}
                     className="w-full px-0 py-3 bg-transparent border-0 border-b border-gray-300 text-gray-900 focus:outline-none focus:border-black transition-colors"
-                  >
-                    <option value="">No rule (manual tracking)</option>
-                    {rules.map((rule) => (
-                      <option key={rule.id} value={rule.id}>
-                        {rule.name}
-                      </option>
-                    ))}
-                  </select>
+                    >
+                      <option value="">No rule (manual tracking)</option>
+                      {rules.map((rule) => (
+                        <option key={rule.id} value={rule.id}>
+                          {rule.name}
+                        </option>
+                      ))}
+                    </select>
                 </div>
 
                 {/* Metric Guarantees */}
@@ -936,11 +936,11 @@ const CreateCampaignPage: React.FC = () => {
             {/* Step 5: Rewards */}
             {currentStep === 5 && (
               <div className="space-y-6">
-                <div>
+              <div>
                   <h2 className="text-3xl font-bold text-gray-900 mb-2">Rewards & Compensation</h2>
                   <p className="text-gray-600">Set up how creators will be compensated</p>
                 </div>
-
+                
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                     Compensation Type
@@ -974,44 +974,44 @@ const CreateCampaignPage: React.FC = () => {
                 {/* Position Rewards - Only for Competition Campaigns */}
                 {campaignType === 'competition' && (
                   <div className="border-t border-gray-200 pt-6">
-                    <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center justify-between mb-3">
                       <label className="text-sm font-medium text-gray-700">Position Rewards</label>
-                      <button
-                        type="button"
-                        onClick={addReward}
-                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-all flex items-center gap-2"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Add
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={addReward}
+                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-all flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add
+                    </button>
+                  </div>
 
-                    {rewards.map((reward, index) => (
-                      <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg mb-2">
-                        <input
-                          type="text"
-                          value={reward.description}
-                          onChange={(e) => updateReward(index, 'description', e.target.value)}
-                          placeholder="Description"
-                          className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm bg-white"
-                        />
-                        <input
+                  {rewards.map((reward, index) => (
+                    <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg mb-2">
+                      <input
+                        type="text"
+                        value={reward.description}
+                        onChange={(e) => updateReward(index, 'description', e.target.value)}
+                        placeholder="Description"
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm bg-white"
+                      />
+                      <input
                           type="text"
                           value={formatNumber(reward.amount)}
                           onChange={(e) => updateReward(index, 'amount', parseFormattedNumber(e.target.value))}
                           placeholder="1,000"
                           className="w-32 px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm bg-white"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeReward(index)}
-                          className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeReward(index)}
+                        className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
                 )}
               </div>
             )}
@@ -1019,11 +1019,11 @@ const CreateCampaignPage: React.FC = () => {
             {/* Step 6: Select Creators */}
             {currentStep === 6 && (
               <div className="space-y-6">
-                <div>
+              <div>
                   <h2 className="text-3xl font-bold text-gray-900 mb-2">Select Creators</h2>
                   <p className="text-gray-600">Choose which creators can participate</p>
                 </div>
-
+                
                 {loadingCreators ? (
                   <div className="text-center py-12">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto"></div>
@@ -1071,7 +1071,7 @@ const CreateCampaignPage: React.FC = () => {
                 )}
               </div>
             )}
-
+            
             {/* Actions */}
             <div className="flex items-center justify-between pt-6 border-t border-gray-200">
               {currentStep > 1 ? (
@@ -1088,20 +1088,20 @@ const CreateCampaignPage: React.FC = () => {
               )}
 
               {currentStep < totalSteps ? (
-                <button
-                  onClick={nextStep}
-                  disabled={!canProceed() || loading}
+            <button
+                onClick={nextStep}
+                disabled={!canProceed() || loading}
                   className="flex items-center gap-2 px-8 py-3 bg-black text-white rounded-full hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg"
-                >
-                  Continue
+            >
+                Continue
                   <ChevronRight className="w-4 h-4" />
-                </button>
+            </button>
               ) : (
-                <button
-                  onClick={handleSubmit}
-                  disabled={!canProceed() || loading}
+            <button
+                onClick={handleSubmit}
+              disabled={!canProceed() || loading}
                   className="px-8 py-3 bg-black text-white rounded-full hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-semibold shadow-lg"
-                >
+            >
                   {loading ? (
                     <>
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -1113,11 +1113,11 @@ const CreateCampaignPage: React.FC = () => {
                       <span>Create Campaign</span>
                     </>
                   )}
-                </button>
-              )}
-            </div>
+            </button>
+            )}
           </div>
         </div>
+      </div>
       </div>
 
       {/* Rule Creation Modal */}

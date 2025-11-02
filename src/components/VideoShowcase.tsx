@@ -59,12 +59,12 @@ export default function VideoShowcase({
   return (
     <section
       aria-label="Product demo"
-      className={`relative mx-auto w-full max-w-6xl px-4 ${className}`}
+      className={`relative mx-auto w-full max-w-6xl px-2 md:px-4 ${className}`}
     >
       {/* Frame */}
       <div 
         ref={containerRef}
-        className="relative overflow-hidden rounded-3xl shadow-xl cursor-pointer" 
+        className="relative overflow-hidden rounded-2xl md:rounded-3xl shadow-xl cursor-pointer" 
         style={{ aspectRatio: '16/10' }}
         onMouseMove={handleMouseMove}
         onMouseEnter={() => setIsHovering(true)}
@@ -73,7 +73,7 @@ export default function VideoShowcase({
       >
         {/* Subtle outer glow */}
         <div 
-          className="pointer-events-none absolute inset-0 rounded-3xl z-10"
+          className="pointer-events-none absolute inset-0 rounded-2xl md:rounded-3xl z-10"
           style={{ 
             boxShadow: "0 30px 120px rgba(0,0,0,0.35) inset" 
           }} 
@@ -94,16 +94,16 @@ export default function VideoShowcase({
         
         {/* Bottom fade to page background (#FAFAFB). */}
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-48 z-10"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-32 md:h-48 z-10"
           style={{ 
             backgroundImage: "linear-gradient(to bottom, rgba(250,250,251,0), #FAFAFB 72%)" 
           }}
         />
         
-        {/* Mouse-following play button */}
+        {/* Mouse-following play button (hidden on mobile, shown on desktop) */}
         {isHovering && (
           <div
-            className="absolute pointer-events-none z-20 transition-opacity duration-300"
+            className="hidden md:block absolute pointer-events-none z-20 transition-opacity duration-300"
             style={{
               left: `${mousePos.x}px`,
               top: `${mousePos.y}px`,
@@ -118,7 +118,7 @@ export default function VideoShowcase({
       </div>
       
       {/* Caption */}
-      <p className="mx-auto mt-3 text-center text-sm text-gray-500">{caption}</p>
+      <p className="mx-auto mt-2 md:mt-3 text-center text-xs md:text-sm text-gray-500">{caption}</p>
     </section>
   );
 }
