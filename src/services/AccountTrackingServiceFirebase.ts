@@ -892,27 +892,43 @@ export class AccountTrackingServiceFirebase {
     for (const item of result.items) {
       if (!item.webVideoUrl && !item.id) continue;
 
-      // Upload thumbnail to Firebase Storage
-      const thumbnailUrl = item['videoMeta.coverUrl'] || item.videoMeta?.coverUrl || item.coverUrl || '';
+      // Try multiple possible thumbnail field names for TikTok
+      const thumbnailUrl = item['videoMeta.coverUrl'] || 
+                          item.videoMeta?.coverUrl || 
+                          item.covers?.default || 
+                          item.coverUrl || 
+                          item.thumbnail || 
+                          item.cover || 
+                          '';
+      
       let uploadedThumbnail = thumbnailUrl;
       if (thumbnailUrl) {
+        console.log(`🖼️ TikTok thumbnail URL found for video ${item.id}: ${thumbnailUrl.substring(0, 80)}...`);
         uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
           orgId,
           thumbnailUrl,
-          `tt_${item.id}`,
+          `tt_${item.id}_thumb`,
           'thumbnail'
         );
+        
+        // If upload succeeded (returned Firebase URL), use it; otherwise use original
+        if (uploadedThumbnail && !uploadedThumbnail.includes('storage.googleapis.com')) {
+          console.warn(`⚠️ TikTok thumbnail upload failed for ${item.id}, using original URL`);
+        }
+      } else {
+        console.warn(`⚠️ TikTok video ${item.id} has no thumbnail URL in API response`);
       }
 
       const caption = item.text || item.description || '';
       
-      // Debug: Log first video caption
-      if (videos.length === 0 && caption) {
-        console.log('🔍 TikTok first video caption:', {
+      // Debug: Log first video data structure
+      if (videos.length === 0) {
+        console.log('🔍 TikTok first video data:', {
+          id: item.id,
           text: item.text,
           description: item.description,
-          finalCaption: caption,
-          videoId: item.id
+          thumbnailFound: !!thumbnailUrl,
+          thumbnailUrl: thumbnailUrl ? thumbnailUrl.substring(0, 80) : 'none'
         });
       }
       

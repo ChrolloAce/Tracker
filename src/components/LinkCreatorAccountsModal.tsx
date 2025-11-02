@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { OrgMember, TrackedAccount } from '../types/firestore';
-import { X, Link as LinkIcon, Search, Check, AlertCircle } from 'lucide-react';
+import { X, Link as LinkIcon, Search, Check, AlertCircle, User } from 'lucide-react';
 import { Button } from './ui/Button';
 import { PlatformIcon } from './ui/PlatformIcon';
 import CreatorLinksService from '../services/CreatorLinksService';
@@ -127,29 +127,29 @@ const LinkCreatorAccountsModal: React.FC<LinkCreatorAccountsModalProps> = ({
     Array.from(linkedAccountIds).filter(id => !selectedAccountIds.has(id)).length;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-2xl max-h-[80vh] flex flex-col">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-[#0A0A0A] rounded-xl border border-white/10 w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <LinkIcon className="w-6 h-6 text-purple-500" />
+            <LinkIcon className="w-6 h-6 text-white/70" />
             <div>
               <h2 className="text-xl font-semibold text-white">Link Tracked Accounts</h2>
-              <p className="text-sm text-gray-400 mt-0.5">
+              <p className="text-sm text-white/50 mt-0.5">
                 Select from your project's tracked accounts to link to {creator.displayName || creator.email}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-white/50 hover:text-white transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-hidden flex flex-col bg-[#0D0D0D]">
           {/* Error Message */}
           {error && (
             <div className="mx-6 mt-4 bg-red-500/10 border border-red-500/30 rounded-lg p-4 flex items-start gap-3">
@@ -161,26 +161,26 @@ const LinkCreatorAccountsModal: React.FC<LinkCreatorAccountsModalProps> = ({
           {/* Search */}
           <div className="px-6 pt-4 pb-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search accounts by handle or name..."
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2.5 bg-black/50 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-transparent transition-all"
               />
             </div>
             <div className="mt-2 flex items-center justify-between text-xs">
-              <div className="text-gray-400">
+              <div className="text-white/50">
                 {selectedAccountIds.size} of {accounts.length} tracked accounts selected
                 {changesCount > 0 && (
-                  <span className="ml-2 text-gray-900 dark:text-white">
+                  <span className="ml-2 text-white font-medium">
                     • {changesCount} change{changesCount !== 1 ? 's' : ''}
                   </span>
                 )}
               </div>
               {accounts.length === 0 && (
-                <div className="text-yellow-400">
+                <div className="text-yellow-400/80">
                   No tracked accounts in this project
                 </div>
               )}
@@ -191,20 +191,20 @@ const LinkCreatorAccountsModal: React.FC<LinkCreatorAccountsModalProps> = ({
           <div className="flex-1 overflow-y-auto px-6 pb-4">
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <div className="text-gray-400">Loading accounts...</div>
+                <div className="text-white/50">Loading accounts...</div>
               </div>
             ) : filteredAccounts.length === 0 ? (
               <div className="flex items-center justify-center py-12">
                 <div className="text-center">
-                  <div className="text-gray-400 mb-2">
+                  <div className="text-white/60 mb-2">
                     {searchQuery ? 'No accounts found' : 'No tracked accounts in this project'}
                   </div>
                   {searchQuery ? (
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-white/40">
                       Try a different search term
                     </div>
                   ) : (
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-white/40">
                       Add tracked accounts to this project first in the "Tracked Accounts" tab
                     </div>
                   )}
@@ -220,25 +220,35 @@ const LinkCreatorAccountsModal: React.FC<LinkCreatorAccountsModalProps> = ({
                     <button
                       key={account.id}
                       onClick={() => handleToggleAccount(account.id)}
-                      className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all ${
                         isSelected
-                          ? 'bg-gray-200 dark:bg-gray-800 border-purple-500/30 hover:bg-gray-300 dark:hover:bg-gray-700'
-                          : 'bg-gray-700/50 border-gray-600 hover:bg-gray-700'
+                          ? 'bg-white/5 border-white/20 hover:bg-white/10'
+                          : 'bg-black/30 border-white/10 hover:bg-black/50'
                       }`}
                     >
                       {/* Checkbox */}
                       <div
-                        className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
                           isSelected
-                            ? 'bg-purple-500 border-purple-500'
-                            : 'border-gray-500'
+                            ? 'bg-white border-white'
+                            : 'border-white/30 hover:border-white/50'
                         }`}
                       >
-                        {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                        {isSelected && <Check className="w-3.5 h-3.5 text-black" />}
                       </div>
 
-                      {/* Platform Icon */}
-                      <PlatformIcon platform={account.platform} size="md" />
+                      {/* Profile Picture */}
+                      {account.profilePicture ? (
+                        <img
+                          src={account.profilePicture}
+                          alt={`@${account.username}`}
+                          className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                          <PlatformIcon platform={account.platform} size="sm" />
+                        </div>
+                      )}
 
                       {/* Account Info */}
                       <div className="flex-1 text-left min-w-0">
@@ -246,10 +256,15 @@ const LinkCreatorAccountsModal: React.FC<LinkCreatorAccountsModalProps> = ({
                           @{account.username}
                         </div>
                         {account.displayName && (
-                          <div className="text-xs text-gray-400 truncate">
+                          <div className="text-xs text-white/50 truncate">
                             {account.displayName}
                           </div>
                         )}
+                      </div>
+
+                      {/* Platform Badge */}
+                      <div className="flex-shrink-0">
+                        <PlatformIcon platform={account.platform} size="sm" />
                       </div>
 
                       {/* Status Badge */}
@@ -272,20 +287,20 @@ const LinkCreatorAccountsModal: React.FC<LinkCreatorAccountsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-700 flex gap-3">
+        <div className="px-6 py-4 border-t border-white/10 bg-[#0A0A0A] flex gap-3">
           <Button
             type="button"
             variant="secondary"
             onClick={onClose}
             disabled={saving}
-            className="flex-1"
+            className="flex-1 bg-white/5 hover:bg-white/10 text-white border border-white/10"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSave}
             disabled={saving || changesCount === 0}
-            className="flex-1"
+            className="flex-1 bg-white hover:bg-gray-200 text-black font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? 'Saving...' : `Save Changes${changesCount > 0 ? ` (${changesCount})` : ''}`}
           </Button>

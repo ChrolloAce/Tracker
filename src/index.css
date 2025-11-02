@@ -3,13 +3,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Light background for landing page */
+/* Dark background for app */
 html {
-  background-color: #FAFAFB;
+  background-color: #0A0A0A;
 }
 
 body {
-  background-color: #FAFAFB;
+  background-color: #0A0A0A;
 }
 
 /* Base styles */
@@ -17,40 +17,40 @@ body {
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color-scheme: light;
-  color: rgba(0, 0, 0, 0.87);
-  background-color: #FAFAFB;
+  color-scheme: dark;
+  color: rgba(255, 255, 255, 0.9);
+  background-color: #0A0A0A;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar - Dark theme */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: #0A0A0A;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 3px;
   transition: background-color 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: rgba(255, 255, 255, 0.3);
 }
 
-/* Firefox scrollbar */
+/* Firefox scrollbar - Dark theme */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 #f1f5f9;
+  scrollbar-color: rgba(255, 255, 255, 0.2) #0A0A0A;
 }
 
 /* Custom components */

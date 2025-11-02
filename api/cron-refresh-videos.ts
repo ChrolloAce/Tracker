@@ -342,8 +342,15 @@ async function downloadAndUploadImage(
     return publicUrl;
   } catch (error) {
     console.error(`    ❌ Failed to download/upload thumbnail:`, error);
-    // Return a placeholder instead of the CDN URL (which will 403)
-    return 'https://via.placeholder.com/640x360?text=Thumbnail+Unavailable';
+    // Return the original URL as fallback (will work for TikTok/YouTube, but may fail for Instagram)
+    // Better than placeholder as it might still work
+    if (imageUrl.includes('cdninstagram') || imageUrl.includes('fbcdn')) {
+      // Instagram URLs expire, return empty string instead
+      console.warn(`    ⚠️ Instagram thumbnail download failed, returning empty (URL will expire anyway)`);
+      return '';
+    }
+    console.warn(`    ⚠️ Using original URL as fallback: ${imageUrl.substring(0, 80)}...`);
+    return imageUrl;
   }
 }
 
@@ -532,15 +539,27 @@ async function saveVideosToFirestore(
       comments = video.commentCount || 0;
       shares = video.shareCount || 0;
       url = video.webVideoUrl || video.videoUrl || '';
-      const tiktokThumbnail = video.videoMeta?.coverUrl || '';
+      
+      // Try multiple possible thumbnail field names for TikTok
+      const tiktokThumbnail = video.videoMeta?.coverUrl || 
+                             video['videoMeta.coverUrl'] || 
+                             video.covers?.default || 
+                             video.coverUrl || 
+                             video.thumbnail || 
+                             video.cover || 
+                             '';
+      
       // Download and upload thumbnail to Firebase Storage
       if (tiktokThumbnail) {
+        console.log(`    🎬 TikTok thumbnail URL found: ${tiktokThumbnail.substring(0, 80)}...`);
         thumbnail = await downloadAndUploadImage(
           tiktokThumbnail,
           orgId,
-          `${platformVideoId}_thumb.jpg`,
+          `tt_${platformVideoId}_thumb.jpg`,
           'thumbnails'
         );
+      } else {
+        console.warn(`    ⚠️ TikTok video ${platformVideoId} has no thumbnail URL in API response`);
       }
       caption = video.text || '';
       uploadDate = video.createTime ? new Date(video.createTime * 1000) : new Date();
@@ -616,14 +635,23 @@ async function saveVideosToFirestore(
         lastRefreshed: Timestamp.now()
       };
 
-      // If existing thumbnail is an Instagram CDN URL, update it to Firebase Storage
-      if (existingData.thumbnail && 
+      // Update thumbnail if:
+      // 1. Existing thumbnail is an Instagram CDN URL (expires)
+      // 2. Existing thumbnail is empty/missing and we have a new one
+      // 3. Existing thumbnail is a placeholder and we have a real one
+      const shouldUpdateThumbnail = 
+        (existingData.thumbnail && 
           (existingData.thumbnail.includes('cdninstagram.com') || 
-           existingData.thumbnail.includes('fbcdn.net'))) {
-        console.log(`    🔄 Updating old Instagram CDN thumbnail to Firebase Storage...`);
-        if (thumbnail) {
+          existingData.thumbnail.includes('fbcdn.net'))) ||
+        (!existingData.thumbnail && thumbnail) ||
+        (existingData.thumbnail && 
+         existingData.thumbnail.includes('placeholder') && 
+         thumbnail && 
+         !thumbnail.includes('placeholder'));
+
+      if (shouldUpdateThumbnail && thumbnail) {
+        console.log(`    🔄 Updating thumbnail (old: ${existingData.thumbnail ? existingData.thumbnail.substring(0, 50) : 'empty'}, new: ${thumbnail.substring(0, 50)}...)`);
           videoData.thumbnail = thumbnail;
-        }
       }
 
       // Update existing video metrics

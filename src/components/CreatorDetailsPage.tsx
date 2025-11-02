@@ -6,6 +6,8 @@ import CreatorLinksService from '../services/CreatorLinksService';
 import PayoutsService from '../services/PayoutsService';
 import FirestoreDataService from '../services/FirestoreDataService';
 import TieredPaymentService from '../services/TieredPaymentService';
+import CampaignService from '../services/CampaignService';
+import { Campaign } from '../types/campaigns';
 import { 
   ArrowLeft, 
   Link as LinkIcon, 
@@ -16,7 +18,10 @@ import {
   Play,
   Eye,
   Save,
-  Trash2
+  Trash2,
+  Target,
+  Calendar,
+  TrendingUp
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -44,10 +49,10 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Get active tab from URL or default to 'overview'
-  const activeTab = (searchParams.get('tab') as 'overview' | 'accounts' | 'payment' | 'settings') || 'overview';
+  const activeTab = (searchParams.get('tab') as 'overview' | 'accounts' | 'campaigns' | 'settings') || 'overview';
   
   // Function to change tab and update URL
-  const setActiveTab = (tab: 'overview' | 'accounts' | 'payment' | 'settings') => {
+  const setActiveTab = (tab: 'overview' | 'accounts' | 'campaigns' | 'settings') => {
     setSearchParams({ tab });
   };
   
@@ -69,6 +74,9 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   
   // Tiered payment structure state
   const [tieredPaymentStructure, setTieredPaymentStructure] = useState<TieredPaymentStructure | null>(null);
+  
+  // Campaigns state
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
 
   useEffect(() => {
     loadData();
@@ -277,6 +285,13 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
         creator.userId
       );
       setPayouts(payoutsData);
+
+      // Load campaigns where this creator is a participant
+      const allCampaigns = await CampaignService.getCampaigns(currentOrgId, currentProjectId);
+      const creatorCampaigns = allCampaigns.filter(campaign => 
+        campaign.participantIds?.includes(creator.userId)
+      );
+      setCampaigns(creatorCampaigns);
     } catch (error) {
       console.error('Failed to load creator data:', error);
     } finally {
@@ -319,7 +334,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   const totalPending = pendingPayouts.reduce((sum, p) => sum + p.amount, 0);
 
   return (
-    <div className="h-full flex flex-col bg-[#0A0A0A]">
+    <div className="min-h-screen h-full flex flex-col bg-[#0A0A0A]">
       {/* Header */}
       <div className="px-6 pt-6">
         <div className="flex items-center justify-between">
@@ -357,7 +372,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
         {/* Tabs and Time Period Selector */}
         <div className="flex items-center justify-between mt-8 border-b border-gray-800">
           <div className="flex gap-6">
-            {(['overview', 'accounts', 'payment', 'settings'] as const).map((tab) => (
+            {(['overview', 'accounts', 'campaigns', 'settings'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -367,7 +382,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
                     : 'border-transparent text-gray-400 hover:text-gray-300'
               }`}
             >
-              {tab === 'payment' ? 'Payment Terms' : tab}
+              {tab}
             </button>
           ))}
           </div>
@@ -417,53 +432,11 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
             onOpenLinkModal={() => setShowLinkAccountsModal(true)}
           />
         )}
-        {activeTab === 'payment' && (
-          <div className="grid grid-cols-2 gap-6 h-[calc(100vh-300px)]">
-            {/* Left: Edit Payment Structure */}
-            <div className="bg-[#161616] rounded-xl border border-gray-800 p-6 overflow-y-auto">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                  <DollarSign className="w-5 h-5 text-gray-400" />
-                  Payment Structure
-                </h2>
-              </div>
-
-              <TieredPaymentBuilder
-                value={tieredPaymentStructure}
-                onChange={setTieredPaymentStructure}
-                alwaysEdit={false}
+        {activeTab === 'campaigns' && (
+          <CampaignsTab
+            campaigns={campaigns}
+            creatorId={creator.userId}
               />
-
-              {/* Save Button */}
-              <div className="flex justify-end mt-6 pt-4 border-t border-gray-800">
-                <Button
-                  onClick={handleSavePaymentRules}
-                  disabled={saving}
-                  className="flex items-center gap-2"
-                >
-                  {saving ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      Save Structure
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            {/* Right: Invoice Preview */}
-            <div className="overflow-y-auto">
-              <PaymentInvoicePreview
-                structure={tieredPaymentStructure}
-                creatorName={creator.displayName || creator.email || 'Creator'}
-              />
-            </div>
-          </div>
         )}
         {activeTab === 'settings' && (
           <SettingsTab
@@ -1291,6 +1264,151 @@ const SettingsTab: React.FC<{
           )}
         </div>
       </div>
+    </div>
+  );
+};
+
+// Campaigns Tab Component
+const CampaignsTab: React.FC<{
+  campaigns: Campaign[];
+  creatorId: string;
+}> = ({ campaigns }) => {
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return 'N/A';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-500/20 text-green-400 border-green-500/30';
+      case 'draft': return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+      case 'completed': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+      case 'paused': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+    }
+  };
+
+  const formatNumber = (num: number) => {
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+    return num.toString();
+  };
+
+  return (
+    <div className="space-y-6">
+      {campaigns.length === 0 ? (
+        <div className="bg-[#161616] rounded-xl border border-gray-800 p-12 text-center">
+          <Target className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-white mb-2">No Campaigns Yet</h3>
+          <p className="text-gray-400">
+            This creator is not currently part of any campaigns
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {campaigns.map((campaign) => (
+            <div
+              key={campaign.id}
+              className="bg-[#161616] rounded-xl border border-gray-800 overflow-hidden hover:border-gray-700 transition-all duration-200"
+            >
+              {/* Campaign Cover Image */}
+              {campaign.coverImage ? (
+                <div className="w-full h-48 bg-gradient-to-br from-purple-600 to-blue-600 relative">
+                  <img
+                    src={campaign.coverImage}
+                    alt={campaign.name}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-4 right-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(campaign.status)}`}>
+                      {campaign.status}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full h-48 bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center relative">
+                  <Target className="w-12 h-12 text-white/60" />
+                  <div className="absolute top-4 right-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(campaign.status)}`}>
+                      {campaign.status}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Campaign Info */}
+              <div className="p-6">
+                <h3 className="text-xl font-semibold text-white mb-2">
+                  {campaign.name}
+                </h3>
+                <p className="text-gray-400 text-sm mb-4 line-clamp-2">
+                  {campaign.description || 'No description'}
+                </p>
+
+                {/* Campaign Dates */}
+                <div className="flex items-center gap-2 text-xs text-gray-400 mb-4">
+                  <Calendar className="w-4 h-4" />
+                  <span>{formatDate(campaign.startDate)}</span>
+                  <span>→</span>
+                  <span>{campaign.isIndefinite ? 'Ongoing' : formatDate(campaign.endDate)}</span>
+                </div>
+
+                {/* Campaign Stats */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="bg-black/30 rounded-lg p-3">
+                    <div className="text-xs text-gray-400 mb-1">Goal</div>
+                    <div className="text-sm font-semibold text-white">
+                      {formatNumber(campaign.goalAmount)} {campaign.goalType}
+                    </div>
+                  </div>
+                  <div className="bg-black/30 rounded-lg p-3">
+                    <div className="text-xs text-gray-400 mb-1">Progress</div>
+                    <div className="text-sm font-semibold text-white">
+                      {campaign.progressPercent.toFixed(0)}%
+                    </div>
+                  </div>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="w-full bg-black/30 rounded-full h-2 overflow-hidden mb-4">
+                  <div
+                    className="h-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-500"
+                    style={{ width: `${Math.min(campaign.progressPercent, 100)}%` }}
+                  />
+                </div>
+
+                {/* Campaign Type & Compensation */}
+                <div className="flex items-center justify-between text-xs">
+                  <span className="px-2 py-1 bg-white/5 rounded text-gray-400 capitalize">
+                    {campaign.campaignType}
+                  </span>
+                  <div className="flex items-center gap-1 text-gray-400">
+                    <DollarSign className="w-3 h-3" />
+                    <span className="capitalize">{campaign.compensationType}</span>
+                  </div>
+                </div>
+
+                {/* Participants Count */}
+                <div className="mt-4 pt-4 border-t border-gray-800 flex items-center justify-between text-xs text-gray-400">
+                  <div className="flex items-center gap-1">
+                    <User className="w-3 h-3" />
+                    <span>{campaign.participantIds?.length || 0} participants</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Play className="w-3 h-3" />
+                    <span>{campaign.totalVideos || 0} videos</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

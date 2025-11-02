@@ -439,8 +439,15 @@ async function downloadAndUploadThumbnail(
     return publicUrl;
   } catch (error) {
     console.error(`Failed to download/upload thumbnail:`, error);
-    // Return placeholder instead of CDN URL
-    return 'https://via.placeholder.com/640x360?text=Thumbnail+Unavailable';
+    // Return the original URL as fallback or empty for Instagram
+    if (thumbnailUrl.includes('cdninstagram') || thumbnailUrl.includes('fbcdn')) {
+      // Instagram URLs expire, return empty string
+      console.warn(`Instagram thumbnail download failed, returning empty (URL will expire anyway)`);
+      return '';
+    }
+    // For other platforms, return original URL as fallback
+    console.warn(`Using original URL as fallback: ${thumbnailUrl.substring(0, 80)}...`);
+    return thumbnailUrl;
   }
 }
 
