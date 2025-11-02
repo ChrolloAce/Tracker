@@ -1,92 +1,85 @@
-import React, { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import viewtrackLogo from '/Viewtrack Logo Black.png';
 
 /**
  * PreparingWorkspacePage - Shows a loading screen while auth initializes
  * Then redirects based on user's organization status
+ * 
+ * KEY FIX: Uses useNavigate() imperatively instead of <Navigate> component
+ * to avoid infinite render loops caused by component re-rendering
  */
 const PreparingWorkspacePage: React.FC = () => {
   const auth = useAuth();
-  const [shouldRedirect, setShouldRedirect] = useState(false);
-  const [redirectPath, setRedirectPath] = useState<string>('');
-  const hasStartedCheck = React.useRef(false);
-  
-  // Store latest auth in ref so we can read fresh values in setTimeout
-  const authRef = React.useRef(auth);
-  authRef.current = auth;
+  const navigate = useNavigate();
+  const hasNavigated = React.useRef(false);
 
   useEffect(() => {
-    // Only run once
-    if (hasStartedCheck.current) {
+    // Prevent multiple navigation attempts
+    if (hasNavigated.current) {
+      console.log('⚠️ Already navigated, skipping...');
       return;
     }
 
-    const { user, loading } = authRef.current;
+    const { user, loading, currentOrgId, currentProjectId } = auth;
 
-    // Don't do anything while auth is loading
+    // Wait for auth to finish loading
     if (loading) {
-      console.log('⏳ Auth loading...');
+      console.log('⏳ Auth still loading...');
       return;
     }
 
-    // If no user, redirect to login
+    // No user? Go to login
     if (!user) {
-      console.log('❌ No user, redirecting to login');
-      hasStartedCheck.current = true;
-      setRedirectPath('/login');
-      setShouldRedirect(true);
+      console.log('❌ No user found, redirecting to login');
+      hasNavigated.current = true;
+      navigate('/login', { replace: true });
       return;
     }
 
-    // Mark that we've started the check
-    hasStartedCheck.current = true;
-
-    // Wait for auth context to fully initialize
-    // AuthContext needs time to: load user orgs, set currentOrgId, create/load project, set currentProjectId
-    console.log('⏳ Waiting 3 seconds for auth to fully initialize...');
-    console.log('🔍 Current state at start:', { 
+    // User exists, wait for org data to load
+    console.log('🔍 User found, waiting for org data...', {
       userId: user.uid,
       email: user.email,
-      currentOrgId: authRef.current.currentOrgId, 
-      currentProjectId: authRef.current.currentProjectId 
+      currentOrgId,
+      currentProjectId,
+      loading
     });
-    
+
+    // Give AuthContext time to load org/project data
+    // AuthContext needs time to: load user orgs, set currentOrgId, create/load project, set currentProjectId
     const timer = setTimeout(() => {
-      // Read FRESH values from ref
-      const { currentOrgId, currentProjectId } = authRef.current;
-      console.log('🔍 Checking org status after 3s delay:', { 
-        userId: user.uid,
-        currentOrgId, 
-        currentProjectId,
-        hasOrg: !!currentOrgId,
-        hasProject: !!currentProjectId
-      });
+      // Check org status after delay
+      const { currentOrgId: orgId, currentProjectId: projId } = auth;
       
-      if (currentOrgId && currentProjectId) {
-        console.log('✅ User HAS organization and project, redirecting to dashboard');
-        setRedirectPath('/dashboard');
+      console.log('🔍 After 3s delay:', {
+        userId: user.uid,
+        currentOrgId: orgId,
+        currentProjectId: projId,
+        hasOrg: !!orgId,
+        hasProject: !!projId
+      });
+
+      // Mark as navigated BEFORE calling navigate to prevent race conditions
+      hasNavigated.current = true;
+
+      if (orgId && projId) {
+        console.log('✅ Has organization - navigating to dashboard');
+        navigate('/dashboard', { replace: true });
       } else {
-        console.log('📝 User has NO organization, redirecting to create organization page');
-        setRedirectPath('/create-organization');
+        console.log('📝 No organization - navigating to create org');
+        navigate('/create-organization', { replace: true });
       }
-      setShouldRedirect(true);
-    }, 3000); // Give auth 3 seconds to fully initialize
+    }, 3000);
 
-    return () => clearTimeout(timer);
-    // Only depend on user and loading to trigger the check once they're ready
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth.user, auth.loading]);
+    return () => {
+      console.log('🧹 Cleaning up timer');
+      clearTimeout(timer);
+    };
+  }, [auth, navigate]);
 
-  // Handle redirect
-  if (shouldRedirect && redirectPath) {
-    console.log(`🔀 Redirecting to: ${redirectPath}`);
-    return <Navigate to={redirectPath} replace />;
-  }
-
-  // Show loading screen
-
+  // Always show loading screen (no conditional rendering of Navigate)
   return (
     <div className="min-h-screen bg-[#FAFAFB] flex items-center justify-center p-8">
       <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-12 text-center">
@@ -136,4 +129,3 @@ const PreparingWorkspacePage: React.FC = () => {
 };
 
 export default PreparingWorkspacePage;
-
