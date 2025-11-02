@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import NavBar from '../components/NavBar';
-import VideoShowcase from '../components/VideoShowcase';
 import FeaturesTimeline from '../components/FeaturesTimeline';
 import StripeService from '../services/StripeService';
 import viewtrackLogo from '/Viewtrack Logo Black.png';
@@ -111,14 +110,6 @@ const LandingPage: React.FC = () => {
                 <img src={tiktokIcon} alt="TikTok" className="h-6 md:h-8 w-6 md:w-8 object-contain opacity-60 hover:opacity-100 transition-opacity" />
                 <img src={youtubeIcon} alt="YouTube" className="h-6 md:h-8 w-6 md:w-8 object-contain opacity-60 hover:opacity-100 transition-opacity" />
                 <img src={xLogo} alt="X" className="h-6 md:h-8 w-6 md:w-8 object-contain opacity-60 hover:opacity-100 transition-opacity" />
-              </div>
-
-              {/* Product Video Showcase - Inside Hero */}
-              <div className="mt-6 md:mt-8">
-                <VideoShowcase
-                  src="/demo/overview.mp4"
-                  caption="Analytics Dashboard · 14-day view"
-                />
               </div>
             </div>
                 </div>
