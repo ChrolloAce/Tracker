@@ -8,76 +8,78 @@ import viewtrackLogo from '/Viewtrack Logo Black.png';
  * Redirects to either dashboard or create organization based on user's status
  */
 const PreparingWorkspacePage: React.FC = () => {
-  const { user, loading, currentOrgId, currentProjectId } = useAuth();
+  const auth = useAuth();
   const navigate = useNavigate();
   const [checkComplete, setCheckComplete] = useState(false);
-  const hasRedirected = useRef(false);
-  const checkAttempts = useRef(0);
-  const maxAttempts = 10; // Maximum 10 attempts (5 seconds total)
+  const hasChecked = useRef(false);
+  
+  // Store latest auth values in refs so we can access fresh values in async function
+  const authRef = useRef(auth);
+  authRef.current = auth;
 
   useEffect(() => {
-    // Prevent multiple redirects
-    if (hasRedirected.current) {
-      console.log('🚫 Already redirected, skipping');
+    // Prevent multiple checks
+    if (hasChecked.current) {
       return;
     }
 
     const checkAccountStatus = async () => {
-      // Wait for auth to finish loading
+      const { user, loading } = authRef.current;
+      console.log('🔍 Starting account check...', { loading, user: !!user });
+
+      // Wait for auth to finish loading FIRST
       if (loading) {
-        console.log('⏳ Auth still loading...');
+        console.log('⏳ Auth still loading, waiting...');
         return;
       }
 
       // If no user, redirect to login
       if (!user) {
         console.log('❌ No user found, redirecting to login');
-        hasRedirected.current = true;
+        hasChecked.current = true;
         navigate('/login', { replace: true });
         return;
       }
 
-      // Increment check attempts
-      checkAttempts.current++;
-      console.log(`🔍 Check attempt ${checkAttempts.current}/${maxAttempts}:`, { 
+      // Mark as checked to prevent re-runs
+      hasChecked.current = true;
+
+      // Give Firebase extra time to fully initialize the auth context
+      // This prevents race conditions where currentOrgId hasn't been set yet
+      console.log('⏳ Waiting 2 seconds for auth context to fully initialize...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // NOW read the FRESH values from the ref (not stale closure values)
+      const { currentOrgId, currentProjectId } = authRef.current;
+      
+      console.log('🔍 Final check after delay:', { 
         userId: user.uid, 
         email: user.email,
+        hasOrg: !!currentOrgId,
+        hasProject: !!currentProjectId,
         currentOrgId, 
-        currentProjectId,
-        loading
+        currentProjectId 
       });
 
-      // Give Firebase time to initialize, but check periodically
-      if (!currentOrgId || !currentProjectId) {
-        if (checkAttempts.current < maxAttempts) {
-          // Wait 500ms and check again
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
-          // Trigger another check by updating state
-          setCheckComplete(false);
-          return;
-        } else {
-          // After max attempts, assume no org exists
-          console.log('📝 Max attempts reached with no org, redirecting to create organization');
-          hasRedirected.current = true;
-          setCheckComplete(true);
-          navigate('/create-organization', { replace: true });
-          return;
-        }
+      // Check if user has an organization
+      if (currentOrgId && currentProjectId) {
+        console.log('✅ User has organization, redirecting to dashboard');
+        setCheckComplete(true);
+        await new Promise(resolve => setTimeout(resolve, 300)); // Small delay for smooth transition
+        navigate('/dashboard', { replace: true });
+      } else {
+        console.log('📝 User has no organization, redirecting to create organization');
+        setCheckComplete(true);
+        await new Promise(resolve => setTimeout(resolve, 300)); // Small delay for smooth transition
+        navigate('/create-organization', { replace: true });
       }
-
-      // User has organization and project
-      console.log('✅ User has organization, redirecting to dashboard');
-      hasRedirected.current = true;
-      setCheckComplete(true);
-      
-      // Small delay before redirect to ensure smooth transition
-      await new Promise(resolve => setTimeout(resolve, 300));
-      navigate('/dashboard', { replace: true });
     };
 
     checkAccountStatus();
-  }, [user, loading, currentOrgId, currentProjectId, navigate, checkComplete]);
+    // Only depend on loading and user - once these are stable, we check once
+    // navigate is stable and doesn't need to be in dependencies
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth.loading, auth.user]);
 
   return (
     <div className="min-h-screen bg-[#FAFAFB] flex items-center justify-center p-8">
