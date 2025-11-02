@@ -320,10 +320,10 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
 
       {/* Metric Comparison & Top Performers */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Metric Comparison Graph */}
         <LinksMetricComparisonCard
           linkClicks={validLinkClicks}
@@ -379,12 +379,12 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           )
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <div className="overflow-x-auto -mx-3 sm:-mx-0">
+              <table className="w-full min-w-max">
                 <thead className="bg-gray-50 dark:bg-zinc-900/40 border-b border-gray-200 dark:border-white/5">
                   <tr>
                     <th 
-                      className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-zinc-300 transition-colors"
+                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-zinc-300 transition-colors"
                       onClick={() => handleSort('title')}
                     >
                       <div className="flex items-center gap-2">
@@ -394,32 +394,32 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                         )}
                       </div>
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
+                    <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
                       Tracking Link
                     </th>
                     <th 
-                      className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-zinc-300 transition-colors"
+                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-zinc-300 transition-colors"
                       onClick={() => handleSort('totalClicks')}
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 sm:gap-2">
                         Clicks
                         {sortField === 'totalClicks' && (
-                          sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                          sortDirection === 'asc' ? <ArrowUp className="w-2.5 sm:w-3 h-2.5 sm:h-3" /> : <ArrowDown className="w-2.5 sm:w-3 h-2.5 sm:h-3" />
                         )}
                       </div>
                     </th>
                     <th 
-                      className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-zinc-300 transition-colors"
+                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-zinc-300 transition-colors"
                       onClick={() => handleSort('createdAt')}
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 sm:gap-2">
                         Created
                         {sortField === 'createdAt' && (
-                          sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                          sortDirection === 'asc' ? <ArrowUp className="w-2.5 sm:w-3 h-2.5 sm:h-3" /> : <ArrowDown className="w-2.5 sm:w-3 h-2.5 sm:h-3" />
                         )}
                       </div>
                     </th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
+                    <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -431,19 +431,19 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                   
                   return (
                     <tr key={link.id} className="hover:bg-white/5 dark:hover:bg-white/5 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-3">
+                      <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4">
+                        <div className="flex items-center space-x-2 sm:space-x-3">
                           {linkedAccount && (
                             <div className="flex-shrink-0">
                               {linkedAccount.profilePicture ? (
                                 <img
                                   src={linkedAccount.profilePicture}
                                   alt={linkedAccount.username}
-                                  className="w-8 h-8 rounded-full object-cover ring-2 ring-white dark:ring-gray-800"
+                                  className="w-6 h-6 sm:w-8 sm:h-8 rounded-full object-cover ring-1 sm:ring-2 ring-white dark:ring-gray-800"
                                 />
                               ) : (
-                                <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center ring-2 ring-white dark:ring-gray-800">
-                                  <span className="text-xs font-bold text-gray-900 dark:text-white">
+                                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center ring-1 sm:ring-2 ring-white dark:ring-gray-800">
+                                  <span className="text-[10px] sm:text-xs font-bold text-gray-900 dark:text-white">
                                     {linkedAccount.username.charAt(0).toUpperCase()}
                                   </span>
                                 </div>
@@ -451,16 +451,16 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate">
                               {link.title}
                             </p>
-                            <div className="flex items-center space-x-1 mt-1">
+                            <div className="flex items-center space-x-1 mt-0.5 sm:mt-1">
                               {linkedAccount && (
-                                <span className="text-xs text-gray-900 dark:text-white mr-2">
+                                <span className="text-[10px] sm:text-xs text-gray-900 dark:text-white mr-1 sm:mr-2">
                                   @{linkedAccount.username}
                                 </span>
                               )}
-                              <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs">
+                              <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px] sm:max-w-xs">
                                 {link.originalUrl}
                               </p>
                               <a
