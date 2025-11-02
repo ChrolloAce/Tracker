@@ -2191,6 +2191,18 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           )}
           {activeTab === 'accounts' && (
             <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
+              {/* Mobile Filter Button */}
+              <button
+                onClick={() => setIsMobileFiltersOpen(true)}
+                className="sm:hidden p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 transition-all backdrop-blur-sm relative"
+                title="Filters"
+              >
+                <Filter className="w-4 h-4" />
+                {(dashboardPlatformFilter !== 'all' || activeRulesCount > 0) && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full border border-gray-900"></span>
+                )}
+              </button>
+
               {/* Search Bar - Responsive width */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
@@ -2287,16 +2299,19 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 )}
               </div>
               
-              <DateRangeFilter
-                selectedFilter={dateFilter}
-                customRange={customDateRange}
-                onFilterChange={handleDateFilterChange}
-              />
+              {/* Date Range Filter - Hidden on mobile */}
+              <div className="hidden sm:block">
+                <DateRangeFilter
+                  selectedFilter={dateFilter}
+                  customRange={customDateRange}
+                  onFilterChange={handleDateFilterChange}
+                />
+              </div>
               
-              {/* Rule Filter Button - Icon with Badge */}
+              {/* Rule Filter Button - Icon with Badge - Hidden on mobile */}
               <button
                 onClick={handleOpenRuleModal}
-                className="relative p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
+                className="hidden sm:block relative p-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
                 title={activeRulesCount === 0 ? 'All Videos' : `${activeRulesCount} rule${activeRulesCount > 1 ? 's' : ''} applied`}
               >
                 <Filter className="w-4 h-4" />
@@ -3552,20 +3567,22 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
             {/* Filters Content */}
             <div className="p-4 space-y-6">
-              {/* Accounts Filter */}
-              <div>
-                <label className="block text-sm font-medium text-white/70 mb-2">Accounts</label>
-                <MultiSelectDropdown
-                  options={trackedAccounts.map(account => ({
-                    id: account.id,
-                    label: account.displayName || `@${account.username}`,
-                    avatar: account.profilePicture
-                  }))}
-                  selectedIds={selectedAccountIds}
-                  onChange={setSelectedAccountIds}
-                  placeholder="All Accounts"
-                />
-              </div>
+              {/* Accounts Filter - Only show for dashboard and videos tabs */}
+              {(activeTab === 'dashboard' || activeTab === 'videos') && (
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-2">Accounts</label>
+                  <MultiSelectDropdown
+                    options={trackedAccounts.map(account => ({
+                      id: account.id,
+                      label: account.displayName || `@${account.username}`,
+                      avatar: account.profilePicture
+                    }))}
+                    selectedIds={selectedAccountIds}
+                    onChange={setSelectedAccountIds}
+                    placeholder="All Accounts"
+                  />
+                </div>
+              )}
 
               {/* Platform Filter */}
               <div>
@@ -3643,52 +3660,54 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 </div>
               </div>
 
-              {/* Granularity Filter */}
-              <div>
-                <label className="block text-sm font-medium text-white/70 mb-2">Granularity</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setGranularity('day')}
-                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      granularity === 'day' 
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
-                        : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
-                    }`}
-                  >
-                    Daily
-                  </button>
-                  <button
-                    onClick={() => setGranularity('week')}
-                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      granularity === 'week' 
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
-                        : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
-                    }`}
-                  >
-                    Weekly
-                  </button>
-                  <button
-                    onClick={() => setGranularity('month')}
-                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      granularity === 'month' 
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
-                        : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
-                    }`}
-                  >
-                    Monthly
-                  </button>
-                  <button
-                    onClick={() => setGranularity('year')}
-                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                      granularity === 'year' 
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
-                        : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
-                    }`}
-                  >
-                    Yearly
-                  </button>
+              {/* Granularity Filter - Only show for dashboard tab */}
+              {activeTab === 'dashboard' && (
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-2">Granularity</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setGranularity('day')}
+                      className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                        granularity === 'day' 
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
+                          : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
+                      }`}
+                    >
+                      Daily
+                    </button>
+                    <button
+                      onClick={() => setGranularity('week')}
+                      className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                        granularity === 'week' 
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
+                          : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
+                      }`}
+                    >
+                      Weekly
+                    </button>
+                    <button
+                      onClick={() => setGranularity('month')}
+                      className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                        granularity === 'month' 
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
+                          : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
+                      }`}
+                    >
+                      Monthly
+                    </button>
+                    <button
+                      onClick={() => setGranularity('year')}
+                      className={`px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                        granularity === 'year' 
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
+                          : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
+                      }`}
+                    >
+                      Yearly
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Date Range Filter */}
               <div>
@@ -3723,11 +3742,13 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             <div className="sticky bottom-0 bg-[#1A1A1A] border-t border-white/10 px-4 py-3">
               <button
                 onClick={() => {
-                  // Reset all filters
-                  setSelectedAccountIds([]);
+                  // Reset filters based on active tab
+                  if (activeTab === 'dashboard' || activeTab === 'videos') {
+                    setSelectedAccountIds([]);
+                    setGranularity('day');
+                  }
                   setDashboardPlatformFilter('all');
                   localStorage.setItem('dashboardPlatformFilter', 'all');
-                  setGranularity('day');
                   setDateFilter('last7days');
                   setSelectedRuleIds([]);
                   localStorage.setItem('dashboardSelectedRuleIds', JSON.stringify([]));
