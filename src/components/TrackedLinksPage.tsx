@@ -22,10 +22,12 @@ interface TrackedLinksPageProps {
   customDateRange?: { start: Date; end: Date } | { startDate: Date; endDate: Date };
   organizationId?: string;
   projectId?: string;
+  linkFilter?: string;
+  onLinksLoad?: (links: TrackedLink[]) => void;
 }
 
 const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
-  ({ organizationId, projectId }, ref) => {
+  ({ organizationId, projectId, linkFilter: propLinkFilter = 'all', onLinksLoad }, ref) => {
     const { currentOrgId, currentProjectId, user } = useAuth();
   const [links, setLinks] = useState<TrackedLink[]>([]);
     const [linkClicks, setLinkClicks] = useState<LinkClick[]>([]);
@@ -44,7 +46,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
   const [editingLink, setEditingLink] = useState<TrackedLink | null>(null);
-    const [linkFilter, setLinkFilter] = useState<string>('all'); // 'all' or link ID
+    const linkFilter = propLinkFilter; // Use the filter from props
 
     const orgId = organizationId || currentOrgId;
     const projId = projectId || currentProjectId;
@@ -91,6 +93,12 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         
         setLinks(linksData);
         setLinkClicks(clicksData); // Store clicks in state!
+        
+        // Notify parent of links data for dropdown
+        if (onLinksLoad) {
+          onLinksLoad(linksData);
+        }
+        
         calculateMetrics(linksData, clicksData);
     } catch (error) {
         console.error('❌ Failed to load data:', error);
@@ -348,47 +356,16 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
   return (
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-4 py-2 bg-black/40 rounded-lg border border-white/10">
-              <ExternalLink className="w-4 h-4 text-gray-400" />
-              <span className="text-white font-medium">Link Analytics</span>
-            </div>
-            
-            {/* Link Filter Dropdown */}
-            <select
-              value={linkFilter}
-              onChange={(e) => setLinkFilter(e.target.value)}
-              className="px-4 py-2 bg-black/40 text-white rounded-lg border border-white/10 hover:bg-black/60 transition-colors text-sm font-medium focus:outline-none focus:border-white/30 cursor-pointer"
-            >
-              <option value="all">All Links ({links.length})</option>
-              {links.map(link => (
-                <option key={link.id} value={link.id}>
-                  {link.title || link.shortCode}
-                </option>
-              ))}
-            </select>
-            
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Create Link</span>
-            </button>
-      </div>
-
-          <div className="flex items-center gap-3">
-            {/* Refresh Button */}
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="p-2 hover:bg-white/5 rounded-lg transition-colors disabled:opacity-50"
-              title="Refresh data"
-            >
-              <RefreshCw className={`w-5 h-5 text-gray-400 ${refreshing ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
+        <div className="flex items-center justify-end gap-3">
+          {/* Refresh Button */}
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="p-2 hover:bg-white/5 rounded-lg transition-colors disabled:opacity-50"
+            title="Refresh data"
+          >
+            <RefreshCw className={`w-5 h-5 text-gray-400 ${refreshing ? 'animate-spin' : ''}`} />
+          </button>
         </div>
 
         {/* KPI Metrics */}
