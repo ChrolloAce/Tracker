@@ -218,8 +218,11 @@ FIREBASE_PROJECT_ID=your-project-id
 FIREBASE_CLIENT_EMAIL=firebase-adminsdk@...iam.gserviceaccount.com
 FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 
-# YouTube Data API (Required for YouTube account tracking)
+# YouTube Data API (Optional - for YouTube account tracking)
 YOUTUBE_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+# Instagram (Optional - for individual video scraping)
+INSTAGRAM_SESSION_ID=12345678%3A...your-session-id-here...
 ```
 
 ---
