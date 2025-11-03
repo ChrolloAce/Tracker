@@ -265,12 +265,17 @@ class TeamInvitationService {
             acceptedAt: Timestamp.now()
           });
           
-          // Also update the public lookup
-          const lookupRef = doc(db, 'invitationsLookup', invitationId);
-          await updateDoc(lookupRef, {
-            status: 'accepted',
-            acceptedAt: Timestamp.now()
-          });
+          // Try to update the public lookup (don't fail if it doesn't exist)
+          try {
+            const lookupRef = doc(db, 'invitationsLookup', invitationId);
+            await updateDoc(lookupRef, {
+              status: 'accepted',
+              acceptedAt: Timestamp.now()
+            });
+            console.log(`✅ Public lookup updated (already member case)`);
+          } catch (err: any) {
+            console.warn(`⚠️ Could not update public lookup:`, err.message);
+          }
           
           // Set as default org
           const userRef = doc(db, 'users', userId);
@@ -284,13 +289,6 @@ class TeamInvitationService {
       
       // Update invitation status
       batch.update(inviteRef, { 
-        status: 'accepted',
-        acceptedAt: Timestamp.now()
-      });
-      
-      // Also update the public lookup
-      const lookupRef = doc(db, 'invitationsLookup', invitationId);
-      batch.update(lookupRef, {
         status: 'accepted',
         acceptedAt: Timestamp.now()
       });
@@ -338,6 +336,20 @@ class TeamInvitationService {
       console.log(`✅ User ${userId} accepted invitation to org ${orgId}`);
       console.log(`✅ Set org ${orgId} as default for user ${userId}`);
       
+      // Try to update the public lookup (separately, after batch commit)
+      // Don't fail if it doesn't exist (old invitations won't have this)
+      try {
+        const lookupRef = doc(db, 'invitationsLookup', invitationId);
+        await updateDoc(lookupRef, {
+          status: 'accepted',
+          acceptedAt: Timestamp.now()
+        });
+        console.log(`✅ Public lookup updated to accepted`);
+      } catch (lookupErr: any) {
+        console.warn(`⚠️ Could not update public lookup (might be old invitation):`, lookupErr.message);
+        // Don't fail - this is non-critical
+      }
+      
     } catch (error: any) {
       console.error(`❌ Error accepting invitation:`, error);
       console.error(`Error code:`, error?.code);
@@ -356,18 +368,25 @@ class TeamInvitationService {
    * Decline an invitation
    */
   static async declineInvitation(invitationId: string, orgId: string): Promise<void> {
+    console.log(`❌ Declining invitation ${invitationId} in org ${orgId}...`);
+    
     const inviteRef = doc(db, 'organizations', orgId, 'invitations', invitationId);
     await updateDoc(inviteRef, {
       status: 'declined',
       declinedAt: Timestamp.now()
     });
     
-    // Also update the public lookup
-    const lookupRef = doc(db, 'invitationsLookup', invitationId);
-    await updateDoc(lookupRef, {
-      status: 'declined',
-      declinedAt: Timestamp.now()
-    });
+    // Try to update the public lookup (don't fail if it doesn't exist)
+    try {
+      const lookupRef = doc(db, 'invitationsLookup', invitationId);
+      await updateDoc(lookupRef, {
+        status: 'declined',
+        declinedAt: Timestamp.now()
+      });
+      console.log(`✅ Public lookup updated to declined`);
+    } catch (err: any) {
+      console.warn(`⚠️ Could not update public lookup:`, err.message);
+    }
     
     console.log(`✅ Invitation ${invitationId} declined`);
   }
@@ -376,18 +395,33 @@ class TeamInvitationService {
    * Cancel/revoke an invitation
    */
   static async cancelInvitation(invitationId: string, orgId: string): Promise<void> {
-    const inviteRef = doc(db, 'organizations', orgId, 'invitations', invitationId);
-    await updateDoc(inviteRef, {
-      status: 'expired'
-    });
+    console.log(`🗑️ Cancelling invitation ${invitationId} in org ${orgId}...`);
     
-    // Also update the public lookup
-    const lookupRef = doc(db, 'invitationsLookup', invitationId);
-    await updateDoc(lookupRef, {
-      status: 'expired'
-    });
+    try {
+      // Update main invitation
+      const inviteRef = doc(db, 'organizations', orgId, 'invitations', invitationId);
+      await updateDoc(inviteRef, {
+        status: 'expired'
+      });
+      console.log(`✅ Main invitation updated to expired`);
+    } catch (err) {
+      console.error(`❌ Failed to update main invitation:`, err);
+      throw err; // Re-throw since this is critical
+    }
     
-    console.log(`✅ Invitation ${invitationId} cancelled`);
+    // Try to update the public lookup (don't fail if it doesn't exist - could be old invitation)
+    try {
+      const lookupRef = doc(db, 'invitationsLookup', invitationId);
+      await updateDoc(lookupRef, {
+        status: 'expired'
+      });
+      console.log(`✅ Public lookup updated to expired`);
+    } catch (err: any) {
+      // Don't fail the whole operation if lookup doesn't exist (old invitations)
+      console.warn(`⚠️ Could not update public lookup (might be old invitation):`, err.message);
+    }
+    
+    console.log(`✅ Invitation ${invitationId} cancelled successfully`);
   }
 }
 
