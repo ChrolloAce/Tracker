@@ -121,14 +121,6 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       const uniqueIPs = new Set(filteredClicks.map(click => click.userAgent)).size;
       setUniqueVisitors(uniqueIPs);
 
-      // Calculate average clicks per link
-      const avgClicks = filteredLinks.length > 0 ? filteredClicks.length / filteredLinks.length : 0;
-      setAvgClicksPerLink(Math.round(avgClicks * 10) / 10);
-
-      // Calculate click-through rate (mock for now - would need impressions data)
-      const ctr = filteredLinks.length > 0 ? (filteredClicks.length / (filteredLinks.length * 100)) * 100 : 0;
-      setClickThroughRate(Math.round(ctr * 100) / 100);
-
       // Find top performing link
       if (filteredLinks.length > 0) {
         const linkClickCounts = filteredLinks.map(link => ({
