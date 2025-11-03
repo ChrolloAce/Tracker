@@ -161,8 +161,10 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         switch (dateFilter) {
           case 'today':
             return clickDate >= startOfToday;
-          case 'last7days':
-            return clickDate >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+           case 'last7days':
+             return clickDate >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+           case 'last14days':
+             return clickDate >= new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
           case 'last30days':
             return clickDate >= new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
           case 'last90days':
@@ -267,6 +269,25 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         });
       }
       
+      // For Last 14 Days - show daily
+      if (dateFilter === 'last14days') {
+        return Array.from({ length: 14 }, (_, i) => {
+          const date = new Date(now.getTime() - (13 - i) * 24 * 60 * 60 * 1000);
+          const dayClicks = filteredLinkClicks.filter(click => {
+            if (!click.timestamp) return false;
+            const clickDate = (click.timestamp as any).toDate 
+              ? (click.timestamp as any).toDate() 
+              : new Date(click.timestamp as any);
+            return clickDate.toDateString() === date.toDateString();
+          }).length;
+          
+          return {
+            label: i % 2 === 0 ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
+            clicks: dayClicks
+          };
+        });
+      }
+      
       // For Last 30 Days - show daily
       if (dateFilter === 'last30days') {
         return Array.from({ length: 30 }, (_, i) => {
@@ -363,6 +384,52 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         }
         
         return months.length > 0 ? months : [{ label: 'No data', clicks: 0 }];
+      }
+      
+      // For Custom Date Range - show daily or weekly based on range
+      if (dateFilter === 'custom' && customDateRange) {
+        const start = 'start' in customDateRange ? customDateRange.start : customDateRange.startDate;
+        const end = 'end' in customDateRange ? customDateRange.end : customDateRange.endDate;
+        const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
+        
+        // If more than 60 days, show weekly
+        if (daysDiff > 60) {
+          const weeks = Math.ceil(daysDiff / 7);
+          return Array.from({ length: weeks }, (_, i) => {
+            const weekStart = new Date(start.getTime() + i * 7 * 24 * 60 * 60 * 1000);
+            const weekEnd = new Date(Math.min(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000, end.getTime()));
+            
+            const weekClicks = filteredLinkClicks.filter(click => {
+              if (!click.timestamp) return false;
+              const clickDate = (click.timestamp as any).toDate 
+                ? (click.timestamp as any).toDate() 
+                : new Date(click.timestamp as any);
+              return clickDate >= weekStart && clickDate < weekEnd;
+            }).length;
+            
+            return {
+              label: `W${i + 1}`,
+              clicks: weekClicks
+            };
+          });
+        }
+        
+        // Otherwise show daily
+        return Array.from({ length: daysDiff + 1 }, (_, i) => {
+          const date = new Date(start.getTime() + i * 24 * 60 * 60 * 1000);
+          const dayClicks = filteredLinkClicks.filter(click => {
+            if (!click.timestamp) return false;
+            const clickDate = (click.timestamp as any).toDate 
+              ? (click.timestamp as any).toDate() 
+              : new Date(click.timestamp as any);
+            return clickDate.toDateString() === date.toDateString();
+          }).length;
+          
+          return {
+            label: i % 5 === 0 || i === daysDiff ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
+            clicks: dayClicks
+          };
+        });
       }
       
       // Default fallback - show last 7 days
