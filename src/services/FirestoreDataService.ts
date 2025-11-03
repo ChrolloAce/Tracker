@@ -470,6 +470,23 @@ class FirestoreDataService {
   }
 
   /**
+   * Delete a single video from a project
+   */
+  static async deleteVideo(orgId: string, projectId: string, videoId: string): Promise<void> {
+    try {
+      console.log(`🗑️ Deleting video ${videoId}`);
+      
+      const videoRef = doc(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId);
+      await writeBatch(db).delete(videoRef).commit();
+      
+      console.log(`✅ Deleted video ${videoId}`);
+    } catch (error) {
+      console.error('❌ Failed to delete video:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Delete all videos for a tracked account in a project
    */
   static async deleteAccountVideos(orgId: string, projectId: string, accountId: string): Promise<void> {

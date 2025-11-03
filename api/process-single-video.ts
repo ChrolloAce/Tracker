@@ -476,10 +476,12 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
       };
     } else if (platform === 'instagram') {
       // Use pratikdani/instagram-reels-scraper (same pattern as TikTok)
+      console.log('📸 [INSTAGRAM] Using pratikdani/instagram-reels-scraper for video:', url);
       actorId = 'pratikdani/instagram-reels-scraper';
       input = {
         urls: [url]
       };
+      console.log('📸 [INSTAGRAM] Input:', JSON.stringify(input, null, 2));
     } else if (platform === 'youtube') {
       // Use YouTube API directly instead of Apify for better reliability
       console.log('🎥 [YOUTUBE] Using YouTube Data API v3 for video:', url);
@@ -608,6 +610,11 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
     }
     
     console.log(`📊 [${platform.toUpperCase()}] First item keys:`, Object.keys(items[0] || {}).join(', '));
+    
+    // Extra logging for Instagram to debug
+    if (platform === 'instagram') {
+      console.log('📸 [INSTAGRAM] Full first item:', JSON.stringify(items[0], null, 2));
+    }
 
     let rawData = items[0];
     
@@ -638,6 +645,11 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
       hasUsername: !!videoData.username,
       hasThumbnail: !!videoData.thumbnail_url
     });
+    
+    // Extra logging for Instagram
+    if (platform === 'instagram') {
+      console.log('📸 [INSTAGRAM] Complete transformed data:', JSON.stringify(videoData, null, 2));
+    }
     
     return videoData;
 

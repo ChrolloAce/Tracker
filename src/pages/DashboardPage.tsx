@@ -1464,22 +1464,26 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   }, [user, currentOrgId, currentProjectId]);
 
   const handleDelete = useCallback(async (id: string) => {
-    if (!user || !currentOrgId) return;
+    if (!user || !currentOrgId || !currentProjectId) return;
     
+    const confirmed = window.confirm('Are you sure you want to delete this video? This action cannot be undone.');
+    if (!confirmed) return;
     
     try {
-      // Delete from Firestore (archive it)
-      await FirestoreDataService.updateTrackedAccount(currentOrgId, currentProjectId!, id, {
-        status: 'archived'
-      } as any);
+      console.log('🗑️ Deleting video:', id);
+      
+      // Delete from Firestore
+      await FirestoreDataService.deleteVideo(currentOrgId, currentProjectId, id);
       
       // Update state
       setSubmissions(prev => prev.filter(submission => submission.id !== id));
       
+      console.log('✅ Video deleted successfully');
     } catch (error) {
-      console.error('Failed to delete video:', error);
+      console.error('❌ Failed to delete video:', error);
+      alert('Failed to delete video. Please try again.');
     }
-  }, [user, currentOrgId]);
+  }, [user, currentOrgId, currentProjectId]);
 
   const handleTikTokVideosFound = useCallback((videos: InstagramVideoData[]) => {
     
