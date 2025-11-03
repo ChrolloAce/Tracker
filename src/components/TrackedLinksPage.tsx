@@ -1,6 +1,6 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Settings, RefreshCw, ExternalLink, Plus, Copy, Trash2, Edit2, BarChart } from 'lucide-react';
+import { RefreshCw, ExternalLink, Plus, Copy, Trash2, Edit2, BarChart } from 'lucide-react';
 import { DateFilterType } from './DateRangeFilter';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import LinkClicksService, { LinkClick } from '../services/LinkClicksService';
@@ -16,16 +16,16 @@ export interface TrackedLinksPageRef {
 }
 
 interface TrackedLinksPageProps {
-  searchQuery: string;
+  searchQuery?: string;
   linkClicks?: LinkClick[];
   dateFilter?: DateFilterType;
-  customDateRange?: { start: Date; end: Date };
+  customDateRange?: { start: Date; end: Date } | { startDate: Date; endDate: Date };
   organizationId?: string;
   projectId?: string;
 }
 
 const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
-  ({ searchQuery, linkClicks: propLinkClicks = [], dateFilter = 'all', customDateRange, organizationId, projectId }, ref) => {
+  ({ organizationId, projectId }, ref) => {
     const { currentOrgId, currentProjectId, user } = useAuth();
   const [links, setLinks] = useState<TrackedLink[]>([]);
     const [linkClicks, setLinkClicks] = useState<LinkClick[]>([]);
@@ -83,19 +83,19 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         setLinks(linksData);
         setLinkClicks(clicksData); // Store clicks in state!
         calculateMetrics(linksData, clicksData);
-      } catch (error) {
+    } catch (error) {
         console.error('❌ Failed to load data:', error);
-      } finally {
-        setLoading(false);
-      }
+    } finally {
+      setLoading(false);
+    }
   };
 
     const calculateMetrics = (linksData: TrackedLink[], clicksData: LinkClick[]) => {
       setTotalLinks(linksData.length);
       setTotalClicks(clicksData.length);
 
-      // Calculate unique visitors (unique IPs or user agents)
-      const uniqueIPs = new Set(clicksData.map(click => click.ipAddress || click.userAgent)).size;
+      // Calculate unique visitors (unique user agents)
+      const uniqueIPs = new Set(clicksData.map(click => click.userAgent)).size;
       setUniqueVisitors(uniqueIPs);
 
       // Calculate average clicks per link
@@ -156,7 +156,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       const now = new Date();
       const hourClicks = linkClicks.filter(click => {
         if (!click.timestamp) return false;
-        const clickDate = click.timestamp?.toDate?.() || new Date(click.timestamp);
+        const clickDate = click.timestamp.toDate ? click.timestamp.toDate() : new Date(click.timestamp);
         
         // Only count clicks from today for hourly view
         if (timeframe === 'today') {
@@ -642,7 +642,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
               setSelectedLink(null);
             }}
             onConfirm={handleDeleteLink}
-            linkTitle={selectedLink.title}
+            link={selectedLink}
           />
         )}
 

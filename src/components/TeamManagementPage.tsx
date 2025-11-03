@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { OrgMember, TeamInvitation, Role } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
 import TeamInvitationService from '../services/TeamInvitationService';
-import { UserPlus, Shield, Crown, User, Mail, Clock, X, Settings, Copy } from 'lucide-react';
+import { Shield, Crown, User, Mail, Clock, X, Settings, Copy } from 'lucide-react';
 import { Button } from './ui/Button';
 import InviteTeamMemberModal from './InviteTeamMemberModal';
 import EditMemberPermissionsModal from './EditMemberPermissionsModal';
