@@ -44,6 +44,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
   const [editingLink, setEditingLink] = useState<TrackedLink | null>(null);
+    const [linkFilter, setLinkFilter] = useState<string>('all'); // 'all' or link ID
 
     const orgId = organizationId || currentOrgId;
     const projId = projectId || currentProjectId;
@@ -62,13 +63,13 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       loadData();
     }, [orgId, projId]);
 
-    // Recalculate metrics when timeframe changes
-  useEffect(() => {
+    // Recalculate metrics when timeframe or filter changes
+    useEffect(() => {
       if (links.length > 0 || linkClicks.length > 0) {
-        console.log('⏰ Timeframe changed, recalculating metrics...', timeframe);
+        console.log('⏰ Timeframe or filter changed, recalculating metrics...', timeframe, linkFilter);
         calculateMetrics(links, linkClicks);
-    }
-    }, [timeframe]);
+      }
+    }, [timeframe, linkFilter]);
 
     const loadData = async () => {
       if (!orgId || !projId) {
@@ -99,26 +100,36 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
   };
 
     const calculateMetrics = (linksData: TrackedLink[], clicksData: LinkClick[]) => {
-      setTotalLinks(linksData.length);
-      setTotalClicks(clicksData.length);
+      // Filter clicks based on selected link
+      const filteredClicks = linkFilter === 'all' 
+        ? clicksData 
+        : clicksData.filter(click => click.linkId === linkFilter);
+      
+      // Filter links if specific link is selected
+      const filteredLinks = linkFilter === 'all'
+        ? linksData
+        : linksData.filter(link => link.id === linkFilter);
+
+      setTotalLinks(filteredLinks.length);
+      setTotalClicks(filteredClicks.length);
 
       // Calculate unique visitors (unique user agents)
-      const uniqueIPs = new Set(clicksData.map(click => click.userAgent)).size;
+      const uniqueIPs = new Set(filteredClicks.map(click => click.userAgent)).size;
       setUniqueVisitors(uniqueIPs);
 
       // Calculate average clicks per link
-      const avgClicks = linksData.length > 0 ? clicksData.length / linksData.length : 0;
+      const avgClicks = filteredLinks.length > 0 ? filteredClicks.length / filteredLinks.length : 0;
       setAvgClicksPerLink(Math.round(avgClicks * 10) / 10);
 
       // Calculate click-through rate (mock for now - would need impressions data)
-      const ctr = linksData.length > 0 ? (clicksData.length / (linksData.length * 100)) * 100 : 0;
+      const ctr = filteredLinks.length > 0 ? (filteredClicks.length / (filteredLinks.length * 100)) * 100 : 0;
       setClickThroughRate(Math.round(ctr * 100) / 100);
 
       // Find top performing link
-      if (linksData.length > 0) {
-        const linkClickCounts = linksData.map(link => ({
+      if (filteredLinks.length > 0) {
+        const linkClickCounts = filteredLinks.map(link => ({
           title: link.title,
-          clicks: clicksData.filter(click => click.linkId === link.id).length
+          clicks: filteredClicks.filter(click => click.linkId === link.id).length
         }));
         const topLink = linkClickCounts.reduce((prev, current) => 
           current.clicks > prev.clicks ? current : prev
@@ -133,9 +144,19 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       setRefreshing(false);
   };
 
+    // Filter clicks based on selected link
+    const filteredLinkClicks = linkFilter === 'all' 
+      ? linkClicks 
+      : linkClicks.filter(click => click.linkId === linkFilter);
+    
+    // Filter links if specific link is selected
+    const filteredLinks = linkFilter === 'all'
+      ? links
+      : links.filter(link => link.id === linkFilter);
+
     // Calculate link performance data
-    const linkPerformance = links.slice(0, 10).map(link => {
-      const linkClicksData = linkClicks.filter(click => click.linkId === link.id);
+    const linkPerformance = filteredLinks.slice(0, 10).map(link => {
+      const linkClicksData = filteredLinkClicks.filter(click => click.linkId === link.id);
       return {
         title: link.title || link.shortCode,
         clicks: linkClicksData.length,
@@ -144,7 +165,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     }).sort((a, b) => b.clicks - a.clicks);
 
     // Calculate clicks by country
-    const clicksByCountry = linkClicks.reduce((acc: { [key: string]: number }, click) => {
+    const clicksByCountry = filteredLinkClicks.reduce((acc: { [key: string]: number }, click) => {
       const country = click.country || 'Unknown';
       acc[country] = (acc[country] || 0) + 1;
       return acc;
@@ -162,13 +183,13 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     // Calculate hourly traffic (for today)
     const clicksByHour = Array.from({ length: 24 }, (_, hour) => {
       const now = new Date();
-      const hourClicks = linkClicks.filter(click => {
+      const hourClicks = filteredLinkClicks.filter(click => {
         if (!click.timestamp) return false;
         // Handle both Firestore Timestamp and Date objects
         const clickDate = (click.timestamp as any).toDate 
           ? (click.timestamp as any).toDate() 
           : new Date(click.timestamp as any);
-
+ 
         // Only count clicks from today for hourly view
         if (timeframe === 'today') {
           const isToday = clickDate.toDateString() === now.toDateString();
@@ -333,6 +354,21 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
               <ExternalLink className="w-4 h-4 text-gray-400" />
               <span className="text-white font-medium">Link Analytics</span>
             </div>
+            
+            {/* Link Filter Dropdown */}
+            <select
+              value={linkFilter}
+              onChange={(e) => setLinkFilter(e.target.value)}
+              className="px-4 py-2 bg-black/40 text-white rounded-lg border border-white/10 hover:bg-black/60 transition-colors text-sm font-medium focus:outline-none focus:border-white/30 cursor-pointer"
+            >
+              <option value="all">All Links ({links.length})</option>
+              {links.map(link => (
+                <option key={link.id} value={link.id}>
+                  {link.title || link.shortCode}
+                </option>
+              ))}
+            </select>
+            
             <button
               onClick={() => setShowCreateModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
