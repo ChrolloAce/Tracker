@@ -1024,52 +1024,7 @@ export class AccountTrackingServiceFirebase {
     }
   }
 
-  /**
-   * LEGACY: Sync YouTube Shorts videos (kept for backward compatibility, but not used)
-   * @deprecated Use syncYoutubeShortsIncremental instead
-   */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private static async syncYoutubeShorts(orgId: string, account: TrackedAccount): Promise<AccountVideo[]> {
-    console.log(`🔄 Fetching YouTube Shorts for @${account.username}...`);
-    
-    try {
-      // We need the channel ID to fetch Shorts
-      // Fetch profile again to get channelId if not stored
-      const profile = await YoutubeAccountService.fetchChannelProfile(account.username);
-      if (!profile.channelId) {
-        throw new Error('Could not resolve YouTube channel ID');
-      }
-
-      const shorts = await YoutubeAccountService.syncChannelShorts(profile.channelId!, account.displayName || account.username);
-
-      // Upload thumbnails to Firebase Storage
-      const videos: AccountVideo[] = [];
-      for (const short of shorts) {
-        let uploadedThumbnail = short.thumbnail;
-        if (short.thumbnail) {
-          uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
-            orgId,
-            short.thumbnail,
-            `yt_${short.videoId}`,
-            'thumbnail'
-          );
-        }
-
-        videos.push({
-          ...short,
-          id: `${account.id}_${short.videoId}`,
-          accountId: account.id,
-          thumbnail: uploadedThumbnail,
-        });
-      }
-
-      console.log(`✅ Fetched ${videos.length} YouTube Shorts`);
-      return videos;
-    } catch (error) {
-      console.error('❌ Failed to sync YouTube Shorts:', error);
-      throw error;
-    }
-  }
+  // LEGACY syncYoutubeShorts removed - use syncYoutubeShortsIncremental instead
 
   /**
    * Sync Twitter tweets for an account
