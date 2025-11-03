@@ -26,16 +26,8 @@ interface VideoSubmissionsTableProps {
 const DropdownMenu: React.FC<{
   submission: VideoSubmission;
   onDelete?: (id: string) => void;
-  onStatusUpdate?: (id: string, status: VideoSubmission['status']) => void;
-}> = ({ submission, onDelete, onStatusUpdate }) => {
+}> = ({ submission, onDelete }) => {
   const [isOpen, setIsOpen] = useState(false);
-
-  const handleStatusChange = (status: VideoSubmission['status']) => {
-    if (onStatusUpdate) {
-      onStatusUpdate(submission.id, status);
-    }
-    setIsOpen(false);
-  };
 
   const handleDelete = () => {
     if (onDelete && window.confirm('Are you sure you want to delete this video submission?')) {
@@ -792,7 +784,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   )}
                   <td className="px-6 py-5">
                     <div className="relative opacity-0 group-hover:opacity-100 transition-opacity">
-                      <DropdownMenu submission={submission} onDelete={onDelete} onStatusUpdate={onStatusUpdate} />
+                      <DropdownMenu submission={submission} onDelete={onDelete} />
                     </div>
                   </td>
                 </tr>
