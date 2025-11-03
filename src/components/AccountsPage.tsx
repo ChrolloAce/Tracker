@@ -542,7 +542,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       setProcessingAccounts(prev => {
         const fullyLoadedAccounts = new Set(
           loadedAccounts
-            .filter(acc => acc.profilePicture || acc.followerCount > 0)
+            .filter(acc => acc.profilePicture || (acc.followerCount ?? 0) > 0)
             .map(acc => `${acc.platform}_${acc.username}`)
         );
         const remaining = prev.filter(proc => !fullyLoadedAccounts.has(`${proc.platform}_${proc.username}`));
@@ -1457,15 +1457,15 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                 )}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                {matchingAccount && matchingAccount.followerCount > 0 ? (
-                                  <span className="text-white animate-fade-in">{matchingAccount.followerCount.toLocaleString()}</span>
+                                {matchingAccount && (matchingAccount.followerCount ?? 0) > 0 ? (
+                                  <span className="text-white animate-fade-in">{(matchingAccount.followerCount ?? 0).toLocaleString()}</span>
                                 ) : (
                                   <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
                                 )}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                {matchingAccount && matchingAccount.postCount > 0 ? (
-                                  <span className="text-white animate-fade-in">{matchingAccount.postCount.toLocaleString()}</span>
+                                {matchingAccount && (matchingAccount.postCount ?? 0) > 0 ? (
+                                  <span className="text-white animate-fade-in">{(matchingAccount.postCount ?? 0).toLocaleString()}</span>
                                 ) : (
                                   <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
                                 )}

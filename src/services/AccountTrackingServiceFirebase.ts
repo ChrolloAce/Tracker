@@ -1026,7 +1026,9 @@ export class AccountTrackingServiceFirebase {
 
   /**
    * LEGACY: Sync YouTube Shorts videos (kept for backward compatibility, but not used)
+   * @deprecated Use syncYoutubeShortsIncremental instead
    */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private static async syncYoutubeShorts(orgId: string, account: TrackedAccount): Promise<AccountVideo[]> {
     console.log(`🔄 Fetching YouTube Shorts for @${account.username}...`);
     
