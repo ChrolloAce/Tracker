@@ -26,8 +26,8 @@ interface TrackedLinksPageProps {
 
 const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
   ({ searchQuery, linkClicks = [], dateFilter = 'all', customDateRange, organizationId, projectId }, ref) => {
-    const { currentOrgId, currentProjectId } = useAuth();
-    const [links, setLinks] = useState<TrackedLink[]>([]);
+    const { currentOrgId, currentProjectId, user } = useAuth();
+  const [links, setLinks] = useState<TrackedLink[]>([]);
     const [loading, setLoading] = useState(true);
     const [timeframe, setTimeframe] = useState<'today' | 'all-time'>('today');
     const [interval, setInterval] = useState<'hourly' | 'monthly'>('hourly');
@@ -39,15 +39,15 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     const [topPerformer, setTopPerformer] = useState<string>('-');
     const [avgClicksPerLink, setAvgClicksPerLink] = useState(0);
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [selectedLink, setSelectedLink] = useState<TrackedLink | null>(null);
+  const [selectedLink, setSelectedLink] = useState<TrackedLink | null>(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
-    const [editingLink, setEditingLink] = useState<TrackedLink | null>(null);
+  const [editingLink, setEditingLink] = useState<TrackedLink | null>(null);
 
     const orgId = organizationId || currentOrgId;
     const projId = projectId || currentProjectId;
 
-    useImperativeHandle(ref, () => ({
+  useImperativeHandle(ref, () => ({
       openCreateModal: () => {
         setShowCreateModal(true);
       },
@@ -57,26 +57,34 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     }));
 
   useEffect(() => {
+      console.log('🎯 Effect triggered - loading data', { orgId, projId, timeframe });
       loadData();
     }, [orgId, projId, timeframe]);
 
     const loadData = async () => {
-      if (!orgId || !projId) return;
-
+      if (!orgId || !projId) {
+        console.warn('Cannot load data: missing orgId or projId', { orgId, projId });
+      return;
+    }
+    
+      console.log('🔄 Loading links data...', { orgId, projId });
       setLoading(true);
-    try {
+      try {
         const [linksData, clicksData] = await Promise.all([
-          FirestoreDataService.getTrackedLinks(orgId, projId),
+          FirestoreDataService.getLinks(orgId, projId),
           LinkClicksService.getProjectLinkClicks(orgId, projId)
         ]);
 
+        console.log('✅ Loaded links:', linksData.length, 'links');
+        console.log('✅ Loaded clicks:', clicksData.length, 'clicks');
+        
         setLinks(linksData);
         calculateMetrics(linksData, clicksData);
-    } catch (error) {
-        console.error('Failed to load data:', error);
-    } finally {
-      setLoading(false);
-    }
+      } catch (error) {
+        console.error('❌ Failed to load data:', error);
+      } finally {
+        setLoading(false);
+      }
   };
 
     const calculateMetrics = (linksData: TrackedLink[], clicksData: LinkClick[]) => {
@@ -195,7 +203,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     const handleDeleteLink = async () => {
       if (!selectedLink || !orgId || !projId) return;
       try {
-        await FirestoreDataService.deleteTrackedLink(orgId, projId, selectedLink.id);
+        await FirestoreDataService.deleteLink(orgId, projId, selectedLink.id);
         setShowDeleteModal(false);
         setSelectedLink(null);
         await loadData();
@@ -210,8 +218,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     };
 
     if (loading) {
-      return <PageLoadingSkeleton type="links" />;
-    }
+    return <PageLoadingSkeleton type="links" />;
+  }
 
   return (
       <div className="space-y-6">
@@ -229,7 +237,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
               <Plus className="w-4 h-4" />
               <span>Create Link</span>
             </button>
-          </div>
+      </div>
 
           <div className="flex items-center gap-3">
             {/* Timeframe Selector */}
@@ -439,6 +447,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
               <div className="text-4xl mb-3">🔗</div>
               <p className="text-gray-400 mb-2">No links created yet</p>
               <p className="text-sm text-gray-500">Click "Create Link" to get started</p>
+              <p className="text-xs text-gray-600 mt-2">Loaded {links.length} links from database</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -452,10 +461,10 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                       Short URL
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Clicks
+                        Clicks
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Created
+                        Created
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                       Actions
@@ -466,116 +475,146 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                   {links.map((link) => {
                     const clicks = linkClicks.filter(click => click.linkId === link.id).length;
                     const shortUrl = `${window.location.origin}/l/${link.shortCode}`;
-                    
-                    return (
+                  
+                  return (
                       <tr key={link.id} className="hover:bg-white/5 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex flex-col">
                             <span className="text-sm font-medium text-white">{link.title}</span>
                             <span className="text-xs text-gray-500 truncate max-w-xs" title={link.originalUrl}>
                               {link.originalUrl}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
+                                </span>
+                        </div>
+                      </td>
+                    <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             <span className="text-sm text-blue-400 font-mono">/{link.shortCode}</span>
-                            <button
+                        <button
                               onClick={() => handleCopyLink(link)}
                               className="p-1 hover:bg-white/10 rounded transition-colors"
                               title="Copy link"
                             >
                               <Copy className="w-3.5 h-3.5 text-gray-400" />
-                            </button>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
+                        </button>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
                           <span className="text-sm font-semibold text-white">{clicks}</span>
-                        </td>
-                        <td className="px-6 py-4">
+                    </td>
+                    <td className="px-6 py-4">
                           <span className="text-sm text-gray-400">
                             {link.createdAt?.toDate?.().toLocaleDateString() || 'N/A'}
                           </span>
-                        </td>
-                        <td className="px-6 py-4">
+                    </td>
+                    <td className="px-6 py-4">
                           <div className="flex items-center justify-end gap-2">
-                            <button
+                        <button
                               onClick={() => {
                                 setSelectedLink(link);
                                 setShowAnalyticsModal(true);
                               }}
                               className="p-2 hover:bg-blue-500/10 text-blue-400 rounded-lg transition-colors"
-                              title="View Analytics"
-                            >
-                              <BarChart className="w-4 h-4" />
-                            </button>
-                            <button
+                          title="View Analytics"
+                        >
+                          <BarChart className="w-4 h-4" />
+                        </button>
+                        <button
                               onClick={() => handleEditLink(link)}
                               className="p-2 hover:bg-white/10 text-gray-400 rounded-lg transition-colors"
                               title="Edit"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
                               onClick={() => {
                                 setSelectedLink(link);
                                 setShowDeleteModal(true);
                               }}
                               className="p-2 hover:bg-red-500/10 text-red-400 rounded-lg transition-colors"
                               title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  );
                   })}
-                </tbody>
-              </table>
-            </div>
-          )}
+            </tbody>
+          </table>
         </div>
+        )}
+      </div>
 
-        {/* Modals */}
+      {/* Modals */}
         
         {/* Create/Edit Link Modal */}
         {showCreateModal && (
-          <CreateLinkModal
+        <CreateLinkModal
             isOpen={showCreateModal}
-            onClose={() => {
+          onClose={() => {
               setShowCreateModal(false);
-              setEditingLink(null);
-            }}
-            editingLink={editingLink}
+            setEditingLink(null);
+          }}
+          editingLink={editingLink}
             onCreate={async (originalUrl: string, title: string, description?: string, tags?: string[], linkedAccountId?: string) => {
-              if (!orgId || !projId) return;
+              if (!orgId || !projId || !user) {
+                console.error('Cannot create link: missing required data', { orgId, projId, hasUser: !!user });
+                alert('Missing required data to create link. Please try logging in again.');
+                return;
+              }
+              
+              console.log('💾 Saving link...', { originalUrl, title, orgId, projId, userId: user.uid });
+              
               try {
                 if (editingLink) {
                   // Update existing link
-                  await FirestoreDataService.updateTrackedLink(
+                  console.log('✏️ Updating link:', editingLink.id);
+                  await FirestoreDataService.updateLink(
                     orgId,
                     projId,
                     editingLink.id,
                     { originalUrl, title, description, tags }
                   );
+                  console.log('✅ Link updated successfully');
                 } else {
                   // Create new link
-                  await FirestoreDataService.createTrackedLink(
+                  console.log('➕ Creating new link...');
+                  
+                  // Generate unique short code
+                  const shortCode = Math.random().toString(36).substring(2, 8);
+                  
+                  const linkId = await FirestoreDataService.createLink(
                     orgId,
                     projId,
-                    originalUrl,
-                    title,
-                    description,
-                    tags,
-                    linkedAccountId
+                    user.uid,
+                    {
+                      shortCode,
+                      originalUrl,
+                      title,
+                      description,
+                      tags,
+                      linkedAccountId,
+                      isActive: true
+                    }
                   );
+                  console.log('✅ Link created successfully with ID:', linkId);
                 }
+                
+                // Close modal first
                 setShowCreateModal(false);
                 setEditingLink(null);
+                
+                // Wait a moment for Firestore to propagate
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Reload data
+                console.log('🔄 Reloading data after link creation...');
                 await loadData();
+                console.log('✅ Data reloaded');
               } catch (error) {
-                console.error('Failed to save link:', error);
+                console.error('❌ Failed to save link:', error);
+                alert('Failed to save link: ' + (error as Error).message);
               }
             }}
           />
@@ -596,17 +635,17 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
 
         {/* Analytics Modal */}
         {showAnalyticsModal && selectedLink && (
-          <LinkAnalyticsModalEnhanced
+        <LinkAnalyticsModalEnhanced
             isOpen={showAnalyticsModal}
-            onClose={() => {
+          onClose={() => {
               setShowAnalyticsModal(false);
-              setSelectedLink(null);
-            }}
-            link={selectedLink}
-          />
-        )}
-      </div>
-    );
+            setSelectedLink(null);
+          }}
+          link={selectedLink}
+        />
+      )}
+    </div>
+  );
   }
 );
 
