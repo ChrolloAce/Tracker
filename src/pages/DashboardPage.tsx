@@ -406,8 +406,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   // Loading state for skeleton display (only check if data has been loaded, not if it's empty)
   const isInitialLoading = !rulesLoadedFromFirebase || !dataLoadedFromFirebase;
   
-  // Tracked Links search state
-  const [linksSearchQuery, setLinksSearchQuery] = useState('');
   const [linksDateFilter, setLinksDateFilter] = useState<DateFilterType>(() => {
     const saved = localStorage.getItem('linksDateFilter');
     return (saved as DateFilterType) || 'last30days';
@@ -2906,7 +2904,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           {activeTab === 'analytics' && (
             <TrackedLinksPage 
               ref={trackedLinksPageRef} 
-              searchQuery={linksSearchQuery} 
               linkClicks={linkClicks}
               dateFilter={linksDateFilter}
               customDateRange={linksCustomDateRange}

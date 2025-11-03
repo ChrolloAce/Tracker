@@ -1,6 +1,6 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { RefreshCw, ExternalLink, Plus, Copy, Trash2, Edit2, BarChart } from 'lucide-react';
+import { ExternalLink, Copy, Trash2, Edit2, BarChart } from 'lucide-react';
 import { DateFilterType } from './DateRangeFilter';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import LinkClicksService, { LinkClick } from '../services/LinkClicksService';
@@ -16,7 +16,6 @@ export interface TrackedLinksPageRef {
 }
 
 interface TrackedLinksPageProps {
-  searchQuery?: string;
   linkClicks?: LinkClick[];
   dateFilter?: DateFilterType;
   customDateRange?: { start: Date; end: Date } | { startDate: Date; endDate: Date };
@@ -36,9 +35,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     const [totalClicks, setTotalClicks] = useState(0);
     const [totalLinks, setTotalLinks] = useState(0);
     const [uniqueVisitors, setUniqueVisitors] = useState(0);
-    const [clickThroughRate, setClickThroughRate] = useState(0);
     const [topPerformer, setTopPerformer] = useState<string>('-');
-    const [avgClicksPerLink, setAvgClicksPerLink] = useState(0);
     const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedLink, setSelectedLink] = useState<TrackedLink | null>(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
