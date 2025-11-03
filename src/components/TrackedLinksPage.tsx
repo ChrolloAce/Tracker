@@ -156,7 +156,10 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       const now = new Date();
       const hourClicks = linkClicks.filter(click => {
         if (!click.timestamp) return false;
-        const clickDate = click.timestamp.toDate ? click.timestamp.toDate() : new Date(click.timestamp);
+        // Handle both Firestore Timestamp and Date objects
+        const clickDate = (click.timestamp as any).toDate 
+          ? (click.timestamp as any).toDate() 
+          : new Date(click.timestamp as any);
         
         // Only count clicks from today for hourly view
         if (timeframe === 'today') {
