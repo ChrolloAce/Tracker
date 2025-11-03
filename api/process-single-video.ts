@@ -124,7 +124,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const newAccountRef = accountsRef.doc();
       await newAccountRef.set({
         id: newAccountRef.id,
-        username: videoData.username,
+        username: videoData.username.toLowerCase(), // Lowercase for consistency with queries
         platform: video.platform,
         displayName: videoData.display_name || videoData.username,
         profilePicture: videoData.profile_pic_url || '',
