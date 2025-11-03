@@ -79,6 +79,13 @@ const CreatorInvitationPage: React.FC = () => {
       // The lookup now contains ALL invitation details (no need to query protected collection)
       const inviteData = lookupSnapshot.data() as TeamInvitation;
       console.log('✅ Loaded public invitation data:', inviteData);
+      console.log('📊 Invitation fields check:');
+      console.log('  - email:', inviteData.email);
+      console.log('  - organizationName:', inviteData.organizationName);
+      console.log('  - role:', inviteData.role);
+      console.log('  - status:', inviteData.status);
+      console.log('  - id:', inviteData.id);
+      console.log('  - orgId:', inviteData.orgId);
 
       // Validate that we have required fields
       if (!inviteData.email || !inviteData.organizationName || !inviteData.role) {
