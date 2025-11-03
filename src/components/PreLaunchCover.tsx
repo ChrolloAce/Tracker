@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { Lock, Unlock, Clock } from 'lucide-react';
 import vtLogo from '/vtlogo.png';
 
-const LAUNCH_DATE = new Date('2025-11-03T01:00:00').getTime(); // Nov 3, 2025 at 1:00 AM (EST)
+const LAUNCH_DATE = new Date('2025-11-03T17:00:00').getTime(); // Nov 3, 2025 at 5:00 PM (EST)
 const BYPASS_PIN = '9434'; // Change this to your secure PIN
 const BYPASS_KEY = 'prelaunch_bypass_v2'; // Changed key to force reset
 const FORCE_LOCK = true; // ALWAYS show cover, ignore date completely
