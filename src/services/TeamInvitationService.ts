@@ -82,15 +82,14 @@ class TeamInvitationService {
     await setDoc(inviteRef, inviteData);
     console.log(`✅ Created invitation for ${email}`);
     
-    // Create lookup document for easy invitation retrieval
+    // Create lookup document with FULL invitation details for public access
+    // This allows unauthenticated users to view invitation details before signing in
     const lookupRef = doc(db, 'invitationsLookup', inviteRef.id);
     await setDoc(lookupRef, {
-      invitationId: inviteRef.id,
-      orgId: orgId,
-      email: email.toLowerCase(),
-      createdAt: Timestamp.now()
+      ...inviteData, // Include all invitation data
+      invitationId: inviteRef.id
     });
-    console.log(`✅ Created invitation lookup for ${email}`);
+    console.log(`✅ Created public invitation lookup for ${email}`);
     
     // Send email notification
     try {
@@ -265,6 +264,14 @@ class TeamInvitationService {
             status: 'accepted',
             acceptedAt: Timestamp.now()
           });
+          
+          // Also update the public lookup
+          const lookupRef = doc(db, 'invitationsLookup', invitationId);
+          await updateDoc(lookupRef, {
+            status: 'accepted',
+            acceptedAt: Timestamp.now()
+          });
+          
           // Set as default org
           const userRef = doc(db, 'users', userId);
           await setDoc(userRef, { defaultOrgId: orgId }, { merge: true });
@@ -277,6 +284,13 @@ class TeamInvitationService {
       
       // Update invitation status
       batch.update(inviteRef, { 
+        status: 'accepted',
+        acceptedAt: Timestamp.now()
+      });
+      
+      // Also update the public lookup
+      const lookupRef = doc(db, 'invitationsLookup', invitationId);
+      batch.update(lookupRef, {
         status: 'accepted',
         acceptedAt: Timestamp.now()
       });
@@ -347,6 +361,14 @@ class TeamInvitationService {
       status: 'declined',
       declinedAt: Timestamp.now()
     });
+    
+    // Also update the public lookup
+    const lookupRef = doc(db, 'invitationsLookup', invitationId);
+    await updateDoc(lookupRef, {
+      status: 'declined',
+      declinedAt: Timestamp.now()
+    });
+    
     console.log(`✅ Invitation ${invitationId} declined`);
   }
   
@@ -358,6 +380,13 @@ class TeamInvitationService {
     await updateDoc(inviteRef, {
       status: 'expired'
     });
+    
+    // Also update the public lookup
+    const lookupRef = doc(db, 'invitationsLookup', invitationId);
+    await updateDoc(lookupRef, {
+      status: 'expired'
+    });
+    
     console.log(`✅ Invitation ${invitationId} cancelled`);
   }
 }

@@ -65,33 +65,20 @@ const CreatorInvitationPage: React.FC = () => {
 
       console.log('🔍 Loading invitation:', invitationId);
 
-      // First, try to get the lookup document (public read access)
+      // Get the public lookup document (no authentication required!)
       const lookupRef = doc(db, 'invitationsLookup', invitationId);
-      const invitationsSnapshot = await getDoc(lookupRef);
+      const lookupSnapshot = await getDoc(lookupRef);
       
-      if (!invitationsSnapshot.exists()) {
+      if (!lookupSnapshot.exists()) {
         console.error('❌ Invitation lookup not found for ID:', invitationId);
-        setError('Invitation not found. It may have expired or been deleted. If this invitation was just created, please ask the sender to create a new invitation.');
-        setLoading(false);
-        return;
-      }
-
-      const lookupData = invitationsSnapshot.data();
-      console.log('✅ Found lookup data:', lookupData);
-
-      // Now get the full invitation details
-      const inviteRef = doc(db, 'organizations', lookupData.orgId, 'invitations', invitationId);
-      const inviteDoc = await getDoc(inviteRef);
-
-      if (!inviteDoc.exists()) {
-        console.error('❌ Invitation document not found in org:', lookupData.orgId);
         setError('Invitation not found. It may have expired or been deleted.');
         setLoading(false);
         return;
       }
 
-      const inviteData = inviteDoc.data() as TeamInvitation;
-      console.log('✅ Loaded invitation for:', inviteData.email);
+      // The lookup now contains ALL invitation details (no need to query protected collection)
+      const inviteData = lookupSnapshot.data() as TeamInvitation;
+      console.log('✅ Loaded public invitation for:', inviteData.email);
 
       // Check if invitation is still valid
       if (inviteData.status !== 'pending') {
