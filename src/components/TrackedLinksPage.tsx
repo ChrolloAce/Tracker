@@ -435,30 +435,28 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
               </button>
             </div>
           </div>
-          <div className="h-64 flex items-end gap-1 px-2">
+          <div className="h-64 flex items-end gap-1">
             {clicksByHour.map((data, index) => {
               const maxClicks = Math.max(...clicksByHour.map(d => d.clicks), 1);
               const heightPercent = maxClicks > 0 ? (data.clicks / maxClicks) * 100 : 0;
               
               return (
-                <div key={index} className="flex-1 flex flex-col items-center group relative">
-                  <div className="w-full h-64 flex flex-col justify-end">
-                    {data.clicks > 0 && (
-                      <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
-                        {data.clicks} {data.clicks === 1 ? 'click' : 'clicks'}
-                      </div>
-                    )}
-                    <div
-                      className="w-full bg-gradient-to-t from-blue-500 to-blue-400 rounded-t hover:from-blue-600 hover:to-blue-500 transition-all"
-                      style={{ 
-                        height: `${heightPercent}%`,
-                        minHeight: data.clicks > 0 ? '4px' : '2px',
-                        opacity: data.clicks > 0 ? 1 : 0.15
-                      }}
-                    ></div>
-                  </div>
+                <div key={index} className="flex-1 flex flex-col items-center justify-end group relative h-full">
+                  {data.clicks > 0 && (
+                    <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
+                      {data.clicks} {data.clicks === 1 ? 'click' : 'clicks'}
+                    </div>
+                  )}
+                  <div
+                    className="w-full bg-gradient-to-t from-blue-500 to-blue-400 rounded-t hover:from-blue-600 hover:to-blue-500 transition-all"
+                    style={{ 
+                      height: `${heightPercent}%`,
+                      minHeight: data.clicks > 0 ? '4px' : '2px',
+                      opacity: data.clicks > 0 ? 1 : 0.15
+                    }}
+                  ></div>
                   {(index % 3 === 0 || index === 23) && (
-                    <span className="text-xs text-gray-500 mt-2">{data.hour}</span>
+                    <span className="text-xs text-gray-500 absolute -bottom-6">{data.hour}</span>
                   )}
                 </div>
               );
