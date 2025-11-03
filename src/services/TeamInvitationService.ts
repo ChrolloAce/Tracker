@@ -217,6 +217,8 @@ class TeamInvitationService {
   ): Promise<void> {
     console.log(`🔍 Attempting to accept invitation:`, { invitationId, orgId, userId, email });
     
+    let invite: TeamInvitation | undefined; // Declare outside try block for catch block access
+    
     try {
       // Get invitation
       const inviteRef = doc(db, 'organizations', orgId, 'invitations', invitationId);
@@ -228,7 +230,7 @@ class TeamInvitationService {
         throw new Error('Invitation not found. It may have already been accepted or deleted.');
       }
       
-      const invite = inviteDoc.data() as TeamInvitation;
+      invite = inviteDoc.data() as TeamInvitation;
       console.log(`📋 Invitation status:`, invite.status);
       console.log(`📋 Invitation email:`, invite.email);
       console.log(`📋 Your email:`, email);
