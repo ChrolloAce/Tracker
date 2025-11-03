@@ -374,7 +374,7 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
       };
     } else if (platform === 'instagram') {
       // Use pratikdani/instagram-reels-scraper (same pattern as TikTok)
-      actorId = 'pratikdani/instagram-reels-scraper';
+      actorId = 'pratikdani~instagram-reels-scraper'; // Use tilde for Apify API
       input = {
         urls: [url]
       };
