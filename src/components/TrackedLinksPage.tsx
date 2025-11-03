@@ -1,12 +1,14 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Settings, RefreshCw, ExternalLink, Plus } from 'lucide-react';
+import { Settings, RefreshCw, ExternalLink, Plus, Copy, Trash2, Edit2, BarChart } from 'lucide-react';
 import { DateFilterType } from './DateRangeFilter';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import LinkClicksService, { LinkClick } from '../services/LinkClicksService';
 import { TrackedLink } from '../types/firestore';
 import FirestoreDataService from '../services/FirestoreDataService';
 import CreateLinkModal from './CreateLinkModal';
+import DeleteLinkModal from './DeleteLinkModal';
+import LinkAnalyticsModalEnhanced from './LinkAnalyticsModalEnhanced';
 
 export interface TrackedLinksPageRef {
   openCreateModal: () => void;
@@ -37,6 +39,10 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     const [topPerformer, setTopPerformer] = useState<string>('-');
     const [avgClicksPerLink, setAvgClicksPerLink] = useState(0);
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [selectedLink, setSelectedLink] = useState<TrackedLink | null>(null);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
+    const [editingLink, setEditingLink] = useState<TrackedLink | null>(null);
 
     const orgId = organizationId || currentOrgId;
     const projId = projectId || currentProjectId;
@@ -180,9 +186,32 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       return flagMap[countryName] || '🌍';
     }
 
+    const handleCopyLink = (link: TrackedLink) => {
+      const fullUrl = `${window.location.origin}/l/${link.shortCode}`;
+      navigator.clipboard.writeText(fullUrl);
+      // Could add a toast notification here
+    };
+
+    const handleDeleteLink = async () => {
+      if (!selectedLink || !orgId || !projId) return;
+      try {
+        await FirestoreDataService.deleteTrackedLink(orgId, projId, selectedLink.id);
+        setShowDeleteModal(false);
+        setSelectedLink(null);
+        await loadData();
+      } catch (error) {
+        console.error('Failed to delete link:', error);
+      }
+    };
+
+    const handleEditLink = (link: TrackedLink) => {
+      setEditingLink(link);
+      setShowCreateModal(true);
+    };
+
     if (loading) {
-    return <PageLoadingSkeleton type="links" />;
-  }
+      return <PageLoadingSkeleton type="links" />;
+    }
 
   return (
       <div className="space-y-6">
@@ -394,33 +423,186 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                   <p>No geographic data available yet</p>
                             </div>
                             )}
-                          </div>
-                        </div>
+            </div>
+          </div>
         </div>
 
-        {/* Create Link Modal */}
+        {/* All Links Table */}
+        <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+          <div className="px-6 py-4 border-b border-white/10">
+            <h3 className="text-lg font-semibold text-white">All Tracked Links</h3>
+            <p className="text-sm text-gray-400 mt-1">Manage and monitor your short links</p>
+          </div>
+          
+          {links.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-4xl mb-3">🔗</div>
+              <p className="text-gray-400 mb-2">No links created yet</p>
+              <p className="text-sm text-gray-500">Click "Create Link" to get started</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-black/20 border-b border-white/10">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Link
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Short URL
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Clicks
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Created
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {links.map((link) => {
+                    const clicks = linkClicks.filter(click => click.linkId === link.id).length;
+                    const shortUrl = `${window.location.origin}/l/${link.shortCode}`;
+                    
+                    return (
+                      <tr key={link.id} className="hover:bg-white/5 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-white">{link.title}</span>
+                            <span className="text-xs text-gray-500 truncate max-w-xs" title={link.originalUrl}>
+                              {link.originalUrl}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-blue-400 font-mono">/{link.shortCode}</span>
+                            <button
+                              onClick={() => handleCopyLink(link)}
+                              className="p-1 hover:bg-white/10 rounded transition-colors"
+                              title="Copy link"
+                            >
+                              <Copy className="w-3.5 h-3.5 text-gray-400" />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm font-semibold text-white">{clicks}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm text-gray-400">
+                            {link.createdAt?.toDate?.().toLocaleDateString() || 'N/A'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => {
+                                setSelectedLink(link);
+                                setShowAnalyticsModal(true);
+                              }}
+                              className="p-2 hover:bg-blue-500/10 text-blue-400 rounded-lg transition-colors"
+                              title="View Analytics"
+                            >
+                              <BarChart className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleEditLink(link)}
+                              className="p-2 hover:bg-white/10 text-gray-400 rounded-lg transition-colors"
+                              title="Edit"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedLink(link);
+                                setShowDeleteModal(true);
+                              }}
+                              className="p-2 hover:bg-red-500/10 text-red-400 rounded-lg transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Modals */}
+        
+        {/* Create/Edit Link Modal */}
         {showCreateModal && (
           <CreateLinkModal
             isOpen={showCreateModal}
-            onClose={() => setShowCreateModal(false)}
+            onClose={() => {
+              setShowCreateModal(false);
+              setEditingLink(null);
+            }}
+            editingLink={editingLink}
             onCreate={async (originalUrl: string, title: string, description?: string, tags?: string[], linkedAccountId?: string) => {
               if (!orgId || !projId) return;
               try {
-                await FirestoreDataService.createTrackedLink(
-                  orgId,
-                  projId,
-                  originalUrl,
-                  title,
-                  description,
-                  tags,
-                  linkedAccountId
-                );
+                if (editingLink) {
+                  // Update existing link
+                  await FirestoreDataService.updateTrackedLink(
+                    orgId,
+                    projId,
+                    editingLink.id,
+                    { originalUrl, title, description, tags }
+                  );
+                } else {
+                  // Create new link
+                  await FirestoreDataService.createTrackedLink(
+                    orgId,
+                    projId,
+                    originalUrl,
+                    title,
+                    description,
+                    tags,
+                    linkedAccountId
+                  );
+                }
                 setShowCreateModal(false);
+                setEditingLink(null);
                 await loadData();
               } catch (error) {
-                console.error('Failed to create link:', error);
+                console.error('Failed to save link:', error);
               }
             }}
+          />
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && selectedLink && (
+          <DeleteLinkModal
+            isOpen={showDeleteModal}
+            onClose={() => {
+              setShowDeleteModal(false);
+              setSelectedLink(null);
+            }}
+            onConfirm={handleDeleteLink}
+            linkTitle={selectedLink.title}
+          />
+        )}
+
+        {/* Analytics Modal */}
+        {showAnalyticsModal && selectedLink && (
+          <LinkAnalyticsModalEnhanced
+            isOpen={showAnalyticsModal}
+            onClose={() => {
+              setShowAnalyticsModal(false);
+              setSelectedLink(null);
+            }}
+            link={selectedLink}
           />
         )}
       </div>
