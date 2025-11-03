@@ -592,7 +592,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       <div className="space-y-6 pt-6">
 
         {/* KPI Metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {/* Total Links */}
           <div className="bg-white/5 rounded-xl border border-white/10 p-4 hover:bg-white/10 transition-colors">
             <div className="flex items-center gap-2 mb-2">
@@ -618,18 +618,6 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
               <span className="text-sm text-gray-400 font-medium">Unique Visitors</span>
             </div>
             <div className="text-3xl font-bold text-white">{uniqueVisitors}</div>
-          </div>
-
-          {/* Avg Clicks/Link */}
-          <div className="bg-white/5 rounded-xl border border-white/10 p-4 hover:bg-white/10 transition-colors">
-            <div className="text-sm text-gray-400 font-medium mb-2">Avg Clicks/Link</div>
-            <div className="text-3xl font-bold text-white">{avgClicksPerLink}</div>
-          </div>
-
-          {/* Click-Through Rate */}
-          <div className="bg-white/5 rounded-xl border border-white/10 p-4 hover:bg-white/10 transition-colors">
-            <div className="text-sm text-gray-400 font-medium mb-2">CTR</div>
-            <div className="text-3xl font-bold text-white">{clickThroughRate}%</div>
           </div>
 
           {/* Top Performer */}
