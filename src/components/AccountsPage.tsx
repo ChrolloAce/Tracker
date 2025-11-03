@@ -537,11 +537,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       
       setAccounts(loadedAccounts);
 
-      // Auto-cleanup: Remove from processing if account now exists in real list
+      // Auto-cleanup: Remove from processing if account now exists in real list AND has finished loading
+      // We wait for the account to have a profile picture or follower count to ensure it's fully loaded
       setProcessingAccounts(prev => {
-        const accountKeys = new Set(loadedAccounts.map(acc => `${acc.platform}_${acc.username}`));
-        const remaining = prev.filter(proc => !accountKeys.has(`${proc.platform}_${proc.username}`));
+        const fullyLoadedAccounts = new Set(
+          loadedAccounts
+            .filter(acc => acc.profilePicture || acc.followerCount > 0)
+            .map(acc => `${acc.platform}_${acc.username}`)
+        );
+        const remaining = prev.filter(proc => !fullyLoadedAccounts.has(`${proc.platform}_${proc.username}`));
         if (remaining.length < prev.length) {
+          console.log(`✅ Removed ${prev.length - remaining.length} processing accounts that are now fully loaded`);
         }
         return remaining;
       });
@@ -1357,78 +1363,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-zinc-900/60 divide-y divide-gray-200 dark:divide-white/5">
-                  {/* Processing Accounts */}
-                  {processingAccounts.map((procAccount, index) => (
-                    <tr 
-                      key={`processing-${index}`}
-                      className="bg-white/5 dark:bg-white/5 border-l-2 border-white/20"
-                    >
-                      {/* Username Column */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center space-x-3">
-                          <div className="relative w-10 h-10">
-                            <div className="w-10 h-10 rounded-full flex items-center justify-center relative overflow-hidden bg-white/10">
-                              <RefreshCw className="w-5 h-5 text-white/60 animate-spin" />
-                            </div>
-                          </div>
-                          <div>
-                            <div className="text-sm font-bold text-white">
-                              @{procAccount.username}
-                            </div>
-                            <div className="text-xs text-white/40 font-medium flex items-center gap-1">
-                              <span className="inline-block w-1.5 h-1.5 bg-white/40 rounded-full animate-pulse"></span>
-                              Adding account...
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Platform Column */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center space-x-2">
-                          <PlatformIcon platform={procAccount.platform as any} size="sm" />
-                          <span className="text-sm text-white font-medium capitalize">{procAccount.platform}</span>
-                        </div>
-                      </td>
-
-                      {/* Other columns with loading placeholders */}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse"></div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
-                      </td>
-
-                      {/* Actions Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end space-x-2">
-                          <button
-                            onClick={() => {
-                              setProcessingAccounts(prev => prev.filter((_, i) => i !== index));
-                            }}
-                            className="px-3 py-1.5 text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-md transition-colors"
-                            title="Cancel processing"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-
-                  {/* Regular Accounts */}
+                  {/* Processing & Regular Accounts - Merged for smooth transitions */}
                   {(() => {
                     // Apply pagination to processed accounts
                     const startIndex = (accountsCurrentPage - 1) * accountsItemsPerPage;
@@ -1438,7 +1373,130 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                     // Combine pending accounts (always show at top, not paginated) with paginated accounts
                     const allAccountsToRender = [...pendingAccounts, ...paginatedAccounts];
                     
-                    return allAccountsToRender.map((account) => {
+                    // Add processing accounts to the top
+                    const processingAccountsKeys = new Set(processingAccounts.map(p => `${p.platform}_${p.username}`));
+                    
+                    // Filter out real accounts that are in processing state (to avoid duplicates)
+                    const realAccountsToRender = allAccountsToRender.filter(acc => 
+                      !processingAccountsKeys.has(`${acc.platform}_${acc.username}`)
+                    );
+                    
+                    // Render processing accounts first, then real accounts
+                    return (
+                      <>
+                        {processingAccounts.map((procAccount, index) => {
+                          // Check if this processing account has started loading (exists in accounts but not fully loaded)
+                          const matchingAccount = allAccountsToRender.find(
+                            acc => acc.platform === procAccount.platform && acc.username === procAccount.username
+                          );
+                          const isPartiallyLoaded = matchingAccount && (!matchingAccount.profilePicture && matchingAccount.followerCount === 0);
+                          
+                          return (
+                            <tr 
+                              key={`processing-${procAccount.platform}-${procAccount.username}`}
+                              className="bg-white/5 dark:bg-white/5 border-l-2 border-white/20 transition-all duration-500"
+                            >
+                              {/* Username Column */}
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center space-x-3">
+                                  <div className="relative w-10 h-10">
+                                    {matchingAccount?.profilePicture ? (
+                                      <img
+                                        src={matchingAccount.profilePicture}
+                                        alt={`@${procAccount.username}`}
+                                        className="w-10 h-10 rounded-full object-cover animate-fade-in"
+                                      />
+                                    ) : (
+                                      <div className="w-10 h-10 rounded-full flex items-center justify-center relative overflow-hidden bg-white/10">
+                                        <RefreshCw className="w-5 h-5 text-white/60 animate-spin" />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <div className="text-sm font-bold text-white">
+                                      {matchingAccount?.displayName || `@${procAccount.username}`}
+                                    </div>
+                                    <div className="text-xs text-white/40 font-medium flex items-center gap-1">
+                                      {isPartiallyLoaded || !matchingAccount ? (
+                                        <>
+                                          <span className="inline-block w-1.5 h-1.5 bg-white/40 rounded-full animate-pulse"></span>
+                                          Loading account data...
+                                        </>
+                                      ) : (
+                                        `@${procAccount.username}`
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* Platform Column */}
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center space-x-2">
+                                  <PlatformIcon platform={procAccount.platform as any} size="sm" />
+                                  <span className="text-sm text-white font-medium capitalize">{procAccount.platform}</span>
+                                </div>
+                              </td>
+
+                              {/* Other columns - show data if available, else loading placeholders */}
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                                {matchingAccount && accountCreatorNames.get(matchingAccount.id) ? (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20 animate-fade-in">
+                                    <Users className="w-3 h-3 mr-1" />
+                                    {accountCreatorNames.get(matchingAccount.id)}
+                                  </span>
+                                ) : (
+                                  <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse"></div>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                {matchingAccount?.lastSynced ? (
+                                  <span className="text-white animate-fade-in">{formatDate(matchingAccount.lastSynced.toDate())}</span>
+                                ) : (
+                                  <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                {matchingAccount && matchingAccount.followerCount > 0 ? (
+                                  <span className="text-white animate-fade-in">{matchingAccount.followerCount.toLocaleString()}</span>
+                                ) : (
+                                  <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                {matchingAccount && matchingAccount.postCount > 0 ? (
+                                  <span className="text-white animate-fade-in">{matchingAccount.postCount.toLocaleString()}</span>
+                                ) : (
+                                  <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                                <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                                <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+                              </td>
+
+                              {/* Actions Column */}
+                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <div className="flex items-center justify-end space-x-2">
+                                  <button
+                                    onClick={() => {
+                                      setProcessingAccounts(prev => prev.filter((_, i) => i !== index));
+                                    }}
+                                    className="px-3 py-1.5 text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-md transition-colors"
+                                    title="Cancel processing"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        
+                        {/* Regular fully-loaded accounts */}
+                        {realAccountsToRender.map((account) => {
                       const isAccountSyncing = syncingAccounts.has(account.id);
                       
                       return (
@@ -1617,7 +1675,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                         </td>
                       </tr>
                       );
-                    });
+                    })}
+                      </>
+                    );
                   })()}
                 </tbody>
               </table>

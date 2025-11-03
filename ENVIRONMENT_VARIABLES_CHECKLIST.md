@@ -31,6 +31,12 @@
 | `FIREBASE_CLIENT_EMAIL` | **Required** for Firebase Admin SDK authentication |
 | `FIREBASE_PRIVATE_KEY` | **Required** for Firebase Admin SDK authentication |
 
+### **Optional - Required for YouTube Account Tracking:**
+
+| Variable | Why You Need It |
+|----------|----------------|
+| `YOUTUBE_API_KEY` | **Required** for YouTube channel tracking and Shorts scraping. Without this, YouTube accounts won't work. |
+
 ---
 
 ## 🔧 How to Get Missing Variables
@@ -117,6 +123,35 @@ Value: -----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBg...\n-----END PRIVATE KEY-----
 
 ---
 
+### 4. YouTube Data API Key (Optional - for YouTube Account Tracking)
+
+**Steps:**
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Select your project (or create a new one)
+3. Enable the **YouTube Data API v3**:
+   - Go to **APIs & Services** → **Library**
+   - Search for "YouTube Data API v3"
+   - Click **Enable**
+4. Create an API Key:
+   - Go to **APIs & Services** → **Credentials**
+   - Click **+ CREATE CREDENTIALS** → **API Key**
+   - Copy the generated API key
+5. (Optional but recommended) Restrict the API key:
+   - Click on the API key you just created
+   - Under "API restrictions", select "Restrict key"
+   - Choose "YouTube Data API v3"
+   - Save
+
+**Add to Vercel:**
+```
+Name: YOUTUBE_API_KEY
+Value: AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+```
+
+**⚠️ Note**: Without this key, users won't be able to track YouTube channels or fetch Shorts videos.
+
+---
+
 ## 📋 Complete Environment Variables List
 
 Here's the **complete list** of what you should have in Vercel:
@@ -143,6 +178,9 @@ VITE_STRIPE_ULTRA_YEARLY=price_xxxxx
 FIREBASE_PROJECT_ID=your-project-id
 FIREBASE_CLIENT_EMAIL=firebase-adminsdk@...iam.gserviceaccount.com
 FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+
+# YouTube Data API (Required for YouTube account tracking)
+YOUTUBE_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 ```
 
 ---

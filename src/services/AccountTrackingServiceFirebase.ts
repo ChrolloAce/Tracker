@@ -525,10 +525,11 @@ export class AccountTrackingServiceFirebase {
       } else if (account.platform === 'twitter') {
         const allVideos = await this.syncTwitterTweets(orgId, account);
         syncResult = { newVideos: allVideos, updatedVideos: [] };
+      } else if (account.platform === 'youtube') {
+        // YouTube with incremental sync
+        syncResult = await this.syncYoutubeShortsIncremental(orgId, projectId, account, existingVideoIds);
       } else {
-        // YouTube
-        const allVideos = await this.syncYoutubeShorts(orgId, account);
-        syncResult = { newVideos: allVideos, updatedVideos: [] };
+        throw new Error(`Unsupported platform: ${account.platform}`);
       }
 
       console.log(`📹 Fetched ${syncResult.newVideos.length} NEW videos, ${syncResult.updatedVideos.length} updated videos from platform`);
@@ -956,7 +957,75 @@ export class AccountTrackingServiceFirebase {
   }
 
   /**
-   * Sync YouTube Shorts videos
+   * NEW: Incremental YouTube sync - Fetches videos and separates new vs existing
+   * Returns BOTH new videos (to add) AND updated videos (to refresh metrics)
+   */
+  private static async syncYoutubeShortsIncremental(
+    orgId: string,
+    _projectId: string,
+    account: TrackedAccount,
+    existingVideoIds: Set<string>
+  ): Promise<{ newVideos: AccountVideo[], updatedVideos: AccountVideo[] }> {
+    const isNewAccount = existingVideoIds.size === 0;
+    console.log(`🎯 Starting ${isNewAccount ? 'FULL' : 'INCREMENTAL'} YouTube sync for @${account.username}...`);
+    
+    try {
+      // We need the channel ID to fetch Shorts
+      // Fetch profile again to get channelId if not stored
+      const profile = await YoutubeAccountService.fetchChannelProfile(account.username);
+      if (!profile.channelId) {
+        throw new Error('Could not resolve YouTube channel ID');
+      }
+
+      // Fetch shorts (up to 50 videos, sorted by date)
+      const shorts = await YoutubeAccountService.syncChannelShorts(profile.channelId!, account.displayName || account.username);
+
+      const newVideos: AccountVideo[] = [];
+      const updatedVideos: AccountVideo[] = [];
+
+      // Process each video and determine if it's new or existing
+      for (const short of shorts) {
+        const isExisting = existingVideoIds.has(short.videoId || '');
+        
+        // Upload thumbnail to Firebase Storage
+        let uploadedThumbnail = short.thumbnail;
+        if (short.thumbnail) {
+          uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
+            orgId,
+            short.thumbnail,
+            `yt_${short.videoId}`,
+            'thumbnail'
+          );
+        }
+
+        const processedVideo: AccountVideo = {
+          ...short,
+          id: `${account.id}_${short.videoId}`,
+          accountId: account.id,
+          thumbnail: uploadedThumbnail,
+        };
+
+        if (isExisting) {
+          // This video already exists - add to updated list for metric refresh
+          updatedVideos.push(processedVideo);
+          console.log(`♻️ Existing YouTube Short: ${short.videoId} - will refresh metrics`);
+        } else {
+          // This is a new video - add to new list
+          newVideos.push(processedVideo);
+          console.log(`➕ New YouTube Short: ${short.videoId}`);
+        }
+      }
+
+      console.log(`🎉 YouTube incremental sync finished: ${newVideos.length} new videos, ${updatedVideos.length} updated videos`);
+      return { newVideos, updatedVideos };
+    } catch (error) {
+      console.error('❌ Failed to sync YouTube Shorts:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * LEGACY: Sync YouTube Shorts videos (kept for backward compatibility, but not used)
    */
   private static async syncYoutubeShorts(orgId: string, account: TrackedAccount): Promise<AccountVideo[]> {
     console.log(`🔄 Fetching YouTube Shorts for @${account.username}...`);

@@ -295,20 +295,21 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       follower_count: rawData['authorMeta.fans'] || rawData.authorMeta?.fans || 0
     };
   } else if (platform === 'instagram') {
-    // Instagram has multiple possible field names
+    // Instagram - Handle pratikdani/instagram-reels-scraper format
+    // video_play_count is the accurate view count, not just "views"
     return {
-      id: rawData.id || rawData.shortcode || '',
-      thumbnail_url: rawData.thumbnail_url || rawData.displayUrl || rawData.thumbnailUrl || '',
-      caption: rawData.caption || rawData.text || '',
-      username: rawData.username || rawData.ownerUsername || '',
-      like_count: rawData.like_count || rawData.likesCount || 0,
-      comment_count: rawData.comment_count || rawData.commentsCount || 0,
-      view_count: rawData.view_count || rawData.videoViewCount || 0,
-      share_count: 0,
-      timestamp: rawData.timestamp || rawData.taken_at_timestamp || new Date().toISOString(),
+      id: rawData.post_id || rawData.content_id || rawData.shortcode || rawData.id || '',
+      thumbnail_url: rawData.thumbnail || rawData.thumbnail_url || rawData.displayUrl || rawData.thumbnailUrl || '',
+      caption: rawData.description || rawData.caption || rawData.text || '',
+      username: rawData.user_posted || rawData.username || rawData.ownerUsername || '',
+      like_count: rawData.likes || rawData.like_count || rawData.likesCount || 0,
+      comment_count: rawData.num_comments || rawData.comment_count || rawData.commentsCount || 0,
+      view_count: rawData.video_play_count || rawData.view_count || rawData.videoViewCount || rawData.views || 0,
+      share_count: 0, // Instagram doesn't expose share count
+      timestamp: rawData.date_posted || rawData.timestamp || rawData.taken_at_timestamp || new Date().toISOString(),
       profile_pic_url: rawData.profile_pic_url || rawData.ownerProfilePicUrl || '',
-      display_name: rawData.display_name || rawData.ownerFullName || '',
-      follower_count: rawData.follower_count || rawData.ownerFollowersCount || 0
+      display_name: rawData.user_posted || rawData.display_name || rawData.ownerFullName || '',
+      follower_count: rawData.followers || rawData.follower_count || rawData.ownerFollowersCount || 0
     };
   } else if (platform === 'youtube') {
     // YouTube structure - handle both YouTube API v3 and Apify scraper formats
@@ -471,11 +472,10 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
         resultsPerPage: 1
       };
     } else if (platform === 'instagram') {
-      actorId = 'apify~instagram-scraper';
+      // Use pratikdani/instagram-reels-scraper (same pattern as TikTok)
+      actorId = 'pratikdani/instagram-reels-scraper';
       input = {
-        directUrls: [url],
-        resultsType: 'posts',
-        resultsLimit: 1
+        urls: [url]
       };
     } else if (platform === 'youtube') {
       // Use YouTube API directly instead of Apify for better reliability
