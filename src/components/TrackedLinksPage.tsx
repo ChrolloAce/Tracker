@@ -557,7 +557,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           <div className="bg-white/5 rounded-xl border border-white/10 p-6">
             <h3 className="text-lg font-semibold text-white mb-4">Traffic Sources</h3>
             {(() => {
-              const sourceCounts = linkClicks.reduce((acc: { [key: string]: number }, click) => {
+              const sourceCounts = filteredLinkClicks.reduce((acc: { [key: string]: number }, click) => {
                 let source = 'Direct';
                 const referrer = click.referrer || click.referrerDomain || '';
                 
@@ -716,7 +716,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
               // Device View
               <div className="space-y-2">
                 {(() => {
-                  const deviceCounts = linkClicks.reduce((acc: { [key: string]: number }, click) => {
+                  const deviceCounts = filteredLinkClicks.reduce((acc: { [key: string]: number }, click) => {
                     const device = click.deviceType || 'Unknown';
                     acc[device] = (acc[device] || 0) + 1;
                     return acc;
@@ -757,7 +757,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
               // Browser View
               <div className="space-y-2">
                 {(() => {
-                  const browserCounts = linkClicks.reduce((acc: { [key: string]: number }, click) => {
+                  const browserCounts = filteredLinkClicks.reduce((acc: { [key: string]: number }, click) => {
                     const browser = click.browser || 'Unknown';
                     acc[browser] = (acc[browser] || 0) + 1;
                     return acc;
