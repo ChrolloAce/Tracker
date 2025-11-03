@@ -25,9 +25,10 @@ interface TrackedLinksPageProps {
 }
 
 const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
-  ({ searchQuery, linkClicks = [], dateFilter = 'all', customDateRange, organizationId, projectId }, ref) => {
+  ({ searchQuery, linkClicks: propLinkClicks = [], dateFilter = 'all', customDateRange, organizationId, projectId }, ref) => {
     const { currentOrgId, currentProjectId, user } = useAuth();
   const [links, setLinks] = useState<TrackedLink[]>([]);
+    const [linkClicks, setLinkClicks] = useState<LinkClick[]>([]);
     const [loading, setLoading] = useState(true);
     const [timeframe, setTimeframe] = useState<'today' | 'all-time'>('today');
     const [interval, setInterval] = useState<'hourly' | 'monthly'>('hourly');
@@ -77,8 +78,10 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
 
         console.log('✅ Loaded links:', linksData.length, 'links');
         console.log('✅ Loaded clicks:', clicksData.length, 'clicks');
+        console.log('📊 Sample click data:', clicksData[0]);
         
         setLinks(linksData);
+        setLinkClicks(clicksData); // Store clicks in state!
         calculateMetrics(linksData, clicksData);
       } catch (error) {
         console.error('❌ Failed to load data:', error);
@@ -197,7 +200,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     const handleCopyLink = (link: TrackedLink) => {
       const fullUrl = `${window.location.origin}/l/${link.shortCode}`;
       navigator.clipboard.writeText(fullUrl);
-      // Could add a toast notification here
+      console.log('📋 Copied link to clipboard:', fullUrl);
+      // You can add a toast notification here if needed
     };
 
     const handleDeleteLink = async () => {
@@ -488,13 +492,22 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                       </td>
                     <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-blue-400 font-mono">/{link.shortCode}</span>
+                            <a
+                              href={shortUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-400 hover:text-blue-300 font-mono underline decoration-dotted flex items-center gap-1"
+                              title="Open link in new tab"
+                            >
+                          /{link.shortCode}
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
                         <button
                               onClick={() => handleCopyLink(link)}
                               className="p-1 hover:bg-white/10 rounded transition-colors"
-                              title="Copy link"
+                              title="Copy full link"
                             >
-                              <Copy className="w-3.5 h-3.5 text-gray-400" />
+                              <Copy className="w-3.5 h-3.5 text-gray-400 hover:text-gray-200" />
                         </button>
                       </div>
                     </td>
