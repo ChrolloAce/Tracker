@@ -57,10 +57,9 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
     if (!currentOrgId || !user) return;
 
     try {
-      // Don't show skeleton on reload, keep existing data visible
-      const isInitialLoad = projects.length === 0;
-      if (isInitialLoad) {
-      setLoading(true);
+      // Only show loading on true initial load
+      if (projects.length === 0) {
+        setLoading(true);
       }
       
       const projectsData = await ProjectService.getProjectsWithStats(currentOrgId, false);
@@ -73,9 +72,13 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
       } else {
         setProjects(projectsData);
       }
+      
+      // Only set loading to false after we have data
+      if (loading) {
+        setLoading(false);
+      }
     } catch (error) {
       console.error('Failed to load projects:', error);
-    } finally {
       setLoading(false);
     }
   };
@@ -92,6 +95,7 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
     }
   };
 
+  // Always prefer to show current project if we have it, even during background refresh
   const currentProject = projects.find(p => p.id === currentProjectId);
 
   // Demo mode - show locked demo project
@@ -112,8 +116,107 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
     );
   }
 
-  // Only show loading skeleton on true initial load (no projects AND loading)
-  if (loading && projects.length === 0) {
+  // If we have a current project, ALWAYS show it (never show loading skeleton)
+  if (currentProject) {
+    return (
+      <div className="relative w-full" ref={dropdownRef}>
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className={clsx(
+            'w-full flex items-center space-x-2 px-3 py-2 rounded-lg transition-all',
+            'hover:bg-white/5 bg-white/5 border border-white/10 hover:border-white/20 backdrop-blur-sm',
+            isOpen && 'bg-white/10'
+          )}
+        >
+          {currentProject.imageUrl ? (
+            <img
+              src={currentProject.imageUrl}
+              alt={currentProject.name}
+              className="w-6 h-6 rounded object-contain bg-white/5"
+            />
+          ) : (
+            <span className="text-base">{currentProject.icon || '📁'}</span>
+          )}
+          <span className="text-sm font-medium text-white/90">
+            {currentProject.name}
+          </span>
+          <ChevronDown className={clsx(
+            'w-4 h-4 text-white/50 transition-transform',
+            isOpen && 'rotate-180'
+          )} />
+        </button>
+
+        {isOpen && (
+          <div className="absolute left-0 right-0 mt-2 bg-white dark:bg-gray-900 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 z-50 max-h-[300px] overflow-y-auto">
+            {projects.map((project) => (
+              <button
+                key={project.id}
+                onClick={() => handleProjectSelect(project.id)}
+                className={clsx(
+                  'w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left',
+                  project.id === currentProjectId && 'bg-gray-100 dark:bg-gray-800'
+                )}
+              >
+                <div className="flex items-center space-x-2 flex-1 min-w-0">
+                  {project.imageUrl ? (
+                    <img
+                      src={project.imageUrl}
+                      alt={project.name}
+                      className="w-6 h-6 rounded object-contain bg-gray-100 dark:bg-gray-800 flex-shrink-0"
+                    />
+                  ) : (
+                    <span className="text-base flex-shrink-0">{project.icon || '📁'}</span>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      {project.name}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      {project.videoCount || 0} videos • {project.clickCount || 0} clicks
+                    </p>
+                  </div>
+                </div>
+                {project.id === currentProjectId && (
+                  <Check className="w-4 h-4 text-blue-500 flex-shrink-0 ml-2" />
+                )}
+              </button>
+            ))}
+
+            {onCreateProject && (
+              <>
+                <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    onCreateProject();
+                  }}
+                  className="w-full flex items-center space-x-2 px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-blue-600 dark:text-blue-400"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span className="text-sm font-medium">Create New Project</span>
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
+        {editingProject && (
+          <EditProjectModal
+            project={editingProject}
+            isOpen={!!editingProject}
+            onClose={() => setEditingProject(null)}
+            onSuccess={() => {
+              setEditingProject(null);
+              loadProjects();
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // Only show loading skeleton if we truly have no data
+  if (loading) {
     return (
       <div className="flex items-center space-x-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse">
         <FolderOpen className="w-4 h-4 text-gray-400" />
@@ -122,139 +225,13 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
     );
   }
 
-  // If no current project found, don't show skeleton - show fallback
-  if (!currentProject) {
-    return (
-      <div className="flex items-center space-x-2 px-3 py-2 bg-white/5 border border-white/10 rounded-lg">
-        <FolderOpen className="w-4 h-4 text-white/50" />
-        <span className="text-sm font-medium text-white/70">No Project</span>
-      </div>
-    );
-  }
-
+  // No project found and not loading
   return (
-    <div className="relative w-full" ref={dropdownRef}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={clsx(
-          'w-full flex items-center space-x-2 px-3 py-2 rounded-lg transition-all',
-          'hover:bg-white/5 bg-white/5 border border-white/10 hover:border-white/20 backdrop-blur-sm',
-          isOpen && 'bg-white/10'
-        )}
-      >
-        {currentProject.imageUrl ? (
-          <img
-            src={currentProject.imageUrl}
-            alt={currentProject.name}
-            className="w-6 h-6 rounded object-contain bg-white/5"
-          />
-        ) : (
-          <span className="text-base">{currentProject.icon || '📁'}</span>
-        )}
-        <span className="text-sm font-medium text-white/90">
-          {currentProject.name}
-        </span>
-        <ChevronDown className={clsx(
-          'w-4 h-4 text-white/50 transition-transform',
-          isOpen && 'rotate-180'
-        )} />
-      </button>
-
-      {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-80 bg-gradient-to-br from-[#121212] to-[#151515] rounded-xl shadow-2xl border border-white/10 z-50 overflow-hidden backdrop-blur-xl">
-          {/* Header */}
-          <div className="px-4 py-3 border-b border-white/10 bg-white/5">
-            <h3 className="text-sm font-semibold text-white/90">
-              Switch Project
-            </h3>
-          </div>
-
-          {/* Project List */}
-          <div className="max-h-80 overflow-y-auto">
-            {projects.map((project) => (
-              <button
-                key={project.id}
-                onClick={() => handleProjectSelect(project.id)}
-                className={clsx(
-                  'w-full px-4 py-3 flex items-start space-x-3 transition-colors text-left',
-                  project.id === currentProjectId
-                    ? 'bg-white/10'
-                    : 'hover:bg-white/5'
-                )}
-              >
-                <div className="flex-shrink-0 mt-0.5">
-                  {project.imageUrl ? (
-                    <img
-                      src={project.imageUrl}
-                      alt={project.name}
-                      className="w-8 h-8 rounded-lg object-contain bg-white/5"
-                    />
-                  ) : (
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/10"
-                    >
-                      <span className="text-lg">{project.icon || '📁'}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <h4 className="text-sm font-medium text-white/90 truncate">
-                      {project.name}
-                    </h4>
-                    <div className="flex items-center gap-1">
-                      {project.id === currentProjectId && (
-                        <Check className="w-4 h-4 text-white/90 flex-shrink-0" />
-                      )}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingProject(project);
-                          setIsOpen(false);
-                        }}
-                        className="p-1 hover:bg-white/10 rounded transition-colors"
-                        title="Edit project"
-                      >
-                        <Edit3 className="w-3.5 h-3.5 text-white/50 hover:text-white/90" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-
-          {/* Create New Project Button */}
-          {onCreateProject && (
-            <div className="border-t border-white/10 bg-white/5 p-2">
-              <button
-                onClick={() => {
-                  setIsOpen(false);
-                  onCreateProject();
-                }}
-                className="w-full px-3 py-2 flex items-center space-x-2 text-sm font-medium text-white/90 hover:bg-white/10 rounded-lg transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Create New Project</span>
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Edit Project Modal */}
-      {editingProject && (
-        <EditProjectModal
-          isOpen={!!editingProject}
-          onClose={() => setEditingProject(null)}
-          project={editingProject}
-          onSuccess={loadProjects}
-        />
-      )}
+    <div className="flex items-center space-x-2 px-3 py-2 bg-white/5 border border-white/10 rounded-lg">
+      <FolderOpen className="w-4 h-4 text-white/50" />
+      <span className="text-sm font-medium text-white/70">No Project</span>
     </div>
   );
 };
 
 export default ProjectSwitcher;
-
