@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, FolderOpen, Plus, Check, Edit3, Lock } from 'lucide-react';
+import { ChevronDown, FolderOpen, Plus, Check, Lock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ProjectService from '../services/ProjectService';
 import CreatorLinksService from '../services/CreatorLinksService';
@@ -181,7 +181,7 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
                       {project.name}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                      {project.videoCount || 0} videos • {project.clickCount || 0} clicks
+                      {project.stats?.videoCount || 0} videos • {project.stats?.totalClicks || 0} clicks
                     </p>
                   </div>
                 </div>
