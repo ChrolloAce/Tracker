@@ -63,29 +63,35 @@ const CreatorInvitationPage: React.FC = () => {
       setLoading(true);
       setError('');
 
-      // Query all organizations to find the invitation
-      // We need to use a different approach since we don't have orgId in the URL
-      const invitationsSnapshot = await getDoc(doc(db, 'invitationsLookup', invitationId));
+      console.log('🔍 Loading invitation:', invitationId);
+
+      // First, try to get the lookup document (public read access)
+      const lookupRef = doc(db, 'invitationsLookup', invitationId);
+      const invitationsSnapshot = await getDoc(lookupRef);
       
       if (!invitationsSnapshot.exists()) {
-        // If lookup doesn't exist, we need to search through organizations
-        // This is a fallback - in production, you'd want to maintain an invitationsLookup collection
-        setError('Invitation not found. It may have expired or been deleted.');
+        console.error('❌ Invitation lookup not found for ID:', invitationId);
+        setError('Invitation not found. It may have expired or been deleted. If this invitation was just created, please ask the sender to create a new invitation.');
         setLoading(false);
         return;
       }
 
       const lookupData = invitationsSnapshot.data();
+      console.log('✅ Found lookup data:', lookupData);
+
+      // Now get the full invitation details
       const inviteRef = doc(db, 'organizations', lookupData.orgId, 'invitations', invitationId);
       const inviteDoc = await getDoc(inviteRef);
 
       if (!inviteDoc.exists()) {
+        console.error('❌ Invitation document not found in org:', lookupData.orgId);
         setError('Invitation not found. It may have expired or been deleted.');
         setLoading(false);
         return;
       }
 
       const inviteData = inviteDoc.data() as TeamInvitation;
+      console.log('✅ Loaded invitation for:', inviteData.email);
 
       // Check if invitation is still valid
       if (inviteData.status !== 'pending') {
@@ -105,8 +111,17 @@ const CreatorInvitationPage: React.FC = () => {
       setInvitation(inviteData);
       setLoading(false);
     } catch (err: any) {
-      console.error('Failed to load invitation:', err);
-      setError('Failed to load invitation. Please try again.');
+      console.error('❌ Failed to load invitation:', err);
+      console.error('Error details:', err.code, err.message);
+      
+      // Provide more specific error messages
+      if (err.code === 'permission-denied') {
+        setError('Permission denied. This invitation may be invalid or you may not have access to view it.');
+      } else if (err.code === 'not-found') {
+        setError('Invitation not found. It may have expired or been deleted.');
+      } else {
+        setError(`Failed to load invitation: ${err.message || 'Unknown error'}. Please try again or contact support.`);
+      }
       setLoading(false);
     }
   };

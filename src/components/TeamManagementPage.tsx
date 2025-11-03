@@ -135,7 +135,7 @@ const TeamManagementPage: React.FC = () => {
   };
 
   const handleCopyInvitationLink = (invitationId: string) => {
-    const inviteUrl = `${window.location.origin}/invite/${invitationId}`;
+    const inviteUrl = `${window.location.origin}/invitations/${invitationId}`;
     navigator.clipboard.writeText(inviteUrl)
       .then(() => {
         alert('Invitation link copied to clipboard!');
