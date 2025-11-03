@@ -67,7 +67,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       if (links.length > 0 || linkClicks.length > 0) {
         console.log('⏰ Timeframe changed, recalculating metrics...', timeframe);
         calculateMetrics(links, linkClicks);
-      }
+    }
     }, [timeframe]);
 
     const loadData = async () => {
@@ -78,7 +78,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     
       console.log('🔄 Loading links data...', { orgId, projId });
       setLoading(true);
-      try {
+    try {
         const [linksData, clicksData] = await Promise.all([
           FirestoreDataService.getLinks(orgId, projId),
           LinkClicksService.getProjectLinkClicks(orgId, projId)
@@ -159,31 +159,21 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         flag: getCountryFlag(country)
       }));
 
-    // Calculate hourly traffic based on timeframe
+    // Calculate hourly traffic (for today)
     const clicksByHour = Array.from({ length: 24 }, (_, hour) => {
       const now = new Date();
-      
-      // Filter clicks based on timeframe first
-      const filteredClicks = linkClicks.filter(click => {
+      const hourClicks = linkClicks.filter(click => {
         if (!click.timestamp) return false;
         // Handle both Firestore Timestamp and Date objects
         const clickDate = (click.timestamp as any).toDate 
           ? (click.timestamp as any).toDate() 
           : new Date(click.timestamp as any);
-        
-        // Apply timeframe filter
+
+        // Only count clicks from today for hourly view
         if (timeframe === 'today') {
-          return clickDate.toDateString() === now.toDateString();
+          const isToday = clickDate.toDateString() === now.toDateString();
+          return isToday && clickDate.getHours() === hour;
         }
-        // 'all-time' includes everything
-        return true;
-      });
-      
-      // Then count clicks for this specific hour
-      const hourClicks = filteredClicks.filter(click => {
-        const clickDate = (click.timestamp as any).toDate 
-          ? (click.timestamp as any).toDate() 
-          : new Date(click.timestamp as any);
         return clickDate.getHours() === hour;
       }).length;
       
@@ -476,32 +466,32 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           </div>
         </div>
 
-        {/* Analytics Grid - 4 columns */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+        {/* Analytics Grid - 4 sections */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Top Performing Links */}
           <div className="bg-white/5 rounded-xl border border-white/10 p-6">
             <h3 className="text-lg font-semibold text-white mb-4">Top Performing Links</h3>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {linkPerformance.length > 0 ? (
                 linkPerformance.map((link, index) => (
-                  <div key={index} className="flex items-center justify-between py-3 border-b border-white/5 hover:bg-white/5 px-3 rounded-lg transition-colors">
+                  <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-white/5 rounded-lg transition-colors">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-white truncate">{link.title}</div>
                       <div className="text-xs text-gray-500">/{link.shortCode}</div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-white">{link.clicks}</span>
                       <span className="text-xs text-gray-400">clicks</span>
                     </div>
                   </div>
                 ))
-                              ) : (
+              ) : (
                 <div className="text-center py-8 text-gray-500">
                   <p>No link data available yet</p>
                   <p className="text-sm mt-2">Create links to see performance</p>
-                                </div>
-                              )}
-                            </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Geographic Distribution */}
@@ -524,176 +514,257 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   <p>No geographic data available yet</p>
-                            </div>
-                            )}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Browser Distribution */}
-          <div className="bg-white/5 rounded-xl border border-white/10 p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Browsers</h3>
-            <div className="space-y-2">
-              {(() => {
-                const browserCounts = linkClicks.reduce((acc: { [key: string]: number }, click) => {
-                  const browser = click.browser || 'Unknown';
-                  acc[browser] = (acc[browser] || 0) + 1;
-                  return acc;
-                }, {});
-                
-                const browserData = Object.entries(browserCounts)
-                  .sort(([, a], [, b]) => b - a)
-                  .slice(0, 5);
-
-                const getBrowserIcon = (browser: string) => {
-                  const b = browser.toLowerCase();
-                  if (b.includes('chrome')) return '🌐';
-                  if (b.includes('safari')) return '🧭';
-                  if (b.includes('firefox')) return '🦊';
-                  if (b.includes('edge')) return '🔷';
-                  if (b.includes('samsung')) return '📱';
-                  if (b.includes('twitter')) return '🐦';
-                  return '🌍';
-                };
-
-                return browserData.length > 0 ? (
-                  browserData.map(([browser, clicks], index) => (
-                    <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-white/5 rounded-lg transition-colors">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{getBrowserIcon(browser)}</span>
-                        <span className="text-sm font-medium text-white">{browser}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-white">{clicks}</span>
-                        <span className="text-xs text-gray-400">{clicks === 1 ? 'click' : 'clicks'}</span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <p>No browser data available yet</p>
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-
-          {/* Device Type Distribution */}
-          <div className="bg-white/5 rounded-xl border border-white/10 p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Devices</h3>
-            <div className="space-y-2">
-              {(() => {
-                const deviceCounts = linkClicks.reduce((acc: { [key: string]: number }, click) => {
-                  const device = click.deviceType || 'Unknown';
-                  acc[device] = (acc[device] || 0) + 1;
-                  return acc;
-                }, {});
-                
-                const deviceData = Object.entries(deviceCounts)
-                  .sort(([, a], [, b]) => b - a);
-
-                const getDeviceIcon = (device: string) => {
-                  const d = device.toLowerCase();
-                  if (d === 'mobile') return '📱';
-                  if (d === 'desktop') return '💻';
-                  if (d === 'tablet') return '📲';
-                  return '🖥️';
-                };
-
-                return deviceData.length > 0 ? (
-                  deviceData.map(([device, clicks], index) => (
-                    <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-white/5 rounded-lg transition-colors">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{getDeviceIcon(device)}</span>
-                        <span className="text-sm font-medium text-white capitalize">{device}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-white">{clicks}</span>
-                        <span className="text-xs text-gray-400">{clicks === 1 ? 'click' : 'clicks'}</span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <p>No device data available yet</p>
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-
-          {/* Traffic Source Distribution */}
+          {/* Channel Breakdown - Traffic Sources */}
           <div className="bg-white/5 rounded-xl border border-white/10 p-6">
             <h3 className="text-lg font-semibold text-white mb-4">Traffic Sources</h3>
-            <div className="space-y-2">
-              {(() => {
-                const sourceCounts = linkClicks.reduce((acc: { [key: string]: number }, click) => {
-                  let source = 'Direct';
-                  const referrer = click.referrer || click.referrerDomain || '';
-                  
-                  if (referrer && referrer !== 'Direct') {
-                    const ref = referrer.toLowerCase();
-                    if (ref.includes('twitter') || ref.includes('x.com') || ref.includes('t.co')) {
-                      source = 'Twitter/X';
-                    } else if (ref.includes('facebook') || ref.includes('fb.com')) {
-                      source = 'Facebook';
-                    } else if (ref.includes('instagram') || ref.includes('ig.com')) {
-                      source = 'Instagram';
-                    } else if (ref.includes('linkedin')) {
-                      source = 'LinkedIn';
-                    } else if (ref.includes('youtube')) {
-                      source = 'YouTube';
-                    } else if (ref.includes('tiktok')) {
-                      source = 'TikTok';
-                    } else if (ref.includes('reddit')) {
-                      source = 'Reddit';
-                    } else if (ref.includes('google') || ref.includes('bing') || ref.includes('yahoo')) {
-                      source = 'Search';
-                    } else {
-                      source = 'Referral';
-                    }
-                  }
-                  
-                  acc[source] = (acc[source] || 0) + 1;
-                  return acc;
-                }, {});
+            {(() => {
+              const sourceCounts = linkClicks.reduce((acc: { [key: string]: number }, click) => {
+                let source = 'Direct';
+                const referrer = click.referrer || click.referrerDomain || '';
                 
-                const sourceData = Object.entries(sourceCounts)
-                  .sort(([, a], [, b]) => b - a);
+                if (referrer && referrer !== 'Direct') {
+                  const ref = referrer.toLowerCase();
+                  if (ref.includes('twitter') || ref.includes('x.com') || ref.includes('t.co')) {
+                    source = 'X/Twitter';
+                  } else if (ref.includes('facebook') || ref.includes('fb.com')) {
+                    source = 'Facebook';
+                  } else if (ref.includes('instagram') || ref.includes('ig.com')) {
+                    source = 'Instagram';
+                  } else if (ref.includes('linkedin')) {
+                    source = 'LinkedIn';
+                  } else if (ref.includes('youtube')) {
+                    source = 'YouTube';
+                  } else if (ref.includes('tiktok')) {
+                    source = 'TikTok';
+                  } else if (ref.includes('google') || ref.includes('bing') || ref.includes('yahoo')) {
+                    source = 'Search';
+                  } else {
+                    source = 'Referral';
+                  }
+                }
+                
+                acc[source] = (acc[source] || 0) + 1;
+                return acc;
+              }, {});
+              
+              const sourceData = Object.entries(sourceCounts)
+                .sort(([, a], [, b]) => b - a)
+                .slice(0, 5);
 
-                const getSourceIcon = (source: string) => {
-                  if (source === 'Direct') return '🔗';
-                  if (source === 'Twitter/X') return '🐦';
-                  if (source === 'Facebook') return '👥';
-                  if (source === 'Instagram') return '📸';
-                  if (source === 'LinkedIn') return '💼';
-                  if (source === 'YouTube') return '📺';
-                  if (source === 'TikTok') return '🎵';
-                  if (source === 'Reddit') return '🤖';
-                  if (source === 'Search') return '🔍';
-                  if (source === 'Referral') return '🔗';
-                  return '🌐';
-                };
+              const totalClicks = Object.values(sourceCounts).reduce((a, b) => a + b, 0);
 
-                return sourceData.length > 0 ? (
-                  sourceData.map(([source, clicks], index) => (
-                    <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-white/5 rounded-lg transition-colors">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{getSourceIcon(source)}</span>
-                        <span className="text-sm font-medium text-white">{source}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-white">{clicks}</span>
-                        <span className="text-xs text-gray-400">{clicks === 1 ? 'click' : 'clicks'}</span>
+              const getSourceIcon = (source: string) => {
+                if (source === 'Direct') return '🔗';
+                if (source === 'X/Twitter') return '🐦';
+                if (source === 'Facebook') return '👥';
+                if (source === 'Instagram') return '📸';
+                if (source === 'LinkedIn') return '💼';
+                if (source === 'YouTube') return '📺';
+                if (source === 'TikTok') return '🎵';
+                if (source === 'Reddit') return '🤖';
+                if (source === 'Search') return '🔍';
+                if (source === 'Referral') return '↗️';
+                return '🌐';
+              };
+
+              return sourceData.length > 0 ? (
+                <div className="flex flex-col items-center">
+                  {/* Donut Chart */}
+                  <div className="relative w-48 h-48 mb-4">
+                    <svg viewBox="0 0 100 100" className="transform -rotate-90">
+                      {(() => {
+                        let currentAngle = 0;
+                        const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+                        return sourceData.map(([source, clicks], index) => {
+                          const percentage = (clicks / totalClicks) * 100;
+                          const angle = (percentage / 100) * 360;
+                          const startAngle = currentAngle;
+                          currentAngle += angle;
+                          
+                          const radius = 40;
+                          const innerRadius = 28;
+                          const startRad = (startAngle - 90) * (Math.PI / 180);
+                          const endRad = (startAngle + angle - 90) * (Math.PI / 180);
+                          
+                          const x1 = 50 + radius * Math.cos(startRad);
+                          const y1 = 50 + radius * Math.sin(startRad);
+                          const x2 = 50 + radius * Math.cos(endRad);
+                          const y2 = 50 + radius * Math.sin(endRad);
+                          
+                          const x3 = 50 + innerRadius * Math.cos(endRad);
+                          const y3 = 50 + innerRadius * Math.sin(endRad);
+                          const x4 = 50 + innerRadius * Math.cos(startRad);
+                          const y4 = 50 + innerRadius * Math.sin(startRad);
+                          
+                          const largeArc = angle > 180 ? 1 : 0;
+                          
+                          return (
+                            <path
+                              key={source}
+                              d={`M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x4} ${y4} Z`}
+                              fill={colors[index % colors.length]}
+                              className="hover:opacity-80 transition-opacity"
+                            />
+                          );
+                        });
+                      })()}
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-white">{totalClicks}</div>
+                        <div className="text-xs text-gray-400">Total</div>
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <p>No traffic source data available yet</p>
                   </div>
-                );
-              })()}
+                  
+                  {/* Legend */}
+                  <div className="space-y-2 w-full">
+                    {sourceData.map(([source, clicks], index) => {
+                      const percentage = Math.round((clicks / totalClicks) * 100);
+                      const colors = ['bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-red-500', 'bg-purple-500'];
+                      return (
+                        <div key={source} className="flex items-center justify-between py-2 px-3 hover:bg-white/5 rounded-lg transition-colors">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-3 h-3 rounded-full ${colors[index % colors.length]}`}></div>
+                            <span className="text-xs text-gray-400">{getSourceIcon(source)}</span>
+                            <span className="text-sm font-medium text-white">{source}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400">{percentage}%</span>
+                            <span className="text-sm font-semibold text-white">{clicks}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  <p>No traffic data available yet</p>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Device Breakdown */}
+          <div className="bg-white/5 rounded-xl border border-white/10 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">Device Breakdown</h3>
+              <div className="flex gap-1 bg-black/40 rounded-lg border border-white/10 p-1">
+                <button
+                  onClick={() => setInterval('hourly')}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                    interval === 'hourly'
+                      ? 'bg-white text-black'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Device
+                </button>
+                <button
+                  onClick={() => setInterval('monthly')}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                    interval === 'monthly'
+                      ? 'bg-white text-black'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Browser
+                </button>
+              </div>
             </div>
+            
+            {interval === 'hourly' ? (
+              // Device View
+              <div className="space-y-2">
+                {(() => {
+                  const deviceCounts = linkClicks.reduce((acc: { [key: string]: number }, click) => {
+                    const device = click.deviceType || 'Unknown';
+                    acc[device] = (acc[device] || 0) + 1;
+                    return acc;
+                  }, {});
+                  
+                  const deviceData = Object.entries(deviceCounts)
+                    .sort(([, a], [, b]) => b - a);
+
+                  const getDeviceIcon = (device: string) => {
+                    const d = device.toLowerCase();
+                    if (d === 'mobile') return '📱';
+                    if (d === 'desktop') return '💻';
+                    if (d === 'tablet') return '📲';
+                    return '🖥️';
+                  };
+
+                  return deviceData.length > 0 ? (
+                    deviceData.map(([device, clicks], index) => (
+                      <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-white/5 rounded-lg transition-colors">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{getDeviceIcon(device)}</span>
+                          <span className="text-sm font-medium text-white capitalize">{device}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-white">{clicks}</span>
+                          <span className="text-xs text-gray-400">{clicks === 1 ? 'click' : 'clicks'}</span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>No device data available yet</p>
+                    </div>
+                  );
+                })()}
+              </div>
+            ) : (
+              // Browser View
+              <div className="space-y-2">
+                {(() => {
+                  const browserCounts = linkClicks.reduce((acc: { [key: string]: number }, click) => {
+                    const browser = click.browser || 'Unknown';
+                    acc[browser] = (acc[browser] || 0) + 1;
+                    return acc;
+                  }, {});
+                  
+                  const browserData = Object.entries(browserCounts)
+                    .sort(([, a], [, b]) => b - a)
+                    .slice(0, 5);
+
+                  const getBrowserIcon = (browser: string) => {
+                    const b = browser.toLowerCase();
+                    if (b.includes('chrome')) return '🌐';
+                    if (b.includes('safari')) return '🧭';
+                    if (b.includes('firefox')) return '🦊';
+                    if (b.includes('edge')) return '🔷';
+                    if (b.includes('samsung')) return '📱';
+                    return '🌍';
+                  };
+
+                  return browserData.length > 0 ? (
+                    browserData.map(([browser, clicks], index) => (
+                      <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-white/5 rounded-lg transition-colors">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{getBrowserIcon(browser)}</span>
+                          <span className="text-sm font-medium text-white">{browser}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-white">{clicks}</span>
+                          <span className="text-xs text-gray-400">{clicks === 1 ? 'click' : 'clicks'}</span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>No browser data available yet</p>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
           </div>
         </div>
 
