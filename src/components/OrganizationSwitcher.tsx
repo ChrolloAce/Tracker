@@ -127,11 +127,26 @@ const OrganizationSwitcher: React.FC = () => {
     );
   }
 
-  if (loading || !currentOrg) {
+  // Only show loading skeleton on true initial load (no organizations AND loading)
+  if (loading && organizations.length === 0) {
     return (
       <div className="p-4 border-t border-gray-200 dark:border-gray-800">
         <div className="flex items-center justify-between px-3 py-2 bg-gray-800 rounded-lg animate-pulse">
           <div className="w-32 h-4 bg-gray-700 rounded" />
+        </div>
+      </div>
+    );
+  }
+
+  // If no current org found, show fallback instead of loading skeleton
+  if (!currentOrg) {
+    return (
+      <div className="p-4 border-t border-white/10">
+        <div className="flex items-center justify-between px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg">
+          <div className="flex items-center space-x-2">
+            <Building2 className="w-4 h-4 text-white/50" />
+            <span className="text-sm font-medium text-white/70">No Organization</span>
+          </div>
         </div>
       </div>
     );

@@ -112,11 +112,22 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
     );
   }
 
-  if (loading || !currentProject) {
+  // Only show loading skeleton on true initial load (no projects AND loading)
+  if (loading && projects.length === 0) {
     return (
       <div className="flex items-center space-x-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse">
         <FolderOpen className="w-4 h-4 text-gray-400" />
         <div className="w-24 h-4 bg-gray-200 dark:bg-gray-700 rounded" />
+      </div>
+    );
+  }
+
+  // If no current project found, don't show skeleton - show fallback
+  if (!currentProject) {
+    return (
+      <div className="flex items-center space-x-2 px-3 py-2 bg-white/5 border border-white/10 rounded-lg">
+        <FolderOpen className="w-4 h-4 text-white/50" />
+        <span className="text-sm font-medium text-white/70">No Project</span>
       </div>
     );
   }
