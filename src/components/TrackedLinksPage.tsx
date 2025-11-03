@@ -65,7 +65,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     }, [orgId, projId]);
 
     // Recalculate metrics when timeframe, filter, or date filter changes
-    useEffect(() => {
+  useEffect(() => {
       if (links.length > 0 || linkClicks.length > 0) {
         console.log('⏰ Filters changed, recalculating metrics...', { timeframe, linkFilter: propLinkFilter, dateFilter });
         calculateMetrics(links, linkClicks);
@@ -221,33 +221,169 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         flag: getCountryFlag(country)
       }));
 
-    // Calculate hourly traffic (for today)
-    const clicksByHour = Array.from({ length: 24 }, (_, hour) => {
+    // Calculate time-based traffic (adaptive based on date filter)
+    const getGraphData = () => {
       const now = new Date();
-      const hourClicks = filteredLinkClicks.filter(click => {
-        if (!click.timestamp) return false;
-        // Handle both Firestore Timestamp and Date objects
-        const clickDate = (click.timestamp as any).toDate 
-          ? (click.timestamp as any).toDate() 
-          : new Date(click.timestamp as any);
- 
-        // Only count clicks from today for hourly view
-        if (timeframe === 'today') {
-          const isToday = clickDate.toDateString() === now.toDateString();
-          return isToday && clickDate.getHours() === hour;
+      
+      // For Today - show hourly
+      if (dateFilter === 'today') {
+        return Array.from({ length: 24 }, (_, hour) => {
+          const hourClicks = filteredLinkClicks.filter(click => {
+            if (!click.timestamp) return false;
+            const clickDate = (click.timestamp as any).toDate 
+              ? (click.timestamp as any).toDate() 
+              : new Date(click.timestamp as any);
+            
+            const isToday = clickDate.toDateString() === now.toDateString();
+            return isToday && clickDate.getHours() === hour;
+          }).length;
+          
+          const period = hour < 12 ? 'am' : 'pm';
+          const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+          
+          return {
+            label: `${displayHour}${period}`,
+            clicks: hourClicks
+          };
+        });
+      }
+      
+      // For Last 7 Days - show daily
+      if (dateFilter === 'last7days') {
+        return Array.from({ length: 7 }, (_, i) => {
+          const date = new Date(now.getTime() - (6 - i) * 24 * 60 * 60 * 1000);
+          const dayClicks = filteredLinkClicks.filter(click => {
+            if (!click.timestamp) return false;
+            const clickDate = (click.timestamp as any).toDate 
+              ? (click.timestamp as any).toDate() 
+              : new Date(click.timestamp as any);
+            return clickDate.toDateString() === date.toDateString();
+          }).length;
+          
+          return {
+            label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            clicks: dayClicks
+          };
+        });
+      }
+      
+      // For Last 30 Days - show daily
+      if (dateFilter === 'last30days') {
+        return Array.from({ length: 30 }, (_, i) => {
+          const date = new Date(now.getTime() - (29 - i) * 24 * 60 * 60 * 1000);
+          const dayClicks = filteredLinkClicks.filter(click => {
+            if (!click.timestamp) return false;
+            const clickDate = (click.timestamp as any).toDate 
+              ? (click.timestamp as any).toDate() 
+              : new Date(click.timestamp as any);
+            return clickDate.toDateString() === date.toDateString();
+          }).length;
+          
+          return {
+            label: i % 5 === 0 ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
+            clicks: dayClicks
+          };
+        });
+      }
+      
+      // For Last 90 Days - show weekly
+      if (dateFilter === 'last90days') {
+        return Array.from({ length: 13 }, (_, i) => {
+          const weekStart = new Date(now.getTime() - (12 - i) * 7 * 24 * 60 * 60 * 1000);
+          const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+          const weekClicks = filteredLinkClicks.filter(click => {
+            if (!click.timestamp) return false;
+            const clickDate = (click.timestamp as any).toDate 
+              ? (click.timestamp as any).toDate() 
+              : new Date(click.timestamp as any);
+            return clickDate >= weekStart && clickDate < weekEnd;
+          }).length;
+          
+          return {
+            label: `W${i + 1}`,
+            clicks: weekClicks
+          };
+        });
+      }
+      
+      // For MTD - show daily for current month
+      if (dateFilter === 'mtd') {
+        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const daysInMonth = now.getDate();
+        
+        return Array.from({ length: daysInMonth }, (_, i) => {
+          const date = new Date(firstDayOfMonth.getTime() + i * 24 * 60 * 60 * 1000);
+          const dayClicks = filteredLinkClicks.filter(click => {
+            if (!click.timestamp) return false;
+            const clickDate = (click.timestamp as any).toDate 
+              ? (click.timestamp as any).toDate() 
+              : new Date(click.timestamp as any);
+            return clickDate.toDateString() === date.toDateString();
+          }).length;
+          
+          return {
+            label: i % 5 === 0 ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
+            clicks: dayClicks
+          };
+        });
+      }
+      
+      // For YTD or All Time - show monthly
+      if (dateFilter === 'ytd' || dateFilter === 'all') {
+        const startDate = dateFilter === 'ytd' 
+          ? new Date(now.getFullYear(), 0, 1)
+          : new Date(Math.min(...filteredLinkClicks.map(click => {
+              const clickDate = (click.timestamp as any).toDate 
+                ? (click.timestamp as any).toDate() 
+                : new Date(click.timestamp as any);
+              return clickDate.getTime();
+            }), now.getTime()));
+        
+        const months: { label: string; clicks: number }[] = [];
+        const currentDate = new Date(startDate);
+        
+        while (currentDate <= now) {
+          const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+          const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+          
+          const monthClicks = filteredLinkClicks.filter(click => {
+            if (!click.timestamp) return false;
+            const clickDate = (click.timestamp as any).toDate 
+              ? (click.timestamp as any).toDate() 
+              : new Date(click.timestamp as any);
+            return clickDate >= monthStart && clickDate <= monthEnd;
+          }).length;
+          
+          months.push({
+            label: monthStart.toLocaleDateString('en-US', { month: 'short' }),
+            clicks: monthClicks
+          });
+          
+          currentDate.setMonth(currentDate.getMonth() + 1);
         }
-        return clickDate.getHours() === hour;
-      }).length;
+        
+        return months.length > 0 ? months : [{ label: 'No data', clicks: 0 }];
+      }
       
-      // Format hour properly (12-hour format with AM/PM)
-      const period = hour < 12 ? 'am' : 'pm';
-      const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-      
-      return {
-        hour: `${displayHour}${period}`,
-        clicks: hourClicks
-      };
-    });
+      // Default fallback - show last 7 days
+      return Array.from({ length: 7 }, (_, i) => {
+        const date = new Date(now.getTime() - (6 - i) * 24 * 60 * 60 * 1000);
+        const dayClicks = filteredLinkClicks.filter(click => {
+          if (!click.timestamp) return false;
+          const clickDate = (click.timestamp as any).toDate 
+            ? (click.timestamp as any).toDate() 
+            : new Date(click.timestamp as any);
+          return clickDate.toDateString() === date.toDateString();
+        }).length;
+        
+        return {
+          label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          clicks: dayClicks
+        };
+      });
+    };
+    
+    const clicksByTime = getGraphData();
 
     function getCountryFlag(countryName: string): string {
       const flagMap: { [key: string]: string } = {
@@ -470,8 +606,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
             </div>
           </div>
           <div className="h-64 flex items-end gap-1">
-            {clicksByHour.map((data, index) => {
-              const maxClicks = Math.max(...clicksByHour.map(d => d.clicks), 1);
+            {clicksByTime.map((data, index) => {
+              const maxClicks = Math.max(...clicksByTime.map(d => d.clicks), 1);
               const heightPercent = maxClicks > 0 ? (data.clicks / maxClicks) * 100 : 0;
               
               return (
@@ -489,8 +625,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                       opacity: data.clicks > 0 ? 1 : 0.15
                     }}
                   ></div>
-                  {(index % 3 === 0 || index === 23) && (
-                    <span className="text-xs text-gray-500 absolute -bottom-6">{data.hour}</span>
+                  {data.label && (
+                    <span className="text-xs text-gray-500 absolute -bottom-6 whitespace-nowrap">{data.label}</span>
                   )}
                 </div>
               );
@@ -524,7 +660,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                 </div>
               )}
             </div>
-          </div>
+      </div>
 
           {/* Geographic Distribution */}
           <div className="bg-white/5 rounded-xl border border-white/10 p-6">
@@ -536,11 +672,11 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{country.flag}</span>
                       <span className="text-sm font-medium text-white">{country.name}</span>
-                    </div>
+              </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-white">{country.clicks}</span>
                       <span className="text-xs text-gray-400">{country.clicks === 1 ? 'click' : 'clicks'}</span>
-                    </div>
+            </div>
                   </div>
                 ))
               ) : (
@@ -738,7 +874,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                           <span className="text-2xl">{getDeviceIcon(device)}</span>
                           <span className="text-sm font-medium text-white capitalize">{device}</span>
                         </div>
-                        <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
                           <span className="text-sm font-semibold text-white">{clicks}</span>
                           <span className="text-xs text-gray-400">{clicks === 1 ? 'click' : 'clicks'}</span>
                         </div>
@@ -795,8 +931,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                   );
                 })()}
               </div>
-            )}
-          </div>
+                        )}
+                      </div>
         </div>
 
         {/* All Links Table */}
@@ -847,21 +983,21 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                             <span className="text-sm font-medium text-white">{link.title}</span>
                             <span className="text-xs text-gray-500 truncate max-w-xs" title={link.originalUrl}>
                               {link.originalUrl}
-                                </span>
-                        </div>
+                                  </span>
+                                </div>
                       </td>
                     <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             <a
                               href={shortUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                                target="_blank"
+                                rel="noopener noreferrer"
                               className="text-sm text-blue-400 hover:text-blue-300 font-mono underline decoration-dotted flex items-center gap-1"
                               title="Open link in new tab"
-                            >
+                              >
                           /{link.shortCode}
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
                         <button
                               onClick={() => handleCopyLink(link)}
                               className="p-1 hover:bg-white/10 rounded transition-colors"
@@ -995,9 +1131,9 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
 
         {/* Delete Confirmation Modal */}
         {showDeleteModal && selectedLink && (
-          <DeleteLinkModal
+        <DeleteLinkModal
             isOpen={showDeleteModal}
-            onClose={() => {
+          onClose={() => {
               setShowDeleteModal(false);
               setSelectedLink(null);
             }}
