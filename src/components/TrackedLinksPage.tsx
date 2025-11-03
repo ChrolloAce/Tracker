@@ -32,7 +32,6 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
   const [links, setLinks] = useState<TrackedLink[]>([]);
     const [linkClicks, setLinkClicks] = useState<LinkClick[]>([]);
     const [loading, setLoading] = useState(true);
-    const [timeframe, setTimeframe] = useState<'today' | 'all-time'>('today');
     const [interval, setInterval] = useState<'hourly' | 'monthly'>('hourly');
     const [totalClicks, setTotalClicks] = useState(0);
     const [totalLinks, setTotalLinks] = useState(0);
@@ -60,7 +59,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     }));
 
   useEffect(() => {
-      console.log('🎯 Effect triggered - loading data', { orgId, projId, timeframe });
+      console.log('🎯 Effect triggered - loading data', { orgId, projId });
       loadData();
     }, [orgId, projId]);
 
