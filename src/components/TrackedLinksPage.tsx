@@ -27,14 +27,13 @@ interface TrackedLinksPageProps {
 }
 
 const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
-  ({ organizationId, projectId, linkFilter: propLinkFilter = 'all', onLinksLoad }, ref) => {
+  ({ organizationId, projectId, linkFilter: propLinkFilter = 'all', onLinksLoad, dateFilter = 'last30days', customDateRange }, ref) => {
     const { currentOrgId, currentProjectId, user } = useAuth();
   const [links, setLinks] = useState<TrackedLink[]>([]);
     const [linkClicks, setLinkClicks] = useState<LinkClick[]>([]);
     const [loading, setLoading] = useState(true);
     const [timeframe, setTimeframe] = useState<'today' | 'all-time'>('today');
     const [interval, setInterval] = useState<'hourly' | 'monthly'>('hourly');
-    const [refreshing, setRefreshing] = useState(false);
     const [totalClicks, setTotalClicks] = useState(0);
     const [totalLinks, setTotalLinks] = useState(0);
     const [uniqueVisitors, setUniqueVisitors] = useState(0);
@@ -65,13 +64,13 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       loadData();
     }, [orgId, projId]);
 
-    // Recalculate metrics when timeframe or filter changes
+    // Recalculate metrics when timeframe, filter, or date filter changes
     useEffect(() => {
       if (links.length > 0 || linkClicks.length > 0) {
-        console.log('⏰ Timeframe or filter changed, recalculating metrics...', timeframe, propLinkFilter);
+        console.log('⏰ Filters changed, recalculating metrics...', { timeframe, linkFilter: propLinkFilter, dateFilter });
         calculateMetrics(links, linkClicks);
       }
-    }, [timeframe, propLinkFilter, links, linkClicks]);
+    }, [timeframe, propLinkFilter, dateFilter, customDateRange, links, linkClicks]);
 
     const loadData = async () => {
       if (!orgId || !projId) {
@@ -146,16 +145,50 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     }
   };
 
-    const handleRefresh = async () => {
-      setRefreshing(true);
-      await loadData();
-      setRefreshing(false);
-  };
+    // Filter clicks by date range
+    const filterClicksByDate = (clicks: LinkClick[]) => {
+      if (dateFilter === 'all') return clicks;
+      
+      const now = new Date();
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      return clicks.filter(click => {
+        if (!click.timestamp) return false;
+        const clickDate = (click.timestamp as any).toDate 
+          ? (click.timestamp as any).toDate() 
+          : new Date(click.timestamp as any);
+        
+        switch (dateFilter) {
+          case 'today':
+            return clickDate >= startOfToday;
+          case 'last7days':
+            return clickDate >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          case 'last30days':
+            return clickDate >= new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          case 'last90days':
+            return clickDate >= new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+          case 'mtd': // Month to date
+            return clickDate >= new Date(now.getFullYear(), now.getMonth(), 1);
+          case 'ytd': // Year to date
+            return clickDate >= new Date(now.getFullYear(), 0, 1);
+          case 'custom':
+            if (customDateRange) {
+              const start = 'start' in customDateRange ? customDateRange.start : customDateRange.startDate;
+              const end = 'end' in customDateRange ? customDateRange.end : customDateRange.endDate;
+              return clickDate >= start && clickDate <= end;
+            }
+            return true;
+          default:
+            return true;
+        }
+      });
+    };
 
-    // Filter clicks based on selected link
+    // Filter clicks based on selected link AND date range
+    const dateFilteredClicks = filterClicksByDate(linkClicks);
     const filteredLinkClicks = linkFilter === 'all' 
-      ? linkClicks 
-      : linkClicks.filter(click => click.linkId === linkFilter);
+      ? dateFilteredClicks 
+      : dateFilteredClicks.filter(click => click.linkId === linkFilter);
     
     // Filter links if specific link is selected
     const filteredLinks = linkFilter === 'all'
@@ -354,19 +387,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
   }
 
   return (
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-end gap-3">
-          {/* Refresh Button */}
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="p-2 hover:bg-white/5 rounded-lg transition-colors disabled:opacity-50"
-            title="Refresh data"
-          >
-            <RefreshCw className={`w-5 h-5 text-gray-400 ${refreshing ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
+      <div className="space-y-6 pt-6">
 
         {/* KPI Metrics */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
