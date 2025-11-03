@@ -68,10 +68,10 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     // Recalculate metrics when timeframe or filter changes
     useEffect(() => {
       if (links.length > 0 || linkClicks.length > 0) {
-        console.log('⏰ Timeframe or filter changed, recalculating metrics...', timeframe, linkFilter);
+        console.log('⏰ Timeframe or filter changed, recalculating metrics...', timeframe, propLinkFilter);
         calculateMetrics(links, linkClicks);
       }
-    }, [timeframe, linkFilter]);
+    }, [timeframe, propLinkFilter, links, linkClicks]);
 
     const loadData = async () => {
       if (!orgId || !projId) {
