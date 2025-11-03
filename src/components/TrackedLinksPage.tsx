@@ -61,9 +61,9 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       console.log('🎯 Effect triggered - loading data', { orgId, projId, timeframe });
       loadData();
     }, [orgId, projId]);
-    
+
     // Recalculate metrics when timeframe changes
-    useEffect(() => {
+  useEffect(() => {
       if (links.length > 0 || linkClicks.length > 0) {
         console.log('⏰ Timeframe changed, recalculating metrics...', timeframe);
         calculateMetrics(links, linkClicks);
@@ -335,7 +335,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
             </div>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-white text-black rounded-lg font-medium hover:bg-gray-100 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
             >
               <Plus className="w-4 h-4" />
               <span>Create Link</span>
@@ -343,59 +343,12 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       </div>
 
           <div className="flex items-center gap-3">
-            {/* Timeframe Selector */}
-            <div className="flex items-center bg-black/40 rounded-lg border border-white/10 p-1">
-              <button
-                onClick={() => setTimeframe('today')}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  timeframe === 'today'
-                    ? 'bg-white text-black'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                Today
-              </button>
-              <button
-                onClick={() => setTimeframe('all-time')}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  timeframe === 'all-time'
-                    ? 'bg-white text-black'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                All time
-              </button>
-              </div>
-
-            {/* Interval Selector */}
-            <div className="flex items-center bg-black/40 rounded-lg border border-white/10 p-1">
-              <button
-                onClick={() => setInterval('hourly')}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  interval === 'hourly'
-                    ? 'bg-white text-black'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                Hourly
-              </button>
-              <button
-                onClick={() => setInterval('monthly')}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  interval === 'monthly'
-                    ? 'bg-white text-black'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                Monthly
-              </button>
-            </div>
-
             {/* Refresh Button */}
             <button
               onClick={handleRefresh}
               disabled={refreshing}
               className="p-2 hover:bg-white/5 rounded-lg transition-colors disabled:opacity-50"
+              title="Refresh data"
             >
               <RefreshCw className={`w-5 h-5 text-gray-400 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
@@ -572,7 +525,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           <div className="px-6 py-4 border-b border-white/10">
             <h3 className="text-lg font-semibold text-white">All Tracked Links</h3>
             <p className="text-sm text-gray-400 mt-1">Manage and monitor your short links</p>
-          </div>
+              </div>
           
           {links.length === 0 ? (
             <div className="text-center py-12">
