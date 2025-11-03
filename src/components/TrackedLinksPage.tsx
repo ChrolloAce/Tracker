@@ -800,10 +800,12 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                 return '🌐';
               };
 
+              const [hoveredSource, setHoveredSource] = React.useState<string | null>(null);
+
               return sourceData.length > 0 ? (
                 <div className="flex flex-col items-center">
                   {/* Donut Chart */}
-                  <div className="relative w-48 h-48 mb-6">
+                  <div className="relative w-64 h-64">
                     <svg viewBox="0 0 100 100" className="transform -rotate-90">
                       {(() => {
                         const colors = ['#5B8DEF', '#7BA5F3', '#9BBDF7', '#BBD5FB', '#DBEAFE'];
@@ -812,10 +814,18 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                         
                         // Special case: single source (100%) - draw full donut using two semicircles
                         if (sourceData.length === 1) {
+                          const [source, clicks] = sourceData[0];
                           const color = colors[0];
+                          const percentage = 100;
+                          const isHovered = hoveredSource === source;
+                          
                           // Draw two 180-degree arcs to form a complete circle (workaround for 360-degree arc issue)
                           return (
-                            <>
+                            <g 
+                              onMouseEnter={() => setHoveredSource(source)}
+                              onMouseLeave={() => setHoveredSource(null)}
+                              style={{ cursor: 'pointer' }}
+                            >
                               {/* First half (0-180 degrees) */}
                               <path
                                 d={`M 50 ${50 - radius} 
@@ -824,6 +834,11 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                                     A ${innerRadius} ${innerRadius} 0 0 0 50 ${50 - innerRadius}
                                     Z`}
                                 fill={color}
+                                className="transition-all duration-200"
+                                style={{
+                                  opacity: isHovered ? 0.8 : 1,
+                                  filter: isHovered ? 'brightness(1.2)' : 'none'
+                                }}
                               />
                               {/* Second half (180-360 degrees) */}
                               <path
@@ -833,16 +848,67 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                                     A ${innerRadius} ${innerRadius} 0 0 0 50 ${50 + innerRadius}
                                     Z`}
                                 fill={color}
+                                className="transition-all duration-200"
+                                style={{
+                                  opacity: isHovered ? 0.8 : 1,
+                                  filter: isHovered ? 'brightness(1.2)' : 'none'
+                                }}
                               />
-                            </>
+                              {/* Tooltip when hovered */}
+                              {isHovered && (
+                                <g className="pointer-events-none">
+                                  <text
+                                    x="50"
+                                    y="45"
+                                    textAnchor="middle"
+                                    className="transform rotate-90"
+                                    style={{ 
+                                      fontSize: '8px', 
+                                      fill: 'white', 
+                                      fontWeight: 'bold',
+                                      transformOrigin: '50px 45px'
+                                    }}
+                                  >
+                                    {getSourceIcon(source)} {source}
+                                  </text>
+                                  <text
+                                    x="50"
+                                    y="55"
+                                    textAnchor="middle"
+                                    className="transform rotate-90"
+                                    style={{ 
+                                      fontSize: '10px', 
+                                      fill: 'white', 
+                                      fontWeight: 'bold',
+                                      transformOrigin: '50px 55px'
+                                    }}
+                                  >
+                                    {percentage}%
+                                  </text>
+                                  <text
+                                    x="50"
+                                    y="62"
+                                    textAnchor="middle"
+                                    className="transform rotate-90"
+                                    style={{ 
+                                      fontSize: '6px', 
+                                      fill: 'rgba(255,255,255,0.7)',
+                                      transformOrigin: '50px 62px'
+                                    }}
+                                  >
+                                    {clicks} clicks
+                                  </text>
+                                </g>
+                              )}
+                            </g>
                           );
                         }
                         
                         // Multiple sources - draw arcs
                         let currentAngle = 0;
                         return sourceData.map(([source, clicks], index) => {
-                          const percentage = (clicks / totalClicks) * 100;
-                          const angle = (percentage / 100) * 360;
+                          const percentage = Math.round((clicks / totalClicks) * 100);
+                          const angle = (clicks / totalClicks) * 360;
                           
                           // Clamp angle to prevent 360-degree arcs
                           const clampedAngle = angle >= 360 ? 359.99 : angle;
@@ -864,43 +930,69 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                           
                           const largeArc = clampedAngle > 180 ? 1 : 0;
                           
+                          const isHovered = hoveredSource === source;
+                          
+                          // Calculate midpoint for tooltip positioning
+                          const midAngle = startAngle + clampedAngle / 2;
+                          const midRad = (midAngle - 90) * (Math.PI / 180);
+                          const tooltipRadius = (radius + innerRadius) / 2;
+                          const tooltipX = 50 + tooltipRadius * Math.cos(midRad);
+                          const tooltipY = 50 + tooltipRadius * Math.sin(midRad);
+                          
                           return (
-                            <path
+                            <g 
                               key={source}
-                              d={`M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x4} ${y4} Z`}
-                              fill={colors[index % colors.length]}
-                              className="transition-opacity"
-                            />
+                              onMouseEnter={() => setHoveredSource(source)}
+                              onMouseLeave={() => setHoveredSource(null)}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              <path
+                                d={`M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x4} ${y4} Z`}
+                                fill={colors[index % colors.length]}
+                                className="transition-all duration-200"
+                                style={{
+                                  opacity: isHovered ? 0.8 : 1,
+                                  filter: isHovered ? 'brightness(1.2)' : 'none'
+                                }}
+                              />
+                              {/* Tooltip when hovered */}
+                              {isHovered && (
+                                <g className="pointer-events-none">
+                                  <text
+                                    x={tooltipX}
+                                    y={tooltipY - 3}
+                                    textAnchor="middle"
+                                    className="transform rotate-90"
+                                    style={{ 
+                                      fontSize: '6px', 
+                                      fill: 'white', 
+                                      fontWeight: 'bold',
+                                      transformOrigin: `${tooltipX}px ${tooltipY - 3}px`
+                                    }}
+                                  >
+                                    {getSourceIcon(source)} {source}
+                                  </text>
+                                  <text
+                                    x={tooltipX}
+                                    y={tooltipY + 3}
+                                    textAnchor="middle"
+                                    className="transform rotate-90"
+                                    style={{ 
+                                      fontSize: '8px', 
+                                      fill: 'white', 
+                                      fontWeight: 'bold',
+                                      transformOrigin: `${tooltipX}px ${tooltipY + 3}px`
+                                    }}
+                                  >
+                                    {percentage}% ({clicks})
+                                  </text>
+                                </g>
+                              )}
+                            </g>
                           );
                         });
                       })()}
                     </svg>
-                  </div>
-                  
-                  {/* Sources List */}
-                  <div className="space-y-3 w-full">
-                    {sourceData.map(([source, clicks], index) => {
-                      const percentage = Math.round((clicks / totalClicks) * 100);
-                      const colors = ['#5B8DEF', '#7BA5F3', '#9BBDF7', '#BBD5FB', '#DBEAFE'];
-                      return (
-                        <div key={source} className="flex items-center gap-3">
-                          <div 
-                            className="w-2 h-2 rounded-full flex-shrink-0" 
-                            style={{ backgroundColor: colors[index % colors.length] }}
-                          ></div>
-                          <div className="flex items-center justify-between flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg">{getSourceIcon(source)}</span>
-                              <span className="text-sm text-gray-300">{source}:</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className="text-sm font-semibold text-white">{percentage}%</span>
-                              <span className="text-sm text-gray-400">{clicks}</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
                   </div>
                 </div>
               ) : (
