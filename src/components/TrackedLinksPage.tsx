@@ -182,19 +182,107 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     function getCountryFlag(countryName: string): string {
       const flagMap: { [key: string]: string } = {
         'United States': '🇺🇸',
+        'US': '🇺🇸',
+        'USA': '🇺🇸',
         'United Kingdom': '🇬🇧',
+        'UK': '🇬🇧',
+        'GB': '🇬🇧',
         'Canada': '🇨🇦',
+        'CA': '🇨🇦',
         'Australia': '🇦🇺',
+        'AU': '🇦🇺',
         'Germany': '🇩🇪',
+        'DE': '🇩🇪',
         'France': '🇫🇷',
+        'FR': '🇫🇷',
         'Spain': '🇪🇸',
+        'ES': '🇪🇸',
         'Italy': '🇮🇹',
+        'IT': '🇮🇹',
         'Japan': '🇯🇵',
+        'JP': '🇯🇵',
         'China': '🇨🇳',
+        'CN': '🇨🇳',
         'India': '🇮🇳',
+        'IN': '🇮🇳',
         'Brazil': '🇧🇷',
+        'BR': '🇧🇷',
         'Mexico': '🇲🇽',
+        'MX': '🇲🇽',
         'Israel': '🇮🇱',
+        'IL': '🇮🇱',
+        'Netherlands': '🇳🇱',
+        'NL': '🇳🇱',
+        'Sweden': '🇸🇪',
+        'SE': '🇸🇪',
+        'Norway': '🇳🇴',
+        'NO': '🇳🇴',
+        'Denmark': '🇩🇰',
+        'DK': '🇩🇰',
+        'Finland': '🇫🇮',
+        'FI': '🇫🇮',
+        'Switzerland': '🇨🇭',
+        'CH': '🇨🇭',
+        'Austria': '🇦🇹',
+        'AT': '🇦🇹',
+        'Belgium': '🇧🇪',
+        'BE': '🇧🇪',
+        'Poland': '🇵🇱',
+        'PL': '🇵🇱',
+        'Portugal': '🇵🇹',
+        'PT': '🇵🇹',
+        'Greece': '🇬🇷',
+        'GR': '🇬🇷',
+        'Czech Republic': '🇨🇿',
+        'CZ': '🇨🇿',
+        'Romania': '🇷🇴',
+        'RO': '🇷🇴',
+        'Hungary': '🇭🇺',
+        'HU': '🇭🇺',
+        'Ireland': '🇮🇪',
+        'IE': '🇮🇪',
+        'New Zealand': '🇳🇿',
+        'NZ': '🇳🇿',
+        'Singapore': '🇸🇬',
+        'SG': '🇸🇬',
+        'Hong Kong': '🇭🇰',
+        'HK': '🇭🇰',
+        'South Korea': '🇰🇷',
+        'KR': '🇰🇷',
+        'Taiwan': '🇹🇼',
+        'TW': '🇹🇼',
+        'Thailand': '🇹🇭',
+        'TH': '🇹🇭',
+        'Malaysia': '🇲🇾',
+        'MY': '🇲🇾',
+        'Indonesia': '🇮🇩',
+        'ID': '🇮🇩',
+        'Philippines': '🇵🇭',
+        'PH': '🇵🇭',
+        'Vietnam': '🇻🇳',
+        'VN': '🇻🇳',
+        'South Africa': '🇿🇦',
+        'ZA': '🇿🇦',
+        'Argentina': '🇦🇷',
+        'AR': '🇦🇷',
+        'Chile': '🇨🇱',
+        'CL': '🇨🇱',
+        'Colombia': '🇨🇴',
+        'CO': '🇨🇴',
+        'Peru': '🇵🇪',
+        'PE': '🇵🇪',
+        'Turkey': '🇹🇷',
+        'TR': '🇹🇷',
+        'Saudi Arabia': '🇸🇦',
+        'SA': '🇸🇦',
+        'UAE': '🇦🇪',
+        'AE': '🇦🇪',
+        'Egypt': '🇪🇬',
+        'EG': '🇪🇬',
+        'Russia': '🇷🇺',
+        'RU': '🇷🇺',
+        'Ukraine': '🇺🇦',
+        'UA': '🇺🇦',
         'Unknown': '🌍'
       };
       return flagMap[countryName] || '🌍';
@@ -366,51 +454,50 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
             <div className="flex gap-2">
               <button
                 onClick={() => setTimeframe('today')}
-                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                   timeframe === 'today' 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                    ? 'bg-black dark:bg-white text-white dark:text-black' 
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'
                 }`}
               >
                 Today
               </button>
               <button
                 onClick={() => setTimeframe('all-time')}
-                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                   timeframe === 'all-time' 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                    ? 'bg-black dark:bg-white text-white dark:text-black' 
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'
                 }`}
               >
                 All Time
               </button>
             </div>
           </div>
-          <div className="h-64 flex items-end justify-between gap-1">
+          <div className="h-64 flex items-end gap-1 px-2">
             {clicksByHour.map((data, index) => {
               const maxClicks = Math.max(...clicksByHour.map(d => d.clicks), 1);
               const heightPercent = maxClicks > 0 ? (data.clicks / maxClicks) * 100 : 0;
-              const barHeight = Math.max(heightPercent, data.clicks > 0 ? 2 : 0);
               
               return (
-                <div key={index} className="flex-1 flex flex-col items-center gap-2 group relative">
-                  <div className="relative w-full h-64 flex items-end">
+                <div key={index} className="flex-1 flex flex-col items-center group relative">
+                  <div className="w-full h-64 flex flex-col justify-end">
                     {data.clicks > 0 && (
-                      <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
+                      <div className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
                         {data.clicks} {data.clicks === 1 ? 'click' : 'clicks'}
                       </div>
                     )}
                     <div
-                      className="w-full bg-gradient-to-t from-blue-500 to-blue-400 rounded-t hover:from-blue-600 hover:to-blue-500 transition-all cursor-pointer"
+                      className="w-full bg-gradient-to-t from-blue-500 to-blue-400 rounded-t hover:from-blue-600 hover:to-blue-500 transition-all"
                       style={{ 
-                        height: `${barHeight}%`,
-                        minHeight: data.clicks > 0 ? '4px' : '1px',
-                        opacity: data.clicks > 0 ? 1 : 0.2
+                        height: `${heightPercent}%`,
+                        minHeight: data.clicks > 0 ? '4px' : '2px',
+                        opacity: data.clicks > 0 ? 1 : 0.15
                       }}
                     ></div>
                   </div>
                   {(index % 3 === 0 || index === 23) && (
-                    <span className="text-xs text-gray-500 mt-1">{data.hour}</span>
+                    <span className="text-xs text-gray-500 mt-2">{data.hour}</span>
                   )}
                 </div>
               );
@@ -449,17 +536,17 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           {/* Geographic Distribution */}
           <div className="bg-white/5 rounded-xl border border-white/10 p-6">
             <h3 className="text-lg font-semibold text-white mb-4">Clicks by Country</h3>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {topCountries.length > 0 ? (
                 topCountries.map((country, index) => (
-                  <div key={index} className="flex items-center justify-between py-3 border-b border-white/5 hover:bg-white/5 px-3 rounded-lg transition-colors">
+                  <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-white/5 rounded-lg transition-colors">
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{country.flag}</span>
-                      <span className="text-sm font-medium text-gray-300">{country.name}</span>
+                      <span className="text-sm font-medium text-white">{country.name}</span>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-white">{country.clicks}</span>
-                      <span className="text-xs text-gray-400">clicks</span>
+                      <span className="text-xs text-gray-400">{country.clicks === 1 ? 'click' : 'clicks'}</span>
                     </div>
                   </div>
                 ))
