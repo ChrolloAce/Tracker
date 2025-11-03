@@ -819,9 +819,22 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
           {/* Team Tab */}
           {activeTab === 'team' && (
             <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Team</h2>
-                <p className="text-gray-600 dark:text-gray-400">Manage team members and permissions</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Team</h2>
+                  <p className="text-gray-600 dark:text-gray-400">Manage team members and permissions</p>
+                </div>
+                {isOwner && (
+                  <button
+                    onClick={() => window.dispatchEvent(new Event('openInviteModal'))}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-black dark:bg-white text-white dark:text-black rounded-lg font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                    Invite Member
+                  </button>
+                )}
               </div>
 
                 <TeamManagementPage />
