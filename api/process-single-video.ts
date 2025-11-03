@@ -116,10 +116,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     const accountSnapshot = await accountQuery.get();
     let accountId = video.trackedAccountId;
+    
+    console.log(`🔍 [${video.platform.toUpperCase()}] Account search for @${videoData.username.toLowerCase()}: ${accountSnapshot.empty ? 'NOT FOUND - Will create' : 'FOUND - Will use existing'}`);
 
     // Create account if it doesn't exist
     if (accountSnapshot.empty && !accountId) {
-      console.log(`✨ Creating account for @${videoData.username}`);
+      console.log(`✨ [${video.platform.toUpperCase()}] Creating new account for @${videoData.username}`);
       
       const newAccountRef = accountsRef.doc();
       await newAccountRef.set({
@@ -153,9 +155,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
       
       accountId = newAccountRef.id;
-      console.log(`✅ Created account: ${accountId}`);
+      console.log(`✅ [${video.platform.toUpperCase()}] Created account: ${accountId}`);
     } else if (!accountSnapshot.empty) {
       accountId = accountSnapshot.docs[0].id;
+      console.log(`✅ [${video.platform.toUpperCase()}] Using existing account: ${accountId}`);
     }
 
     // Download and upload thumbnail to Firebase Storage for permanent URL
@@ -479,50 +482,81 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
       };
     } else if (platform === 'youtube') {
       // Use YouTube API directly instead of Apify for better reliability
-      console.log('🎥 Using YouTube Data API v3 for video:', url);
+      console.log('🎥 [YOUTUBE] Using YouTube Data API v3 for video:', url);
       
       // Extract video ID from URL
       let videoId = '';
       try {
         const urlObj = new URL(url);
+        console.log('🔍 [YOUTUBE] Parsing URL - hostname:', urlObj.hostname, 'pathname:', urlObj.pathname);
+        
         if (urlObj.hostname.includes('youtube.com')) {
           if (urlObj.pathname.includes('/shorts/')) {
             videoId = urlObj.pathname.split('/shorts/')[1]?.split('/')[0] || '';
+            console.log('🔍 [YOUTUBE] Extracted from /shorts/ path:', videoId);
           } else {
             videoId = urlObj.searchParams.get('v') || '';
+            console.log('🔍 [YOUTUBE] Extracted from ?v= param:', videoId);
           }
         } else if (urlObj.hostname.includes('youtu.be')) {
           videoId = urlObj.pathname.substring(1).split('/')[0];
+          console.log('🔍 [YOUTUBE] Extracted from youtu.be shortlink:', videoId);
         }
       } catch (e) {
+        console.error('❌ [YOUTUBE] Failed to parse URL:', e);
         throw new Error('Could not parse YouTube video ID from URL');
       }
       
       if (!videoId) {
+        console.error('❌ [YOUTUBE] No video ID extracted from URL:', url);
         throw new Error('Could not extract video ID from YouTube URL');
       }
       
+      console.log('✅ [YOUTUBE] Video ID extracted:', videoId);
+      
       const youtubeApiKey = process.env.YOUTUBE_API_KEY;
       if (!youtubeApiKey) {
+        console.error('❌ [YOUTUBE] YOUTUBE_API_KEY not configured in environment variables');
         throw new Error('YOUTUBE_API_KEY not configured');
       }
       
+      console.log('✅ [YOUTUBE] API key found, calling YouTube API...');
       const ytUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${encodeURIComponent(videoId)}&key=${youtubeApiKey}`;
       const ytResponse = await fetch(ytUrl);
       
       if (!ytResponse.ok) {
-        throw new Error(`YouTube API error: ${ytResponse.status}`);
+        const errorText = await ytResponse.text();
+        console.error('❌ [YOUTUBE] API error:', ytResponse.status, errorText);
+        throw new Error(`YouTube API error: ${ytResponse.status} - ${errorText}`);
       }
       
       const ytData = await ytResponse.json();
+      console.log('📦 [YOUTUBE] API response:', {
+        itemsCount: ytData.items?.length || 0,
+        pageInfo: ytData.pageInfo
+      });
+      
       if (!ytData.items || ytData.items.length === 0) {
+        console.error('❌ [YOUTUBE] No items in API response. Video might be private, deleted, or ID is wrong.');
         throw new Error('Video not found on YouTube');
       }
       
-      console.log('✅ YouTube API returned data:', ytData.items[0].snippet?.title);
       const rawVideoData = ytData.items[0];
+      console.log('✅ [YOUTUBE] API returned video:', {
+        title: rawVideoData.snippet?.title,
+        channelTitle: rawVideoData.snippet?.channelTitle,
+        views: rawVideoData.statistics?.viewCount,
+        likes: rawVideoData.statistics?.likeCount
+      });
+      
       const transformedData = transformVideoData(rawVideoData, platform);
-      console.log('🔄 Transformed YouTube data:', transformedData);
+      console.log('🔄 [YOUTUBE] Transformed data:', {
+        id: transformedData.id,
+        username: transformedData.username,
+        view_count: transformedData.view_count,
+        like_count: transformedData.like_count
+      });
+      
       return transformedData;
     } else if (platform === 'twitter') {
       // Extract username from Twitter URL
@@ -547,7 +581,8 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
       throw new Error(`Unsupported platform: ${platform}`);
     }
 
-    console.log(`🔄 Calling Apify actor: ${actorId}`);
+    console.log(`🔄 [${platform.toUpperCase()}] Calling Apify actor: ${actorId}`);
+    console.log(`📝 [${platform.toUpperCase()}] Input:`, JSON.stringify(input, null, 2));
     
     const response = await fetch(
       `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${apifyToken}`,
@@ -559,14 +594,20 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
     );
 
     if (!response.ok) {
-      throw new Error(`Apify API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`❌ [${platform.toUpperCase()}] Apify API error:`, response.status, errorText);
+      throw new Error(`Apify API error: ${response.status} - ${errorText}`);
     }
 
     const items = await response.json();
+    console.log(`📦 [${platform.toUpperCase()}] Apify returned ${items?.length || 0} items`);
     
     if (!items || items.length === 0) {
+      console.error(`❌ [${platform.toUpperCase()}] No data returned from Apify`);
       throw new Error('No data returned from Apify');
     }
+    
+    console.log(`📊 [${platform.toUpperCase()}] First item keys:`, Object.keys(items[0] || {}).join(', '));
 
     let rawData = items[0];
     
@@ -584,11 +625,19 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
       }
     }
     
-    console.log('📦 Raw Apify data received');
+    console.log(`📦 [${platform.toUpperCase()}] Raw Apify data received`);
     
     // Transform data based on platform
     const videoData = transformVideoData(rawData, platform);
-    console.log(`✅ Fetched video data for: ${videoData.username || 'unknown'}`);
+    console.log(`✅ [${platform.toUpperCase()}] Fetched video data for: @${videoData.username || 'unknown'}`);
+    console.log(`📊 [${platform.toUpperCase()}] Transformed video data:`, {
+      id: videoData.id,
+      username: videoData.username,
+      views: videoData.view_count,
+      likes: videoData.like_count,
+      hasUsername: !!videoData.username,
+      hasThumbnail: !!videoData.thumbnail_url
+    });
     
     return videoData;
 
