@@ -361,28 +361,58 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
 
         {/* Clicks Trend Chart */}
         <div className="bg-white/5 rounded-xl border border-white/10 p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Clicks Over Time</h3>
-          <div className="h-64 flex items-end gap-1">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white">Clicks Over Time</h3>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setTimeframe('today')}
+                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                  timeframe === 'today' 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                Today
+              </button>
+              <button
+                onClick={() => setTimeframe('all-time')}
+                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                  timeframe === 'all-time' 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                All Time
+              </button>
+            </div>
+          </div>
+          <div className="h-64 flex items-end justify-between gap-1">
             {clicksByHour.map((data, index) => {
               const maxClicks = Math.max(...clicksByHour.map(d => d.clicks), 1);
-              const height = (data.clicks / maxClicks) * 100;
+              const heightPercent = maxClicks > 0 ? (data.clicks / maxClicks) * 100 : 0;
+              const barHeight = Math.max(heightPercent, data.clicks > 0 ? 2 : 0);
+              
               return (
-                <div key={index} className="flex-1 flex flex-col items-center gap-2 group">
-                  <div className="relative w-full">
+                <div key={index} className="flex-1 flex flex-col items-center gap-2 group relative">
+                  <div className="relative w-full h-64 flex items-end">
                     {data.clicks > 0 && (
-                      <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                        {data.clicks} clicks
+                      <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
+                        {data.clicks} {data.clicks === 1 ? 'click' : 'clicks'}
                       </div>
                     )}
                     <div
-                      className="w-full bg-gradient-to-t from-blue-500/50 to-blue-400 rounded-t hover:from-blue-400 hover:to-blue-300 transition-colors"
-                      style={{ height: `${height}%`, minHeight: data.clicks > 0 ? '4px' : '2px' }}
+                      className="w-full bg-gradient-to-t from-blue-500 to-blue-400 rounded-t hover:from-blue-600 hover:to-blue-500 transition-all cursor-pointer"
+                      style={{ 
+                        height: `${barHeight}%`,
+                        minHeight: data.clicks > 0 ? '4px' : '1px',
+                        opacity: data.clicks > 0 ? 1 : 0.2
+                      }}
                     ></div>
-                      </div>
-                  {(index % 2 === 0 || index === 23) && (
-                    <span className="text-xs text-gray-500">{data.hour}</span>
+                  </div>
+                  {(index % 3 === 0 || index === 23) && (
+                    <span className="text-xs text-gray-500 mt-1">{data.hour}</span>
                   )}
-                      </div>
+                </div>
               );
             })}
           </div>
