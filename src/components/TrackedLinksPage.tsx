@@ -29,11 +29,12 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     const [timeframe, setTimeframe] = useState<'today' | 'all-time'>('today');
     const [interval, setInterval] = useState<'hourly' | 'monthly'>('hourly');
     const [refreshing, setRefreshing] = useState(false);
-    const [visitors, setVisitors] = useState(0);
-    const [revenue, setRevenue] = useState(0);
-    const [bounceRate, setBounceRate] = useState(0);
-    const [avgSessionTime, setAvgSessionTime] = useState(0);
-    const [activeVisitors, setActiveVisitors] = useState(0);
+    const [totalClicks, setTotalClicks] = useState(0);
+    const [totalLinks, setTotalLinks] = useState(0);
+    const [uniqueVisitors, setUniqueVisitors] = useState(0);
+    const [clickThroughRate, setClickThroughRate] = useState(0);
+    const [topPerformer, setTopPerformer] = useState<string>('-');
+    const [avgClicksPerLink, setAvgClicksPerLink] = useState(0);
 
     const orgId = organizationId || currentOrgId;
     const projId = projectId || currentProjectId;
@@ -71,15 +72,32 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     };
 
     const calculateMetrics = (linksData: TrackedLink[], clicksData: LinkClick[]) => {
-      // Calculate basic metrics
-      const totalClicks = clicksData.length;
-      setVisitors(totalClicks);
+      setTotalLinks(linksData.length);
+      setTotalClicks(clicksData.length);
 
-      // Mock calculations for demo
-      setRevenue(0);
-      setBounceRate(76);
-      setAvgSessionTime(269); // in seconds (4m 29s)
-      setActiveVisitors(Math.floor(Math.random() * 10));
+      // Calculate unique visitors (unique IPs or user agents)
+      const uniqueIPs = new Set(clicksData.map(click => click.ipAddress || click.userAgent)).size;
+      setUniqueVisitors(uniqueIPs);
+
+      // Calculate average clicks per link
+      const avgClicks = linksData.length > 0 ? clicksData.length / linksData.length : 0;
+      setAvgClicksPerLink(Math.round(avgClicks * 10) / 10);
+
+      // Calculate click-through rate (mock for now - would need impressions data)
+      const ctr = linksData.length > 0 ? (clicksData.length / (linksData.length * 100)) * 100 : 0;
+      setClickThroughRate(Math.round(ctr * 100) / 100);
+
+      // Find top performing link
+      if (linksData.length > 0) {
+        const linkClickCounts = linksData.map(link => ({
+          title: link.title,
+          clicks: clicksData.filter(click => click.linkId === link.id).length
+        }));
+        const topLink = linkClickCounts.reduce((prev, current) => 
+          current.clicks > prev.clicks ? current : prev
+        , { title: '-', clicks: 0 });
+        setTopPerformer(topLink.title || '-');
+      }
     };
 
     const handleRefresh = async () => {
@@ -88,23 +106,64 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       setRefreshing(false);
     };
 
-    // Mock data for charts
-    const trafficData = Array.from({ length: 24 }, (_, i) => ({
-      hour: `${i}am`,
-      visitors: i < 18 ? 0 : Math.floor(Math.random() * 20)
-    }));
+    // Calculate link performance data
+    const linkPerformance = links.slice(0, 10).map(link => {
+      const linkClicksData = linkClicks.filter(click => click.linkId === link.id);
+      return {
+        title: link.title || link.shortCode,
+        clicks: linkClicksData.length,
+        shortCode: link.shortCode
+      };
+    }).sort((a, b) => b.clicks - a.clicks);
 
-    const topPages = [
-      { path: '/settings', visitors: 1 },
-      { path: '/', visitors: 1 },
-      { path: '/login', visitors: 1 }
-    ];
+    // Calculate clicks by country
+    const clicksByCountry = linkClicks.reduce((acc: { [key: string]: number }, click) => {
+      const country = click.country || 'Unknown';
+      acc[country] = (acc[country] || 0) + 1;
+      return acc;
+    }, {});
 
-    const countries = [
-      { name: 'United States', visitors: 31, flag: '🇺🇸' },
-      { name: 'Israel', visitors: 2, flag: '🇮🇱' },
-      { name: 'United Kingdom', visitors: 1, flag: '🇬🇧' }
-    ];
+    const topCountries = Object.entries(clicksByCountry)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([country, clicks]) => ({
+        name: country,
+        clicks,
+        flag: getCountryFlag(country)
+      }));
+
+    // Calculate hourly traffic (for today)
+    const clicksByHour = Array.from({ length: 24 }, (_, hour) => {
+      const hourClicks = linkClicks.filter(click => {
+        const clickDate = click.timestamp?.toDate?.() || new Date(click.timestamp);
+        return clickDate.getHours() === hour;
+      }).length;
+      return {
+        hour: `${hour}:00`,
+        clicks: hourClicks
+      };
+    });
+
+    function getCountryFlag(countryName: string): string {
+      const flagMap: { [key: string]: string } = {
+        'United States': '🇺🇸',
+        'United Kingdom': '🇬🇧',
+        'Canada': '🇨🇦',
+        'Australia': '🇦🇺',
+        'Germany': '🇩🇪',
+        'France': '🇫🇷',
+        'Spain': '🇪🇸',
+        'Italy': '🇮🇹',
+        'Japan': '🇯🇵',
+        'China': '🇨🇳',
+        'India': '🇮🇳',
+        'Brazil': '🇧🇷',
+        'Mexico': '🇲🇽',
+        'Israel': '🇮🇱',
+        'Unknown': '🌍'
+      };
+      return flagMap[countryName] || '🌍';
+    }
 
     if (loading) {
       return <PageLoadingSkeleton type="links" />;
@@ -185,133 +244,137 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         </div>
 
         {/* KPI Metrics */}
-        <div className="grid grid-cols-7 gap-4">
-          {/* Visitors */}
-          <div className="bg-black/40 rounded-lg border border-white/10 p-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {/* Total Links */}
+          <div className="bg-white/5 rounded-xl border border-white/10 p-4 hover:bg-white/10 transition-colors">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-              <span className="text-sm text-gray-400">Visitors</span>
+              <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+              <span className="text-sm text-gray-400 font-medium">Total Links</span>
             </div>
-            <div className="text-3xl font-bold text-white">{visitors}</div>
-            <div className="text-xs text-gray-500 mt-1">0.0%</div>
+            <div className="text-3xl font-bold text-white">{totalLinks}</div>
           </div>
 
-          {/* Revenue */}
-          <div className="bg-black/40 rounded-lg border border-white/10 p-4">
+          {/* Total Clicks */}
+          <div className="bg-white/5 rounded-xl border border-white/10 p-4 hover:bg-white/10 transition-colors">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-              <span className="text-sm text-gray-400">Revenue</span>
+              <div className="w-2 h-2 rounded-full bg-green-400"></div>
+              <span className="text-sm text-gray-400 font-medium">Total Clicks</span>
             </div>
-            <div className="text-3xl font-bold text-white">${revenue}</div>
-            <div className="text-xs text-red-500 mt-1">-100.0% ↓</div>
+            <div className="text-3xl font-bold text-white">{totalClicks}</div>
           </div>
 
-          {/* Conversion Rate */}
-          <div className="bg-black/40 rounded-lg border border-white/10 p-4">
-            <div className="text-sm text-gray-400 mb-2">Conversion rate</div>
-            <div className="text-3xl font-bold text-white">-</div>
-            <div className="text-xs text-gray-500 mt-1">0.0%</div>
-          </div>
-
-          {/* Revenue/Visitor */}
-          <div className="bg-black/40 rounded-lg border border-white/10 p-4">
-            <div className="text-sm text-gray-400 mb-2">Revenue/visitor</div>
-            <div className="text-3xl font-bold text-white">-</div>
-            <div className="text-xs text-gray-500 mt-1">0.0%</div>
-          </div>
-
-          {/* Bounce Rate */}
-          <div className="bg-black/40 rounded-lg border border-white/10 p-4">
-            <div className="text-sm text-gray-400 mb-2">Bounce rate</div>
-            <div className="text-3xl font-bold text-white">{bounceRate}%</div>
-            <div className="text-xs text-gray-500 mt-1">0.0%</div>
-          </div>
-
-          {/* Session Time */}
-          <div className="bg-black/40 rounded-lg border border-white/10 p-4">
-            <div className="text-sm text-gray-400 mb-2">Session time</div>
-            <div className="text-3xl font-bold text-white">
-              {Math.floor(avgSessionTime / 60)}m {avgSessionTime % 60}s
-            </div>
-            <div className="text-xs text-gray-500 mt-1">0.0%</div>
-          </div>
-
-          {/* Visitors Now */}
-          <div className="bg-black/40 rounded-lg border border-white/10 p-4">
+          {/* Unique Visitors */}
+          <div className="bg-white/5 rounded-xl border border-white/10 p-4 hover:bg-white/10 transition-colors">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-sm text-gray-400">Visitors now</span>
-              <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+              <div className="w-2 h-2 rounded-full bg-purple-400"></div>
+              <span className="text-sm text-gray-400 font-medium">Unique Visitors</span>
             </div>
-            <div className="text-3xl font-bold text-white">{activeVisitors}</div>
-            <div className="text-xs text-gray-500 mt-1">-</div>
+            <div className="text-3xl font-bold text-white">{uniqueVisitors}</div>
+          </div>
+
+          {/* Avg Clicks/Link */}
+          <div className="bg-white/5 rounded-xl border border-white/10 p-4 hover:bg-white/10 transition-colors">
+            <div className="text-sm text-gray-400 font-medium mb-2">Avg Clicks/Link</div>
+            <div className="text-3xl font-bold text-white">{avgClicksPerLink}</div>
+          </div>
+
+          {/* Click-Through Rate */}
+          <div className="bg-white/5 rounded-xl border border-white/10 p-4 hover:bg-white/10 transition-colors">
+            <div className="text-sm text-gray-400 font-medium mb-2">CTR</div>
+            <div className="text-3xl font-bold text-white">{clickThroughRate}%</div>
+          </div>
+
+          {/* Top Performer */}
+          <div className="bg-white/5 rounded-xl border border-white/10 p-4 hover:bg-white/10 transition-colors">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-sm text-gray-400 font-medium">Top Performer</span>
+              <div className="w-2 h-2 rounded-full bg-yellow-400"></div>
+            </div>
+            <div className="text-lg font-bold text-white truncate" title={topPerformer}>
+              {topPerformer}
+            </div>
           </div>
         </div>
 
-        {/* Traffic Trend Chart */}
-        <div className="bg-black/40 rounded-lg border border-white/10 p-6">
-          <div className="h-80 flex items-end gap-1">
-            {trafficData.map((data, index) => (
-              <div key={index} className="flex-1 flex flex-col items-center gap-2">
-                <div
-                  className="w-full bg-gradient-to-t from-blue-500/50 to-blue-500 rounded-t"
-                  style={{ height: `${(data.visitors / 20) * 100}%`, minHeight: '2px' }}
-                ></div>
-                {index % 3 === 0 && (
-                  <span className="text-xs text-gray-500">{data.hour}</span>
-                )}
-              </div>
-            ))}
+        {/* Clicks Trend Chart */}
+        <div className="bg-white/5 rounded-xl border border-white/10 p-6">
+          <h3 className="text-lg font-semibold text-white mb-4">Clicks Over Time</h3>
+          <div className="h-64 flex items-end gap-1">
+            {clicksByHour.map((data, index) => {
+              const maxClicks = Math.max(...clicksByHour.map(d => d.clicks), 1);
+              const height = (data.clicks / maxClicks) * 100;
+              return (
+                <div key={index} className="flex-1 flex flex-col items-center gap-2 group">
+                  <div className="relative w-full">
+                    {data.clicks > 0 && (
+                      <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                        {data.clicks} clicks
+                      </div>
+                    )}
+                    <div
+                      className="w-full bg-gradient-to-t from-blue-500/50 to-blue-400 rounded-t hover:from-blue-400 hover:to-blue-300 transition-colors"
+                      style={{ height: `${height}%`, minHeight: data.clicks > 0 ? '4px' : '2px' }}
+                    ></div>
+                  </div>
+                  {index % 4 === 0 && (
+                    <span className="text-xs text-gray-500">{data.hour}</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
         {/* Bottom Section */}
-        <div className="grid grid-cols-3 gap-6">
-          {/* Traffic Source Donut Chart */}
-          <div className="bg-black/40 rounded-lg border border-white/10 p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Channel</h3>
-            <div className="flex items-center justify-center h-48">
-              <div className="text-center">
-                <div className="text-4xl mb-2">📊</div>
-                <div className="text-sm text-gray-400">Direct: 100%</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Page Traffic Table */}
-          <div className="bg-black/40 rounded-lg border border-white/10 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">Page</h3>
-              <button className="text-sm text-gray-400 hover:text-white">Hostname</button>
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Top Performing Links */}
+          <div className="bg-white/5 rounded-xl border border-white/10 p-6">
+            <h3 className="text-lg font-semibold text-white mb-4">Top Performing Links</h3>
             <div className="space-y-3">
-              {topPages.map((page, index) => (
-                <div key={index} className="flex items-center justify-between py-2 border-b border-white/5">
-                  <span className="text-sm text-gray-300">{page.path}</span>
-                  <span className="text-sm font-medium text-white">{page.visitors}</span>
+              {linkPerformance.length > 0 ? (
+                linkPerformance.map((link, index) => (
+                  <div key={index} className="flex items-center justify-between py-3 border-b border-white/5 hover:bg-white/5 px-3 rounded-lg transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-white truncate">{link.title}</div>
+                      <div className="text-xs text-gray-500">/{link.shortCode}</div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-semibold text-white">{link.clicks}</span>
+                      <span className="text-xs text-gray-400">clicks</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No link data available yet</p>
+                  <p className="text-sm mt-2">Create links to see performance</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
           {/* Geographic Distribution */}
-          <div className="bg-black/40 rounded-lg border border-white/10 p-6">
-            <div className="flex items-center gap-4 mb-4">
-              <button className="text-sm font-semibold text-white border-b-2 border-white pb-1">
-                Country
-              </button>
-              <button className="text-sm text-gray-400 hover:text-white">Region</button>
-              <button className="text-sm text-gray-400 hover:text-white">City</button>
-            </div>
+          <div className="bg-white/5 rounded-xl border border-white/10 p-6">
+            <h3 className="text-lg font-semibold text-white mb-4">Clicks by Country</h3>
             <div className="space-y-3">
-              {countries.map((country, index) => (
-                <div key={index} className="flex items-center justify-between py-2 border-b border-white/5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{country.flag}</span>
-                    <span className="text-sm text-gray-300">{country.name}</span>
+              {topCountries.length > 0 ? (
+                topCountries.map((country, index) => (
+                  <div key={index} className="flex items-center justify-between py-3 border-b border-white/5 hover:bg-white/5 px-3 rounded-lg transition-colors">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{country.flag}</span>
+                      <span className="text-sm font-medium text-gray-300">{country.name}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-semibold text-white">{country.clicks}</span>
+                      <span className="text-xs text-gray-400">clicks</span>
+                    </div>
                   </div>
-                  <span className="text-sm font-medium text-white">{country.visitors}</span>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No geographic data available yet</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
