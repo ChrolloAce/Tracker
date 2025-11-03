@@ -160,6 +160,10 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         switch (dateFilter) {
           case 'today':
             return clickDate >= startOfToday;
+          case 'yesterday':
+            const startOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+            const endOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            return clickDate >= startOfYesterday && clickDate < endOfYesterday;
            case 'last7days':
              return clickDate >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
            case 'last14days':
@@ -237,6 +241,30 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
             
             const isToday = clickDate.toDateString() === now.toDateString();
             return isToday && clickDate.getHours() === hour;
+          }).length;
+          
+          const period = hour < 12 ? 'am' : 'pm';
+          const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+          
+          return {
+            label: `${displayHour}${period}`,
+            clicks: hourClicks
+          };
+        });
+      }
+      
+      // For Yesterday - show hourly
+      if (dateFilter === 'yesterday') {
+        const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        return Array.from({ length: 24 }, (_, hour) => {
+          const hourClicks = filteredLinkClicks.filter(click => {
+            if (!click.timestamp) return false;
+            const clickDate = (click.timestamp as any).toDate 
+              ? (click.timestamp as any).toDate() 
+              : new Date(click.timestamp as any);
+            
+            const isYesterday = clickDate.toDateString() === yesterday.toDateString();
+            return isYesterday && clickDate.getHours() === hour;
           }).length;
           
           const period = hour < 12 ? 'am' : 'pm';
