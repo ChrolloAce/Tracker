@@ -806,18 +806,48 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                   <div className="relative w-48 h-48 mb-6">
                     <svg viewBox="0 0 100 100" className="transform -rotate-90">
                       {(() => {
-                        let currentAngle = 0;
                         const colors = ['#5B8DEF', '#7BA5F3', '#9BBDF7', '#BBD5FB', '#DBEAFE'];
+                        const radius = 42;
+                        const innerRadius = 30;
+                        
+                        // Special case: single source (100%) - draw full donut
+                        if (sourceData.length === 1) {
+                          const color = colors[0];
+                          return (
+                            <g>
+                              {/* Outer circle */}
+                              <circle
+                                cx="50"
+                                cy="50"
+                                r={radius}
+                                fill={color}
+                              />
+                              {/* Inner circle (to create donut hole) */}
+                              <circle
+                                cx="50"
+                                cy="50"
+                                r={innerRadius}
+                                fill="transparent"
+                                stroke="#0A0A0A"
+                                strokeWidth={innerRadius * 2}
+                              />
+                            </g>
+                          );
+                        }
+                        
+                        // Multiple sources - draw arcs
+                        let currentAngle = 0;
                         return sourceData.map(([source, clicks], index) => {
                           const percentage = (clicks / totalClicks) * 100;
                           const angle = (percentage / 100) * 360;
-                          const startAngle = currentAngle;
-                          currentAngle += angle;
                           
-                          const radius = 42;
-                          const innerRadius = 30;
+                          // Clamp angle to prevent 360-degree arcs
+                          const clampedAngle = angle >= 360 ? 359.99 : angle;
+                          const startAngle = currentAngle;
+                          currentAngle += clampedAngle;
+                          
                           const startRad = (startAngle - 90) * (Math.PI / 180);
-                          const endRad = (startAngle + angle - 90) * (Math.PI / 180);
+                          const endRad = (startAngle + clampedAngle - 90) * (Math.PI / 180);
                           
                           const x1 = 50 + radius * Math.cos(startRad);
                           const y1 = 50 + radius * Math.sin(startRad);
@@ -829,7 +859,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                           const x4 = 50 + innerRadius * Math.cos(startRad);
                           const y4 = 50 + innerRadius * Math.sin(startRad);
                           
-                          const largeArc = angle > 180 ? 1 : 0;
+                          const largeArc = clampedAngle > 180 ? 1 : 0;
                           
                           return (
                             <path
