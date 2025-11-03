@@ -649,28 +649,6 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         <div className="bg-white/5 rounded-xl border border-white/10 p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white">Clicks Over Time</h3>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setTimeframe('today')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  timeframe === 'today' 
-                    ? 'bg-black dark:bg-white text-white dark:text-black' 
-                    : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'
-                }`}
-              >
-                Today
-              </button>
-              <button
-                onClick={() => setTimeframe('all-time')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  timeframe === 'all-time' 
-                    ? 'bg-black dark:bg-white text-white dark:text-black' 
-                    : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10'
-                }`}
-              >
-                All Time
-              </button>
-            </div>
           </div>
           <div className="h-64 flex items-end gap-1">
             {clicksByTime.map((data, index) => {
