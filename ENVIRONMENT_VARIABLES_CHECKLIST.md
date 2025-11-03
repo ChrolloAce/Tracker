@@ -158,6 +158,39 @@ Value: AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 ---
 
+### 5. Instagram Session ID (Optional - for Individual Video Scraping)
+
+**What it does:** Allows scraping Instagram videos without rate limits or access restrictions.
+
+**Steps to get your Instagram Session ID:**
+
+1. **Open Instagram in your browser**
+   - Go to https://www.instagram.com/
+   - Make sure you're logged in
+
+2. **Open Developer Tools**
+   - Press `F12` or `Right Click → Inspect`
+   - Go to the **Application** tab (Chrome) or **Storage** tab (Firefox)
+
+3. **Find the Session Cookie**
+   - In the left sidebar, expand **Cookies**
+   - Click on `https://www.instagram.com`
+   - Look for a cookie named `sessionid`
+   - Copy the **Value** (it's a long string like: `12345678%3A...`)
+
+4. **Add to Vercel:**
+```
+Name: INSTAGRAM_SESSION_ID
+Value: 12345678%3A...your-session-id-here...
+```
+
+**⚠️ IMPORTANT:**
+- This cookie expires after ~30 days - you'll need to update it periodically
+- Don't share this cookie - it gives access to your Instagram account
+- If Instagram requests return no data, the session may have expired
+
+---
+
 ## 📋 Complete Environment Variables List
 
 Here's the **complete list** of what you should have in Vercel:
