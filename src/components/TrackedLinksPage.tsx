@@ -63,13 +63,13 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       loadData();
     }, [orgId, projId]);
 
-    // Recalculate metrics when timeframe, filter, or date filter changes
+    // Recalculate metrics when filter or date filter changes
   useEffect(() => {
       if (links.length > 0 || linkClicks.length > 0) {
-        console.log('⏰ Filters changed, recalculating metrics...', { timeframe, linkFilter: propLinkFilter, dateFilter });
+        console.log('⏰ Filters changed, recalculating metrics...', { linkFilter: propLinkFilter, dateFilter });
         calculateMetrics(links, linkClicks);
       }
-    }, [timeframe, propLinkFilter, dateFilter, customDateRange, links, linkClicks]);
+    }, [propLinkFilter, dateFilter, customDateRange, links, linkClicks]);
 
     const loadData = async () => {
       if (!orgId || !projId) {
