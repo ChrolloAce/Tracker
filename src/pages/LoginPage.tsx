@@ -45,8 +45,8 @@ const LoginPage: React.FC = () => {
         );
 
         
-        // Give Firebase a moment to propagate the changes
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Give Firebase time to propagate the changes
+        await new Promise(resolve => setTimeout(resolve, 3000));
         
         // Redirect to dashboard - the AuthContext will handle setting the right org/project
         window.location.href = '/dashboard';

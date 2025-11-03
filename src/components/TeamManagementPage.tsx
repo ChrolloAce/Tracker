@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { OrgMember, TeamInvitation, Role } from '../types/firestore';
 import OrganizationService from '../services/OrganizationService';
 import TeamInvitationService from '../services/TeamInvitationService';
-import { UserPlus, Shield, Crown, User, Mail, Clock, X, Settings } from 'lucide-react';
+import { UserPlus, Shield, Crown, User, Mail, Clock, X, Settings, Copy } from 'lucide-react';
 import { Button } from './ui/Button';
 import InviteTeamMemberModal from './InviteTeamMemberModal';
 import EditMemberPermissionsModal from './EditMemberPermissionsModal';
@@ -134,6 +134,18 @@ const TeamManagementPage: React.FC = () => {
     }
   };
 
+  const handleCopyInvitationLink = (invitationId: string) => {
+    const inviteUrl = `${window.location.origin}/invite/${invitationId}`;
+    navigator.clipboard.writeText(inviteUrl)
+      .then(() => {
+        alert('Invitation link copied to clipboard!');
+      })
+      .catch(err => {
+        console.error('Failed to copy:', err);
+        alert('Failed to copy link');
+      });
+  };
+
   const handleAcceptInvitation = async (invitation: TeamInvitation) => {
     if (!user) return;
 
@@ -149,11 +161,11 @@ const TeamManagementPage: React.FC = () => {
       
       alert(`Successfully joined ${invitation.organizationName}!`);
       
-      // Wait a moment for Firestore to propagate the member document
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Wait for Firestore to propagate the member document
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
-      // Reload the page to refresh organizations
-      window.location.reload();
+      // Redirect to dashboard with the new organization
+      window.location.href = '/dashboard';
     } catch (error: any) {
       console.error('Failed to accept invitation:', error);
       alert(error.message || 'Failed to accept invitation');
@@ -397,15 +409,25 @@ const TeamManagementPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleCancelInvitation(invitation.id)}
-                        disabled={actionLoading === invitation.id}
-                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                      >
-                        Cancel
-                      </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCopyInvitationLink(invitation.id)}
+                          className="text-gray-400 hover:text-gray-300 hover:bg-gray-500/10"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCancelInvitation(invitation.id)}
+                          disabled={actionLoading === invitation.id}
+                          className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}

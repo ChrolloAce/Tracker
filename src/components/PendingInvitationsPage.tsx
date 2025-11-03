@@ -45,11 +45,11 @@ const PendingInvitationsPage: React.FC = () => {
       
       alert(`Successfully joined ${invitation.organizationName}!`);
       
-      // Wait a moment for Firestore to propagate the member document
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Wait for Firestore to propagate the member document
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
-      // Reload the page to refresh organizations
-      window.location.reload();
+      // Redirect to dashboard with the new organization
+      window.location.href = '/dashboard';
     } catch (error: any) {
       console.error('Failed to accept invitation:', error);
       alert(error.message || 'Failed to accept invitation');

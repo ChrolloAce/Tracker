@@ -117,9 +117,15 @@ const CreatorInvitationPage: React.FC = () => {
     // Check if user's email matches invitation email
     if (user.email?.toLowerCase() !== invitation.email.toLowerCase()) {
       setError(
-        `This invitation is for ${invitation.email}, but you are signed in as ${user.email}. ` +
-        `Please sign out and log in with the correct email.`
+        `This invitation is for ${invitation.email}, but you were signed in as ${user.email}. ` +
+        `Please sign in with the correct email.`
       );
+      // Auto-logout the user so they can sign in with correct account
+      try {
+        await logout();
+      } catch (err) {
+        console.error('Failed to logout:', err);
+      }
       return;
     }
 
@@ -137,11 +143,11 @@ const CreatorInvitationPage: React.FC = () => {
 
       setSuccessMessage(`Welcome to ${invitation.organizationName}!`);
 
-      // Wait a moment for Firebase to propagate changes
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Wait longer for Firebase to propagate org membership changes
+      await new Promise(resolve => setTimeout(resolve, 3000));
 
-      // Redirect to dashboard
-      navigate('/dashboard');
+      // Use hard redirect to ensure AuthContext reloads with new org data
+      window.location.href = '/dashboard';
     } catch (err: any) {
       console.error('Failed to accept invitation:', err);
       setError(err.message || 'Failed to accept invitation. Please try again.');
@@ -298,27 +304,6 @@ const CreatorInvitationPage: React.FC = () => {
                 </button>
               </div>
             </>
-          )}
-
-          {/* User is already logged in but email doesn't match */}
-          {user && error && (
-            <div className="space-y-4">
-              <button
-                onClick={async () => {
-                  await logout();
-                  window.location.reload();
-                }}
-                className="w-full bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white py-3 rounded-xl font-semibold hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
-              >
-                Sign Out & Try Again
-              </button>
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="w-full bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-700 dark:text-white py-3 rounded-xl font-semibold hover:bg-gray-50 dark:hover:bg-white/10 transition-colors"
-              >
-                Go to Dashboard
-              </button>
-            </div>
           )}
         </div>
       </div>
