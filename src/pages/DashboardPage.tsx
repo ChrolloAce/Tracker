@@ -85,6 +85,34 @@ const DashboardSkeleton: React.FC<{ height?: string }> = ({ height = 'h-96' }) =
   </div>
 );
 
+// Helper function to generate table header based on date filter
+const getVideoTableHeader = (dateFilter: DateFilterType): string => {
+  switch (dateFilter) {
+    case 'today':
+      return 'New Videos Today';
+    case 'yesterday':
+      return 'Videos from Yesterday';
+    case 'last7days':
+      return 'New Videos Last 7 Days';
+    case 'last14days':
+      return 'New Videos Last 14 Days';
+    case 'last30days':
+      return 'New Videos Last 30 Days';
+    case 'last90days':
+      return 'New Videos Last 90 Days';
+    case 'mtd':
+      return 'New Videos This Month';
+    case 'ytd':
+      return 'New Videos This Year';
+    case 'all':
+      return 'All Videos';
+    case 'custom':
+      return 'New Videos (Custom Range)';
+    default:
+      return 'Recent Videos';
+  }
+};
+
 function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string; initialSettingsTab?: string } = {}) {
   // Get authentication state, current organization, and current project
   const { user, currentOrgId: authOrgId, currentProjectId: authProjectId } = useAuth();
@@ -2724,6 +2752,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             onStatusUpdate={handleStatusUpdate}
                             onDelete={handleDelete}
                             onVideoClick={handleVideoClick}
+                            headerTitle={getVideoTableHeader(dateFilter)}
                           />
                         );
                       default:
@@ -2901,6 +2930,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 onStatusUpdate={handleStatusUpdate}
                 onDelete={handleDelete}
                 onVideoClick={handleVideoClick}
+                headerTitle={getVideoTableHeader(dateFilter)}
               />
             )
           )}
@@ -3120,6 +3150,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   onStatusUpdate={() => {}}
                   onDelete={() => {}}
                   onVideoClick={handleVideoClick}
+                  headerTitle={getVideoTableHeader(dateFilter)}
                 />
               );
             

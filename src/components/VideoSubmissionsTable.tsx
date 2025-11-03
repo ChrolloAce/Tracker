@@ -131,6 +131,11 @@ const ThumbnailImage: React.FC<{ submission: VideoSubmission }> = ({ submission 
     }
   }, [submission.id]);
 
+  // If no thumbnail, render nothing - just leave the space empty
+  if (!thumbnailSrc || thumbnailSrc.trim() === '') {
+    return null;
+  }
+
   return (
     <ProxiedImage
       src={thumbnailSrc}
