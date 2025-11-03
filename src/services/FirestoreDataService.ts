@@ -476,8 +476,27 @@ class FirestoreDataService {
     try {
       console.log(`🗑️ Deleting video ${videoId}`);
       
+      const batch = writeBatch(db);
       const videoRef = doc(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId);
-      await writeBatch(db).delete(videoRef).commit();
+      batch.delete(videoRef);
+      
+      // Decrement project video count
+      const projectRef = doc(db, 'organizations', orgId, 'projects', projectId);
+      batch.update(projectRef, { 
+        videoCount: increment(-1),
+        updatedAt: Timestamp.now()
+      });
+      
+      await batch.commit();
+      
+      // Decrement organization usage counter
+      try {
+        const UsageTrackingService = (await import('./UsageTrackingService')).default;
+        await UsageTrackingService.decrementUsage(orgId, 'trackedVideos', 1);
+        console.log(`✅ Decremented video usage counter for org ${orgId}`);
+      } catch (error) {
+        console.error('⚠️ Failed to decrement video usage counter (non-critical):', error);
+      }
       
       console.log(`✅ Deleted video ${videoId}`);
     } catch (error) {
@@ -500,6 +519,12 @@ class FirestoreDataService {
       );
       
       const snapshot = await getDocs(q);
+      const videoCount = snapshot.docs.length;
+      
+      if (videoCount === 0) {
+        console.log('✅ No videos to delete');
+        return;
+      }
       
       // Delete in batches
       const batchSize = 500;
@@ -511,10 +536,28 @@ class FirestoreDataService {
           batch.delete(doc.ref);
         });
         
+        // Update project video count in the last batch
+        if (i + batchSize >= snapshot.docs.length) {
+          const projectRef = doc(db, 'organizations', orgId, 'projects', projectId);
+          batch.update(projectRef, { 
+            videoCount: increment(-videoCount),
+            updatedAt: Timestamp.now()
+          });
+        }
+        
         await batch.commit();
       }
       
-      console.log(`✅ Deleted ${snapshot.docs.length} videos for account ${accountId}`);
+      // Decrement organization usage counter
+      try {
+        const UsageTrackingService = (await import('./UsageTrackingService')).default;
+        await UsageTrackingService.decrementUsage(orgId, 'trackedVideos', videoCount);
+        console.log(`✅ Decremented video usage counter by ${videoCount} for org ${orgId}`);
+      } catch (error) {
+        console.error('⚠️ Failed to decrement video usage counter (non-critical):', error);
+      }
+      
+      console.log(`✅ Deleted ${videoCount} videos for account ${accountId}`);
     } catch (error) {
       console.error('❌ Failed to delete account videos:', error);
       throw error;

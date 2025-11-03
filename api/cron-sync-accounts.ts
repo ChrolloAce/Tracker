@@ -281,7 +281,58 @@ export default async function handler(
           syncProgress: {
             current: 50,
             total: 100,
-            message: `Saving ${videosFetched} videos...`
+            message: `Checking video limits...`
+          }
+        });
+
+        // Check video limits before saving
+        const usageDoc = await db
+          .collection('organizations')
+          .doc(account.orgId)
+          .collection('billing')
+          .doc('usage')
+          .get();
+        
+        const usage = usageDoc.data();
+        const currentVideos = usage?.trackedVideos || 0;
+        const videoLimit = usage?.limits?.trackedVideos || 100; // Default limit
+        const availableSpace = videoLimit - currentVideos;
+        
+        console.log(`📊 Video limits - Current: ${currentVideos}, Limit: ${videoLimit}, Available: ${availableSpace}`);
+        
+        if (availableSpace <= 0) {
+          console.warn(`⚠️ Video limit reached for org ${account.orgId}. Skipping video sync.`);
+          await accountRef.update({
+            syncStatus: 'failed',
+            lastSyncError: 'Video limit reached. Please upgrade your plan.',
+            syncProgress: {
+              current: 100,
+              total: 100,
+              message: 'Video limit reached'
+            }
+          });
+          
+          results.push({
+            accountId,
+            username: account.username,
+            status: 'failed',
+            error: 'Video limit reached',
+            videosCount: 0
+          });
+          continue;
+        }
+        
+        // Limit videos to available space
+        const videosToSave = videos.slice(0, availableSpace);
+        if (videosToSave.length < videos.length) {
+          console.warn(`⚠️ Limiting sync to ${videosToSave.length} videos (available space: ${availableSpace})`);
+        }
+
+        await accountRef.update({
+          syncProgress: {
+            current: 50,
+            total: 100,
+            message: `Saving ${videosToSave.length} videos...`
           }
         });
 
@@ -289,7 +340,7 @@ export default async function handler(
         const batch = db.batch();
         let savedCount = 0;
 
-        for (const video of videos) {
+        for (const video of videosToSave) {
           const videoRef = db
             .collection('organizations')
             .doc(account.orgId)
@@ -323,6 +374,17 @@ export default async function handler(
         if (savedCount % 500 !== 0) {
           await batch.commit();
         }
+        
+        // Update usage counter
+        await db
+          .collection('organizations')
+          .doc(account.orgId)
+          .collection('billing')
+          .doc('usage')
+          .update({
+            trackedVideos: currentVideos + savedCount,
+            lastUpdated: Timestamp.now()
+          });
 
         // Mark as completed
         await accountRef.update({

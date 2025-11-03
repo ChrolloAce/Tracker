@@ -465,6 +465,21 @@ async function saveVideosToFirestore(
   let skippedCount = 0;
   const BATCH_SIZE = 500;
 
+  // Check video limits before adding new videos
+  const usageDoc = await db
+    .collection('organizations')
+    .doc(orgId)
+    .collection('billing')
+    .doc('usage')
+    .get();
+  
+  const usage = usageDoc.data();
+  const currentVideos = usage?.trackedVideos || 0;
+  const videoLimit = usage?.limits?.trackedVideos || 100;
+  const availableSpace = videoLimit - currentVideos;
+  
+  console.log(`📊 Video limits - Current: ${currentVideos}, Limit: ${videoLimit}, Available: ${availableSpace}`);
+
   for (const video of videos) {
     // Extract video ID and media object based on platform (this is the platform's video ID, not Firestore doc ID)
     let platformVideoId: string;
@@ -585,6 +600,13 @@ async function saveVideosToFirestore(
     
     // Check if video exists
     if (querySnapshot.empty) {
+      // Check if we have space to add new videos
+      if (currentVideos + addedCount >= videoLimit) {
+        console.warn(`⚠️ Video limit reached. Skipping new video: ${platformVideoId}`);
+        skippedCount++;
+        continue;
+      }
+      
       // Video doesn't exist - ADD IT as a new video!
       const newVideoRef = db
         .collection('organizations')
@@ -684,6 +706,24 @@ async function saveVideosToFirestore(
   // Commit remaining operations
   if (batchCount > 0) {
     await batch.commit();
+  }
+
+  // Update usage counter if we added new videos
+  if (addedCount > 0) {
+    try {
+      await db
+        .collection('organizations')
+        .doc(orgId)
+        .collection('billing')
+        .doc('usage')
+        .update({
+          trackedVideos: currentVideos + addedCount,
+          lastUpdated: Timestamp.now()
+        });
+      console.log(`✅ Updated video usage counter: +${addedCount} videos`);
+    } catch (error) {
+      console.error('⚠️ Failed to update usage counter (non-critical):', error);
+    }
   }
 
   console.log(`      📊 Updated: ${updatedCount} videos, Added: ${addedCount} new videos, Skipped: ${skippedCount} invalid videos`);
