@@ -110,9 +110,18 @@ const CreatorInvitationPage: React.FC = () => {
       if (inviteData.expiresAt) {
         try {
           const now = new Date();
-          const expiryDate = typeof inviteData.expiresAt.toDate === 'function' 
-            ? inviteData.expiresAt.toDate() 
-            : new Date(inviteData.expiresAt);
+          let expiryDate: Date;
+          
+          // Handle Firestore Timestamp
+          if (typeof inviteData.expiresAt === 'object' && 'toDate' in inviteData.expiresAt) {
+            expiryDate = inviteData.expiresAt.toDate();
+          } else if (typeof inviteData.expiresAt === 'string' || typeof inviteData.expiresAt === 'number') {
+            expiryDate = new Date(inviteData.expiresAt);
+          } else {
+            // If we can't parse it, skip expiration check
+            console.warn('Could not parse expiresAt:', inviteData.expiresAt);
+            expiryDate = new Date(Date.now() + 86400000); // Default to tomorrow
+          }
           
           if (expiryDate < now) {
             setError('This invitation has expired. Please request a new invitation.');
