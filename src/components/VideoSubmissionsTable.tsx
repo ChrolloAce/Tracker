@@ -16,7 +16,6 @@ import { ProxiedImage } from './ProxiedImage';
 
 interface VideoSubmissionsTableProps {
   submissions: VideoSubmission[];
-  onStatusUpdate?: (id: string, status: VideoSubmission['status']) => void;
   onDelete?: (id: string) => void;
   onVideoClick?: (video: VideoSubmission) => void;
   headerTitle?: string; // Custom title for the table header (defaults to "Recent Activity")
@@ -117,7 +116,6 @@ const ThumbnailImage: React.FC<{ submission: VideoSubmission }> = ({ submission 
 
 export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({ 
   submissions, 
-  onStatusUpdate, 
   onDelete,
   onVideoClick,
   headerTitle
