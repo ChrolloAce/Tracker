@@ -810,28 +810,31 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                         const radius = 42;
                         const innerRadius = 30;
                         
-                        // Special case: single source (100%) - draw full donut
+                        // Special case: single source (100%) - draw full donut using two semicircles
                         if (sourceData.length === 1) {
                           const color = colors[0];
+                          // Draw two 180-degree arcs to form a complete circle (workaround for 360-degree arc issue)
                           return (
-                            <g>
-                              {/* Outer circle */}
-                              <circle
-                                cx="50"
-                                cy="50"
-                                r={radius}
+                            <>
+                              {/* First half (0-180 degrees) */}
+                              <path
+                                d={`M 50 ${50 - radius} 
+                                    A ${radius} ${radius} 0 0 1 50 ${50 + radius}
+                                    L 50 ${50 + innerRadius}
+                                    A ${innerRadius} ${innerRadius} 0 0 0 50 ${50 - innerRadius}
+                                    Z`}
                                 fill={color}
                               />
-                              {/* Inner circle (to create donut hole) */}
-                              <circle
-                                cx="50"
-                                cy="50"
-                                r={innerRadius}
-                                fill="transparent"
-                                stroke="#0A0A0A"
-                                strokeWidth={innerRadius * 2}
+                              {/* Second half (180-360 degrees) */}
+                              <path
+                                d={`M 50 ${50 + radius}
+                                    A ${radius} ${radius} 0 0 1 50 ${50 - radius}
+                                    L 50 ${50 - innerRadius}
+                                    A ${innerRadius} ${innerRadius} 0 0 0 50 ${50 + innerRadius}
+                                    Z`}
+                                fill={color}
                               />
-                            </g>
+                            </>
                           );
                         }
                         
