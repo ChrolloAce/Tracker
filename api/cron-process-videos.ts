@@ -373,10 +373,11 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
         resultsPerPage: 1
       };
     } else if (platform === 'instagram') {
-      // Use pratikdani/instagram-reels-scraper (same pattern as TikTok)
+      // Use pratikdani/instagram-reels-scraper
       actorId = 'pratikdani~instagram-reels-scraper'; // Use tilde for Apify API
       input = {
-        urls: [url]
+        url: url, // Singular, not array
+        use_cache: false
       };
     } else if (platform === 'youtube') {
       // Use YouTube API directly instead of Apify for better reliability
