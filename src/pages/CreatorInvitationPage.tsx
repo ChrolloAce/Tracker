@@ -78,21 +78,44 @@ const CreatorInvitationPage: React.FC = () => {
 
       // The lookup now contains ALL invitation details (no need to query protected collection)
       const inviteData = lookupSnapshot.data() as TeamInvitation;
-      console.log('✅ Loaded public invitation for:', inviteData.email);
+      console.log('✅ Loaded public invitation data:', inviteData);
 
-      // Check if invitation is still valid
-      if (inviteData.status !== 'pending') {
-        setError(`This invitation has already been ${inviteData.status}.`);
+      // Validate that we have required fields
+      if (!inviteData.email || !inviteData.organizationName || !inviteData.role) {
+        console.error('❌ Invitation data is incomplete:', inviteData);
+        setError('This invitation link is invalid or was created with an older system. Please ask the sender to create a new invitation.');
         setLoading(false);
         return;
       }
 
-      // Check if expired
-      const now = new Date();
-      if (inviteData.expiresAt.toDate() < now) {
-        setError('This invitation has expired. Please request a new invitation.');
+      // Check if invitation is still valid
+      if (inviteData.status && inviteData.status !== 'pending') {
+        const statusText = inviteData.status === 'accepted' ? 'accepted' :
+                          inviteData.status === 'declined' ? 'declined' :
+                          inviteData.status === 'expired' ? 'expired or cancelled' :
+                          inviteData.status;
+        setError(`This invitation has already been ${statusText}.`);
         setLoading(false);
         return;
+      }
+
+      // Check if expired (handle both Timestamp and missing expiresAt)
+      if (inviteData.expiresAt) {
+        try {
+          const now = new Date();
+          const expiryDate = typeof inviteData.expiresAt.toDate === 'function' 
+            ? inviteData.expiresAt.toDate() 
+            : new Date(inviteData.expiresAt);
+          
+          if (expiryDate < now) {
+            setError('This invitation has expired. Please request a new invitation.');
+            setLoading(false);
+            return;
+          }
+        } catch (err) {
+          console.error('Error checking expiration:', err);
+          // Continue anyway if we can't check expiration
+        }
       }
 
       setInvitation(inviteData);
