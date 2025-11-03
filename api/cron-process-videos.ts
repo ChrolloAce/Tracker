@@ -375,9 +375,17 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
     } else if (platform === 'instagram') {
       // Use pratikdani/instagram-reels-scraper
       actorId = 'pratikdani~instagram-reels-scraper'; // Use tilde for Apify API
+      
+      // Get Instagram session cookie if available
+      const instagramSessionId = process.env.INSTAGRAM_SESSION_ID || '';
+      
       input = {
         url: url, // Singular, not array
-        use_cache: false
+        use_cache: false,
+        // Add session cookie for authentication
+        ...(instagramSessionId && {
+          sessionid: instagramSessionId
+        })
       };
     } else if (platform === 'youtube') {
       // Use YouTube API directly instead of Apify for better reliability

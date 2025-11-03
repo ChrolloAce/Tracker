@@ -37,6 +37,12 @@
 |----------|----------------|
 | `YOUTUBE_API_KEY` | **Required** for YouTube channel tracking and Shorts scraping. Without this, YouTube accounts won't work. |
 
+### **Optional - Required for Instagram Individual Video Scraping:**
+
+| Variable | Why You Need It |
+|----------|----------------|
+| `INSTAGRAM_SESSION_ID` | **Recommended** for Instagram individual video scraping. Without this, Instagram may block or rate limit requests. Helps avoid 429 errors and access private content. |
+
 ---
 
 ## 🔧 How to Get Missing Variables

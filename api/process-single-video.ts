@@ -478,11 +478,19 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
       // Use pratikdani/instagram-reels-scraper
       console.log('📸 [INSTAGRAM] Using pratikdani/instagram-reels-scraper for video:', url);
       actorId = 'pratikdani~instagram-reels-scraper'; // Use tilde for Apify API
+      
+      // Get Instagram session cookie if available
+      const instagramSessionId = process.env.INSTAGRAM_SESSION_ID || '';
+      
       input = {
         url: url, // Singular, not array
-        use_cache: false
+        use_cache: false,
+        // Add session cookie for authentication (helps avoid rate limits and access restrictions)
+        ...(instagramSessionId && {
+          sessionid: instagramSessionId
+        })
       };
-      console.log('📸 [INSTAGRAM] Input:', JSON.stringify(input, null, 2));
+      console.log('📸 [INSTAGRAM] Input:', JSON.stringify({ ...input, sessionid: instagramSessionId ? '[REDACTED]' : undefined }, null, 2));
     } else if (platform === 'youtube') {
       // Use YouTube API directly instead of Apify for better reliability
       console.log('🎥 [YOUTUBE] Using YouTube Data API v3 for video:', url);
