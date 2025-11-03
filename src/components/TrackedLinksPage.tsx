@@ -1,11 +1,12 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Settings, RefreshCw, ExternalLink } from 'lucide-react';
+import { Settings, RefreshCw, ExternalLink, Plus } from 'lucide-react';
 import { DateFilterType } from './DateRangeFilter';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import LinkClicksService, { LinkClick } from '../services/LinkClicksService';
 import { TrackedLink } from '../types/firestore';
 import FirestoreDataService from '../services/FirestoreDataService';
+import CreateLinkModal from './CreateLinkModal';
 
 export interface TrackedLinksPageRef {
   openCreateModal: () => void;
@@ -35,20 +36,21 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     const [clickThroughRate, setClickThroughRate] = useState(0);
     const [topPerformer, setTopPerformer] = useState<string>('-');
     const [avgClicksPerLink, setAvgClicksPerLink] = useState(0);
+    const [showCreateModal, setShowCreateModal] = useState(false);
 
     const orgId = organizationId || currentOrgId;
     const projId = projectId || currentProjectId;
 
     useImperativeHandle(ref, () => ({
       openCreateModal: () => {
-        // Not used in this new design
+        setShowCreateModal(true);
       },
       refreshData: async () => {
         await loadData();
       }
     }));
 
-    useEffect(() => {
+  useEffect(() => {
       loadData();
     }, [orgId, projId, timeframe]);
 
@@ -56,7 +58,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       if (!orgId || !projId) return;
 
       setLoading(true);
-      try {
+    try {
         const [linksData, clicksData] = await Promise.all([
           FirestoreDataService.getTrackedLinks(orgId, projId),
           LinkClicksService.getProjectLinkClicks(orgId, projId)
@@ -64,12 +66,12 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
 
         setLinks(linksData);
         calculateMetrics(linksData, clicksData);
-      } catch (error) {
+    } catch (error) {
         console.error('Failed to load data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    } finally {
+      setLoading(false);
+    }
+  };
 
     const calculateMetrics = (linksData: TrackedLink[], clicksData: LinkClick[]) => {
       setTotalLinks(linksData.length);
@@ -97,14 +99,14 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           current.clicks > prev.clicks ? current : prev
         , { title: '-', clicks: 0 });
         setTopPerformer(topLink.title || '-');
-      }
-    };
+    }
+  };
 
     const handleRefresh = async () => {
       setRefreshing(true);
       await loadData();
       setRefreshing(false);
-    };
+  };
 
     // Calculate link performance data
     const linkPerformance = links.slice(0, 10).map(link => {
@@ -134,12 +136,25 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
 
     // Calculate hourly traffic (for today)
     const clicksByHour = Array.from({ length: 24 }, (_, hour) => {
+      const now = new Date();
       const hourClicks = linkClicks.filter(click => {
+        if (!click.timestamp) return false;
         const clickDate = click.timestamp?.toDate?.() || new Date(click.timestamp);
+        
+        // Only count clicks from today for hourly view
+        if (timeframe === 'today') {
+          const isToday = clickDate.toDateString() === now.toDateString();
+          return isToday && clickDate.getHours() === hour;
+        }
         return clickDate.getHours() === hour;
       }).length;
+      
+      // Format hour properly (12-hour format with AM/PM)
+      const period = hour < 12 ? 'am' : 'pm';
+      const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+      
       return {
-        hour: `${hour}:00`,
+        hour: `${displayHour}${period}`,
         clicks: hourClicks
       };
     });
@@ -166,20 +181,24 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     }
 
     if (loading) {
-      return <PageLoadingSkeleton type="links" />;
-    }
+    return <PageLoadingSkeleton type="links" />;
+  }
 
-    return (
+  return (
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 px-4 py-2 bg-black/40 rounded-lg border border-white/10">
               <ExternalLink className="w-4 h-4 text-gray-400" />
-              <span className="text-white font-medium">www.viewtrack.app</span>
+              <span className="text-white font-medium">Link Analytics</span>
             </div>
-            <button className="p-2 hover:bg-white/5 rounded-lg transition-colors">
-              <Settings className="w-5 h-5 text-gray-400" />
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-white text-black rounded-lg font-medium hover:bg-gray-100 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create Link</span>
             </button>
           </div>
 
@@ -206,7 +225,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
               >
                 All time
               </button>
-            </div>
+              </div>
 
             {/* Interval Selector */}
             <div className="flex items-center bg-black/40 rounded-lg border border-white/10 p-1">
@@ -315,11 +334,11 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                       className="w-full bg-gradient-to-t from-blue-500/50 to-blue-400 rounded-t hover:from-blue-400 hover:to-blue-300 transition-colors"
                       style={{ height: `${height}%`, minHeight: data.clicks > 0 ? '4px' : '2px' }}
                     ></div>
-                  </div>
-                  {index % 4 === 0 && (
+                      </div>
+                  {(index % 2 === 0 || index === 23) && (
                     <span className="text-xs text-gray-500">{data.hour}</span>
                   )}
-                </div>
+                      </div>
               );
             })}
           </div>
@@ -344,13 +363,13 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                     </div>
                   </div>
                 ))
-              ) : (
+                              ) : (
                 <div className="text-center py-8 text-gray-500">
                   <p>No link data available yet</p>
                   <p className="text-sm mt-2">Create links to see performance</p>
-                </div>
-              )}
-            </div>
+                                </div>
+                              )}
+                            </div>
           </div>
 
           {/* Geographic Distribution */}
@@ -373,11 +392,23 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   <p>No geographic data available yet</p>
-                </div>
-              )}
-            </div>
-          </div>
+                            </div>
+                            )}
+                          </div>
+                        </div>
         </div>
+
+        {/* Create Link Modal */}
+        {showCreateModal && (
+          <CreateLinkModal
+            isOpen={showCreateModal}
+            onClose={() => setShowCreateModal(false)}
+            onSuccess={() => {
+              setShowCreateModal(false);
+              loadData();
+            }}
+          />
+        )}
       </div>
     );
   }

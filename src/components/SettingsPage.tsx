@@ -820,9 +820,9 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
           {activeTab === 'team' && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Team</h2>
-                  <p className="text-gray-600 dark:text-gray-400">Manage team members and permissions</p>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Team</h2>
+                <p className="text-gray-600 dark:text-gray-400">Manage team members and permissions</p>
                 </div>
                 {isOwner && (
                   <button
