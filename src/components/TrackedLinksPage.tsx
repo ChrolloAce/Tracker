@@ -855,17 +855,15 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                               />
                               {/* Tooltip when hovered */}
                               {isHovered && (
-                                <g className="pointer-events-none">
+                                <g className="pointer-events-none" transform="rotate(90 50 50)">
                                   <text
                                     x="50"
                                     y="45"
                                     textAnchor="middle"
-                                    className="transform rotate-90"
                                     style={{ 
                                       fontSize: '8px', 
                                       fill: 'white', 
-                                      fontWeight: 'bold',
-                                      transformOrigin: '50px 45px'
+                                      fontWeight: 'bold'
                                     }}
                                   >
                                     {getSourceIcon(source)} {source}
@@ -874,12 +872,10 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                                     x="50"
                                     y="55"
                                     textAnchor="middle"
-                                    className="transform rotate-90"
                                     style={{ 
                                       fontSize: '10px', 
                                       fill: 'white', 
-                                      fontWeight: 'bold',
-                                      transformOrigin: '50px 55px'
+                                      fontWeight: 'bold'
                                     }}
                                   >
                                     {percentage}%
@@ -888,11 +884,9 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                                     x="50"
                                     y="62"
                                     textAnchor="middle"
-                                    className="transform rotate-90"
                                     style={{ 
                                       fontSize: '6px', 
-                                      fill: 'rgba(255,255,255,0.7)',
-                                      transformOrigin: '50px 62px'
+                                      fill: 'rgba(255,255,255,0.7)'
                                     }}
                                   >
                                     {clicks} clicks
@@ -956,17 +950,15 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                               />
                               {/* Tooltip when hovered */}
                               {isHovered && (
-                                <g className="pointer-events-none">
+                                <g className="pointer-events-none" transform={`rotate(90 ${tooltipX} ${tooltipY})`}>
                                   <text
                                     x={tooltipX}
                                     y={tooltipY - 3}
                                     textAnchor="middle"
-                                    className="transform rotate-90"
                                     style={{ 
                                       fontSize: '6px', 
                                       fill: 'white', 
-                                      fontWeight: 'bold',
-                                      transformOrigin: `${tooltipX}px ${tooltipY - 3}px`
+                                      fontWeight: 'bold'
                                     }}
                                   >
                                     {getSourceIcon(source)} {source}
@@ -975,12 +967,10 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                                     x={tooltipX}
                                     y={tooltipY + 3}
                                     textAnchor="middle"
-                                    className="transform rotate-90"
                                     style={{ 
                                       fontSize: '8px', 
                                       fill: 'white', 
-                                      fontWeight: 'bold',
-                                      transformOrigin: `${tooltipX}px ${tooltipY + 3}px`
+                                      fontWeight: 'bold'
                                     }}
                                   >
                                     {percentage}% ({clicks})
