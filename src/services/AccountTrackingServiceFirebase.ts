@@ -520,11 +520,11 @@ export class AccountTrackingServiceFirebase {
       if (account.platform === 'instagram') {
         syncResult = await this.syncInstagramVideosIncremental(orgId, projectId, account, existingVideoIds);
       } else if (account.platform === 'tiktok') {
-        const allVideos = await this.syncTikTokVideos(orgId, account);
-        syncResult = { newVideos: allVideos, updatedVideos: [] };
+        // TikTok with incremental sync
+        syncResult = await this.syncTikTokVideosIncremental(orgId, projectId, account, existingVideoIds);
       } else if (account.platform === 'twitter') {
-        const allVideos = await this.syncTwitterTweets(orgId, account);
-        syncResult = { newVideos: allVideos, updatedVideos: [] };
+        // Twitter with incremental sync
+        syncResult = await this.syncTwitterTweetsIncremental(orgId, projectId, account, existingVideoIds);
       } else if (account.platform === 'youtube') {
         // YouTube with incremental sync
         syncResult = await this.syncYoutubeShortsIncremental(orgId, projectId, account, existingVideoIds);
@@ -857,8 +857,26 @@ export class AccountTrackingServiceFirebase {
   /**
    * Sync TikTok videos
    */
-  private static async syncTikTokVideos(orgId: string, account: TrackedAccount): Promise<AccountVideo[]> {
-    console.log(`🔄 Fetching TikTok videos for @${account.username}...`);
+  /**
+   * INCREMENTAL TikTok sync - Fetches videos and separates new vs existing
+   * Only fetches up to 30 videos (sorted by newest) and stops when hitting existing videos
+   */
+  private static async syncTikTokVideosIncremental(
+    orgId: string,
+    _projectId: string,
+    account: TrackedAccount,
+    existingVideoIds: Set<string>
+  ): Promise<{ newVideos: AccountVideo[], updatedVideos: AccountVideo[] }> {
+    const isNewAccount = existingVideoIds.size === 0;
+    console.log(`🎯 Starting ${isNewAccount ? 'FULL' : 'INCREMENTAL'} TikTok sync for @${account.username}...`);
+    
+    const newVideos: AccountVideo[] = [];
+    const updatedVideos: AccountVideo[] = [];
+    
+    // Fetch TikTok videos (up to 30 for new accounts, 10 for incremental)
+    const maxVideos = isNewAccount ? 30 : 10;
+    
+    console.log(`🔄 Fetching up to ${maxVideos} TikTok videos for @${account.username}...`);
     
     const proxyUrl = `${window.location.origin}/api/apify-proxy`;
     
@@ -869,7 +887,7 @@ export class AccountTrackingServiceFirebase {
         actorId: 'clockworks~tiktok-scraper',
         input: {
           profiles: [account.username],
-          resultsPerPage: 100,
+          resultsPerPage: maxVideos, // Limit to avoid fetching all 100 videos
           shouldDownloadCovers: false,
           shouldDownloadVideos: false,
           shouldDownloadSubtitles: false
@@ -885,13 +903,17 @@ export class AccountTrackingServiceFirebase {
     const result = await response.json();
 
     if (!result.items || !Array.isArray(result.items)) {
-      return [];
+      return { newVideos: [], updatedVideos: [] };
     }
 
-    const videos: AccountVideo[] = [];
+    console.log(`📦 TikTok API returned ${result.items.length} videos`);
 
+    // Process videos in order (newest first)
     for (const item of result.items) {
       if (!item.webVideoUrl && !item.id) continue;
+
+      const videoId = item.id || item.videoId || '';
+      const isExisting = existingVideoIds.has(videoId);
 
       // Try multiple possible thumbnail field names for TikTok
       const thumbnailUrl = item['videoMeta.coverUrl'] || 
@@ -904,40 +926,30 @@ export class AccountTrackingServiceFirebase {
       
       let uploadedThumbnail = thumbnailUrl;
       if (thumbnailUrl) {
-        console.log(`🖼️ TikTok thumbnail URL found for video ${item.id}: ${thumbnailUrl.substring(0, 80)}...`);
-        uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
-          orgId,
-          thumbnailUrl,
-          `tt_${item.id}_thumb`,
-          'thumbnail'
-        );
-        
-        // If upload succeeded (returned Firebase URL), use it; otherwise use original
-        if (uploadedThumbnail && !uploadedThumbnail.includes('storage.googleapis.com')) {
-          console.warn(`⚠️ TikTok thumbnail upload failed for ${item.id}, using original URL`);
+        console.log(`🖼️ TikTok thumbnail URL found for video ${videoId}: ${thumbnailUrl.substring(0, 80)}...`);
+        try {
+          uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
+            orgId,
+            thumbnailUrl,
+            `tt_${videoId}_thumb`,
+            'thumbnail'
+          );
+          console.log(`✅ TikTok thumbnail uploaded to Firebase Storage`);
+        } catch (error) {
+          console.warn(`⚠️ Failed to upload TikTok thumbnail for ${videoId}, using original URL:`, error);
+          uploadedThumbnail = thumbnailUrl;
         }
       } else {
-        console.warn(`⚠️ TikTok video ${item.id} has no thumbnail URL in API response`);
+        console.warn(`⚠️ TikTok video ${videoId} has no thumbnail URL in API response`);
       }
 
       const caption = item.text || item.description || '';
       
-      // Debug: Log first video data structure
-      if (videos.length === 0) {
-        console.log('🔍 TikTok first video data:', {
-          id: item.id,
-          text: item.text,
-          description: item.description,
-          thumbnailFound: !!thumbnailUrl,
-          thumbnailUrl: thumbnailUrl ? thumbnailUrl.substring(0, 80) : 'none'
-        });
-      }
-      
-      videos.push({
-        id: `${account.id}_${item.id}`,
+      const video: AccountVideo = {
+        id: `${account.id}_${videoId}`,
         accountId: account.id,
-        videoId: item.id || '',
-        url: item.webVideoUrl || `https://www.tiktok.com/@${account.username}/video/${item.id}`,
+        videoId: videoId,
+        url: item.webVideoUrl || `https://www.tiktok.com/@${account.username}/video/${videoId}`,
         thumbnail: uploadedThumbnail,
         caption: caption,
         uploadDate: new Date(item.createTimeISO || item.createTime || Date.now()),
@@ -948,12 +960,22 @@ export class AccountTrackingServiceFirebase {
         duration: item['videoMeta.duration'] || item.videoMeta?.duration || 0,
         isSponsored: false,
         hashtags: item.hashtags || [],
-        mentions: item.mentions || []
-      });
+        mentions: item.mentions || [],
+        platform: 'tiktok'
+      };
+      
+      // Separate into new vs existing
+      if (isExisting) {
+        console.log(`   ♻️  Video ${videoId} already exists - updating metrics`);
+        updatedVideos.push(video);
+      } else {
+        console.log(`   ✨ Video ${videoId} is NEW - will be added`);
+        newVideos.push(video);
+      }
     }
 
-    console.log(`✅ Fetched ${videos.length} TikTok videos`);
-    return videos;
+    console.log(`📊 TikTok sync complete: ${newVideos.length} new videos, ${updatedVideos.length} updated videos`);
+    return { newVideos, updatedVideos };
   }
 
   /**
@@ -1029,62 +1051,91 @@ export class AccountTrackingServiceFirebase {
   /**
    * Sync Twitter tweets for an account
    */
-  private static async syncTwitterTweets(orgId: string, account: TrackedAccount): Promise<AccountVideo[]> {
-    console.log(`🐦 Fetching tweets for @${account.username}...`);
+  /**
+   * INCREMENTAL Twitter sync - Fetches tweets and separates new vs existing
+   * Only fetches up to 20 tweets (sorted by newest) and stops when hitting existing tweets
+   */
+  private static async syncTwitterTweetsIncremental(
+    orgId: string,
+    _projectId: string,
+    account: TrackedAccount,
+    existingVideoIds: Set<string>
+  ): Promise<{ newVideos: AccountVideo[], updatedVideos: AccountVideo[] }> {
+    const isNewAccount = existingVideoIds.size === 0;
+    console.log(`🎯 Starting ${isNewAccount ? 'FULL' : 'INCREMENTAL'} Twitter sync for @${account.username}...`);
     
     try {
-      const tweets = await TwitterApiService.fetchTweets(account.username, 100);
-      console.log(`📊 Fetched ${tweets.length} raw tweets from Twitter`);
+      const newVideos: AccountVideo[] = [];
+      const updatedVideos: AccountVideo[] = [];
+      
+      // Fetch tweets (up to 20 for new accounts, 10 for incremental)
+      const maxTweets = isNewAccount ? 20 : 10;
+      
+      const tweets = await TwitterApiService.fetchTweets(account.username, maxTweets);
+      console.log(`📦 Twitter API returned ${tweets.length} tweets`);
 
       if (tweets.length === 0) {
         console.warn(`⚠️ No tweets found for @${account.username}`);
-        return [];
+        return { newVideos: [], updatedVideos: [] };
       }
 
-      // Upload thumbnails to Firebase Storage if they exist
-      const videos: AccountVideo[] = [];
+      // Process tweets and separate new vs existing
       for (const tweet of tweets) {
+        const videoId = tweet.videoId || '';
+        const isExisting = existingVideoIds.has(videoId);
+        
         let uploadedThumbnail = tweet.thumbnail || '';
         
         // Log tweet data for debugging
-        console.log(`📝 Processing tweet ${tweet.videoId}:`, {
+        console.log(`📝 Processing tweet ${videoId}:`, {
           url: tweet.url,
           views: tweet.views,
           likes: tweet.likes,
           comments: tweet.comments,
           shares: tweet.shares,
-          hasThumbnail: !!tweet.thumbnail
+          hasThumbnail: !!tweet.thumbnail,
+          isExisting
         });
         
+        // Upload thumbnail to Firebase Storage
         if (tweet.thumbnail) {
           try {
             uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
               orgId,
               tweet.thumbnail,
-              `twitter_${tweet.videoId}`,
+              `twitter_${videoId}`,
               'thumbnail'
             );
-            console.log(`✅ Thumbnail uploaded for tweet ${tweet.videoId}`);
+            console.log(`✅ Twitter thumbnail uploaded to Firebase Storage for tweet ${videoId}`);
           } catch (error) {
-            console.warn(`⚠️ Failed to upload thumbnail for tweet ${tweet.videoId}, using original URL:`, error);
-            // Keep original URL if upload fails
+            console.warn(`⚠️ Failed to upload Twitter thumbnail for ${videoId}, using original URL:`, error);
             uploadedThumbnail = tweet.thumbnail;
           }
+        } else {
+          console.warn(`⚠️ Twitter tweet ${videoId} has no thumbnail`);
         }
 
-        videos.push({
+        const video: AccountVideo = {
           ...tweet,
-          id: `${account.id}_${tweet.videoId}`,
+          id: `${account.id}_${videoId}`,
           accountId: account.id,
           thumbnail: uploadedThumbnail,
-          platform: 'twitter', // Ensure platform is set
-        });
+          platform: 'twitter'
+        };
+
+        // Separate into new vs existing
+        if (isExisting) {
+          console.log(`   ♻️  Tweet ${videoId} already exists - updating metrics`);
+          updatedVideos.push(video);
+        } else {
+          console.log(`   ✨ Tweet ${videoId} is NEW - will be added`);
+          newVideos.push(video);
+        }
       }
 
-      console.log(`✅ Processed ${videos.length} tweets for @${account.username}`);
-      console.log(`📊 Sample tweet data:`, videos[0] || 'No tweets');
+      console.log(`📊 Twitter sync complete: ${newVideos.length} new tweets, ${updatedVideos.length} updated tweets`);
       
-      return videos;
+      return { newVideos, updatedVideos };
     } catch (error) {
       console.error('❌ Failed to sync Twitter tweets:', error);
       throw error;
