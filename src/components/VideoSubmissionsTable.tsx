@@ -47,7 +47,10 @@ const DropdownMenu: React.FC<{
   return (
     <div className="relative">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={(e) => {
+          e.stopPropagation(); // Prevent row click
+          setIsOpen(!isOpen);
+        }}
         className="p-1 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100 transition-colors"
       >
         <MoreVertical className="w-4 h-4" />
@@ -63,50 +66,25 @@ const DropdownMenu: React.FC<{
           
           {/* Dropdown */}
           <div className="absolute right-0 top-8 z-20 w-48 bg-white dark:bg-[#1A1A1A] rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 py-1">
-            {/* Status Updates */}
-            <div className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-100 dark:border-gray-800">
-              Update Status
-            </div>
-            
-            <button
-              onClick={() => handleStatusChange('approved')}
-              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center space-x-2"
-            >
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span>Approve</span>
-            </button>
-            
-            <button
-              onClick={() => handleStatusChange('rejected')}
-              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center space-x-2"
-            >
-              <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-              <span>Reject</span>
-            </button>
-            
-            <button
-              onClick={() => handleStatusChange('pending')}
-              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center space-x-2"
-            >
-              <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
-              <span>Set Pending</span>
-            </button>
-
-            {/* Divider */}
-            <div className="border-t border-gray-100 my-1"></div>
-
             {/* Actions */}
             <button
-              onClick={() => window.open(submission.url, '_blank')}
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open(submission.url, '_blank');
+                setIsOpen(false);
+              }}
               className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center space-x-2"
             >
               <Edit3 className="w-4 h-4" />
-              <span>View Original</span>
+              <span>Edit</span>
             </button>
             
             <button
-              onClick={handleDelete}
-              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete();
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center space-x-2"
             >
               <Trash2 className="w-4 h-4" />
               <span>Delete</span>
@@ -546,8 +524,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                 <tr 
                   key={submission.id}
                   onClick={(e) => {
-                    // Don't trigger row click if clicking on video preview link or if loading
-                    if (isLoading || (e.target as HTMLElement).closest('a')) return;
+                    // Don't trigger row click if clicking on video preview link, dropdown menu, or if loading
+                    if (isLoading || (e.target as HTMLElement).closest('a') || (e.target as HTMLElement).closest('.relative.opacity-0')) return;
                     onVideoClick?.(submission);
                   }}
                   className={clsx(
