@@ -2858,7 +2858,29 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
           {/* Videos Tab */}
           {activeTab === 'videos' && (
-            !loadingDashboard && combinedSubmissions.length === 0 ? (
+            isInitialLoading ? (
+              <div className="space-y-4">
+                {/* Loading skeleton for videos */}
+                <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+                  <div className="p-6 space-y-4">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="flex items-center gap-4 animate-pulse">
+                        <div className="w-24 h-16 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+                          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                        </div>
+                        <div className="flex gap-4">
+                          <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                          <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                          <div className="h-8 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : !loadingDashboard && combinedSubmissions.length === 0 ? (
               <BlurEmptyState
                 title="Track Your First Video"
                 description="Add your first video to start monitoring views, engagement, and performance across platforms."

@@ -26,12 +26,21 @@ const OrganizationSwitcher: React.FC = () => {
 
   // ONLY load organizations once, not on every render!
   useEffect(() => {
+    console.log('🔍 OrganizationSwitcher useEffect:', { 
+      userId: user?.uid,
+      hasLoaded: hasLoadedRef.current, 
+      organizationsLength: organizations.length,
+      willLoad: !hasLoadedRef.current && !!user
+    });
+    
     if (hasLoadedRef.current) {
+      console.log('✅ Organizations already loaded, skipping');
       return; // Already loaded
     }
     
     if (user) {
-    loadOrganizations();
+      console.log('🔄 Loading organizations for user:', user.uid);
+      loadOrganizations();
       hasLoadedRef.current = true;
     }
   }, [user?.uid]); // Only when user ID changes (login/logout)

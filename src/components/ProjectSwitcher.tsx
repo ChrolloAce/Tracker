@@ -32,12 +32,21 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
 
   // ONLY load projects once per org, not on every render!
   useEffect(() => {
+    console.log('🔍 ProjectSwitcher useEffect:', { 
+      currentOrgId, 
+      hasLoaded: hasLoadedRef.current, 
+      projectsLength: projects.length,
+      willLoad: hasLoadedRef.current !== currentOrgId && !!currentOrgId
+    });
+    
     if (hasLoadedRef.current === currentOrgId) {
+      console.log('✅ Projects already loaded for this org, skipping');
       return; // Already loaded for this org
     }
     
     if (currentOrgId) {
-    loadProjects();
+      console.log('🔄 Loading projects for org:', currentOrgId);
+      loadProjects();
       hasLoadedRef.current = currentOrgId;
     }
   }, [currentOrgId]); // Only when org changes!
