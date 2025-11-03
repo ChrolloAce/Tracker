@@ -251,14 +251,16 @@ class TeamInvitationService {
         throw new Error('This invitation has expired');
       }
       
-      // Check if user is already a member
+      // Check if user is already an active member
       const existingMemberRef = doc(db, 'organizations', orgId, 'members', userId);
       const existingMemberDoc = await getDoc(existingMemberRef);
       
       if (existingMemberDoc.exists()) {
         const memberData = existingMemberDoc.data();
+        console.log(`📋 Found existing member document with status: ${memberData.status}`);
+        
         if (memberData.status === 'active') {
-          console.log(`⚠️ User is already a member of this organization`);
+          console.log(`⚠️ User is already an active member of this organization`);
           // Mark invitation as accepted anyway
           await updateDoc(inviteRef, { 
             status: 'accepted',
@@ -281,6 +283,10 @@ class TeamInvitationService {
           const userRef = doc(db, 'users', userId);
           await setDoc(userRef, { defaultOrgId: orgId }, { merge: true });
           return; // Already a member, just return
+        } else {
+          // Member exists but is not active (was removed/deleted)
+          // We'll reactivate them by updating the document below
+          console.log(`🔄 Reactivating previously removed member with new role: ${invite.role}`);
         }
       }
       
@@ -326,12 +332,15 @@ class TeamInvitationService {
         console.log(`✅ Created creator profile in project ${invite.projectId}`);
       }
       
+      // This will create a new member doc or overwrite an existing one (reactivation)
       batch.set(memberRef, memberData);
+      console.log(`📝 ${existingMemberDoc.exists() ? 'Reactivating' : 'Creating'} member document`);
       
       // Set this as the user's default organization
       const userRef = doc(db, 'users', userId);
       batch.set(userRef, { defaultOrgId: orgId }, { merge: true });
       
+      console.log(`💾 Committing batch write...`);
       await batch.commit();
       console.log(`✅ User ${userId} accepted invitation to org ${orgId}`);
       console.log(`✅ Set org ${orgId} as default for user ${userId}`);
@@ -352,12 +361,24 @@ class TeamInvitationService {
       
     } catch (error: any) {
       console.error(`❌ Error accepting invitation:`, error);
-      console.error(`Error code:`, error?.code);
-      console.error(`Error message:`, error?.message);
+      console.error(`📊 Error details:`);
+      console.error(`  - Code:`, error?.code);
+      console.error(`  - Message:`, error?.message);
+      console.error(`  - Name:`, error?.name);
+      console.error(`  - Stack:`, error?.stack);
+      console.error(`📋 Context:`, {
+        invitationId,
+        orgId,
+        userId,
+        email,
+        inviteRole: invite?.role
+      });
       
       // Re-throw with better error message
       if (error?.code === 'permission-denied') {
         throw new Error('Permission denied. The invitation may have expired or been deleted. Please ask for a new invitation.');
+      } else if (error?.code === 'not-found') {
+        throw new Error('Invitation not found. It may have been cancelled.');
       }
       
       throw error;
@@ -399,10 +420,10 @@ class TeamInvitationService {
     
     try {
       // Update main invitation
-      const inviteRef = doc(db, 'organizations', orgId, 'invitations', invitationId);
-      await updateDoc(inviteRef, {
-        status: 'expired'
-      });
+    const inviteRef = doc(db, 'organizations', orgId, 'invitations', invitationId);
+    await updateDoc(inviteRef, {
+      status: 'expired'
+    });
       console.log(`✅ Main invitation updated to expired`);
     } catch (err) {
       console.error(`❌ Failed to update main invitation:`, err);

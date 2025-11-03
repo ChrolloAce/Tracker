@@ -579,25 +579,25 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
                         >
                           <Copy className="w-4 h-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleCancelInvitation(invitation.id)}
-                          disabled={actionLoading === invitation.id}
-                          className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                        >
-                          {actionLoading === invitation.id ? (
-                            <span className="flex items-center gap-2">
-                              <div className="w-3 h-3 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
-                              Canceling...
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-2">
-                              <X className="w-4 h-4" />
-                              Cancel
-                            </span>
-                          )}
-                        </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleCancelInvitation(invitation.id)}
+                        disabled={actionLoading === invitation.id}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                      >
+                        {actionLoading === invitation.id ? (
+                          <span className="flex items-center gap-2">
+                            <div className="w-3 h-3 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                            Canceling...
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-2">
+                            <X className="w-4 h-4" />
+                            Cancel
+                          </span>
+                        )}
+                      </Button>
                       </div>
                     </td>
                   </tr>

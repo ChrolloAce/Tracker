@@ -418,15 +418,15 @@ const TeamManagementPage: React.FC = () => {
                         >
                           <Copy className="w-4 h-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleCancelInvitation(invitation.id)}
-                          disabled={actionLoading === invitation.id}
-                          className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                        >
-                          Cancel
-                        </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleCancelInvitation(invitation.id)}
+                        disabled={actionLoading === invitation.id}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                      >
+                        Cancel
+                      </Button>
                       </div>
                     </td>
                   </tr>

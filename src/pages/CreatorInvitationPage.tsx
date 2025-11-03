@@ -109,7 +109,7 @@ const CreatorInvitationPage: React.FC = () => {
       // Check if expired (handle both Timestamp and missing expiresAt)
       if (inviteData.expiresAt) {
         try {
-          const now = new Date();
+      const now = new Date();
           let expiryDate: Date;
           
           // Handle Firestore Timestamp
@@ -124,9 +124,9 @@ const CreatorInvitationPage: React.FC = () => {
           }
           
           if (expiryDate < now) {
-            setError('This invitation has expired. Please request a new invitation.');
-            setLoading(false);
-            return;
+        setError('This invitation has expired. Please request a new invitation.');
+        setLoading(false);
+        return;
           }
         } catch (err) {
           console.error('Error checking expiration:', err);
