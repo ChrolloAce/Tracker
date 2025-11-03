@@ -2749,7 +2749,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                         ) : (
                           <VideoSubmissionsTable
                             submissions={combinedSubmissions}
-                            onStatusUpdate={handleStatusUpdate}
                             onDelete={handleDelete}
                             onVideoClick={handleVideoClick}
                             headerTitle={getVideoTableHeader(dateFilter)}
@@ -2927,7 +2926,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             ) : (
               <VideoSubmissionsTable
                 submissions={combinedSubmissions}
-                onStatusUpdate={handleStatusUpdate}
                 onDelete={handleDelete}
                 onVideoClick={handleVideoClick}
                 headerTitle={getVideoTableHeader(dateFilter)}
@@ -3147,7 +3145,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               ) : (
                 <VideoSubmissionsTable
                   submissions={combinedSubmissions.slice(0, 5)}
-                  onStatusUpdate={() => {}}
                   onDelete={() => {}}
                   onVideoClick={handleVideoClick}
                   headerTitle={getVideoTableHeader(dateFilter)}
