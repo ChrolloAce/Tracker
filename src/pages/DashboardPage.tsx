@@ -1463,26 +1463,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     }
   }, [user, currentOrgId, currentProjectId]);
 
-  const handleStatusUpdate = useCallback(async (id: string, status: VideoSubmission['status']) => {
-    if (!user || !currentOrgId) return;
-    
-    
-    try {
-      // Update in Firestore
-      await FirestoreDataService.updateTrackedAccount(currentOrgId, currentProjectId!, id, {
-        status: status === 'rejected' ? 'archived' : 'active'
-      } as any);
-      
-      // Update state
-      setSubmissions(prev => prev.map(submission => 
-        submission.id === id ? { ...submission, status } : submission
-      ));
-      
-    } catch (error) {
-      console.error('Failed to update status:', error);
-    }
-  }, [user, currentOrgId]);
-
   const handleDelete = useCallback(async (id: string) => {
     if (!user || !currentOrgId) return;
     
