@@ -573,19 +573,19 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
               return sourceData.length > 0 ? (
                 <div className="flex flex-col items-center">
                   {/* Donut Chart */}
-                  <div className="relative w-48 h-48 mb-4">
-                    <svg viewBox="0 0 100 100" className="transform -rotate-90">
+                  <div className="relative w-56 h-56 mb-6">
+                    <svg viewBox="0 0 100 100" className="transform -rotate-90 drop-shadow-lg">
                       {(() => {
                         let currentAngle = 0;
-                        const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+                        const colors = ['#4F8FF7', '#60A5FA', '#93C5FD', '#BFDBFE', '#DBEAFE'];
                         return sourceData.map(([source, clicks], index) => {
                           const percentage = (clicks / totalClicks) * 100;
                           const angle = (percentage / 100) * 360;
                           const startAngle = currentAngle;
                           currentAngle += angle;
                           
-                          const radius = 40;
-                          const innerRadius = 28;
+                          const radius = 45;
+                          const innerRadius = 32;
                           const startRad = (startAngle - 90) * (Math.PI / 180);
                           const endRad = (startAngle + angle - 90) * (Math.PI / 180);
                           
@@ -601,40 +601,60 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                           
                           const largeArc = angle > 180 ? 1 : 0;
                           
+                          // Calculate label position
+                          const midAngle = startAngle + angle / 2;
+                          const labelRadius = radius + 8;
+                          const labelRad = (midAngle - 90) * (Math.PI / 180);
+                          const labelX = 50 + labelRadius * Math.cos(labelRad);
+                          const labelY = 50 + labelRadius * Math.sin(labelRad);
+                          
                           return (
-                            <path
-                              key={source}
-                              d={`M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x4} ${y4} Z`}
-                              fill={colors[index % colors.length]}
-                              className="hover:opacity-80 transition-opacity"
-                            />
+                            <g key={source}>
+                              <path
+                                d={`M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x4} ${y4} Z`}
+                                fill={colors[index % colors.length]}
+                                className="hover:opacity-90 transition-all cursor-pointer"
+                                style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}
+                              />
+                              {percentage > 5 && (
+                                <text
+                                  x={labelX}
+                                  y={labelY}
+                                  className="text-[4px] fill-gray-300 font-medium transform rotate-90"
+                                  textAnchor="middle"
+                                  dominantBaseline="middle"
+                                >
+                                  {source}
+                                </text>
+                              )}
+                            </g>
                           );
                         });
                       })()}
                     </svg>
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-white">{totalClicks}</div>
-                        <div className="text-xs text-gray-400">Total</div>
+                      <div className="text-center bg-black/20 rounded-full w-24 h-24 flex flex-col items-center justify-center">
+                        <div className="text-3xl font-bold text-white">{totalClicks}</div>
+                        <div className="text-xs text-gray-400 uppercase tracking-wider">Clicks</div>
                       </div>
                     </div>
                   </div>
                   
                   {/* Legend */}
-                  <div className="space-y-2 w-full">
+                  <div className="space-y-1 w-full">
                     {sourceData.map(([source, clicks], index) => {
                       const percentage = Math.round((clicks / totalClicks) * 100);
-                      const colors = ['bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-red-500', 'bg-purple-500'];
+                      const colors = ['bg-[#4F8FF7]', 'bg-[#60A5FA]', 'bg-[#93C5FD]', 'bg-[#BFDBFE]', 'bg-[#DBEAFE]'];
                       return (
-                        <div key={source} className="flex items-center justify-between py-2 px-3 hover:bg-white/5 rounded-lg transition-colors">
-                          <div className="flex items-center gap-2">
-                            <div className={`w-3 h-3 rounded-full ${colors[index % colors.length]}`}></div>
-                            <span className="text-xs text-gray-400">{getSourceIcon(source)}</span>
+                        <div key={source} className="flex items-center justify-between py-2.5 px-3 hover:bg-white/5 rounded-lg transition-colors border-b border-white/5 last:border-0">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-3 h-3 rounded-full ${colors[index % colors.length]} shadow-sm`}></div>
+                            <span className="text-base">{getSourceIcon(source)}</span>
                             <span className="text-sm font-medium text-white">{source}</span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-400">{percentage}%</span>
-                            <span className="text-sm font-semibold text-white">{clicks}</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm text-gray-400 font-medium">{percentage}%</span>
+                            <span className="text-sm font-semibold text-white min-w-[30px] text-right">{clicks}</span>
                           </div>
                         </div>
                       );
@@ -675,8 +695,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                   Browser
                 </button>
               </div>
-            </div>
-            
+      </div>
+
             {interval === 'hourly' ? (
               // Device View
               <div className="space-y-2">
