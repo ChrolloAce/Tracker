@@ -44,6 +44,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
   const [editingLink, setEditingLink] = useState<TrackedLink | null>(null);
+    const [hoveredSource, setHoveredSource] = useState<string | null>(null);
     const linkFilter = propLinkFilter; // Use the filter from props
 
     const orgId = organizationId || currentOrgId;
@@ -799,8 +800,6 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                 if (source === 'Referral') return '↗️';
                 return '🌐';
               };
-
-              const [hoveredSource, setHoveredSource] = useState<string | null>(null);
 
               return sourceData.length > 0 ? (
                 <div className="flex flex-col items-center">
