@@ -403,9 +403,23 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           <CreateLinkModal
             isOpen={showCreateModal}
             onClose={() => setShowCreateModal(false)}
-            onSuccess={() => {
-              setShowCreateModal(false);
-              loadData();
+            onCreate={async (originalUrl: string, title: string, description?: string, tags?: string[], linkedAccountId?: string) => {
+              if (!orgId || !projId) return;
+              try {
+                await FirestoreDataService.createTrackedLink(
+                  orgId,
+                  projId,
+                  originalUrl,
+                  title,
+                  description,
+                  tags,
+                  linkedAccountId
+                );
+                setShowCreateModal(false);
+                await loadData();
+              } catch (error) {
+                console.error('Failed to create link:', error);
+              }
             }}
           />
         )}
