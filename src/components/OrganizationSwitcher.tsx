@@ -163,25 +163,36 @@ const OrganizationSwitcher: React.FC = () => {
       {/* Modal for Switching Organizations */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={() => setIsOpen(false)}
         >
           <div 
-            className="bg-[#1a1a1a] rounded-xl shadow-2xl border border-gray-700/50 w-full max-w-md"
+            className="bg-white dark:bg-[#0A0A0A] rounded-2xl shadow-2xl border border-gray-200 dark:border-white/10 w-full max-w-md"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-700/50">
-              <h3 className="text-lg font-semibold text-gray-200">
-                Switch Organization
-              </h3>
-              <p className="text-sm text-gray-500 mt-1">
-                {organizations.length} organization{organizations.length !== 1 ? 's' : ''}
-              </p>
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 dark:border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-black dark:bg-white rounded-xl flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-white dark:text-black" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Switch Organization</h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    {organizations.length} organization{organizations.length !== 1 ? 's' : ''}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-2 text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            {/* Organization List */}
-            <div className="max-h-96 overflow-y-auto p-2">
+            {/* Organization List - Scrollable */}
+            <div className="max-h-96 overflow-y-auto p-6 space-y-2">
               {organizations.map((org) => {
                 const role = userRoles.get(org.id);
                 return (
@@ -189,45 +200,43 @@ const OrganizationSwitcher: React.FC = () => {
                     key={org.id}
                     onClick={() => handleOrgSelect(org.id)}
                     className={clsx(
-                      'w-full px-4 py-3 flex items-start space-x-3 rounded-lg transition-colors text-left mb-1',
+                      'w-full px-4 py-3 flex items-center gap-3 rounded-xl transition-colors text-left',
                       org.id === currentOrgId
-                        ? 'bg-gray-800/70'
-                        : 'hover:bg-gray-800/50'
+                        ? 'bg-gray-200 dark:bg-white/10 border border-gray-300 dark:border-white/20'
+                        : 'bg-white dark:bg-white/5 border border-transparent hover:bg-gray-100 dark:hover:bg-white/10'
                     )}
                   >
-                    <div className="flex-shrink-0 mt-0.5">
-                      {org.logoUrl ? (
-                        <img
-                          src={org.logoUrl}
-                          alt={org.name}
-                          className="w-10 h-10 rounded-lg object-cover"
-                        />
-                      ) : (
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gray-800">
-                          <Building2 className="w-6 h-6 text-gray-500" />
-                        </div>
-                      )}
-                    </div>
+                    {org.logoUrl ? (
+                      <img
+                        src={org.logoUrl}
+                        alt={org.name}
+                        className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gray-200 dark:bg-white/10 flex-shrink-0">
+                        <Building2 className="w-5 h-5 text-gray-400" />
+                      </div>
+                    )}
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <h4 className="text-sm font-medium text-gray-200 truncate">
+                        <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
                           {org.name}
                         </h4>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                           {getRoleIcon(role)}
                           {org.id === currentOrgId && (
-                            <Check className="w-4 h-4 text-gray-400" />
+                            <Check className="w-4 h-4 text-gray-900 dark:text-white" />
                           )}
                         </div>
                       </div>
                       <div className="flex items-center gap-3 mt-1">
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
                           {role && (
                             <span className="capitalize">{role}</span>
                           )}
                         </p>
-                        <p className="text-xs text-gray-600">
+                        <p className="text-xs text-gray-500 dark:text-gray-500">
                           {org.memberCount} {org.memberCount === 1 ? 'member' : 'members'}
                         </p>
                       </div>
@@ -238,13 +247,13 @@ const OrganizationSwitcher: React.FC = () => {
             </div>
 
             {/* Create New Organization Button */}
-            <div className="px-4 py-3 border-t border-gray-700/50">
+            <div className="px-6 py-5 border-t border-gray-200 dark:border-white/10">
               <button
                 onClick={() => {
                   setIsOpen(false);
                   window.location.href = '/create-organization';
                 }}
-                className="w-full px-4 py-2.5 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-all flex items-center justify-center gap-2 font-medium"
+                className="w-full px-4 py-3 bg-black dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-100 text-white dark:text-black font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Create New Organization
