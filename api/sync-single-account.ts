@@ -293,78 +293,84 @@ export default async function handler(
       console.log(`📺 Fetching YouTube videos for ${account.username}...`);
       
       try {
-        // Define base URL for API calls
-        const baseUrl = process.env.VERCEL_URL 
-          ? `https://${process.env.VERCEL_URL}` 
-          : 'https://tracker-red-zeta.vercel.app';
-        
-        // Step 1: Get channel info first
-        const channelInfoResponse = await fetch(
-          `${baseUrl}/api/youtube-channel`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'getChannelInfo',
-              channelHandle: account.username.startsWith('@') ? account.username : `@${account.username}`
-            })
-          }
-        );
-
-        if (!channelInfoResponse.ok) {
-          const errorData = await channelInfoResponse.json();
-          console.error('YouTube API returned', channelInfoResponse.status, errorData);
-          throw new Error(`YouTube API error: ${channelInfoResponse.status}`);
+        // Call YouTube Data API directly instead of through intermediate endpoint
+        const apiKey = process.env.YOUTUBE_API_KEY;
+        if (!apiKey) {
+          console.error('❌ YOUTUBE_API_KEY not configured');
+          throw new Error('YouTube API key not configured');
         }
 
-        const channelInfo = await channelInfoResponse.json();
-        const channelId = channelInfo.channel?.id;
+        // Step 1: Get channel info by handle
+        const channelHandle = account.username.startsWith('@') ? account.username.substring(1) : account.username;
+        console.log(`🔍 Looking up channel by handle: ${channelHandle}`);
         
-        if (!channelId) {
-          throw new Error('Could not get channel ID');
+        const channelUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&forHandle=${encodeURIComponent(channelHandle)}&key=${apiKey}`;
+        const channelResponse = await fetch(channelUrl);
+        
+        if (!channelResponse.ok) {
+          const errorText = await channelResponse.text();
+          console.error('❌ YouTube channel lookup failed:', channelResponse.status, errorText);
+          throw new Error(`YouTube API error: ${channelResponse.status}`);
         }
-        
+
+        const channelData = await channelResponse.json();
+        if (!channelData.items || channelData.items.length === 0) {
+          console.error('❌ Channel not found for handle:', channelHandle);
+          throw new Error('Channel not found');
+        }
+
+        const channelId = channelData.items[0].id;
         console.log(`✅ Found YouTube channel ID: ${channelId}`);
         
-        // Step 2: Get Shorts videos
-        const videosResponse = await fetch(
-          `${baseUrl}/api/youtube-channel`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'getShorts',
-              channelId: channelId,
-              maxResults: videoLimit
-            })
-          }
-        );
+        // Step 2: Search for Shorts videos from this channel
+        const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${encodeURIComponent(channelId)}&type=video&videoDuration=short&maxResults=${videoLimit}&order=date&key=${apiKey}`;
+        const searchResponse = await fetch(searchUrl);
+        
+        if (!searchResponse.ok) {
+          const errorText = await searchResponse.text();
+          console.error('❌ YouTube search failed:', searchResponse.status, errorText);
+          throw new Error(`YouTube search error: ${searchResponse.status}`);
+        }
 
-        if (videosResponse.ok) {
-          const data = await videosResponse.json();
-          const youtubeVideos = data.videos || [];
+        const searchData = await searchResponse.json();
+        const videoIds = (searchData.items || []).map((item: any) => item.id.videoId).filter(Boolean);
+
+        if (videoIds.length === 0) {
+          console.log('⚠️ No Shorts found for this channel');
+          videos = [];
+        } else {
+          // Step 3: Get full video details (statistics)
+          const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${videoIds.join(',')}&key=${apiKey}`;
+          const videoResponse = await fetch(videoUrl);
+          
+          if (!videoResponse.ok) {
+            const errorText = await videoResponse.text();
+            console.error('❌ YouTube videos fetch failed:', videoResponse.status, errorText);
+            throw new Error(`YouTube videos error: ${videoResponse.status}`);
+          }
+
+          const videoData = await videoResponse.json();
+          const youtubeVideos = videoData.items || [];
           
           console.log(`✅ Fetched ${youtubeVideos.length} YouTube videos`);
           
           // Transform YouTube data to video format
           videos = youtubeVideos.map((video: any) => ({
-            videoId: video.id || video.videoId,
-            videoTitle: video.title || video.videoTitle || 'Untitled Video',
-            videoUrl: video.url || video.videoUrl || `https://youtube.com/watch?v=${video.id}`,
+            videoId: video.id,
+            videoTitle: video.snippet?.title || 'Untitled Video',
+            videoUrl: `https://youtube.com/watch?v=${video.id}`,
             platform: 'youtube',
-            thumbnail: video.thumbnail || '',
+            thumbnail: video.snippet?.thumbnails?.high?.url || video.snippet?.thumbnails?.default?.url || '',
             accountUsername: account.username,
-            accountDisplayName: video.channelTitle || account.username,
-            uploadDate: video.uploadDate ? Timestamp.fromDate(new Date(video.uploadDate)) : Timestamp.now(),
-            views: video.views || video.viewCount || 0,
-            likes: video.likes || video.likeCount || 0,
-            comments: video.comments || video.commentCount || 0,
+            accountDisplayName: video.snippet?.channelTitle || account.username,
+            uploadDate: video.snippet?.publishedAt ? Timestamp.fromDate(new Date(video.snippet.publishedAt)) : Timestamp.now(),
+            views: parseInt(video.statistics?.viewCount || '0', 10),
+            likes: parseInt(video.statistics?.likeCount || '0', 10),
+            comments: parseInt(video.statistics?.commentCount || '0', 10),
             shares: 0,
-            caption: video.description || '',
-            duration: video.duration || 0
+            caption: video.snippet?.description || '',
+            duration: 0
           }));
-        } else {
-          console.error(`YouTube API returned ${response.status}`);
         }
       } catch (youtubeError) {
         console.error('YouTube fetch error:', youtubeError);
