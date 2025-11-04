@@ -25,20 +25,19 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Step 1: Basic Info + Linked Accounts
-  const [displayName, setDisplayName] = useState('');
+  // Step 1: Email (Required - we get display name from email)
+  const [email, setEmail] = useState('');
+
+  // Step 2: Linked Accounts (Optional)
   const [availableAccounts, setAvailableAccounts] = useState<TrackedAccount[]>([]);
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingAccounts, setLoadingAccounts] = useState(false);
 
-  // Step 2: Email (Optional)
-  const [email, setEmail] = useState('');
-
   const totalSteps = 2;
 
   useEffect(() => {
-    if (isOpen && step === 1 && currentOrgId && currentProjectId) {
+    if (isOpen && step === 2 && currentOrgId && currentProjectId) {
       loadAvailableAccounts();
     }
   }, [isOpen, step, currentOrgId, currentProjectId]);
@@ -60,25 +59,21 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
 
   const handleClose = () => {
     setStep(1);
-    setDisplayName('');
+    setEmail('');
     setSelectedAccountIds([]);
     setSearchQuery('');
-    setEmail('');
     setError(null);
     onClose();
   };
 
   const handleNext = () => {
     if (step === 1) {
-      if (!displayName.trim()) {
-        setError('Please enter a display name');
+      // Email is required
+      if (!email.trim()) {
+        setError('Please enter an email address');
         return;
       }
-    }
-    
-    if (step === 2) {
-      // Email is optional, but if provided, must be valid
-      if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         setError('Please enter a valid email address');
         return;
       }
@@ -99,6 +94,11 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
       return;
     }
 
+    if (!email.trim()) {
+      setError('Email is required');
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -110,63 +110,23 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
         throw new Error('Organization not found');
       }
 
-      if (email.trim()) {
-        // If email is provided, send invitation as before
-        await TeamInvitationService.createInvitation(
-          currentOrgId,
-          email,
-          'creator',
-          user.uid,
-          user.displayName || user.email || 'Team Member',
-          user.email || '',
-          currentOrg.name,
-          currentProjectId
-        );
-      } else {
-        // If no email, create creator directly without sending invitation
-        const creatorId = `creator_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        const creatorData: any = {
-          id: creatorId,
-          orgId: currentOrgId,
-          projectId: currentProjectId,
-          displayName: displayName.trim(),
-          linkedAccountsCount: selectedAccountIds.length,
-          totalEarnings: 0,
-          payoutsEnabled: false,
-          createdAt: new Date(),
-          status: 'pending' // Pending until they claim their account with email
-        };
-        
-        // Only include email if it was provided
-        if (email.trim()) {
-          creatorData.email = email.trim();
-        }
-
-        // Create creator document
-        const creatorRef = doc(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'creators', creatorId);
-        await setDoc(creatorRef, creatorData);
-
-        // Link selected accounts to this creator
-        for (const accountId of selectedAccountIds) {
-          const linkId = `${creatorId}_${accountId}`;
-          const linkRef = doc(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'creatorLinks', linkId);
-          await setDoc(linkRef, {
-            id: linkId,
-            orgId: currentOrgId,
-            projectId: currentProjectId,
-            creatorId: creatorId,
-            accountId: accountId,
-            createdAt: new Date(),
-            createdBy: user.uid
-          });
-        }
-      }
+      // Send invitation (display name will be set from email automatically)
+      await TeamInvitationService.createInvitation(
+        currentOrgId,
+        email.trim(),
+        'creator',
+        user.uid,
+        user.displayName || user.email || 'Team Member',
+        user.email || '',
+        currentOrg.name,
+        currentProjectId
+      );
 
       handleClose();
       onSuccess();
     } catch (error: any) {
       console.error('Failed to create creator:', error);
-      setError(error.message || 'Failed to create creator');
+      setError(error.message || 'Failed to send invitation');
     } finally {
       setLoading(false);
     }
@@ -187,69 +147,80 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
 
   const canProceed = () => {
     if (step === 1) {
-      return displayName.trim().length > 0;
+      // Email is required and must be valid
+      return email.trim().length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     }
     if (step === 2) {
-      // Email is optional, but if provided, must be valid
-      return !email.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      // Accounts are optional
+      return true;
     }
     return true;
   };
 
-  // Step 1: Name + Account Selection
+  // Step 1: Email
   const renderStep1 = () => (
     <div className="space-y-5">
       <div>
-        <label className="block text-sm font-medium text-white mb-2">
-          Display Name *
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Creator Email Address *
         </label>
         <div className="relative">
-          <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
           <input
-            type="text"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="John Doe"
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="creator@example.com"
+            className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-600 focus:border-gray-600 transition-colors"
             autoFocus
           />
         </div>
+        <p className="text-sm text-gray-500 mt-2">
+          An invitation will be sent to this email. Their display name will be set automatically from their email.
+        </p>
       </div>
+    </div>
+  );
 
+  // Step 2: Link Accounts (Optional)
+  const renderStep2 = () => (
+    <div className="space-y-5 flex flex-col h-full">
       <div>
-        <label className="block text-sm font-medium text-white mb-3">
-          Link Tracked Accounts (Optional)
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Link Tracked Accounts <span className="text-gray-500 font-normal">(Optional)</span>
         </label>
-        <p className="text-sm text-gray-400 mb-4">
+        <p className="text-sm text-gray-500 mb-4">
           Select which accounts this creator manages. You can also do this later.
         </p>
 
         {/* Search */}
         <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search accounts..."
-            className="w-full pl-10 pr-4 py-2 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50"
+            className="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-600 focus:border-gray-600 transition-colors"
           />
         </div>
+      </div>
 
-        {/* Accounts List */}
+      {/* Accounts List - Scrollable */}
+      <div className="flex-1 overflow-hidden">
         {loadingAccounts ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-700 border-t-white"></div>
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-700 border-t-gray-500"></div>
           </div>
         ) : filteredAccounts.length === 0 ? (
-          <div className="text-center py-8 bg-gray-800/50 rounded-lg border border-gray-700/50">
+          <div className="text-center py-12 bg-gray-800/50 rounded-lg border border-gray-700">
             <LinkIcon className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-400">
+            <p className="text-gray-500">
               {searchQuery ? 'No accounts match your search' : 'No tracked accounts found'}
             </p>
           </div>
         ) : (
-          <div className="max-h-64 overflow-y-auto space-y-2 bg-gray-800/30 rounded-lg p-3 border border-gray-700/50">
+          <div className="h-full overflow-y-auto space-y-2 bg-gray-800/30 rounded-lg p-3 border border-gray-700/50">
             {filteredAccounts.map((account) => (
               <div
                 key={account.id}
@@ -257,18 +228,18 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
                 className={clsx(
                   'flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all',
                   selectedAccountIds.includes(account.id)
-                    ? 'bg-white/10 border-2 border-white/30'
-                    : 'bg-gray-700/30 border-2 border-transparent hover:bg-gray-700/50'
+                    ? 'bg-gray-700 border-2 border-gray-600'
+                    : 'bg-gray-800/50 border-2 border-transparent hover:bg-gray-700/50'
                 )}
               >
                 <div className={clsx(
                   'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0',
                   selectedAccountIds.includes(account.id)
-                    ? 'bg-white border-white'
-                    : 'border-gray-500'
+                    ? 'bg-gray-600 border-gray-600'
+                    : 'border-gray-600'
                 )}>
                   {selectedAccountIds.includes(account.id) && (
-                    <Check className="w-3 h-3 text-black" />
+                    <Check className="w-3 h-3 text-white" />
                   )}
                 </div>
                 
@@ -280,7 +251,6 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
                       alt={account.username}
                       className="w-10 h-10 rounded-full object-cover"
                       onError={(e) => {
-                        // Fallback to icon if image fails to load
                         e.currentTarget.style.display = 'none';
                         e.currentTarget.nextElementSibling?.classList.remove('hidden');
                       }}
@@ -290,71 +260,29 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
                     "w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center",
                     account.profilePicture ? 'hidden' : ''
                   )}>
-                    <UserIcon className="w-5 h-5 text-gray-400" />
+                    <UserIcon className="w-5 h-5 text-gray-500" />
                   </div>
                 </div>
                 
                 <PlatformIcon platform={account.platform} size="sm" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">
+                  <p className="text-sm font-medium text-gray-200 truncate">
                     @{account.username}
                   </p>
                   {account.displayName && (
-                    <p className="text-xs text-gray-400 truncate">{account.displayName}</p>
+                    <p className="text-xs text-gray-500 truncate">{account.displayName}</p>
                   )}
                 </div>
               </div>
             ))}
           </div>
         )}
-        
-        {selectedAccountIds.length > 0 && (
-          <p className="text-sm text-gray-400 mt-3">
-            {selectedAccountIds.length} account{selectedAccountIds.length !== 1 ? 's' : ''} selected
-          </p>
-        )}
-      </div>
-    </div>
-  );
-
-  // Step 2: Email (Optional)
-  const renderStep2 = () => (
-    <div className="space-y-5">
-      <div>
-        <label className="block text-sm font-medium text-white mb-2">
-          Email Address <span className="text-gray-400 font-normal">(Optional)</span>
-        </label>
-        <div className="relative">
-          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="creator@example.com"
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-700/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50"
-            autoFocus
-          />
-        </div>
-      </div>
-
-      <div className="bg-gray-700/30 border border-gray-600/30 rounded-lg p-4">
-        <p className="text-sm text-gray-300">
-          {email.trim() 
-            ? "An invitation will be sent to this email address. They can accept and claim their account." 
-            : "Without an email, the creator will be added directly. You can add their email later."}
-        </p>
       </div>
       
       {selectedAccountIds.length > 0 && (
-        <div className="bg-white/10 border border-white/20 rounded-lg p-4">
-          <p className="text-sm text-white font-medium mb-2">
-            Summary
-          </p>
-          <p className="text-sm text-gray-300">
-            <strong>{displayName}</strong> will be linked to{' '}
-            <strong>{selectedAccountIds.length} account{selectedAccountIds.length !== 1 ? 's' : ''}</strong>
-          </p>
-        </div>
+        <p className="text-sm text-gray-500">
+          {selectedAccountIds.length} account{selectedAccountIds.length !== 1 ? 's' : ''} selected
+        </p>
       )}
     </div>
   );
@@ -362,9 +290,9 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
   const getStepTitle = () => {
     switch (step) {
       case 1:
-        return 'Creator Information & Accounts';
+        return 'Creator Email';
       case 2:
-        return 'Email (Optional)';
+        return 'Link Accounts';
       default:
         return '';
     }
@@ -372,23 +300,23 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="">
-      <div className="space-y-6">
+      <div className="flex flex-col h-[600px]">
         {/* Custom Header with Step Indicator */}
-        <div className="flex items-center justify-between pb-4 border-b border-gray-700">
-          <h2 className="text-xl font-semibold text-white">Invite Creator</h2>
+        <div className="flex items-center justify-between pb-4 border-b border-gray-700/50">
+          <h2 className="text-xl font-semibold text-gray-200">Invite Creator</h2>
           <div className="flex items-center gap-4">
             {/* Step Indicator */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               {[1, 2].map((stepNum) => (
                 <div key={stepNum} className="flex items-center">
                   <div
                     className={clsx(
-                      "w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors border-2",
+                      "w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all",
                       stepNum === step
-                        ? 'bg-white text-black border-white'
+                        ? 'bg-gray-600 text-white'
                         : stepNum < step
-                        ? 'bg-gray-600 text-white border-gray-600'
-                        : 'bg-transparent text-gray-500 border-gray-700'
+                        ? 'bg-gray-700 text-gray-400'
+                        : 'bg-gray-800 text-gray-600'
                     )}
                   >
                     {stepNum < step ? <Check className="w-4 h-4" /> : stepNum}
@@ -396,8 +324,8 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
                   {stepNum < totalSteps && (
                     <div
                       className={clsx(
-                        "w-8 h-0.5 mx-1",
-                        stepNum < step ? 'bg-gray-600' : 'bg-gray-700'
+                        "w-6 h-0.5 mx-0.5",
+                        stepNum < step ? 'bg-gray-700' : 'bg-gray-800'
                       )}
                     />
                   )}
@@ -406,74 +334,71 @@ const CreateCreatorModal: React.FC<CreateCreatorModalProps> = ({ isOpen, onClose
             </div>
             <button
               onClick={handleClose}
-              className="text-gray-400 hover:text-white transition-colors"
+              className="text-gray-500 hover:text-gray-300 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
         
-        <div>
-          <h3 className="text-lg font-medium text-white mb-1">
+        <div className="py-4">
+          <h3 className="text-lg font-medium text-gray-200 mb-1">
             {getStepTitle()}
           </h3>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-gray-500">
             Step {step} of {totalSteps}
           </p>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-            <p className="text-sm text-red-300">{error}</p>
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-4">
+            <p className="text-sm text-red-400">{error}</p>
           </div>
         )}
 
-        {/* Step Content */}
-        <div className="min-h-[300px]">
+        {/* Step Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto pr-1">
           {step === 1 && renderStep1()}
           {step === 2 && renderStep2()}
         </div>
 
-        {/* Navigation Buttons */}
-        <div className="flex items-center justify-between gap-3 pt-4 border-t border-gray-700">
-          <Button
-            variant="ghost"
+        {/* Navigation Buttons - Fixed at Bottom */}
+        <div className="flex items-center justify-between gap-3 pt-4 mt-4 border-t border-gray-700/50">
+          <button
             onClick={step === 1 ? handleClose : handleBack}
             disabled={loading}
-            className="text-gray-400 hover:text-white"
+            className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-gray-300 hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
             {step === 1 ? 'Cancel' : 'Back'}
-          </Button>
+          </button>
 
           {step < totalSteps ? (
-            <Button
+            <button
               onClick={handleNext}
               disabled={!canProceed() || loading}
-              className="bg-white hover:bg-gray-200 text-black font-semibold"
+              className="px-5 py-2 bg-gray-600 hover:bg-gray-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-600"
             >
               Next
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
+            </button>
           ) : (
-            <Button
+            <button
               onClick={handleSubmit}
               disabled={loading}
-              className="bg-white hover:bg-gray-200 text-black font-semibold"
+              className="px-5 py-2 bg-gray-600 hover:bg-gray-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {loading ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin mr-2" />
-                  {email.trim() ? 'Sending...' : 'Creating...'}
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Sending...
                 </>
               ) : (
                 <>
-                  <Check className="w-4 h-4 mr-2" />
-                  {email.trim() ? 'Send Invitation' : 'Create'}
+                  <Mail className="w-4 h-4" />
+                  Send Invitation
                 </>
               )}
-            </Button>
+            </button>
           )}
         </div>
       </div>
