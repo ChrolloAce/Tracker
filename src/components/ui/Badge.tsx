@@ -33,7 +33,7 @@ export function Badge({ count, loading, className = '' }: BadgeProps) {
       className={`
         flex items-center justify-center
         min-w-[20px] h-5 px-1.5
-        bg-green-500 text-white
+        bg-blue-500 text-white
         rounded-full text-xs font-semibold
         animate-pulse
         ${className}

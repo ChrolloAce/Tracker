@@ -52,6 +52,7 @@ class FirestoreDataService {
       orgId,
       dateAdded: Timestamp.now(),
       addedBy: userId,
+      isRead: false,
       totalVideos: 0,
       totalViews: 0,
       totalLikes: 0,
