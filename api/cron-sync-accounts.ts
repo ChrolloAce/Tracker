@@ -24,6 +24,7 @@ export default async function handler(
     // Initialize Firebase Admin
     const { initializeApp, cert, getApps } = await import('firebase-admin/app');
     const { getFirestore, Timestamp } = await import('firebase-admin/firestore');
+    const { getStorage } = await import('firebase-admin/storage');
 
     if (getApps().length === 0) {
       let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
@@ -38,10 +39,14 @@ export default async function handler(
         privateKey: privateKey,
       };
 
-      initializeApp({ credential: cert(serviceAccount as any) });
+      initializeApp({ 
+        credential: cert(serviceAccount as any),
+        storageBucket: `${process.env.FIREBASE_PROJECT_ID}.appspot.com`
+      });
     }
 
     const db = getFirestore();
+    const storage = getStorage();
 
     // Find pending accounts (limit to 5 per run to avoid timeout)
     const accountsSnapshot = await db
@@ -234,7 +239,7 @@ export default async function handler(
               
               console.log(`📊 Fetched ${tweets.length} tweets (${allTweets.length} total, ${allTweets.length - tweets.length} retweets filtered)`);
               
-              // Transform tweets to video format
+              // Transform tweets to video format (thumbnails will be uploaded later)
               videos = tweets.map((tweet: any, index: number) => {
                 let thumbnail = '';
                 if (tweet.media && tweet.media.length > 0) {
@@ -252,7 +257,7 @@ export default async function handler(
                   videoTitle: tweetText ? tweetText.substring(0, 100) + (tweetText.length > 100 ? '...' : '') : 'Untitled Tweet',
                   videoUrl: tweetUrl,
                   platform: 'twitter',
-                  thumbnail: thumbnail,
+                  thumbnail: thumbnail, // Will be uploaded to Firebase Storage before saving
                   accountUsername: account.username,
                   accountDisplayName: tweet.author?.name || account.username,
                   uploadDate: tweet.createdAt ? Timestamp.fromDate(new Date(tweet.createdAt)) : Timestamp.now(),
@@ -336,11 +341,28 @@ export default async function handler(
           }
         });
 
-        // Save videos to Firestore
+        // Save videos to Firestore (upload thumbnails first)
         const batch = db.batch();
         let savedCount = 0;
 
         for (const video of videosToSave) {
+          // Upload thumbnail to Firebase Storage before saving
+          let uploadedThumbnail = video.thumbnail;
+          if (video.thumbnail && !video.thumbnail.includes('storage.googleapis.com')) {
+            try {
+              const filename = `${account.platform}_${video.videoId}_thumb.jpg`;
+              uploadedThumbnail = await downloadAndUploadThumbnail(
+                video.thumbnail,
+                account.orgId,
+                filename,
+                storage
+              );
+              console.log(`🖼️ Uploaded thumbnail for ${video.videoId}`);
+            } catch (error) {
+              console.warn(`⚠️ Failed to upload thumbnail for ${video.videoId}, using original URL`);
+            }
+          }
+          
           const videoRef = db
             .collection('organizations')
             .doc(account.orgId)
@@ -351,6 +373,7 @@ export default async function handler(
 
           batch.set(videoRef, {
             ...video,
+            thumbnail: uploadedThumbnail, // Use uploaded thumbnail
             orgId: account.orgId,
             projectId: account.projectId || 'default',
             trackedAccountId: accountId,
@@ -615,6 +638,80 @@ export default async function handler(
       error: 'Cron job failed',
       message: error.message
     });
+  }
+}
+
+/**
+ * Download thumbnail from URL and upload to Firebase Storage
+ * Returns Firebase Storage URL or falls back to original URL
+ */
+async function downloadAndUploadThumbnail(
+  thumbnailUrl: string,
+  orgId: string,
+  filename: string,
+  storage: any
+): Promise<string> {
+  try {
+    if (!thumbnailUrl || thumbnailUrl.includes('storage.googleapis.com')) {
+      // Already a Firebase Storage URL or empty, return as-is
+      return thumbnailUrl;
+    }
+
+    console.log(`📥 Downloading thumbnail: ${filename}`);
+    
+    const isTwitter = thumbnailUrl.includes('twimg.com');
+    const fetchOptions: any = {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'image/*,*/*;q=0.8'
+      }
+    };
+    
+    if (isTwitter) {
+      fetchOptions.headers['Referer'] = 'https://twitter.com/';
+    }
+    
+    const response = await fetch(thumbnailUrl, fetchOptions);
+    
+    if (!response.ok) {
+      console.warn(`⚠️ Failed to download thumbnail (${response.status}), using original URL`);
+      return thumbnailUrl;
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    if (buffer.length < 100) {
+      console.warn(`⚠️ Thumbnail too small (${buffer.length} bytes), using original URL`);
+      return thumbnailUrl;
+    }
+    
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    
+    // Upload to Firebase Storage
+    const bucket = storage.bucket();
+    const storagePath = `organizations/${orgId}/thumbnails/${filename}`;
+    const file = bucket.file(storagePath);
+    
+    await file.save(buffer, {
+      metadata: {
+        contentType: contentType,
+        metadata: {
+          uploadedAt: new Date().toISOString(),
+          originalUrl: thumbnailUrl
+        }
+      },
+      public: true
+    });
+    
+    await file.makePublic();
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
+    
+    console.log(`✅ Thumbnail uploaded successfully`);
+    return publicUrl;
+  } catch (error) {
+    console.error(`❌ Failed to upload thumbnail:`, error);
+    return thumbnailUrl; // Fallback to original URL
   }
 }
 

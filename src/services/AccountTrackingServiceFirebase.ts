@@ -701,14 +701,20 @@ export class AccountTrackingServiceFirebase {
           const videoCode = media.code || media.shortCode || media.id;
           if (!videoCode) continue;
           
-          // Extract video data (we need this for both new and existing videos)
-          let thumbnailUrl = media.image_versions2?.candidates?.[0]?.url || 
-                            media.display_uri || 
-                            media.displayUrl || '';
+          // CHECK: Is this a NEW video or an EXISTING one?
+          const isExistingVideo = existingVideoIds.has(videoCode);
           
+          // Extract thumbnail URL from media
+          const thumbnailUrl = media.image_versions2?.candidates?.[0]?.url || 
+                               media.display_uri || 
+                               media.displayUrl || '';
+          
+          // ONLY upload thumbnail to Firebase Storage for NEW videos
+          // For existing videos, we keep their existing thumbnail
           let uploadedThumbnail = thumbnailUrl;
-          if (thumbnailUrl) {
+          if (!isExistingVideo && thumbnailUrl) {
             try {
+              console.log(`📸 Uploading thumbnail to Firebase Storage for NEW video: ${videoCode}`);
               uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
                 orgId,
                 thumbnailUrl,
@@ -716,9 +722,14 @@ export class AccountTrackingServiceFirebase {
                 'thumbnail'
               );
             } catch (error) {
-              console.warn(`⚠️ Failed to upload thumbnail for ${videoCode}`);
+              console.warn(`⚠️ Failed to upload thumbnail for ${videoCode}, using CDN URL`);
               uploadedThumbnail = thumbnailUrl;
             }
+          } else if (isExistingVideo) {
+            console.log(`✅ Keeping existing thumbnail for video: ${videoCode}`);
+            // For existing videos, we don't include thumbnail in the update
+            // (it will be preserved from the existing document)
+            uploadedThumbnail = ''; // Don't overwrite existing thumbnail
           }
           
           const caption = media.caption?.text || (typeof media.caption === 'string' ? media.caption : '') || '';
@@ -746,8 +757,7 @@ export class AccountTrackingServiceFirebase {
             mentions: []
           };
           
-          // CHECK: Is this a NEW video or an EXISTING one?
-          if (existingVideoIds.has(videoCode)) {
+          if (isExistingVideo) {
             // EXISTING VIDEO - Add to update list with fresh metrics
             updatedVideos.push(videoData);
             consecutiveExistingVideos++;
@@ -924,22 +934,26 @@ export class AccountTrackingServiceFirebase {
                           item.cover || 
                           '';
       
+      // ONLY upload thumbnail to Firebase Storage for NEW videos
       let uploadedThumbnail = thumbnailUrl;
-      if (thumbnailUrl) {
-        console.log(`🖼️ TikTok thumbnail URL found for video ${videoId}: ${thumbnailUrl.substring(0, 80)}...`);
+      if (!isExisting && thumbnailUrl) {
+        console.log(`🖼️ TikTok thumbnail URL found for NEW video ${videoId}: ${thumbnailUrl.substring(0, 80)}...`);
         try {
-        uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
-          orgId,
-          thumbnailUrl,
+          uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
+            orgId,
+            thumbnailUrl,
             `tt_${videoId}_thumb`,
-          'thumbnail'
-        );
+            'thumbnail'
+          );
           console.log(`✅ TikTok thumbnail uploaded to Firebase Storage`);
         } catch (error) {
           console.warn(`⚠️ Failed to upload TikTok thumbnail for ${videoId}, using original URL:`, error);
           uploadedThumbnail = thumbnailUrl;
         }
-      } else {
+      } else if (isExisting) {
+        console.log(`✅ Keeping existing thumbnail for TikTok video: ${videoId}`);
+        uploadedThumbnail = ''; // Don't overwrite existing thumbnail
+      } else if (!thumbnailUrl) {
         console.warn(`⚠️ TikTok video ${videoId} has no thumbnail URL in API response`);
       }
 
@@ -1009,15 +1023,24 @@ export class AccountTrackingServiceFirebase {
       for (const short of shorts) {
         const isExisting = existingVideoIds.has(short.videoId || '');
         
-        // Upload thumbnail to Firebase Storage
+        // ONLY upload thumbnail to Firebase Storage for NEW videos
         let uploadedThumbnail = short.thumbnail;
-        if (short.thumbnail) {
-          uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
-            orgId,
-            short.thumbnail,
-            `yt_${short.videoId}`,
-            'thumbnail'
-          );
+        if (!isExisting && short.thumbnail) {
+          try {
+            console.log(`📸 Uploading thumbnail to Firebase Storage for NEW YouTube Short: ${short.videoId}`);
+            uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
+              orgId,
+              short.thumbnail,
+              `yt_${short.videoId}`,
+              'thumbnail'
+            );
+          } catch (error) {
+            console.warn(`⚠️ Failed to upload YouTube thumbnail for ${short.videoId}, using original URL:`, error);
+            uploadedThumbnail = short.thumbnail;
+          }
+        } else if (isExisting) {
+          console.log(`✅ Keeping existing thumbnail for YouTube Short: ${short.videoId}`);
+          uploadedThumbnail = ''; // Don't overwrite existing thumbnail
         }
 
         const processedVideo: AccountVideo = {
@@ -1097,9 +1120,10 @@ export class AccountTrackingServiceFirebase {
           isExisting
         });
         
-        // Upload thumbnail to Firebase Storage
-        if (tweet.thumbnail) {
+        // ONLY upload thumbnail to Firebase Storage for NEW tweets
+        if (!isExisting && tweet.thumbnail) {
           try {
+            console.log(`📸 Uploading thumbnail to Firebase Storage for NEW tweet: ${videoId}`);
             uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
               orgId,
               tweet.thumbnail,
@@ -1111,7 +1135,10 @@ export class AccountTrackingServiceFirebase {
             console.warn(`⚠️ Failed to upload Twitter thumbnail for ${videoId}, using original URL:`, error);
             uploadedThumbnail = tweet.thumbnail;
           }
-        } else {
+        } else if (isExisting) {
+          console.log(`✅ Keeping existing thumbnail for Twitter tweet: ${videoId}`);
+          uploadedThumbnail = ''; // Don't overwrite existing thumbnail
+        } else if (!tweet.thumbnail) {
           console.warn(`⚠️ Twitter tweet ${videoId} has no thumbnail`);
         }
 

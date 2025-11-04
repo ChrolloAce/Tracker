@@ -753,23 +753,30 @@ async function saveVideosToFirestore(
         lastRefreshed: Timestamp.now()
       };
 
-      // Update thumbnail if:
-      // 1. Existing thumbnail is an Instagram CDN URL (expires)
-      // 2. Existing thumbnail is empty/missing and we have a new one
-      // 3. Existing thumbnail is a placeholder and we have a real one
+      // Update thumbnail ONLY if:
+      // 1. Existing thumbnail is empty/missing and we have a new one
+      // 2. Existing thumbnail is a placeholder and we have a real one
+      // 3. Existing thumbnail is NOT already a Firebase Storage URL and IS a CDN URL
+      const isFirebaseStorage = existingData.thumbnail && existingData.thumbnail.includes('storage.googleapis.com');
+      const isCDNUrl = existingData.thumbnail && 
+        (existingData.thumbnail.includes('cdninstagram.com') || 
+         existingData.thumbnail.includes('fbcdn.net') ||
+         existingData.thumbnail.includes('tiktokcdn.com') ||
+         existingData.thumbnail.includes('twimg.com'));
+      
       const shouldUpdateThumbnail = 
-        (existingData.thumbnail && 
-          (existingData.thumbnail.includes('cdninstagram.com') || 
-          existingData.thumbnail.includes('fbcdn.net'))) ||
         (!existingData.thumbnail && thumbnail) ||
         (existingData.thumbnail && 
          existingData.thumbnail.includes('placeholder') && 
          thumbnail && 
-         !thumbnail.includes('placeholder'));
+         !thumbnail.includes('placeholder')) ||
+        (!isFirebaseStorage && isCDNUrl && thumbnail && thumbnail.includes('storage.googleapis.com'));
 
       if (shouldUpdateThumbnail && thumbnail) {
         console.log(`    🔄 Updating thumbnail (old: ${existingData.thumbnail ? existingData.thumbnail.substring(0, 50) : 'empty'}, new: ${thumbnail.substring(0, 50)}...)`);
-          videoData.thumbnail = thumbnail;
+        videoData.thumbnail = thumbnail;
+      } else if (isFirebaseStorage) {
+        console.log(`    ✅ Thumbnail already in Firebase Storage, keeping it unchanged`);
       }
 
       // Update existing video metrics
