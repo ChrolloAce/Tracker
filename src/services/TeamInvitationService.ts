@@ -361,6 +361,46 @@ class TeamInvitationService {
         // Don't fail - this is non-critical
       }
       
+      // Send acceptance notification email to the inviter
+      try {
+        const accepterName = displayName || email.split('@')[0];
+        console.log(`📧 Sending acceptance notification to ${invite.invitedByEmail}...`);
+        
+        // Call send-test-email API with custom content
+        const emailResponse = await fetch('/api/send-test-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: invite.invitedByEmail,
+            subject: `${accepterName} accepted your invitation!`,
+            html: `
+              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #f5576c;">Invitation Accepted! 🎉</h2>
+                <p><strong>${accepterName}</strong> has accepted your invitation to join <strong>${invite.organizationName}</strong>.</p>
+                <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <p style="margin: 5px 0;"><strong>Member:</strong> ${email}</p>
+                  <p style="margin: 5px 0;"><strong>Role:</strong> ${invite.role.charAt(0).toUpperCase() + invite.role.slice(1)}</p>
+                  <p style="margin: 5px 0;"><strong>Organization:</strong> ${invite.organizationName}</p>
+                  ${invite.role === 'creator' && invite.projectId ? `<p style="margin: 5px 0;"><strong>Type:</strong> Creator</p>` : ''}
+                </div>
+                <p>They can now access the ${invite.role === 'creator' ? 'Creator Portal' : 'dashboard'} and start collaborating with your team.</p>
+                <a href="https://tracker-red-zeta.vercel.app" style="display: inline-block; padding: 12px 24px; background: #f5576c; color: white; text-decoration: none; border-radius: 6px; margin-top: 10px;">View Dashboard</a>
+              </div>
+            `,
+          }),
+        });
+
+        if (emailResponse.ok) {
+          console.log(`✅ Acceptance notification sent to ${invite.invitedByEmail}`);
+        } else {
+          const errorData = await emailResponse.json();
+          console.error(`❌ Failed to send acceptance notification:`, errorData);
+        }
+      } catch (emailError) {
+        console.error(`❌ Email notification error:`, emailError);
+        // Don't fail invitation acceptance if email fails
+      }
+      
     } catch (error: any) {
       console.error(`❌ Error accepting invitation:`, error);
       console.error(`📊 Error details:`);

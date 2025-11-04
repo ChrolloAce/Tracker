@@ -222,25 +222,56 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const userData = userDoc.data();
         
         if (userData?.email) {
-          await fetch(`${process.env.VERCEL_URL || 'https://tracker-red-zeta.vercel.app'}/api/send-notification-email`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              to: userData.email,
-              type: 'video_processed',
-              data: {
-                title: videoData.caption?.substring(0, 100) || 'Video',
-                platform: video.platform,
-                uploaderHandle: videoData.username,
-                views: videoData.view_count || 0,
-                likes: videoData.like_count || 0,
-                thumbnail: videoData.thumbnail_url,
-                dashboardUrl: 'https://tracker-red-zeta.vercel.app'
-              }
-            })
-          }).catch(err => console.error('Failed to send notification email:', err));
+          const RESEND_API_KEY = process.env.RESEND_API_KEY;
           
-          console.log(`📧 Notification email sent to ${userData.email}`);
+          if (!RESEND_API_KEY) {
+            console.warn('⚠️ RESEND_API_KEY not configured - skipping email notification');
+          } else {
+            console.log(`📧 Sending video processed notification to ${userData.email}...`);
+            
+            const videoTitle = videoData.caption?.substring(0, 100) || 'Video';
+            
+            const emailResponse = await fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${RESEND_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                from: 'ViewTrack <team@viewtrack.app>',
+                to: [userData.email],
+                subject: `🎬 Video processed successfully`,
+                html: `
+                  <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #f5576c;">Video Processed!</h2>
+                    <p>Your video has been successfully processed and added to your dashboard!</p>
+                    ${videoData.thumbnail_url ? `
+                    <div style="text-align: center; margin: 20px 0;">
+                      <img src="${videoData.thumbnail_url}" alt="Video thumbnail" style="max-width: 100%; height: auto; border-radius: 8px;">
+                    </div>
+                    ` : ''}
+                    <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                      <p><strong>Title:</strong> ${videoTitle}</p>
+                      <p><strong>Platform:</strong> ${video.platform}</p>
+                      <p><strong>Account:</strong> @${videoData.username}</p>
+                      <p><strong>Views:</strong> ${(videoData.view_count || 0).toLocaleString()}</p>
+                      <p><strong>Likes:</strong> ${(videoData.like_count || 0).toLocaleString()}</p>
+                    </div>
+                    <p>The video is now available in your dashboard with full analytics tracking.</p>
+                    <a href="https://tracker-red-zeta.vercel.app" style="display: inline-block; padding: 12px 24px; background: #f5576c; color: white; text-decoration: none; border-radius: 6px; margin-top: 10px;">View Dashboard</a>
+                  </div>
+                `,
+              }),
+            });
+
+            if (emailResponse.ok) {
+              const emailData = await emailResponse.json();
+              console.log(`✅ Video processed email sent to ${userData.email} (ID: ${emailData.id})`);
+            } else {
+              const errorData = await emailResponse.json();
+              console.error('❌ Failed to send email:', errorData);
+            }
+          }
         }
       }
     } catch (emailError) {

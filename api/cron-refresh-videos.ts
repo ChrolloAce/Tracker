@@ -95,12 +95,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     let totalAccountsProcessed = 0;
     let totalVideosRefreshed = 0;
+    let totalVideosAdded = 0;
+    let totalVideosUpdated = 0;
     let failedAccounts: Array<{ org: string; project: string; account: string; error: string }> = [];
+    const processedOrgs = new Map<string, { email: string; orgName: string; accountsProcessed: number; videosAdded: number; videosUpdated: number }>();
 
     // Process each organization
     for (const orgDoc of orgsSnapshot.docs) {
       const orgId = orgDoc.id;
+      const orgData = orgDoc.data();
       console.log(`\n📁 Processing organization: ${orgId}`);
+      
+      // Track org stats for email notifications
+      if (!processedOrgs.has(orgId)) {
+        processedOrgs.set(orgId, {
+          email: orgData.ownerEmail || '',
+          orgName: orgData.name || 'Your Organization',
+          accountsProcessed: 0,
+          videosAdded: 0,
+          videosUpdated: 0
+        });
+      }
 
       // Get projects to process
       let projectsSnapshot;
@@ -182,6 +197,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                   lastSynced: new Date()
                 });
                 
+                // Track stats
+                const orgStats = processedOrgs.get(orgId);
+                if (orgStats) {
+                  orgStats.accountsProcessed++;
+                  orgStats.videosAdded += result.added;
+                  orgStats.videosUpdated += result.updated;
+                }
+                
                 return { success: true, username, updated: result.updated, added: result.added };
               } else {
                 console.log(`    ⚠️ No videos returned from API for @${username}`);
@@ -205,11 +228,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           
           // Process results
           results.forEach((result) => {
-            totalAccountsProcessed++;
             if (result.status === 'fulfilled') {
               const data = result.value;
               if (data.success) {
-                totalVideosRefreshed += data.updated || 0;
+                totalAccountsProcessed++;
+                const videosChanged = (data.updated || 0) + (data.added || 0);
+                totalVideosRefreshed += videosChanged;
+                totalVideosUpdated += (data.updated || 0);
+                totalVideosAdded += (data.added || 0);
               } else {
                 failedAccounts.push({
                   org: data.org,
@@ -248,8 +274,72 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`⏱️  Duration: ${duration}s`);
     console.log(`📊 Accounts processed: ${totalAccountsProcessed}`);
     console.log(`🎬 Videos refreshed: ${totalVideosRefreshed}`);
+    console.log(`➕ New videos added: ${totalVideosAdded}`);
+    console.log(`🔄 Videos updated: ${totalVideosUpdated}`);
     console.log(`❌ Failed accounts: ${failedAccounts.length}`);
     console.log('='.repeat(60) + '\n');
+
+    // Send email notifications to organization owners
+    const RESEND_API_KEY = process.env.RESEND_API_KEY;
+    if (RESEND_API_KEY && isManualTrigger) {
+      console.log('📧 Sending refresh summary emails...');
+      
+      for (const [orgId, stats] of processedOrgs.entries()) {
+        if (stats.email && (stats.videosAdded > 0 || stats.videosUpdated > 0)) {
+          try {
+            const emailResponse = await fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${RESEND_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                from: 'ViewTrack <team@viewtrack.app>',
+                to: [stats.email],
+                subject: `📊 Refresh Complete - ${stats.videosAdded} New Videos!`,
+                html: `
+                  <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #f5576c;">Refresh Complete!</h2>
+                    <p>Your tracked accounts have been refreshed with the latest data.</p>
+                    <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                      <h3 style="margin-top: 0; color: #333;">Summary</h3>
+                      <div style="display: grid; gap: 10px;">
+                        <p style="margin: 5px 0;"><strong>Accounts Refreshed:</strong> ${stats.accountsProcessed}</p>
+                        <p style="margin: 5px 0; color: #10b981;"><strong>✨ New Videos Added:</strong> ${stats.videosAdded}</p>
+                        <p style="margin: 5px 0; color: #3b82f6;"><strong>🔄 Videos Updated:</strong> ${stats.videosUpdated}</p>
+                        <p style="margin: 5px 0;"><strong>Total Changes:</strong> ${stats.videosAdded + stats.videosUpdated}</p>
+                      </div>
+                    </div>
+                    ${stats.videosAdded > 0 ? `
+                      <div style="background: #ecfdf5; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0;">
+                        <p style="margin: 0; color: #065f46;"><strong>🎉 ${stats.videosAdded} new video${stats.videosAdded === 1 ? '' : 's'} discovered!</strong></p>
+                        <p style="margin: 5px 0 0 0; color: #065f46; font-size: 14px;">Check your dashboard to see the latest content from your tracked accounts.</p>
+                      </div>
+                    ` : ''}
+                    <p>All video metrics have been updated with the latest views, likes, and engagement data.</p>
+                    <a href="https://tracker-red-zeta.vercel.app" style="display: inline-block; padding: 12px 24px; background: #f5576c; color: white; text-decoration: none; border-radius: 6px; margin-top: 10px;">View Dashboard</a>
+                  </div>
+                `,
+              }),
+            });
+
+            if (emailResponse.ok) {
+              const emailData = await emailResponse.json();
+              console.log(`✅ Refresh summary email sent to ${stats.email} (ID: ${emailData.id})`);
+            } else {
+              const errorData = await emailResponse.json();
+              console.error(`❌ Failed to send email to ${stats.email}:`, errorData);
+            }
+          } catch (emailError) {
+            console.error(`❌ Email error for ${stats.email}:`, emailError);
+          }
+        }
+      }
+    } else if (!RESEND_API_KEY) {
+      console.warn('⚠️ RESEND_API_KEY not configured - skipping email notifications');
+    } else {
+      console.log('ℹ️ Skipping emails (automatic cron run)');
+    }
 
     return res.status(200).json(summary);
 
