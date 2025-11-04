@@ -68,6 +68,7 @@ function getAccountSyncedTemplate(data: any): string {
                 <!-- Header -->
                 <tr>
                   <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 40px 30px; text-align: center;">
+                    <img src="https://www.viewtrack.app/whitelogo.png" alt="ViewTrack" style="height: 42px; width: auto; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;" />
                     <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">
                       ✅ Account Synced!
                     </h1>
@@ -154,6 +155,7 @@ function getVideoProcessedTemplate(data: any): string {
                 <!-- Header -->
                 <tr>
                   <td style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 40px 40px 30px; text-align: center;">
+                    <img src="https://www.viewtrack.app/whitelogo.png" alt="ViewTrack" style="height: 42px; width: auto; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;" />
                     <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">
                       🎬 Video Processed!
                     </h1>
