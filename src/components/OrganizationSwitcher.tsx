@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, Building2, Check, Crown, Shield, User, Plus, Lock } from 'lucide-react';
+import { ChevronDown, Building2, Check, Crown, Shield, User, Plus, Lock, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import OrganizationService from '../services/OrganizationService';
 import { Organization, Role } from '../types/firestore';

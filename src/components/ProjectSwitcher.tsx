@@ -180,9 +180,6 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
                     <p className="text-sm font-medium text-gray-200 truncate">
                       {project.name}
                     </p>
-                    <p className="text-xs text-gray-500 truncate">
-                      {project.stats?.videoCount || 0} videos • {project.stats?.totalClicks || 0} clicks
-                    </p>
                   </div>
                 </div>
                 {project.id === currentProjectId && (
