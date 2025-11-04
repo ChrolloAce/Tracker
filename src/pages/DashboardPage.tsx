@@ -10,6 +10,7 @@ import Sidebar from '../components/layout/Sidebar';
 import { Modal } from '../components/ui/Modal';
 import { VideoSubmissionsTable } from '../components/VideoSubmissionsTable';
 import { AddVideoModal } from '../components/AddVideoModal';
+import { AddTypeSelector } from '../components/AddTypeSelector';
 import { TikTokSearchModal } from '../components/TikTokSearchModal';
 import KPICards from '../components/KPICards';
 import { KPICardEditor } from '../components/KPICardEditor';
@@ -167,6 +168,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [conditions, setConditions] = useState<RuleCondition[]>([
     { id: '1', type: 'description_contains', value: '', operator: 'AND' }
   ]);
+  const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
   const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
@@ -2979,6 +2981,18 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         </div>
       </main>
 
+      <AddTypeSelector
+        isOpen={isTypeSelectorOpen}
+        onClose={() => setIsTypeSelectorOpen(false)}
+        onSelectType={(type) => {
+          if (type === 'video') {
+            setIsModalOpen(true);
+          } else if (type === 'account') {
+            accountsPageRef.current?.openAddModal();
+          }
+        }}
+      />
+
       <AddVideoModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -3510,7 +3524,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         <button
           onClick={() => {
             if (activeTab === 'dashboard') {
-              setIsModalOpen(true);
+              setIsTypeSelectorOpen(true);
             } else if (activeTab === 'accounts') {
               accountsPageRef.current?.openAddModal();
             } else if (activeTab === 'analytics') {
@@ -3524,7 +3538,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           }}
           className="fixed bottom-4 right-4 md:bottom-8 md:right-8 z-50 flex items-center justify-center p-3 md:p-4 rounded-full transition-all transform hover:scale-105 active:scale-95 bg-white/10 hover:bg-white/15 text-white border border-white/20 hover:border-white/30 shadow-2xl group"
           aria-label={
-            activeTab === 'dashboard' ? 'Add Video' :
+            activeTab === 'dashboard' ? 'Track Content' :
             activeTab === 'accounts' ? 'Track Account' :
             activeTab === 'analytics' ? 'Create Link' :
             activeTab === 'campaigns' ? 'Create Campaign' :
@@ -3545,8 +3559,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               d="M12 4v16m8-8H4" 
             />
           </svg>
-          <span className="absolute -top-12 right-0 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm px-3 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-            {activeTab === 'dashboard' && 'Add Video'}
+          <span className="absolute -top-12 right-0 bg-gray-900 text-white text-sm px-3 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            {activeTab === 'dashboard' && 'Track Content'}
             {activeTab === 'accounts' && 'Track Account'}
             {activeTab === 'analytics' && 'Create Link'}
             {activeTab === 'campaigns' && 'Create Campaign'}
