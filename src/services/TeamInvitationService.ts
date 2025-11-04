@@ -375,7 +375,11 @@ class TeamInvitationService {
             subject: `${accepterName} accepted your invitation!`,
             html: `
               <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #f5576c;">Invitation Accepted! 🎉</h2>
+                <div style="text-align: center; padding: 30px 20px; background: #f8f9fa; border-bottom: 2px solid #e9ecef;">
+                  <img src="https://www.viewtrack.app/blacklogo.png" alt="ViewTrack" style="height: 40px; width: auto;" />
+                </div>
+                <div style="padding: 30px 20px;">
+                <h2 style="color: #f5576c; margin-top: 0;">Invitation Accepted! 🎉</h2>
                 <p><strong>${accepterName}</strong> has accepted your invitation to join <strong>${invite.organizationName}</strong>.</p>
                 <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
                   <p style="margin: 5px 0;"><strong>Member:</strong> ${email}</p>
@@ -385,6 +389,7 @@ class TeamInvitationService {
                 </div>
                 <p>They can now access the ${invite.role === 'creator' ? 'Creator Portal' : 'dashboard'} and start collaborating with your team.</p>
                 <a href="https://www.viewtrack.app" style="display: inline-block; padding: 12px 24px; background: #f5576c; color: white; text-decoration: none; border-radius: 6px; margin-top: 10px;">View Dashboard</a>
+                </div>
               </div>
             `,
           }),

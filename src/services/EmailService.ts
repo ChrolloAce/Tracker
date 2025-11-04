@@ -160,6 +160,7 @@ class EmailService {
             
               <!-- Header -->
               <div class="header" style="background: #1a1a1a; padding: 40px 30px; text-align: center; border-bottom: 3px solid #333;">
+                <img src="https://www.viewtrack.app/whitelogo.png" alt="ViewTrack" style="height: 45px; width: auto; margin-bottom: 15px;" />
                 <h1 class="title" style="color: white; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">You're Invited</h1>
             </div>
             
@@ -274,6 +275,7 @@ class EmailService {
             
               <!-- Header -->
               <div class="header" style="background: #1a1a1a; padding: 40px 30px; text-align: center; border-bottom: 3px solid #333;">
+                <img src="https://www.viewtrack.app/whitelogo.png" alt="ViewTrack" style="height: 45px; width: auto; margin-bottom: 15px;" />
                 <h1 class="title" style="color: white; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">Creator Invitation</h1>
             </div>
             

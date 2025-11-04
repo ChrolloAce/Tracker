@@ -299,7 +299,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 subject: `📊 Refresh Complete - ${stats.videosAdded} New Videos!`,
                 html: `
                   <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-                    <h2 style="color: #f5576c;">Refresh Complete!</h2>
+                    <div style="text-align: center; padding: 30px 20px; background: #f8f9fa; border-bottom: 2px solid #e9ecef;">
+                      <img src="https://www.viewtrack.app/blacklogo.png" alt="ViewTrack" style="height: 40px; width: auto;" />
+                    </div>
+                    <div style="padding: 30px 20px;">
+                    <h2 style="color: #f5576c; margin-top: 0;">Refresh Complete!</h2>
                     <p>Your tracked accounts have been refreshed with the latest data.</p>
                     <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
                       <h3 style="margin-top: 0; color: #333;">Summary</h3>
@@ -318,6 +322,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     ` : ''}
                     <p>All video metrics have been updated with the latest views, likes, and engagement data.</p>
                     <a href="https://www.viewtrack.app" style="display: inline-block; padding: 12px 24px; background: #f5576c; color: white; text-decoration: none; border-radius: 6px; margin-top: 10px;">View Dashboard</a>
+                    </div>
                   </div>
                 `,
               }),
