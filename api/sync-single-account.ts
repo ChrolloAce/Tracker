@@ -724,32 +724,45 @@ export default async function handler(
         const userData = userDoc.data();
         
         if (userData?.email) {
-          // Check if RESEND_API_KEY is configured
-          if (!process.env.RESEND_API_KEY) {
+          // Send email directly using Resend API (like send-test-email.ts)
+          const RESEND_API_KEY = process.env.RESEND_API_KEY;
+          
+          if (!RESEND_API_KEY) {
             console.warn('⚠️ RESEND_API_KEY not configured - skipping email notification');
           } else {
-            const notificationUrl = process.env.VERCEL_URL 
-              ? `https://${process.env.VERCEL_URL}` 
-              : 'https://tracker-red-zeta.vercel.app';
-            
             try {
-              const emailResponse = await fetch(`${notificationUrl}/api/send-notification-email`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  to: userData.email,
-                  type: 'account_synced',
-                  data: {
-                    username: account.username,
-                    platform: account.platform,
-                    videosAdded: savedCount,
-                    dashboardUrl: 'https://tracker-red-zeta.vercel.app'
-                  }
-                })
-              });
+              console.log(`📧 Sending notification email to ${userData.email}...`);
               
+              const emailResponse = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${RESEND_API_KEY}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  from: 'ViewTrack <team@viewtrack.app>',
+                  to: [userData.email],
+                  subject: `✅ Account @${account.username} synced successfully`,
+                  html: `
+                    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                      <h2 style="color: #667eea;">Account Synced!</h2>
+                      <p>Great news! We've successfully synced the account <strong>@${account.username}</strong> from ${account.platform}.</p>
+                      <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <p><strong>Account:</strong> @${account.username}</p>
+                        <p><strong>Platform:</strong> ${account.platform}</p>
+                        <p><strong>Videos Added:</strong> ${savedCount}</p>
+                        <p><strong>Status:</strong> <span style="color: #28a745;">✓ Active</span></p>
+                      </div>
+                      <p>The account is now being tracked and you can view all the videos in your dashboard.</p>
+                      <a href="https://tracker-red-zeta.vercel.app" style="display: inline-block; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; margin-top: 10px;">View Dashboard</a>
+                    </div>
+                  `,
+                }),
+              });
+
               if (emailResponse.ok) {
-                console.log(`✅ Notification email sent successfully to ${userData.email}`);
+                const emailData = await emailResponse.json();
+                console.log(`✅ Notification email sent successfully to ${userData.email} (ID: ${emailData.id})`);
               } else {
                 const errorData = await emailResponse.json();
                 console.error('❌ Failed to send email:', errorData);
