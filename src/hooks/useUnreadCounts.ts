@@ -35,15 +35,15 @@ export function useUnreadCounts(orgId: string | null, projectId: string | null) 
       orgId,
       'projects',
       projectId,
-      'videoSubmissions'
+      'videos'
     );
     const videosQuery = query(
       videosRef,
-      where('isRead', '==', false),
-      where('status', '!=', 'archived')
+      where('isRead', '==', false)
     );
 
     const unsubscribeVideos = onSnapshot(videosQuery, (snapshot) => {
+      console.log('📊 Unread videos count:', snapshot.size);
       setUnreadCounts(prev => ({ ...prev, videos: snapshot.size }));
     });
 
@@ -63,6 +63,7 @@ export function useUnreadCounts(orgId: string | null, projectId: string | null) 
     );
 
     const unsubscribeAccounts = onSnapshot(accountsQuery, (snapshot) => {
+      console.log('📊 Unread accounts count:', snapshot.size);
       setUnreadCounts(prev => ({ ...prev, accounts: snapshot.size }));
     });
 
@@ -73,6 +74,7 @@ export function useUnreadCounts(orgId: string | null, projectId: string | null) 
     );
 
     const unsubscribeProcessing = onSnapshot(processingVideosQuery, (snapshot) => {
+      console.log('⏳ Processing videos count:', snapshot.size);
       setLoading(prev => ({ ...prev, videos: snapshot.size > 0 }));
     });
 
@@ -91,6 +93,7 @@ export function useUnreadCounts(orgId: string | null, projectId: string | null) 
                (data.syncProgress && data.syncProgress.current < data.syncProgress.total);
       }).length;
       
+      console.log('⏳ Syncing accounts count:', syncingCount);
       setLoading(prev => ({ ...prev, accounts: syncingCount > 0 }));
     });
 
