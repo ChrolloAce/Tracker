@@ -156,14 +156,14 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
         </button>
 
         {isOpen && (
-          <div className="absolute left-0 right-0 mt-2 bg-white dark:bg-gray-900 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-1 z-50 max-h-[300px] overflow-y-auto">
+          <div className="absolute left-0 right-0 mt-2 bg-[#1a1a1a] rounded-lg shadow-xl border border-gray-700/50 py-1 z-50 max-h-[300px] overflow-y-auto">
             {projects.map((project) => (
               <button
                 key={project.id}
                 onClick={() => handleProjectSelect(project.id)}
                 className={clsx(
-                  'w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-left',
-                  project.id === currentProjectId && 'bg-gray-100 dark:bg-gray-800'
+                  'w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-800/50 transition-colors text-left',
+                  project.id === currentProjectId && 'bg-gray-800/70'
                 )}
               >
                 <div className="flex items-center space-x-2 flex-1 min-w-0">
@@ -171,35 +171,35 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
                     <img
                       src={project.imageUrl}
                       alt={project.name}
-                      className="w-6 h-6 rounded object-contain bg-gray-100 dark:bg-gray-800 flex-shrink-0"
+                      className="w-6 h-6 rounded object-contain bg-gray-800 flex-shrink-0"
                     />
                   ) : (
                     <span className="text-base flex-shrink-0">{project.icon || '📁'}</span>
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    <p className="text-sm font-medium text-gray-200 truncate">
                       {project.name}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    <p className="text-xs text-gray-500 truncate">
                       {project.stats?.videoCount || 0} videos • {project.stats?.totalClicks || 0} clicks
                     </p>
                   </div>
                 </div>
                 {project.id === currentProjectId && (
-                  <Check className="w-4 h-4 text-blue-500 flex-shrink-0 ml-2" />
+                  <Check className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" />
                 )}
               </button>
             ))}
 
             {onCreateProject && (
               <>
-                <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+                <div className="border-t border-gray-700/50 my-1" />
                 <button
                   onClick={() => {
                     setIsOpen(false);
                     onCreateProject();
                   }}
-                  className="w-full flex items-center space-x-2 px-4 py-2.5 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-blue-600 dark:text-blue-400"
+                  className="w-full flex items-center space-x-2 px-4 py-2.5 hover:bg-gray-800/50 transition-colors text-gray-300"
                 >
                   <Plus className="w-4 h-4" />
                   <span className="text-sm font-medium">Create New Project</span>

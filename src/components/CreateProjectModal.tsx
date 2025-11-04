@@ -120,71 +120,72 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-[#1a1a1a] rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-gray-700/50">
         {/* Header */}
-        <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex items-center justify-between">
+        <div className="sticky top-0 bg-[#1a1a1a] border-b border-gray-700/50 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-              <FolderPlus className="w-5 h-5 text-blue-600 dark:text-gray-900 dark:text-white" />
+            <div className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center">
+              <FolderPlus className="w-5 h-5 text-gray-400" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              <h2 className="text-xl font-semibold text-gray-200">
                 Create New Project
               </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-gray-500">
                 Organize your tracking data
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-gray-500 hover:text-gray-300" />
           </button>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {error && (
-            <div className="px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            <div className="px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+              <p className="text-sm text-red-400">{error}</p>
             </div>
           )}
 
           {/* Project Name */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Project Name <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Project Name <span className="text-red-400">*</span>
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Q4 Marketing Campaign"
-              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-700 rounded-lg bg-gray-800 text-white placeholder-gray-500 focus:ring-2 focus:ring-gray-600 focus:border-gray-600 transition-colors"
               maxLength={50}
               required
+              autoFocus
             />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-xs text-gray-500 mt-1">
               {name.length}/50 characters
             </p>
           </div>
 
           {/* Image Upload */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Project Image (Optional)
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Project Image <span className="text-gray-500 font-normal">(Optional)</span>
             </label>
             
             {!imagePreview ? (
-              <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg cursor-pointer hover:border-blue-500 dark:hover:border-blue-500 transition-colors">
+              <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-700 rounded-lg cursor-pointer hover:border-gray-600 hover:bg-gray-800/50 transition-colors">
                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                  <Upload className="w-10 h-10 text-gray-400 mb-3" />
-                  <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                  <Upload className="w-10 h-10 text-gray-500 mb-3" />
+                  <p className="text-sm text-gray-400 font-medium">
                     Click to upload image
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                  <p className="text-xs text-gray-600 mt-1">
                     PNG, JPG, GIF up to 5MB
                   </p>
                 </div>
@@ -200,12 +201,12 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
                 <img
                   src={imagePreview}
                   alt="Project preview"
-                  className="w-full h-40 object-cover rounded-lg"
+                  className="w-full h-40 object-cover rounded-lg border border-gray-700"
                 />
                 <button
                   type="button"
                   onClick={handleRemoveImage}
-                  className="absolute top-2 right-2 p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+                  className="absolute top-2 right-2 p-2 bg-red-500/90 hover:bg-red-500 text-white rounded-lg transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -215,10 +216,10 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
 
           {/* Preview */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
               Preview
             </label>
-            <div className="flex items-center space-x-3 px-4 py-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div className="flex items-center space-x-3 px-4 py-3 bg-gray-800/50 rounded-lg border border-gray-700/50">
               {imagePreview ? (
                 <img
                   src={imagePreview}
@@ -226,15 +227,15 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
                   className="w-10 h-10 rounded-lg object-cover"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                  <ImageIcon className="w-5 h-5 text-gray-400" />
+                <div className="w-10 h-10 rounded-lg bg-gray-700 flex items-center justify-center">
+                  <ImageIcon className="w-5 h-5 text-gray-500" />
                 </div>
               )}
               <div>
-                <p className="font-medium text-gray-900 dark:text-white">
+                <p className="font-medium text-gray-200">
                   {name || 'Project Name'}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-gray-500">
                   {imageFile ? imageFile.name : 'No image'}
                 </p>
               </div>
@@ -242,11 +243,11 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end space-x-3 pt-4">
+          <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-700/50">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-gray-300 hover:bg-gray-800 rounded-lg transition-colors"
               disabled={loading}
             >
               Cancel
@@ -254,7 +255,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
             <button
               type="submit"
               disabled={loading || uploadingImage || !name.trim()}
-              className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-lg transition-colors"
+              className="px-6 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-500 disabled:bg-gray-700 disabled:cursor-not-allowed disabled:text-gray-500 rounded-lg transition-colors"
             >
               {uploadingImage ? 'Uploading...' : loading ? 'Creating...' : 'Create Project'}
             </button>
