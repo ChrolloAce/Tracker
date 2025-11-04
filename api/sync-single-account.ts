@@ -342,7 +342,7 @@ export default async function handler(
           // Step 3: Get full video details (statistics)
           const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${videoIds.join(',')}&key=${apiKey}`;
           const videoResponse = await fetch(videoUrl);
-          
+
           if (!videoResponse.ok) {
             const errorText = await videoResponse.text();
             console.error('❌ YouTube videos fetch failed:', videoResponse.status, errorText);
@@ -741,12 +741,12 @@ export default async function handler(
               console.log(`📧 Sending notification email to ${userData.email}...`);
               
               const emailResponse = await fetch('https://api.resend.com/emails', {
-                method: 'POST',
+            method: 'POST',
                 headers: {
                   'Authorization': `Bearer ${RESEND_API_KEY}`,
                   'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
+            body: JSON.stringify({
                   from: 'ViewTrack <team@viewtrack.app>',
                   to: [userData.email],
                   subject: `✅ Account @${account.username} synced successfully`,

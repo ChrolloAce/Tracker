@@ -23,7 +23,10 @@ export function useUnreadCounts(orgId: string | null, projectId: string | null) 
   });
 
   useEffect(() => {
+    console.log('🔄 useUnreadCounts effect triggered', { orgId, projectId });
+    
     if (!orgId || !projectId) {
+      console.log('⚠️ No orgId or projectId, resetting counts');
       setUnreadCounts({ videos: 0, accounts: 0 });
       return;
     }

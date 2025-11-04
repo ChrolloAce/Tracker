@@ -233,12 +233,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const videoTitle = videoData.caption?.substring(0, 100) || 'Video';
             
             const emailResponse = await fetch('https://api.resend.com/emails', {
-              method: 'POST',
+            method: 'POST',
               headers: {
                 'Authorization': `Bearer ${RESEND_API_KEY}`,
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify({
+            body: JSON.stringify({
                 from: 'ViewTrack <team@viewtrack.app>',
                 to: [userData.email],
                 subject: `🎬 Video processed successfully`,

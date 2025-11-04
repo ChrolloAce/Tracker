@@ -7,13 +7,15 @@ export class MarkAsReadService {
    */
   static async markVideosAsRead(orgId: string, projectId: string): Promise<void> {
     try {
+      console.log('🔍 Marking videos as read...', { orgId, projectId });
+      
       const videosRef = collection(
         db,
         'organizations',
         orgId,
         'projects',
         projectId,
-        'videoSubmissions'
+        'videos'
       );
 
       const unreadQuery = query(
@@ -23,7 +25,10 @@ export class MarkAsReadService {
 
       const snapshot = await getDocs(unreadQuery);
       
+      console.log(`📝 Found ${snapshot.size} unread videos to mark as read`);
+      
       if (snapshot.empty) {
+        console.log('ℹ️ No unread videos to mark');
         return;
       }
 
@@ -35,7 +40,7 @@ export class MarkAsReadService {
       await batch.commit();
       console.log(`✅ Marked ${snapshot.size} videos as read`);
     } catch (error) {
-      console.error('Error marking videos as read:', error);
+      console.error('❌ Error marking videos as read:', error);
     }
   }
 
@@ -44,6 +49,8 @@ export class MarkAsReadService {
    */
   static async markAccountsAsRead(orgId: string, projectId: string): Promise<void> {
     try {
+      console.log('🔍 Marking accounts as read...', { orgId, projectId });
+      
       const accountsRef = collection(
         db,
         'organizations',
@@ -60,7 +67,10 @@ export class MarkAsReadService {
 
       const snapshot = await getDocs(unreadQuery);
       
+      console.log(`📝 Found ${snapshot.size} unread accounts to mark as read`);
+      
       if (snapshot.empty) {
+        console.log('ℹ️ No unread accounts to mark');
         return;
       }
 
@@ -72,7 +82,7 @@ export class MarkAsReadService {
       await batch.commit();
       console.log(`✅ Marked ${snapshot.size} accounts as read`);
     } catch (error) {
-      console.error('Error marking accounts as read:', error);
+      console.error('❌ Error marking accounts as read:', error);
     }
   }
 }
