@@ -298,17 +298,50 @@ export default async function handler(
           ? `https://${process.env.VERCEL_URL}` 
           : 'https://tracker-red-zeta.vercel.app';
         
-        // Use YouTube API endpoint
-        const response = await fetch(
-          `${baseUrl}/api/youtube-channel?username=${encodeURIComponent(account.username)}`,
+        // Step 1: Get channel info first
+        const channelInfoResponse = await fetch(
+          `${baseUrl}/api/youtube-channel`,
           {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' }
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'getChannelInfo',
+              channelHandle: account.username.startsWith('@') ? account.username : `@${account.username}`
+            })
           }
         );
 
-        if (response.ok) {
-          const data = await response.json();
+        if (!channelInfoResponse.ok) {
+          const errorData = await channelInfoResponse.json();
+          console.error('YouTube API returned', channelInfoResponse.status, errorData);
+          throw new Error(`YouTube API error: ${channelInfoResponse.status}`);
+        }
+
+        const channelInfo = await channelInfoResponse.json();
+        const channelId = channelInfo.channel?.id;
+        
+        if (!channelId) {
+          throw new Error('Could not get channel ID');
+        }
+        
+        console.log(`✅ Found YouTube channel ID: ${channelId}`);
+        
+        // Step 2: Get Shorts videos
+        const videosResponse = await fetch(
+          `${baseUrl}/api/youtube-channel`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'getShorts',
+              channelId: channelId,
+              maxResults: videoLimit
+            })
+          }
+        );
+
+        if (videosResponse.ok) {
+          const data = await videosResponse.json();
           const youtubeVideos = data.videos || [];
           
           console.log(`✅ Fetched ${youtubeVideos.length} YouTube videos`);
@@ -691,26 +724,40 @@ export default async function handler(
         const userData = userDoc.data();
         
         if (userData?.email) {
-          const notificationUrl = process.env.VERCEL_URL 
-            ? `https://${process.env.VERCEL_URL}` 
-            : 'https://tracker-red-zeta.vercel.app';
-          
-          await fetch(`${notificationUrl}/api/send-notification-email`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              to: userData.email,
-              type: 'account_synced',
-              data: {
-                username: account.username,
-                platform: account.platform,
-                videosAdded: savedCount,
-                dashboardUrl: 'https://tracker-red-zeta.vercel.app'
+          // Check if RESEND_API_KEY is configured
+          if (!process.env.RESEND_API_KEY) {
+            console.warn('⚠️ RESEND_API_KEY not configured - skipping email notification');
+          } else {
+            const notificationUrl = process.env.VERCEL_URL 
+              ? `https://${process.env.VERCEL_URL}` 
+              : 'https://tracker-red-zeta.vercel.app';
+            
+            try {
+              const emailResponse = await fetch(`${notificationUrl}/api/send-notification-email`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  to: userData.email,
+                  type: 'account_synced',
+                  data: {
+                    username: account.username,
+                    platform: account.platform,
+                    videosAdded: savedCount,
+                    dashboardUrl: 'https://tracker-red-zeta.vercel.app'
+                  }
+                })
+              });
+              
+              if (emailResponse.ok) {
+                console.log(`✅ Notification email sent successfully to ${userData.email}`);
+              } else {
+                const errorData = await emailResponse.json();
+                console.error('❌ Failed to send email:', errorData);
               }
-            })
-          }).catch(err => console.error('Failed to send notification email:', err));
-          
-          console.log(`📧 Notification email sent to ${userData.email}`);
+            } catch (err) {
+              console.error('❌ Email notification error:', err);
+            }
+          }
         }
       }
     } catch (emailError) {
