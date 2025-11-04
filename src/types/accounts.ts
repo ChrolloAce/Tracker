@@ -13,6 +13,7 @@ export interface TrackedAccount {
   dateAdded: Date;
   lastSynced?: Date;
   isActive: boolean;
+  isRead?: boolean; // New field for unread notification
   totalVideos: number;
   totalViews: number;
   totalLikes: number;

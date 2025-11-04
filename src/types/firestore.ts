@@ -175,6 +175,7 @@ export interface TrackedAccount {
   addedBy: string; // userId
   lastSynced?: Timestamp;
   isActive: boolean;
+  isRead?: boolean; // New field for unread notification
   
   // Background sync status (for Vercel cron jobs)
   syncStatus?: 'idle' | 'pending' | 'syncing' | 'completed' | 'error';
