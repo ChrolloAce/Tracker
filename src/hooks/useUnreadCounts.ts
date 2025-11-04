@@ -45,10 +45,17 @@ export function useUnreadCounts(orgId: string | null, projectId: string | null) 
       where('isRead', '==', false)
     );
 
-    const unsubscribeVideos = onSnapshot(videosQuery, (snapshot) => {
-      console.log('📊 Unread videos count:', snapshot.size);
-      setUnreadCounts(prev => ({ ...prev, videos: snapshot.size }));
-    });
+    const unsubscribeVideos = onSnapshot(
+      videosQuery,
+      (snapshot) => {
+        console.log('📊 Unread videos count:', snapshot.size);
+        setUnreadCounts(prev => ({ ...prev, videos: snapshot.size }));
+      },
+      (error) => {
+        console.error('❌ Error listening to unread videos:', error);
+        setUnreadCounts(prev => ({ ...prev, videos: 0 }));
+      }
+    );
 
     // Listen for unread tracked accounts
     const accountsRef = collection(
@@ -61,14 +68,26 @@ export function useUnreadCounts(orgId: string | null, projectId: string | null) 
     );
     const accountsQuery = query(
       accountsRef,
-      where('isRead', '==', false),
-      where('isActive', '==', true)
+      where('isRead', '==', false)
     );
 
-    const unsubscribeAccounts = onSnapshot(accountsQuery, (snapshot) => {
-      console.log('📊 Unread accounts count:', snapshot.size);
-      setUnreadCounts(prev => ({ ...prev, accounts: snapshot.size }));
-    });
+    const unsubscribeAccounts = onSnapshot(
+      accountsQuery,
+      (snapshot) => {
+        // Filter for active accounts in memory to avoid compound index requirement
+        const unreadActiveCount = snapshot.docs.filter(doc => {
+          const data = doc.data();
+          return data.isActive !== false; // Consider active if not explicitly false
+        }).length;
+        console.log('📊 Unread accounts count:', unreadActiveCount, '(total unread:', snapshot.size, ')');
+        setUnreadCounts(prev => ({ ...prev, accounts: unreadActiveCount }));
+      },
+      (error) => {
+        console.error('❌ Error listening to unread accounts:', error);
+        // If error (e.g., missing index), reset count
+        setUnreadCounts(prev => ({ ...prev, accounts: 0 }));
+      }
+    );
 
     // Listen for processing videos (loading state)
     const processingVideosQuery = query(
@@ -76,10 +95,17 @@ export function useUnreadCounts(orgId: string | null, projectId: string | null) 
       where('status', '==', 'processing')
     );
 
-    const unsubscribeProcessing = onSnapshot(processingVideosQuery, (snapshot) => {
-      console.log('⏳ Processing videos count:', snapshot.size);
-      setLoading(prev => ({ ...prev, videos: snapshot.size > 0 }));
-    });
+    const unsubscribeProcessing = onSnapshot(
+      processingVideosQuery,
+      (snapshot) => {
+        console.log('⏳ Processing videos count:', snapshot.size);
+        setLoading(prev => ({ ...prev, videos: snapshot.size > 0 }));
+      },
+      (error) => {
+        console.error('❌ Error listening to processing videos:', error);
+        setLoading(prev => ({ ...prev, videos: false }));
+      }
+    );
 
     // Listen for syncing accounts (loading state) - check for pending OR accounts with progress
     const syncingAccountsQuery = query(
@@ -87,18 +113,25 @@ export function useUnreadCounts(orgId: string | null, projectId: string | null) 
       where('isActive', '==', true)
     );
 
-    const unsubscribeSyncing = onSnapshot(syncingAccountsQuery, (snapshot) => {
-      // Count accounts that are actively syncing (have syncStatus pending/syncing OR have progress < 100)
-      const syncingCount = snapshot.docs.filter(doc => {
-        const data = doc.data();
-        return data.syncStatus === 'pending' || 
-               data.syncStatus === 'syncing' ||
-               (data.syncProgress && data.syncProgress.current < data.syncProgress.total);
-      }).length;
-      
-      console.log('⏳ Syncing accounts count:', syncingCount);
-      setLoading(prev => ({ ...prev, accounts: syncingCount > 0 }));
-    });
+    const unsubscribeSyncing = onSnapshot(
+      syncingAccountsQuery,
+      (snapshot) => {
+        // Count accounts that are actively syncing (have syncStatus pending/syncing OR have progress < 100)
+        const syncingCount = snapshot.docs.filter(doc => {
+          const data = doc.data();
+          return data.syncStatus === 'pending' || 
+                 data.syncStatus === 'syncing' ||
+                 (data.syncProgress && data.syncProgress.current < data.syncProgress.total);
+        }).length;
+        
+        console.log('⏳ Syncing accounts count:', syncingCount);
+        setLoading(prev => ({ ...prev, accounts: syncingCount > 0 }));
+      },
+      (error) => {
+        console.error('❌ Error listening to syncing accounts:', error);
+        setLoading(prev => ({ ...prev, accounts: false }));
+      }
+    );
 
     return () => {
       unsubscribeVideos();
