@@ -13,7 +13,6 @@ export function AddTypeSelector({ isOpen, onClose, onSelectType }: AddTypeSelect
       isOpen={isOpen}
       onClose={onClose}
       title="What would you like to track?"
-      size="sm"
     >
       <div className="space-y-3">
         <button

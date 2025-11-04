@@ -17,6 +17,7 @@ import { KPICardEditor } from '../components/KPICardEditor';
 import { DraggableSection } from '../components/DraggableSection';
 import DateRangeFilter, { DateFilterType } from '../components/DateRangeFilter';
 import VideoAnalyticsModal from '../components/VideoAnalyticsModal';
+import { MarkAsReadService } from '../services/MarkAsReadService';
 import TopPerformersSection from '../components/TopPerformersSection';
 import TopPerformersRaceChart from '../components/TopPerformersRaceChart';
 import HeatmapByHour from '../components/HeatmapByHour';
@@ -211,6 +212,17 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [dayVideosDate, setDayVideosDate] = useState<Date>(new Date());
   const activeTab = initialTab || 'dashboard';
   const [isEditingLayout, setIsEditingLayout] = useState(false);
+
+  // Mark items as read when entering tabs
+  useEffect(() => {
+    if (!currentOrgId || !currentProjectId || isDemoMode) return;
+
+    if (activeTab === 'videos') {
+      MarkAsReadService.markVideosAsRead(currentOrgId, currentProjectId);
+    } else if (activeTab === 'accounts') {
+      MarkAsReadService.markAccountsAsRead(currentOrgId, currentProjectId);
+    }
+  }, [activeTab, currentOrgId, currentProjectId, isDemoMode]);
   const [isCardEditorOpen, setIsCardEditorOpen] = useState(false);
   const [draggedSection, setDraggedSection] = useState<string | null>(null);
   const [dragOverSection, setDragOverSection] = useState<string | null>(null);

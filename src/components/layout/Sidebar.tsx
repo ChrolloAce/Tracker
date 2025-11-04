@@ -20,6 +20,8 @@ import CreateProjectModal from '../CreateProjectModal';
 import RefreshCountdown from '../RefreshCountdown';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useAuth } from '../../contexts/AuthContext';
+import { useUnreadCounts } from '../../hooks/useUnreadCounts';
+import { Badge } from '../ui/Badge';
 import newLogo from '/vtlogo.png';
 
 interface SidebarProps {
@@ -37,6 +39,7 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   href?: string;
   badge?: number;
+  loading?: boolean;
   isActive?: boolean;
   onClick?: () => void;
   showSeparatorBefore?: boolean; // Add separator line before this item
@@ -53,8 +56,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const { can, loading: permissionsLoading } = usePermissions();
-  const { userRole } = useAuth();
+  const { userRole, currentOrgId, currentProjectId } = useAuth();
   const location = useLocation();
+  const { unreadCounts, loading: loadingCounts } = useUnreadCounts(currentOrgId, currentProjectId);
 
   // Check if we're in demo mode
   const isDemoMode = location.pathname.startsWith('/demo');
@@ -81,12 +85,16 @@ const Sidebar: React.FC<SidebarProps> = ({
         label: 'Tracked Accounts',
         icon: Users,
         href: `${baseHref}/accounts`,
+        badge: unreadCounts.accounts,
+        loading: loadingCounts.accounts,
       },
       {
         id: 'videos',
         label: 'Videos',
         icon: Film,
         href: `${baseHref}/videos`,
+        badge: unreadCounts.videos,
+        loading: loadingCounts.videos,
       },
       {
         id: 'analytics',
@@ -143,7 +151,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       if (item.id === 'settings') return can.accessTab('settings');
       return true;
     });
-  }, [can, permissionsLoading, userRole, isDemoMode]);
+  }, [can, permissionsLoading, userRole, isDemoMode, unreadCounts, loadingCounts]);
 
   const NavItemComponent: React.FC<{ item: NavItem }> = ({ item }) => {
     const Icon = item.icon;
@@ -174,10 +182,10 @@ const Sidebar: React.FC<SidebarProps> = ({
         {!isCollapsed && (
           <>
             <span className="ml-3 truncate">{item.label}</span>
-            {item.badge && (
-              <span className="ml-auto inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-gray-900 bg-white dark:text-white dark:bg-gray-700 rounded-full">
-                {item.badge}
-              </span>
+            {(item.badge || item.loading) && (
+              <div className="ml-auto">
+                <Badge count={item.badge} loading={item.loading} />
+              </div>
             )}
           </>
         )}
