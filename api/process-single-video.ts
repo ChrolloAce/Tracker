@@ -132,6 +132,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         profilePicture: videoData.profile_pic_url || '',
         followerCount: videoData.follower_count || 0,
         isActive: true,
+        isRead: false,
         accountType: 'my',
         orgId: orgId,
         dateAdded: Timestamp.now(),

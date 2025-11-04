@@ -223,6 +223,24 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       MarkAsReadService.markAccountsAsRead(currentOrgId, currentProjectId);
     }
   }, [activeTab, currentOrgId, currentProjectId, isDemoMode]);
+
+  // Add spacebar keyboard shortcut to open type selector
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Only trigger if on dashboard tab and not in an input field
+      if (
+        activeTab === 'dashboard' &&
+        e.code === 'Space' &&
+        !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)
+      ) {
+        e.preventDefault();
+        setIsTypeSelectorOpen(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [activeTab]);
   const [isCardEditorOpen, setIsCardEditorOpen] = useState(false);
   const [draggedSection, setDraggedSection] = useState<string | null>(null);
   const [dragOverSection, setDragOverSection] = useState<string | null>(null);

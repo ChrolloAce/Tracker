@@ -20,7 +20,7 @@ export function AddTypeSelector({ isOpen, onClose, onSelectType }: AddTypeSelect
             onSelectType('video');
             onClose();
           }}
-          className="w-full p-6 rounded-lg border-2 border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 transition-all group"
+          className="w-full p-6 rounded-lg border-2 border-gray-700 dark:border-gray-700 bg-gray-800 dark:bg-gray-800 hover:bg-gray-700 dark:hover:bg-gray-700 hover:border-gray-600 dark:hover:border-gray-600 transition-all group"
         >
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-lg bg-blue-500/20 text-blue-400 group-hover:bg-blue-500/30 transition-colors">
@@ -40,7 +40,7 @@ export function AddTypeSelector({ isOpen, onClose, onSelectType }: AddTypeSelect
             onSelectType('account');
             onClose();
           }}
-          className="w-full p-6 rounded-lg border-2 border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 transition-all group"
+          className="w-full p-6 rounded-lg border-2 border-gray-700 dark:border-gray-700 bg-gray-800 dark:bg-gray-800 hover:bg-gray-700 dark:hover:bg-gray-700 hover:border-gray-600 dark:hover:border-gray-600 transition-all group"
         >
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-lg bg-purple-500/20 text-purple-400 group-hover:bg-purple-500/30 transition-colors">

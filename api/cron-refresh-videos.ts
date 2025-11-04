@@ -730,6 +730,7 @@ async function saveVideosToFirestore(
         addedBy: 'auto_refresh',
         lastRefreshed: Timestamp.now(),
         status: 'active',
+        isRead: false,
         isSingular: false,
         duration: 0,
         hashtags: [],

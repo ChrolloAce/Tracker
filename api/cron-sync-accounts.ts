@@ -359,6 +359,7 @@ export default async function handler(
             addedBy: account.syncRequestedBy || account.addedBy || 'system',
             lastRefreshed: Timestamp.now(),
             status: 'active',
+            isRead: false,
             isSingular: false
           });
 

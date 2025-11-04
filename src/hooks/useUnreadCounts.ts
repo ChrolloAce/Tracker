@@ -76,14 +76,22 @@ export function useUnreadCounts(orgId: string | null, projectId: string | null) 
       setLoading(prev => ({ ...prev, videos: snapshot.size > 0 }));
     });
 
-    // Listen for syncing accounts (loading state)
+    // Listen for syncing accounts (loading state) - check for pending OR accounts with progress
     const syncingAccountsQuery = query(
       accountsRef,
-      where('syncStatus', 'in', ['pending', 'syncing'])
+      where('isActive', '==', true)
     );
 
     const unsubscribeSyncing = onSnapshot(syncingAccountsQuery, (snapshot) => {
-      setLoading(prev => ({ ...prev, accounts: snapshot.size > 0 }));
+      // Count accounts that are actively syncing (have syncStatus pending/syncing OR have progress < 100)
+      const syncingCount = snapshot.docs.filter(doc => {
+        const data = doc.data();
+        return data.syncStatus === 'pending' || 
+               data.syncStatus === 'syncing' ||
+               (data.syncProgress && data.syncProgress.current < data.syncProgress.total);
+      }).length;
+      
+      setLoading(prev => ({ ...prev, accounts: syncingCount > 0 }));
     });
 
     return () => {
