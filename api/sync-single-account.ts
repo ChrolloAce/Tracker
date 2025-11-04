@@ -293,6 +293,11 @@ export default async function handler(
       console.log(`📺 Fetching YouTube videos for ${account.username}...`);
       
       try {
+        // Define base URL for API calls
+        const baseUrl = process.env.VERCEL_URL 
+          ? `https://${process.env.VERCEL_URL}` 
+          : 'https://tracker-red-zeta.vercel.app';
+        
         // Use YouTube API endpoint
         const response = await fetch(
           `${baseUrl}/api/youtube-channel?username=${encodeURIComponent(account.username)}`,
@@ -686,7 +691,11 @@ export default async function handler(
         const userData = userDoc.data();
         
         if (userData?.email) {
-          await fetch(`${process.env.VERCEL_URL || 'https://tracker-red-zeta.vercel.app'}/api/send-notification-email`, {
+          const notificationUrl = process.env.VERCEL_URL 
+            ? `https://${process.env.VERCEL_URL}` 
+            : 'https://tracker-red-zeta.vercel.app';
+          
+          await fetch(`${notificationUrl}/api/send-notification-email`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

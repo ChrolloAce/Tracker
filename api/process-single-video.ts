@@ -116,7 +116,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     const accountSnapshot = await accountQuery.get();
     let accountId = video.trackedAccountId;
-    
+
     console.log(`🔍 [${video.platform.toUpperCase()}] Account search for @${videoData.username.toLowerCase()}: ${accountSnapshot.empty ? 'NOT FOUND - Will create' : 'FOUND - Will use existing'}`);
 
     // Create account if it doesn't exist

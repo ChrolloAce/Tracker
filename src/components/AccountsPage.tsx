@@ -1392,14 +1392,14 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                           const isPartiallyLoaded = matchingAccount && (!matchingAccount.profilePicture && matchingAccount.followerCount === 0);
                           
                           return (
-                            <tr 
+                    <tr 
                               key={`processing-${procAccount.platform}-${procAccount.username}`}
                               className="bg-white/5 dark:bg-white/5 border-l-2 border-white/20 transition-all duration-500"
-                            >
-                              {/* Username Column */}
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="flex items-center space-x-3">
-                                  <div className="relative w-10 h-10">
+                    >
+                      {/* Username Column */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center space-x-3">
+                          <div className="relative w-10 h-10">
                                     {matchingAccount?.profilePicture ? (
                                       <img
                                         src={matchingAccount.profilePicture}
@@ -1407,94 +1407,94 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                         className="w-10 h-10 rounded-full object-cover animate-fade-in"
                                       />
                                     ) : (
-                                      <div className="w-10 h-10 rounded-full flex items-center justify-center relative overflow-hidden bg-white/10">
-                                        <RefreshCw className="w-5 h-5 text-white/60 animate-spin" />
-                                      </div>
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center relative overflow-hidden bg-white/10">
+                              <RefreshCw className="w-5 h-5 text-white/60 animate-spin" />
+                            </div>
                                     )}
-                                  </div>
-                                  <div>
-                                    <div className="text-sm font-bold text-white">
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-white">
                                       {matchingAccount?.displayName || `@${procAccount.username}`}
-                                    </div>
-                                    <div className="text-xs text-white/40 font-medium flex items-center gap-1">
+                            </div>
+                            <div className="text-xs text-white/40 font-medium flex items-center gap-1">
                                       {isPartiallyLoaded || !matchingAccount ? (
                                         <>
-                                          <span className="inline-block w-1.5 h-1.5 bg-white/40 rounded-full animate-pulse"></span>
+                              <span className="inline-block w-1.5 h-1.5 bg-white/40 rounded-full animate-pulse"></span>
                                           Loading account data...
                                         </>
                                       ) : (
                                         `@${procAccount.username}`
                                       )}
-                                    </div>
-                                  </div>
-                                </div>
-                              </td>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
 
-                              {/* Platform Column */}
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="flex items-center space-x-2">
-                                  <PlatformIcon platform={procAccount.platform as any} size="sm" />
-                                  <span className="text-sm text-white font-medium capitalize">{procAccount.platform}</span>
-                                </div>
-                              </td>
+                      {/* Platform Column */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center space-x-2">
+                          <PlatformIcon platform={procAccount.platform as any} size="sm" />
+                          <span className="text-sm text-white font-medium capitalize">{procAccount.platform}</span>
+                        </div>
+                      </td>
 
                               {/* Other columns - show data if available, else loading placeholders */}
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                                 {matchingAccount && accountCreatorNames.get(matchingAccount.id) ? (
                                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20 animate-fade-in">
                                     <Users className="w-3 h-3 mr-1" />
                                     {accountCreatorNames.get(matchingAccount.id)}
                                   </span>
                                 ) : (
-                                  <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse"></div>
+                        <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse"></div>
                                 )}
-                              </td>
+                      </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm">
                                 {matchingAccount?.lastSynced ? (
                                   <span className="text-white animate-fade-in">{formatDate(matchingAccount.lastSynced.toDate())}</span>
                                 ) : (
-                                  <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
                                 )}
-                              </td>
+                      </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm">
                                 {matchingAccount && (matchingAccount.followerCount ?? 0) > 0 ? (
                                   <span className="text-white animate-fade-in">{(matchingAccount.followerCount ?? 0).toLocaleString()}</span>
                                 ) : (
-                                  <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
                                 )}
-                              </td>
+                      </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm">
                                 {matchingAccount && (matchingAccount.postCount ?? 0) > 0 ? (
                                   <span className="text-white animate-fade-in">{(matchingAccount.postCount ?? 0).toLocaleString()}</span>
                                 ) : (
-                                  <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
+                        <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
                                 )}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                                <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                                <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
-                              </td>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+                      </td>
 
-                              {/* Actions Column */}
-                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <div className="flex items-center justify-end space-x-2">
-                                  <button
-                                    onClick={() => {
-                                      setProcessingAccounts(prev => prev.filter((_, i) => i !== index));
-                                    }}
-                                    className="px-3 py-1.5 text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-md transition-colors"
-                                    title="Cancel processing"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
+                      {/* Actions Column */}
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center justify-end space-x-2">
+                          <button
+                            onClick={() => {
+                              setProcessingAccounts(prev => prev.filter((_, i) => i !== index));
+                            }}
+                            className="px-3 py-1.5 text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-md transition-colors"
+                            title="Cancel processing"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                           );
                         })}
-                        
+
                         {/* Regular fully-loaded accounts */}
                         {realAccountsToRender.map((account) => {
                       const isAccountSyncing = syncingAccounts.has(account.id);

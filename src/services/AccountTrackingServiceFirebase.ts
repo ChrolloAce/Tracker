@@ -928,12 +928,12 @@ export class AccountTrackingServiceFirebase {
       if (thumbnailUrl) {
         console.log(`🖼️ TikTok thumbnail URL found for video ${videoId}: ${thumbnailUrl.substring(0, 80)}...`);
         try {
-          uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
-            orgId,
-            thumbnailUrl,
+        uploadedThumbnail = await FirebaseStorageService.downloadAndUpload(
+          orgId,
+          thumbnailUrl,
             `tt_${videoId}_thumb`,
-            'thumbnail'
-          );
+          'thumbnail'
+        );
           console.log(`✅ TikTok thumbnail uploaded to Firebase Storage`);
         } catch (error) {
           console.warn(`⚠️ Failed to upload TikTok thumbnail for ${videoId}, using original URL:`, error);
