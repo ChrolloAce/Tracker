@@ -751,7 +751,11 @@ export default async function handler(
                   subject: `✅ Account @${account.username} synced successfully`,
                   html: `
                     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-                      <h2 style="color: #667eea;">Account Synced!</h2>
+                      <div style="text-align: center; padding: 30px 20px; background: #f8f9fa; border-bottom: 2px solid #e9ecef;">
+                        <img src="https://www.viewtrack.app/blacklogo.png" alt="ViewTrack" style="height: 40px; width: auto;" />
+                      </div>
+                      <div style="padding: 30px 20px;">
+                      <h2 style="color: #667eea; margin-top: 0;">Account Synced!</h2>
                       <p>Great news! We've successfully synced the account <strong>@${account.username}</strong> from ${account.platform}.</p>
                       <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
                         <p><strong>Account:</strong> @${account.username}</p>
@@ -761,7 +765,7 @@ export default async function handler(
                       </div>
                       <p>The account is now being tracked and you can view all the videos in your dashboard.</p>
                       <a href="https://www.viewtrack.app" style="display: inline-block; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; margin-top: 10px;">View Dashboard</a>
-                    </div>
+                      </div>
                     </div>
                   `,
                 }),

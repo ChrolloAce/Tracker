@@ -435,6 +435,7 @@ export default async function handler(
                       </head>
                       <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
                         <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px 20px; border-radius: 10px 10px 0 0; text-align: center;">
+                          <img src="https://www.viewtrack.app/whitelogo.png" alt="ViewTrack" style="height: 38px; width: auto; margin-bottom: 12px;" />
                           <h1 style="color: white; margin: 0; font-size: 24px;">✅ Account Synced!</h1>
                         </div>
                         
@@ -538,6 +539,7 @@ export default async function handler(
                       </head>
                       <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
                         <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); padding: 30px 20px; border-radius: 10px 10px 0 0; text-align: center;">
+                          <img src="https://www.viewtrack.app/whitelogo.png" alt="ViewTrack" style="height: 38px; width: auto; margin-bottom: 12px;" />
                           <h1 style="color: white; margin: 0; font-size: 24px;">❌ Sync Failed</h1>
                         </div>
                         
