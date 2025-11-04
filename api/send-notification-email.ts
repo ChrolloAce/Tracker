@@ -110,7 +110,7 @@ function getAccountSyncedTemplate(data: any): string {
                     </p>
                     
                     <div style="text-align: center; margin: 30px 0;">
-                      <a href="${data.dashboardUrl || 'https://tracker-red-zeta.vercel.app'}" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                      <a href="${data.dashboardUrl || 'https://www.viewtrack.app'}" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
                         View Dashboard
                       </a>
                     </div>
@@ -212,7 +212,7 @@ function getVideoProcessedTemplate(data: any): string {
                     </p>
                     
                     <div style="text-align: center; margin: 30px 0;">
-                      <a href="${data.dashboardUrl || 'https://tracker-red-zeta.vercel.app'}" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                      <a href="${data.dashboardUrl || 'https://www.viewtrack.app'}" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
                         View Video
                       </a>
                     </div>

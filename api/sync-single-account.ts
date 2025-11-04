@@ -760,7 +760,7 @@ export default async function handler(
                         <p><strong>Status:</strong> <span style="color: #28a745;">✓ Active</span></p>
                       </div>
                       <p>The account is now being tracked and you can view all the videos in your dashboard.</p>
-                      <a href="https://tracker-red-zeta.vercel.app" style="display: inline-block; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; margin-top: 10px;">View Dashboard</a>
+                      <a href="https://www.viewtrack.app" style="display: inline-block; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; margin-top: 10px;">View Dashboard</a>
                     </div>
                   `,
                 }),

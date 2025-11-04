@@ -519,9 +519,10 @@ export default async function handler(
             const userEmail = userDoc.data()?.email;
 
             if (userEmail) {
-              const appUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://your-app.vercel.app';
+              const appUrl = 'https://www.viewtrack.app';
+              const apiUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://www.viewtrack.app';
               
-              await fetch(`${appUrl}/api/send-test-email`, {
+              await fetch(`${apiUrl}/api/send-test-email`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

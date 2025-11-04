@@ -384,7 +384,7 @@ class TeamInvitationService {
                   ${invite.role === 'creator' && invite.projectId ? `<p style="margin: 5px 0;"><strong>Type:</strong> Creator</p>` : ''}
                 </div>
                 <p>They can now access the ${invite.role === 'creator' ? 'Creator Portal' : 'dashboard'} and start collaborating with your team.</p>
-                <a href="https://tracker-red-zeta.vercel.app" style="display: inline-block; padding: 12px 24px; background: #f5576c; color: white; text-decoration: none; border-radius: 6px; margin-top: 10px;">View Dashboard</a>
+                <a href="https://www.viewtrack.app" style="display: inline-block; padding: 12px 24px; background: #f5576c; color: white; text-decoration: none; border-radius: 6px; margin-top: 10px;">View Dashboard</a>
               </div>
             `,
           }),

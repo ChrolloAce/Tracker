@@ -317,7 +317,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                       </div>
                     ` : ''}
                     <p>All video metrics have been updated with the latest views, likes, and engagement data.</p>
-                    <a href="https://tracker-red-zeta.vercel.app" style="display: inline-block; padding: 12px 24px; background: #f5576c; color: white; text-decoration: none; border-radius: 6px; margin-top: 10px;">View Dashboard</a>
+                    <a href="https://www.viewtrack.app" style="display: inline-block; padding: 12px 24px; background: #f5576c; color: white; text-decoration: none; border-radius: 6px; margin-top: 10px;">View Dashboard</a>
                   </div>
                 `,
               }),
