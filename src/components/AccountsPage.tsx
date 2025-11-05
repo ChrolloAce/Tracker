@@ -1107,6 +1107,22 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     return () => window.removeEventListener('openAccount', handleOpenAccount);
   }, [accounts]);
 
+  // Auto-open account details when filtered to a single account
+  useEffect(() => {
+    // Only auto-open if we have an account filter and exactly one account
+    if ((accountFilterId || creatorFilterId) && processedAccounts.length === 1) {
+      const account = processedAccounts[0];
+      // Only open if not already selected
+      if (selectedAccount?.id !== account.id) {
+        console.log('🎯 Auto-opening account details for filtered account:', account.username);
+        setSelectedAccount(account);
+        setViewMode('details');
+        // Load videos for this account
+        loadAccountVideos(account.id);
+      }
+    }
+  }, [accountFilterId, creatorFilterId, processedAccounts, selectedAccount, loadAccountVideos]);
+
   // NOTE: Removed duplicate useEffect - video loading is now handled by loadAccountVideos() 
   // which is called from the useEffect at line ~450 with dashboard rules properly applied
 
