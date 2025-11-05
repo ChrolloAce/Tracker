@@ -528,9 +528,9 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
         resultsPerPage: 1
       };
     } else if (platform === 'instagram') {
-      // Use pratikdani/instagram-reels-scraper
-      console.log('📸 [INSTAGRAM] Using pratikdani/instagram-reels-scraper for video:', url);
-      actorId = 'pratikdani/instagram-reels-scraper';
+      // Use pratikdani~instagram-reels-scraper (note the tilde ~)
+      console.log('📸 [INSTAGRAM] Using pratikdani~instagram-reels-scraper for video:', url);
+      actorId = 'pratikdani~instagram-reels-scraper';
       
       // Get Instagram session cookie if available
       const instagramSessionId = process.env.INSTAGRAM_SESSION_ID || '';
