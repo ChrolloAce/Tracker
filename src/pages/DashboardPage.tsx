@@ -485,6 +485,18 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     return saved ? JSON.parse(saved) : [];
   });
 
+  // Load creator name when single account is selected
+  useEffect(() => {
+    if (currentOrgId && currentProjectId && selectedAccountIds.length === 1) {
+      const accountId = selectedAccountIds[0];
+      CreatorLinksService.getCreatorNameForAccount(currentOrgId, currentProjectId, accountId)
+        .then(name => setAccountCreatorName(name))
+        .catch(() => setAccountCreatorName(null));
+    } else {
+      setAccountCreatorName(null);
+    }
+  }, [selectedAccountIds, currentOrgId, currentProjectId]);
+
   // Dashboard rule filter state - support multiple rule selection
   // Will be loaded from Firebase along with rules
   const [selectedRuleIds, setSelectedRuleIds] = useState<string[]>([]);
