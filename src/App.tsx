@@ -32,7 +32,6 @@ import TermsOfServicePage from './pages/TermsOfServicePage';
 import SupportPage from './pages/SupportPage';
 import CreatorInvitationPage from './pages/CreatorInvitationPage';
 import { useEffect, useState } from 'react';
-import { AlertCircle } from 'lucide-react';
 import NotFoundPage from './pages/NotFoundPage';
 
 // Wrapper component to handle navigation for CreateProjectPage
@@ -72,10 +71,6 @@ function LoadingSkeleton() {
       // Force navigation anyway
       window.location.href = '/login';
     }
-  };
-
-  const handleRetry = () => {
-    window.location.reload();
   };
 
   if (showError) {

@@ -41,7 +41,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import { MiniTrendChart } from './ui/MiniTrendChart';
 import { TrendCalculationService } from '../services/TrendCalculationService';
-import { VideoSubmission } from '../types';
+import { VideoSubmission, VideoSnapshot } from '../types';
 import VideoPlayerModal from './VideoPlayerModal';
 import VideoAnalyticsModal from './VideoAnalyticsModal';
 import { DateFilterType } from './DateRangeFilter';

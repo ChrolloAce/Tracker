@@ -751,10 +751,6 @@ const KPICards: React.FC<KPICardsProps> = ({
               // Video was uploaded before our analysis period
               // Check if it has growth during this interval via snapshots
               if (video.snapshots && video.snapshots.length > 0) {
-                const snapshotAtStart = video.snapshots
-                  .filter(s => new Date(s.capturedAt) <= interval.startDate)
-                  .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-                
                 const snapshotAtEnd = video.snapshots
                   .filter(s => new Date(s.capturedAt) <= interval.endDate)
                   .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
@@ -2490,8 +2486,7 @@ const KPICard: React.FC<{
                       {newUploads.map((video: VideoSubmission, idx: number) => (
                         <div 
                           key={`new-${video.id}-${idx}`}
-                          className="flex items-center gap-2 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors cursor-pointer"
-                          onClick={() => onVideoClick && onVideoClick(video)}
+                          className="flex items-center gap-2 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
                         >
                           {/* Thumbnail */}
                           <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-gray-800">
@@ -2553,8 +2548,7 @@ const KPICard: React.FC<{
                         {refreshedVideos.map((item: any, idx: number) => (
                           <div 
                             key={`refreshed-${item.video.id}-${idx}`}
-                            className="flex items-center gap-2 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors cursor-pointer"
-                            onClick={() => onVideoClick && onVideoClick(item.video)}
+                            className="flex items-center gap-2 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
                           >
                             {/* Thumbnail */}
                             <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-gray-800">
@@ -2622,8 +2616,7 @@ const KPICard: React.FC<{
                         {topGainers.map((item: any, idx: number) => (
                           <div 
                             key={`gainer-${item.video.id}-${idx}`}
-                            className="flex items-center gap-2 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors cursor-pointer"
-                            onClick={() => onVideoClick && onVideoClick(item.video)}
+                            className="flex items-center gap-2 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
                           >
                             {/* Thumbnail */}
                             <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-gray-800">
