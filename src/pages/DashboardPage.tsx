@@ -225,12 +225,17 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       console.log('🎯 Applying account filter from navigation:', state.filterByAccount);
       setAccountFilterId(state.filterByAccount);
       setCreatorFilterId(null); // Clear creator filter
+      // Also update the visual filter dropdown to show the selected account
+      setSelectedAccountIds([state.filterByAccount]);
       // Clear the state to prevent re-application on back navigation
       navigate(location.pathname, { replace: true, state: {} });
     } else if (state?.filterByCreator) {
       console.log('🎨 Applying creator filter from navigation:', state.filterByCreator);
       setCreatorFilterId(state.filterByCreator);
       setAccountFilterId(null); // Clear account filter
+      // Note: We'll load and set the linked account IDs in AccountsPage
+      // But we should clear the selectedAccountIds here since we're filtering differently
+      setSelectedAccountIds([]);
       // Clear the state to prevent re-application on back navigation
       navigate(location.pathname, { replace: true, state: {} });
     }
