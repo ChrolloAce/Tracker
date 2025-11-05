@@ -154,7 +154,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             id: 'team',
             label: 'Team Members',
             icon: UserPlus,
-            href: `${baseHref}/settings/team`,
+            href: `${baseHref}/team`,
           },
         ]
       },
@@ -166,7 +166,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             id: 'revenue',
             label: 'Revenue',
             icon: DollarSign,
-            href: `${baseHref}/settings/revenue`,
+            href: `${baseHref}/revenue`,
           },
           {
             id: 'extension',
@@ -250,8 +250,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         className={clsx(
           'w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group',
           {
-            'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-r-2 border-gray-300 dark:border-gray-600': isActive,
-            'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700': !isActive,
+            'bg-white/10 text-white border-l-2 border-white': isActive,
+            'text-white/60 hover:bg-white/5 hover:text-white/80': !isActive,
           }
         )}
       >
@@ -259,8 +259,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           className={clsx(
             'flex-shrink-0 w-5 h-5 transition-colors duration-200',
             {
-              'text-gray-900 dark:text-white': isActive,
-              'text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300': !isActive,
+              'text-white': isActive,
+              'text-white/60 group-hover:text-white/80': !isActive,
             }
           )} 
         />

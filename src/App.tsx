@@ -17,6 +17,8 @@ import CampaignsPage from './pages/CampaignsPage';
 import ExtensionPage from './pages/ExtensionPage';
 import SettingsPageWrapper from './pages/SettingsPageWrapper';
 import IntegrationsPage from './pages/IntegrationsPage';
+import RevenuePage from './pages/RevenuePage';
+import TeamMembersPage from './pages/TeamMembersPage';
 import LinkRedirect from './components/LinkRedirect';
 import ContractSigningPage from './pages/ContractSigningPage';
 import ContractEditorPage from './pages/ContractEditorPage';
@@ -435,6 +437,32 @@ function App() {
             <Navigate to="/login" replace />
           ) : currentOrgId ? (
             <IntegrationsPage />
+          ) : (
+            <Navigate to="/create-organization" replace />
+          )
+        } 
+      />
+
+      <Route 
+        path="/revenue" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : currentOrgId ? (
+            <RevenuePage />
+          ) : (
+            <Navigate to="/create-organization" replace />
+          )
+        } 
+      />
+
+      <Route 
+        path="/team" 
+        element={
+          !user ? (
+            <Navigate to="/login" replace />
+          ) : currentOrgId ? (
+            <TeamMembersPage />
           ) : (
             <Navigate to="/create-organization" replace />
           )
