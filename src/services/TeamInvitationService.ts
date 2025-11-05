@@ -220,48 +220,36 @@ class TeamInvitationService {
     let invite: TeamInvitation | undefined; // Declare outside try block for catch block access
     
     try {
-      // Get invitation from the public lookup first (more reliable)
+      // Get invitation from the public lookup first (more reliable and doesn't require org membership)
       console.log(`🔍 Attempting to read invitation from public lookup first`);
       const lookupRef = doc(db, 'invitationsLookup', invitationId);
-      let lookupDoc;
+      const lookupDoc = await getDoc(lookupRef);
       
-      try {
-        lookupDoc = await getDoc(lookupRef);
-        console.log(`📧 Public lookup exists:`, lookupDoc.exists());
-        
-        if (lookupDoc.exists()) {
-          const lookupData = lookupDoc.data();
-          console.log(`📋 Public lookup status:`, lookupData.status);
-          console.log(`📋 Public lookup email:`, lookupData.email);
-          
-          // Check status from public lookup
-          if (lookupData.status && lookupData.status !== 'pending') {
-            throw new Error(`This invitation has already been ${lookupData.status}.`);
-          }
-        }
-      } catch (lookupErr: any) {
-        console.warn(`⚠️ Could not read public lookup:`, lookupErr);
+      console.log(`📧 Public lookup exists:`, lookupDoc.exists());
+      
+      if (!lookupDoc.exists()) {
+        throw new Error('Invitation not found. It may have expired or been deleted.');
       }
       
-      // Now get the actual invitation from protected collection
-      console.log(`🔍 Attempting to read invitation from protected collection`);
-      const inviteRef = doc(db, 'organizations', orgId, 'invitations', invitationId);
-      const inviteDoc = await getDoc(inviteRef);
-      
-      console.log(`📧 Invitation doc exists:`, inviteDoc.exists());
-      
-      if (!inviteDoc.exists()) {
-        throw new Error('Invitation not found. It may have already been accepted or deleted.');
-      }
-      
-      invite = inviteDoc.data() as TeamInvitation;
+      // Use the public lookup data as the source of truth
+      invite = lookupDoc.data() as TeamInvitation;
       console.log(`📋 Invitation status:`, invite.status);
       console.log(`📋 Invitation email:`, invite.email);
       console.log(`📋 Your email:`, email);
+      console.log(`📋 Invitation orgId:`, invite.orgId);
+      console.log(`📋 Invitation role:`, invite.role);
       
-      if (invite.status !== 'pending') {
+      // Verify the orgId matches (safety check)
+      if (invite.orgId !== orgId) {
+        console.error(`⚠️ OrgId mismatch! Expected ${orgId}, got ${invite.orgId}`);
+        throw new Error('Invalid invitation - organization ID mismatch.');
+      }
+      
+      // Check status
+      if (invite.status && invite.status !== 'pending') {
         // If already accepted, check if user is already a member
         if (invite.status === 'accepted') {
+          console.log(`ℹ️ Invitation already marked as accepted, checking if user is a member...`);
           const existingMemberRef = doc(db, 'organizations', orgId, 'members', userId);
           const existingMemberDoc = await getDoc(existingMemberRef);
           
@@ -272,8 +260,12 @@ class TeamInvitationService {
             await setDoc(userRef, { defaultOrgId: orgId }, { merge: true });
             return; // Success - already a member
           }
+          
+          console.log(`⚠️ Invitation marked accepted but user is not a member. Will recreate membership.`);
+          // Continue with the flow to recreate membership
+        } else {
+          throw new Error(`This invitation is ${invite.status}. Only pending invitations can be accepted.`);
         }
-        throw new Error(`This invitation is ${invite.status}. Only pending invitations can be accepted.`);
       }
       
       // Verify email matches (case-insensitive)
@@ -332,8 +324,15 @@ class TeamInvitationService {
       // Proceed with accepting invitation
       const batch = writeBatch(db);
       
-      // Update invitation status
+      // Update invitation status in BOTH places
+      const inviteRef = doc(db, 'organizations', orgId, 'invitations', invitationId);
       batch.update(inviteRef, { 
+        status: 'accepted',
+        acceptedAt: Timestamp.now()
+      });
+      
+      // Also update the public lookup
+      batch.update(lookupRef, {
         status: 'accepted',
         acceptedAt: Timestamp.now()
       });
