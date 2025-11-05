@@ -2120,7 +2120,7 @@ const KPICard: React.FC<{
                 if (snapshots.length < 2) return null;
                 
                 const sortedSnapshots = [...snapshots].sort((a, b) => 
-                  new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+                  new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
                 );
                 
                 const earliest = sortedSnapshots[0];
