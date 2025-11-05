@@ -7,7 +7,6 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
-  Eye,
   Link,
   Film,
   Puzzle,
@@ -188,7 +187,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           if (item.id === 'extension') return can.accessTab('extension');
           if (item.id === 'creators') return can.accessTab('creators');
           if (item.id === 'campaigns') return can.accessTab('campaigns');
-          if (item.id === 'integrations') return can.accessTab('integrations');
+          if (item.id === 'integrations') return can.accessTab('settings'); // Integrations under settings permissions
           if (item.id === 'team') return can.accessTab('settings'); // Team members under settings permissions
           if (item.id === 'revenue') return can.accessTab('settings'); // Revenue under settings permissions
           return true;

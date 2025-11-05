@@ -12,7 +12,6 @@ const RevenueManagementPage: React.FC = () => {
   const [showWizard, setShowWizard] = useState(false);
   const [integrations, setIntegrations] = useState<RevenueIntegration[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -43,7 +42,6 @@ const RevenueManagementPage: React.FC = () => {
     }
 
     try {
-      setSaving(true);
       setErrorMessage(null);
       
       // Check if Apple integration already exists
@@ -100,8 +98,6 @@ const RevenueManagementPage: React.FC = () => {
       console.error('Failed to save credentials:', error);
       setErrorMessage(error.message || 'Failed to save Apple App Store credentials');
       throw error;
-    } finally {
-      setSaving(false);
     }
   };
 

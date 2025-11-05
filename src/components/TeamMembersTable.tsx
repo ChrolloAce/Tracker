@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Shield, Clock, MoreVertical, Trash2 } from 'lucide-react';
+import { User, Mail, Shield, Clock, MoreVertical } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import OrganizationService from '../services/OrganizationService';
 import { OrgMember } from '../types/firestore';
