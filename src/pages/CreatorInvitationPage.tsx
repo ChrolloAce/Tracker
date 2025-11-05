@@ -156,8 +156,17 @@ const CreatorInvitationPage: React.FC = () => {
   const handleAutoAccept = async () => {
     if (!user || !invitation || processingInvite) return;
 
+    console.log('🔍 handleAutoAccept called with:', { 
+      userEmail: user.email, 
+      invitationEmail: invitation.email,
+      invitationId: invitation.id,
+      orgId: invitation.orgId,
+      userId: user.uid
+    });
+
     // Check if user's email matches invitation email
     if (user.email?.toLowerCase() !== invitation.email.toLowerCase()) {
+      console.error('❌ Email mismatch:', { userEmail: user.email, invitationEmail: invitation.email });
       setError(
         `This invitation is for ${invitation.email}, but you're signed in as ${user.email}. ` +
         `Please log out and sign in with the correct email address.`
@@ -170,6 +179,7 @@ const CreatorInvitationPage: React.FC = () => {
       setProcessingInvite(true);
       setError('');
 
+      console.log('✅ Emails match! Calling acceptInvitation...');
       await TeamInvitationService.acceptInvitation(
         invitation.id,
         invitation.orgId,
@@ -178,6 +188,7 @@ const CreatorInvitationPage: React.FC = () => {
         user.displayName || undefined
       );
 
+      console.log('✅ acceptInvitation succeeded!');
       setSuccessMessage(`Welcome to ${invitation.organizationName}!`);
 
       // Wait longer for Firebase to propagate org membership changes
@@ -186,7 +197,8 @@ const CreatorInvitationPage: React.FC = () => {
       // Use hard redirect to ensure AuthContext reloads with new org data
       window.location.href = '/dashboard';
     } catch (err: any) {
-      console.error('Failed to accept invitation:', err);
+      console.error('❌ Failed to accept invitation:', err);
+      console.error('❌ Error details:', err.message, err.code, err);
       setError(err.message || 'Failed to accept invitation. Please try again.');
       setProcessingInvite(false);
     }
