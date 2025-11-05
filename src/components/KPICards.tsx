@@ -2006,10 +2006,35 @@ const KPICard: React.FC<{
           return DataAggregationService.isDateInInterval(uploadDate, interval);
         }) : [];
         
-        const hasTopGainers = videosInInterval.some((video: VideoSubmission) => {
-          const snapshots = video.snapshots || [];
-          return snapshots.length >= 2;
-        });
+        // Calculate top gainers to see if we have any (need actual growth, not just snapshots)
+        const topGainersCheck = videosInInterval
+          .map((video: VideoSubmission) => {
+            const snapshots = video.snapshots || [];
+            if (snapshots.length < 2) return null;
+            
+            const sortedSnapshots = [...snapshots].sort((a, b) => 
+              new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+            );
+            
+            const earliest = sortedSnapshots[0];
+            const latest = sortedSnapshots[sortedSnapshots.length - 1];
+            
+            const growthMetricKey = data.id === 'views' ? 'views' 
+              : data.id === 'likes' ? 'likes'
+              : data.id === 'comments' ? 'comments'
+              : data.id === 'shares' ? 'shares'
+              : data.id === 'bookmarks' ? 'bookmarks'
+              : 'views';
+            
+            const earliestValue = (earliest as any)[growthMetricKey] || 0;
+            const latestValue = (latest as any)[growthMetricKey] || video[growthMetricKey] || 0;
+            const growth = earliestValue > 0 ? ((latestValue - earliestValue) / earliestValue) * 100 : 0;
+            
+            return growth > 0 ? { video, growth } : null;
+          })
+          .filter(item => item !== null);
+        
+        const hasTopGainers = topGainersCheck.length > 0;
         
         // Dynamic width based on whether we show one or two columns
         const tooltipWidth = hasTopGainers ? 650 : 350;

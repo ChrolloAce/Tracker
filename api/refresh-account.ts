@@ -237,7 +237,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       let views = 0, likes = 0, comments = 0, shares = 0;
       let url = '', thumbnail = '', caption = '';
       let uploadDate: Date = new Date();
-      let sourceThumbnailUrl = ''; // Store source URL, download later if needed
 
       if (account.platform === 'instagram') {
         views = media.play_count || media.ig_play_count || 0;
@@ -246,12 +245,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         shares = 0;
         url = `https://www.instagram.com/reel/${media.code || media.shortCode}/`;
         
-        sourceThumbnailUrl = 
+        const instaThumbnail = 
           media.image_versions2?.additional_candidates?.first_frame?.url || 
           media.image_versions2?.candidates?.[0]?.url || 
           media.thumbnail_url || 
           media.display_url || 
           '';
+        
+        if (instaThumbnail) {
+          console.log(`  📸 Instagram thumbnail URL found: ${instaThumbnail.substring(0, 80)}...`);
+          thumbnail = await downloadAndUploadImage(
+            instaThumbnail,
+            orgId,
+            `${platformVideoId}_thumb.jpg`,
+            'thumbnails'
+          );
+        }
         
         caption = media.caption?.text || media.caption || '';
         uploadDate = media.taken_at ? new Date(media.taken_at * 1000) : new Date();
@@ -262,11 +271,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         shares = media.shareCount || 0;
         url = media.webVideoUrl || media.videoUrl || '';
         
-        sourceThumbnailUrl = media['videoMeta.coverUrl'] || 
-                            media.videoMeta?.coverUrl || 
-                            media.coverUrl || 
-                            media.thumbnail || 
-                            '';
+        const tiktokThumbnail = media['videoMeta.coverUrl'] || 
+                               media.videoMeta?.coverUrl || 
+                               media.coverUrl || 
+                               media.thumbnail || 
+                               '';
+        
+        if (tiktokThumbnail) {
+          console.log(`  🎬 TikTok thumbnail URL found: ${tiktokThumbnail.substring(0, 80)}...`);
+          thumbnail = await downloadAndUploadImage(
+            tiktokThumbnail,
+            orgId,
+            `tt_${platformVideoId}_thumb.jpg`,
+            'thumbnails'
+          );
+        }
         
         caption = media.text || '';
         uploadDate = media.createTime ? new Date(media.createTime * 1000) : new Date();
@@ -278,19 +297,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           console.log(`  ⚠️ Video limit reached. Skipping: ${platformVideoId}`);
           skippedCount++;
           continue;
-        }
-
-        // Download thumbnail for new video (always download for new videos)
-        if (sourceThumbnailUrl) {
-          const platformPrefix = account.platform === 'tiktok' ? 'tt_' : '';
-          console.log(`  📸 Downloading thumbnail for NEW video: ${platformVideoId}`);
-          thumbnail = await downloadAndUploadImage(
-            sourceThumbnailUrl,
-            orgId,
-            `${platformPrefix}${platformVideoId}_thumb.jpg`,
-            'thumbnails'
-          );
-          console.log(`  ✅ Thumbnail uploaded: ${thumbnail ? thumbnail.substring(0, 50) + '...' : 'FAILED'}`);
         }
 
         // Add new video
@@ -352,38 +358,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           lastRefreshed: Timestamp.now()
         };
 
-        // Smart thumbnail update logic
-        const existingThumbnail = existingData.thumbnail || '';
-        const isFirebaseStorage = existingThumbnail.includes('storage.googleapis.com');
-        const isCDNUrl = existingThumbnail && (
-          existingThumbnail.includes('cdninstagram.com') || 
-          existingThumbnail.includes('fbcdn.net') ||
-          existingThumbnail.includes('tiktokcdn.com') ||
-          existingThumbnail.includes('twimg.com')
-        );
-        const isPlaceholder = existingThumbnail.includes('placeholder');
-        const isEmpty = !existingThumbnail || existingThumbnail.trim() === '';
+        // Update thumbnail if needed
+        const shouldUpdateThumbnail = 
+          (!existingData.thumbnail || existingData.thumbnail.trim() === '') && thumbnail;
 
-        // Download thumbnail only if: empty, placeholder, or CDN URL (never replace Firebase Storage)
-        const shouldDownloadThumbnail = sourceThumbnailUrl && !isFirebaseStorage && (isEmpty || isPlaceholder || isCDNUrl);
-
-        if (shouldDownloadThumbnail) {
-          const platformPrefix = account.platform === 'tiktok' ? 'tt_' : '';
-          const reason = isEmpty ? 'EMPTY' : isPlaceholder ? 'PLACEHOLDER' : 'CDN_URL';
-          console.log(`  🔄 Updating thumbnail for ${platformVideoId} (reason: ${reason})`);
-          console.log(`    Old: ${existingThumbnail.substring(0, 60)}${existingThumbnail.length > 60 ? '...' : ''}`);
-          
-          thumbnail = await downloadAndUploadImage(
-            sourceThumbnailUrl,
-            orgId,
-            `${platformPrefix}${platformVideoId}_thumb.jpg`,
-            'thumbnails'
-          );
-          
-          if (thumbnail) {
-            console.log(`    New: ${thumbnail.substring(0, 60)}...`);
-            videoData.thumbnail = thumbnail;
-          }
+        if (shouldUpdateThumbnail && thumbnail) {
+          console.log(`    🔄 Updating thumbnail (old: ${existingData.thumbnail ? existingData.thumbnail.substring(0, 50) : 'EMPTY'}, new: ${thumbnail.substring(0, 50)}...)`);
+          videoData.thumbnail = thumbnail;
         }
 
         batch.update(videoRef, videoData);

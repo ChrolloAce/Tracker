@@ -229,7 +229,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   // Track if we've already done the initial restoration from localStorage
   const hasRestoredFromLocalStorage = useRef(false);
   const [accountVideos, setAccountVideos] = useState<AccountVideo[]>([]);
-  const [allAccountVideos, setAllAccountVideos] = useState<AccountVideo[]>([]); // Rules-filtered (no date filter) for PP calculation
+  const [allAccountVideos, setAllAccountVideos] = useState<AccountVideo[]>([]);
+  const [accountVideosSnapshots, setAccountVideosSnapshots] = useState<Map<string, VideoSnapshot[]>>(new Map()); // Rules-filtered (no date filter) for PP calculation
   const [viewMode, setViewMode] = useState<'table' | 'details'>('table');
   const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
   const [selectedVideoForPlayer, setSelectedVideoForPlayer] = useState<{url: string; title: string; platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter' } | null>(null);
@@ -400,6 +401,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     setSelectedAccount(null);
     navigate('/accounts');
     setAccountVideos([]);
+    setAccountVideosSnapshots(new Map());
     setViewMode('table');
     onViewModeChange('table');
     // Clear localStorage so we don't accidentally restore this account later
@@ -416,6 +418,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     setLoadingAccountDetail(true);
     
     const videos = await AccountTrackingServiceFirebase.getAccountVideos(currentOrgId, currentProjectId, accountId);
+    
+    // Load snapshots for all videos
+    console.log('📸 Loading snapshots for', videos.length, 'videos...');
+    const videoIds = videos.map(v => v.id || v.videoId || '').filter(Boolean);
+    const snapshotsMap = await FirestoreDataService.getVideoSnapshotsBatch(
+      currentOrgId,
+      currentProjectId,
+      videoIds
+    );
+    console.log('✅ Loaded snapshots for', snapshotsMap.size, 'videos');
+    setAccountVideosSnapshots(snapshotsMap);
     
     // Apply dashboard rules to filter videos
     // When no rules are selected, show ALL videos (default behavior)
@@ -479,25 +492,30 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     });
     
     // Apply date filtering on top of rules filtering
-    const videoSubmissions: VideoSubmission[] = rulesFilteredVideos.map(video => ({
-      id: video.id || video.videoId || '',
-      url: video.url || '',
-      platform: account.platform,
-      thumbnail: video.thumbnail || '',
-      title: video.caption || video.title || 'No caption',
-      uploader: account.displayName || account.username,
-      uploaderHandle: account.username,
-      uploaderProfilePicture: account.profilePicture,
-      followerCount: account.followerCount,
-      status: 'approved' as const,
-      views: video.viewsCount || video.views || 0,
-      likes: video.likesCount || video.likes || 0,
-      comments: video.commentsCount || video.comments || 0,
-      shares: video.sharesCount || video.shares || 0,
-      dateSubmitted: video.uploadDate || new Date(),
-      uploadDate: video.uploadDate || new Date(),
-      snapshots: []
-    }));
+    const videoSubmissions: VideoSubmission[] = rulesFilteredVideos.map(video => {
+      const videoId = video.id || video.videoId || '';
+      const snapshots = snapshotsMap.get(videoId) || [];
+      
+      return {
+        id: videoId,
+        url: video.url || '',
+        platform: account.platform,
+        thumbnail: video.thumbnail || '',
+        title: video.caption || video.title || 'No caption',
+        uploader: account.displayName || account.username,
+        uploaderHandle: account.username,
+        uploaderProfilePicture: account.profilePicture,
+        followerCount: account.followerCount,
+        status: 'approved' as const,
+        views: video.viewsCount || video.views || 0,
+        likes: video.likesCount || video.likes || 0,
+        comments: video.commentsCount || video.comments || 0,
+        shares: video.sharesCount || video.shares || 0,
+        dateSubmitted: video.uploadDate || new Date(),
+        uploadDate: video.uploadDate || new Date(),
+        snapshots: snapshots
+      };
+    });
     
     const dateFilteredSubmissions = DateFilterService.filterVideosByDateRange(
       videoSubmissions,
@@ -1283,6 +1301,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       if (selectedAccount?.id === accountToDelete.id) {
         navigate('/accounts');
         setAccountVideos([]);
+        setAccountVideosSnapshots(new Map());
       }
       
       setShowDeleteModal(false);
@@ -2165,46 +2184,54 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
               {(() => {
               // Convert AccountVideo[] to VideoSubmission[]
               // accountVideos is already filtered by both rules AND date
-              const filteredVideoSubmissions: VideoSubmission[] = accountVideos.map(video => ({
-                id: video.id || video.videoId || '',
-                url: video.url || '',
-                platform: selectedAccount.platform,
-                thumbnail: video.thumbnail || '',
-                title: video.caption || video.title || 'No caption',
-                uploader: selectedAccount.displayName || selectedAccount.username,
-                uploaderHandle: selectedAccount.username,
-                uploaderProfilePicture: selectedAccount.profilePicture,
-                followerCount: selectedAccount.followerCount,
-                status: 'approved' as const,
-                views: video.viewsCount || video.views || 0,
-                likes: video.likesCount || video.likes || 0,
-                comments: video.commentsCount || video.comments || 0,
-                shares: video.sharesCount || video.shares || 0,
-                dateSubmitted: video.uploadDate || new Date(),
-                uploadDate: video.uploadDate || new Date(),
-                snapshots: []
-              }));
+              const filteredVideoSubmissions: VideoSubmission[] = accountVideos.map(video => {
+                const videoId = video.id || video.videoId || '';
+                const snapshots = accountVideosSnapshots.get(videoId) || [];
+                return {
+                  id: videoId,
+                  url: video.url || '',
+                  platform: selectedAccount.platform,
+                  thumbnail: video.thumbnail || '',
+                  title: video.caption || video.title || 'No caption',
+                  uploader: selectedAccount.displayName || selectedAccount.username,
+                  uploaderHandle: selectedAccount.username,
+                  uploaderProfilePicture: selectedAccount.profilePicture,
+                  followerCount: selectedAccount.followerCount,
+                  status: 'approved' as const,
+                  views: video.viewsCount || video.views || 0,
+                  likes: video.likesCount || video.likes || 0,
+                  comments: video.commentsCount || video.comments || 0,
+                  shares: video.sharesCount || video.shares || 0,
+                  dateSubmitted: video.uploadDate || new Date(),
+                  uploadDate: video.uploadDate || new Date(),
+                  snapshots: snapshots
+                };
+              });
 
               // ALL videos (unfiltered by date) for PP calculation
-              const allVideoSubmissions: VideoSubmission[] = allAccountVideos.map(video => ({
-                id: video.id || video.videoId || '',
-                url: video.url || '',
-                platform: selectedAccount.platform,
-                thumbnail: video.thumbnail || '',
-                title: video.caption || video.title || 'No caption',
-                uploader: selectedAccount.displayName || selectedAccount.username,
-                uploaderHandle: selectedAccount.username,
-                uploaderProfilePicture: selectedAccount.profilePicture,
-                followerCount: selectedAccount.followerCount,
-                status: 'approved' as const,
-                views: video.viewsCount || video.views || 0,
-                likes: video.likesCount || video.likes || 0,
-                comments: video.commentsCount || video.comments || 0,
-                shares: video.sharesCount || video.shares || 0,
-                dateSubmitted: video.uploadDate || new Date(),
-                uploadDate: video.uploadDate || new Date(),
-                snapshots: []
-              }));
+              const allVideoSubmissions: VideoSubmission[] = allAccountVideos.map(video => {
+                const videoId = video.id || video.videoId || '';
+                const snapshots = accountVideosSnapshots.get(videoId) || [];
+                return {
+                  id: videoId,
+                  url: video.url || '',
+                  platform: selectedAccount.platform,
+                  thumbnail: video.thumbnail || '',
+                  title: video.caption || video.title || 'No caption',
+                  uploader: selectedAccount.displayName || selectedAccount.username,
+                  uploaderHandle: selectedAccount.username,
+                  uploaderProfilePicture: selectedAccount.profilePicture,
+                  followerCount: selectedAccount.followerCount,
+                  status: 'approved' as const,
+                  views: video.viewsCount || video.views || 0,
+                  likes: video.likesCount || video.likes || 0,
+                  comments: video.commentsCount || video.comments || 0,
+                  shares: video.sharesCount || video.shares || 0,
+                  dateSubmitted: video.uploadDate || new Date(),
+                  uploadDate: video.uploadDate || new Date(),
+                  snapshots: snapshots
+                };
+              });
 
               // Filter link clicks for this account
               // 1. Find all links associated with this account

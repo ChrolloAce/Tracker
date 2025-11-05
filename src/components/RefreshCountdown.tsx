@@ -170,17 +170,17 @@ const RefreshCountdown: React.FC = () => {
                 </span>
                 <span className={`font-medium ${isEligible ? 'text-emerald-400' : 'text-white/60'}`}>
                   {isEligible ? '✓ Eligible' : `Next: ${formatTimeUntil(account.lastRefreshed, account.refreshInterval)}`}
-                </span>
-              </div>
+        </span>
+      </div>
 
-              {/* Progress Bar */}
-              <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                <div 
+      {/* Progress Bar */}
+      <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+        <div 
                   className={`h-full transition-all duration-1000 ease-linear ${
                     isEligible ? 'bg-emerald-400' : 'bg-white/40'
                   }`}
                   style={{ width: `${Math.min(progress, 100)}%` }}
-                />
+        />
               </div>
             </div>
           );
