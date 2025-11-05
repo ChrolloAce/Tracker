@@ -756,6 +756,47 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                 onFilterChange={(filter, customRange) => {
                   setDateFilter(filter);
                   setCustomDateRange(customRange);
+                  
+                  // Auto-adjust granularity based on time range
+                  let newGranularity: TimeGranularity = 'daily';
+                  
+                  switch (filter) {
+                    case 'today':
+                    case 'yesterday':
+                    case 'last7days':
+                      newGranularity = 'daily';
+                      break;
+                    case 'last14days':
+                      newGranularity = 'daily';
+                      break;
+                    case 'last30days':
+                      newGranularity = 'weekly';
+                      break;
+                    case 'last90days':
+                    case 'mtd':
+                    case 'ytd':
+                    case 'all':
+                      newGranularity = 'monthly';
+                      break;
+                    case 'custom':
+                      // For custom ranges, calculate the number of days
+                      if (customRange) {
+                        const daysDiff = Math.ceil(
+                          (customRange.endDate.getTime() - customRange.startDate.getTime()) / (1000 * 60 * 60 * 24)
+                        );
+                        
+                        if (daysDiff <= 14) {
+                          newGranularity = 'daily';
+                        } else if (daysDiff <= 60) {
+                          newGranularity = 'weekly';
+                        } else {
+                          newGranularity = 'monthly';
+                        }
+                      }
+                      break;
+                  }
+                  
+                  setTimeGranularity(newGranularity);
                 }}
               />
             )}

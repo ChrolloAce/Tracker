@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
 import { 
   ArrowLeft, ChevronDown, Search, Filter, CheckCircle2, Circle, Plus, Trash2,
@@ -119,7 +119,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   // Get authentication state, current organization, and current project
   const { user, currentOrgId: authOrgId, currentProjectId: authProjectId } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
 
   // Check if we're in demo mode - demo IDs ALWAYS override auth IDs
   let demoContext;
@@ -211,34 +211,30 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [isDayVideosModalOpen, setIsDayVideosModalOpen] = useState(false);
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string | undefined>();
   const [dayVideosDate, setDayVideosDate] = useState<Date>(new Date());
-  
-  // Read URL parameters for navigation
-  const urlTab = searchParams.get('tab');
-  const urlAccount = searchParams.get('account');
-  const urlCreator = searchParams.get('creator');
-  
-  // Priority: URL param > initialTab prop > 'dashboard'
-  const activeTab = urlTab || initialTab || 'dashboard';
+  const activeTab = initialTab || 'dashboard';
   const [isEditingLayout, setIsEditingLayout] = useState(false);
 
-  // Handle URL parameters for account/creator filtering
-  useEffect(() => {
-    if (urlAccount && activeTab === 'accounts') {
-      console.log('🔍 Opening account from URL:', urlAccount);
-      // Dispatch event to open account details (AccountsPage listens for this)
-      const event = new CustomEvent('openAccount', { detail: { accountId: urlAccount } });
-      window.dispatchEvent(event);
-    }
-  }, [urlAccount, activeTab]);
+  // Account/Creator filtering from navigation state
+  const [accountFilterId, setAccountFilterId] = useState<string | null>(null);
+  const [creatorFilterId, setCreatorFilterId] = useState<string | null>(null);
 
+  // Handle navigation state filters (from clicking accounts or creators)
   useEffect(() => {
-    if (urlCreator && activeTab === 'accounts') {
-      console.log('🔍 Filtering by creator from URL:', urlCreator);
-      // Dispatch event to filter by creator (AccountsPage listens for this)
-      const event = new CustomEvent('filterByCreator', { detail: { creatorId: urlCreator } });
-      window.dispatchEvent(event);
+    const state = location.state as any;
+    if (state?.filterByAccount) {
+      console.log('🎯 Applying account filter from navigation:', state.filterByAccount);
+      setAccountFilterId(state.filterByAccount);
+      setCreatorFilterId(null); // Clear creator filter
+      // Clear the state to prevent re-application on back navigation
+      navigate(location.pathname, { replace: true, state: {} });
+    } else if (state?.filterByCreator) {
+      console.log('🎨 Applying creator filter from navigation:', state.filterByCreator);
+      setCreatorFilterId(state.filterByCreator);
+      setAccountFilterId(null); // Clear account filter
+      // Clear the state to prevent re-application on back navigation
+      navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [urlCreator, activeTab]);
+  }, [location.state, location.pathname, navigate]);
 
   // Mark items as read when entering tabs
   useEffect(() => {
@@ -2821,6 +2817,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             pendingAccounts={pendingAccounts}
                             selectedRuleIds={selectedRuleIds}
                             dashboardRules={allRules}
+                            accountFilterId={accountFilterId}
+                            creatorFilterId={creatorFilterId}
                           />
                         );
                       case 'videos-table':
@@ -2974,6 +2972,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               dashboardRules={allRules}
               organizationId={currentOrgId || undefined}
               projectId={currentProjectId || undefined}
+              accountFilterId={accountFilterId}
+              creatorFilterId={creatorFilterId}
             />
           )}
 

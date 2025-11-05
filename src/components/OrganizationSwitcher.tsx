@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Building2, Check, Plus, Lock, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import OrganizationService from '../services/OrganizationService';
@@ -12,7 +13,6 @@ const OrganizationSwitcher: React.FC = () => {
   const [userRoles, setUserRoles] = useState<Map<string, Role>>(new Map());
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const hasLoadedRef = useRef(false); // Track if we've loaded already
   
   // Check if in demo mode
@@ -44,17 +44,6 @@ const OrganizationSwitcher: React.FC = () => {
       hasLoadedRef.current = true;
     }
   }, [user?.uid]); // Only when user ID changes (login/logout)
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const loadOrganizations = async () => {
     if (!user) return;
@@ -149,8 +138,8 @@ const OrganizationSwitcher: React.FC = () => {
           </button>
         </div>
 
-        {/* Modal for Switching Organizations */}
-        {isOpen && (
+        {/* Modal for Switching Organizations - Rendered via Portal */}
+        {isOpen && createPortal(
           <div 
             className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
             onClick={() => setIsOpen(false)}
@@ -240,7 +229,8 @@ const OrganizationSwitcher: React.FC = () => {
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </>
     );

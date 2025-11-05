@@ -109,6 +109,8 @@ export interface AccountsPageProps {
   projectId?: string;
   selectedRuleIds?: string[];
   dashboardRules?: TrackingRule[];
+  accountFilterId?: string | null; // Filter by specific account ID
+  creatorFilterId?: string | null; // Filter by creator's linked accounts
 }
 
 export interface AccountsPageRef {
@@ -124,8 +126,8 @@ interface AccountWithFilteredStats extends TrackedAccount {
   filteredTotalComments: number;
 }
 
-// Main component with URL parameter support for account/creator filtering
-const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilter, platformFilter, searchQuery = '', onViewModeChange, pendingAccounts = [], selectedRuleIds = [], dashboardRules = [], organizationId, projectId }, ref) => {
+const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
+  ({ dateFilter, platformFilter, searchQuery = '', onViewModeChange, pendingAccounts = [], selectedRuleIds = [], dashboardRules = [], organizationId, projectId, accountFilterId, creatorFilterId }, ref) => {
   const { user, currentOrgId: authOrgId, currentProjectId: authProjectId } = useAuth();
   
   // Use props if provided (for demo mode), otherwise use auth
@@ -145,8 +147,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
   const [filteredAccounts, setFilteredAccounts] = useState<AccountWithFilteredStats[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<TrackedAccount | null>(null);
-  const [selectedCreatorId, setSelectedCreatorId] = useState<string | null>(null);
-  const [creatorFilteredAccountIds, setCreatorFilteredAccountIds] = useState<string[]>([]);
+  const [creatorLinkedAccountIds, setCreatorLinkedAccountIds] = useState<string[]>([]);
   
   // Track if we've already done the initial restoration from localStorage
   const hasRestoredFromLocalStorage = useRef(false);
@@ -800,6 +801,16 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
   const processedAccounts = useMemo(() => {
     let result = filteredAccounts.length > 0 ? filteredAccounts : accounts;
     
+    // Apply account filter (filter by specific account ID)
+    if (accountFilterId) {
+      result = result.filter(account => account.id === accountFilterId);
+    }
+    
+    // Apply creator filter (filter by creator's linked accounts)
+    if (creatorFilterId && creatorLinkedAccountIds.length > 0) {
+      result = result.filter(account => creatorLinkedAccountIds.includes(account.id));
+    }
+    
     // Apply platform filter
     if (platformFilter !== 'all') {
       result = result.filter(account => account.platform === platformFilter);
@@ -811,12 +822,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
         account.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
         account.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
       );
-    }
-    
-    // Apply creator filter (from URL parameter)
-    if (selectedCreatorId && creatorFilteredAccountIds.length > 0) {
-      console.log('🎨 Applying creator filter. Showing only:', creatorFilteredAccountIds);
-      result = result.filter(account => creatorFilteredAccountIds.includes(account.id));
     }
     
     // Apply sorting
@@ -859,8 +864,27 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     });
     
     return sorted;
-  }, [filteredAccounts, accounts, platformFilter, searchQuery, sortBy, sortOrder, selectedCreatorId, creatorFilteredAccountIds]);
+  }, [filteredAccounts, accounts, platformFilter, searchQuery, sortBy, sortOrder, accountFilterId, creatorFilterId, creatorLinkedAccountIds]);
 
+
+  // Load creator linked accounts when creator filter is applied
+  useEffect(() => {
+    if (creatorFilterId && currentOrgId && currentProjectId) {
+      console.log('📋 Loading linked accounts for creator:', creatorFilterId);
+      CreatorLinksService.getCreatorLinkedAccounts(currentOrgId, currentProjectId, creatorFilterId)
+        .then(links => {
+          const accountIds = links.map(link => link.accountId);
+          console.log('📋 Creator linked account IDs:', accountIds);
+          setCreatorLinkedAccountIds(accountIds);
+        })
+        .catch(error => {
+          console.error('Failed to load creator linked accounts:', error);
+          setCreatorLinkedAccountIds([]);
+        });
+    } else {
+      setCreatorLinkedAccountIds([]);
+    }
+  }, [creatorFilterId, currentOrgId, currentProjectId]);
 
   // Listen for URL-based account opening
   useEffect(() => {
@@ -878,34 +902,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
     window.addEventListener('openAccount', handleOpenAccount);
     return () => window.removeEventListener('openAccount', handleOpenAccount);
   }, [accounts]);
-
-  // Listen for URL-based creator filtering
-  useEffect(() => {
-    const handleFilterByCreator = async (event: any) => {
-      const creatorId = event.detail?.creatorId;
-      console.log('🎨 Filter by creator event received:', creatorId);
-      if (creatorId && currentOrgId && currentProjectId) {
-        setSelectedCreatorId(creatorId);
-        // Load the creator's linked accounts
-        try {
-          const links = await CreatorLinksService.getCreatorLinkedAccounts(currentOrgId, currentProjectId, creatorId);
-          const accountIds = links.map(link => link.accountId);
-          console.log('🎨 Creator linked accounts:', accountIds);
-          setCreatorFilteredAccountIds(accountIds);
-        } catch (error) {
-          console.error('Failed to load creator linked accounts:', error);
-          setCreatorFilteredAccountIds([]);
-        }
-      } else {
-        // Clear creator filter
-        setSelectedCreatorId(null);
-        setCreatorFilteredAccountIds([]);
-      }
-    };
-    
-    window.addEventListener('filterByCreator', handleFilterByCreator);
-    return () => window.removeEventListener('filterByCreator', handleFilterByCreator);
-  }, [currentOrgId, currentProjectId]);
 
   // NOTE: Removed duplicate useEffect - video loading is now handled by loadAccountVideos() 
   // which is called from the useEffect at line ~450 with dashboard rules properly applied
@@ -1546,7 +1542,12 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilte
                             'hover:bg-white/5 dark:hover:bg-white/5 cursor-pointer': !isAccountSyncing,
                           }
                         )}
-                        onClick={() => !isAccountSyncing && navigate(`/dashboard?tab=accounts&account=${account.id}`)}
+                        onClick={() => !isAccountSyncing && navigate('/dashboard', { 
+                          state: { 
+                            filterByAccount: account.id,
+                            accountUsername: account.username 
+                          } 
+                        })}
                       >
                         {/* Username Column */}
                         <td className="px-6 py-4 whitespace-nowrap">

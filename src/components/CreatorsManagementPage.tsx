@@ -435,11 +435,16 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
                         // Get linked accounts for this creator to filter by
                         const linkedAccounts = (creator as any).linkedAccounts || [];
                         if (linkedAccounts.length > 0) {
-                          // Navigate to accounts tab filtered by this creator
-                          navigate(`/dashboard?tab=accounts&creator=${creator.userId}`);
+                          // Navigate to dashboard with creator filter applied via state
+                          navigate('/dashboard', {
+                            state: {
+                              filterByCreator: creator.userId,
+                              creatorName: creator.name
+                            }
+                          });
                         } else {
                           // No accounts, just go to dashboard
-                          navigate(`/dashboard?tab=creators`);
+                          navigate('/dashboard');
                         }
                       }}
                       className="hover:bg-white/5 transition-colors group cursor-pointer"

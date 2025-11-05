@@ -125,7 +125,30 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
               {/* Timeframe Selector */}
               <select
                 value={timeframe}
-                onChange={(e) => setTimeframe(e.target.value as TimeframeType)}
+                onChange={(e) => {
+                  const newTimeframe = e.target.value as TimeframeType;
+                  setTimeframe(newTimeframe);
+                  
+                  // Auto-adjust granularity based on timeframe
+                  let newGranularity: GranularityType = 'daily';
+                  
+                  switch (newTimeframe) {
+                    case 'today':
+                      newGranularity = 'hourly';
+                      break;
+                    case 'last7days':
+                      newGranularity = 'daily';
+                      break;
+                    case 'last30days':
+                      newGranularity = 'daily';
+                      break;
+                    case 'last90days':
+                      newGranularity = 'daily';
+                      break;
+                  }
+                  
+                  setGranularity(newGranularity);
+                }}
                 disabled={loading}
                 className="px-3 py-2 text-sm bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-white/20 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-white/20"
               >
