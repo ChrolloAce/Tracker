@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { X, Calendar, Eye, Heart, MessageCircle, Share2, Activity, Video, Users, MousePointerClick, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Calendar, Eye, Heart, MessageCircle, Share2, Activity, Video, Users, MousePointerClick, ChevronLeft, ChevronRight, Play, TrendingUp } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { VideoSubmissionsTable } from './VideoSubmissionsTable';
 import { TimeInterval } from '../services/DataAggregationService';
 import { LinkClick } from '../services/LinkClicksService';
+import { PlatformIcon } from './ui/PlatformIcon';
 
 interface DayVideosModalProps {
   isOpen: boolean;
@@ -293,6 +294,50 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
 
   const buttonText = getToggleButtonText();
 
+  // Calculate New Uploads (most recent videos in the period)
+  const newUploads = useMemo(() => {
+    return [...filteredVideos]
+      .sort((a, b) => {
+        const dateA = a.uploadDate ? new Date(a.uploadDate) : new Date(a.dateSubmitted);
+        const dateB = b.uploadDate ? new Date(b.uploadDate) : new Date(b.dateSubmitted);
+        return dateB.getTime() - dateA.getTime();
+      })
+      .slice(0, 10); // Show top 10 most recent
+  }, [filteredVideos]);
+
+  // Calculate Top Gainers (videos with highest growth from snapshots)
+  const topGainers = useMemo(() => {
+    return filteredVideos
+      .map((video: VideoSubmission) => {
+        const snapshots = video.snapshots || [];
+        if (snapshots.length < 2) return null;
+        
+        const sortedSnapshots = [...snapshots].sort((a, b) => 
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        );
+        
+        const earliest = sortedSnapshots[0];
+        const latest = sortedSnapshots[sortedSnapshots.length - 1];
+        
+        // Calculate growth based on views (most common metric)
+        const earliestViews = earliest.views || 0;
+        const latestViews = latest.views || video.views || 0;
+        const growth = earliestViews > 0 ? ((latestViews - earliestViews) / earliestViews) * 100 : 0;
+        
+        return {
+          video,
+          growth,
+          currentViews: latestViews,
+          snapshotCount: snapshots.length,
+          earliestViews,
+          viewsGained: latestViews - earliestViews
+        };
+      })
+      .filter(item => item !== null && item.growth > 0)
+      .sort((a: any, b: any) => b.growth - a.growth)
+      .slice(0, 10); // Show top 10 gainers
+  }, [filteredVideos]);
+
   if (!isOpen) return null;
 
   return (
@@ -301,7 +346,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
       onClick={onClose}
     >
       <div 
-        className="bg-zinc-900/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-6xl max-h-[85vh] overflow-hidden border border-white/10 ring-1 ring-white/5"
+        className="bg-zinc-900/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-[1400px] max-h-[85vh] overflow-hidden border border-white/10 ring-1 ring-white/5"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -369,56 +414,143 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
           </div>
         </div>
 
-        {/* Main Content - 2 Column Layout */}
-        <div className="flex gap-6 p-6 overflow-hidden" style={{ height: 'calc(85vh - 100px)' }}>
-          {/* Left: Videos Table */}
-          <div className="flex-1 overflow-auto min-w-0" style={{ height: 'calc(85vh - 150px)' }}>
-            {filteredVideos.length > 0 ? (
-              <VideoSubmissionsTable 
-                submissions={filteredVideos}
-                onVideoClick={onVideoClick}
-                headerTitle={(() => {
-                  // If filtering by day of week and hour, show that instead of date
-                  if (dayOfWeek !== undefined && hourRange) {
-                    const dayName = getDayName(dayOfWeek);
-                    const timeRange = formatHourRange(hourRange.start, hourRange.end);
-                    return `All ${dayName}s ${timeRange}`;
-                  }
-                  
-                  const currentInterval = showPreviousPeriod ? ppInterval : interval;
-                  if (currentInterval) {
-                    return `Content from ${formatIntervalRange(currentInterval)}`;
-                  }
-                  return `Content from ${formatDate(date)}`;
-                })()}
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center px-6">
-                <div className="p-4 bg-white/5 rounded-full mb-4 border border-white/10">
-                  <Calendar className="w-12 h-12 text-gray-500" />
+        {/* Main Content - 3 Column Layout */}
+        <div className="flex gap-4 p-6 overflow-hidden" style={{ height: 'calc(85vh - 100px)' }}>
+          {/* Left: New Uploads */}
+          <div className="w-80 flex-shrink-0 flex flex-col">
+            <h3 className="text-sm font-semibold text-white mb-4 uppercase tracking-wider flex items-center gap-2">
+              <Video className="w-4 h-4" />
+              New Uploads ({newUploads.length})
+            </h3>
+            <div className="overflow-auto space-y-2 flex-1">
+              {newUploads.length > 0 ? (
+                newUploads.map((video, idx) => (
+                  <div 
+                    key={`new-${video.id}-${idx}`}
+                    onClick={() => onVideoClick?.(video)}
+                    className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10 hover:bg-white/5 cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* Thumbnail */}
+                      <div className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-gray-800">
+                        {video.thumbnail ? (
+                          <img 
+                            src={video.thumbnail} 
+                            alt={video.title || video.caption || 'Video'} 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Play className="w-6 h-6 text-gray-600" />
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Metadata */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-white font-medium leading-tight mb-1 line-clamp-2">
+                          {video.title || video.caption || '(No caption)'}
+                        </p>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <div className="w-3 h-3">
+                            <PlatformIcon platform={video.platform} size="sm" />
+                          </div>
+                          <span className="text-xs text-gray-400">
+                            {video.uploaderHandle || video.platform}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          {formatNumber(video.views || 0)} views
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                  <Video className="w-12 h-12 text-gray-600 mb-3" />
+                  <p className="text-sm text-gray-500">No new uploads</p>
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-2">
-                  No videos found
-                </h3>
-                <p className="text-gray-400 text-sm">
-                  {(() => {
-                    // If filtering by day of week and hour
-                    if (dayOfWeek !== undefined && hourRange) {
-                      const dayName = getDayName(dayOfWeek);
-                      const timeRange = formatHourRange(hourRange.start, hourRange.end);
-                      return accountFilter 
-                        ? `No videos from @${accountFilter} on ${dayName}s ${timeRange}`
-                        : `No videos were uploaded on ${dayName}s ${timeRange}`;
-                    }
-                    
-                    // Otherwise show date-based message
-                    return accountFilter 
-                      ? `No videos from @${accountFilter} on ${formatDate(date)}`
-                      : `No videos were uploaded on ${formatDate(date)}`;
-                  })()}
-                </p>
-              </div>
-            )}
+              )}
+            </div>
+          </div>
+
+          {/* Middle: Top Gainers */}
+          <div className="w-80 flex-shrink-0 flex flex-col">
+            <h3 className="text-sm font-semibold text-white mb-4 uppercase tracking-wider flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              Top Gainers ({topGainers.length})
+            </h3>
+            <div className="overflow-auto space-y-2 flex-1">
+              {topGainers.length > 0 ? (
+                topGainers.map((item: any, idx: number) => (
+                  <div 
+                    key={`gainer-${item.video.id}-${idx}`}
+                    onClick={() => onVideoClick?.(item.video)}
+                    className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10 hover:bg-white/5 cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* Thumbnail */}
+                      <div className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-gray-800 relative">
+                        {item.video.thumbnail ? (
+                          <img 
+                            src={item.video.thumbnail} 
+                            alt={item.video.title || item.video.caption || 'Video'} 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Play className="w-6 h-6 text-gray-600" />
+                          </div>
+                        )}
+                        {/* Growth badge */}
+                        <div className="absolute top-1 right-1 bg-emerald-500/90 backdrop-blur-sm rounded px-1.5 py-0.5">
+                          <span className="text-[10px] font-bold text-white">
+                            +{item.growth.toFixed(0)}%
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Metadata */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-white font-medium leading-tight mb-1 line-clamp-2">
+                          {item.video.title || item.video.caption || '(No caption)'}
+                        </p>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <div className="w-3 h-3">
+                            <PlatformIcon platform={item.video.platform} size="sm" />
+                          </div>
+                          <span className="text-xs text-gray-400">
+                            {item.snapshotCount} snapshots
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-semibold text-emerald-400">
+                            +{formatNumber(item.viewsGained)}
+                          </p>
+                          <span className="text-xs text-gray-500">→</span>
+                          <p className="text-xs text-gray-300">
+                            {formatNumber(item.currentViews)} views
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                  <TrendingUp className="w-12 h-12 text-gray-600 mb-3" />
+                  <p className="text-sm text-gray-500">No growth data</p>
+                  <p className="text-xs text-gray-600 mt-1">Videos need snapshots to show growth</p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Right: KPI Metrics Grid (2x4) */}

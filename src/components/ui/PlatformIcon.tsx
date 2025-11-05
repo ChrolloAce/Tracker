@@ -3,7 +3,7 @@ import { clsx } from 'clsx';
 
 interface PlatformIconProps {
   platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter';
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   className?: string;
 }
 
@@ -13,6 +13,7 @@ export const PlatformIcon: React.FC<PlatformIconProps> = ({
   className 
 }) => {
   const sizeClasses = {
+    xs: 'w-3 h-3',
     sm: 'w-4 h-4',
     md: 'w-6 h-6', 
     lg: 'w-8 h-8'

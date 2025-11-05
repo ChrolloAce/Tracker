@@ -19,7 +19,10 @@ if (!getApps().length) {
       privateKey: privateKey,
     };
 
-    initializeApp({ credential: cert(serviceAccount as any) });
+    initializeApp({ 
+      credential: cert(serviceAccount as any),
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'trackview-6a3a5.firebasestorage.app'
+    });
   } catch (error) {
     console.error('Failed to initialize Firebase Admin:', error);
   }
@@ -795,6 +798,21 @@ async function saveVideosToFirestore(
         mentions: []
       });
 
+      // Create initial snapshot for new video
+      const initialSnapshotRef = newVideoRef.collection('snapshots').doc();
+      const snapshotTime = Timestamp.now();
+      batch.set(initialSnapshotRef, {
+        id: initialSnapshotRef.id,
+        videoId: platformVideoId,
+        views,
+        likes,
+        comments,
+        shares,
+        capturedAt: snapshotTime,
+        timestamp: snapshotTime, // Backwards compatibility
+        capturedBy: isManualTrigger ? 'manual_refresh_initial' : 'scheduled_refresh_initial'
+      });
+
       addedCount++;
       batchCount++;
     } else {
@@ -847,6 +865,7 @@ async function saveVideosToFirestore(
       
       // Create a snapshot for the updated metrics
       const snapshotRef = videoRef.collection('snapshots').doc();
+      const now = Timestamp.now();
       batch.set(snapshotRef, {
         id: snapshotRef.id,
         videoId: platformVideoId,
@@ -854,7 +873,8 @@ async function saveVideosToFirestore(
         likes: videoData.likes,
         comments: videoData.comments,
         shares: videoData.shares,
-        capturedAt: Timestamp.now(),
+        capturedAt: now,
+        timestamp: now, // Backwards compatibility
         capturedBy: isManualTrigger ? 'manual_refresh' : 'scheduled_refresh'
       });
 

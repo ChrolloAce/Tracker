@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, Edit3, ChevronUp, ChevronDown, Filter, TrendingUp, TrendingDown, Minus, Bookmark, Clock } from 'lucide-react';
 import Lottie from 'lottie-react';
 import { VideoSubmission } from '../types';
@@ -285,18 +286,33 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
     setCurrentPage(1); // Reset to first page when changing items per page
   };
 
-  // Sortable header component
+  // Sortable header component with tooltip
   const SortableHeader: React.FC<{
     column: 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'uploadDate' | 'dateSubmitted';
     children: React.ReactNode;
     className?: string;
-  }> = ({ column, children, className }) => (
+    tooltip: string;
+  }> = ({ column, children, className, tooltip }) => {
+    const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
+    
+    const handleMouseMove = (e: React.MouseEvent) => {
+      setTooltipPosition({ x: e.clientX, y: e.clientY });
+    };
+    
+    const handleMouseLeave = () => {
+      setTooltipPosition(null);
+    };
+    
+    return (
+      <>
     <th 
       className={clsx(
         'px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none',
         className
       )}
       onClick={() => handleSort(column)}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
     >
       <div className="flex items-center space-x-0.5 sm:space-x-1">
         <span>{children}</span>
@@ -316,7 +332,98 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
         </div>
       </div>
     </th>
-  );
+        
+        {/* Tooltip portal */}
+        {tooltipPosition && createPortal(
+          <div
+            className="fixed z-[999999] pointer-events-none"
+            style={{
+              left: `${tooltipPosition.x}px`,
+              top: `${tooltipPosition.y + 20}px`,
+              transform: 'translateX(-50%)',
+              maxWidth: '320px',
+              width: 'max-content'
+            }}
+          >
+            <div 
+              className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10 p-3"
+              style={{
+                maxWidth: '320px',
+                width: 'max-content'
+              }}
+            >
+              <div className="text-xs text-gray-300 leading-relaxed whitespace-normal">
+                {tooltip}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+      </>
+    );
+  };
+  
+  // Non-sortable header component with tooltip
+  const ColumnHeader: React.FC<{
+    children: React.ReactNode;
+    className?: string;
+    tooltip: string;
+    sticky?: boolean;
+  }> = ({ children, className, tooltip, sticky }) => {
+    const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
+    
+    const handleMouseMove = (e: React.MouseEvent) => {
+      setTooltipPosition({ x: e.clientX, y: e.clientY });
+    };
+    
+    const handleMouseLeave = () => {
+      setTooltipPosition(null);
+    };
+    
+    return (
+      <>
+        <th 
+          className={clsx(
+            'px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-zinc-400 uppercase tracking-wider',
+            sticky && 'sticky left-0 z-20',
+            className
+          )}
+          style={sticky ? { backgroundColor: 'rgba(18, 18, 20, 0.95)' } : undefined}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+        >
+          {children}
+        </th>
+        
+        {/* Tooltip portal */}
+        {tooltipPosition && createPortal(
+          <div
+            className="fixed z-[999999] pointer-events-none"
+            style={{
+              left: `${tooltipPosition.x}px`,
+              top: `${tooltipPosition.y + 20}px`,
+              transform: 'translateX(-50%)',
+              maxWidth: '320px',
+              width: 'max-content'
+            }}
+          >
+            <div 
+              className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10 p-3"
+              style={{
+                maxWidth: '320px',
+                width: 'max-content'
+              }}
+            >
+              <div className="text-xs text-gray-300 leading-relaxed whitespace-normal">
+                {tooltip}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+      </>
+    );
+  };
 
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
@@ -433,74 +540,124 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
           <thead>
             <tr className="border-b border-white/5">
               {visibleColumns.video && (
-                <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-zinc-400 uppercase tracking-wider sticky left-0 z-20 min-w-[200px] sm:min-w-[280px]" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}>
+                <ColumnHeader 
+                  sticky
+                  className="min-w-[200px] sm:min-w-[280px]"
+                  tooltip="Video title, creator, and basic information. Click on a video row to see detailed analytics, engagement history, and performance trends."
+                >
                   Video
-                </th>
+                </ColumnHeader>
               )}
               {visibleColumns.preview && (
-                <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[80px] sm:min-w-[100px]">
+                <ColumnHeader 
+                  className="min-w-[80px] sm:min-w-[100px]"
+                  tooltip="Visual preview thumbnail of the video content. Click to view the full video on its original platform."
+                >
                   Preview
-                </th>
+                </ColumnHeader>
               )}
               {visibleColumns.trend && (
-                <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[60px] sm:min-w-[80px]">
+                <ColumnHeader 
+                  className="min-w-[60px] sm:min-w-[80px]"
+                  tooltip="Performance trend indicator showing if the video is gaining or losing momentum. Green arrow indicates growing engagement, red arrow shows declining interest."
+                >
                   Trend
-                </th>
+                </ColumnHeader>
               )}
               {visibleColumns.views && (
-                <SortableHeader column="views" className="min-w-[120px]">
+                <SortableHeader 
+                  column="views" 
+                  className="min-w-[120px]"
+                  tooltip="Total number of times this video has been viewed. This is the primary metric for measuring content reach and visibility across the platform."
+                >
                   Views
                 </SortableHeader>
               )}
               {visibleColumns.likes && (
-                <SortableHeader column="likes" className="min-w-[120px]">
+                <SortableHeader 
+                  column="likes" 
+                  className="min-w-[120px]"
+                  tooltip="Total likes received on the video. High like counts indicate strong audience appreciation and content resonance. Click to sort videos by popularity."
+                >
                   Likes
                 </SortableHeader>
               )}
               {visibleColumns.comments && (
-                <SortableHeader column="comments" className="min-w-[120px]">
+                <SortableHeader 
+                  column="comments" 
+                  className="min-w-[120px]"
+                  tooltip="Total number of comments on the video. High comment counts suggest strong audience engagement, conversation, and community interaction."
+                >
                   Comments
                 </SortableHeader>
               )}
               {visibleColumns.shares && (
-                <SortableHeader column="shares" className="min-w-[120px]">
+                <SortableHeader 
+                  column="shares" 
+                  className="min-w-[120px]"
+                  tooltip="Number of times this video has been shared or reposted. Shares indicate viral potential and content that resonates enough for viewers to spread."
+                >
                   Shares
                 </SortableHeader>
               )}
               {visibleColumns.bookmarks && (
-                <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[90px] sm:min-w-[120px]">
+                <ColumnHeader 
+                  className="min-w-[90px] sm:min-w-[120px]"
+                  tooltip="Number of times viewers saved or bookmarked this video. High bookmark counts indicate valuable content people want to reference or watch again later."
+                >
                   Bookmarks
-                </th>
+                </ColumnHeader>
               )}
               {visibleColumns.duration && (
-                <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[80px] sm:min-w-[100px]">
+                <ColumnHeader 
+                  className="min-w-[80px] sm:min-w-[100px]"
+                  tooltip="Duration of the video content in minutes and seconds. Shorter videos often have higher completion rates, while longer content can drive more watch time."
+                >
                   Length
-                </th>
+                </ColumnHeader>
               )}
               {visibleColumns.engagement && (
-                <SortableHeader column="engagement" className="min-w-[140px]">
+                <SortableHeader 
+                  column="engagement" 
+                  className="min-w-[140px]"
+                  tooltip="Engagement rate calculated as (Likes + Comments + Shares) / Views × 100. This percentage shows how actively viewers interact with the content. Higher rates indicate more compelling content."
+                >
                   Engagement
                 </SortableHeader>
               )}
               {visibleColumns.outlier && (
-                <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[120px] sm:min-w-[160px]">
+                <ColumnHeader 
+                  className="min-w-[120px] sm:min-w-[160px]"
+                  tooltip="Indicates if this video's performance is significantly above or below your average. Top Performers exceed expectations, while Underperformers may need content strategy adjustments."
+                >
                   Outlier Factor
-                </th>
+                </ColumnHeader>
               )}
               {visibleColumns.uploadDate && (
-                <SortableHeader column="uploadDate" className="min-w-[120px]">
+                <SortableHeader 
+                  column="uploadDate" 
+                  className="min-w-[120px]"
+                  tooltip="The date when this video was originally published on the platform. Helps track content freshness and identify trending vs. evergreen content performance."
+                >
                   Upload Date
                 </SortableHeader>
               )}
               {visibleColumns.dateAdded && (
-                <SortableHeader column="dateSubmitted" className="min-w-[120px]">
+                <SortableHeader 
+                  column="dateSubmitted" 
+                  className="min-w-[120px]"
+                  tooltip="The date when you added this video to your tracking dashboard. Use this to monitor how long you've been tracking each piece of content."
+                >
                   Date Added
                 </SortableHeader>
               )}
               {visibleColumns.lastRefresh && (
-                <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-zinc-400 uppercase tracking-wider min-w-[100px] sm:min-w-[120px]">
+                <ColumnHeader 
+                  className="min-w-[100px] sm:min-w-[120px]"
+                  tooltip="Last time metrics were updated for this video. Data is automatically refreshed periodically to keep performance statistics current and accurate."
+                >
                   Last Refresh
-                </th>
+                </ColumnHeader>
               )}
               <th className="w-8 sm:w-12 px-2 sm:px-4 md:px-6 py-3 sm:py-4 text-left"></th>
             </tr>

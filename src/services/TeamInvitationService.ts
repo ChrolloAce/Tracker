@@ -220,53 +220,23 @@ class TeamInvitationService {
     let invite: TeamInvitation | undefined; // Declare outside try block for catch block access
     
     try {
-      // Get invitation from the public lookup first (more reliable and doesn't require org membership)
-      console.log(`🔍 Attempting to read invitation from public lookup first`);
-      const lookupRef = doc(db, 'invitationsLookup', invitationId);
+      // Get invitation
       const inviteRef = doc(db, 'organizations', orgId, 'invitations', invitationId);
-      const lookupDoc = await getDoc(lookupRef);
+      const inviteDoc = await getDoc(inviteRef);
       
-      console.log(`📧 Public lookup exists:`, lookupDoc.exists());
+      console.log(`📧 Invitation doc exists:`, inviteDoc.exists());
       
-      if (!lookupDoc.exists()) {
-        throw new Error('Invitation not found. It may have expired or been deleted.');
+      if (!inviteDoc.exists()) {
+        throw new Error('Invitation not found. It may have already been accepted or deleted.');
       }
       
-      // Use the public lookup data as the source of truth
-      invite = lookupDoc.data() as TeamInvitation;
+      invite = inviteDoc.data() as TeamInvitation;
       console.log(`📋 Invitation status:`, invite.status);
       console.log(`📋 Invitation email:`, invite.email);
       console.log(`📋 Your email:`, email);
-      console.log(`📋 Invitation orgId:`, invite.orgId);
-      console.log(`📋 Invitation role:`, invite.role);
       
-      // Verify the orgId matches (safety check)
-      if (invite.orgId !== orgId) {
-        console.error(`⚠️ OrgId mismatch! Expected ${orgId}, got ${invite.orgId}`);
-        throw new Error('Invalid invitation - organization ID mismatch.');
-      }
-      
-      // Check status
-      if (invite.status && invite.status !== 'pending') {
-        // If already accepted, check if user is already a member
-        if (invite.status === 'accepted') {
-          console.log(`ℹ️ Invitation already marked as accepted, checking if user is a member...`);
-          const existingMemberRef = doc(db, 'organizations', orgId, 'members', userId);
-          const existingMemberDoc = await getDoc(existingMemberRef);
-          
-          if (existingMemberDoc.exists() && existingMemberDoc.data().status === 'active') {
-            console.log(`✅ Invitation already accepted and user is already a member`);
-            // Set as default org
-            const userRef = doc(db, 'users', userId);
-            await setDoc(userRef, { defaultOrgId: orgId }, { merge: true });
-            return; // Success - already a member
-          }
-          
-          console.log(`⚠️ Invitation marked accepted but user is not a member. Will recreate membership.`);
-          // Continue with the flow to recreate membership
-        } else {
-          throw new Error(`This invitation is ${invite.status}. Only pending invitations can be accepted.`);
-        }
+      if (invite.status !== 'pending') {
+        throw new Error(`This invitation is ${invite.status}. Only pending invitations can be accepted.`);
       }
       
       // Verify email matches (case-insensitive)
@@ -301,6 +271,7 @@ class TeamInvitationService {
           
           // Try to update the public lookup (don't fail if it doesn't exist)
           try {
+            const lookupRef = doc(db, 'invitationsLookup', invitationId);
             await updateDoc(lookupRef, {
               status: 'accepted',
               acceptedAt: Timestamp.now()
@@ -324,14 +295,8 @@ class TeamInvitationService {
       // Proceed with accepting invitation
       const batch = writeBatch(db);
       
-      // Update invitation status in BOTH places
+      // Update invitation status
       batch.update(inviteRef, { 
-        status: 'accepted',
-        acceptedAt: Timestamp.now()
-      });
-      
-      // Also update the public lookup
-      batch.update(lookupRef, {
         status: 'accepted',
         acceptedAt: Timestamp.now()
       });

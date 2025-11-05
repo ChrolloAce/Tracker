@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { collection, query, where, getDocs, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { 
@@ -128,10 +129,81 @@ interface AccountWithFilteredStats extends TrackedAccount {
   filteredTotalViews: number;
   filteredTotalLikes: number;
   filteredTotalComments: number;
+  filteredTotalShares?: number;
+  filteredTotalBookmarks?: number;
   highestViewedVideo?: { title: string; views: number; videoId: string };
   postingStreak?: number;
   viralityRate?: number;
+  avgEngagementRate?: number;
 }
+
+// Column header with tooltip component
+const ColumnHeader: React.FC<{
+  label: string;
+  tooltip: string;
+  sortable?: boolean;
+  sortKey?: string;
+  currentSortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  onSort?: () => void;
+}> = ({ label, tooltip, sortable, sortKey, currentSortBy, sortOrder, onSort }) => {
+  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
+  
+  const handleMouseMove = (e: React.MouseEvent) => {
+    setTooltipPosition({ x: e.clientX, y: e.clientY });
+  };
+  
+  const handleMouseLeave = () => {
+    setTooltipPosition(null);
+  };
+  
+  return (
+    <>
+      <th 
+        className={`px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider ${sortable ? 'cursor-pointer hover:bg-zinc-800/40 transition-colors' : ''}`}
+        onClick={sortable ? onSort : undefined}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+      >
+        <div className="flex items-center gap-2">
+          <span>{label}</span>
+          {sortable && currentSortBy === sortKey && (
+            <span className="text-white">
+              {sortOrder === 'asc' ? '↑' : '↓'}
+            </span>
+          )}
+        </div>
+      </th>
+      
+      {/* Tooltip portal - follows mouse cursor */}
+      {tooltipPosition && createPortal(
+        <div
+          className="fixed z-[999999] pointer-events-none"
+          style={{
+            left: `${tooltipPosition.x}px`,
+            top: `${tooltipPosition.y + 20}px`,
+            transform: 'translateX(-50%)',
+            maxWidth: '320px',
+            width: 'max-content'
+          }}
+        >
+          <div 
+            className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10 p-3"
+            style={{
+              maxWidth: '320px',
+              width: 'max-content'
+            }}
+          >
+            <div className="text-xs text-gray-300 leading-relaxed whitespace-normal">
+              {tooltip}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
+  );
+};
 
 const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   ({ dateFilter, platformFilter, searchQuery = '', onViewModeChange, pendingAccounts = [], selectedRuleIds = [], dashboardRules = [], organizationId, projectId, accountFilterId, creatorFilterId }, ref) => {
@@ -843,19 +915,32 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
             viralityRate = viralVideos.length / rulesFilteredVideos.length;
           }
 
+          // Calculate average engagement rate across videos in the time period
+          const avgEngagementRate = dateFiltered.length > 0 
+            ? dateFiltered.reduce((sum, v) => {
+                const views = v.views || 0;
+                if (views === 0) return sum;
+                const engagements = (v.likes || 0) + (v.comments || 0) + (v.shares || 0);
+                return sum + (engagements / views);
+              }, 0) / dateFiltered.length
+            : 0;
+
           return {
             ...account,
             filteredTotalVideos: dateFiltered.length,
             filteredTotalViews: dateFiltered.reduce((sum, v) => sum + v.views, 0),
             filteredTotalLikes: dateFiltered.reduce((sum, v) => sum + v.likes, 0),
             filteredTotalComments: dateFiltered.reduce((sum, v) => sum + v.comments, 0),
+            filteredTotalShares: dateFiltered.reduce((sum, v) => sum + (v.shares || 0), 0),
+            filteredTotalBookmarks: dateFiltered.reduce((sum, v) => sum + (v.bookmarks || 0), 0),
             highestViewedVideo: highestViewedVideo ? {
               title: highestViewedVideo.videoTitle || highestViewedVideo.caption || 'Untitled',
               views: highestViewedVideo.views || 0,
               videoId: highestViewedVideo.id || ''
             } : undefined,
             postingStreak,
-            viralityRate
+            viralityRate,
+            avgEngagementRate
           };
         });
 
@@ -1363,9 +1448,14 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
               <table className="w-full min-w-max">
                 <thead className="bg-gray-50 dark:bg-zinc-900/40 border-b border-gray-200 dark:border-white/5">
                   <tr>
-                    <th 
-                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
-                      onClick={() => {
+                    <ColumnHeader
+                      label="Username"
+                      tooltip="The account username along with profile picture. Platform icon shows which social media platform this account is on, and a verified badge appears if the account is verified."
+                      sortable
+                      sortKey="username"
+                      currentSortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={() => {
                         if (sortBy === 'username') {
                           setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                         } else {
@@ -1373,28 +1463,20 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                           setSortOrder('asc');
                         }
                       }}
-                    >
-                      <div className="flex items-center gap-2">
-                        Username
-                        {sortBy === 'username' && (
-                          <span className="text-white">
-                            {sortOrder === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                    <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Platform
-                    </th>
-                    <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
-                      Creator
-                    </th>
-                    <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Last post
-                    </th>
-                    <th 
-                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
-                      onClick={() => {
+                    />
+                    <ColumnHeader
+                      label="Creator"
+                      tooltip="The team member or creator associated with this account. This helps you track which accounts belong to which team member."
+                      sortable={false}
+                    />
+                    <ColumnHeader
+                      label="Followers"
+                      tooltip="Total number of followers this account currently has on the platform. This metric helps gauge account reach and audience size."
+                      sortable
+                      sortKey="followers"
+                      currentSortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={() => {
                         if (sortBy === 'followers') {
                           setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                         } else {
@@ -1402,19 +1484,20 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                           setSortOrder('desc');
                         }
                       }}
-                    >
-                      <div className="flex items-center gap-2">
-                        Followers
-                        {sortBy === 'followers' && (
-                          <span className="text-white">
-                            {sortOrder === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                    <th 
-                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
-                      onClick={() => {
+                    />
+                    <ColumnHeader
+                      label="Last Post"
+                      tooltip="The date and time when the most recent content was posted by this account. Helps you track posting frequency and consistency."
+                      sortable={false}
+                    />
+                    <ColumnHeader
+                      label="Total Posts"
+                      tooltip="Total number of posts published by this account within the selected date range. Use this to monitor content output and activity levels."
+                      sortable
+                      sortKey="videos"
+                      currentSortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={() => {
                         if (sortBy === 'videos') {
                           setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                         } else {
@@ -1422,19 +1505,15 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                           setSortOrder('desc');
                         }
                       }}
-                    >
-                      <div className="flex items-center gap-1 sm:gap-2">
-                        Posts
-                        {sortBy === 'videos' && (
-                          <span className="text-white">
-                            {sortOrder === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                    <th 
-                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
-                      onClick={() => {
+                    />
+                    <ColumnHeader
+                      label="Views"
+                      tooltip="Total view count across all posts in the selected time period. This is a key metric for understanding content reach and visibility."
+                      sortable
+                      sortKey="views"
+                      currentSortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={() => {
                         if (sortBy === 'views') {
                           setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                         } else {
@@ -1442,119 +1521,15 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                           setSortOrder('desc');
                         }
                       }}
-                    >
-                      <div className="flex items-center gap-1 sm:gap-2">
-                        Views
-                        {sortBy === 'views' && (
-                          <span className="text-white">
-                            {sortOrder === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                    <th 
-                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
-                      onClick={() => {
-                        if (sortBy === 'likes') {
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortBy('likes');
-                          setSortOrder('desc');
-                        }
-                      }}
-                    >
-                      <div className="flex items-center gap-1 sm:gap-2">
-                        Likes
-                        {sortBy === 'likes' && (
-                          <span className="text-white">
-                            {sortOrder === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                    <th 
-                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
-                      onClick={() => {
-                        if (sortBy === 'comments') {
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortBy('comments');
-                          setSortOrder('desc');
-                        }
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        Comments
-                        {sortBy === 'comments' && (
-                          <span className="text-white">
-                            {sortOrder === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                    <th 
-                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
-                      onClick={() => {
-                        if (sortBy === 'shares') {
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortBy('shares');
-                          setSortOrder('desc');
-                        }
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        Shares
-                        {sortBy === 'shares' && (
-                          <span className="text-white">
-                            {sortOrder === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                    <th 
-                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
-                      onClick={() => {
-                        if (sortBy === 'bookmarks') {
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortBy('bookmarks');
-                          setSortOrder('desc');
-                        }
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        Bookmarks
-                        {sortBy === 'bookmarks' && (
-                          <span className="text-white">
-                            {sortOrder === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                    <th 
-                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
-                      onClick={() => {
-                        if (sortBy === 'engagementRate') {
-                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        } else {
-                          setSortBy('engagementRate');
-                          setSortOrder('desc');
-                        }
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        Engagement
-                        {sortBy === 'engagementRate' && (
-                          <span className="text-white">
-                            {sortOrder === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                    <th 
-                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
-                      onClick={() => {
+                    />
+                    <ColumnHeader
+                      label="Top Video"
+                      tooltip="The highest-performing video by view count in the selected period. Click to see which content resonated most with your audience."
+                      sortable
+                      sortKey="highestViewed"
+                      currentSortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={() => {
                         if (sortBy === 'highestViewed') {
                           setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                         } else {
@@ -1562,59 +1537,95 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                           setSortOrder('desc');
                         }
                       }}
-                    >
-                      <div className="flex items-center gap-2">
-                        Top Video
-                        {sortBy === 'highestViewed' && (
-                          <span className="text-white">
-                            {sortOrder === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                    <th 
-                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
-                      onClick={() => {
-                        if (sortBy === 'lastRefresh') {
+                    />
+                    <ColumnHeader
+                      label="Likes"
+                      tooltip="Total number of likes received across all posts in the selected date range. This metric reflects content appeal and audience appreciation."
+                      sortable
+                      sortKey="likes"
+                      currentSortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={() => {
+                        if (sortBy === 'likes') {
                           setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                         } else {
-                          setSortBy('lastRefresh');
+                          setSortBy('likes');
                           setSortOrder('desc');
                         }
                       }}
-                    >
-                      <div className="flex items-center gap-2">
-                        Last Sync
-                        {sortBy === 'lastRefresh' && (
-                          <span className="text-white">
-                            {sortOrder === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                    <th 
-                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
-                      onClick={() => {
-                        if (sortBy === 'postingStreak') {
+                    />
+                    <ColumnHeader
+                      label="Comments"
+                      tooltip="Total comments received across all posts in the selected period. High comment counts indicate strong audience engagement and conversation."
+                      sortable
+                      sortKey="comments"
+                      currentSortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={() => {
+                        if (sortBy === 'comments') {
                           setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                         } else {
-                          setSortBy('postingStreak');
+                          setSortBy('comments');
                           setSortOrder('desc');
                         }
                       }}
-                    >
-                      <div className="flex items-center gap-2">
-                        Streak
-                        {sortBy === 'postingStreak' && (
-                          <span className="text-white">
-                            {sortOrder === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                    <th 
-                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
-                      onClick={() => {
+                    />
+                    <ColumnHeader
+                      label="Shares"
+                      tooltip="Total number of times posts were shared or reposted in the selected period. Shares indicate content virality and audience advocacy."
+                      sortable
+                      sortKey="shares"
+                      currentSortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={() => {
+                        if (sortBy === 'shares') {
+                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortBy('shares');
+                          setSortOrder('desc');
+                        }
+                      }}
+                    />
+                    <ColumnHeader
+                      label="Bookmarks"
+                      tooltip="Total number of times posts were bookmarked or saved by viewers. This shows content that people find valuable enough to reference later."
+                      sortable
+                      sortKey="bookmarks"
+                      currentSortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={() => {
+                        if (sortBy === 'bookmarks') {
+                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortBy('bookmarks');
+                          setSortOrder('desc');
+                        }
+                      }}
+                    />
+                    <ColumnHeader
+                      label="Engagement"
+                      tooltip="Average engagement rate calculated across all videos in the selected time period. Formula: (Likes + Comments + Shares) / Views × 100. Higher rates indicate more interactive audience."
+                      sortable
+                      sortKey="engagementRate"
+                      currentSortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={() => {
+                        if (sortBy === 'engagementRate') {
+                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortBy('engagementRate');
+                          setSortOrder('desc');
+                        }
+                      }}
+                    />
+                    <ColumnHeader
+                      label="Virality"
+                      tooltip="Percentage of posts that achieved exceptional performance (significantly above average views) in the selected period. High virality indicates consistent ability to create trending content."
+                      sortable
+                      sortKey="viralityRate"
+                      currentSortBy={sortBy}
+                      sortOrder={sortOrder}
+                      onSort={() => {
                         if (sortBy === 'viralityRate') {
                           setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                         } else {
@@ -1622,16 +1633,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                           setSortOrder('desc');
                         }
                       }}
-                    >
-                      <div className="flex items-center gap-2">
-                        Virality
-                        {sortBy === 'viralityRate' && (
-                          <span className="text-white">
-                            {sortOrder === 'asc' ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </div>
-                    </th>
+                    />
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
@@ -1686,10 +1688,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                               <RefreshCw className="w-5 h-5 text-white/60 animate-spin" />
                             </div>
                                     )}
+                            {/* Platform Icon Overlay */}
+                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-zinc-900 rounded-full p-0.5 flex items-center justify-center border border-white/20">
+                              <PlatformIcon platform={procAccount.platform as any} size="xs" />
+                            </div>
                           </div>
                           <div>
-                            <div className="text-sm font-bold text-white">
+                            <div className="text-sm font-bold text-white flex items-center gap-1.5">
                                       {matchingAccount?.displayName || `@${procAccount.username}`}
+                              {matchingAccount?.isVerified && (
+                                <CheckCircle className="w-3.5 h-3.5 text-blue-500 fill-blue-500" />
+                              )}
                             </div>
                             <div className="text-xs text-white/40 font-medium flex items-center gap-1">
                                       {isPartiallyLoaded || !matchingAccount ? (
@@ -1705,15 +1714,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                         </div>
                       </td>
 
-                      {/* Platform Column */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center space-x-2">
-                          <PlatformIcon platform={procAccount.platform as any} size="sm" />
-                          <span className="text-sm text-white font-medium capitalize">{procAccount.platform}</span>
-                        </div>
-                      </td>
-
-                              {/* Other columns - show data if available, else loading placeholders */}
+                              {/* Creator Column */}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                                 {matchingAccount && accountCreatorNames.get(matchingAccount.id) ? (
                                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20 animate-fade-in">
@@ -1724,20 +1725,23 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                         <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse"></div>
                                 )}
                       </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                {matchingAccount?.lastSynced ? (
-                                  <span className="text-white animate-fade-in">{formatDate(matchingAccount.lastSynced.toDate())}</span>
-                                ) : (
-                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
-                                )}
-                      </td>
+                              {/* Followers Column */}
                               <td className="px-6 py-4 whitespace-nowrap text-sm">
                                 {matchingAccount && (matchingAccount.followerCount ?? 0) > 0 ? (
                                   <span className="text-white animate-fade-in">{(matchingAccount.followerCount ?? 0).toLocaleString()}</span>
                                 ) : (
+                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
+                                )}
+                      </td>
+                              {/* Last Post Column */}
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                {matchingAccount?.lastSynced ? (
+                                  <span className="text-white animate-fade-in">{formatDate(matchingAccount.lastSynced.toDate())}</span>
+                                ) : (
                         <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
                                 )}
                       </td>
+                              {/* Total Posts Column */}
                               <td className="px-6 py-4 whitespace-nowrap text-sm">
                                 {matchingAccount && (matchingAccount.postCount ?? 0) > 0 ? (
                                   <span className="text-white animate-fade-in">{(matchingAccount.postCount ?? 0).toLocaleString()}</span>
@@ -1745,11 +1749,37 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                         <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
                                 )}
                       </td>
+                      {/* Views Column */}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                         <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
                       </td>
+                      {/* Top Video Column */}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                         <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+                      </td>
+                      {/* Likes Column */}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.6s' }}></div>
+                      </td>
+                      {/* Comments Column */}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.7s' }}></div>
+                      </td>
+                      {/* Shares Column */}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.8s' }}></div>
+                      </td>
+                      {/* Bookmarks Column */}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.9s' }}></div>
+                      </td>
+                      {/* Engagement Column */}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '1.0s' }}></div>
+                      </td>
+                      {/* Virality Column */}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '1.1s' }}></div>
                       </td>
 
                       {/* Actions Column */}
@@ -1808,17 +1838,19 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                               <div className={`placeholder-icon w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center ${account.profilePicture ? 'hidden' : ''}`}>
                                 <Users className="w-5 h-5 text-gray-500" />
                               </div>
-                              {/* Verified Badge - Blue like Instagram */}
-                              {account.isVerified && (
-                                <div className="absolute -bottom-0.5 -right-0.5 bg-blue-500 rounded-full p-0.5 flex items-center justify-center">
-                                  <CheckCircle className="w-3 h-3 text-white fill-white stroke-blue-500 stroke-2" style={{ strokeWidth: 2.5 }} />
+                              {/* Platform Icon Overlay */}
+                              <div className="absolute -top-1 -right-1 w-5 h-5 bg-zinc-900 rounded-full p-0.5 flex items-center justify-center border border-white/20">
+                                <PlatformIcon platform={account.platform} size="xs" />
                                 </div>
-                              )}
                             </div>
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
-                                <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                <div className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-1.5">
                                   {account.displayName || account.username}
+                                  {/* Verified Badge next to username */}
+                                  {account.isVerified && (
+                                    <CheckCircle className="w-3.5 h-3.5 text-blue-500 fill-blue-500" />
+                                  )}
                                 </div>
                                 {isAccountSyncing && (
                                   <div className="flex items-center gap-2">
@@ -1859,14 +1891,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                           </div>
                         </td>
 
-                        {/* Platform Column */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center space-x-2">
-                            <PlatformIcon platform={account.platform} size="sm" />
-                            <span className="text-sm text-gray-900 dark:text-white capitalize">{account.platform}</span>
-                          </div>
-                        </td>
-
                         {/* Creator Column */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           {(() => {
@@ -1882,24 +1906,36 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                           })()}
                         </td>
 
-                        {/* Last Post Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {account.lastSynced ? formatDate(account.lastSynced.toDate()) : 'Never'}
-                        </td>
-
                         {/* Followers Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                           {account.followerCount ? formatNumber(account.followerCount) : 'N/A'}
                         </td>
 
-                        {/* Posts Column */}
+                        {/* Last Post Column */}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          {account.lastSynced ? formatDate(account.lastSynced.toDate()) : 'Never'}
+                        </td>
+
+                        {/* Total Posts Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                           {formatNumber('filteredTotalVideos' in account ? (account as AccountWithFilteredStats).filteredTotalVideos : account.totalVideos)}
                         </td>
 
                         {/* Views Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white dark:text-white">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                           {formatNumber('filteredTotalViews' in account ? (account as AccountWithFilteredStats).filteredTotalViews : account.totalViews)}
+                        </td>
+
+                        {/* Top Video Column */}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          {(account as AccountWithFilteredStats).highestViewedVideo ? (
+                            <div className="flex items-center gap-1">
+                              <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                              <span>{formatNumber((account as AccountWithFilteredStats).highestViewedVideo!.views)}</span>
+                            </div>
+                          ) : (
+                            <span className="text-white/30">—</span>
+                          )}
                         </td>
 
                         {/* Likes Column */}
@@ -1914,65 +1950,27 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
 
                         {/* Shares Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatNumber(account.totalShares || 0)}
+                          {formatNumber('filteredTotalShares' in account ? (account as AccountWithFilteredStats).filteredTotalShares || 0 : account.totalShares || 0)}
                         </td>
 
                         {/* Bookmarks Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatNumber(0)} {/* totalSaves not tracked at account level */}
+                          {formatNumber('filteredTotalBookmarks' in account ? (account as AccountWithFilteredStats).filteredTotalBookmarks || 0 : 0)}
                         </td>
 
-                        {/* Engagement Rate Column */}
+                        {/* Engagement Rate Column - Average across videos */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                           {(() => {
+                            // Use average engagement if available, otherwise calculate from totals
+                            if ('avgEngagementRate' in account && (account as AccountWithFilteredStats).avgEngagementRate !== undefined) {
+                              return `${((account as AccountWithFilteredStats).avgEngagementRate! * 100).toFixed(2)}%`;
+                            }
+                            // Fallback to total-based calculation
                             const totalEngagements = (account.totalLikes || 0) + (account.totalComments || 0) + (account.totalShares || 0);
                             const totalViews = account.totalViews || 0;
                             const engagementRate = totalViews > 0 ? (totalEngagements / totalViews * 100) : 0;
                             return `${engagementRate.toFixed(2)}%`;
                           })()}
-                        </td>
-
-                        {/* Highest Viewed Video Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {(account as AccountWithFilteredStats).highestViewedVideo ? (
-                            <div className="flex items-center gap-1">
-                              <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
-                              <span>{formatNumber((account as AccountWithFilteredStats).highestViewedVideo!.views)}</span>
-                            </div>
-                          ) : (
-                            <span className="text-white/30">—</span>
-                          )}
-                        </td>
-
-                        {/* Last Refresh Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {account.lastSynced ? (
-                            <div className="flex items-center gap-1 text-white/60">
-                              <ClockIcon className="w-3.5 h-3.5" />
-                              <span>{(() => {
-                                try {
-                                  const date = account.lastSynced.toDate ? account.lastSynced.toDate() : new Date(account.lastSynced.seconds * 1000);
-                                  return formatDate(date);
-                                } catch (e) {
-                                  return 'N/A';
-                                }
-                              })()}</span>
-                            </div>
-                          ) : (
-                            <span className="text-white/30">Never</span>
-                          )}
-                        </td>
-
-                        {/* Posting Streak Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {(account as AccountWithFilteredStats).postingStreak && (account as AccountWithFilteredStats).postingStreak! > 0 ? (
-                            <div className="flex items-center gap-1.5">
-                              <Flame className="w-4 h-4 text-orange-500" />
-                              <span className="font-semibold text-orange-500">{(account as AccountWithFilteredStats).postingStreak}</span>
-                            </div>
-                          ) : (
-                            <span className="text-white/30">—</span>
-                          )}
                         </td>
 
                         {/* Virality Rate Column */}

@@ -52,7 +52,6 @@ const CreatorInvitationPage: React.FC = () => {
     }
   }, [user, invitation]);
 
-
   const loadInvitation = async () => {
     if (!invitationId) {
       setError('Invalid invitation link');
@@ -156,22 +155,18 @@ const CreatorInvitationPage: React.FC = () => {
   const handleAutoAccept = async () => {
     if (!user || !invitation || processingInvite) return;
 
-    console.log('🔍 handleAutoAccept called with:', { 
-      userEmail: user.email, 
-      invitationEmail: invitation.email,
-      invitationId: invitation.id,
-      orgId: invitation.orgId,
-      userId: user.uid
-    });
-
     // Check if user's email matches invitation email
     if (user.email?.toLowerCase() !== invitation.email.toLowerCase()) {
-      console.error('❌ Email mismatch:', { userEmail: user.email, invitationEmail: invitation.email });
       setError(
-        `This invitation is for ${invitation.email}, but you're signed in as ${user.email}. ` +
-        `Please log out and sign in with the correct email address.`
+        `This invitation is for ${invitation.email}, but you were signed in as ${user.email}. ` +
+        `Please sign in with the correct email.`
       );
-      // Don't auto-logout - let user manually logout
+      // Auto-logout the user so they can sign in with correct account
+      try {
+        await logout();
+      } catch (err) {
+        console.error('Failed to logout:', err);
+      }
       return;
     }
 
@@ -179,7 +174,6 @@ const CreatorInvitationPage: React.FC = () => {
       setProcessingInvite(true);
       setError('');
 
-      console.log('✅ Emails match! Calling acceptInvitation...');
       await TeamInvitationService.acceptInvitation(
         invitation.id,
         invitation.orgId,
@@ -188,7 +182,6 @@ const CreatorInvitationPage: React.FC = () => {
         user.displayName || undefined
       );
 
-      console.log('✅ acceptInvitation succeeded!');
       setSuccessMessage(`Welcome to ${invitation.organizationName}!`);
 
       // Wait longer for Firebase to propagate org membership changes
@@ -197,8 +190,7 @@ const CreatorInvitationPage: React.FC = () => {
       // Use hard redirect to ensure AuthContext reloads with new org data
       window.location.href = '/dashboard';
     } catch (err: any) {
-      console.error('❌ Failed to accept invitation:', err);
-      console.error('❌ Error details:', err.message, err.code, err);
+      console.error('Failed to accept invitation:', err);
       setError(err.message || 'Failed to accept invitation. Please try again.');
       setProcessingInvite(false);
     }
@@ -212,23 +204,12 @@ const CreatorInvitationPage: React.FC = () => {
 
     try {
       await signInWithGoogle();
-      // After successful login, the useEffect will check email match and auto-accept
+      // User will be auto-logged in, and the useEffect will handle acceptance
       // Note: Google email must match invitation email
     } catch (err: any) {
       console.error('Google authentication error:', err);
       setError(err.message || 'Google authentication failed. Please try again.');
       setAuthLoading(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-      setError('');
-      // Stay on the same page, user will see the sign-in button again
-    } catch (err: any) {
-      console.error('Logout error:', err);
-      setError('Failed to log out. Please try again.');
     }
   };
 
@@ -332,43 +313,10 @@ const CreatorInvitationPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Show current user if logged in */}
-          {user && (
-            <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-xl p-4 mb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-blue-200 dark:bg-blue-500/20 flex items-center justify-center">
-                    <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Signed in as</p>
-                    <p className="text-sm font-semibold text-blue-900 dark:text-blue-300">{user.email}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline"
-                >
-                  Log out
-                </button>
-              </div>
-            </div>
-          )}
-
           {error && (
             <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl p-4 mb-6 flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
-                {user && user.email?.toLowerCase() !== invitation?.email.toLowerCase() && (
-                  <button
-                    onClick={handleLogout}
-                    className="mt-2 text-sm font-semibold text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline"
-                  >
-                    Log out and try again
-                  </button>
-                )}
-              </div>
+              <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
             </div>
           )}
 

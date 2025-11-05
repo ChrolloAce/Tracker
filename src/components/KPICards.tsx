@@ -1996,8 +1996,23 @@ const KPICard: React.FC<{
 
       {/* Portal Tooltip - Rendered at document.body level */}
       {tooltipData && (() => {
-        // Always position below cursor, but adjust horizontal position to stay on screen
-        const tooltipWidth = 400;
+        // Get counts first to determine layout
+        const point = tooltipData.point;
+        const interval = point.interval;
+        
+        // Calculate new uploads and top gainers counts
+        const videosInInterval = interval ? submissions.filter((video: VideoSubmission) => {
+          const uploadDate = video.uploadDate ? new Date(video.uploadDate) : new Date(video.dateSubmitted);
+          return DataAggregationService.isDateInInterval(uploadDate, interval);
+        }) : [];
+        
+        const hasTopGainers = videosInInterval.some((video: VideoSubmission) => {
+          const snapshots = video.snapshots || [];
+          return snapshots.length >= 2;
+        });
+        
+        // Dynamic width based on whether we show one or two columns
+        const tooltipWidth = hasTopGainers ? 650 : 350;
         const verticalOffset = 20; // spacing below cursor
         const horizontalPadding = 20; // minimum distance from screen edges
         const windowWidth = window.innerWidth;
@@ -2026,13 +2041,12 @@ const KPICard: React.FC<{
               top: `${tooltipData.y + verticalOffset}px`,
               transform: `translateX(${transformX})`,
               zIndex: 999999999,
-              width: '400px',
+              width: `${tooltipWidth}px`,
               maxHeight: '500px',
               pointerEvents: 'none'
             }}
           >
             {(() => {
-            const point = tooltipData.point;
             const value = point.value;
             
             // Get the interval from the data point
@@ -2087,11 +2101,53 @@ const KPICard: React.FC<{
               };
             })() : null;
             
-            // Filter videos for this interval (not just a single day!)
-            const videosInInterval = interval ? submissions.filter((video: VideoSubmission) => {
-              const uploadDate = video.uploadDate ? new Date(video.uploadDate) : new Date(video.dateSubmitted);
-              return DataAggregationService.isDateInInterval(uploadDate, interval);
-            }) : [];
+            // Note: videosInInterval already calculated above for hasTopGainers check
+            
+            // New Uploads: Sort by upload date (most recent first)
+            const newUploads = [...videosInInterval]
+              .sort((a, b) => {
+                const dateA = a.uploadDate ? new Date(a.uploadDate) : new Date(a.dateSubmitted);
+                const dateB = b.uploadDate ? new Date(b.uploadDate) : new Date(b.dateSubmitted);
+                return dateB.getTime() - dateA.getTime();
+              })
+              .slice(0, 5);
+            
+            // Top Gainers: Calculate growth based on snapshots
+            const topGainers = videosInInterval
+              .map((video: VideoSubmission) => {
+                // Get latest and earliest snapshots
+                const snapshots = video.snapshots || [];
+                if (snapshots.length < 2) return null;
+                
+                const sortedSnapshots = [...snapshots].sort((a, b) => 
+                  new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+                );
+                
+                const earliest = sortedSnapshots[0];
+                const latest = sortedSnapshots[sortedSnapshots.length - 1];
+                
+                // Calculate growth percentage based on KPI metric
+                const growthMetricKey = data.id === 'views' ? 'views' 
+                  : data.id === 'likes' ? 'likes'
+                  : data.id === 'comments' ? 'comments'
+                  : data.id === 'shares' ? 'shares'
+                  : data.id === 'bookmarks' ? 'bookmarks'
+                  : 'views';
+                
+                const earliestValue = (earliest as any)[growthMetricKey] || 0;
+                const latestValue = (latest as any)[growthMetricKey] || video[growthMetricKey] || 0;
+                const growth = earliestValue > 0 ? ((latestValue - earliestValue) / earliestValue) * 100 : 0;
+                
+                return {
+                  video,
+                  growth,
+                  metricValue: latestValue,
+                  snapshotCount: snapshots.length
+                };
+              })
+              .filter(item => item !== null && item.growth > 0)
+              .sort((a: any, b: any) => b.growth - a.growth)
+              .slice(0, 5);
             
             // Sort by the relevant metric
             let sortedItems: any[] = [];
@@ -2167,15 +2223,21 @@ const KPICard: React.FC<{
               : data.id === 'likes' ? 'Likes'
               : data.id === 'comments' ? 'Comments'
               : data.id === 'shares' ? 'Shares'
+              : data.id === 'bookmarks' ? 'Bookmarks'
               : data.id === 'accounts' ? 'Total Views'
               : data.id === 'link-clicks' ? 'Clicks'
+              : data.id === 'published-videos' ? 'Videos'
               : 'Views';
             
             const metricKey = data.id === 'views' ? 'views'
               : data.id === 'likes' ? 'likes'
               : data.id === 'comments' ? 'comments'
               : data.id === 'shares' ? 'shares'
+              : data.id === 'bookmarks' ? 'bookmarks'
               : 'views';
+            
+            // Check if this is published videos KPI (should use old layout)
+            const isPublishedVideosKPI = data.id === 'published-videos' || data.id === 'videos';
             
             return (
               <>
@@ -2214,9 +2276,148 @@ const KPICard: React.FC<{
                 {/* Divider */}
                 <div className="border-t border-white/10 mx-5"></div>
                 
-                {/* Content List - Accounts or Videos */}
-                {sortedItems.length > 0 ? (
-                  <div className="px-5 py-3">
+                {/* Two-Column Mega Tooltip Layout - Only for non-published-videos KPIs */}
+                {!isPublishedVideosKPI && data.id !== 'accounts' && data.id !== 'link-clicks' && (
+                <div className="flex">
+                  {/* Left Column: New Uploads */}
+                  <div className={`flex-1 px-5 py-3 ${hasTopGainers ? 'border-r border-white/10' : ''}`}>
+                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                      📤 New Uploads ({newUploads.length})
+                    </h3>
+                    {newUploads.length > 0 ? (
+                      <div className="space-y-2">
+                        {newUploads.map((video: VideoSubmission, idx: number) => (
+                          <div 
+                            key={`new-${video.id}-${idx}`}
+                            className="flex items-center gap-2 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                          >
+                            {/* Thumbnail */}
+                            <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-gray-800">
+                              {video.thumbnail ? (
+                                <img 
+                                  src={video.thumbnail} 
+                                  alt={video.title || video.caption || 'Video'} 
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Play className="w-4 h-4 text-gray-600" />
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Metadata */}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-white font-medium leading-tight">
+                                {((video.title || video.caption || '(No caption)').length > 13 
+                                  ? (video.title || video.caption || '(No caption)').substring(0, 13) + '...'
+                                  : (video.title || video.caption || '(No caption)'))}
+                              </p>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <div className="w-3 h-3">
+                                  <PlatformIcon platform={video.platform} size="sm" />
+                                </div>
+                                <span className="text-[10px] text-gray-400">
+                                  {video.uploaderHandle || video.platform}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {/* Metric - Show correct metric based on KPI */}
+                            <div className="flex-shrink-0 text-right">
+                              <p className="text-xs font-bold text-white">
+                                {formatDisplayNumber((video as any)[metricKey] || 0)}
+                              </p>
+                              <p className="text-[10px] text-gray-500">{metricLabel.toLowerCase()}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <Video className="w-6 h-6 text-gray-600 mx-auto mb-1" />
+                        <p className="text-xs text-gray-500">No new uploads</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Right Column: Top Gainers - Only show if there are gainers */}
+                  {hasTopGainers && (
+                  <div className="flex-1 px-5 py-3">
+                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                      📈 Top Gainers ({topGainers.length})
+                    </h3>
+                    {topGainers.length > 0 ? (
+                      <div className="space-y-2">
+                        {topGainers.map((item: any, idx: number) => (
+                          <div 
+                            key={`gainer-${item.video.id}-${idx}`}
+                            className="flex items-center gap-2 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                          >
+                            {/* Thumbnail */}
+                            <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-gray-800">
+                              {item.video.thumbnail ? (
+                                <img 
+                                  src={item.video.thumbnail} 
+                                  alt={item.video.title || item.video.caption || 'Video'} 
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Play className="w-4 h-4 text-gray-600" />
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Metadata */}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-white font-medium leading-tight">
+                                {((item.video.title || item.video.caption || '(No caption)').length > 13 
+                                  ? (item.video.title || item.video.caption || '(No caption)').substring(0, 13) + '...'
+                                  : (item.video.title || item.video.caption || '(No caption)'))}
+                              </p>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <div className="w-3 h-3">
+                                  <PlatformIcon platform={item.video.platform} size="sm" />
+                                </div>
+                                <span className="text-[10px] text-gray-400">
+                                  {item.snapshotCount} snapshots
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {/* Growth */}
+                            <div className="flex-shrink-0 text-right">
+                              <p className="text-xs font-bold text-emerald-400">
+                                +{item.growth.toFixed(0)}%
+                              </p>
+                              <p className="text-[10px] text-gray-500">
+                                {formatDisplayNumber(item.metricValue)} {metricLabel.toLowerCase()}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <Activity className="w-6 h-6 text-gray-600 mx-auto mb-1" />
+                        <p className="text-xs text-gray-500">No growth data</p>
+                      </div>
+                    )}
+                  </div>
+                  )}
+                </div>
+                )}
+                
+                {/* Old single column content (fallback for accounts/links/published-videos) */}
+                {(data.id === 'accounts' || data.id === 'link-clicks' || isPublishedVideosKPI) && sortedItems.length > 0 ? (
+                  <div className="px-5 py-3 border-t border-white/10">
                     {data.id === 'accounts' ? (
                       // Render Accounts with Profile Pictures
                       sortedItems.map((account: any, idx: number) => (
@@ -2399,10 +2600,15 @@ const KPICard: React.FC<{
                       </button>
                     </div>
                   </div>
-                ) : (
-                  <div className="px-5 py-6 text-center">
-                    <Video className="w-8 h-8 text-gray-600 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">No data for this date</p>
+                ) : null}
+                
+                {/* Click to Expand - For video tooltips (excluding published videos KPI) */}
+                {!isPublishedVideosKPI && data.id !== 'accounts' && data.id !== 'link-clicks' && (
+                  <div className="px-5 py-3 border-t border-white/10">
+                    <button className="w-full flex items-center justify-center gap-2 py-2 text-xs text-gray-400 hover:text-white transition-colors">
+                      <span>Click card to see all data</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 )}
                 

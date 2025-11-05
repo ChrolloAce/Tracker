@@ -2102,7 +2102,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                           if (!filteredAccount.dateAdded) return 'N/A';
                           try {
                             const date = filteredAccount.dateAdded.toDate ? filteredAccount.dateAdded.toDate() : new Date(filteredAccount.dateAdded.seconds * 1000);
-                            return date.toLocaleDateString();
+                          return date.toLocaleDateString();
                           } catch (e) {
                             return 'N/A';
                           }
