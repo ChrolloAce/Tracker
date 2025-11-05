@@ -124,6 +124,7 @@ interface AccountWithFilteredStats extends TrackedAccount {
   filteredTotalComments: number;
 }
 
+// Main component with URL parameter support for account/creator filtering
 const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   ({ dateFilter, platformFilter, searchQuery = '', onViewModeChange, pendingAccounts = [], selectedRuleIds = [], dashboardRules = [], organizationId, projectId }, ref) => {
   const { user, currentOrgId: authOrgId, currentProjectId: authProjectId } = useAuth();
