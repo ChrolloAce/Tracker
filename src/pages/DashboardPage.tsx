@@ -4,7 +4,7 @@ import { clsx } from 'clsx';
 import { 
   ArrowLeft, ChevronDown, Search, Filter, CheckCircle2, Circle, Plus, Trash2,
   Play, Heart, MessageCircle, Share2, Video, AtSign, Activity, /* DollarSign, Download, */ Link as LinkIcon, Edit2, RefreshCw,
-  Users, Clock, TrendingUp, BarChart3
+  Users, Clock, TrendingUp, BarChart3, X, Pencil
 } from 'lucide-react'; // DollarSign & Download hidden (revenue/downloads KPIs disabled)
 import Sidebar from '../components/layout/Sidebar';
 import { Modal } from '../components/ui/Modal';
@@ -2026,6 +2026,89 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         </div>
       )}
       
+      {/* Account Filter Banner - Shows when filtering by specific account */}
+      {accountFilterId && (() => {
+        const filteredAccount = trackedAccounts.find(acc => acc.id === accountFilterId);
+        if (!filteredAccount) return null;
+        
+        const topOffset = isDemoOrg ? 'top-[60px]' : 'top-0';
+        
+        return (
+          <div className={clsx(
+            'fixed right-0 z-30 transition-all duration-300 bg-gradient-to-r from-purple-500/10 to-blue-500/10 dark:from-purple-500/20 dark:to-blue-500/20 border-b border-purple-500/20',
+            topOffset,
+            {
+              'left-64': !isSidebarCollapsed,
+              'left-16': isSidebarCollapsed,
+            }
+          )}>
+            <div className="px-4 md:px-6 py-3">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  {/* Profile Image */}
+                  <div className="relative flex-shrink-0">
+                    {filteredAccount.profilePicture ? (
+                      <img 
+                        src={filteredAccount.profilePicture} 
+                        alt={filteredAccount.username}
+                        className="w-12 h-12 rounded-full object-cover border-2 border-white/20"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center border-2 border-white/20">
+                        <Users className="w-6 h-6 text-white" />
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Account Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-base md:text-lg font-semibold text-white truncate">
+                        {filteredAccount.displayName || filteredAccount.username}
+                      </h3>
+                      <span className="text-sm text-white/60">@{filteredAccount.username}</span>
+                    </div>
+                    <div className="flex items-center gap-4 mt-1 text-xs md:text-sm text-white/70 flex-wrap">
+                      <span className="flex items-center gap-1">
+                        <Users className="w-3.5 h-3.5" />
+                        {(filteredAccount.followerCount || 0).toLocaleString()} followers
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" />
+                        Joined {filteredAccount.dateAdded?.toDate().toLocaleDateString() || 'N/A'}
+                      </span>
+                      {/* Creator Link */}
+                      <button 
+                        className="flex items-center gap-1 hover:text-white transition-colors"
+                        onClick={() => {
+                          // TODO: Open modal to link/edit creator
+                          console.log('Edit creator link');
+                        }}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        <span>Creator: None</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Close Button */}
+                <button
+                  onClick={() => {
+                    setAccountFilterId(null);
+                    setSelectedAccountIds([]);
+                    navigate('/dashboard');
+                  }}
+                  className="flex-shrink-0 p-2 hover:bg-white/10 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-white/70 hover:text-white" />
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+      
       {/* Fixed Header */}
       <header className={clsx(
         'fixed right-0 bg-white dark:bg-[#111111] border-b border-gray-200 dark:border-gray-800 z-20 transition-all duration-300',
@@ -2033,8 +2116,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         {
           'left-0 md:left-64': !isSidebarCollapsed, // Full width on mobile, adjust for sidebar on desktop
           'left-0 md:left-16': isSidebarCollapsed,
-          'top-0': !isDemoOrg,
-          'top-[60px]': isDemoOrg, // Push down if demo banner is showing
+          'top-0': !isDemoOrg && !accountFilterId,
+          'top-[60px]': isDemoOrg && !accountFilterId, // Push down if demo banner is showing
+          'top-[100px]': isDemoOrg && accountFilterId, // Push down for both banners
+          'top-[100px]': !isDemoOrg && accountFilterId, // Push down for account banner only
         }
       )}>
         <div className="flex items-center justify-between w-full gap-2 md:gap-4">
@@ -2647,8 +2732,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       <main className={clsx(
         'overflow-auto min-h-screen transition-all duration-300',
         {
-          'pt-16 md:pt-24': !isDemoOrg, // Responsive top padding
-          'pt-[5.5rem] md:pt-[7.5rem]': isDemoOrg, // Extra padding when demo banner is showing
+          'pt-16 md:pt-24': !isDemoOrg && !accountFilterId, // Default top padding
+          'pt-[5.5rem] md:pt-[7.5rem]': isDemoOrg && !accountFilterId, // Extra padding when demo banner is showing
+          'pt-[10rem] md:pt-[11rem]': !isDemoOrg && accountFilterId, // Extra padding for account banner
+          'pt-[11rem] md:pt-[12.5rem]': isDemoOrg && accountFilterId, // Extra padding for both banners
           'ml-0 md:ml-64': !isSidebarCollapsed, // No left margin on mobile
           'ml-0 md:ml-16': isSidebarCollapsed,
         }
