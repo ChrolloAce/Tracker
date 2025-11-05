@@ -2100,8 +2100,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                         <Clock className="w-3 h-3 md:w-3.5 md:h-3.5" />
                         {(() => {
                           if (!filteredAccount.dateAdded) return 'N/A';
-                          const date = filteredAccount.dateAdded.toDate ? filteredAccount.dateAdded.toDate() : filteredAccount.dateAdded as any;
-                          return date.toLocaleDateString();
+                          try {
+                            const date = filteredAccount.dateAdded.toDate ? filteredAccount.dateAdded.toDate() : new Date(filteredAccount.dateAdded.seconds * 1000);
+                            return date.toLocaleDateString();
+                          } catch (e) {
+                            return 'N/A';
+                          }
                         })()}
                       </span>
                       {/* Creator Link */}

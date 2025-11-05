@@ -947,8 +947,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           comparison = ((a as AccountWithFilteredStats).highestViewedVideo?.views || 0) - ((b as AccountWithFilteredStats).highestViewedVideo?.views || 0);
           break;
         case 'lastRefresh': {
-          const aTime = a.lastSynced ? (a.lastSynced.toDate ? a.lastSynced.toDate().getTime() : (a.lastSynced as any).getTime()) : 0;
-          const bTime = b.lastSynced ? (b.lastSynced.toDate ? b.lastSynced.toDate().getTime() : (b.lastSynced as any).getTime()) : 0;
+          const aTime = a.lastSynced ? (a.lastSynced.toDate ? a.lastSynced.toDate().getTime() : (a.lastSynced.seconds * 1000)) : 0;
+          const bTime = b.lastSynced ? (b.lastSynced.toDate ? b.lastSynced.toDate().getTime() : (b.lastSynced.seconds * 1000)) : 0;
           comparison = aTime - bTime;
           break;
         }
@@ -1949,7 +1949,14 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                           {account.lastSynced ? (
                             <div className="flex items-center gap-1 text-white/60">
                               <ClockIcon className="w-3.5 h-3.5" />
-                              <span>{formatDate(account.lastSynced.toDate ? account.lastSynced.toDate() : account.lastSynced as any)}</span>
+                              <span>{(() => {
+                                try {
+                                  const date = account.lastSynced.toDate ? account.lastSynced.toDate() : new Date(account.lastSynced.seconds * 1000);
+                                  return formatDate(date);
+                                } catch (e) {
+                                  return 'N/A';
+                                }
+                              })()}</span>
                             </div>
                           ) : (
                             <span className="text-white/30">Never</span>
