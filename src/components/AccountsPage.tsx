@@ -145,6 +145,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   const [accounts, setAccounts] = useState<TrackedAccount[]>([]);
   const [filteredAccounts, setFilteredAccounts] = useState<AccountWithFilteredStats[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<TrackedAccount | null>(null);
+  const [selectedCreatorId, setSelectedCreatorId] = useState<string | null>(null);
+  const [creatorFilteredAccountIds, setCreatorFilteredAccountIds] = useState<string[]>([]);
   
   // Track if we've already done the initial restoration from localStorage
   const hasRestoredFromLocalStorage = useRef(false);
@@ -811,6 +813,12 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       );
     }
     
+    // Apply creator filter (from URL parameter)
+    if (selectedCreatorId && creatorFilteredAccountIds.length > 0) {
+      console.log('🎨 Applying creator filter. Showing only:', creatorFilteredAccountIds);
+      result = result.filter(account => creatorFilteredAccountIds.includes(account.id));
+    }
+    
     // Apply sorting
     const sorted = [...result].sort((a, b) => {
       let comparison = 0;
@@ -851,7 +859,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     });
     
     return sorted;
-  }, [filteredAccounts, accounts, platformFilter, searchQuery, sortBy, sortOrder]);
+  }, [filteredAccounts, accounts, platformFilter, searchQuery, sortBy, sortOrder, selectedCreatorId, creatorFilteredAccountIds]);
 
 
   // Listen for URL-based account opening
@@ -870,6 +878,34 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     window.addEventListener('openAccount', handleOpenAccount);
     return () => window.removeEventListener('openAccount', handleOpenAccount);
   }, [accounts]);
+
+  // Listen for URL-based creator filtering
+  useEffect(() => {
+    const handleFilterByCreator = async (event: any) => {
+      const creatorId = event.detail?.creatorId;
+      console.log('🎨 Filter by creator event received:', creatorId);
+      if (creatorId && currentOrgId && currentProjectId) {
+        setSelectedCreatorId(creatorId);
+        // Load the creator's linked accounts
+        try {
+          const links = await CreatorLinksService.getCreatorLinkedAccounts(currentOrgId, currentProjectId, creatorId);
+          const accountIds = links.map(link => link.accountId);
+          console.log('🎨 Creator linked accounts:', accountIds);
+          setCreatorFilteredAccountIds(accountIds);
+        } catch (error) {
+          console.error('Failed to load creator linked accounts:', error);
+          setCreatorFilteredAccountIds([]);
+        }
+      } else {
+        // Clear creator filter
+        setSelectedCreatorId(null);
+        setCreatorFilteredAccountIds([]);
+      }
+    };
+    
+    window.addEventListener('filterByCreator', handleFilterByCreator);
+    return () => window.removeEventListener('filterByCreator', handleFilterByCreator);
+  }, [currentOrgId, currentProjectId]);
 
   // NOTE: Removed duplicate useEffect - video loading is now handled by loadAccountVideos() 
   // which is called from the useEffect at line ~450 with dashboard rules properly applied

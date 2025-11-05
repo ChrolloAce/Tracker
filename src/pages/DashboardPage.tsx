@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { clsx } from 'clsx';
 import { 
   ArrowLeft, ChevronDown, Search, Filter, CheckCircle2, Circle, Plus, Trash2,
@@ -119,6 +119,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   // Get authentication state, current organization, and current project
   const { user, currentOrgId: authOrgId, currentProjectId: authProjectId } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // Check if we're in demo mode - demo IDs ALWAYS override auth IDs
   let demoContext;
@@ -210,8 +211,34 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [isDayVideosModalOpen, setIsDayVideosModalOpen] = useState(false);
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string | undefined>();
   const [dayVideosDate, setDayVideosDate] = useState<Date>(new Date());
-  const activeTab = initialTab || 'dashboard';
+  
+  // Read URL parameters for navigation
+  const urlTab = searchParams.get('tab');
+  const urlAccount = searchParams.get('account');
+  const urlCreator = searchParams.get('creator');
+  
+  // Priority: URL param > initialTab prop > 'dashboard'
+  const activeTab = urlTab || initialTab || 'dashboard';
   const [isEditingLayout, setIsEditingLayout] = useState(false);
+
+  // Handle URL parameters for account/creator filtering
+  useEffect(() => {
+    if (urlAccount && activeTab === 'accounts') {
+      console.log('🔍 Opening account from URL:', urlAccount);
+      // Dispatch event to open account details (AccountsPage listens for this)
+      const event = new CustomEvent('openAccount', { detail: { accountId: urlAccount } });
+      window.dispatchEvent(event);
+    }
+  }, [urlAccount, activeTab]);
+
+  useEffect(() => {
+    if (urlCreator && activeTab === 'accounts') {
+      console.log('🔍 Filtering by creator from URL:', urlCreator);
+      // Dispatch event to filter by creator (AccountsPage listens for this)
+      const event = new CustomEvent('filterByCreator', { detail: { creatorId: urlCreator } });
+      window.dispatchEvent(event);
+    }
+  }, [urlCreator, activeTab]);
 
   // Mark items as read when entering tabs
   useEffect(() => {
@@ -1280,10 +1307,60 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     return filtered;
   }, [linkClicks, links]);
 
-  // Handle date filter changes
+  // Handle date filter changes and auto-adjust granularity
   const handleDateFilterChange = useCallback((filter: DateFilterType, customRange?: DateRange) => {
     setDateFilter(filter);
     setCustomDateRange(customRange);
+    
+    // Auto-adjust granularity based on time range
+    let newGranularity: 'day' | 'week' | 'month' | 'year' = 'day';
+    
+    switch (filter) {
+      case 'today':
+      case 'yesterday':
+      case 'last7days':
+        newGranularity = 'day';
+        break;
+      case 'last14days':
+        newGranularity = 'day';
+        break;
+      case 'last30days':
+        newGranularity = 'week';
+        break;
+      case 'last90days':
+        newGranularity = 'month';
+        break;
+      case 'mtd':
+        newGranularity = 'week';
+        break;
+      case 'ytd':
+        newGranularity = 'month';
+        break;
+      case 'all':
+        newGranularity = 'month';
+        break;
+      case 'custom':
+        // For custom ranges, calculate the number of days
+        if (customRange) {
+          const daysDiff = Math.ceil(
+            (customRange.endDate.getTime() - customRange.startDate.getTime()) / (1000 * 60 * 60 * 24)
+          );
+          
+          if (daysDiff <= 14) {
+            newGranularity = 'day';
+          } else if (daysDiff <= 60) {
+            newGranularity = 'week';
+          } else if (daysDiff <= 365) {
+            newGranularity = 'month';
+          } else {
+            newGranularity = 'year';
+          }
+        }
+        break;
+    }
+    
+    setGranularity(newGranularity);
+    localStorage.setItem('dashboardGranularity', newGranularity);
   }, []);
 
   const handleVideoClick = useCallback(async (video: VideoSubmission) => {
