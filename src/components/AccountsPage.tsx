@@ -21,9 +21,7 @@ import {
   X,
   ChevronDown,
   MoreVertical,
-  Flame,
   TrendingUp,
-  Clock as ClockIcon,
   CheckCircle
   } from 'lucide-react';
 import profileAnimation from '../../public/lottie/Target Audience.json';

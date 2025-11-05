@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { X, Calendar, Eye, Heart, MessageCircle, Share2, Activity, Video, Users, MousePointerClick, ChevronLeft, ChevronRight, Play, TrendingUp } from 'lucide-react';
+import { X, Eye, Heart, MessageCircle, Share2, Activity, Video, Users, MousePointerClick, ChevronLeft, ChevronRight, Play, TrendingUp } from 'lucide-react';
 import { VideoSubmission } from '../types';
-import { VideoSubmissionsTable } from './VideoSubmissionsTable';
 import { TimeInterval } from '../services/DataAggregationService';
 import { LinkClick } from '../services/LinkClicksService';
 import { PlatformIcon } from './ui/PlatformIcon';

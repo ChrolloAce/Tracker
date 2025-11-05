@@ -6,7 +6,9 @@ export interface VideoSnapshot {
   comments: number;
   shares?: number;
   saves?: number; // Bookmarks/saves count
+  bookmarks?: number; // Alias for saves
   capturedAt: Date;
+  timestamp?: Date; // Backwards compatibility
   capturedBy: 'initial_upload' | 'manual_refresh' | 'scheduled_refresh';
 }
 
@@ -27,6 +29,7 @@ export interface VideoSubmission {
   comments: number;
   shares?: number; // Share count
   saves?: number; // Bookmarks/saves count (TikTok/Instagram)
+  bookmarks?: number; // Alias for saves
   duration?: number; // Video duration in seconds
   dateSubmitted: Date;
   uploadDate: Date; // When the video was originally uploaded to the platform
