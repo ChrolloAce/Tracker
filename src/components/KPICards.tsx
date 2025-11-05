@@ -14,7 +14,9 @@ import {
   DollarSign,
   Download,
   Bookmark,
-  RefreshCw
+  RefreshCw,
+  Upload,
+  TrendingUp
 } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { LinkClick } from '../services/LinkClicksService';
@@ -2227,7 +2229,7 @@ const KPICard: React.FC<{
             // Sort by most recent snapshot date
             const refreshedVideos = [...videosWithSnapshotsInInterval]
               .map((video: VideoSubmission) => {
-                // Find the most recent snapshot in this interval
+                // Find all snapshots in this interval
                 const snapshotsInInterval = (video.snapshots || []).filter(snapshot => {
                   const snapshotDate = new Date(snapshot.capturedAt);
                   return DataAggregationService.isDateInInterval(snapshotDate, interval);
@@ -2237,7 +2239,8 @@ const KPICard: React.FC<{
                 )[0];
                 return {
                   video,
-                  lastRefreshed: latestSnapshot ? new Date(latestSnapshot.capturedAt) : new Date()
+                  lastRefreshed: latestSnapshot ? new Date(latestSnapshot.capturedAt) : new Date(),
+                  snapshotCountInInterval: snapshotsInInterval.length
                 };
               })
               .sort((a, b) => b.lastRefreshed.getTime() - a.lastRefreshed.getTime())
@@ -2435,8 +2438,9 @@ const KPICard: React.FC<{
                   {/* Column 1: New Uploads */}
                   {hasNewUploads && (
                   <div className={`flex-1 px-5 py-3 ${(hasRefreshedVideos || hasTopGainers) ? 'border-r border-white/10' : ''}`}>
-                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                      📤 New Uploads ({newUploads.length})
+                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <Upload className="w-3.5 h-3.5" />
+                      New Uploads ({newUploads.length})
                     </h3>
                     <div className="space-y-2">
                       {newUploads.map((video: VideoSubmission, idx: number) => (
@@ -2496,8 +2500,9 @@ const KPICard: React.FC<{
                   {/* Column 2: Refreshed Videos */}
                   {hasRefreshedVideos && (
                   <div className={`flex-1 px-5 py-3 ${hasTopGainers ? 'border-r border-white/10' : ''}`}>
-                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                      🔄 Refreshed Videos ({refreshedVideos.length})
+                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      Refreshed Videos ({refreshedVideos.length})
                     </h3>
                     {refreshedVideos.length > 0 ? (
                       <div className="space-y-2">
@@ -2537,17 +2542,7 @@ const KPICard: React.FC<{
                                   <PlatformIcon platform={item.video.platform} size="sm" />
                                 </div>
                                 <span className="text-[10px] text-gray-400">
-                                  {(() => {
-                                    const now = new Date();
-                                    const refreshedDate = new Date(item.lastRefreshed);
-                                    const diffMs = now.getTime() - refreshedDate.getTime();
-                                    const diffMins = Math.floor(diffMs / 60000);
-                                    const diffHours = Math.floor(diffMs / 3600000);
-                                    
-                                    if (diffMins < 60) return `${diffMins}m ago`;
-                                    if (diffHours < 24) return `${diffHours}h ago`;
-                                    return refreshedDate.toLocaleDateString();
-                                  })()}
+                                  {item.snapshotCountInInterval} snapshot{item.snapshotCountInInterval !== 1 ? 's' : ''}
                                 </span>
                               </div>
                             </div>
@@ -2574,8 +2569,9 @@ const KPICard: React.FC<{
                   {/* Column 3: Top Gainers - Only show if there are gainers */}
                   {hasTopGainers && (
                   <div className="flex-1 px-5 py-3">
-                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                      📈 Top Gainers ({topGainers.length})
+                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <TrendingUp className="w-3.5 h-3.5" />
+                      Top Gainers ({topGainers.length})
                     </h3>
                     {topGainers.length > 0 ? (
                       <div className="space-y-2">
