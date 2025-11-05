@@ -4043,6 +4043,35 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       )}
       </div>
       {/* Close blur wrapper */}
+
+      {/* Link Creator to Account Modal */}
+      {showLinkCreatorModal && accountToLinkCreator && (
+        <LinkCreatorAccountsModal
+          creator={{
+            userId: accountToLinkCreator.id,
+            name: accountToLinkCreator.displayName || accountToLinkCreator.username,
+            email: '',
+            role: 'creator',
+            dateJoined: Timestamp.now(),
+            isActive: true,
+            projectIds: []
+          }}
+          onClose={() => {
+            setShowLinkCreatorModal(false);
+            setAccountToLinkCreator(null);
+          }}
+          onSuccess={() => {
+            setShowLinkCreatorModal(false);
+            setAccountToLinkCreator(null);
+            // Reload creator name
+            if (currentOrgId && currentProjectId && accountToLinkCreator) {
+              CreatorLinksService.getCreatorNameForAccount(currentOrgId, currentProjectId, accountToLinkCreator.id)
+                .then(name => setAccountCreatorName(name))
+                .catch(() => setAccountCreatorName(null));
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
