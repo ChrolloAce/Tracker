@@ -35,7 +35,7 @@ import TrackedLinksPage, { TrackedLinksPageRef } from '../components/TrackedLink
 import CreatorPortalPage from '../components/CreatorPortalPage';
 import CreatorsManagementPage, { CreatorsManagementPageRef } from '../components/CreatorsManagementPage';
 import CampaignsManagementPage from '../components/CampaignsManagementPage';
-import LinkCreatorAccountsModal from '../components/LinkCreatorAccountsModal';
+import SelectCreatorModal from '../components/SelectCreatorModal';
 import PaywallOverlay from '../components/PaywallOverlay';
 import DemoBanner from '../components/DemoBanner';
 import { CampaignStatus } from '../types/campaigns';
@@ -2059,7 +2059,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               'left-16': isSidebarCollapsed,
             }
           )}>
-            <div className="px-4 md:px-6 py-3">
+            <div className="px-4 md:px-6 py-2.5">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
                   {/* Profile Image */}
@@ -2091,7 +2091,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                       </h3>
                       <span className="text-xs md:text-sm text-white/40">@{filteredAccount.username}</span>
                     </div>
-                    <div className="flex items-center gap-3 md:gap-4 mt-1 text-[11px] md:text-xs text-white/50 flex-wrap">
+                    <div className="flex items-center gap-3 md:gap-4 mt-0.5 text-[11px] md:text-xs text-white/50 flex-wrap">
                       <span className="flex items-center gap-1">
                         <Users className="w-3 h-3 md:w-3.5 md:h-3.5" />
                         {(filteredAccount.followerCount || 0).toLocaleString()}
@@ -4047,18 +4047,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       </div>
       {/* Close blur wrapper */}
 
-      {/* Link Creator to Account Modal */}
+      {/* Select Creator for Account Modal */}
       {showLinkCreatorModal && accountToLinkCreator && (
-        <LinkCreatorAccountsModal
-          creator={{
-            userId: accountToLinkCreator.id,
-            name: accountToLinkCreator.displayName || accountToLinkCreator.username,
-            email: '',
-            role: 'creator',
-            dateJoined: Timestamp.now(),
-            isActive: true,
-            projectIds: []
-          }}
+        <SelectCreatorModal
+          accountId={accountToLinkCreator.id}
+          accountName={accountToLinkCreator.displayName || accountToLinkCreator.username}
+          currentCreatorId={accountCreatorName ? undefined : null} // Will be loaded from CreatorLinksService
           onClose={() => {
             setShowLinkCreatorModal(false);
             setAccountToLinkCreator(null);
