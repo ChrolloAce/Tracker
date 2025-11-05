@@ -2229,18 +2229,62 @@ const KPICard: React.FC<{
             // Sort by most recent snapshot date
             const refreshedVideos = [...videosWithSnapshotsInInterval]
               .map((video: VideoSubmission) => {
+                const allSnapshots = video.snapshots || [];
+                
                 // Find all snapshots in this interval
-                const snapshotsInInterval = (video.snapshots || []).filter(snapshot => {
+                const snapshotsInInterval = allSnapshots.filter(snapshot => {
                   const snapshotDate = new Date(snapshot.capturedAt);
                   return DataAggregationService.isDateInInterval(snapshotDate, interval);
                 });
+                
                 const latestSnapshot = snapshotsInInterval.sort((a, b) => 
                   new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime()
                 )[0];
+                
+                // Calculate growth in this interval for the specific metric
+                const snapshotsInOrBeforeInterval = allSnapshots.filter(snapshot => {
+                  const snapshotDate = new Date(snapshot.capturedAt);
+                  return snapshotDate <= interval.endDate;
+                });
+                
+                const sortedSnapshots = [...snapshotsInOrBeforeInterval].sort((a, b) => 
+                  new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+                );
+                
+                // Get snapshot at/before interval start (baseline)
+                const snapshotAtStart = sortedSnapshots.filter(s => 
+                  new Date(s.capturedAt) <= interval.startDate
+                ).pop();
+                
+                // Get latest snapshot at/before interval end
+                const snapshotAtEnd = sortedSnapshots.filter(s => 
+                  new Date(s.capturedAt) <= interval.endDate
+                ).pop();
+                
+                // Calculate delta for the specific metric
+                const growthMetricKey = data.id === 'views' ? 'views' 
+                  : data.id === 'likes' ? 'likes'
+                  : data.id === 'comments' ? 'comments'
+                  : data.id === 'shares' ? 'shares'
+                  : data.id === 'bookmarks' ? 'bookmarks'
+                  : 'views';
+                
+                let metricDelta = 0;
+                if (snapshotAtEnd) {
+                  if (snapshotAtStart && snapshotAtStart !== snapshotAtEnd) {
+                    // Calculate delta between start and end
+                    metricDelta = Math.max(0, (snapshotAtEnd as any)[growthMetricKey] || 0) - ((snapshotAtStart as any)[growthMetricKey] || 0);
+                  } else if (!snapshotAtStart) {
+                    // No baseline, use full end value
+                    metricDelta = (snapshotAtEnd as any)[growthMetricKey] || 0;
+                  }
+                }
+                
                 return {
                   video,
                   lastRefreshed: latestSnapshot ? new Date(latestSnapshot.capturedAt) : new Date(),
-                  snapshotCountInInterval: snapshotsInInterval.length
+                  snapshotCountInInterval: snapshotsInInterval.length,
+                  metricDelta: metricDelta
                 };
               })
               .sort((a, b) => b.lastRefreshed.getTime() - a.lastRefreshed.getTime())
@@ -2547,10 +2591,10 @@ const KPICard: React.FC<{
                               </div>
                             </div>
                             
-                            {/* Metric - Show correct metric based on KPI */}
+                            {/* Metric - Show growth delta in this interval */}
                             <div className="flex-shrink-0 text-right">
-                              <p className="text-xs font-bold text-white">
-                                {formatDisplayNumber((item.video as any)[metricKey] || 0)}
+                              <p className="text-xs font-bold text-emerald-400">
+                                +{formatDisplayNumber(item.metricDelta || 0)}
                               </p>
                               <p className="text-[10px] text-gray-500">{metricLabel.toLowerCase()}</p>
                             </div>
