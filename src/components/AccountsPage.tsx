@@ -19,7 +19,11 @@ import {
   Link as LinkIcon,
   X,
   ChevronDown,
-  MoreVertical
+  MoreVertical,
+  Flame,
+  TrendingUp,
+  Clock as ClockIcon,
+  CheckCircle
   } from 'lucide-react';
 import profileAnimation from '../../public/lottie/Target Audience.json';
 import { AccountVideo } from '../types/accounts';
@@ -173,7 +177,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   const [syncError, setSyncError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingAccountDetail, setLoadingAccountDetail] = useState(false);
-  const [sortBy, setSortBy] = useState<'username' | 'followers' | 'videos' | 'views' | 'likes' | 'comments' | 'shares' | 'bookmarks' | 'engagementRate' | 'dateAdded'>('dateAdded');
+  const [sortBy, setSortBy] = useState<'username' | 'followers' | 'videos' | 'views' | 'likes' | 'comments' | 'shares' | 'bookmarks' | 'engagementRate' | 'highestViewed' | 'lastRefresh' | 'postingStreak' | 'viralityRate' | 'dateAdded'>('dateAdded');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState<TrackedAccount | null>(null);
@@ -874,6 +878,21 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           comparison = aRate - bRate;
           break;
         }
+        case 'highestViewed':
+          comparison = (a.highestViewedVideo?.views || 0) - (b.highestViewedVideo?.views || 0);
+          break;
+        case 'lastRefresh': {
+          const aTime = a.lastSynced ? (a.lastSynced.toDate ? a.lastSynced.toDate().getTime() : new Date(a.lastSynced).getTime()) : 0;
+          const bTime = b.lastSynced ? (b.lastSynced.toDate ? b.lastSynced.toDate().getTime() : new Date(b.lastSynced).getTime()) : 0;
+          comparison = aTime - bTime;
+          break;
+        }
+        case 'postingStreak':
+          comparison = (a.postingStreak || 0) - (b.postingStreak || 0);
+          break;
+        case 'viralityRate':
+          comparison = (a.viralityRate || 0) - (b.viralityRate || 0);
+          break;
         case 'dateAdded':
           comparison = a.dateAdded.toDate().getTime() - b.dateAdded.toDate().getTime();
           break;
@@ -1468,6 +1487,86 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                         )}
                       </div>
                     </th>
+                    <th 
+                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
+                      onClick={() => {
+                        if (sortBy === 'highestViewed') {
+                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortBy('highestViewed');
+                          setSortOrder('desc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        Top Video
+                        {sortBy === 'highestViewed' && (
+                          <span className="text-white">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
+                      onClick={() => {
+                        if (sortBy === 'lastRefresh') {
+                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortBy('lastRefresh');
+                          setSortOrder('desc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        Last Sync
+                        {sortBy === 'lastRefresh' && (
+                          <span className="text-white">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
+                      onClick={() => {
+                        if (sortBy === 'postingStreak') {
+                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortBy('postingStreak');
+                          setSortOrder('desc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        Streak
+                        {sortBy === 'postingStreak' && (
+                          <span className="text-white">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
+                      onClick={() => {
+                        if (sortBy === 'viralityRate') {
+                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortBy('viralityRate');
+                          setSortOrder('desc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        Virality
+                        {sortBy === 'viralityRate' && (
+                          <span className="text-white">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
@@ -1644,6 +1743,12 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                               <div className={`placeholder-icon w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center ${account.profilePicture ? 'hidden' : ''}`}>
                                 <Users className="w-5 h-5 text-gray-500" />
                               </div>
+                              {/* Verified Badge */}
+                              {(account.isVerified || account.isBlueVerified) && (
+                                <div className="absolute -bottom-0.5 -right-0.5 bg-white dark:bg-zinc-900 rounded-full p-0.5">
+                                  <CheckCircle className={`w-3.5 h-3.5 ${account.isBlueVerified ? 'text-blue-500' : 'text-emerald-500'} fill-current`} />
+                                </div>
+                              )}
                             </div>
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
@@ -1760,6 +1865,54 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                             const engagementRate = totalViews > 0 ? (totalEngagements / totalViews * 100) : 0;
                             return `${engagementRate.toFixed(2)}%`;
                           })()}
+                        </td>
+
+                        {/* Highest Viewed Video Column */}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          {account.highestViewedVideo ? (
+                            <div className="flex items-center gap-1">
+                              <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                              <span>{formatNumber(account.highestViewedVideo.views)}</span>
+                            </div>
+                          ) : (
+                            <span className="text-white/30">—</span>
+                          )}
+                        </td>
+
+                        {/* Last Refresh Column */}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          {account.lastSynced ? (
+                            <div className="flex items-center gap-1 text-white/60">
+                              <ClockIcon className="w-3.5 h-3.5" />
+                              <span>{formatDate(account.lastSynced.toDate ? account.lastSynced.toDate() : new Date(account.lastSynced))}</span>
+                            </div>
+                          ) : (
+                            <span className="text-white/30">Never</span>
+                          )}
+                        </td>
+
+                        {/* Posting Streak Column */}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          {account.postingStreak && account.postingStreak > 0 ? (
+                            <div className="flex items-center gap-1.5">
+                              <Flame className="w-4 h-4 text-orange-500" />
+                              <span className="font-semibold text-orange-500">{account.postingStreak}</span>
+                            </div>
+                          ) : (
+                            <span className="text-white/30">—</span>
+                          )}
+                        </td>
+
+                        {/* Virality Rate Column */}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          {account.viralityRate !== undefined ? (
+                            <div className="flex items-center gap-1">
+                              <Activity className="w-3.5 h-3.5 text-purple-500" />
+                              <span>{(account.viralityRate * 100).toFixed(1)}%</span>
+                            </div>
+                          ) : (
+                            <span className="text-white/30">—</span>
+                          )}
                         </td>
 
                         {/* Actions Column */}
