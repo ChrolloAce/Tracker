@@ -192,10 +192,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               if (result.fetched > 0) {
                 console.log(`    ✅ @${username}: Updated ${result.updated} videos, Added ${result.added} new videos, Skipped ${result.skipped} invalid videos`);
 
-                // Update account lastSynced timestamp
-                await accountDoc.ref.update({
+                // Update account lastSynced timestamp and verified status
+                const updateData: any = {
                   lastSynced: new Date()
-                });
+                };
+                
+                // Add verified status if available
+                if (result.verified !== undefined) {
+                  updateData.isVerified = result.verified;
+                }
+                if (result.blueVerified !== undefined) {
+                  updateData.isBlueVerified = result.blueVerified;
+                }
+                
+                await accountDoc.ref.update(updateData);
                 
                 // Track stats
                 const orgStats = processedOrgs.get(orgId);
@@ -469,7 +479,7 @@ async function refreshAccountVideos(
   username: string,
   platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter',
   isManualTrigger: boolean
-): Promise<{ fetched: number; updated: number; added: number; skipped: number }> {
+): Promise<{ fetched: number; updated: number; added: number; skipped: number; verified?: boolean; blueVerified?: boolean }> {
   // Use the appropriate Apify actor based on platform
   let actorId: string;
   let input: any;
@@ -531,6 +541,28 @@ async function refreshAccountVideos(
 
   console.log(`    📊 Apify returned ${videos.length} items for ${platform}`);
 
+  // Extract verified status from first video (all videos from same account have same author info)
+  let isVerified: boolean | undefined;
+  let isBlueVerified: boolean | undefined;
+  
+  if (videos && videos.length > 0) {
+    const firstVideo = videos[0];
+    
+    if (platform === 'instagram') {
+      // Instagram: is_verified field
+      isVerified = firstVideo.is_verified || false;
+    } else if (platform === 'tiktok') {
+      // TikTok: authorMeta.verified field
+      isVerified = firstVideo['authorMeta.verified'] || firstVideo.authorMeta?.verified || false;
+    } else if (platform === 'twitter') {
+      // Twitter/X: isVerified and isBlueVerified fields
+      isVerified = firstVideo.isVerified || false;
+      isBlueVerified = firstVideo.isBlueVerified || false;
+    }
+    
+    console.log(`    ✓ Account verified status: ${isVerified}${isBlueVerified ? ' (Blue verified)' : ''}`);
+  }
+
   // Save videos to Firestore (update existing ones AND add new ones)
   let updated = 0;
   let added = 0;
@@ -547,7 +579,9 @@ async function refreshAccountVideos(
     fetched: videos.length,
     updated: updated,
     added: added,
-    skipped: skipped
+    skipped: skipped,
+    verified: isVerified,
+    blueVerified: isBlueVerified
   };
 }
 
