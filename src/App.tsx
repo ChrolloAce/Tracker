@@ -270,11 +270,11 @@ function App() {
         } 
       />
 
-      {/* Creator details - DEPRECATED: Now redirects to dashboard with filters */}
+      {/* Creator details - DEPRECATED: Now redirects to dashboard */}
       <Route 
         path="/creators/:creatorId" 
         element={
-          <Navigate to="/dashboard?tab=creators" replace />
+          <Navigate to="/dashboard" replace />
         } 
       />
 
@@ -482,11 +482,11 @@ function App() {
         } 
       />
 
-      {/* Account details - redirects to dashboard with account filter */}
+      {/* Account details - redirects to dashboard */}
       <Route 
         path="/accounts/:accountId" 
         element={
-          <Navigate to="/dashboard?tab=accounts" replace />
+          <Navigate to="/dashboard" replace />
         } 
       />
 
