@@ -592,7 +592,8 @@ service cloud.firestore {
     match /invitationsLookup/{invitationId} {
       allow read: if true; // Public read for invitation portal
       allow create: if isSignedIn(); // Created when invitations are sent
-      allow update, delete: if false; // Immutable after creation
+      allow update: if isSignedIn(); // Allow updates when invitation is accepted/declined
+      allow delete: if false; // Cannot delete lookups
     }
     
     // ==================== COLLECTION GROUP QUERIES ====================
