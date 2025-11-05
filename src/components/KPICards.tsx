@@ -2106,9 +2106,15 @@ const KPICard: React.FC<{
           .filter(item => item !== null);
         
         const hasTopGainers = topGainersCheck.length > 0;
+        const hasNewUploads = videosInInterval.length > 0;
+        const hasRefreshedVideos = videosWithSnapshotsInIntervalCheck.length > 0;
         
-        // Dynamic width based on whether we show one or two columns
-        const tooltipWidth = hasTopGainers ? 650 : 350;
+        // Dynamic width based on how many columns we show
+        // 1 column: 350px, 2 columns: 650px, 3 columns: 950px
+        let tooltipWidth = 350;
+        const columnsToShow = (hasNewUploads ? 1 : 0) + (hasRefreshedVideos ? 1 : 0) + (hasTopGainers ? 1 : 0);
+        if (columnsToShow === 2) tooltipWidth = 650;
+        if (columnsToShow === 3) tooltipWidth = 950;
         const verticalOffset = 20; // spacing below cursor
         const horizontalPadding = 20; // minimum distance from screen edges
         const windowWidth = window.innerWidth;
@@ -2198,6 +2204,15 @@ const KPICard: React.FC<{
             })() : null;
             
             // Note: videosInInterval already calculated above for hasTopGainers check
+            
+            // New Uploads: Videos actually uploaded in this interval
+            const newUploads = [...videosInInterval]
+              .sort((a, b) => {
+                const dateA = a.uploadDate ? new Date(a.uploadDate) : new Date(a.dateSubmitted);
+                const dateB = b.uploadDate ? new Date(b.uploadDate) : new Date(b.dateSubmitted);
+                return dateB.getTime() - dateA.getTime();
+              })
+              .slice(0, 5);
             
             // Get ALL videos with snapshot activity during this interval (not just uploads)
             const videosWithSnapshotsInInterval = interval ? submissions.filter((video: VideoSubmission) => {
@@ -2414,10 +2429,72 @@ const KPICard: React.FC<{
                 {/* Divider */}
                 <div className="border-t border-white/10 mx-5"></div>
                 
-                {/* Two-Column Mega Tooltip Layout - Only for non-published-videos KPIs */}
+                {/* Three-Column Mega Tooltip Layout - Only for non-published-videos KPIs */}
                 {!isPublishedVideosKPI && data.id !== 'accounts' && data.id !== 'link-clicks' && (
                 <div className="flex">
-                  {/* Left Column: Refreshed Videos */}
+                  {/* Column 1: New Uploads */}
+                  {hasNewUploads && (
+                  <div className={`flex-1 px-5 py-3 ${(hasRefreshedVideos || hasTopGainers) ? 'border-r border-white/10' : ''}`}>
+                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                      📤 New Uploads ({newUploads.length})
+                    </h3>
+                    <div className="space-y-2">
+                      {newUploads.map((video: VideoSubmission, idx: number) => (
+                        <div 
+                          key={`new-${video.id}-${idx}`}
+                          className="flex items-center gap-2 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors cursor-pointer"
+                          onClick={() => onVideoClick && onVideoClick(video)}
+                        >
+                          {/* Thumbnail */}
+                          <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-gray-800">
+                            {video.thumbnail ? (
+                              <img 
+                                src={video.thumbnail} 
+                                alt={video.title || video.caption || 'Video'} 
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Play className="w-4 h-4 text-gray-600" />
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Metadata */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-white font-medium leading-tight">
+                              {((video.title || video.caption || '(No caption)').length > 13 
+                                ? (video.title || video.caption || '(No caption)').substring(0, 13) + '...'
+                                : (video.title || video.caption || '(No caption)'))}
+                            </p>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <div className="w-3 h-3">
+                                <PlatformIcon platform={video.platform} size="sm" />
+                              </div>
+                              <span className="text-[10px] text-gray-400">
+                                {video.uploaderHandle || video.platform}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {/* Metric */}
+                          <div className="flex-shrink-0 text-right">
+                            <p className="text-xs font-bold text-white">
+                              {formatDisplayNumber((video as any)[metricKey] || 0)}
+                            </p>
+                            <p className="text-[10px] text-gray-500">{metricLabel.toLowerCase()}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  )}
+                  
+                  {/* Column 2: Refreshed Videos */}
+                  {hasRefreshedVideos && (
                   <div className={`flex-1 px-5 py-3 ${hasTopGainers ? 'border-r border-white/10' : ''}`}>
                     <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
                       🔄 Refreshed Videos ({refreshedVideos.length})
@@ -2427,7 +2504,8 @@ const KPICard: React.FC<{
                         {refreshedVideos.map((item: any, idx: number) => (
                           <div 
                             key={`refreshed-${item.video.id}-${idx}`}
-                            className="flex items-center gap-2 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                            className="flex items-center gap-2 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors cursor-pointer"
+                            onClick={() => onVideoClick && onVideoClick(item.video)}
                           >
                             {/* Thumbnail */}
                             <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-gray-800">
@@ -2491,8 +2569,9 @@ const KPICard: React.FC<{
                       </div>
                     )}
                   </div>
+                  )}
                   
-                  {/* Right Column: Top Gainers - Only show if there are gainers */}
+                  {/* Column 3: Top Gainers - Only show if there are gainers */}
                   {hasTopGainers && (
                   <div className="flex-1 px-5 py-3">
                     <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
@@ -2503,7 +2582,8 @@ const KPICard: React.FC<{
                         {topGainers.map((item: any, idx: number) => (
                           <div 
                             key={`gainer-${item.video.id}-${idx}`}
-                            className="flex items-center gap-2 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                            className="flex items-center gap-2 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors cursor-pointer"
+                            onClick={() => onVideoClick && onVideoClick(item.video)}
                           >
                             {/* Thumbnail */}
                             <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-gray-800">
