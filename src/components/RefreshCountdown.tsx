@@ -48,20 +48,26 @@ const RefreshCountdown: React.FC = () => {
       'trackedAccounts'
     );
 
-    const q = query(accountsRef, where('status', '==', 'active'));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const accountsData: AccountRefreshStatus[] = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          username: data.username || 'Unknown',
-          platform: data.platform || 'instagram',
-          lastRefreshed: data.lastRefreshed?.toDate(),
-          refreshStatus: data.refreshStatus || 'idle',
-          refreshInterval: data.refreshInterval || 12 // Default 12 hours
-        };
-      });
+    // Don't filter by status in query - handle it in the map instead
+    const unsubscribe = onSnapshot(accountsRef, (snapshot) => {
+      const accountsData: AccountRefreshStatus[] = snapshot.docs
+        .map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            username: data.username || 'Unknown',
+            platform: data.platform || 'instagram',
+            lastRefreshed: data.lastRefreshed?.toDate(),
+            refreshStatus: data.refreshStatus || 'idle',
+            refreshInterval: data.refreshInterval || 12, // Default 12 hours
+            status: data.status
+          };
+        })
+        .filter((account: any) => {
+          // Show accounts that are active or don't have a status field (legacy accounts)
+          // Hide only if explicitly paused or inactive
+          return !account.status || account.status === 'active';
+        });
       setAccounts(accountsData);
     });
 
