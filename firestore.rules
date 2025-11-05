@@ -149,7 +149,7 @@ service cloud.firestore {
       
       match /invitations/{invitationId} {
         // Members can read invitations (to see pending invites)
-        // Invited users can read their own invitations by email
+        // Invited users can ALWAYS read their own invitations by email (regardless of status)
         allow read: if canReadOrg(orgId) 
           || (isSignedIn() && request.auth.token.email == resource.data.email);
         
@@ -159,9 +159,10 @@ service cloud.firestore {
           && request.resource.data.invitedBy == request.auth.uid;
         
         // Admins can update/cancel invitations
-        // Invited users can update to accept/decline their own invitation
+        // Invited users can update their invitation (email must match)
+        // Allow update even if not pending (for idempotent acceptance)
         allow update: if canManageOrg(orgId)
-          || (isSignedIn() && request.auth.token.email == resource.data.email && resource.data.status == 'pending');
+          || (isSignedIn() && request.auth.token.email == resource.data.email);
         
         // Only admins can delete invitations
         allow delete: if canManageOrg(orgId);

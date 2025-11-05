@@ -220,7 +220,31 @@ class TeamInvitationService {
     let invite: TeamInvitation | undefined; // Declare outside try block for catch block access
     
     try {
-      // Get invitation
+      // Get invitation from the public lookup first (more reliable)
+      console.log(`🔍 Attempting to read invitation from public lookup first`);
+      const lookupRef = doc(db, 'invitationsLookup', invitationId);
+      let lookupDoc;
+      
+      try {
+        lookupDoc = await getDoc(lookupRef);
+        console.log(`📧 Public lookup exists:`, lookupDoc.exists());
+        
+        if (lookupDoc.exists()) {
+          const lookupData = lookupDoc.data();
+          console.log(`📋 Public lookup status:`, lookupData.status);
+          console.log(`📋 Public lookup email:`, lookupData.email);
+          
+          // Check status from public lookup
+          if (lookupData.status && lookupData.status !== 'pending') {
+            throw new Error(`This invitation has already been ${lookupData.status}.`);
+          }
+        }
+      } catch (lookupErr: any) {
+        console.warn(`⚠️ Could not read public lookup:`, lookupErr);
+      }
+      
+      // Now get the actual invitation from protected collection
+      console.log(`🔍 Attempting to read invitation from protected collection`);
       const inviteRef = doc(db, 'organizations', orgId, 'invitations', invitationId);
       const inviteDoc = await getDoc(inviteRef);
       
@@ -236,6 +260,19 @@ class TeamInvitationService {
       console.log(`📋 Your email:`, email);
       
       if (invite.status !== 'pending') {
+        // If already accepted, check if user is already a member
+        if (invite.status === 'accepted') {
+          const existingMemberRef = doc(db, 'organizations', orgId, 'members', userId);
+          const existingMemberDoc = await getDoc(existingMemberRef);
+          
+          if (existingMemberDoc.exists() && existingMemberDoc.data().status === 'active') {
+            console.log(`✅ Invitation already accepted and user is already a member`);
+            // Set as default org
+            const userRef = doc(db, 'users', userId);
+            await setDoc(userRef, { defaultOrgId: orgId }, { merge: true });
+            return; // Success - already a member
+          }
+        }
         throw new Error(`This invitation is ${invite.status}. Only pending invitations can be accepted.`);
       }
       
