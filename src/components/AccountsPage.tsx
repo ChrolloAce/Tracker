@@ -124,6 +124,9 @@ interface AccountWithFilteredStats extends TrackedAccount {
   filteredTotalViews: number;
   filteredTotalLikes: number;
   filteredTotalComments: number;
+  highestViewedVideo?: { title: string; views: number; videoId: string };
+  postingStreak?: number;
+  viralityRate?: number;
 }
 
 const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
