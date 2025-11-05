@@ -177,7 +177,7 @@ export interface TrackedAccount {
   isActive: boolean;
   isRead?: boolean; // New field for unread notification
   
-  // Background sync status (for Vercel cron jobs)
+  // Background sync status (for Vercel cron jobs - initial setup)
   syncStatus?: 'idle' | 'pending' | 'syncing' | 'completed' | 'error';
   syncProgress?: {
     current: number;
@@ -190,6 +190,16 @@ export interface TrackedAccount {
   syncRequestedAt?: Timestamp;
   syncRetryCount?: number;
   maxRetries?: number;
+  
+  // Refresh status (for ongoing video metric updates)
+  refreshStatus?: 'idle' | 'processing' | 'completed' | 'failed';
+  lastRefreshed?: Timestamp; // When videos were last updated
+  lastRefreshStarted?: Timestamp; // When current refresh started
+  lastRefreshAttempt?: Timestamp; // Last attempted refresh (even if failed)
+  lastRefreshError?: string | null;
+  lastRefreshDuration?: number; // Duration in milliseconds
+  refreshInterval?: number; // Custom refresh interval in hours (default: 12)
+  status?: 'active' | 'paused' | 'inactive'; // For controlling whether account gets refreshed
   
   // Aggregates (computed)
   totalVideos: number;

@@ -15,6 +15,12 @@
     "api/cron-refresh-videos.ts": {
       "maxDuration": 300
     },
+    "api/cron-orchestrator.ts": {
+      "maxDuration": 300
+    },
+    "api/refresh-account.ts": {
+      "maxDuration": 180
+    },
     "api/cron-sync-accounts.ts": {
       "maxDuration": 300
     },
@@ -48,8 +54,8 @@
   },
   "crons": [
     {
-      "path": "/api/cron-refresh-videos",
-      "schedule": "0 */12 * * *"
+      "path": "/api/cron-orchestrator",
+      "schedule": "0 * * * *"
     }
   ],
   "routes": [
