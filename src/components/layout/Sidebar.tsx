@@ -17,7 +17,6 @@ import { clsx } from 'clsx';
 import ProjectSwitcher from '../ProjectSwitcher';
 import OrganizationSwitcher from '../OrganizationSwitcher';
 import CreateProjectModal from '../CreateProjectModal';
-import RefreshCountdown from '../RefreshCountdown';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUnreadCounts } from '../../hooks/useUnreadCounts';
@@ -285,11 +284,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           </React.Fragment>
         ))}
       </nav>
-
-      {/* Refresh Countdown Timer - Show on mobile when open */}
-      {(!isCollapsed || isMobileOpen) && (
-        <RefreshCountdown />
-      )}
 
       {/* Organization Switcher at Bottom - Show on mobile when open */}
       {(!isCollapsed || isMobileOpen) && (

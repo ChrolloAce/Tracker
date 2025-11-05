@@ -30,13 +30,13 @@ const db = getFirestore();
 
 /**
  * Cron Orchestrator
- * Runs every hour and dispatches individual refresh jobs for each account
+ * Runs every hour and refreshes ALL accounts in each project simultaneously
  * 
- * Benefits:
- * - Individual account failures don't affect others
- * - True parallel execution across serverless functions
- * - Better timeout handling
- * - Custom refresh schedules per account
+ * Refresh Schedule:
+ * - Premium tier: Every 12 hours
+ * - Normal/Standard tier: Every 24 hours
+ * 
+ * All accounts in a project refresh at the same time based on their tier.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Verify cron secret
@@ -77,7 +77,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // For each project
       for (const projectDoc of projectsSnapshot.docs) {
         const projectId = projectDoc.id;
-        console.log(`  📦 Processing project: ${projectDoc.data()?.name || projectId}`);
+        const projectData = projectDoc.data();
+        console.log(`  📦 Processing project: ${projectData?.name || projectId}`);
+
+        // Check project's last global refresh timestamp
+        const lastGlobalRefresh = projectData?.lastGlobalRefresh?.toDate();
+        const hoursSinceGlobalRefresh = lastGlobalRefresh 
+          ? (Date.now() - lastGlobalRefresh.getTime()) / (1000 * 60 * 60) 
+          : 999;
+
+        // Determine refresh interval based on org subscription tier
+        // TODO: Fetch actual subscription tier from Stripe/DB
+        // For now, default to 24h (can be changed per org in the database)
+        const orgData = orgDoc.data();
+        const subscriptionTier = orgData?.subscriptionTier || 'standard'; // 'standard', 'professional', 'premium'
+        
+        let refreshIntervalHours = 24; // Default: 24h for standard/professional
+        if (subscriptionTier === 'premium' || subscriptionTier === 'enterprise') {
+          refreshIntervalHours = 12; // Premium/Enterprise: 12h
+        }
+
+        console.log(`    ⏰ Refresh interval: ${refreshIntervalHours}h (tier: ${subscriptionTier})`);
+        console.log(`    ⏱️  Last global refresh: ${hoursSinceGlobalRefresh.toFixed(1)}h ago`);
+
+        // Check if project needs refresh
+        if (hoursSinceGlobalRefresh < refreshIntervalHours) {
+          console.log(`    ⏭️  Skipping project (refreshed ${hoursSinceGlobalRefresh.toFixed(1)}h ago, next refresh in ${(refreshIntervalHours - hoursSinceGlobalRefresh).toFixed(1)}h)`);
+          continue;
+        }
+
+        console.log(`    🚀 Refreshing ALL accounts in project...`);
 
         // Get all active tracked accounts
         const accountsSnapshot = await db
@@ -92,26 +121,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         totalAccounts += accountsSnapshot.size;
         console.log(`    👥 Found ${accountsSnapshot.size} active account(s)`);
 
-        // Dispatch individual refresh jobs for each account
+        // Dispatch refresh jobs for ALL accounts simultaneously
         for (const accountDoc of accountsSnapshot.docs) {
           const accountId = accountDoc.id;
           const accountData = accountDoc.data();
 
-          // Check if account needs refresh (last refreshed > 1 hour ago OR never refreshed)
-          const lastRefreshed = accountData.lastRefreshed?.toDate();
-          const hoursSinceRefresh = lastRefreshed 
-            ? (Date.now() - lastRefreshed.getTime()) / (1000 * 60 * 60) 
-            : 999;
-
-          // Default: refresh every 12 hours, but can be customized per account
-          const refreshIntervalHours = accountData.refreshInterval || 12;
-
-          if (hoursSinceRefresh < refreshIntervalHours) {
-            console.log(`    ⏭️  Skipping @${accountData.username} (last refreshed ${hoursSinceRefresh.toFixed(1)}h ago)`);
-            continue;
-          }
-
-          console.log(`    ⚡ Dispatching refresh job for @${accountData.username} (${accountData.platform})`);
+          console.log(`      ⚡ Dispatching @${accountData.username} (${accountData.platform})`);
 
           // Dispatch async refresh job
           const dispatchPromise = fetch(`${process.env.VERCEL_URL || 'https://www.viewtrack.app'}/api/refresh-account`, {
@@ -129,28 +144,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .then(async (response) => {
               if (response.ok) {
                 const data = await response.json();
-                console.log(`      ✅ @${accountData.username}: ${data.videosUpdated} updated, ${data.videosAdded} added`);
+                console.log(`        ✅ @${accountData.username}: ${data.videosUpdated} updated, ${data.videosAdded} added`);
                 dispatchedJobs++;
                 return { success: true, account: accountData.username };
               } else {
                 const errorText = await response.text();
-                console.error(`      ❌ @${accountData.username} failed: ${errorText}`);
+                console.error(`        ❌ @${accountData.username} failed: ${errorText}`);
                 failedDispatches++;
                 return { success: false, account: accountData.username, error: errorText };
               }
             })
             .catch((error) => {
-              console.error(`      ❌ @${accountData.username} dispatch error:`, error.message);
+              console.error(`        ❌ @${accountData.username} dispatch error:`, error.message);
               failedDispatches++;
               return { success: false, account: accountData.username, error: error.message };
             });
 
           dispatchPromises.push(dispatchPromise);
 
-          // Stagger dispatches to avoid overwhelming the system
-          // Wait 100ms between dispatches
-          await new Promise(resolve => setTimeout(resolve, 100));
+          // Small stagger to avoid overwhelming (50ms between dispatches)
+          await new Promise(resolve => setTimeout(resolve, 50));
         }
+
+        // Update project's lastGlobalRefresh timestamp
+        await db
+          .collection('organizations')
+          .doc(orgId)
+          .collection('projects')
+          .doc(projectId)
+          .update({
+            lastGlobalRefresh: Timestamp.now()
+          });
+        
+        console.log(`    ✅ Updated lastGlobalRefresh for project`);
       }
     }
 
