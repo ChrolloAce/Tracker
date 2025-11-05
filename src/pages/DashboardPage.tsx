@@ -223,6 +223,18 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [accountToLinkCreator, setAccountToLinkCreator] = useState<TrackedAccount | null>(null);
   const [accountCreatorName, setAccountCreatorName] = useState<string | null>(null);
 
+  // Load creator name when single account is selected
+  useEffect(() => {
+    if (currentOrgId && currentProjectId && selectedAccountIds.length === 1) {
+      const accountId = selectedAccountIds[0];
+      CreatorLinksService.getCreatorNameForAccount(currentOrgId, currentProjectId, accountId)
+        .then(name => setAccountCreatorName(name))
+        .catch(() => setAccountCreatorName(null));
+    } else {
+      setAccountCreatorName(null);
+    }
+  }, [selectedAccountIds, currentOrgId, currentProjectId]);
+
   // Handle URL query parameter filters (from clicking accounts or creators)
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -2031,32 +2043,23 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         </div>
       )}
       
-      {/* Account Filter Banner - Shows when filtering by specific account (only when 1 account selected) */}
-      {selectedAccountIds.length === 1 && (() => {
+      {/* Account Filter Banner - Shows when filtering by specific account (only when 1 account selected AND on dashboard tab) */}
+      {activeTab === 'dashboard' && selectedAccountIds.length === 1 && (() => {
         const filteredAccount = trackedAccounts.find(acc => acc.id === selectedAccountIds[0]);
         if (!filteredAccount) return null;
-        
-        // Load creator name when account changes
-        React.useEffect(() => {
-          if (currentOrgId && currentProjectId && filteredAccount) {
-            CreatorLinksService.getCreatorNameForAccount(currentOrgId, currentProjectId, filteredAccount.id)
-              .then(name => setAccountCreatorName(name))
-              .catch(() => setAccountCreatorName(null));
-          }
-        }, [filteredAccount?.id]);
         
         const topOffset = isDemoOrg ? 'top-[60px]' : 'top-0';
         
         return (
           <div className={clsx(
-            'fixed right-0 z-30 transition-all duration-300 bg-[#0A0A0A] border-b border-white/5',
+            'fixed right-0 z-30 transition-all duration-300 bg-[#111111] border-b border-gray-800',
             topOffset,
             {
               'left-64': !isSidebarCollapsed,
               'left-16': isSidebarCollapsed,
             }
           )}>
-            <div className="px-4 md:px-6 py-3.5">
+            <div className="px-4 md:px-6 py-3">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
                   {/* Profile Image */}
@@ -2143,10 +2146,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         {
           'left-0 md:left-64': !isSidebarCollapsed, // Full width on mobile, adjust for sidebar on desktop
           'left-0 md:left-16': isSidebarCollapsed,
-          'top-0': !isDemoOrg && selectedAccountIds.length !== 1,
-          'top-[60px]': isDemoOrg && selectedAccountIds.length !== 1, // Push down if demo banner is showing
-          'top-[100px]': isDemoOrg && selectedAccountIds.length === 1, // Push down for both banners
-          'top-[100px]': !isDemoOrg && selectedAccountIds.length === 1, // Push down for account banner only
+          'top-0': !isDemoOrg && (activeTab !== 'dashboard' || selectedAccountIds.length !== 1),
+          'top-[60px]': isDemoOrg && (activeTab !== 'dashboard' || selectedAccountIds.length !== 1), // Push down if demo banner is showing
+          'top-[92px]': isDemoOrg && activeTab === 'dashboard' && selectedAccountIds.length === 1, // Push down for both banners
+          'top-[92px]': !isDemoOrg && activeTab === 'dashboard' && selectedAccountIds.length === 1, // Push down for account banner only
         }
       )}>
         <div className="flex items-center justify-between w-full gap-2 md:gap-4">
@@ -2759,10 +2762,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       <main className={clsx(
         'overflow-auto min-h-screen transition-all duration-300',
         {
-          'pt-16 md:pt-24': !isDemoOrg && selectedAccountIds.length !== 1, // Default top padding
-          'pt-[5.5rem] md:pt-[7.5rem]': isDemoOrg && selectedAccountIds.length !== 1, // Extra padding when demo banner is showing
-          'pt-[10rem] md:pt-[11rem]': !isDemoOrg && selectedAccountIds.length === 1, // Extra padding for account banner
-          'pt-[11rem] md:pt-[12.5rem]': isDemoOrg && selectedAccountIds.length === 1, // Extra padding for both banners
+          'pt-16 md:pt-24': !isDemoOrg && (activeTab !== 'dashboard' || selectedAccountIds.length !== 1), // Default top padding
+          'pt-[5.5rem] md:pt-[7.5rem]': isDemoOrg && (activeTab !== 'dashboard' || selectedAccountIds.length !== 1), // Extra padding when demo banner is showing
+          'pt-[9rem] md:pt-[10rem]': !isDemoOrg && activeTab === 'dashboard' && selectedAccountIds.length === 1, // Extra padding for account banner
+          'pt-[10rem] md:pt-[11rem]': isDemoOrg && activeTab === 'dashboard' && selectedAccountIds.length === 1, // Extra padding for both banners
           'ml-0 md:ml-64': !isSidebarCollapsed, // No left margin on mobile
           'ml-0 md:ml-16': isSidebarCollapsed,
         }
