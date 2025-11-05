@@ -75,10 +75,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).json({ error: 'Video data not found' });
     }
 
-    // Update status to processing
+    // Update status to syncing
     await videoRef.update({
-      syncStatus: 'processing',
-      lastRefreshed: Timestamp.now()
+      syncStatus: 'syncing',
+      lastSyncedAt: Timestamp.now()
     });
 
     console.log(`🎯 Fetching video data from: ${video.url}`);
@@ -192,9 +192,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       shares: videoData.share_count || 0,
       trackedAccountId: accountId,
       syncStatus: 'completed',
-      syncCompletedAt: Timestamp.now(),
       syncError: null,
-      lastRefreshed: Timestamp.now()
+      lastSyncedAt: Timestamp.now(),
+      lastRefreshed: Timestamp.now(),
+      isRead: false // Mark as unread for notification badge
     });
 
     // Update account stats if linked

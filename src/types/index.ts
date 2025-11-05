@@ -24,6 +24,9 @@ export interface VideoSubmission {
   uploaderProfilePicture?: string; // Account profile picture
   followerCount?: number; // Creator's follower count
   status: 'pending' | 'approved' | 'rejected';
+  syncStatus?: 'idle' | 'pending' | 'syncing' | 'completed' | 'failed'; // Sync status for real-time processing
+  syncError?: string; // Error message if sync failed
+  lastSyncedAt?: Date; // Last successful sync timestamp
   views: number; // Current/latest metrics
   likes: number;
   comments: number;
@@ -37,6 +40,7 @@ export interface VideoSubmission {
   snapshots?: VideoSnapshot[]; // Historical snapshots
   lastRefreshed?: Date; // When metrics were last updated
   selected?: boolean;
+  isRead?: boolean; // Whether the video has been read (for notification count)
 }
 
 export interface InstagramVideoData {
