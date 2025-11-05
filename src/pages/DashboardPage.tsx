@@ -35,6 +35,8 @@ import TrackedLinksPage, { TrackedLinksPageRef } from '../components/TrackedLink
 import CreatorPortalPage from '../components/CreatorPortalPage';
 import CreatorsManagementPage, { CreatorsManagementPageRef } from '../components/CreatorsManagementPage';
 import CampaignsManagementPage from '../components/CampaignsManagementPage';
+import TeamManagementPage from '../components/TeamManagementPage';
+import RevenueManagementPage from '../components/RevenueManagementPage';
 import SelectCreatorModal from '../components/SelectCreatorModal';
 import PaywallOverlay from '../components/PaywallOverlay';
 import DemoBanner from '../components/DemoBanner';
@@ -3201,8 +3203,14 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             />
           )}
 
+          {/* Team Members Tab */}
+          {activeTab === 'team' && <TeamManagementPage />}
+
+          {/* Revenue Tab */}
+          {activeTab === 'revenue' && <RevenueManagementPage />}
+
           {/* Other Tabs - Placeholder */}
-          {!['dashboard', 'accounts', 'videos', 'subscription', 'settings', 'analytics', 'creators', 'campaigns', 'cron', 'team', 'invitations'].includes(activeTab) && (
+          {!['dashboard', 'accounts', 'videos', 'subscription', 'settings', 'analytics', 'creators', 'campaigns', 'cron', 'team', 'revenue', 'invitations'].includes(activeTab) && (
             <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">🚧</span>
