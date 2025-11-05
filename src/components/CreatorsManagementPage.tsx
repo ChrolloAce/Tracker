@@ -430,7 +430,18 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
                   return (
                     <tr 
                       key={creator.userId} 
-                      onClick={() => navigate(`/creators/${creator.userId}`)}
+                      onClick={() => {
+                        // Redirect to dashboard with creator filter instead of separate creator page
+                        // Get linked accounts for this creator to filter by
+                        const linkedAccounts = (creator as any).linkedAccounts || [];
+                        if (linkedAccounts.length > 0) {
+                          // Navigate to accounts tab filtered by this creator
+                          navigate(`/dashboard?tab=accounts&creator=${creator.userId}`);
+                        } else {
+                          // No accounts, just go to dashboard
+                          navigate(`/dashboard?tab=creators`);
+                        }
+                      }}
                       className="hover:bg-white/5 transition-colors group cursor-pointer"
                     >
                       <td className="px-6 py-4">

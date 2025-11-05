@@ -20,7 +20,7 @@ import LinkRedirect from './components/LinkRedirect';
 import ContractSigningPage from './pages/ContractSigningPage';
 import ContractEditorPage from './pages/ContractEditorPage';
 import CreateContractPage from './pages/CreateContractPage';
-import CreatorDetailsPageWrapper from './pages/CreatorDetailsPageWrapper';
+// import CreatorDetailsPageWrapper from './pages/CreatorDetailsPageWrapper'; // DEPRECATED: Now using dashboard with filters
 import SubscriptionPage from './components/SubscriptionPage';
 import BillingManagementPage from './components/BillingManagementPage';
 import CampaignDetailsPage from './components/CampaignDetailsPage';
@@ -270,17 +270,11 @@ function App() {
         } 
       />
 
-      {/* Creator details */}
+      {/* Creator details - DEPRECATED: Now redirects to dashboard with filters */}
       <Route 
         path="/creators/:creatorId" 
         element={
-          !user ? (
-            <Navigate to="/login" replace />
-          ) : !currentOrgId || !currentProjectId ? (
-            <Navigate to="/create-organization" replace />
-          ) : (
-            <CreatorDetailsPageWrapper />
-          )
+          <Navigate to="/dashboard?tab=creators" replace />
         } 
       />
 
