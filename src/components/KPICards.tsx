@@ -13,7 +13,8 @@ import {
   Link as LinkIcon,
   DollarSign,
   Download,
-  Bookmark
+  Bookmark,
+  RefreshCw
 } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { LinkClick } from '../services/LinkClicksService';
@@ -768,7 +769,7 @@ const KPICards: React.FC<KPICardsProps> = ({
                   if (previousSnapshot) {
                     // Calculate growth from previous snapshot to current
                     const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - (previousSnapshot[metric] || 0));
-                    intervalValue += delta;
+                  intervalValue += delta;
                   } else {
                     // This is the first snapshot ever - count its full value
                     intervalValue += snapshotAtEnd[metric] || 0;
@@ -815,7 +816,7 @@ const KPICards: React.FC<KPICardsProps> = ({
                     if (previousSnapshot) {
                       // Calculate growth from previous snapshot to current
                       const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - (previousSnapshot[metric] || 0));
-                      ppIntervalValue += delta;
+                    ppIntervalValue += delta;
                     } else {
                       // This is the first snapshot ever - count its full value
                       ppIntervalValue += snapshotAtEnd[metric] || 0;
@@ -1065,9 +1066,9 @@ const KPICards: React.FC<KPICardsProps> = ({
                     const likesDelta = Math.max(0, (snapshotAtEnd.likes || 0) - (previousSnapshot.likes || 0));
                     const commentsDelta = Math.max(0, (snapshotAtEnd.comments || 0) - (previousSnapshot.comments || 0));
                     const sharesDelta = Math.max(0, (snapshotAtEnd.shares || 0) - (previousSnapshot.shares || 0));
-                    
-                    periodViews += viewsDelta;
-                    periodEngagement += likesDelta + commentsDelta + sharesDelta;
+                  
+                  periodViews += viewsDelta;
+                  periodEngagement += likesDelta + commentsDelta + sharesDelta;
                   } else {
                     // This is the first snapshot ever - count its full value
                     periodViews += snapshotAtEnd.views || 0;
@@ -1119,9 +1120,9 @@ const KPICards: React.FC<KPICardsProps> = ({
                       const likesDelta = Math.max(0, (snapshotAtEnd.likes || 0) - (previousSnapshot.likes || 0));
                       const commentsDelta = Math.max(0, (snapshotAtEnd.comments || 0) - (previousSnapshot.comments || 0));
                       const sharesDelta = Math.max(0, (snapshotAtEnd.shares || 0) - (previousSnapshot.shares || 0));
-                      
-                      ppPeriodViews += viewsDelta;
-                      ppPeriodEngagement += likesDelta + commentsDelta + sharesDelta;
+                    
+                    ppPeriodViews += viewsDelta;
+                    ppPeriodEngagement += likesDelta + commentsDelta + sharesDelta;
                     } else {
                       // This is the first snapshot ever - count its full value
                       ppPeriodViews += snapshotAtEnd.views || 0;
@@ -2207,22 +2208,24 @@ const KPICard: React.FC<{
               });
             }) : [];
             
-            // Combine videos uploaded in interval AND videos with snapshot activity
-            const allVideosWithActivity = [...new Set([...videosInInterval, ...videosWithSnapshotsInInterval])];
-            
-            // New Uploads: Show all videos with activity (uploads OR snapshots) in this interval
-            const newUploads = [...allVideosWithActivity]
-              .sort((a, b) => {
-                // Sort by most recent activity (upload or latest snapshot)
-                const getLatestActivity = (video: VideoSubmission) => {
-                  const uploadTime = video.uploadDate ? new Date(video.uploadDate).getTime() : new Date(video.dateSubmitted).getTime();
-                  const latestSnapshot = video.snapshots && video.snapshots.length > 0
-                    ? Math.max(...video.snapshots.map(s => new Date(s.capturedAt).getTime()))
-                    : 0;
-                  return Math.max(uploadTime, latestSnapshot);
+            // Refreshed Videos: Videos with snapshots captured in this interval
+            // Sort by most recent snapshot date
+            const refreshedVideos = [...videosWithSnapshotsInInterval]
+              .map((video: VideoSubmission) => {
+                // Find the most recent snapshot in this interval
+                const snapshotsInInterval = (video.snapshots || []).filter(snapshot => {
+                  const snapshotDate = new Date(snapshot.capturedAt);
+                  return DataAggregationService.isDateInInterval(snapshotDate, interval);
+                });
+                const latestSnapshot = snapshotsInInterval.sort((a, b) => 
+                  new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime()
+                )[0];
+                return {
+                  video,
+                  lastRefreshed: latestSnapshot ? new Date(latestSnapshot.capturedAt) : new Date()
                 };
-                return getLatestActivity(b) - getLatestActivity(a);
               })
+              .sort((a, b) => b.lastRefreshed.getTime() - a.lastRefreshed.getTime())
               .slice(0, 5);
             
             // Top Gainers: Calculate growth based on snapshots in this interval
@@ -2414,29 +2417,24 @@ const KPICard: React.FC<{
                 {/* Two-Column Mega Tooltip Layout - Only for non-published-videos KPIs */}
                 {!isPublishedVideosKPI && data.id !== 'accounts' && data.id !== 'link-clicks' && (
                 <div className="flex">
-                  {/* Left Column: Videos with Activity */}
+                  {/* Left Column: Refreshed Videos */}
                   <div className={`flex-1 px-5 py-3 ${hasTopGainers ? 'border-r border-white/10' : ''}`}>
                     <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                      📊 Videos with Activity ({newUploads.length})
+                      🔄 Refreshed Videos ({refreshedVideos.length})
                     </h3>
-                    {newUploads.length > 0 ? (
+                    {refreshedVideos.length > 0 ? (
                       <div className="space-y-2">
-                        {newUploads.map((video: VideoSubmission, idx: number) => {
-                          // Check if this video was uploaded in this interval or just has snapshots
-                          const uploadDate = video.uploadDate ? new Date(video.uploadDate) : new Date(video.dateSubmitted);
-                          const wasUploadedInInterval = DataAggregationService.isDateInInterval(uploadDate, interval);
-                          
-                          return (
+                        {refreshedVideos.map((item: any, idx: number) => (
                           <div 
-                            key={`new-${video.id}-${idx}`}
+                            key={`refreshed-${item.video.id}-${idx}`}
                             className="flex items-center gap-2 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
                           >
                             {/* Thumbnail */}
                             <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-gray-800">
-                              {video.thumbnail ? (
+                              {item.video.thumbnail ? (
                                 <img 
-                                  src={video.thumbnail} 
-                                  alt={video.title || video.caption || 'Video'} 
+                                  src={item.video.thumbnail} 
+                                  alt={item.video.title || item.video.caption || 'Video'} 
                                   className="w-full h-full object-cover"
                                   onError={(e) => {
                                     e.currentTarget.style.display = 'none';
@@ -2452,37 +2450,44 @@ const KPICard: React.FC<{
                             {/* Metadata */}
                             <div className="flex-1 min-w-0">
                               <p className="text-xs text-white font-medium leading-tight">
-                                {((video.title || video.caption || '(No caption)').length > 13 
-                                  ? (video.title || video.caption || '(No caption)').substring(0, 13) + '...'
-                                  : (video.title || video.caption || '(No caption)'))}
+                                {((item.video.title || item.video.caption || '(No caption)').length > 13 
+                                  ? (item.video.title || item.video.caption || '(No caption)').substring(0, 13) + '...'
+                                  : (item.video.title || item.video.caption || '(No caption)'))}
                               </p>
                               <div className="flex items-center gap-1 mt-0.5">
                                 <div className="w-3 h-3">
-                                  <PlatformIcon platform={video.platform} size="sm" />
+                                  <PlatformIcon platform={item.video.platform} size="sm" />
                                 </div>
                                 <span className="text-[10px] text-gray-400">
-                                  {video.uploaderHandle || video.platform}
+                                  {(() => {
+                                    const now = new Date();
+                                    const refreshedDate = new Date(item.lastRefreshed);
+                                    const diffMs = now.getTime() - refreshedDate.getTime();
+                                    const diffMins = Math.floor(diffMs / 60000);
+                                    const diffHours = Math.floor(diffMs / 3600000);
+                                    
+                                    if (diffMins < 60) return `${diffMins}m ago`;
+                                    if (diffHours < 24) return `${diffHours}h ago`;
+                                    return refreshedDate.toLocaleDateString();
+                                  })()}
                                 </span>
-                                {!wasUploadedInInterval && (
-                                  <span className="text-[9px] text-blue-400">• snapshot</span>
-                                )}
                               </div>
                             </div>
                             
                             {/* Metric - Show correct metric based on KPI */}
                             <div className="flex-shrink-0 text-right">
                               <p className="text-xs font-bold text-white">
-                                {formatDisplayNumber((video as any)[metricKey] || 0)}
+                                {formatDisplayNumber((item.video as any)[metricKey] || 0)}
                               </p>
                               <p className="text-[10px] text-gray-500">{metricLabel.toLowerCase()}</p>
                             </div>
                           </div>
-                        );})}
+                        ))}
                       </div>
                     ) : (
                       <div className="text-center py-4">
-                        <Video className="w-6 h-6 text-gray-600 mx-auto mb-1" />
-                        <p className="text-xs text-gray-500">No activity in this period</p>
+                        <RefreshCw className="w-6 h-6 text-gray-600 mx-auto mb-1" />
+                        <p className="text-xs text-gray-500">No refreshed videos</p>
                       </div>
                     )}
                   </div>
