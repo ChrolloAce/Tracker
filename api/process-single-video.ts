@@ -163,28 +163,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Download and upload thumbnail to Firebase Storage for permanent URL
-    let permanentThumbnail = '';
+    // For now, just use the original URL directly (Firebase Storage can be flaky with Instagram URLs)
+    const finalThumbnail = videoData.thumbnail_url || '';
+    
+    // Optionally try to upload to Firebase Storage in the background
     if (videoData.thumbnail_url) {
-      try {
-        console.log('📥 Downloading thumbnail to Firebase Storage...');
-        permanentThumbnail = await downloadAndUploadThumbnail(
-          videoData.thumbnail_url,
-          orgId,
-          `${videoData.id}_thumb.jpg`
-        );
-        console.log('✅ Thumbnail uploaded to Firebase Storage');
-      } catch (error) {
-        console.error('Failed to upload thumbnail:', error);
-        permanentThumbnail = videoData.thumbnail_url; // Fallback to original
-      }
+      // Don't await - let it happen in background, use original URL regardless
+      downloadAndUploadThumbnail(
+        videoData.thumbnail_url,
+        orgId,
+        `${videoData.id}_thumb.jpg`
+      ).catch(err => {
+        console.warn('⚠️ Background thumbnail upload failed (using original URL):', err.message);
+      });
     }
 
     // Update video with fetched data
     await videoRef.update({
       videoId: videoData.id,
       title: videoData.caption?.split('\n')[0] || 'Untitled Video',
+      caption: videoData.caption || '',
       description: videoData.caption || '',
-      thumbnail: permanentThumbnail || videoData.thumbnail_url || '',
+      thumbnail: finalThumbnail,
+      uploader: videoData.display_name || videoData.username || 'Unknown',
+      uploaderHandle: videoData.username || '',
+      uploaderProfilePicture: videoData.profile_pic_url || '', // May be empty for alpha-scraper
       uploadDate: Timestamp.fromDate(uploadDate),
       views: videoData.view_count || 0,
       likes: videoData.like_count || 0,
@@ -341,6 +344,11 @@ function transformVideoData(rawData: any, platform: string): VideoData {
     console.log('📸 [INSTAGRAM Transform] Raw data:', JSON.stringify(rawData, null, 2));
     
     // alpha-scraper format: id, ownerUsername, ownerFullName, description, likesCount, commentsCount, videoViewCount, etc.
+    // Note: ownerFullName can be empty string, so use ownerUsername as fallback
+    const displayName = (rawData.ownerFullName && rawData.ownerFullName.trim()) 
+      ? rawData.ownerFullName 
+      : rawData.ownerUsername || '';
+    
     return {
       id: rawData.id || '',
       thumbnail_url: rawData.thumbnail_url || '',
@@ -352,7 +360,7 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       share_count: 0, // Instagram doesn't expose share count
       timestamp: rawData.upload_date || new Date().toISOString(),
       profile_pic_url: '', // Not provided by alpha-scraper
-      display_name: rawData.ownerFullName || rawData.ownerUsername || '',
+      display_name: displayName,
       follower_count: 0 // Not provided in video endpoint
     };
   } else if (platform === 'youtube') {
