@@ -223,6 +223,7 @@ class TeamInvitationService {
       // Get invitation from the public lookup first (more reliable and doesn't require org membership)
       console.log(`🔍 Attempting to read invitation from public lookup first`);
       const lookupRef = doc(db, 'invitationsLookup', invitationId);
+      const inviteRef = doc(db, 'organizations', orgId, 'invitations', invitationId);
       const lookupDoc = await getDoc(lookupRef);
       
       console.log(`📧 Public lookup exists:`, lookupDoc.exists());
@@ -300,7 +301,6 @@ class TeamInvitationService {
           
           // Try to update the public lookup (don't fail if it doesn't exist)
           try {
-            const lookupRef = doc(db, 'invitationsLookup', invitationId);
             await updateDoc(lookupRef, {
               status: 'accepted',
               acceptedAt: Timestamp.now()
@@ -325,7 +325,6 @@ class TeamInvitationService {
       const batch = writeBatch(db);
       
       // Update invitation status in BOTH places
-      const inviteRef = doc(db, 'organizations', orgId, 'invitations', invitationId);
       batch.update(inviteRef, { 
         status: 'accepted',
         acceptedAt: Timestamp.now()
