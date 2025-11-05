@@ -25,11 +25,38 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
 
   const totalSteps = 7;
 
+  /**
+   * Encrypts the private key before storing in Firestore
+   * Uses base64 encoding with XOR cipher for basic encryption
+   * NOTE: For production, consider using stronger encryption (AES-256, AWS KMS, etc.)
+   * 
+   * This encrypted key will be used with Apple's App Store Connect API:
+   * https://developer.apple.com/documentation/appstoreconnectapi
+   * 
+   * The API credentials (Issuer ID, Key ID, Vendor Number, and .p8 private key)
+   * provide access to:
+   * - Sales and Financial Reports
+   * - App Analytics Data
+   * - Revenue Metrics
+   * - Subscription Data
+   * 
+   * Apple's API uses JWT authentication with the private key for secure access.
+   */
+  const encryptPrivateKey = (key: string): string => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(key);
+    const encrypted = Array.from(data).map(byte => byte ^ 0xAA); // XOR with key
+    return btoa(String.fromCharCode(...encrypted));
+  };
+
   const handleNext = () => {
     setError(null);
+    // Mark current step as completed
+    setCompletedSteps(prev => new Set(prev).add(currentStep));
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
     }
@@ -77,8 +104,17 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
         throw new Error('Please fill in all required fields');
       }
 
-      // Call the completion handler
-      await onComplete(credentials);
+      // Encrypt the private key before storing
+      const encryptedCredentials = {
+        ...credentials,
+        privateKey: encryptPrivateKey(credentials.privateKey)
+      };
+
+      // Call the completion handler with encrypted credentials
+      await onComplete(encryptedCredentials);
+      
+      // Mark final step as completed
+      setCompletedSteps(prev => new Set(prev).add(currentStep));
     } catch (err: any) {
       setError(err.message || 'Failed to complete setup');
       setLoading(false);
@@ -106,8 +142,12 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
 
       {/* Logos with Sync Symbol */}
       <div className="flex items-center justify-center gap-8 py-8">
-        <div className="w-20 h-20 bg-purple-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl">
-          VA
+        <div className="w-20 h-20 rounded-2xl flex items-center justify-center overflow-hidden bg-white/5 border border-white/10">
+          <img 
+            src="/vtlogo.png" 
+            alt="Viral.app Logo" 
+            className="w-full h-full object-contain p-2"
+          />
         </div>
         <div className="flex flex-col items-center gap-2">
           <Link2 className="w-8 h-8 text-white/60" />
@@ -118,8 +158,8 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
           </div>
         </div>
         <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center">
-          <svg viewBox="0 0 24 24" className="w-12 h-12" fill="currentColor">
-            <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+          <svg viewBox="0 0 814 1000" className="w-14 h-14" fill="currentColor">
+            <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76.5 0-103.7 40.8-165.9 40.8s-105.6-57-155.5-127C46.7 790.7 0 663 0 541.8c0-194.4 126.4-297.5 250.8-297.5 66.1 0 121.2 43.4 162.7 43.4 39.5 0 101.1-46 176.3-46 28.5 0 130.9 2.6 198.3 99.2zm-234-181.5c31.1-36.9 53.1-88.1 53.1-139.3 0-7.1-.6-14.3-1.9-20.1-50.6 1.9-110.8 33.7-147.1 75.8-28.5 32.4-55.1 83.6-55.1 135.5 0 7.8 1.3 15.6 1.9 18.1 3.2.6 8.4 1.3 13.6 1.3 45.4 0 102.5-30.4 135.5-71.3z"/>
           </svg>
         </div>
       </div>
@@ -283,7 +323,7 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
 
         <div className="pt-4 border-t border-white/10">
           <a 
-            href="https://appstoreconnect.apple.com/access/api" 
+            href="https://appstoreconnect.apple.com/access/integrations/api" 
             target="_blank" 
             rel="noopener noreferrer"
             className="text-white/60 hover:text-white text-sm underline inline-flex items-center gap-2"
@@ -598,6 +638,9 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
                 }
               `}
             >
+              {completedSteps.has(currentStep) && (
+                <CheckCircle2 className="w-4 h-4" />
+              )}
               {currentStep === 1 ? 'Get Started' : 'Continue'}
               <ArrowRight className="w-4 h-4" />
             </button>

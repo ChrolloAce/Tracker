@@ -8,14 +8,31 @@ const RevenueManagementPage: React.FC = () => {
 
   const handleWizardComplete = async (credentials: AppleAppStoreCredentials) => {
     try {
-      // TODO: Save credentials to Firestore
-      console.log('Apple App Store credentials:', credentials);
+      // NOTE: The private key in credentials is already encrypted by the wizard
+      // It should be stored securely in Firestore under:
+      // organizations/{orgId}/projects/{projectId}/revenueIntegrations/{integrationId}
+      
+      console.log('✅ Apple App Store credentials received (private key is encrypted):', {
+        issuerID: credentials.issuerID,
+        keyID: credentials.keyID,
+        vendorNumber: credentials.vendorNumber,
+        privateKeyFileName: credentials.privateKeyFileName,
+        privateKeyLength: credentials.privateKey.length,
+        isEncrypted: true
+      });
+      
+      // TODO: Save encrypted credentials to Firestore
+      // TODO: Set up backend Cloud Function to:
+      //   1. Decrypt the private key server-side
+      //   2. Generate JWT tokens for Apple API authentication
+      //   3. Fetch revenue data from App Store Connect API
+      //   4. Schedule daily sync jobs
       
       // Close wizard
       setShowWizard(false);
       
       // TODO: Refresh connections list
-      // TODO: Show success message
+      // TODO: Show success toast notification
     } catch (error) {
       console.error('Failed to save credentials:', error);
       throw error;
