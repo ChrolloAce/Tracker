@@ -57,12 +57,12 @@ const TeamManagementPage: React.FC = () => {
         <button 
           onClick={() => setShowInviteModal(true)}
           className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-white/90 text-black rounded-lg font-medium transition-colors"
-        >
+                >
           <Plus className="w-4 h-4" />
           Invite Member
         </button>
-      </div>
-
+                      </div>
+                      
       {/* Content */}
       {activeTab === 'members' ? (
         <TeamMembersTable key={refreshKey} />

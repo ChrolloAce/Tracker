@@ -104,27 +104,27 @@ const Sidebar: React.FC<SidebarProps> = ({
         id: 'tracking',
         label: 'Tracking',
         items: [
-          {
-            id: 'accounts',
-            label: 'Tracked Accounts',
-            icon: Users,
-            href: `${baseHref}/accounts`,
-            badge: unreadCounts.accounts,
-            loading: loadingCounts.accounts,
-          },
-          {
-            id: 'videos',
+      {
+        id: 'accounts',
+        label: 'Tracked Accounts',
+        icon: Users,
+        href: `${baseHref}/accounts`,
+        badge: unreadCounts.accounts,
+        loading: loadingCounts.accounts,
+      },
+      {
+        id: 'videos',
             label: 'Tracked Videos',
-            icon: Film,
-            href: `${baseHref}/videos`,
-            badge: unreadCounts.videos,
-            loading: loadingCounts.videos,
-          },
-          {
-            id: 'analytics',
+        icon: Film,
+        href: `${baseHref}/videos`,
+        badge: unreadCounts.videos,
+        loading: loadingCounts.videos,
+      },
+      {
+        id: 'analytics',
             label: 'Tracking Links',
-            icon: Link,
-            href: `${baseHref}/links`,
+        icon: Link,
+        href: `${baseHref}/links`,
           },
         ]
       },
@@ -132,17 +132,17 @@ const Sidebar: React.FC<SidebarProps> = ({
         id: 'manage',
         label: 'Manage',
         items: [
-          {
-            id: 'creators',
-            label: userRole === 'creator' ? 'Payouts' : 'Creators',
-            icon: Video,
-            href: `${baseHref}/creators`,
-          },
-          {
-            id: 'campaigns',
-            label: 'Campaigns',
-            icon: Trophy,
-            href: `${baseHref}/campaigns`,
+      {
+        id: 'creators',
+        label: userRole === 'creator' ? 'Payouts' : 'Creators',
+        icon: Video,
+        href: `${baseHref}/creators`,
+      },
+      {
+        id: 'campaigns',
+        label: 'Campaigns',
+        icon: Trophy,
+        href: `${baseHref}/campaigns`,
           },
           {
             id: 'integrations',
@@ -167,13 +167,13 @@ const Sidebar: React.FC<SidebarProps> = ({
             label: 'Revenue',
             icon: DollarSign,
             href: `${baseHref}/revenue`,
-          },
-          {
-            id: 'extension',
+      },
+      {
+        id: 'extension',
             label: 'Extensions',
-            icon: Puzzle,
-            href: `${baseHref}/extension`,
-          },
+        icon: Puzzle,
+        href: `${baseHref}/extension`,
+      },
         ]
       },
     ];

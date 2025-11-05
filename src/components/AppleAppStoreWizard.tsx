@@ -394,22 +394,41 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
         </div>
 
         <div className="space-y-2">
-          <label className="text-white font-medium block">Vendor Number</label>
+          <label className="text-white font-medium block">
+            Vendor Number
+            <span className="text-white/40 font-normal text-sm ml-2">(8 digits)</span>
+          </label>
           <input
             type="text"
             value={credentials.vendorNumber}
-            onChange={(e) => setCredentials(prev => ({ ...prev, vendorNumber: e.target.value }))}
-            placeholder="12345678"
-            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-white/30"
+            onChange={(e) => {
+              // Only allow digits
+              const value = e.target.value.replace(/\D/g, '');
+              setCredentials(prev => ({ ...prev, vendorNumber: value }));
+            }}
+            placeholder="85442109"
+            maxLength={8}
+            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-white/30 font-mono"
           />
           <p className="text-white/50 text-sm">
-            Found in App Store Connect under Sales and Trends
+            Required for accessing sales and financial reports
           </p>
         </div>
 
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 space-y-2">
           <p className="text-blue-300 text-sm">
-            <strong>💡 Where to find Vendor Number:</strong> Go to Sales and Trends → Select any report → Your vendor number is displayed in the top right.
+            <strong>💡 Where to find Vendor Number:</strong>
+          </p>
+          <ol className="text-blue-200 text-sm space-y-1 ml-4 list-decimal">
+            <li>Go to <strong>Sales and Trends</strong> in App Store Connect</li>
+            <li>Look for "Vendor #" in the <strong>top right corner</strong></li>
+            <li>It's an 8-digit number (e.g., 85442109)</li>
+          </ol>
+        </div>
+
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
+          <p className="text-amber-300 text-sm">
+            <strong>⚠️ Note:</strong> Vendor Number is <strong>NOT</strong> the same as Team ID. Team ID is used for app signing (10 alphanumeric characters), while Vendor Number is for financial reporting (8 digits only).
           </p>
         </div>
       </div>
@@ -563,7 +582,9 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
       case 4:
         return credentials.issuerID.trim().length > 0;
       case 5:
-        return credentials.keyID.trim().length > 0 && credentials.vendorNumber.trim().length > 0;
+        return credentials.keyID.trim().length > 0 && 
+               credentials.vendorNumber.trim().length === 8 &&
+               /^\d{8}$/.test(credentials.vendorNumber.trim());
       case 6:
         return credentials.privateKey.length > 0;
       case 7:
