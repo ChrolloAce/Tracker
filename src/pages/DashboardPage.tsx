@@ -223,18 +223,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [accountToLinkCreator, setAccountToLinkCreator] = useState<TrackedAccount | null>(null);
   const [accountCreatorName, setAccountCreatorName] = useState<string | null>(null);
 
-  // Load creator name when single account is selected
-  useEffect(() => {
-    if (currentOrgId && currentProjectId && selectedAccountIds.length === 1) {
-      const accountId = selectedAccountIds[0];
-      CreatorLinksService.getCreatorNameForAccount(currentOrgId, currentProjectId, accountId)
-        .then(name => setAccountCreatorName(name))
-        .catch(() => setAccountCreatorName(null));
-    } else {
-      setAccountCreatorName(null);
-    }
-  }, [selectedAccountIds, currentOrgId, currentProjectId]);
-
   // Handle URL query parameter filters (from clicking accounts or creators)
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
