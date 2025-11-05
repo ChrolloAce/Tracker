@@ -2207,12 +2207,21 @@ const KPICard: React.FC<{
               });
             }) : [];
             
-            // New Uploads: Videos actually uploaded in this interval
-            const newUploads = [...videosInInterval]
+            // Combine videos uploaded in interval AND videos with snapshot activity
+            const allVideosWithActivity = [...new Set([...videosInInterval, ...videosWithSnapshotsInInterval])];
+            
+            // New Uploads: Show all videos with activity (uploads OR snapshots) in this interval
+            const newUploads = [...allVideosWithActivity]
               .sort((a, b) => {
-                const dateA = a.uploadDate ? new Date(a.uploadDate) : new Date(a.dateSubmitted);
-                const dateB = b.uploadDate ? new Date(b.uploadDate) : new Date(b.dateSubmitted);
-                return dateB.getTime() - dateA.getTime();
+                // Sort by most recent activity (upload or latest snapshot)
+                const getLatestActivity = (video: VideoSubmission) => {
+                  const uploadTime = video.uploadDate ? new Date(video.uploadDate).getTime() : new Date(video.dateSubmitted).getTime();
+                  const latestSnapshot = video.snapshots && video.snapshots.length > 0
+                    ? Math.max(...video.snapshots.map(s => new Date(s.capturedAt).getTime()))
+                    : 0;
+                  return Math.max(uploadTime, latestSnapshot);
+                };
+                return getLatestActivity(b) - getLatestActivity(a);
               })
               .slice(0, 5);
             
@@ -2405,14 +2414,19 @@ const KPICard: React.FC<{
                 {/* Two-Column Mega Tooltip Layout - Only for non-published-videos KPIs */}
                 {!isPublishedVideosKPI && data.id !== 'accounts' && data.id !== 'link-clicks' && (
                 <div className="flex">
-                  {/* Left Column: New Uploads */}
+                  {/* Left Column: Videos with Activity */}
                   <div className={`flex-1 px-5 py-3 ${hasTopGainers ? 'border-r border-white/10' : ''}`}>
                     <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                      📤 New Uploads ({newUploads.length})
+                      📊 Videos with Activity ({newUploads.length})
                     </h3>
                     {newUploads.length > 0 ? (
                       <div className="space-y-2">
-                        {newUploads.map((video: VideoSubmission, idx: number) => (
+                        {newUploads.map((video: VideoSubmission, idx: number) => {
+                          // Check if this video was uploaded in this interval or just has snapshots
+                          const uploadDate = video.uploadDate ? new Date(video.uploadDate) : new Date(video.dateSubmitted);
+                          const wasUploadedInInterval = DataAggregationService.isDateInInterval(uploadDate, interval);
+                          
+                          return (
                           <div 
                             key={`new-${video.id}-${idx}`}
                             className="flex items-center gap-2 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
@@ -2449,6 +2463,9 @@ const KPICard: React.FC<{
                                 <span className="text-[10px] text-gray-400">
                                   {video.uploaderHandle || video.platform}
                                 </span>
+                                {!wasUploadedInInterval && (
+                                  <span className="text-[9px] text-blue-400">• snapshot</span>
+                                )}
                               </div>
                             </div>
                             
@@ -2460,12 +2477,12 @@ const KPICard: React.FC<{
                               <p className="text-[10px] text-gray-500">{metricLabel.toLowerCase()}</p>
                             </div>
                           </div>
-                        ))}
+                        );})}
                       </div>
                     ) : (
                       <div className="text-center py-4">
                         <Video className="w-6 h-6 text-gray-600 mx-auto mb-1" />
-                        <p className="text-xs text-gray-500">No new uploads</p>
+                        <p className="text-xs text-gray-500">No activity in this period</p>
                       </div>
                     )}
                   </div>
