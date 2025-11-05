@@ -14,7 +14,9 @@ import {
   Trophy,
   X,
   LayoutDashboard,
-  Boxes
+  Boxes,
+  UserPlus,
+  DollarSign
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
@@ -63,7 +65,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
   const [showCreateProject, setShowCreateProject] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['tracking', 'manage'])); // Start with sections expanded
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['tracking', 'manage', 'integrations'])); // Start with sections expanded
   const { can, loading: permissionsLoading } = usePermissions();
   const { userRole, currentOrgId, currentProjectId } = useAuth();
   const location = useLocation();
@@ -124,12 +126,6 @@ const Sidebar: React.FC<SidebarProps> = ({
             icon: Link,
             href: `${baseHref}/links`,
           },
-          {
-            id: 'extension',
-            label: 'Extension',
-            icon: Puzzle,
-            href: `${baseHref}/extension`,
-          },
         ]
       },
       {
@@ -154,6 +150,30 @@ const Sidebar: React.FC<SidebarProps> = ({
             icon: Boxes,
             href: `${baseHref}/integrations`,
           },
+          {
+            id: 'team',
+            label: 'Team Members',
+            icon: UserPlus,
+            href: `${baseHref}/settings/team`,
+          },
+        ]
+      },
+      {
+        id: 'integrations-section',
+        label: 'Integrations',
+        items: [
+          {
+            id: 'revenue',
+            label: 'Revenue',
+            icon: DollarSign,
+            href: `${baseHref}/settings/revenue`,
+          },
+          {
+            id: 'extension',
+            label: 'Extensions',
+            icon: Puzzle,
+            href: `${baseHref}/extension`,
+          },
         ]
       },
     ];
@@ -169,15 +189,22 @@ const Sidebar: React.FC<SidebarProps> = ({
           if (item.id === 'creators') return can.accessTab('creators');
           if (item.id === 'campaigns') return can.accessTab('campaigns');
           if (item.id === 'integrations') return can.accessTab('integrations');
+          if (item.id === 'team') return can.accessTab('settings'); // Team members under settings permissions
+          if (item.id === 'revenue') return can.accessTab('settings'); // Revenue under settings permissions
           return true;
         });
       });
     }
 
-    // In demo mode, filter out extension and integrations
+    // In demo mode, filter out extension, integrations, team, and revenue
     if (isDemoMode) {
       sections.forEach(section => {
-        section.items = section.items.filter(item => item.id !== 'extension' && item.id !== 'integrations');
+        section.items = section.items.filter(item => 
+          item.id !== 'extension' && 
+          item.id !== 'integrations' && 
+          item.id !== 'team' && 
+          item.id !== 'revenue'
+        );
       });
     }
 

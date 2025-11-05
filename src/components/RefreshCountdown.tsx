@@ -76,7 +76,7 @@ const RefreshCountdown: React.FC = () => {
 
   const formatTimeUntil = (): string => {
     if (!lastOrchestratorRun) return 'Soon';
-    
+
     // Orchestrator runs every hour
     const nextRun = new Date(lastOrchestratorRun);
     nextRun.setHours(nextRun.getHours() + 1);
@@ -117,7 +117,7 @@ const RefreshCountdown: React.FC = () => {
       {/* Header */}
       <div className="px-4 py-3 bg-white/5">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 text-white/60" />
             <span className="text-xs font-semibold text-white/70 uppercase tracking-wider">
               Orchestrator
@@ -141,17 +141,17 @@ const RefreshCountdown: React.FC = () => {
           </span>
           <span className={`font-semibold ${isRunning ? 'text-emerald-400' : 'text-white/60'}`}>
             {isRunning ? '⚡ Running' : `Next: ${formatTimeUntil()}`}
-          </span>
-        </div>
+        </span>
+      </div>
 
-        {/* Progress Bar */}
+      {/* Progress Bar */}
         <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-          <div 
+        <div 
             className={`h-full transition-all duration-1000 ease-linear ${
               isRunning ? 'bg-emerald-400' : 'bg-white/40'
             }`}
             style={{ width: `${Math.min(progress, 100)}%` }}
-          />
+        />
         </div>
 
         {/* Info Text */}

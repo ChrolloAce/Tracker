@@ -571,8 +571,8 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
                             }}
-                          />
-                        ) : (
+              />
+            ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             <Play className="w-5 h-5 text-gray-600" />
                           </div>
@@ -615,7 +615,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             <h3 className="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2">
               <TrendingUp className="w-3.5 h-3.5" />
               Top Gainers ({topGainers.length})
-            </h3>
+                </h3>
             <div className="overflow-auto space-y-2 flex-1">
               {topGainers.length > 0 ? (
                 topGainers.map((item: any, idx: number) => (
@@ -682,8 +682,8 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                   <TrendingUp className="w-10 h-10 text-gray-600 mb-2" />
                   <p className="text-xs text-gray-500">No growth data</p>
                   <p className="text-[10px] text-gray-600 mt-1">Videos need snapshots</p>
-                </div>
-              )}
+              </div>
+            )}
             </div>
           </div>
 

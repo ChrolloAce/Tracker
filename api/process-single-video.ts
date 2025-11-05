@@ -170,9 +170,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (videoData.thumbnail_url) {
       // Don't await - let it happen in background, use original URL regardless
       downloadAndUploadThumbnail(
-        videoData.thumbnail_url,
-        orgId,
-        `${videoData.id}_thumb.jpg`
+          videoData.thumbnail_url,
+          orgId,
+          `${videoData.id}_thumb.jpg`
       ).catch(err => {
         console.warn('⚠️ Background thumbnail upload failed (using original URL):', err.message);
       });
