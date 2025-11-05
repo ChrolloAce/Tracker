@@ -785,12 +785,77 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           // 🔑 STEP 3: Apply date filtering
           const dateFiltered = DateFilterService.filterVideosByDateRange(videoSubmissions, dateFilter);
 
+          // 🔑 STEP 4: Calculate advanced metrics (use rulesFilteredVideos - all videos after rules, no date filter)
+          
+          // Find highest viewed video
+          const highestViewedVideo = rulesFilteredVideos.length > 0 
+            ? rulesFilteredVideos.reduce((max, video) => 
+                (video.views || 0) > (max.views || 0) ? video : max
+              , rulesFilteredVideos[0])
+            : null;
+
+          // Calculate posting streak (consecutive days of posting)
+          let postingStreak = 0;
+          if (rulesFilteredVideos.length > 0) {
+            const sortedVideos = [...rulesFilteredVideos].sort((a, b) => {
+              const dateA = a.uploadDate?.toDate?.() || new Date(0);
+              const dateB = b.uploadDate?.toDate?.() || new Date(0);
+              return dateB.getTime() - dateA.getTime(); // newest first
+            });
+            
+            let currentStreak = 0;
+            let lastDate: Date | null = null;
+            
+            for (const video of sortedVideos) {
+              const uploadDate = video.uploadDate?.toDate?.() || new Date();
+              const dateOnly = new Date(uploadDate.getFullYear(), uploadDate.getMonth(), uploadDate.getDate());
+              
+              if (lastDate === null) {
+                currentStreak = 1;
+                lastDate = dateOnly;
+              } else {
+                const daysDiff = Math.round((lastDate.getTime() - dateOnly.getTime()) / (1000 * 60 * 60 * 24));
+                if (daysDiff === 1) {
+                  // Consecutive day
+                  currentStreak++;
+                  lastDate = dateOnly;
+                } else if (daysDiff === 0) {
+                  // Same day, continue streak
+                  continue;
+                } else {
+                  // Gap in posting
+                  break;
+                }
+              }
+            }
+            postingStreak = currentStreak;
+          }
+
+          // Calculate virality rate (% of videos with 10x median views)
+          let viralityRate = 0;
+          if (rulesFilteredVideos.length > 0) {
+            const viewCounts = rulesFilteredVideos.map(v => v.views || 0).sort((a, b) => a - b);
+            const medianViews = viewCounts.length % 2 === 0
+              ? (viewCounts[viewCounts.length / 2 - 1] + viewCounts[viewCounts.length / 2]) / 2
+              : viewCounts[Math.floor(viewCounts.length / 2)];
+            
+            const viralVideos = rulesFilteredVideos.filter(v => (v.views || 0) >= medianViews * 10);
+            viralityRate = viralVideos.length / rulesFilteredVideos.length;
+          }
+
           return {
             ...account,
             filteredTotalVideos: dateFiltered.length,
             filteredTotalViews: dateFiltered.reduce((sum, v) => sum + v.views, 0),
             filteredTotalLikes: dateFiltered.reduce((sum, v) => sum + v.likes, 0),
-            filteredTotalComments: dateFiltered.reduce((sum, v) => sum + v.comments, 0)
+            filteredTotalComments: dateFiltered.reduce((sum, v) => sum + v.comments, 0),
+            highestViewedVideo: highestViewedVideo ? {
+              title: highestViewedVideo.videoTitle || highestViewedVideo.caption || 'Untitled',
+              views: highestViewedVideo.views || 0,
+              videoId: highestViewedVideo.id || ''
+            } : undefined,
+            postingStreak,
+            viralityRate
           };
         });
 
