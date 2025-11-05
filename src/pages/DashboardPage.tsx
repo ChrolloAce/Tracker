@@ -1289,19 +1289,19 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     console.log('📊 Input (submissionsWithoutDateFilter):', submissionsWithoutDateFilter.length);
     console.log('📆 Date filter:', dateFilter);
     
-    // Use strictMode: TRUE for display (Top Videos, Top Accounts, etc.)
-    // This ensures only videos uploaded in the selected period are shown
+    // Use strictMode: FALSE to include videos with snapshots in period
+    // This ensures videos with snapshot activity in the period are included for KPI calculations
     let filtered = DateFilterService.filterVideosByDateRange(
       submissionsWithoutDateFilter, 
       dateFilter, 
       customDateRange,
-      true // strictMode: true = ONLY show videos uploaded in the period
+      false // strictMode: false = include videos with snapshots OR uploaded in period
     );
     
-    console.log('✅ After date filter (STRICT):', filtered.length, `(removed ${submissionsWithoutDateFilter.length - filtered.length})`);
-    console.log('🎯 These videos were UPLOADED in the selected date range');
-    console.log('📋 Display components will show ONLY these videos');
-    console.log('🔄 KPI Cards will use allSubmissions (with snapshots) for PP calculations');
+    console.log('✅ After date filter (NON-STRICT):', filtered.length, `(removed ${submissionsWithoutDateFilter.length - filtered.length})`);
+    console.log('🎯 These videos were either UPLOADED or have SNAPSHOTS in the selected date range');
+    console.log('📋 Display components will show videos with activity in period');
+    console.log('🔄 KPI Cards will calculate growth from snapshots in period');
     console.log('═'.repeat(50));
     
     return filtered;
