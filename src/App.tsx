@@ -33,6 +33,7 @@ import SupportPage from './pages/SupportPage';
 import CreatorInvitationPage from './pages/CreatorInvitationPage';
 import { useEffect, useState } from 'react';
 import { AlertCircle } from 'lucide-react';
+import NotFoundPage from './pages/NotFoundPage';
 
 // Wrapper component to handle navigation for CreateProjectPage
 function CreateProjectPageWrapper() {
@@ -79,48 +80,11 @@ function LoadingSkeleton() {
 
   if (showError) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center p-6">
-        <div className="max-w-md w-full text-center">
-          <div className="bg-red-500/10 border border-red-500/20 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
-            <AlertCircle className="w-10 h-10 text-red-400" />
-          </div>
-          
-          <h1 className="text-2xl font-bold text-white mb-3">
-            Loading Timeout
-          </h1>
-          
-          <p className="text-white/60 mb-8">
-            We're having trouble loading your dashboard. This might be due to a permissions issue or network problem.
-          </p>
-
-          <div className="space-y-3">
-            <button
-              onClick={handleRetry}
-              className="w-full px-6 py-3 bg-gray-900 dark:bg-white hover:bg-purple-700 text-white rounded-lg font-medium transition-colors"
-            >
-              Try Again
-            </button>
-            
-            <button
-              onClick={handleSignOut}
-              className="w-full px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-lg font-medium transition-colors"
-            >
-              Sign Out & Reset
-            </button>
-
-            <button
-              onClick={() => window.location.href = '/'}
-              className="w-full px-6 py-3 bg-transparent hover:bg-white/5 text-white/60 rounded-lg font-medium transition-colors"
-            >
-              Go to Home
-            </button>
-          </div>
-
-          <p className="text-xs text-white/40 mt-8">
-            If this problem persists, try clearing your browser cache or contact support.
-          </p>
-        </div>
-      </div>
+      <NotFoundPage 
+        type="timeout"
+        showSignOut={true}
+        onSignOut={handleSignOut}
+      />
     );
   }
 
@@ -544,7 +508,7 @@ function App() {
         } 
       />
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFoundPage type="404" />} />
     </Routes>
     </PreLaunchCover>
   );
