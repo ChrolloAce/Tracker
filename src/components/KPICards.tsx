@@ -12,7 +12,8 @@ import {
   ChevronDown,
   Link as LinkIcon,
   DollarSign,
-  Download
+  Download,
+  Bookmark
 } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { LinkClick } from '../services/LinkClicksService';
@@ -390,6 +391,7 @@ const KPICards: React.FC<KPICardsProps> = ({
     let totalLikes = 0;
     let totalComments = 0;
     let totalShares = 0;
+    let totalSaves = 0;
     
     if (dateRangeStart) {
       // For specific date ranges, calculate growth during the period from ALL videos
@@ -419,6 +421,7 @@ const KPICards: React.FC<KPICardsProps> = ({
             totalLikes += Math.max(0, (snapshotBeforeOrAtEnd.likes || 0) - (snapshotBeforeOrAtStart.likes || 0));
             totalComments += Math.max(0, (snapshotBeforeOrAtEnd.comments || 0) - (snapshotBeforeOrAtStart.comments || 0));
             totalShares += Math.max(0, (snapshotBeforeOrAtEnd.shares || 0) - (snapshotBeforeOrAtStart.shares || 0));
+            totalSaves += Math.max(0, (snapshotBeforeOrAtEnd.saves || 0) - (snapshotBeforeOrAtStart.saves || 0));
           } else if (snapshotBeforeOrAtStart && snapshotBeforeOrAtEnd && snapshotBeforeOrAtStart === snapshotBeforeOrAtEnd && snapshotsInRange.length > 0) {
             // Both snapshots are the SAME (no new snapshot after period start), but we have snapshots WITHIN the period
             // This can happen when the last snapshot was taken just before the period, and there are snapshots during the period
@@ -433,6 +436,7 @@ const KPICards: React.FC<KPICardsProps> = ({
             totalLikes += Math.max(0, (lastSnapshotInRange.likes || 0) - (snapshotBeforeOrAtStart.likes || 0));
             totalComments += Math.max(0, (lastSnapshotInRange.comments || 0) - (snapshotBeforeOrAtStart.comments || 0));
             totalShares += Math.max(0, (lastSnapshotInRange.shares || 0) - (snapshotBeforeOrAtStart.shares || 0));
+            totalSaves += Math.max(0, (lastSnapshotInRange.saves || 0) - (snapshotBeforeOrAtStart.saves || 0));
           } else if (!snapshotBeforeOrAtStart && snapshotsInRange.length > 0) {
             // No snapshot before period start, but we have snapshots IN the period
             // This means either: video was uploaded during period, OR we're missing historical snapshots
@@ -451,6 +455,7 @@ const KPICards: React.FC<KPICardsProps> = ({
               totalLikes += lastSnapshotInRange.likes || 0;
               totalComments += lastSnapshotInRange.comments || 0;
               totalShares += lastSnapshotInRange.shares || 0;
+              totalSaves += lastSnapshotInRange.saves || 0;
             } else {
               // Video was uploaded BEFORE the period, but we only have snapshots from within the period
               // Calculate growth from first to last snapshot in the range
@@ -458,6 +463,7 @@ const KPICards: React.FC<KPICardsProps> = ({
               totalLikes += Math.max(0, (lastSnapshotInRange.likes || 0) - (firstSnapshotInRange.likes || 0));
               totalComments += Math.max(0, (lastSnapshotInRange.comments || 0) - (firstSnapshotInRange.comments || 0));
               totalShares += Math.max(0, (lastSnapshotInRange.shares || 0) - (firstSnapshotInRange.shares || 0));
+              totalSaves += Math.max(0, (lastSnapshotInRange.saves || 0) - (firstSnapshotInRange.saves || 0));
             }
           } else if (!snapshotBeforeOrAtStart && !snapshotBeforeOrAtEnd) {
             // No snapshots before the range end at all
@@ -467,6 +473,7 @@ const KPICards: React.FC<KPICardsProps> = ({
               totalLikes += video.likes || 0;
               totalComments += video.comments || 0;
               totalShares += video.shares || 0;
+              totalSaves += video.saves || 0;
             }
           }
           // If snapshotBeforeOrAtStart exists but not snapshotBeforeOrAtEnd, 
@@ -479,6 +486,7 @@ const KPICards: React.FC<KPICardsProps> = ({
             totalLikes += video.likes || 0;
             totalComments += video.comments || 0;
             totalShares += video.shares || 0;
+            totalSaves += video.saves || 0;
           }
           // If video was uploaded before the period and has no snapshots, we can't track growth
         }
@@ -489,6 +497,7 @@ const KPICards: React.FC<KPICardsProps> = ({
       totalLikes = submissions.reduce((sum, v) => sum + (v.likes || 0), 0);
       totalComments = submissions.reduce((sum, v) => sum + (v.comments || 0), 0);
       totalShares = submissions.reduce((sum, v) => sum + (v.shares || 0), 0);
+      totalSaves = submissions.reduce((sum, v) => sum + (v.saves || 0), 0);
     }
     
     // Filter videos by date range for counts
@@ -945,14 +954,14 @@ const KPICards: React.FC<KPICardsProps> = ({
         isIncreasing: videosGrowthAbsolute >= 0 // Use delta, not sparkline trend
       },
       {
-        id: 'accounts',
-        label: 'Active Accounts',
-        value: activeAccounts,
-        icon: AtSign,
+        id: 'bookmarks',
+        label: 'Bookmarks',
+        value: totalSaves,
+        icon: Bookmark,
         accent: 'teal',
-        sparklineData: accountsSparklineResult.data,
-        intervalType: accountsSparklineResult.intervalType,
-        isIncreasing: true // Default to green for accounts (no delta calculated)
+        sparklineData: [], // No sparkline for now
+        intervalType: 'day' as IntervalType,
+        isIncreasing: true
       },
       (() => {
         // Generate engagement rate sparkline data (per-interval, not cumulative)
