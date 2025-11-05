@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, UserPlus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import InviteTeamMemberModal from './InviteTeamMemberModal';
 import TeamMembersTable from './TeamMembersTable';
 import PendingInvitationsPage from './PendingInvitationsPage';
