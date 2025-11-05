@@ -2052,7 +2052,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         
         return (
           <div className={clsx(
-            'fixed right-0 z-30 transition-all duration-300 bg-[#111111]',
+            'fixed right-0 z-30 transition-all duration-300 bg-[#111111] border-b border-gray-800',
             topOffset,
             {
               'left-64': !isSidebarCollapsed,
