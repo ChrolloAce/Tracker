@@ -1,26 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Clock, CheckCircle, AlertCircle, Loader } from 'lucide-react';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { RefreshCw, Zap } from 'lucide-react';
+import { collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { PlatformIcon } from './ui/PlatformIcon';
-
-interface AccountRefreshStatus {
-  id: string;
-  username: string;
-  platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter';
-  lastRefreshed?: Date;
-  refreshStatus?: 'idle' | 'processing' | 'completed' | 'failed';
-  refreshInterval: number; // hours
-}
 
 /**
  * RefreshCountdown Component
- * Shows per-account refresh status with individual timers
+ * Shows unified orchestrator timer - ONE progress bar for all accounts
+ * Orchestrator runs every hour and processes all eligible accounts
  */
 const RefreshCountdown: React.FC = () => {
   const { currentOrgId, currentProjectId } = useAuth();
-  const [accounts, setAccounts] = useState<AccountRefreshStatus[]>([]);
+  const [accountCount, setAccountCount] = useState(0);
+  const [lastOrchestratorRun, setLastOrchestratorRun] = useState<Date | null>(null);
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   // Update current time every second
@@ -32,10 +24,11 @@ const RefreshCountdown: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Listen to tracked accounts
+  // Listen to tracked accounts count and last orchestrator run
   useEffect(() => {
     if (!currentOrgId || !currentProjectId) {
-      setAccounts([]);
+      setAccountCount(0);
+      setLastOrchestratorRun(null);
       return;
     }
 
@@ -48,30 +41,26 @@ const RefreshCountdown: React.FC = () => {
       'trackedAccounts'
     );
 
-    // Don't filter by status in query - handle it in the map instead
-    const unsubscribe = onSnapshot(accountsRef, (snapshot) => {
-      const accountsData: AccountRefreshStatus[] = snapshot.docs
-        .map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            username: data.username || 'Unknown',
-            platform: data.platform || 'instagram',
-            lastRefreshed: data.lastRefreshed?.toDate(),
-            refreshStatus: data.refreshStatus || 'idle',
-            refreshInterval: data.refreshInterval || 12, // Default 12 hours
-            status: data.status
-          };
-        })
-        .filter((account: any) => {
-          // Show accounts that are active or don't have a status field (legacy accounts)
-          // Hide only if explicitly paused or inactive
-          return !account.status || account.status === 'active';
-        });
-      setAccounts(accountsData);
+    // Count active accounts
+    const unsubscribeAccounts = onSnapshot(accountsRef, (snapshot) => {
+      const activeAccounts = snapshot.docs.filter((doc) => {
+        const data = doc.data();
+        return !data.status || data.status === 'active';
+      });
+      setAccountCount(activeAccounts.length);
+      
+      // Get the most recently refreshed account to approximate last orchestrator run
+      const accountsWithRefresh = activeAccounts
+        .map(doc => doc.data().lastRefreshed?.toDate())
+        .filter(Boolean) as Date[];
+      
+      if (accountsWithRefresh.length > 0) {
+        const mostRecent = accountsWithRefresh.sort((a, b) => b.getTime() - a.getTime())[0];
+        setLastOrchestratorRun(mostRecent);
+      }
     });
 
-    return () => unsubscribe();
+    return () => unsubscribeAccounts();
   }, [currentOrgId, currentProjectId]);
 
   const formatTimeAgo = (date: Date | undefined): string => {
@@ -85,42 +74,31 @@ const RefreshCountdown: React.FC = () => {
     return `${Math.floor(seconds / 86400)}d ago`;
   };
 
-  const formatTimeUntil = (date: Date | undefined, intervalHours: number): string => {
-    if (!date) return 'Soon';
+  const formatTimeUntil = (): string => {
+    if (!lastOrchestratorRun) return 'Soon';
     
-    const nextRefreshTime = date.getTime() + (intervalHours * 60 * 60 * 1000);
-    const secondsUntil = Math.floor((nextRefreshTime - currentTime) / 1000);
+    // Orchestrator runs every hour
+    const nextRun = new Date(lastOrchestratorRun);
+    nextRun.setHours(nextRun.getHours() + 1);
     
-    if (secondsUntil <= 0) return 'Eligible now';
+    const secondsUntil = Math.floor((nextRun.getTime() - currentTime) / 1000);
+    
+    if (secondsUntil <= 0) return 'Running now';
     if (secondsUntil < 60) return `${secondsUntil}s`;
-    if (secondsUntil < 3600) return `${Math.floor(secondsUntil / 60)}m`;
-    if (secondsUntil < 86400) return `${Math.floor(secondsUntil / 3600)}h`;
-    return `${Math.floor(secondsUntil / 86400)}d`;
+    return `${Math.floor(secondsUntil / 60)}m`;
   };
 
-  const getProgressPercent = (date: Date | undefined, intervalHours: number): number => {
-    if (!date) return 0;
+  const getProgressPercent = (): number => {
+    if (!lastOrchestratorRun) return 0;
     
-    const intervalMs = intervalHours * 60 * 60 * 1000;
-    const elapsed = currentTime - date.getTime();
-    const progress = Math.min((elapsed / intervalMs) * 100, 100);
+    // Orchestrator runs every hour (3600000 ms)
+    const hourInMs = 3600000;
+    const elapsed = currentTime - lastOrchestratorRun.getTime();
+    const progress = Math.min((elapsed / hourInMs) * 100, 100);
     return progress;
   };
 
-  const getStatusIcon = (status: string | undefined) => {
-    switch (status) {
-      case 'processing':
-        return <Loader className="w-3 h-3 text-blue-400 animate-spin" />;
-      case 'completed':
-        return <CheckCircle className="w-3 h-3 text-emerald-400" />;
-      case 'failed':
-        return <AlertCircle className="w-3 h-3 text-red-400" />;
-      default:
-        return <Clock className="w-3 h-3 text-white/40" />;
-    }
-  };
-
-  if (accounts.length === 0) {
+  if (accountCount === 0) {
     return (
       <div className="px-4 py-3 border-t border-white/5">
         <div className="flex items-center gap-2 text-xs text-white/40">
@@ -131,72 +109,54 @@ const RefreshCountdown: React.FC = () => {
     );
   }
 
+  const progress = getProgressPercent();
+  const isRunning = progress >= 100;
+
   return (
     <div className="border-t border-white/5">
       {/* Header */}
-      <div className="px-4 py-2 bg-white/5">
-        <div className="flex items-center gap-2">
-          <RefreshCw className="w-3.5 h-3.5 text-white/60" />
-          <span className="text-xs font-medium text-white/60 uppercase tracking-wider">
-            Refresh Status
-          </span>
+      <div className="px-4 py-3 bg-white/5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-white/60" />
+            <span className="text-xs font-semibold text-white/70 uppercase tracking-wider">
+              Orchestrator
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <RefreshCw className={`w-3 h-3 text-white/40 ${isRunning ? 'animate-spin' : ''}`} />
+            <span className="text-[10px] text-white/50">
+              {accountCount} account{accountCount !== 1 ? 's' : ''}
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Accounts List */}
-      <div className="max-h-64 overflow-y-auto">
-        {accounts.map((account) => {
-          const progress = getProgressPercent(account.lastRefreshed, account.refreshInterval);
-          const isEligible = progress >= 100;
-          
-          return (
-            <div 
-              key={account.id} 
-              className="px-4 py-2.5 border-b border-white/5 hover:bg-white/5 transition-colors"
-            >
-              {/* Account Info */}
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <div className="w-3 h-3 flex-shrink-0">
-                    <PlatformIcon platform={account.platform} size="sm" />
-                  </div>
-                  <span className="text-xs font-medium text-white/90 truncate">
-                    @{account.username}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  {getStatusIcon(account.refreshStatus)}
-                </div>
-              </div>
+      {/* Unified Progress Bar */}
+      <div className="px-4 py-3 border-b border-white/5">
+        {/* Timing Info */}
+        <div className="flex items-center justify-between text-[10px] mb-2">
+          <span className="text-white/40">
+            {lastOrchestratorRun ? `Last: ${formatTimeAgo(lastOrchestratorRun)}` : 'Never run'}
+          </span>
+          <span className={`font-semibold ${isRunning ? 'text-emerald-400' : 'text-white/60'}`}>
+            {isRunning ? '⚡ Running' : `Next: ${formatTimeUntil()}`}
+          </span>
+        </div>
 
-              {/* Timing Info */}
-              <div className="flex items-center justify-between text-[10px] mb-1.5">
-                <span className="text-white/40">
-                  {formatTimeAgo(account.lastRefreshed)}
-                </span>
-                <span className={`font-medium ${isEligible ? 'text-emerald-400' : 'text-white/60'}`}>
-                  {isEligible ? '✓ Eligible' : `Next: ${formatTimeUntil(account.lastRefreshed, account.refreshInterval)}`}
-        </span>
-      </div>
+        {/* Progress Bar */}
+        <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+          <div 
+            className={`h-full transition-all duration-1000 ease-linear ${
+              isRunning ? 'bg-emerald-400' : 'bg-white/40'
+            }`}
+            style={{ width: `${Math.min(progress, 100)}%` }}
+          />
+        </div>
 
-      {/* Progress Bar */}
-      <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-        <div 
-                  className={`h-full transition-all duration-1000 ease-linear ${
-                    isEligible ? 'bg-emerald-400' : 'bg-white/40'
-                  }`}
-                  style={{ width: `${Math.min(progress, 100)}%` }}
-        />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Footer Info */}
-      <div className="px-4 py-2 bg-white/5">
-        <div className="text-[10px] text-white/40 text-center">
-          Orchestrator checks every hour
+        {/* Info Text */}
+        <div className="text-[10px] text-white/30 text-center mt-2">
+          Checks eligible accounts every hour
         </div>
       </div>
     </div>
