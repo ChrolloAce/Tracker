@@ -5,13 +5,32 @@ import jwt from 'jsonwebtoken';
 
 // Initialize Firebase Admin
 if (getApps().length === 0) {
-  initializeApp({
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  });
+  // Support both regular and base64-encoded credentials
+  let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+  
+  // If FIREBASE_SERVICE_ACCOUNT_BASE64 is set, use that instead
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64) {
+    try {
+      const serviceAccount = JSON.parse(
+        Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf-8')
+      );
+      initializeApp({
+        credential: cert(serviceAccount)
+      });
+    } catch (error) {
+      console.error('Failed to parse base64 service account:', error);
+      throw error;
+    }
+  } else {
+    // Use individual environment variables
+    initializeApp({
+      credential: cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: privateKey?.replace(/\\n/g, '\n'),
+      }),
+    });
+  }
 }
 
 const db = getFirestore();
