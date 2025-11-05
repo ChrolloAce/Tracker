@@ -756,9 +756,23 @@ const KPICards: React.FC<KPICardsProps> = ({
                   .filter(s => new Date(s.capturedAt) <= interval.endDate)
                   .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
                 
-                if (snapshotAtStart && snapshotAtEnd && snapshotAtStart !== snapshotAtEnd) {
-                  const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - (snapshotAtStart[metric] || 0));
-                  intervalValue += delta;
+                // Calculate delta if we have a snapshot at interval end
+                if (snapshotAtEnd) {
+                  // Find the previous snapshot before the interval end for baseline
+                  const allSnapshotsBeforeEnd = video.snapshots
+                    .filter(s => new Date(s.capturedAt) < new Date(snapshotAtEnd.capturedAt))
+                    .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime());
+                  
+                  const previousSnapshot = allSnapshotsBeforeEnd[0];
+                  
+                  if (previousSnapshot) {
+                    // Calculate growth from previous snapshot to current
+                    const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - (previousSnapshot[metric] || 0));
+                    intervalValue += delta;
+                  } else {
+                    // This is the first snapshot ever - count its full value
+                    intervalValue += snapshotAtEnd[metric] || 0;
+                  }
                 }
               }
             } else if (DataAggregationService.isDateInInterval(uploadDate, interval)) {
@@ -785,17 +799,27 @@ const KPICards: React.FC<KPICardsProps> = ({
               if (uploadDate < ppInterval.startDate) {
                 // Video was uploaded before PP started - look for growth during PP interval
                 if (video.snapshots && video.snapshots.length > 0) {
-                  const snapshotAtStart = video.snapshots
-                    .filter(s => new Date(s.capturedAt) <= ppInterval.startDate)
-                    .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-                  
                   const snapshotAtEnd = video.snapshots
                     .filter(s => new Date(s.capturedAt) <= ppInterval.endDate)
                     .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
                   
-                  if (snapshotAtStart && snapshotAtEnd && snapshotAtStart !== snapshotAtEnd) {
-                    const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - (snapshotAtStart[metric] || 0));
-                    ppIntervalValue += delta;
+                  // Calculate delta if we have a snapshot at interval end
+                  if (snapshotAtEnd) {
+                    // Find the previous snapshot before the interval end for baseline
+                    const allSnapshotsBeforeEnd = video.snapshots
+                      .filter(s => new Date(s.capturedAt) < new Date(snapshotAtEnd.capturedAt))
+                      .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime());
+                    
+                    const previousSnapshot = allSnapshotsBeforeEnd[0];
+                    
+                    if (previousSnapshot) {
+                      // Calculate growth from previous snapshot to current
+                      const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - (previousSnapshot[metric] || 0));
+                      ppIntervalValue += delta;
+                    } else {
+                      // This is the first snapshot ever - count its full value
+                      ppIntervalValue += snapshotAtEnd[metric] || 0;
+                    }
                   }
                 }
               } else if (DataAggregationService.isDateInInterval(uploadDate, ppInterval)) {
@@ -1022,22 +1046,33 @@ const KPICards: React.FC<KPICardsProps> = ({
               // Video was uploaded before our analysis period
               // Check if it has growth during this interval via snapshots
               if (video.snapshots && video.snapshots.length > 0) {
-                const snapshotAtStart = video.snapshots
-                  .filter(s => new Date(s.capturedAt) <= interval.startDate)
-                  .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-                
                 const snapshotAtEnd = video.snapshots
                   .filter(s => new Date(s.capturedAt) <= interval.endDate)
                   .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
                 
-                if (snapshotAtStart && snapshotAtEnd && snapshotAtStart !== snapshotAtEnd) {
-                  const viewsDelta = Math.max(0, (snapshotAtEnd.views || 0) - (snapshotAtStart.views || 0));
-                  const likesDelta = Math.max(0, (snapshotAtEnd.likes || 0) - (snapshotAtStart.likes || 0));
-                  const commentsDelta = Math.max(0, (snapshotAtEnd.comments || 0) - (snapshotAtStart.comments || 0));
-                  const sharesDelta = Math.max(0, (snapshotAtEnd.shares || 0) - (snapshotAtStart.shares || 0));
+                // Calculate delta if we have a snapshot at interval end
+                if (snapshotAtEnd) {
+                  // Find the previous snapshot before the interval end for baseline
+                  const allSnapshotsBeforeEnd = video.snapshots
+                    .filter(s => new Date(s.capturedAt) < new Date(snapshotAtEnd.capturedAt))
+                    .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime());
                   
-                  periodViews += viewsDelta;
-                  periodEngagement += likesDelta + commentsDelta + sharesDelta;
+                  const previousSnapshot = allSnapshotsBeforeEnd[0];
+                  
+                  if (previousSnapshot) {
+                    // Calculate growth from previous snapshot to current
+                    const viewsDelta = Math.max(0, (snapshotAtEnd.views || 0) - (previousSnapshot.views || 0));
+                    const likesDelta = Math.max(0, (snapshotAtEnd.likes || 0) - (previousSnapshot.likes || 0));
+                    const commentsDelta = Math.max(0, (snapshotAtEnd.comments || 0) - (previousSnapshot.comments || 0));
+                    const sharesDelta = Math.max(0, (snapshotAtEnd.shares || 0) - (previousSnapshot.shares || 0));
+                    
+                    periodViews += viewsDelta;
+                    periodEngagement += likesDelta + commentsDelta + sharesDelta;
+                  } else {
+                    // This is the first snapshot ever - count its full value
+                    periodViews += snapshotAtEnd.views || 0;
+                    periodEngagement += (snapshotAtEnd.likes || 0) + (snapshotAtEnd.comments || 0) + (snapshotAtEnd.shares || 0);
+                  }
                 }
               }
             } else if (DataAggregationService.isDateInInterval(uploadDate, interval)) {
@@ -1065,22 +1100,33 @@ const KPICards: React.FC<KPICardsProps> = ({
               if (uploadDate < ppStartDate) {
                 // Video was uploaded before PP
                 if (video.snapshots && video.snapshots.length > 0) {
-                  const snapshotAtStart = video.snapshots
-                    .filter(s => new Date(s.capturedAt) <= ppInterval.startDate)
-                    .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-                  
                   const snapshotAtEnd = video.snapshots
                     .filter(s => new Date(s.capturedAt) <= ppInterval.endDate)
                     .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
                   
-                  if (snapshotAtStart && snapshotAtEnd && snapshotAtStart !== snapshotAtEnd) {
-                    const viewsDelta = Math.max(0, (snapshotAtEnd.views || 0) - (snapshotAtStart.views || 0));
-                    const likesDelta = Math.max(0, (snapshotAtEnd.likes || 0) - (snapshotAtStart.likes || 0));
-                    const commentsDelta = Math.max(0, (snapshotAtEnd.comments || 0) - (snapshotAtStart.comments || 0));
-                    const sharesDelta = Math.max(0, (snapshotAtEnd.shares || 0) - (snapshotAtStart.shares || 0));
+                  // Calculate delta if we have a snapshot at interval end
+                  if (snapshotAtEnd) {
+                    // Find the previous snapshot before the interval end for baseline
+                    const allSnapshotsBeforeEnd = video.snapshots
+                      .filter(s => new Date(s.capturedAt) < new Date(snapshotAtEnd.capturedAt))
+                      .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime());
                     
-                    ppPeriodViews += viewsDelta;
-                    ppPeriodEngagement += likesDelta + commentsDelta + sharesDelta;
+                    const previousSnapshot = allSnapshotsBeforeEnd[0];
+                    
+                    if (previousSnapshot) {
+                      // Calculate growth from previous snapshot to current
+                      const viewsDelta = Math.max(0, (snapshotAtEnd.views || 0) - (previousSnapshot.views || 0));
+                      const likesDelta = Math.max(0, (snapshotAtEnd.likes || 0) - (previousSnapshot.likes || 0));
+                      const commentsDelta = Math.max(0, (snapshotAtEnd.comments || 0) - (previousSnapshot.comments || 0));
+                      const sharesDelta = Math.max(0, (snapshotAtEnd.shares || 0) - (previousSnapshot.shares || 0));
+                      
+                      ppPeriodViews += viewsDelta;
+                      ppPeriodEngagement += likesDelta + commentsDelta + sharesDelta;
+                    } else {
+                      // This is the first snapshot ever - count its full value
+                      ppPeriodViews += snapshotAtEnd.views || 0;
+                      ppPeriodEngagement += (snapshotAtEnd.likes || 0) + (snapshotAtEnd.comments || 0) + (snapshotAtEnd.shares || 0);
+                    }
                   }
                 }
               } else if (DataAggregationService.isDateInInterval(uploadDate, ppInterval)) {
@@ -2006,18 +2052,42 @@ const KPICard: React.FC<{
           return DataAggregationService.isDateInInterval(uploadDate, interval);
         }) : [];
         
+        // Get ALL videos with snapshot activity during this interval
+        const videosWithSnapshotsInIntervalCheck = interval ? submissions.filter((video: VideoSubmission) => {
+          const snapshots = video.snapshots || [];
+          return snapshots.some(snapshot => {
+            const snapshotDate = new Date(snapshot.capturedAt);
+            return DataAggregationService.isDateInInterval(snapshotDate, interval);
+          });
+        }) : [];
+        
         // Calculate top gainers to see if we have any (need actual growth, not just snapshots)
-        const topGainersCheck = videosInInterval
+        const topGainersCheck = videosWithSnapshotsInIntervalCheck
           .map((video: VideoSubmission) => {
-            const snapshots = video.snapshots || [];
-            if (snapshots.length < 2) return null;
+            const allSnapshots = video.snapshots || [];
             
-            const sortedSnapshots = [...snapshots].sort((a, b) => 
+            const snapshotsInOrBeforeInterval = allSnapshots.filter(snapshot => {
+              const snapshotDate = new Date(snapshot.capturedAt);
+              return snapshotDate <= interval.endDate;
+            });
+            
+            if (snapshotsInOrBeforeInterval.length === 0) return null;
+            
+            const sortedSnapshots = [...snapshotsInOrBeforeInterval].sort((a, b) => 
               new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
             );
             
-            const earliest = sortedSnapshots[0];
-            const latest = sortedSnapshots[sortedSnapshots.length - 1];
+            const snapshotAtStart = sortedSnapshots.filter(s => 
+              new Date(s.capturedAt) <= interval.startDate
+            ).pop();
+            
+            const snapshotAtEnd = sortedSnapshots.filter(s => 
+              new Date(s.capturedAt) <= interval.endDate
+            ).pop();
+            
+            if (!snapshotAtStart || !snapshotAtEnd || snapshotAtStart === snapshotAtEnd) {
+              return null;
+            }
             
             const growthMetricKey = data.id === 'views' ? 'views' 
               : data.id === 'likes' ? 'likes'
@@ -2026,9 +2096,9 @@ const KPICard: React.FC<{
               : data.id === 'bookmarks' ? 'bookmarks'
               : 'views';
             
-            const earliestValue = (earliest as any)[growthMetricKey] || 0;
-            const latestValue = (latest as any)[growthMetricKey] || video[growthMetricKey] || 0;
-            const growth = earliestValue > 0 ? ((latestValue - earliestValue) / earliestValue) * 100 : 0;
+            const startValue = (snapshotAtStart as any)[growthMetricKey] || 0;
+            const endValue = (snapshotAtEnd as any)[growthMetricKey] || 0;
+            const growth = startValue > 0 ? ((endValue - startValue) / startValue) * 100 : 0;
             
             return growth > 0 ? { video, growth } : null;
           })
@@ -2128,7 +2198,16 @@ const KPICard: React.FC<{
             
             // Note: videosInInterval already calculated above for hasTopGainers check
             
-            // New Uploads: Sort by upload date (most recent first)
+            // Get ALL videos with snapshot activity during this interval (not just uploads)
+            const videosWithSnapshotsInInterval = interval ? submissions.filter((video: VideoSubmission) => {
+              const snapshots = video.snapshots || [];
+              return snapshots.some(snapshot => {
+                const snapshotDate = new Date(snapshot.capturedAt);
+                return DataAggregationService.isDateInInterval(snapshotDate, interval);
+              });
+            }) : [];
+            
+            // New Uploads: Videos actually uploaded in this interval
             const newUploads = [...videosInInterval]
               .sort((a, b) => {
                 const dateA = a.uploadDate ? new Date(a.uploadDate) : new Date(a.dateSubmitted);
@@ -2137,19 +2216,38 @@ const KPICard: React.FC<{
               })
               .slice(0, 5);
             
-            // Top Gainers: Calculate growth based on snapshots
-            const topGainers = videosInInterval
+            // Top Gainers: Calculate growth based on snapshots in this interval
+            // Use videosWithSnapshotsInInterval instead of videosInInterval
+            const topGainers = videosWithSnapshotsInInterval
               .map((video: VideoSubmission) => {
-                // Get latest and earliest snapshots
-                const snapshots = video.snapshots || [];
-                if (snapshots.length < 2) return null;
+                const allSnapshots = video.snapshots || [];
                 
-                const sortedSnapshots = [...snapshots].sort((a, b) => 
+                // Filter to snapshots within the interval OR just before it (for baseline)
+                const snapshotsInOrBeforeInterval = allSnapshots.filter(snapshot => {
+                  const snapshotDate = new Date(snapshot.capturedAt);
+                  return snapshotDate <= interval.endDate;
+                });
+                
+                if (snapshotsInOrBeforeInterval.length === 0) return null;
+                
+                const sortedSnapshots = [...snapshotsInOrBeforeInterval].sort((a, b) => 
                   new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
                 );
                 
-                const earliest = sortedSnapshots[0];
-                const latest = sortedSnapshots[sortedSnapshots.length - 1];
+                // Get snapshot at/before interval start (baseline)
+                const snapshotAtStart = sortedSnapshots.filter(s => 
+                  new Date(s.capturedAt) <= interval.startDate
+                ).pop();
+                
+                // Get latest snapshot at/before interval end
+                const snapshotAtEnd = sortedSnapshots.filter(s => 
+                  new Date(s.capturedAt) <= interval.endDate
+                ).pop();
+                
+                // Need both start and end snapshots to calculate growth
+                if (!snapshotAtStart || !snapshotAtEnd || snapshotAtStart === snapshotAtEnd) {
+                  return null;
+                }
                 
                 // Calculate growth percentage based on KPI metric
                 const growthMetricKey = data.id === 'views' ? 'views' 
@@ -2159,15 +2257,18 @@ const KPICard: React.FC<{
                   : data.id === 'bookmarks' ? 'bookmarks'
                   : 'views';
                 
-                const earliestValue = (earliest as any)[growthMetricKey] || 0;
-                const latestValue = (latest as any)[growthMetricKey] || video[growthMetricKey] || 0;
-                const growth = earliestValue > 0 ? ((latestValue - earliestValue) / earliestValue) * 100 : 0;
+                const startValue = (snapshotAtStart as any)[growthMetricKey] || 0;
+                const endValue = (snapshotAtEnd as any)[growthMetricKey] || 0;
+                const growth = startValue > 0 ? ((endValue - startValue) / startValue) * 100 : 0;
+                const absoluteGain = endValue - startValue;
                 
                 return {
                   video,
                   growth,
-                  metricValue: latestValue,
-                  snapshotCount: snapshots.length
+                  metricValue: endValue,
+                  absoluteGain,
+                  startValue,
+                  snapshotCount: allSnapshots.length
                 };
               })
               .filter(item => item !== null && item.growth > 0)
