@@ -18,11 +18,12 @@ export interface RevenueIntegration {
   provider: RevenueProvider;
   enabled: boolean;
   credentials: {
-    apiKey?: string; // RevenueCat API Key / Superwall API Key / Apple Private Key
+    apiKey?: string; // RevenueCat API Key / Superwall API Key / Apple Private Key (encrypted .p8)
     appId?: string; // Superwall App ID / RevenueCat Project ID / Apple Bundle ID
     secretKey?: string; // For server-side integrations
     keyId?: string; // Apple App Store Connect Key ID
     issuerId?: string; // Apple App Store Connect Issuer ID
+    vendorNumber?: string; // Apple App Store Connect Vendor Number (8 digits)
   };
   settings?: {
     autoSync?: boolean;
