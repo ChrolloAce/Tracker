@@ -22,8 +22,8 @@ const NotFoundPage: React.FC<NotFoundPageProps> = ({
   const content = {
     timeout: {
       icon: <AlertCircle className="w-16 h-16" />,
-      iconBg: 'bg-red-500/10 border-red-500/20',
-      iconColor: 'text-red-400',
+      iconBg: 'bg-zinc-800/50 border-zinc-700/50',
+      iconColor: 'text-zinc-400',
       title: title || 'Loading Timeout',
       message: message || "We're having trouble loading your dashboard. This might be due to a permissions issue or network problem.",
       primaryAction: { label: 'Try Again', onClick: () => window.location.reload() },
@@ -31,8 +31,8 @@ const NotFoundPage: React.FC<NotFoundPageProps> = ({
     },
     '404': {
       icon: <Compass className="w-16 h-16" />,
-      iconBg: 'bg-purple-500/10 border-purple-500/20',
-      iconColor: 'text-purple-400',
+      iconBg: 'bg-zinc-800/50 border-zinc-700/50',
+      iconColor: 'text-zinc-400',
       title: title || 'Page Not Found',
       message: message || "The page you're looking for doesn't exist or has been moved. Let's get you back on track.",
       primaryAction: { label: 'Go to Dashboard', onClick: () => navigate('/dashboard') },
@@ -40,8 +40,8 @@ const NotFoundPage: React.FC<NotFoundPageProps> = ({
     },
     permission: {
       icon: <AlertCircle className="w-16 h-16" />,
-      iconBg: 'bg-yellow-500/10 border-yellow-500/20',
-      iconColor: 'text-yellow-400',
+      iconBg: 'bg-zinc-800/50 border-zinc-700/50',
+      iconColor: 'text-zinc-400',
       title: title || 'Access Denied',
       message: message || "You don't have permission to access this page. Contact your workspace admin for access.",
       primaryAction: { label: 'Go Back', onClick: () => navigate(-1) },
@@ -55,8 +55,8 @@ const NotFoundPage: React.FC<NotFoundPageProps> = ({
     <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center p-6 relative overflow-hidden">
       {/* Animated Background Gradient */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 -left-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 -right-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/4 -left-1/4 w-96 h-96 bg-zinc-800/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 -right-1/4 w-96 h-96 bg-zinc-700/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
       </div>
 
       {/* Content Container */}
@@ -76,7 +76,7 @@ const NotFoundPage: React.FC<NotFoundPageProps> = ({
         )}
         
         {/* Title */}
-        <h1 className="text-3xl font-bold text-white mb-3 bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+        <h1 className="text-3xl font-bold text-white mb-3">
           {config.title}
         </h1>
         
@@ -90,7 +90,7 @@ const NotFoundPage: React.FC<NotFoundPageProps> = ({
           {/* Primary Action */}
           <button
             onClick={config.primaryAction.onClick}
-            className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg font-medium transition-all duration-200 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40"
+            className="w-full px-6 py-3 bg-white hover:bg-white/90 text-black rounded-lg font-medium transition-all duration-200 shadow-lg shadow-white/10 hover:shadow-white/20"
           >
             {config.primaryAction.label}
           </button>
@@ -139,7 +139,7 @@ const NotFoundPage: React.FC<NotFoundPageProps> = ({
         {/* Support Link */}
         <a 
           href="mailto:support@viewtrack.app" 
-          className="inline-block mt-4 text-xs text-purple-400 hover:text-purple-300 transition-colors"
+          className="inline-block mt-4 text-xs text-white/60 hover:text-white transition-colors"
         >
           Contact Support →
         </a>
