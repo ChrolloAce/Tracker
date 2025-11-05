@@ -435,13 +435,8 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
                         // Get linked accounts for this creator to filter by
                         const linkedAccounts = (creator as any).linkedAccounts || [];
                         if (linkedAccounts.length > 0) {
-                          // Navigate to dashboard with creator filter applied via state
-                          navigate('/dashboard', {
-                            state: {
-                              filterByCreator: creator.userId,
-                              creatorName: creator.name
-                            }
-                          });
+                          // Navigate to dashboard with creator filter in URL
+                          navigate(`/dashboard?creator=${creator.userId}`);
                         } else {
                           // No accounts, just go to dashboard
                           navigate('/dashboard');

@@ -218,28 +218,30 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [accountFilterId, setAccountFilterId] = useState<string | null>(null);
   const [creatorFilterId, setCreatorFilterId] = useState<string | null>(null);
 
-  // Handle navigation state filters (from clicking accounts or creators)
+  // Handle URL query parameter filters (from clicking accounts or creators)
   useEffect(() => {
-    const state = location.state as any;
-    if (state?.filterByAccount) {
-      console.log('🎯 Applying account filter from navigation:', state.filterByAccount);
-      setAccountFilterId(state.filterByAccount);
-      setCreatorFilterId(null); // Clear creator filter
-      // Also update the visual filter dropdown to show the selected account
-      setSelectedAccountIds([state.filterByAccount]);
-      // Clear the state to prevent re-application on back navigation
-      navigate(location.pathname, { replace: true, state: {} });
-    } else if (state?.filterByCreator) {
-      console.log('🎨 Applying creator filter from navigation:', state.filterByCreator);
-      setCreatorFilterId(state.filterByCreator);
-      setAccountFilterId(null); // Clear account filter
-      // Note: We'll load and set the linked account IDs in AccountsPage
-      // But we should clear the selectedAccountIds here since we're filtering differently
+    const searchParams = new URLSearchParams(location.search);
+    const accountParam = searchParams.get('accounts');
+    const creatorParam = searchParams.get('creator');
+    
+    if (accountParam) {
+      console.log('🎯 Applying account filter from URL:', accountParam);
+      setAccountFilterId(accountParam);
+      setCreatorFilterId(null);
+      // Update the visual filter dropdown to show the selected account
+      setSelectedAccountIds([accountParam]);
+    } else if (creatorParam) {
+      console.log('🎨 Applying creator filter from URL:', creatorParam);
+      setCreatorFilterId(creatorParam);
+      setAccountFilterId(null);
+      // Clear the visual dropdown since we're filtering by creator's accounts
       setSelectedAccountIds([]);
-      // Clear the state to prevent re-application on back navigation
-      navigate(location.pathname, { replace: true, state: {} });
+    } else {
+      // No filters in URL, clear them
+      setAccountFilterId(null);
+      setCreatorFilterId(null);
     }
-  }, [location.state, location.pathname, navigate]);
+  }, [location.search]);
 
   // Mark items as read when entering tabs
   useEffect(() => {
