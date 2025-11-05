@@ -402,19 +402,31 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       follower_count: rawData.subscribers || 0
     };
   } else if (platform === 'twitter') {
-    // Twitter/X structure
+    // Twitter/X structure - apidojo~tweet-scraper format
+    console.log('🐦 [TWITTER/X Transform] Raw data keys:', Object.keys(rawData).join(', '));
+    console.log('🐦 [TWITTER/X Transform] Raw data:', JSON.stringify(rawData, null, 2));
+    
+    // Extract username from URL if author info not available
+    let username = rawData.author?.userName || '';
+    if (!username && rawData.url) {
+      const urlMatch = rawData.url.match(/(?:x\.com|twitter\.com)\/([^\/]+)\//);
+      if (urlMatch) {
+        username = urlMatch[1];
+      }
+    }
+    
     return {
       id: rawData.id || '',
-      thumbnail_url: rawData.media?.[0] || rawData.extendedEntities?.media?.[0]?.media_url_https || '',
-      caption: rawData.fullText || rawData.text || '',
-      username: rawData.author?.userName || '',
+      thumbnail_url: rawData.media?.[0]?.url || rawData.extendedEntities?.media?.[0]?.media_url_https || '',
+      caption: rawData.text || rawData.fullText || '',
+      username: username,
       like_count: rawData.likeCount || 0,
       comment_count: rawData.replyCount || 0,
-      view_count: rawData.viewCount || 0,
+      view_count: rawData.viewCount || rawData.views || 0,
       share_count: rawData.retweetCount || 0,
       timestamp: rawData.createdAt || new Date().toISOString(),
       profile_pic_url: rawData.author?.profilePicture || '',
-      display_name: rawData.author?.name || '',
+      display_name: rawData.author?.name || username,
       follower_count: rawData.author?.followers || 0
     };
   }
@@ -611,16 +623,13 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
       
       return transformedData;
     } else if (platform === 'twitter') {
-      // Extract username from Twitter URL
-      // e.g., https://x.com/username/status/123 or https://twitter.com/username/status/123
-      const urlObj = new URL(url);
-      const pathParts = urlObj.pathname.split('/').filter(p => p);
-      const username = pathParts[0]; // First part is username
-      
+      // Use startUrls to fetch specific tweets directly
+      console.log('🐦 [TWITTER/X] Using apidojo~tweet-scraper with startUrls for tweet:', url);
       actorId = 'apidojo~tweet-scraper';
+      
       input = {
-        twitterHandles: [username],
-        maxItems: 10, // Get recent tweets to find the specific one
+        startUrls: [url],
+        maxItems: 1,
         sort: 'Latest',
         onlyImage: false,
         onlyVideo: false,
@@ -629,6 +638,7 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
         onlyTwitterBlue: false,
         includeSearchTerms: false
       };
+      console.log('🐦 [TWITTER/X] Input:', JSON.stringify(input, null, 2));
     } else {
       throw new Error(`Unsupported platform: ${platform}`);
     }
@@ -661,23 +671,30 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
     
     console.log(`📊 [${platform.toUpperCase()}] First item keys:`, Object.keys(items[0] || {}).join(', '));
     
-    // Extra logging for Instagram to debug
+    // Extra logging for Instagram and Twitter to debug
     if (platform === 'instagram') {
       console.log('📸 [INSTAGRAM] Full first item:', JSON.stringify(items[0], null, 2));
+    }
+    
+    if (platform === 'twitter') {
+      console.log('🐦 [TWITTER/X] Full first item:', JSON.stringify(items[0], null, 2));
     }
 
     let rawData = items[0];
     
-    // For Twitter, try to find the specific tweet by URL
-    if (platform === 'twitter' && items.length > 1) {
+    // For Twitter, when using startUrls, we should get the exact tweet
+    // But verify it matches the requested URL if we have multiple results
+    if (platform === 'twitter') {
       const tweetId = url.split('/status/')[1]?.split('?')[0];
-      if (tweetId) {
+      if (tweetId && items.length > 0) {
         const specificTweet = items.find((item: any) => 
-          item.id === tweetId || item.url?.includes(tweetId)
+          item.id === tweetId || item.url?.includes(tweetId) || item.twitterUrl?.includes(tweetId)
         );
         if (specificTweet) {
           rawData = specificTweet;
-          console.log(`🎯 Found specific tweet: ${tweetId}`);
+          console.log(`🎯 [TWITTER/X] Found specific tweet: ${tweetId}`);
+        } else {
+          console.log(`⚠️ [TWITTER/X] Using first item, tweet ID ${tweetId} not found in results`);
         }
       }
     }
@@ -696,9 +713,13 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
       hasThumbnail: !!videoData.thumbnail_url
     });
     
-    // Extra logging for Instagram
+    // Extra logging for Instagram and Twitter
     if (platform === 'instagram') {
       console.log('📸 [INSTAGRAM] Complete transformed data:', JSON.stringify(videoData, null, 2));
+    }
+    
+    if (platform === 'twitter') {
+      console.log('🐦 [TWITTER/X] Complete transformed data:', JSON.stringify(videoData, null, 2));
     }
     
     return videoData;
