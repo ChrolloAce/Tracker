@@ -2026,9 +2026,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         </div>
       )}
       
-      {/* Account Filter Banner - Shows when filtering by specific account */}
-      {accountFilterId && (() => {
-        const filteredAccount = trackedAccounts.find(acc => acc.id === accountFilterId);
+      {/* Account Filter Banner - Shows when filtering by specific account (only when 1 account selected) */}
+      {selectedAccountIds.length === 1 && (() => {
+        const filteredAccount = trackedAccounts.find(acc => acc.id === selectedAccountIds[0]);
         if (!filteredAccount) return null;
         
         const topOffset = isDemoOrg ? 'top-[60px]' : 'top-0';
@@ -2120,10 +2120,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         {
           'left-0 md:left-64': !isSidebarCollapsed, // Full width on mobile, adjust for sidebar on desktop
           'left-0 md:left-16': isSidebarCollapsed,
-          'top-0': !isDemoOrg && !accountFilterId,
-          'top-[60px]': isDemoOrg && !accountFilterId, // Push down if demo banner is showing
-          'top-[100px]': isDemoOrg && accountFilterId, // Push down for both banners
-          'top-[100px]': !isDemoOrg && accountFilterId, // Push down for account banner only
+          'top-0': !isDemoOrg && selectedAccountIds.length !== 1,
+          'top-[60px]': isDemoOrg && selectedAccountIds.length !== 1, // Push down if demo banner is showing
+          'top-[100px]': isDemoOrg && selectedAccountIds.length === 1, // Push down for both banners
+          'top-[100px]': !isDemoOrg && selectedAccountIds.length === 1, // Push down for account banner only
         }
       )}>
         <div className="flex items-center justify-between w-full gap-2 md:gap-4">
@@ -2736,10 +2736,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       <main className={clsx(
         'overflow-auto min-h-screen transition-all duration-300',
         {
-          'pt-16 md:pt-24': !isDemoOrg && !accountFilterId, // Default top padding
-          'pt-[5.5rem] md:pt-[7.5rem]': isDemoOrg && !accountFilterId, // Extra padding when demo banner is showing
-          'pt-[10rem] md:pt-[11rem]': !isDemoOrg && accountFilterId, // Extra padding for account banner
-          'pt-[11rem] md:pt-[12.5rem]': isDemoOrg && accountFilterId, // Extra padding for both banners
+          'pt-16 md:pt-24': !isDemoOrg && selectedAccountIds.length !== 1, // Default top padding
+          'pt-[5.5rem] md:pt-[7.5rem]': isDemoOrg && selectedAccountIds.length !== 1, // Extra padding when demo banner is showing
+          'pt-[10rem] md:pt-[11rem]': !isDemoOrg && selectedAccountIds.length === 1, // Extra padding for account banner
+          'pt-[11rem] md:pt-[12.5rem]': isDemoOrg && selectedAccountIds.length === 1, // Extra padding for both banners
           'ml-0 md:ml-64': !isSidebarCollapsed, // No left margin on mobile
           'ml-0 md:ml-16': isSidebarCollapsed,
         }
