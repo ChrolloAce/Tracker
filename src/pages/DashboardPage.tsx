@@ -2076,7 +2076,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                       </div>
                     )}
                     {/* Verified Badge - Blue like Instagram */}
-                    {(filteredAccount.isVerified || filteredAccount.isBlueVerified) && (
+                    {filteredAccount.isVerified && (
                       <div className="absolute -bottom-0.5 -right-0.5 bg-blue-500 rounded-full p-0.5 flex items-center justify-center">
                         <CheckCircle className="w-3 h-3 md:w-3.5 md:h-3.5 text-white fill-white stroke-blue-500 stroke-2" style={{ strokeWidth: 2.5 }} />
                       </div>
@@ -2100,7 +2100,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                         <Clock className="w-3 h-3 md:w-3.5 md:h-3.5" />
                         {(() => {
                           if (!filteredAccount.dateAdded) return 'N/A';
-                          const date = filteredAccount.dateAdded.toDate ? filteredAccount.dateAdded.toDate() : new Date(filteredAccount.dateAdded);
+                          const date = filteredAccount.dateAdded.toDate ? filteredAccount.dateAdded.toDate() : filteredAccount.dateAdded as any;
                           return date.toLocaleDateString();
                         })()}
                       </span>

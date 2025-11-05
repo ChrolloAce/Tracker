@@ -931,11 +931,11 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           comparison = (a.totalShares || 0) - (b.totalShares || 0);
           break;
         case 'bookmarks':
-          comparison = (a.totalSaves || 0) - (b.totalSaves || 0);
+          comparison = 0; // totalSaves not tracked at account level
           break;
         case 'engagementRate': {
-          const aEngagements = (a.totalLikes || 0) + (a.totalComments || 0) + (a.totalShares || 0) + (a.totalSaves || 0);
-          const bEngagements = (b.totalLikes || 0) + (b.totalComments || 0) + (b.totalShares || 0) + (b.totalSaves || 0);
+          const aEngagements = (a.totalLikes || 0) + (a.totalComments || 0) + (a.totalShares || 0);
+          const bEngagements = (b.totalLikes || 0) + (b.totalComments || 0) + (b.totalShares || 0);
           const aViews = a.totalViews || 0;
           const bViews = b.totalViews || 0;
           const aRate = aViews > 0 ? aEngagements / aViews : 0;
@@ -947,8 +947,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           comparison = (a.highestViewedVideo?.views || 0) - (b.highestViewedVideo?.views || 0);
           break;
         case 'lastRefresh': {
-          const aTime = a.lastSynced ? (a.lastSynced.toDate ? a.lastSynced.toDate().getTime() : new Date(a.lastSynced).getTime()) : 0;
-          const bTime = b.lastSynced ? (b.lastSynced.toDate ? b.lastSynced.toDate().getTime() : new Date(b.lastSynced).getTime()) : 0;
+          const aTime = a.lastSynced ? (a.lastSynced.toDate ? a.lastSynced.toDate().getTime() : (a.lastSynced as any).getTime()) : 0;
+          const bTime = b.lastSynced ? (b.lastSynced.toDate ? b.lastSynced.toDate().getTime() : (b.lastSynced as any).getTime()) : 0;
           comparison = aTime - bTime;
           break;
         }
@@ -1809,7 +1809,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                 <Users className="w-5 h-5 text-gray-500" />
                               </div>
                               {/* Verified Badge - Blue like Instagram */}
-                              {(account.isVerified || account.isBlueVerified) && (
+                              {account.isVerified && (
                                 <div className="absolute -bottom-0.5 -right-0.5 bg-blue-500 rounded-full p-0.5 flex items-center justify-center">
                                   <CheckCircle className="w-3 h-3 text-white fill-white stroke-blue-500 stroke-2" style={{ strokeWidth: 2.5 }} />
                                 </div>
@@ -1919,13 +1919,13 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
 
                         {/* Bookmarks Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatNumber(account.totalSaves || 0)}
+                          {formatNumber(0)} {/* totalSaves not tracked at account level */}
                         </td>
 
                         {/* Engagement Rate Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                           {(() => {
-                            const totalEngagements = (account.totalLikes || 0) + (account.totalComments || 0) + (account.totalShares || 0) + (account.totalSaves || 0);
+                            const totalEngagements = (account.totalLikes || 0) + (account.totalComments || 0) + (account.totalShares || 0);
                             const totalViews = account.totalViews || 0;
                             const engagementRate = totalViews > 0 ? (totalEngagements / totalViews * 100) : 0;
                             return `${engagementRate.toFixed(2)}%`;
@@ -1949,7 +1949,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                           {account.lastSynced ? (
                             <div className="flex items-center gap-1 text-white/60">
                               <ClockIcon className="w-3.5 h-3.5" />
-                              <span>{formatDate(account.lastSynced.toDate ? account.lastSynced.toDate() : new Date(account.lastSynced))}</span>
+                              <span>{formatDate(account.lastSynced.toDate ? account.lastSynced.toDate() : account.lastSynced as any)}</span>
                             </div>
                           ) : (
                             <span className="text-white/30">Never</span>

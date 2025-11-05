@@ -895,7 +895,7 @@ const KPICards: React.FC<KPICardsProps> = ({
     const commentsSparklineResult = generateSparklineData('comments');
     const sharesSparklineResult = generateSparklineData('shares');
     const videosSparklineResult = generateSparklineData('videos');
-    const accountsSparklineResult = generateSparklineData('accounts');
+    // const accountsSparklineResult = generateSparklineData('accounts'); // Not currently used
     
     const cards: KPICardData[] = [
       {

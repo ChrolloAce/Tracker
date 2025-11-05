@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, User, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { CreatorLinksService } from '../services/CreatorLinksService';
-import { FirestoreDataService } from '../services/FirestoreDataService';
-import { OrgMember } from '../types/organization';
+import CreatorLinksService from '../services/CreatorLinksService';
+import FirestoreDataService from '../services/FirestoreDataService';
+import { OrgMember } from '../types/firestore';
 
 interface SelectCreatorModalProps {
   accountId: string;
@@ -44,7 +44,7 @@ const SelectCreatorModal: React.FC<SelectCreatorModalProps> = ({
     try {
       // Load all creators for this organization
       const allMembers = await FirestoreDataService.getOrganizationMembers(currentOrgId);
-      const creatorMembers = allMembers.filter(member => member.role === 'creator');
+      const creatorMembers = allMembers.filter((member: OrgMember) => member.role === 'creator');
       setCreators(creatorMembers);
 
       // Load current creator link for this account
