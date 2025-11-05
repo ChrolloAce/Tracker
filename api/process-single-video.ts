@@ -335,21 +335,25 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       follower_count: rawData['authorMeta.fans'] || rawData.authorMeta?.fans || 0
     };
   } else if (platform === 'instagram') {
-    // Instagram - Handle pratikdani/instagram-reels-scraper format
-    // video_play_count is the accurate view count, not just "views"
+    // Instagram - Handle alpha-scraper/instagram-video-scraper format
+    console.log('📸 [INSTAGRAM Transform] Raw data keys:', Object.keys(rawData).join(', '));
+    console.log('📸 [INSTAGRAM Transform] Raw data:', JSON.stringify(rawData, null, 2));
+    
+    // alpha-scraper format provides: id, ownerUsername, ownerFullName, ownerId, 
+    // description, likesCount, commentsCount, videoViewCount, upload_date, thumbnail_url
     return {
-      id: rawData.post_id || rawData.content_id || rawData.shortcode || rawData.id || '',
-      thumbnail_url: rawData.thumbnail || rawData.thumbnail_url || rawData.displayUrl || rawData.thumbnailUrl || '',
-      caption: rawData.description || rawData.caption || rawData.text || '',
-      username: rawData.user_posted || rawData.username || rawData.ownerUsername || '',
-      like_count: rawData.likes || rawData.like_count || rawData.likesCount || 0,
-      comment_count: rawData.num_comments || rawData.comment_count || rawData.commentsCount || 0,
-      view_count: rawData.video_play_count || rawData.view_count || rawData.videoViewCount || rawData.views || 0,
+      id: rawData.id || '',
+      thumbnail_url: rawData.thumbnail_url || '',
+      caption: rawData.description || '',
+      username: rawData.ownerUsername || '',
+      like_count: rawData.likesCount || 0,
+      comment_count: rawData.commentsCount || 0,
+      view_count: rawData.videoViewCount || 0,
       share_count: 0, // Instagram doesn't expose share count
-      timestamp: rawData.date_posted || rawData.timestamp || rawData.taken_at_timestamp || new Date().toISOString(),
-      profile_pic_url: rawData.profile_pic_url || rawData.ownerProfilePicUrl || '',
-      display_name: rawData.user_posted || rawData.display_name || rawData.ownerFullName || '',
-      follower_count: rawData.followers || rawData.follower_count || rawData.ownerFollowersCount || 0
+      timestamp: rawData.upload_date || new Date().toISOString(),
+      profile_pic_url: '', // Not provided by alpha-scraper
+      display_name: rawData.ownerFullName || rawData.ownerUsername || '',
+      follower_count: 0 // Not provided in video endpoint
     };
   } else if (platform === 'youtube') {
     // YouTube structure - handle both YouTube API v3 and Apify scraper formats
@@ -512,22 +516,22 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
         resultsPerPage: 1
       };
     } else if (platform === 'instagram') {
-      // Use pratikdani/instagram-reels-scraper
-      console.log('📸 [INSTAGRAM] Using pratikdani/instagram-reels-scraper for video:', url);
-      actorId = 'pratikdani~instagram-reels-scraper'; // Use tilde for Apify API
-      
-      // Get Instagram session cookie if available
-      const instagramSessionId = process.env.INSTAGRAM_SESSION_ID || '';
+      // Use alpha-scraper/instagram-video-scraper
+      console.log('📸 [INSTAGRAM] Using alpha-scraper/instagram-video-scraper for video:', url);
+      actorId = 'alpha-scraper/instagram-video-scraper';
       
       input = {
-        url: url, // Singular, not array
-        use_cache: false,
-        // Add session cookie for authentication (helps avoid rate limits and access restrictions)
-        ...(instagramSessionId && {
-          sessionid: instagramSessionId
-        })
+        proxyConfiguration: {
+          useApifyProxy: true,
+          apifyProxyGroups: ['RESIDENTIAL']
+        },
+        startUrls: [
+          {
+            url: url
+          }
+        ]
       };
-      console.log('📸 [INSTAGRAM] Input:', JSON.stringify({ ...input, sessionid: instagramSessionId ? '[REDACTED]' : undefined }, null, 2));
+      console.log('📸 [INSTAGRAM] Input:', JSON.stringify(input, null, 2));
     } else if (platform === 'youtube') {
       // Use YouTube API directly instead of Apify for better reliability
       console.log('🎥 [YOUTUBE] Using YouTube Data API v3 for video:', url);
