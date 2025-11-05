@@ -2075,7 +2075,11 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="w-3.5 h-3.5" />
-                        Joined {filteredAccount.dateAdded?.toDate().toLocaleDateString() || 'N/A'}
+                        Joined {(() => {
+                          if (!filteredAccount.dateAdded) return 'N/A';
+                          const date = filteredAccount.dateAdded.toDate ? filteredAccount.dateAdded.toDate() : new Date(filteredAccount.dateAdded);
+                          return date.toLocaleDateString();
+                        })()}
                       </span>
                       {/* Creator Link */}
                       <button 
