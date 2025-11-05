@@ -5,12 +5,16 @@ import {
   Settings, 
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Eye,
   Link,
   Film,
   Puzzle,
   Trophy,
-  X
+  X,
+  LayoutDashboard,
+  Boxes
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
@@ -41,7 +45,12 @@ interface NavItem {
   loading?: boolean;
   isActive?: boolean;
   onClick?: () => void;
-  showSeparatorBefore?: boolean; // Add separator line before this item
+}
+
+interface NavSection {
+  id: string;
+  label: string;
+  items: NavItem[];
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
@@ -54,6 +63,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
   const [showCreateProject, setShowCreateProject] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['tracking', 'manage'])); // Start with sections expanded
   const { can, loading: permissionsLoading } = usePermissions();
   const { userRole, currentOrgId, currentProjectId } = useAuth();
   const location = useLocation();
@@ -69,88 +79,137 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
   }, [location.pathname]);
 
-  // Show ALL navigation items immediately for instant UI, filter by permissions after loaded
-  const navigationItems: NavItem[] = useMemo(() => {
+  // Dashboard item (standalone at top)
+  const dashboardItem: NavItem | null = useMemo(() => {
     const baseHref = isDemoMode ? '/demo' : '';
-    const allItems: NavItem[] = [
-      {
+    if (permissionsLoading || can.accessTab('dashboard')) {
+      return {
         id: 'dashboard',
         label: 'Dashboard',
-        icon: Eye,
+        icon: LayoutDashboard,
         href: `${baseHref}/dashboard`,
+      };
+    }
+    return null;
+  }, [can, permissionsLoading, isDemoMode]);
+
+  // Navigation sections with dropdown
+  const navigationSections: NavSection[] = useMemo(() => {
+    const baseHref = isDemoMode ? '/demo' : '';
+    
+    const sections: NavSection[] = [
+      {
+        id: 'tracking',
+        label: 'Tracking',
+        items: [
+          {
+            id: 'accounts',
+            label: 'Tracked Accounts',
+            icon: Users,
+            href: `${baseHref}/accounts`,
+            badge: unreadCounts.accounts,
+            loading: loadingCounts.accounts,
+          },
+          {
+            id: 'videos',
+            label: 'Tracked Videos',
+            icon: Film,
+            href: `${baseHref}/videos`,
+            badge: unreadCounts.videos,
+            loading: loadingCounts.videos,
+          },
+          {
+            id: 'analytics',
+            label: 'Tracking Links',
+            icon: Link,
+            href: `${baseHref}/links`,
+          },
+          {
+            id: 'extension',
+            label: 'Extension',
+            icon: Puzzle,
+            href: `${baseHref}/extension`,
+          },
+        ]
       },
       {
-        id: 'accounts',
-        label: 'Tracked Accounts',
-        icon: Users,
-        href: `${baseHref}/accounts`,
-        badge: unreadCounts.accounts,
-        loading: loadingCounts.accounts,
+        id: 'manage',
+        label: 'Manage',
+        items: [
+          {
+            id: 'creators',
+            label: userRole === 'creator' ? 'Payouts' : 'Creators',
+            icon: Video,
+            href: `${baseHref}/creators`,
+          },
+          {
+            id: 'campaigns',
+            label: 'Campaigns',
+            icon: Trophy,
+            href: `${baseHref}/campaigns`,
+          },
+          {
+            id: 'integrations',
+            label: 'Integrations',
+            icon: Boxes,
+            href: `${baseHref}/integrations`,
+          },
+        ]
       },
-      {
-        id: 'videos',
-        label: 'Videos',
-        icon: Film,
-        href: `${baseHref}/videos`,
-        badge: unreadCounts.videos,
-        loading: loadingCounts.videos,
-      },
-      {
-        id: 'analytics',
-        label: 'Tracked Links',
-        icon: Link,
-        href: `${baseHref}/links`,
-      },
-      {
-        id: 'creators',
-        label: userRole === 'creator' ? 'Payouts' : 'Creators',
-        icon: Video,
-        href: `${baseHref}/creators`,
-      },
-      {
-        id: 'campaigns',
-        label: 'Campaigns',
-        icon: Trophy,
-        href: `${baseHref}/campaigns`,
-        showSeparatorBefore: true, // Separator before campaigns
-      },
-      {
-        id: 'extension',
-        label: 'Extension',
-        icon: Puzzle,
-        href: `${baseHref}/extension`,
-      },
-      {
+    ];
+
+    // Filter items based on permissions
+    if (!permissionsLoading && !isDemoMode) {
+      sections.forEach(section => {
+        section.items = section.items.filter(item => {
+          if (item.id === 'accounts') return can.accessTab('trackedAccounts');
+          if (item.id === 'videos') return can.accessTab('videos');
+          if (item.id === 'analytics') return can.accessTab('trackedLinks');
+          if (item.id === 'extension') return can.accessTab('extension');
+          if (item.id === 'creators') return can.accessTab('creators');
+          if (item.id === 'campaigns') return can.accessTab('campaigns');
+          if (item.id === 'integrations') return can.accessTab('integrations');
+          return true;
+        });
+      });
+    }
+
+    // In demo mode, filter out extension and integrations
+    if (isDemoMode) {
+      sections.forEach(section => {
+        section.items = section.items.filter(item => item.id !== 'extension' && item.id !== 'integrations');
+      });
+    }
+
+    // Remove empty sections
+    return sections.filter(section => section.items.length > 0);
+  }, [can, permissionsLoading, userRole, isDemoMode, unreadCounts, loadingCounts]);
+
+  // Settings item (standalone at bottom)
+  const settingsItem: NavItem | null = useMemo(() => {
+    const baseHref = isDemoMode ? '/demo' : '';
+    if (!isDemoMode && (permissionsLoading || can.accessTab('settings'))) {
+      return {
         id: 'settings',
         label: 'Settings',
         icon: Settings,
         href: `${baseHref}/settings`,
-      },
-    ];
-
-    // If permissions are still loading, show all items for instant UI
-    if (permissionsLoading) {
-      return allItems;
+      };
     }
+    return null;
+  }, [can, permissionsLoading, isDemoMode]);
 
-    // In demo mode, show all tabs except settings and extension
-    if (isDemoMode) {
-      return allItems.filter(item => item.id !== 'settings' && item.id !== 'extension');
-    }
-
-    // After permissions load, filter items based on access
-    return allItems.filter(item => {
-      if (item.id === 'dashboard') return can.accessTab('dashboard');
-      if (item.id === 'accounts') return can.accessTab('trackedAccounts');
-      if (item.id === 'videos') return can.accessTab('videos');
-      if (item.id === 'analytics') return can.accessTab('trackedLinks');
-      if (item.id === 'creators') return can.accessTab('creators');
-      if (item.id === 'campaigns') return can.accessTab('campaigns');
-      if (item.id === 'extension') return can.accessTab('extension');
-      if (item.id === 'settings') return can.accessTab('settings');
-      return true;
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(sectionId)) {
+        next.delete(sectionId);
+      } else {
+        next.add(sectionId);
+      }
+      return next;
     });
-  }, [can, permissionsLoading, userRole, isDemoMode, unreadCounts, loadingCounts]);
+  };
 
   const NavItemComponent: React.FC<{ item: NavItem }> = ({ item }) => {
     const Icon = item.icon;
@@ -274,15 +333,54 @@ const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {navigationItems.map((item) => (
-          <React.Fragment key={item.id}>
-            {item.showSeparatorBefore && (
-              <div className="my-3 border-t border-gray-200 dark:border-gray-700" />
-            )}
-            <NavItemComponent item={item} />
-          </React.Fragment>
-        ))}
+      <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto">
+        {/* Dashboard - Standalone at top */}
+        {dashboardItem && <NavItemComponent item={dashboardItem} />}
+
+        {/* Section Dropdowns */}
+        {navigationSections.map((section) => {
+          const isExpanded = expandedSections.has(section.id);
+          
+          return (
+            <div key={section.id} className="space-y-1">
+              {/* Section Header */}
+              <button
+                onClick={() => toggleSection(section.id)}
+                className={clsx(
+                  'w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider transition-colors rounded-md',
+                  'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5',
+                  {'justify-center': isCollapsed}
+                )}
+              >
+                {!isCollapsed && <span>{section.label}</span>}
+                {!isCollapsed && (
+                  isExpanded ? (
+                    <ChevronUp className="w-4 h-4" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4" />
+                  )
+                )}
+              </button>
+
+              {/* Section Items */}
+              {isExpanded && (
+                <div className="space-y-1 pl-2">
+                  {section.items.map(item => (
+                    <NavItemComponent key={item.id} item={item} />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Settings - Standalone at bottom with separator */}
+        {settingsItem && (
+          <>
+            <div className="my-4 border-t border-gray-200 dark:border-gray-700" />
+            <NavItemComponent item={settingsItem} />
+          </>
+        )}
       </nav>
 
       {/* Organization Switcher at Bottom - Show on mobile when open */}
