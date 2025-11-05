@@ -1808,10 +1808,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                               <div className={`placeholder-icon w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center ${account.profilePicture ? 'hidden' : ''}`}>
                                 <Users className="w-5 h-5 text-gray-500" />
                               </div>
-                              {/* Verified Badge */}
+                              {/* Verified Badge - Blue like Instagram */}
                               {(account.isVerified || account.isBlueVerified) && (
                                 <div className="absolute -bottom-0.5 -right-0.5 bg-white dark:bg-zinc-900 rounded-full p-0.5">
-                                  <CheckCircle className={`w-3.5 h-3.5 ${account.isBlueVerified ? 'text-blue-500' : 'text-emerald-500'} fill-current`} />
+                                  <CheckCircle className="w-3.5 h-3.5 text-blue-500 fill-current" />
                                 </div>
                               )}
                             </div>
