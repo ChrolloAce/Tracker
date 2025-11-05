@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Check, ArrowRight, ArrowLeft, Upload, Link2, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface AppleAppStoreWizardProps {
@@ -28,6 +28,12 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
 
   const totalSteps = 7;
+
+  // Debug: Log when wizard mounts
+  useEffect(() => {
+    console.log('🎉 AppleAppStoreWizard mounted!');
+    return () => console.log('👋 AppleAppStoreWizard unmounted');
+  }, []);
 
   /**
    * Encrypts the private key before storing in Firestore
@@ -595,7 +601,7 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
       <div className="bg-[#0A0A0A] rounded-2xl border border-white/10 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-[#0A0A0A] border-b border-white/10 px-6 py-4 flex items-center justify-between z-10">

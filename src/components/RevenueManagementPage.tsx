@@ -73,7 +73,10 @@ const RevenueManagementPage: React.FC = () => {
         </div>
 
         <button 
-          onClick={() => setShowWizard(true)}
+          onClick={() => {
+            console.log('🔵 Add Connection clicked, opening wizard...');
+            setShowWizard(true);
+          }}
           className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-white/90 text-black rounded-lg font-medium transition-colors"
         >
           <Plus className="w-4 h-4" />
@@ -150,10 +153,16 @@ const RevenueManagementPage: React.FC = () => {
 
       {/* Apple App Store Wizard */}
       {showWizard && (
-        <AppleAppStoreWizard
-          onClose={() => setShowWizard(false)}
-          onComplete={handleWizardComplete}
-        />
+        <>
+          {console.log('✅ Rendering AppleAppStoreWizard, showWizard:', showWizard)}
+          <AppleAppStoreWizard
+            onClose={() => {
+              console.log('🔴 Wizard closed');
+              setShowWizard(false);
+            }}
+            onComplete={handleWizardComplete}
+          />
+        </>
       )}
     </div>
   );
