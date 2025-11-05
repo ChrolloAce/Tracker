@@ -4,7 +4,7 @@ import { clsx } from 'clsx';
 import { 
   ArrowLeft, ChevronDown, Search, Filter, CheckCircle2, Circle, Plus, Trash2,
   Play, Heart, MessageCircle, Share2, Video, AtSign, Activity, /* DollarSign, Download, */ Link as LinkIcon, Edit2, RefreshCw,
-  Users, Clock, TrendingUp, BarChart3, X, Pencil
+  Users, Clock, TrendingUp, BarChart3, X, Pencil, CheckCircle
 } from 'lucide-react'; // DollarSign & Download hidden (revenue/downloads KPIs disabled)
 import Sidebar from '../components/layout/Sidebar';
 import { Modal } from '../components/ui/Modal';
@@ -2077,8 +2077,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     )}
                     {/* Verified Badge - Blue like Instagram */}
                     {(filteredAccount.isVerified || filteredAccount.isBlueVerified) && (
-                      <div className="absolute -bottom-0.5 -right-0.5 bg-white dark:bg-zinc-900 rounded-full p-0.5">
-                        <CheckCircle className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500 fill-current" />
+                      <div className="absolute -bottom-0.5 -right-0.5 bg-blue-500 rounded-full p-0.5 flex items-center justify-center">
+                        <CheckCircle className="w-3 h-3 md:w-3.5 md:h-3.5 text-white fill-white stroke-blue-500 stroke-2" style={{ strokeWidth: 2.5 }} />
                       </div>
                     )}
                   </div>

@@ -1810,8 +1810,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                               </div>
                               {/* Verified Badge - Blue like Instagram */}
                               {(account.isVerified || account.isBlueVerified) && (
-                                <div className="absolute -bottom-0.5 -right-0.5 bg-white dark:bg-zinc-900 rounded-full p-0.5">
-                                  <CheckCircle className="w-3.5 h-3.5 text-blue-500 fill-current" />
+                                <div className="absolute -bottom-0.5 -right-0.5 bg-blue-500 rounded-full p-0.5 flex items-center justify-center">
+                                  <CheckCircle className="w-3 h-3 text-white fill-white stroke-blue-500 stroke-2" style={{ strokeWidth: 2.5 }} />
                                 </div>
                               )}
                             </div>
