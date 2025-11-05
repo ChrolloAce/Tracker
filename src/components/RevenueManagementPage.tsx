@@ -1,8 +1,26 @@
 import React, { useState } from 'react';
 import { Plus, DollarSign } from 'lucide-react';
+import AppleAppStoreWizard, { AppleAppStoreCredentials } from './AppleAppStoreWizard';
 
 const RevenueManagementPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'connections' | 'analytics'>('connections');
+  const [showWizard, setShowWizard] = useState(false);
+
+  const handleWizardComplete = async (credentials: AppleAppStoreCredentials) => {
+    try {
+      // TODO: Save credentials to Firestore
+      console.log('Apple App Store credentials:', credentials);
+      
+      // Close wizard
+      setShowWizard(false);
+      
+      // TODO: Refresh connections list
+      // TODO: Show success message
+    } catch (error) {
+      console.error('Failed to save credentials:', error);
+      throw error;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -37,7 +55,10 @@ const RevenueManagementPage: React.FC = () => {
           </button>
         </div>
 
-        <button className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-white/90 text-black rounded-lg font-medium transition-colors">
+        <button 
+          onClick={() => setShowWizard(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-white/90 text-black rounded-lg font-medium transition-colors"
+        >
           <Plus className="w-4 h-4" />
           Add Connection
         </button>
@@ -109,6 +130,14 @@ const RevenueManagementPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Apple App Store Wizard */}
+      {showWizard && (
+        <AppleAppStoreWizard
+          onClose={() => setShowWizard(false)}
+          onComplete={handleWizardComplete}
+        />
+      )}
     </div>
   );
 };
