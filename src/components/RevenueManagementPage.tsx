@@ -16,6 +16,7 @@ const RevenueManagementPage: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     loadIntegrations();
@@ -127,6 +128,49 @@ const RevenueManagementPage: React.FC = () => {
       setErrorMessage(error.message || 'Failed to remove connection');
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleSyncRevenue = async () => {
+    if (!currentOrgId || !currentProjectId) return;
+
+    try {
+      setSyncing(true);
+      setErrorMessage(null);
+
+      console.log('🔄 Triggering manual revenue sync...');
+
+      const response = await fetch('/api/sync-apple-revenue', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          organizationId: currentOrgId,
+          projectId: currentProjectId,
+          manual: true
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to sync revenue');
+      }
+
+      console.log('✅ Revenue sync completed:', data);
+
+      setSuccessMessage(`Revenue sync completed! ${data.data?.recordCount || 0} records processed.`);
+      setTimeout(() => setSuccessMessage(null), 5000);
+
+      // Refresh integrations to show updated lastSynced time
+      await loadIntegrations();
+
+    } catch (error: any) {
+      console.error('Failed to sync revenue:', error);
+      setErrorMessage(error.message || 'Failed to sync revenue data');
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -415,17 +459,24 @@ const RevenueManagementPage: React.FC = () => {
           {/* If integrations exist, show manual sync button */}
           {integrations.length > 0 && (
             <div className="bg-white/5 rounded-xl border border-white/10 p-6 text-center">
-              <h4 className="text-lg font-semibold text-white mb-3">Manual Sync (Coming Soon)</h4>
+              <h4 className="text-lg font-semibold text-white mb-3">Manual Sync</h4>
               <p className="text-white/60 text-sm mb-4">
-                Once the backend is set up, you'll be able to manually trigger a revenue sync from here.
+                Manually trigger a revenue sync to fetch the latest data from Apple App Store Connect.
               </p>
               <button
-                disabled
-                className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 text-white/40 rounded-lg font-medium cursor-not-allowed"
+                onClick={handleSyncRevenue}
+                disabled={syncing}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <RefreshCw className="w-4 h-4" />
-                Sync Revenue Data
+                <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                {syncing ? 'Syncing...' : 'Sync Revenue Data'}
               </button>
+              <p className="text-white/40 text-xs mt-3">
+                Last synced: {integrations[0]?.lastSynced 
+                  ? formatDistanceToNow(integrations[0].lastSynced, { addSuffix: true })
+                  : 'Never'
+                }
+              </p>
             </div>
           )}
         </div>

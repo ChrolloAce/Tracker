@@ -36,6 +36,9 @@
     "api/revenue-sync.ts": {
       "maxDuration": 60
     },
+    "api/sync-apple-revenue.ts": {
+      "maxDuration": 120
+    },
     "api/revenuecat-webhook.ts": {
       "maxDuration": 30
     },

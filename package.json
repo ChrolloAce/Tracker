@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@stripe/stripe-js": "^8.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
     "apify-client": "^2.17.0",
     "clsx": "^2.0.0",
     "date-fns": "^4.1.0",
@@ -18,6 +19,7 @@
     "firebase-admin": "^13.5.0",
     "framer-motion": "^12.23.24",
     "jose": "^6.1.0",
+    "jsonwebtoken": "^9.0.2",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.263.1",
     "micro": "^10.0.1",
