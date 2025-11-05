@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, DollarSign, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Plus, DollarSign, CheckCircle, XCircle, Clock, Trash2, RefreshCw, Download, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import AppleAppStoreWizard, { AppleAppStoreCredentials } from './AppleAppStoreWizard';
 import RevenueDataService from '../services/RevenueDataService';
@@ -15,6 +15,7 @@ const RevenueManagementPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadIntegrations();
@@ -43,6 +44,17 @@ const RevenueManagementPage: React.FC = () => {
     try {
       setSaving(true);
       setErrorMessage(null);
+      
+      // Check if Apple integration already exists
+      const existingIntegration = await RevenueDataService.getIntegration(
+        currentOrgId,
+        currentProjectId,
+        'apple'
+      );
+
+      if (existingIntegration) {
+        throw new Error('Apple App Store Connect is already connected. Please remove the existing connection first.');
+      }
       
       console.log('✅ Saving Apple App Store credentials (private key is encrypted):', {
         issuerID: credentials.issuerID,
@@ -89,6 +101,32 @@ const RevenueManagementPage: React.FC = () => {
       throw error;
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteIntegration = async (integrationId: string) => {
+    if (!currentOrgId || !currentProjectId) return;
+    
+    if (!confirm('Are you sure you want to remove this revenue connection? This cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setDeletingId(integrationId);
+      setErrorMessage(null);
+
+      await RevenueDataService.deleteIntegration(currentOrgId, currentProjectId, integrationId);
+      
+      setSuccessMessage('Revenue connection removed successfully');
+      setTimeout(() => setSuccessMessage(null), 5000);
+      
+      // Refresh list
+      await loadIntegrations();
+    } catch (error: any) {
+      console.error('Failed to delete integration:', error);
+      setErrorMessage(error.message || 'Failed to remove connection');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -150,9 +188,10 @@ const RevenueManagementPage: React.FC = () => {
         </div>
       )}
 
-      {/* Table Container */}
-      <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
-        {loading ? (
+      {/* Connections Tab Content */}
+      {activeTab === 'connections' && (
+        <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+          {loading ? (
           <div className="flex items-center justify-center py-16">
             <div className="animate-spin w-8 h-8 border-2 border-white/20 border-t-white rounded-full"></div>
           </div>
@@ -193,6 +232,7 @@ const RevenueManagementPage: React.FC = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">Last Sync</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">Connected</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10">
@@ -268,6 +308,22 @@ const RevenueManagementPage: React.FC = () => {
                           {formatDistanceToNow(integration.createdAt, { addSuffix: true })}
                         </span>
                       </td>
+
+                      {/* Actions */}
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => handleDeleteIntegration(integration.id)}
+                          disabled={deletingId === integration.id}
+                          className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Remove connection"
+                        >
+                          {deletingId === integration.id ? (
+                            <div className="animate-spin w-4 h-4 border-2 border-red-400/20 border-t-red-400 rounded-full" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -285,7 +341,95 @@ const RevenueManagementPage: React.FC = () => {
             </div>
           </>
         )}
-      </div>
+        </div>
+      )}
+
+      {/* Analytics Tab Content */}
+      {activeTab === 'analytics' && (
+        <div className="space-y-6">
+          {/* Coming Soon Banner */}
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-8 text-center">
+            <TrendingUp className="w-16 h-16 text-blue-400 mx-auto mb-4" />
+            <h3 className="text-2xl font-bold text-white mb-2">Revenue Analytics Coming Soon</h3>
+            <p className="text-white/60 mb-6 max-w-2xl mx-auto">
+              Once you've connected your app store accounts and the backend sync is implemented, you'll be able to view comprehensive revenue reports, transaction history, and analytics here.
+            </p>
+          </div>
+
+          {/* What You'll See */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Revenue Overview */}
+            <div className="bg-white/5 rounded-xl border border-white/10 p-6">
+              <div className="w-12 h-12 bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
+                <DollarSign className="w-6 h-6 text-emerald-400" />
+              </div>
+              <h4 className="text-lg font-semibold text-white mb-2">Revenue Overview</h4>
+              <p className="text-white/60 text-sm">
+                View total revenue, trends, and breakdowns by product, platform, and time period.
+              </p>
+            </div>
+
+            {/* Transaction History */}
+            <div className="bg-white/5 rounded-xl border border-white/10 p-6">
+              <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mb-4">
+                <Clock className="w-6 h-6 text-blue-400" />
+              </div>
+              <h4 className="text-lg font-semibold text-white mb-2">Transaction History</h4>
+              <p className="text-white/60 text-sm">
+                Browse all purchases, renewals, refunds, and cancellations with detailed information.
+              </p>
+            </div>
+
+            {/* Export Reports */}
+            <div className="bg-white/5 rounded-xl border border-white/10 p-6">
+              <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-4">
+                <Download className="w-6 h-6 text-purple-400" />
+              </div>
+              <h4 className="text-lg font-semibold text-white mb-2">Export Reports</h4>
+              <p className="text-white/60 text-sm">
+                Download revenue reports in CSV or PDF format for accounting and analysis.
+              </p>
+            </div>
+          </div>
+
+          {/* Required Implementation */}
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-6">
+            <h4 className="text-lg font-semibold text-amber-300 mb-3">🔧 Backend Implementation Required</h4>
+            <p className="text-amber-200/80 text-sm mb-4">
+              To see revenue data here, you need to implement the backend Cloud Function that:
+            </p>
+            <ol className="text-amber-200/70 text-sm space-y-2 ml-4 list-decimal">
+              <li>Reads encrypted credentials from Firestore</li>
+              <li>Generates JWT tokens for Apple API authentication</li>
+              <li>Fetches sales/financial reports from App Store Connect API</li>
+              <li>Stores revenue transactions in Firestore</li>
+              <li>Runs on a schedule (every 24 hours)</li>
+            </ol>
+            <div className="mt-4 pt-4 border-t border-amber-500/20">
+              <p className="text-amber-200/60 text-xs">
+                Once implemented, revenue data will automatically sync and appear in this analytics tab.
+              </p>
+            </div>
+          </div>
+
+          {/* If integrations exist, show manual sync button */}
+          {integrations.length > 0 && (
+            <div className="bg-white/5 rounded-xl border border-white/10 p-6 text-center">
+              <h4 className="text-lg font-semibold text-white mb-3">Manual Sync (Coming Soon)</h4>
+              <p className="text-white/60 text-sm mb-4">
+                Once the backend is set up, you'll be able to manually trigger a revenue sync from here.
+              </p>
+              <button
+                disabled
+                className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 text-white/40 rounded-lg font-medium cursor-not-allowed"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Sync Revenue Data
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Apple App Store Wizard */}
       {showWizard && (
