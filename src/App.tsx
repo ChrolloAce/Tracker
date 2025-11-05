@@ -482,17 +482,11 @@ function App() {
         } 
       />
 
-      {/* Account details with modal */}
+      {/* Account details - redirects to dashboard with account filter */}
       <Route 
         path="/accounts/:accountId" 
         element={
-          !user ? (
-            <Navigate to="/login" replace />
-          ) : !currentOrgId || !currentProjectId ? (
-            <Navigate to="/create-organization" replace />
-          ) : (
-            <AccountsPage />
-          )
+          <Navigate to="/dashboard?tab=accounts" replace />
         } 
       />
 

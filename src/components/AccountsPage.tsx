@@ -1510,7 +1510,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                             'hover:bg-white/5 dark:hover:bg-white/5 cursor-pointer': !isAccountSyncing,
                           }
                         )}
-                        onClick={() => !isAccountSyncing && navigate(`/accounts/${account.id}`)}
+                        onClick={() => !isAccountSyncing && navigate(`/dashboard?tab=accounts&account=${account.id}`)}
                       >
                         {/* Username Column */}
                         <td className="px-6 py-4 whitespace-nowrap">
