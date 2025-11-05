@@ -279,14 +279,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`❌ Failed accounts: ${failedAccounts.length}`);
     console.log('='.repeat(60) + '\n');
 
-    // Send email notifications to organization owners
+    // Send email notifications to organization owners (for both manual AND automatic cron runs)
     const RESEND_API_KEY = process.env.RESEND_API_KEY;
-    if (RESEND_API_KEY && isManualTrigger) {
+    if (RESEND_API_KEY) {
       console.log('📧 Sending refresh summary emails...');
       
       for (const [orgId, stats] of processedOrgs.entries()) {
         if (stats.email && (stats.videosAdded > 0 || stats.videosUpdated > 0)) {
           try {
+            const triggerTypeText = isManualTrigger ? 'Manual' : 'Automated';
             const emailResponse = await fetch('https://api.resend.com/emails', {
               method: 'POST',
               headers: {
@@ -296,21 +297,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               body: JSON.stringify({
                 from: 'ViewTrack <team@viewtrack.app>',
                 to: [stats.email],
-                subject: `📊 Refresh Complete - ${stats.videosAdded} New Videos!`,
+                subject: `📊 ${stats.orgName} - Video Refresh Complete${stats.videosAdded > 0 ? ` (+${stats.videosAdded} New)` : ''}`,
                 html: `
                   <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
                     <div style="text-align: center; padding: 30px 20px; background: #f8f9fa; border-bottom: 2px solid #e9ecef;">
                       <img src="https://www.viewtrack.app/blacklogo.png" alt="ViewTrack" style="height: 40px; width: auto;" />
                     </div>
                     <div style="padding: 30px 20px;">
-                    <h2 style="color: #f5576c; margin-top: 0;">Refresh Complete!</h2>
-                    <p>Your tracked accounts have been refreshed with the latest data.</p>
+                    <h2 style="color: #f5576c; margin-top: 0;">${triggerTypeText} Refresh Complete! 🎉</h2>
+                    <p>Your tracked accounts for <strong>${stats.orgName}</strong> have been refreshed with the latest data.</p>
                     <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                      <h3 style="margin-top: 0; color: #333;">Summary</h3>
+                      <h3 style="margin-top: 0; color: #333;">📊 Summary</h3>
                       <div style="display: grid; gap: 10px;">
                         <p style="margin: 5px 0;"><strong>Accounts Refreshed:</strong> ${stats.accountsProcessed}</p>
-                        <p style="margin: 5px 0; color: #10b981;"><strong>✨ New Videos Added:</strong> ${stats.videosAdded}</p>
-                        <p style="margin: 5px 0; color: #3b82f6;"><strong>🔄 Videos Updated:</strong> ${stats.videosUpdated}</p>
+                        <p style="margin: 5px 0; color: #10b981; font-size: 16px;"><strong>✨ New Videos Added:</strong> ${stats.videosAdded}</p>
+                        <p style="margin: 5px 0; color: #3b82f6; font-size: 16px;"><strong>🔄 Videos Updated:</strong> ${stats.videosUpdated}</p>
                         <p style="margin: 5px 0;"><strong>Total Changes:</strong> ${stats.videosAdded + stats.videosUpdated}</p>
                       </div>
                     </div>
@@ -320,8 +321,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         <p style="margin: 5px 0 0 0; color: #065f46; font-size: 14px;">Check your dashboard to see the latest content from your tracked accounts.</p>
                       </div>
                     ` : ''}
-                    <p>All video metrics have been updated with the latest views, likes, and engagement data.</p>
-                    <a href="https://www.viewtrack.app" style="display: inline-block; padding: 12px 24px; background: #f5576c; color: white; text-decoration: none; border-radius: 6px; margin-top: 10px;">View Dashboard</a>
+                    ${stats.videosUpdated > 0 ? `
+                      <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 15px; margin: 20px 0;">
+                        <p style="margin: 0; color: #1e40af;"><strong>📈 ${stats.videosUpdated} video${stats.videosUpdated === 1 ? '' : 's'} updated!</strong></p>
+                        <p style="margin: 5px 0 0 0; color: #1e40af; font-size: 14px;">All metrics refreshed with latest views, likes, comments, and engagement data.</p>
+                      </div>
+                    ` : ''}
+                    <p style="color: #666; font-size: 14px; margin-top: 20px;">Stay on top of your content performance and track what's trending!</p>
+                    <div style="text-align: center; margin-top: 25px;">
+                      <a href="https://www.viewtrack.app" style="display: inline-block; padding: 14px 28px; background: #f5576c; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">View Dashboard →</a>
+                    </div>
+                    </div>
+                    <div style="text-align: center; padding: 20px; background: #f8f9fa; border-top: 1px solid #e9ecef; margin-top: 30px;">
+                      <p style="margin: 0; color: #666; font-size: 12px;">Trigger Type: ${triggerTypeText} | ${new Date().toLocaleString()}</p>
                     </div>
                   </div>
                 `,
@@ -340,10 +352,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         }
       }
-    } else if (!RESEND_API_KEY) {
-      console.warn('⚠️ RESEND_API_KEY not configured - skipping email notifications');
     } else {
-      console.log('ℹ️ Skipping emails (automatic cron run)');
+      console.warn('⚠️ RESEND_API_KEY not configured - skipping email notifications');
     }
 
     return res.status(200).json(summary);
@@ -591,7 +601,10 @@ async function saveVideosToFirestore(
       
       platformVideoId = media.code || media.shortCode || media.id;
     } else if (platform === 'tiktok') {
-      platformVideoId = video.id || video.videoId;
+      // TikTok API doesn't return an 'id' field, extract from webVideoUrl
+      // URL format: https://www.tiktok.com/@username/video/7519910249533377823
+      const urlMatch = (video.webVideoUrl || '').match(/video\/(\d+)/);
+      platformVideoId = urlMatch ? urlMatch[1] : (video.id || video.videoId || '');
     } else if (platform === 'twitter') {
       platformVideoId = video.id;
     } else {
@@ -625,21 +638,33 @@ async function saveVideosToFirestore(
     let uploadDate: Date = new Date();
 
     if (platform === 'instagram') {
-      // Use new Instagram reels scraper field names
+      // Use Instagram reels scraper field names
       views = media.play_count || media.ig_play_count || 0;
       likes = media.like_count || 0;
       comments = media.comment_count || 0;
       shares = 0; // Instagram API doesn't provide share count
       url = `https://www.instagram.com/reel/${media.code || media.shortCode}/`;
-      const instaThumbnail = media.thumbnail_url || media.display_url || '';
+      
+      // Get thumbnail from Instagram API (actual field structure)
+      const instaThumbnail = 
+        media.image_versions2?.additional_candidates?.first_frame?.url || 
+        media.image_versions2?.candidates?.[0]?.url || 
+        media.thumbnail_url || 
+        media.display_url || 
+        '';
+      
       // Download and upload thumbnail to Firebase Storage
       if (instaThumbnail) {
+        console.log(`    📸 Instagram thumbnail URL found: ${instaThumbnail.substring(0, 80)}...`);
         thumbnail = await downloadAndUploadImage(
           instaThumbnail,
           orgId,
           `${platformVideoId}_thumb.jpg`,
           'thumbnails'
         );
+      } else {
+        console.warn(`    ⚠️ Instagram reel ${platformVideoId} has no thumbnail in API response`);
+        console.log(`    🔍 Available Instagram fields:`, Object.keys(media).slice(0, 20).join(', '));
       }
       caption = media.caption?.text || media.caption || '';
       uploadDate = media.taken_at ? new Date(media.taken_at * 1000) : new Date();
@@ -650,13 +675,11 @@ async function saveVideosToFirestore(
       shares = video.shareCount || 0;
       url = video.webVideoUrl || video.videoUrl || '';
       
-      // Try multiple possible thumbnail field names for TikTok
-      const tiktokThumbnail = video.videoMeta?.coverUrl || 
-                             video['videoMeta.coverUrl'] || 
-                             video.covers?.default || 
+      // Get thumbnail from TikTok API (field name has a dot in it, so use bracket notation)
+      const tiktokThumbnail = video['videoMeta.coverUrl'] || 
+                             video.videoMeta?.coverUrl || 
                              video.coverUrl || 
                              video.thumbnail || 
-                             video.cover || 
                              '';
       
       // Download and upload thumbnail to Firebase Storage
@@ -670,6 +693,7 @@ async function saveVideosToFirestore(
         );
       } else {
         console.warn(`    ⚠️ TikTok video ${platformVideoId} has no thumbnail URL in API response`);
+        console.log(`    🔍 Available TikTok fields:`, Object.keys(video).slice(0, 20).join(', '));
       }
       caption = video.text || '';
       uploadDate = video.createTime ? new Date(video.createTime * 1000) : new Date();
@@ -753,10 +777,11 @@ async function saveVideosToFirestore(
         lastRefreshed: Timestamp.now()
       };
 
-      // Update thumbnail ONLY if:
+      // Update thumbnail if:
       // 1. Existing thumbnail is empty/missing and we have a new one
       // 2. Existing thumbnail is a placeholder and we have a real one
       // 3. Existing thumbnail is NOT already a Firebase Storage URL and IS a CDN URL
+      // 4. Existing thumbnail is empty string, null, or undefined
       const isFirebaseStorage = existingData.thumbnail && existingData.thumbnail.includes('storage.googleapis.com');
       const isCDNUrl = existingData.thumbnail && 
         (existingData.thumbnail.includes('cdninstagram.com') || 
@@ -764,8 +789,10 @@ async function saveVideosToFirestore(
          existingData.thumbnail.includes('tiktokcdn.com') ||
          existingData.thumbnail.includes('twimg.com'));
       
+      const existingThumbnailEmpty = !existingData.thumbnail || existingData.thumbnail.trim() === '';
+      
       const shouldUpdateThumbnail = 
-        (!existingData.thumbnail && thumbnail) ||
+        (existingThumbnailEmpty && thumbnail && thumbnail.trim() !== '') ||
         (existingData.thumbnail && 
          existingData.thumbnail.includes('placeholder') && 
          thumbnail && 
@@ -773,10 +800,12 @@ async function saveVideosToFirestore(
         (!isFirebaseStorage && isCDNUrl && thumbnail && thumbnail.includes('storage.googleapis.com'));
 
       if (shouldUpdateThumbnail && thumbnail) {
-        console.log(`    🔄 Updating thumbnail (old: ${existingData.thumbnail ? existingData.thumbnail.substring(0, 50) : 'empty'}, new: ${thumbnail.substring(0, 50)}...)`);
+        console.log(`    🔄 Updating thumbnail (old: ${existingData.thumbnail ? existingData.thumbnail.substring(0, 50) : 'EMPTY'}, new: ${thumbnail.substring(0, 50)}...)`);
         videoData.thumbnail = thumbnail;
       } else if (isFirebaseStorage) {
         console.log(`    ✅ Thumbnail already in Firebase Storage, keeping it unchanged`);
+      } else if (existingThumbnailEmpty && (!thumbnail || thumbnail.trim() === '')) {
+        console.warn(`    ⚠️ Video has no thumbnail - both existing and new are empty`);
       }
 
       // Update existing video metrics
