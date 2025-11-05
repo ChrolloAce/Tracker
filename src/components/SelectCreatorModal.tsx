@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, User, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import CreatorLinksService from '../services/CreatorLinksService';
-import FirestoreDataService from '../services/FirestoreDataService';
+import OrganizationService from '../services/OrganizationService';
 import { OrgMember } from '../types/firestore';
 
 interface SelectCreatorModalProps {
@@ -43,7 +43,7 @@ const SelectCreatorModal: React.FC<SelectCreatorModalProps> = ({
     setLoading(true);
     try {
       // Load all creators for this organization
-      const allMembers = await FirestoreDataService.getOrganizationMembers(currentOrgId);
+      const allMembers = await OrganizationService.getOrgMembers(currentOrgId);
       const creatorMembers = allMembers.filter((member: OrgMember) => member.role === 'creator');
       setCreators(creatorMembers);
 
@@ -110,7 +110,7 @@ const SelectCreatorModal: React.FC<SelectCreatorModalProps> = ({
   const filteredCreators = creators.filter(creator => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
-    const name = (creator.displayName || creator.name || '').toLowerCase();
+    const name = (creator.displayName || '').toLowerCase();
     const email = (creator.email || '').toLowerCase();
     return name.includes(query) || email.includes(query);
   });
@@ -212,7 +212,7 @@ const SelectCreatorModal: React.FC<SelectCreatorModalProps> = ({
                     </div>
                     <div className="text-left">
                       <div className="text-sm font-medium text-white">
-                        {creator.displayName || creator.name || 'Unnamed Creator'}
+                        {creator.displayName || 'Unnamed Creator'}
                       </div>
                       <div className="text-xs text-white/40">{creator.email}</div>
                     </div>

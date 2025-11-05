@@ -944,7 +944,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           break;
         }
         case 'highestViewed':
-          comparison = (a.highestViewedVideo?.views || 0) - (b.highestViewedVideo?.views || 0);
+          comparison = ((a as AccountWithFilteredStats).highestViewedVideo?.views || 0) - ((b as AccountWithFilteredStats).highestViewedVideo?.views || 0);
           break;
         case 'lastRefresh': {
           const aTime = a.lastSynced ? (a.lastSynced.toDate ? a.lastSynced.toDate().getTime() : (a.lastSynced as any).getTime()) : 0;
@@ -953,10 +953,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           break;
         }
         case 'postingStreak':
-          comparison = (a.postingStreak || 0) - (b.postingStreak || 0);
+          comparison = ((a as AccountWithFilteredStats).postingStreak || 0) - ((b as AccountWithFilteredStats).postingStreak || 0);
           break;
         case 'viralityRate':
-          comparison = (a.viralityRate || 0) - (b.viralityRate || 0);
+          comparison = ((a as AccountWithFilteredStats).viralityRate || 0) - ((b as AccountWithFilteredStats).viralityRate || 0);
           break;
         case 'dateAdded':
           comparison = a.dateAdded.toDate().getTime() - b.dateAdded.toDate().getTime();
@@ -1934,10 +1934,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
 
                         {/* Highest Viewed Video Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {account.highestViewedVideo ? (
+                          {(account as AccountWithFilteredStats).highestViewedVideo ? (
                             <div className="flex items-center gap-1">
                               <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
-                              <span>{formatNumber(account.highestViewedVideo.views)}</span>
+                              <span>{formatNumber((account as AccountWithFilteredStats).highestViewedVideo!.views)}</span>
                             </div>
                           ) : (
                             <span className="text-white/30">—</span>
@@ -1958,10 +1958,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
 
                         {/* Posting Streak Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {account.postingStreak && account.postingStreak > 0 ? (
+                          {(account as AccountWithFilteredStats).postingStreak && (account as AccountWithFilteredStats).postingStreak! > 0 ? (
                             <div className="flex items-center gap-1.5">
                               <Flame className="w-4 h-4 text-orange-500" />
-                              <span className="font-semibold text-orange-500">{account.postingStreak}</span>
+                              <span className="font-semibold text-orange-500">{(account as AccountWithFilteredStats).postingStreak}</span>
                             </div>
                           ) : (
                             <span className="text-white/30">—</span>
@@ -1970,10 +1970,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
 
                         {/* Virality Rate Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {account.viralityRate !== undefined ? (
+                          {(account as AccountWithFilteredStats).viralityRate !== undefined ? (
                             <div className="flex items-center gap-1">
                               <Activity className="w-3.5 h-3.5 text-purple-500" />
-                              <span>{(account.viralityRate * 100).toFixed(1)}%</span>
+                              <span>{((account as AccountWithFilteredStats).viralityRate! * 100).toFixed(1)}%</span>
                             </div>
                           ) : (
                             <span className="text-white/30">—</span>
