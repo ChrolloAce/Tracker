@@ -125,10 +125,7 @@ interface AccountWithFilteredStats extends TrackedAccount {
 }
 
 // Main component with URL parameter support for account/creator filtering
-const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(function AccountsPage(
-  { dateFilter, platformFilter, searchQuery = '', onViewModeChange, pendingAccounts = [], selectedRuleIds = [], dashboardRules = [], organizationId, projectId },
-  ref
-) {
+const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(({ dateFilter, platformFilter, searchQuery = '', onViewModeChange, pendingAccounts = [], selectedRuleIds = [], dashboardRules = [], organizationId, projectId }, ref) => {
   const { user, currentOrgId: authOrgId, currentProjectId: authProjectId } = useAuth();
   
   // Use props if provided (for demo mode), otherwise use auth
