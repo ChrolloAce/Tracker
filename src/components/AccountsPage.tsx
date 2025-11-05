@@ -170,7 +170,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   const [syncError, setSyncError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingAccountDetail, setLoadingAccountDetail] = useState(false);
-  const [sortBy, setSortBy] = useState<'username' | 'followers' | 'videos' | 'views' | 'likes' | 'comments' | 'dateAdded'>('dateAdded');
+  const [sortBy, setSortBy] = useState<'username' | 'followers' | 'videos' | 'views' | 'likes' | 'comments' | 'shares' | 'bookmarks' | 'engagementRate' | 'dateAdded'>('dateAdded');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState<TrackedAccount | null>(null);
@@ -855,6 +855,22 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
           const bComments = ('filteredTotalComments' in b ? (b as AccountWithFilteredStats).filteredTotalComments : b.totalComments);
           comparison = aComments - bComments;
           break;
+        case 'shares':
+          comparison = (a.totalShares || 0) - (b.totalShares || 0);
+          break;
+        case 'bookmarks':
+          comparison = (a.totalSaves || 0) - (b.totalSaves || 0);
+          break;
+        case 'engagementRate': {
+          const aEngagements = (a.totalLikes || 0) + (a.totalComments || 0) + (a.totalShares || 0) + (a.totalSaves || 0);
+          const bEngagements = (b.totalLikes || 0) + (b.totalComments || 0) + (b.totalShares || 0) + (b.totalSaves || 0);
+          const aViews = a.totalViews || 0;
+          const bViews = b.totalViews || 0;
+          const aRate = aViews > 0 ? aEngagements / aViews : 0;
+          const bRate = bViews > 0 ? bEngagements / bViews : 0;
+          comparison = aRate - bRate;
+          break;
+        }
         case 'dateAdded':
           comparison = a.dateAdded.toDate().getTime() - b.dateAdded.toDate().getTime();
           break;
@@ -1389,6 +1405,66 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                         )}
                       </div>
                     </th>
+                    <th 
+                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
+                      onClick={() => {
+                        if (sortBy === 'shares') {
+                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortBy('shares');
+                          setSortOrder('desc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        Shares
+                        {sortBy === 'shares' && (
+                          <span className="text-white">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
+                      onClick={() => {
+                        if (sortBy === 'bookmarks') {
+                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortBy('bookmarks');
+                          setSortOrder('desc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        Bookmarks
+                        {sortBy === 'bookmarks' && (
+                          <span className="text-white">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-zinc-800/40 transition-colors"
+                      onClick={() => {
+                        if (sortBy === 'engagementRate') {
+                          setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortBy('engagementRate');
+                          setSortOrder('desc');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        Engagement
+                        {sortBy === 'engagementRate' && (
+                          <span className="text-white">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
@@ -1661,6 +1737,26 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                         {/* Comments Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                           {formatNumber('filteredTotalComments' in account ? (account as AccountWithFilteredStats).filteredTotalComments : account.totalComments)}
+                        </td>
+
+                        {/* Shares Column */}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          {formatNumber(account.totalShares || 0)}
+                        </td>
+
+                        {/* Bookmarks Column */}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          {formatNumber(account.totalSaves || 0)}
+                        </td>
+
+                        {/* Engagement Rate Column */}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          {(() => {
+                            const totalEngagements = (account.totalLikes || 0) + (account.totalComments || 0) + (account.totalShares || 0) + (account.totalSaves || 0);
+                            const totalViews = account.totalViews || 0;
+                            const engagementRate = totalViews > 0 ? (totalEngagements / totalViews * 100) : 0;
+                            return `${engagementRate.toFixed(2)}%`;
+                          })()}
                         </td>
 
                         {/* Actions Column */}
