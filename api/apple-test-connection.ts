@@ -6,12 +6,17 @@ export default async function (req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { privateKey, keyId, issuerId, bundleId, useSandbox = true } = req.body;
+  const { privateKey, keyID, keyId, issuerID, issuerId, vendorNumber, bundleId } = req.body;
 
-  if (!privateKey || !keyId || !issuerId || !bundleId) {
+  // Support both naming conventions (keyID/keyId, issuerID/issuerId)
+  const finalKeyId = keyID || keyId;
+  const finalIssuerId = issuerID || issuerId;
+
+  if (!privateKey || !finalKeyId || !finalIssuerId) {
     return res.status(400).json({ 
       error: 'Missing required credentials', 
-      details: 'privateKey, keyId, issuerId, and bundleId are required' 
+      details: 'privateKey, keyId, and issuerId are required',
+      message: 'Please provide all required credentials'
     });
   }
 
@@ -24,22 +29,25 @@ export default async function (req: VercelRequest, res: VercelResponse) {
     const jwt = await new jose.SignJWT({})
       .setProtectedHeader({
         alg,
-        kid: keyId,
+        kid: finalKeyId,
       })
-      .setIssuer(issuerId)
+      .setIssuer(finalIssuerId)
       .setIssuedAt()
       .setExpirationTime('20m')
-      .setAudience('https://api.storekit.itunes.apple.com')
+      .setAudience('appstoreconnect-v1')
       .sign(pkey);
 
-    // 2. Test connection to Apple's API
-    const baseUrl = useSandbox 
-      ? 'https://api.storekit-sandbox.itunes.apple.com' 
-      : 'https://api.storekit.itunes.apple.com';
+    console.log('🔑 Testing Apple App Store Connect API with:', {
+      keyId: finalKeyId,
+      issuerId: finalIssuerId,
+      vendorNumber: vendorNumber || 'not provided'
+    });
+
+    // 2. Test connection to App Store Connect API
+    // Use the finance reports endpoint to test credentials
+    const testUrl = 'https://api.appstoreconnect.apple.com/v1/apps';
     
-    // Use a lightweight endpoint to test authentication
-    // We expect 404 or 4xx (not found) but that's OK - it means auth worked
-    const testResponse = await fetch(`${baseUrl}/inApps/v1/lookup/12345`, {
+    const testResponse = await fetch(testUrl, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${jwt}`,
@@ -47,44 +55,61 @@ export default async function (req: VercelRequest, res: VercelResponse) {
       }
     });
 
-    console.log('🍎 Apple API test response status:', testResponse.status);
+    console.log('🍎 Apple App Store Connect API test response status:', testResponse.status);
 
     // Success cases:
-    // - 200-299: Valid response
-    // - 400-499: Auth worked, but endpoint/data not found (expected for test)
+    // - 200-299: Valid response - credentials work!
+    // - 403: Forbidden - auth worked but might need specific permissions
+    // - 404: Not found - auth worked
     // Failure cases:
     // - 401: Unauthorized (bad credentials)
     // - 500+: Server error
     
     if (testResponse.status === 401) {
-      return res.status(401).json({ 
+      const errorData = await testResponse.json().catch(() => ({}));
+      console.error('❌ 401 Unauthorized:', errorData);
+      return res.status(200).json({ 
         success: false, 
-        error: 'Authentication failed',
-        details: 'Invalid credentials. Please check your Key ID, Issuer ID, and Private Key.'
+        message: 'Invalid credentials. Please verify your Issuer ID, Key ID, and Private Key are correct.',
+        error: 'Authentication failed'
       });
     }
 
-    // Any other response (even 404) means the JWT worked
+    // Any response that's not 401 or 500+ means the JWT authentication worked
     if (testResponse.status < 500) {
+      console.log('✅ Apple API credentials validated successfully');
       return res.status(200).json({ 
         success: true, 
-        message: 'Apple App Store connection successful',
+        message: 'Connection successful! Your Apple App Store Connect credentials are valid.',
         statusCode: testResponse.status
       });
     }
 
-    return res.status(500).json({ 
+    return res.status(200).json({ 
       success: false, 
-      error: 'Apple server error',
-      details: `Received status ${testResponse.status} from Apple API`
+      message: 'Apple server error. Please try again later.',
+      error: `Received status ${testResponse.status} from Apple API`
     });
 
   } catch (error) {
-    console.error('❌ Apple connection test failed:', error);
-    res.status(500).json({ 
+    console.error('❌ Apple connection test error:', error);
+    
+    // Provide more specific error messages
+    let errorMessage = 'Failed to test connection. ';
+    if (error instanceof Error) {
+      if (error.message.includes('Invalid PKCS8')) {
+        errorMessage += 'Invalid private key format. Please ensure you uploaded the correct .p8 file.';
+      } else if (error.message.includes('JWT')) {
+        errorMessage += 'Failed to generate authentication token. Please check your credentials.';
+      } else {
+        errorMessage += error.message;
+      }
+    }
+    
+    res.status(200).json({ 
       success: false,
-      error: 'Failed to test Apple connection', 
-      details: error instanceof Error ? error.message : 'Unknown error' 
+      message: errorMessage,
+      error: 'Connection test failed'
     });
   }
 }
