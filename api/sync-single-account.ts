@@ -657,6 +657,21 @@ export default async function handler(
         isSingular: false
       });
 
+      // Create initial snapshot for this new video
+      const snapshotRef = videoRef.collection('snapshots').doc();
+      const snapshotTime = Timestamp.now();
+      batch.set(snapshotRef, {
+        id: snapshotRef.id,
+        videoId: video.videoId,
+        views: video.views || 0,
+        likes: video.likes || 0,
+        comments: video.comments || 0,
+        shares: video.shares || 0,
+        capturedAt: snapshotTime,
+        timestamp: snapshotTime,
+        capturedBy: 'initial_sync'
+      });
+
       // ALSO save to tracked account's videos subcollection (for real-time listener)
       const accountVideoRef = db
         .collection('organizations')

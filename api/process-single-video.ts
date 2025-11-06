@@ -201,6 +201,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       isRead: false // Mark as unread for notification badge
     });
 
+    // Create initial snapshot for this video
+    const snapshotRef = videoRef.collection('snapshots').doc();
+    const snapshotTime = Timestamp.now();
+    await snapshotRef.set({
+      id: snapshotRef.id,
+      videoId: videoData.id,
+      views: videoData.view_count || 0,
+      likes: videoData.like_count || 0,
+      comments: videoData.comment_count || 0,
+      shares: videoData.share_count || 0,
+      capturedAt: snapshotTime,
+      timestamp: snapshotTime,
+      capturedBy: 'initial_manual_add'
+    });
+
+    console.log(`📸 Created initial snapshot for manually added video`);
+
     // Update account stats if linked
     if (accountId) {
       const accountRef = accountsRef.doc(accountId);
