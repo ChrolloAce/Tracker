@@ -203,23 +203,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log('✅ JWT token generated successfully');
 
-    // Fetch sales reports for yesterday (most recent complete day)
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const reportDate = yesterday.toISOString().split('T')[0]; // YYYY-MM-DD
-
-    console.log('📥 Fetching sales reports for:', reportDate);
+    // Fetch sales reports for the last 90 days (all available data)
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() - 1); // Yesterday (most recent complete day)
     
-    const salesData = await fetchAppleSalesReports(
-      token,
-      integration.credentials.vendorNumber,
-      reportDate
-    );
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 90); // Last 90 days
 
-    console.log('📊 Sales data received:', {
-      recordCount: Array.isArray(salesData) ? salesData.length : 'unknown',
-      type: typeof salesData
+    console.log('📥 Fetching sales reports from:', {
+      start: startDate.toISOString().split('T')[0],
+      end: endDate.toISOString().split('T')[0],
+      days: 90
     });
+
+    let allSalesData: any[] = [];
+    let currentDate = new Date(startDate);
+
+    // Fetch reports for each day in the range
+    while (currentDate <= endDate) {
+      const reportDate = currentDate.toISOString().split('T')[0];
+      
+      try {
+        const dailyData = await fetchAppleSalesReports(
+          token,
+          integration.credentials.vendorNumber,
+          reportDate
+        );
+        
+        if (dailyData && dailyData.length > 0) {
+          allSalesData = allSalesData.concat(dailyData);
+          console.log(`  ✓ ${reportDate}: ${dailyData.length} records`);
+        }
+      } catch (error) {
+        console.log(`  ⚠ ${reportDate}: No data or error`);
+      }
+      
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    console.log('📊 Total sales data received:', {
+      totalRecords: allSalesData.length,
+      dateRange: `${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`
+    });
+
+    const salesData = allSalesData;
 
     // Update last synced timestamp
     await integrationDoc.ref.update({
