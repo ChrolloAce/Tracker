@@ -74,28 +74,53 @@ const RefreshCountdown: React.FC = () => {
     return `${Math.floor(seconds / 86400)}d ago`;
   };
 
-  const formatTimeUntil = (): string => {
-    if (!lastOrchestratorRun) return 'Soon';
-
-    // Orchestrator runs every hour
-    const nextRun = new Date(lastOrchestratorRun);
-    nextRun.setHours(nextRun.getHours() + 1);
+  const getNextCronRun = (): Date => {
+    // Cron runs at the top of every hour (:00)
+    const now = new Date(currentTime);
+    const nextRun = new Date(now);
+    nextRun.setMinutes(0, 0, 0); // Set to top of current hour
     
+    // If we're past the top of this hour, move to next hour
+    if (now.getMinutes() > 0 || now.getSeconds() > 0) {
+      nextRun.setHours(nextRun.getHours() + 1);
+    }
+    
+    return nextRun;
+  };
+
+  const getLastCronRun = (): Date => {
+    // Get the most recent top-of-hour
+    const now = new Date(currentTime);
+    const lastRun = new Date(now);
+    lastRun.setMinutes(0, 0, 0);
+    
+    // If we're within the first few minutes, might still be running
+    if (now.getMinutes() < 5) {
+      // Could be the current hour's run
+      return lastRun;
+    }
+    
+    return lastRun;
+  };
+
+  const formatTimeUntil = (): string => {
+    const nextRun = getNextCronRun();
     const secondsUntil = Math.floor((nextRun.getTime() - currentTime) / 1000);
     
-    if (secondsUntil <= 0) return 'Running now';
+    if (secondsUntil <= 60) return 'Running soon';
     if (secondsUntil < 60) return `${secondsUntil}s`;
     return `${Math.floor(secondsUntil / 60)}m`;
   };
 
   const getProgressPercent = (): number => {
-    if (!lastOrchestratorRun) return 0;
+    // Calculate progress through the current hour
+    const now = new Date(currentTime);
+    const minutesPastHour = now.getMinutes();
+    const secondsPastMinute = now.getSeconds();
+    const totalSecondsPastHour = (minutesPastHour * 60) + secondsPastMinute;
+    const progress = (totalSecondsPastHour / 3600) * 100;
     
-    // Orchestrator runs every hour (3600000 ms)
-    const hourInMs = 3600000;
-    const elapsed = currentTime - lastOrchestratorRun.getTime();
-    const progress = Math.min((elapsed / hourInMs) * 100, 100);
-    return progress;
+    return Math.min(progress, 100);
   };
 
   if (accountCount === 0) {
@@ -137,7 +162,7 @@ const RefreshCountdown: React.FC = () => {
         {/* Timing Info */}
         <div className="flex items-center justify-between text-[10px] mb-2">
           <span className="text-white/40">
-            {lastOrchestratorRun ? `Last: ${formatTimeAgo(lastOrchestratorRun)}` : 'Never run'}
+            {lastOrchestratorRun ? `Last: ${formatTimeAgo(lastOrchestratorRun)}` : `Runs hourly at :00`}
           </span>
           <span className={`font-semibold ${isRunning ? 'text-emerald-400' : 'text-white/60'}`}>
             {isRunning ? '⚡ Running' : `Next: ${formatTimeUntil()}`}
