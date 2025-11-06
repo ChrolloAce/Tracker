@@ -372,63 +372,66 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
   const renderStep5 = () => (
     <div className="space-y-6">
       <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold text-white">Enter Key ID and Vendor Number</h2>
+        <h2 className="text-2xl font-bold text-white">Key ID & Private Key</h2>
         <p className="text-white/60">
-          Copy your Key ID and Vendor Number from App Store Connect
+          Enter your Key ID and upload the .p8 private key file
         </p>
       </div>
 
       <div className="bg-white/5 rounded-xl border border-white/10 p-6 space-y-6">
         <div className="space-y-2">
-          <label className="text-white font-medium block">Key ID</label>
+          <label className="text-white font-medium block">Key ID *</label>
           <input
             type="text"
             value={credentials.keyID}
-            onChange={(e) => setCredentials(prev => ({ ...prev, keyID: e.target.value }))}
+            onChange={(e) => setCredentials(prev => ({ ...prev, keyID: e.target.value.toUpperCase() }))}
             placeholder="ABCDEFGHIJ"
-            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-white/30"
-          />
-          <p className="text-white/50 text-sm">
-            Found in the Keys list next to your API key name
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-white font-medium block">
-            Vendor Number
-            <span className="text-white/40 font-normal text-sm ml-2">(8 digits)</span>
-          </label>
-          <input
-            type="text"
-            value={credentials.vendorNumber}
-            onChange={(e) => {
-              // Only allow digits
-              const value = e.target.value.replace(/\D/g, '');
-              setCredentials(prev => ({ ...prev, vendorNumber: value }));
-            }}
-            placeholder="85442109"
-            maxLength={8}
+            maxLength={10}
             className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-white/30 font-mono"
           />
           <p className="text-white/50 text-sm">
-            Required for accessing sales and financial reports
+            10-character alphanumeric ID found in the Keys list
           </p>
         </div>
 
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 space-y-2">
-          <p className="text-blue-300 text-sm">
-            <strong>💡 Where to find Vendor Number:</strong>
-          </p>
-          <ol className="text-blue-200 text-sm space-y-1 ml-4 list-decimal">
-            <li>Go to <strong>Sales and Trends</strong> in App Store Connect</li>
-            <li>Look for "Vendor #" in the <strong>top right corner</strong></li>
-            <li>It's an 8-digit number (e.g., 85442109)</li>
-          </ol>
+        <div className="pt-4 border-t border-white/10">
+          <label className="block">
+            <p className="text-white font-medium mb-3">Private Key File (.p8) *</p>
+            <div className={`
+              relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
+              transition-colors
+              ${credentials.privateKeyFileName 
+                ? 'border-emerald-500/50 bg-emerald-500/10' 
+                : 'border-white/20 hover:border-white/40 bg-white/5'
+              }
+            `}>
+              <input
+                type="file"
+                accept=".p8"
+                onChange={handleFileUpload}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+              
+              {credentials.privateKeyFileName ? (
+                <div className="space-y-2">
+                  <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto" />
+                  <p className="text-white font-medium">{credentials.privateKeyFileName}</p>
+                  <p className="text-white/50 text-sm">Click to replace</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Upload className="w-12 h-12 text-white/40 mx-auto" />
+                  <p className="text-white font-medium">Drop your .p8 file here or click to browse</p>
+                  <p className="text-white/50 text-sm">AuthKey_XXXXXXXXXX.p8</p>
+                </div>
+              )}
+            </div>
+          </label>
         </div>
 
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
           <p className="text-amber-300 text-sm">
-            <strong>⚠️ Note:</strong> Vendor Number is <strong>NOT</strong> the same as Team ID. Team ID is used for app signing (10 alphanumeric characters), while Vendor Number is for financial reporting (8 digits only).
+            <strong>⚠️ Important:</strong> Apple only allows you to download the private key file once. If you've lost it, you'll need to generate a new API key.
           </p>
         </div>
       </div>
@@ -438,70 +441,42 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
   const renderStep6 = () => (
     <div className="space-y-6">
       <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold text-white">Upload Private Key File</h2>
+        <h2 className="text-2xl font-bold text-white">Enter Vendor Number</h2>
         <p className="text-white/60">
-          Download and upload your .p8 private key file
+          Your financial reporting identifier from App Store Connect
         </p>
       </div>
 
-      <div className="bg-white/5 rounded-xl border border-white/10 p-6 space-y-4">
-        <div className="space-y-4">
-          <div>
-            <p className="text-white/80 font-medium mb-3">How to download your private key:</p>
-            <ol className="space-y-2 text-white/70 text-sm">
-              <li className="flex gap-2">
-                <span className="text-white">1.</span>
-                <span>In App Store Connect, go to Users and Access → Keys</span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-white">2.</span>
-                <span>Find your API key and click <strong className="text-white">Download API Key</strong></span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-white">3.</span>
-                <span>Save the .p8 file securely (it can only be downloaded once)</span>
-              </li>
-            </ol>
-          </div>
-
-          <div className="pt-4 border-t border-white/10">
-            <label className="block">
-              <div className={`
-                relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
-                transition-colors
-                ${credentials.privateKeyFileName 
-                  ? 'border-emerald-500/50 bg-emerald-500/10' 
-                  : 'border-white/20 hover:border-white/40 bg-white/5'
-                }
-              `}>
-                <input
-                  type="file"
-                  accept=".p8"
-                  onChange={handleFileUpload}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                />
-                
-                {credentials.privateKeyFileName ? (
-                  <div className="space-y-2">
-                    <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto" />
-                    <p className="text-white font-medium">{credentials.privateKeyFileName}</p>
-                    <p className="text-white/50 text-sm">Click to replace</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <Upload className="w-12 h-12 text-white/40 mx-auto" />
-                    <p className="text-white font-medium">Drop your .p8 file here or click to browse</p>
-                    <p className="text-white/50 text-sm">AuthKey_XXXXXXXXXX.p8</p>
-                  </div>
-                )}
-              </div>
-            </label>
-          </div>
+      <div className="bg-white/5 rounded-xl border border-white/10 p-6 space-y-6">
+        <div className="space-y-2">
+          <label className="text-white font-medium block">
+            Vendor Number *
+            <span className="text-white/40 font-normal text-sm ml-2">(8 digits)</span>
+          </label>
+          <input
+            type="text"
+            value={credentials.vendorNumber}
+            onChange={(e) => {
+              // Allow digits and # symbol
+              const value = e.target.value.replace(/[^0-9#]/g, '');
+              setCredentials(prev => ({ ...prev, vendorNumber: value }));
+            }}
+            placeholder="85442109 or #85442109"
+            maxLength={9}
+            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-white/30 font-mono"
+          />
+          <p className="text-white/50 text-sm">
+            8-digit number used for financial reporting (may include # prefix)
+          </p>
         </div>
 
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
-          <p className="text-amber-300 text-sm">
-            <strong>⚠️ Important:</strong> Apple only allows you to download the private key file once. If you've lost it, you'll need to generate a new API key.
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+          <p className="text-blue-300 text-sm font-medium mb-2">
+            💡 Where to find your Vendor Number:
+          </p>
+          <p className="text-blue-200 text-sm">
+            In App Store Connect, go to <strong>Sales and Trends</strong> and look for "Vendor #" in the top right corner. 
+            It's an 8-digit number that may be displayed with a # symbol (e.g., #85442109 or 85442109).
           </p>
         </div>
       </div>
@@ -580,13 +555,17 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
       case 3:
         return true;
       case 4:
-        return credentials.issuerID.trim().length > 0;
+        // Issuer ID should be a UUID format (36 chars with dashes)
+        const issuerID = credentials.issuerID.trim();
+        return issuerID.length === 36 && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(issuerID);
       case 5:
-        return credentials.keyID.trim().length > 0 && 
-               credentials.vendorNumber.trim().length === 8 &&
-               /^\d{8}$/.test(credentials.vendorNumber.trim());
+        // Key ID should be exactly 10 alphanumeric characters AND private key uploaded
+        const keyID = credentials.keyID.trim();
+        return keyID.length === 10 && /^[A-Z0-9]{10}$/.test(keyID) && credentials.privateKey.length > 0;
       case 6:
-        return credentials.privateKey.length > 0;
+        // Vendor Number should be 8 digits (with optional # prefix)
+        const vendorNum = credentials.vendorNumber.trim().replace('#', '');
+        return vendorNum.length === 8 && /^\d{8}$/.test(vendorNum);
       case 7:
         return credentials.issuerID && credentials.keyID && credentials.vendorNumber && credentials.privateKey;
       default:

@@ -145,12 +145,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         href: `${baseHref}/campaigns`,
           },
           {
-            id: 'integrations',
-            label: 'Integrations',
-            icon: Boxes,
-            href: `${baseHref}/integrations`,
-          },
-          {
             id: 'team',
             label: 'Team Members',
             icon: UserPlus,
