@@ -10,6 +10,7 @@ import {
   doc,
   setDoc,
   getDocs,
+  getDoc,
   query,
   where,
   orderBy,
@@ -327,6 +328,13 @@ class RevenueDataService {
     orgId: string,
     projectId: string
   ): Promise<RevenueMetrics | null> {
+    // First try to get Apple metrics (most recent/accurate for Apple integrations)
+    const appleMetrics = await this.getAppleMetrics(orgId, projectId);
+    if (appleMetrics) {
+      return appleMetrics;
+    }
+
+    // Fall back to RevenueCat/other metrics
     const q = query(
       collection(db, 'organizations', orgId, 'projects', projectId, 'revenueMetrics'),
       orderBy('calculatedAt', 'desc')
@@ -346,6 +354,68 @@ class RevenueDataService {
       endDate: data.endDate?.toDate() || new Date(),
       calculatedAt: data.calculatedAt?.toDate() || new Date(),
     } as RevenueMetrics;
+  }
+
+  /**
+   * Get Apple-specific metrics from apple_summary document
+   */
+  static async getAppleMetrics(
+    orgId: string,
+    projectId: string
+  ): Promise<RevenueMetrics | null> {
+    try {
+      const docRef = doc(
+        db,
+        'organizations',
+        orgId,
+        'projects',
+        projectId,
+        'revenueMetrics',
+        'apple_summary'
+      );
+
+      const docSnap = await getDoc(docRef);
+
+      if (!docSnap.exists()) {
+        return null;
+      }
+
+      const data = docSnap.data();
+
+      // Convert Apple data format to RevenueMetrics format
+      // Apple stores revenue in DOLLARS, but RevenueMetrics expects CENTS
+      const totalRevenue = (data.totalRevenue || 0) * 100; // Convert dollars to cents
+      const totalDownloads = data.totalDownloads || 0;
+
+      return {
+        organizationId: orgId,
+        projectId: projectId,
+        totalRevenue, // In cents
+        netRevenue: totalRevenue, // Apple revenue is already net (after their cut)
+        refunds: 0,
+        activeSubscriptions: totalDownloads, // Use downloads as "active subscriptions" for KPI display
+        newSubscriptions: totalDownloads,
+        churnedSubscriptions: 0,
+        trialConversions: 0,
+        averageRevenuePerUser: totalDownloads > 0 ? totalRevenue / totalDownloads : 0,
+        averageRevenuePerPurchase: totalDownloads > 0 ? totalRevenue / totalDownloads : 0,
+        mrr: 0,
+        arr: 0,
+        revenueByPlatform: {
+          ios: totalRevenue,
+          android: 0,
+          web: 0,
+          other: 0,
+        },
+        revenueByProduct: [],
+        startDate: data.dateRange?.start?.toDate() || new Date(),
+        endDate: data.dateRange?.end?.toDate() || new Date(),
+        calculatedAt: data.lastSynced?.toDate() || new Date(),
+      } as RevenueMetrics;
+    } catch (error) {
+      console.error('Failed to fetch Apple metrics:', error);
+      return null;
+    }
   }
 
   /**
