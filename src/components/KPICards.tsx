@@ -1345,8 +1345,15 @@ const KPICards: React.FC<KPICardsProps> = ({
           };
         }
         
-        // Use active subscriptions from RevenueCat
+        // Use active subscriptions from RevenueCat or downloads from Apple
         const activeSubscriptions = revenueMetrics.activeSubscriptions || revenueMetrics.newSubscriptions || 0;
+        
+        // Determine if this is Apple data (downloads) or RevenueCat data (subscriptions)
+        const hasAppleIntegration = revenueIntegrations.some(i => i.provider === 'apple' && i.enabled);
+        const label = hasAppleIntegration ? 'Downloads' : 'Active Subs';
+        const tooltip = hasAppleIntegration 
+          ? 'Total app downloads from Apple App Store' 
+          : 'Active Subscriptions from RevenueCat';
         
         // Generate simple sparkline
         const sparklineData: Array<{ value: number }> = [];
@@ -1360,14 +1367,14 @@ const KPICards: React.FC<KPICardsProps> = ({
         
         return {
           id: 'downloads',
-          label: 'Active Subs',
+          label,
           value: formatNumber(activeSubscriptions),
           icon: Download,
           accent: 'blue' as const,
           sparklineData: sparklineData.length > 0 ? sparklineData : undefined,
           intervalType: 'day' as IntervalType,
           isIncreasing: true,
-          tooltip: 'Active Subscriptions from RevenueCat',
+          tooltip,
           onClick: onOpenRevenueSettings
         };
       })()
