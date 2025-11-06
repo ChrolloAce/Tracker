@@ -2,6 +2,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import jwt from 'jsonwebtoken';
+import { gunzipSync } from 'zlib';
 
 // Initialize Firebase Admin (same pattern as other working endpoints)
 if (getApps().length === 0) {
@@ -122,11 +123,40 @@ async function fetchAppleSalesReports(
   // Parse based on content type
   if (contentType?.includes('application/json')) {
     return await response.json();
-  } else {
-    // Gzipped data - would need decompression
+  } else if (contentType?.includes('application/a-gzip')) {
+    // Gzipped TSV data - decompress and parse
     const buffer = await response.arrayBuffer();
     console.log('Received gzipped data, size:', buffer.byteLength);
-    // TODO: Decompress and parse TSV data
+    
+    try {
+      // Decompress the gzipped data
+      const decompressed = gunzipSync(Buffer.from(buffer));
+      const tsvText = decompressed.toString('utf-8');
+      
+      // Parse TSV (tab-separated values)
+      const lines = tsvText.trim().split('\n');
+      const headers = lines[0].split('\t');
+      
+      const records = [];
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split('\t');
+        const record: any = {};
+        
+        headers.forEach((header, index) => {
+          record[header] = values[index];
+        });
+        
+        records.push(record);
+      }
+      
+      console.log(`📊 Parsed ${records.length} records from TSV`);
+      return records;
+    } catch (error) {
+      console.error('Failed to decompress/parse TSV:', error);
+      return [];
+    }
+  } else {
+    console.log('Unknown content type:', contentType);
     return [];
   }
 }
