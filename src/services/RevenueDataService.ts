@@ -62,6 +62,16 @@ class RevenueDataService {
     if (credentials.secretKey !== undefined) {
       cleanedCredentials.secretKey = credentials.secretKey;
     }
+    // Apple App Store Connect fields
+    if (credentials.issuerId !== undefined) {
+      cleanedCredentials.issuerId = credentials.issuerId;
+    }
+    if (credentials.keyId !== undefined) {
+      cleanedCredentials.keyId = credentials.keyId;
+    }
+    if (credentials.vendorNumber !== undefined) {
+      cleanedCredentials.vendorNumber = credentials.vendorNumber;
+    }
 
     const integration: RevenueIntegration = {
       id: integrationRef.id,
