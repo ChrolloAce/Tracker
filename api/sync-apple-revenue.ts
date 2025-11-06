@@ -218,10 +218,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     let allSalesData: any[] = [];
     let currentDate = new Date(startDate);
+    let daysProcessed = 0;
+    let daysWithData = 0;
 
     // Fetch reports for each day in the range
     while (currentDate <= endDate) {
       const reportDate = currentDate.toISOString().split('T')[0];
+      daysProcessed++;
       
       try {
         const dailyData = await fetchAppleSalesReports(
@@ -232,19 +235,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         
         if (dailyData && dailyData.length > 0) {
           allSalesData = allSalesData.concat(dailyData);
-          console.log(`  ✓ ${reportDate}: ${dailyData.length} records`);
+          daysWithData++;
+          console.log(`  ✓ ${reportDate}: ${dailyData.length} records (${daysProcessed}/${90})`);
         }
       } catch (error) {
-        console.log(`  ⚠ ${reportDate}: No data or error`);
+        // Silent fail for days without data
       }
       
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    console.log('📊 Total sales data received:', {
-      totalRecords: allSalesData.length,
-      dateRange: `${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`
-    });
+    console.log('');
+    console.log('=' .repeat(60));
+    console.log('📊 SYNC COMPLETE');
+    console.log('=' .repeat(60));
+    console.log(`✅ Total Records: ${allSalesData.length}`);
+    console.log(`📅 Date Range: ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`);
+    console.log(`📈 Days Processed: ${daysProcessed}`);
+    console.log(`💰 Days with Sales: ${daysWithData}`);
+    console.log('=' .repeat(60));
+    console.log('');
 
     const salesData = allSalesData;
 
