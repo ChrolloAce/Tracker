@@ -3,33 +3,30 @@ import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import jwt from 'jsonwebtoken';
 
-// Initialize Firebase Admin
+// Initialize Firebase Admin (same pattern as other working endpoints)
 if (getApps().length === 0) {
-  // Support both regular and base64-encoded credentials
-  let privateKey = process.env.FIREBASE_PRIVATE_KEY;
-  
-  // If FIREBASE_SERVICE_ACCOUNT_BASE64 is set, use that instead
-  if (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64) {
-    try {
-      const serviceAccount = JSON.parse(
-        Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf-8')
-      );
-      initializeApp({
-        credential: cert(serviceAccount)
-      });
-    } catch (error) {
-      console.error('Failed to parse base64 service account:', error);
-      throw error;
+  try {
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
+    // Handle quoted private keys
+    if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+      privateKey = privateKey.slice(1, -1);
     }
-  } else {
-    // Use individual environment variables
-    initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: privateKey?.replace(/\\n/g, '\n'),
-      }),
+    // Replace escaped newlines with actual newlines
+    privateKey = privateKey.replace(/\\n/g, '\n');
+
+    const serviceAccount = {
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: privateKey,
+    };
+
+    initializeApp({ 
+      credential: cert(serviceAccount as any) 
     });
+    console.log('✅ Firebase Admin initialized for Apple sync');
+  } catch (error) {
+    console.error('❌ Failed to initialize Firebase Admin:', error);
+    throw error;
   }
 }
 
