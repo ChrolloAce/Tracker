@@ -262,7 +262,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       message: 'Apple revenue sync completed successfully',
       data: {
         integrationId: integrationDoc.id,
-        reportDate,
+        dateRange: `${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`,
         recordCount: Array.isArray(salesData) ? salesData.length : 0,
         lastSynced: new Date().toISOString()
       }
