@@ -16,6 +16,7 @@ const RevenueManagementPage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [dateRange, setDateRange] = useState<number>(90); // Default to 90 days
 
   useEffect(() => {
     loadIntegrations();
@@ -144,7 +145,8 @@ const RevenueManagementPage: React.FC = () => {
         body: JSON.stringify({
           organizationId: currentOrgId,
           projectId: currentProjectId,
-          manual: true
+          manual: true,
+          dateRange: dateRange.toString()
         })
       });
 
@@ -392,7 +394,7 @@ const RevenueManagementPage: React.FC = () => {
             <>
               {/* Manual Sync */}
               <div className="bg-white/5 rounded-xl border border-white/10 p-6">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-4">
                   <div>
                     <h4 className="text-lg font-semibold text-white mb-2">Revenue Data Sync</h4>
                     <p className="text-white/60 text-sm">
@@ -402,15 +404,36 @@ const RevenueManagementPage: React.FC = () => {
                       }
                     </p>
                   </div>
-                  <button
-                    onClick={handleSyncRevenue}
-                    disabled={syncing}
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-                    {syncing ? 'Syncing...' : 'Sync Now'}
-                  </button>
                 </div>
+
+                {/* Date Range Selector */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-white/60 mb-2">
+                    Sync Period
+                  </label>
+                  <select
+                    value={dateRange}
+                    onChange={(e) => setDateRange(parseInt(e.target.value))}
+                    className="w-full max-w-xs px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  >
+                    <option value="30">Last 30 days</option>
+                    <option value="90">Last 90 days (Recommended)</option>
+                    <option value="180">Last 180 days</option>
+                    <option value="365">Last year</option>
+                  </select>
+                  <p className="text-xs text-white/40 mt-2">
+                    Select how many days of revenue data to sync from Apple.
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleSyncRevenue}
+                  disabled={syncing}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                  {syncing ? 'Syncing...' : 'Sync Now'}
+                </button>
               </div>
 
               {/* Coming Soon: Revenue analytics dashboard will appear here */}
