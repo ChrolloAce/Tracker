@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, DollarSign, CheckCircle, XCircle, Clock, Trash2, RefreshCw, Download, TrendingUp } from 'lucide-react';
+import { Plus, DollarSign, CheckCircle, XCircle, Clock, Trash2, RefreshCw, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import AppleAppStoreWizard, { AppleAppStoreCredentials } from './AppleAppStoreWizard';
 import RevenueDataService from '../services/RevenueDataService';
