@@ -333,7 +333,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const salesData = allSalesData;
 
-    // Store aggregated metrics in Firestore
+    // Get existing data to merge with new data (for incremental syncs)
     const metricsRef = db
       .collection('organizations')
       .doc(organizationId as string)
@@ -341,17 +341,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .doc(projectId as string)
       .collection('revenueMetrics')
       .doc('apple_summary');
-
+    
+    const existingDoc = await metricsRef.get();
+    const existingData = existingDoc.exists ? existingDoc.data() : null;
+    
+    // Merge daily metrics (keep existing + add new/update overlapping dates)
+    const existingDailyMetrics = existingData?.dailyMetrics || [];
+    const dailyMetricsMap = new Map<string, { revenue: number; downloads: number; date: Date }>();
+    
+    // Add existing data
+    existingDailyMetrics.forEach((d: any) => {
+      const date = d.date?.toDate();
+      if (date) {
+        const dateKey = date.toISOString().split('T')[0];
+        dailyMetricsMap.set(dateKey, {
+          date,
+          revenue: d.revenue || 0,
+          downloads: d.downloads || 0
+        });
+      }
+    });
+    
+    // Update/add new data (overwrites if date exists)
+    dailyMetrics.forEach(d => {
+      const dateKey = d.date.toISOString().split('T')[0];
+      dailyMetricsMap.set(dateKey, d);
+    });
+    
+    // Convert back to sorted array
+    const mergedDailyMetrics = Array.from(dailyMetricsMap.values())
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+    
+    // Calculate cumulative totals from all daily data
+    const cumulativeTotalRevenue = mergedDailyMetrics.reduce((sum, d) => sum + d.revenue, 0);
+    const cumulativeTotalDownloads = mergedDailyMetrics.reduce((sum, d) => sum + d.downloads, 0);
+    const cumulativeRecordCount = allSalesData.length + (existingData?.recordCount || 0);
+    
+    // Store merged data
     await metricsRef.set({
       provider: 'apple',
-      totalRevenue,
-      totalDownloads,
-      recordCount: allSalesData.length,
+      totalRevenue: cumulativeTotalRevenue,
+      totalDownloads: cumulativeTotalDownloads,
+      recordCount: cumulativeRecordCount,
       dateRange: {
-        start: startDate,
-        end: endDate
+        start: mergedDailyMetrics[0]?.date || startDate,
+        end: mergedDailyMetrics[mergedDailyMetrics.length - 1]?.date || endDate
       },
-      dailyMetrics: dailyMetrics.map(d => ({
+      dailyMetrics: mergedDailyMetrics.map(d => ({
         date: Timestamp.fromDate(d.date),
         revenue: d.revenue,
         downloads: d.downloads
@@ -360,7 +396,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       updatedAt: Timestamp.now()
     }, { merge: true });
     
-    console.log(`💾 Stored ${dailyMetrics.length} daily data points for charting`);
+    console.log(`💾 Stored ${mergedDailyMetrics.length} daily data points (${dailyMetrics.length} new/updated)`);
+    console.log(`📊 Cumulative totals: $${cumulativeTotalRevenue.toFixed(2)}, ${cumulativeTotalDownloads} downloads`);
 
     // Update integration last synced timestamp
     await integrationDoc.ref.update({
@@ -373,10 +410,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       message: 'Apple revenue sync completed successfully',
       data: {
         integrationId: integrationDoc.id,
-        dateRange: `${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`,
-        recordCount: allSalesData.length,
-        totalRevenue,
-        totalDownloads,
+        dateRange: `${mergedDailyMetrics[0]?.date.toISOString().split('T')[0] || startDate.toISOString().split('T')[0]} to ${mergedDailyMetrics[mergedDailyMetrics.length - 1]?.date.toISOString().split('T')[0] || endDate.toISOString().split('T')[0]}`,
+        recordCount: cumulativeRecordCount,
+        totalRevenue: cumulativeTotalRevenue,
+        totalDownloads: cumulativeTotalDownloads,
+        newRecords: allSalesData.length,
+        dailyDataPoints: mergedDailyMetrics.length,
         lastSynced: new Date().toISOString()
       }
     });

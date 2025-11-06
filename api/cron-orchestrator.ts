@@ -146,6 +146,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           await new Promise(resolve => setTimeout(resolve, 50));
         }
 
+        // Check if project has Apple revenue integration and sync if enabled
+        const revenueIntegrationsSnapshot = await db
+          .collection('organizations')
+          .doc(orgId)
+          .collection('projects')
+          .doc(projectId)
+          .collection('revenueIntegrations')
+          .where('provider', '==', 'apple')
+          .where('enabled', '==', true)
+          .get();
+
+        if (!revenueIntegrationsSnapshot.empty) {
+          console.log(`    💰 Found Apple revenue integration, syncing...`);
+          
+          // Sync last 7 days to catch any new data (incremental sync)
+          const dispatchPromise = fetch(`${process.env.VERCEL_URL || 'https://www.viewtrack.app'}/api/sync-apple-revenue`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': cronSecret || ''
+            },
+            body: JSON.stringify({
+              organizationId: orgId,
+              projectId: projectId,
+              dateRange: '7', // Last 7 days for incremental sync
+              manual: false
+            })
+          })
+            .then(async (response) => {
+              if (response.ok) {
+                const data = await response.json();
+                console.log(`      ✅ Revenue synced: $${data.data?.totalRevenue || 0}, ${data.data?.totalDownloads || 0} downloads`);
+                return { success: true, type: 'revenue' };
+              } else {
+                const errorText = await response.text();
+                console.error(`      ❌ Revenue sync failed: ${errorText}`);
+                return { success: false, type: 'revenue', error: errorText };
+              }
+            })
+            .catch((error) => {
+              console.error(`      ❌ Revenue sync dispatch error:`, error.message);
+              return { success: false, type: 'revenue', error: error.message };
+            });
+
+          dispatchPromises.push(dispatchPromise);
+        }
+
         // Update project's lastGlobalRefresh timestamp
         await db
           .collection('organizations')
