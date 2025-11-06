@@ -3,9 +3,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
 import { 
   ArrowLeft, ChevronDown, Search, Filter, CheckCircle2, Circle, Plus, Trash2,
-  Play, Heart, MessageCircle, Share2, Video, AtSign, Activity, /* DollarSign, Download, */ Link as LinkIcon, Edit2, RefreshCw,
+  Play, Heart, MessageCircle, Share2, Video, AtSign, Activity, DollarSign, Download, Link as LinkIcon, Edit2, RefreshCw,
   Users, Clock, TrendingUp, BarChart3, X, Pencil, CheckCircle
-} from 'lucide-react'; // DollarSign & Download hidden (revenue/downloads KPIs disabled)
+} from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import { Modal } from '../components/ui/Modal';
 import { VideoSubmissionsTable } from '../components/VideoSubmissionsTable';
@@ -1957,9 +1957,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       { id: 'videos', label: 'Published Videos', description: 'Total videos published', icon: Video, category: 'kpi' as const },
       { id: 'accounts', label: 'Active Accounts', description: 'Number of tracked accounts', icon: AtSign, category: 'kpi' as const },
       { id: 'engagementRate', label: 'Engagement Rate', description: 'Average engagement percentage', icon: Activity, category: 'kpi' as const },
-      // HIDDEN: Revenue & Downloads (will reactivate later)
-      // { id: 'revenue', label: 'Revenue', description: 'Total revenue (MRR)', icon: DollarSign, category: 'kpi' as const },
-      // { id: 'downloads', label: 'Downloads', description: 'App downloads/subscriptions', icon: Download, category: 'kpi' as const },
+      { id: 'revenue', label: 'Revenue', description: 'Total revenue from app stores', icon: DollarSign, category: 'kpi' as const },
+      { id: 'downloads', label: 'Downloads', description: 'App downloads/subscriptions', icon: Download, category: 'kpi' as const },
       { id: 'link-clicks', label: 'Link Clicks', description: 'Tracked link clicks', icon: LinkIcon, category: 'kpi' as const },
     ];
     
@@ -1977,10 +1976,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         isVisible: dashboardSectionVisibility[section.id] !== false
       }));
     
-    // Sort KPI cards (revenue & downloads excluded)
+    // Sort KPI cards
     const currentCardOrder = kpiCardOrder.length > 0 ? kpiCardOrder : [
       'views', 'likes', 'comments', 'shares', 'videos', 'accounts', 
-      'engagementRate', /* 'revenue', 'downloads', */ 'link-clicks' // Revenue & Downloads hidden
+      'engagementRate', 'revenue', 'downloads', 'link-clicks'
     ];
     
     const sortedCards = kpiCards
