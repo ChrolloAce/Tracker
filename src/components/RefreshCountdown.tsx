@@ -88,21 +88,6 @@ const RefreshCountdown: React.FC = () => {
     return nextRun;
   };
 
-  const getLastCronRun = (): Date => {
-    // Get the most recent top-of-hour
-    const now = new Date(currentTime);
-    const lastRun = new Date(now);
-    lastRun.setMinutes(0, 0, 0);
-    
-    // If we're within the first few minutes, might still be running
-    if (now.getMinutes() < 5) {
-      // Could be the current hour's run
-      return lastRun;
-    }
-    
-    return lastRun;
-  };
-
   const formatTimeUntil = (): string => {
     const nextRun = getNextCronRun();
     const secondsUntil = Math.floor((nextRun.getTime() - currentTime) / 1000);
@@ -184,7 +169,7 @@ const RefreshCountdown: React.FC = () => {
 
         {/* Info Text */}
         <div className="text-[10px] text-white/30 text-center mt-2">
-          Checks eligible accounts every hour
+          Refreshes accounts every 12-24h based on tier
         </div>
       </div>
     </div>
