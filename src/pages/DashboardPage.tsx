@@ -1009,16 +1009,25 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           );
         }
 
-        // ✅ ALWAYS recalculate metrics from transactions (includes webhook data)
-        const metrics = await RevenueDataService.calculateMetricsFromTransactions(
-          currentOrgId,
-          currentProjectId,
-          startDate,
-          endDate
-        );
-        setRevenueMetrics(metrics);
-
-        console.log('✅ Revenue data synced and metrics calculated');
+        // Check if we have Apple integration (uses summary data, not transactions)
+        const hasAppleIntegration = revenueIntegrations.some(i => i.provider === 'apple' && i.enabled);
+        
+        if (hasAppleIntegration) {
+          // For Apple, just fetch the summary metrics (don't calculate from transactions)
+          const metrics = await RevenueDataService.getLatestMetrics(currentOrgId, currentProjectId);
+          setRevenueMetrics(metrics);
+          console.log('✅ Apple revenue metrics loaded:', metrics);
+        } else {
+          // For other providers (RevenueCat, etc.), recalculate from transactions
+          const metrics = await RevenueDataService.calculateMetricsFromTransactions(
+            currentOrgId,
+            currentProjectId,
+            startDate,
+            endDate
+          );
+          setRevenueMetrics(metrics);
+          console.log('✅ Revenue data synced and metrics calculated');
+        }
       } catch (error) {
         console.error('❌ Failed to sync revenue for date range:', error);
       }
