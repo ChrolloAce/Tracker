@@ -13,7 +13,6 @@ import {
   Trophy,
   X,
   LayoutDashboard,
-  Boxes,
   UserPlus,
   DollarSign
 } from 'lucide-react';
