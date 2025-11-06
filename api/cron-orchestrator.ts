@@ -30,13 +30,9 @@ const db = getFirestore();
 
 /**
  * Cron Orchestrator
- * Runs every hour and refreshes ALL accounts in each project simultaneously
+ * Runs every 12 hours (00:00 and 12:00) and refreshes ALL accounts simultaneously
  * 
- * Refresh Schedule:
- * - Premium tier: Every 12 hours
- * - Normal/Standard tier: Every 24 hours
- * 
- * All accounts in a project refresh at the same time based on their tier.
+ * All accounts across all organizations refresh at the same time.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Verify cron secret or Vercel Cron header
@@ -89,32 +85,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const projectData = projectDoc.data();
         console.log(`  📦 Processing project: ${projectData?.name || projectId}`);
 
-        // Check project's last global refresh timestamp
-        const lastGlobalRefresh = projectData?.lastGlobalRefresh?.toDate();
-        const hoursSinceGlobalRefresh = lastGlobalRefresh 
-          ? (Date.now() - lastGlobalRefresh.getTime()) / (1000 * 60 * 60) 
-          : 999;
-
-        // Determine refresh interval based on org subscription tier
-        // TODO: Fetch actual subscription tier from Stripe/DB
-        // For now, default to 24h (can be changed per org in the database)
-        const orgData = orgDoc.data();
-        const subscriptionTier = orgData?.subscriptionTier || 'standard'; // 'standard', 'professional', 'premium'
-        
-        let refreshIntervalHours = 24; // Default: 24h for standard/professional
-        if (subscriptionTier === 'premium' || subscriptionTier === 'enterprise') {
-          refreshIntervalHours = 12; // Premium/Enterprise: 12h
-        }
-
-        console.log(`    ⏰ Refresh interval: ${refreshIntervalHours}h (tier: ${subscriptionTier})`);
-        console.log(`    ⏱️  Last global refresh: ${hoursSinceGlobalRefresh.toFixed(1)}h ago`);
-
-        // Check if project needs refresh
-        if (hoursSinceGlobalRefresh < refreshIntervalHours) {
-          console.log(`    ⏭️  Skipping project (refreshed ${hoursSinceGlobalRefresh.toFixed(1)}h ago, next refresh in ${(refreshIntervalHours - hoursSinceGlobalRefresh).toFixed(1)}h)`);
-          continue;
-        }
-
+        // Refresh ALL accounts every time the cron runs (every 12 hours)
         console.log(`    🚀 Refreshing ALL accounts in project...`);
 
         // Get all active tracked accounts

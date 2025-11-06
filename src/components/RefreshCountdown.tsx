@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 /**
  * RefreshCountdown Component
  * Shows unified orchestrator timer - ONE progress bar for all accounts
- * Orchestrator runs every hour and processes all eligible accounts
+ * Orchestrator runs every 12 hours and refreshes ALL accounts
  */
 const RefreshCountdown: React.FC = () => {
   const { currentOrgId, currentProjectId } = useAuth();
@@ -75,14 +75,25 @@ const RefreshCountdown: React.FC = () => {
   };
 
   const getNextCronRun = (): Date => {
-    // Cron runs at the top of every hour (:00)
+    // Cron runs every 12 hours at 00:00 and 12:00
     const now = new Date(currentTime);
     const nextRun = new Date(now);
-    nextRun.setMinutes(0, 0, 0); // Set to top of current hour
+    nextRun.setMinutes(0, 0, 0);
     
-    // If we're past the top of this hour, move to next hour
-    if (now.getMinutes() > 0 || now.getSeconds() > 0) {
-      nextRun.setHours(nextRun.getHours() + 1);
+    const currentHour = now.getHours();
+    
+    // Determine next 12-hour mark
+    if (currentHour < 12) {
+      // Next run is at 12:00 today
+      nextRun.setHours(12);
+    } else {
+      // Next run is at 00:00 tomorrow
+      nextRun.setHours(24); // This will roll over to next day at 00:00
+    }
+    
+    // If we're exactly at a 12-hour mark, move to next one
+    if (now.getTime() >= nextRun.getTime()) {
+      nextRun.setHours(nextRun.getHours() + 12);
     }
     
     return nextRun;
@@ -95,18 +106,30 @@ const RefreshCountdown: React.FC = () => {
     if (secondsUntil <= 0) return 'Running now';
     if (secondsUntil < 60) return `${secondsUntil}s`;
     
-    const minutes = Math.floor(secondsUntil / 60);
+    const hours = Math.floor(secondsUntil / 3600);
+    const minutes = Math.floor((secondsUntil % 3600) / 60);
     const seconds = secondsUntil % 60;
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`;
+    }
     return `${minutes}m ${seconds}s`;
   };
 
   const getProgressPercent = (): number => {
-    // Calculate progress through the current hour
+    // Calculate progress through the current 12-hour period
     const now = new Date(currentTime);
-    const minutesPastHour = now.getMinutes();
-    const secondsPastMinute = now.getSeconds();
-    const totalSecondsPastHour = (minutesPastHour * 60) + secondsPastMinute;
-    const progress = (totalSecondsPastHour / 3600) * 100;
+    const currentHour = now.getHours();
+    
+    // Determine last 12-hour mark (00:00 or 12:00)
+    const lastRunHour = currentHour < 12 ? 0 : 12;
+    const lastRun = new Date(now);
+    lastRun.setHours(lastRunHour, 0, 0, 0);
+    
+    // Calculate elapsed time since last run
+    const elapsed = currentTime - lastRun.getTime();
+    const twelveHoursInMs = 12 * 60 * 60 * 1000;
+    const progress = (elapsed / twelveHoursInMs) * 100;
     
     return Math.min(progress, 100);
   };
@@ -150,7 +173,7 @@ const RefreshCountdown: React.FC = () => {
         {/* Timing Info */}
         <div className="flex items-center justify-between text-[10px] mb-2">
           <span className="text-white/40">
-            {lastOrchestratorRun ? `Last: ${formatTimeAgo(lastOrchestratorRun)}` : `Runs hourly at :00`}
+            {lastOrchestratorRun ? `Last: ${formatTimeAgo(lastOrchestratorRun)}` : `Runs at 12am & 12pm`}
           </span>
           <span className={`font-semibold ${isRunning ? 'text-emerald-400' : 'text-white/60'}`}>
             {isRunning ? '⚡ Running' : `Next: ${formatTimeUntil()}`}
@@ -169,7 +192,7 @@ const RefreshCountdown: React.FC = () => {
 
         {/* Info Text */}
         <div className="text-[10px] text-white/30 text-center mt-2">
-          Refreshes accounts every 12-24h based on tier
+          All accounts refresh simultaneously every 12 hours
         </div>
       </div>
     </div>
