@@ -1776,11 +1776,13 @@ const KPICard: React.FC<{
   const [tooltipData, setTooltipData] = useState<{ x: number; y: number; point: any; lineX: number } | null>(null);
   const cardRef = React.useRef<HTMLDivElement>(null);
   
-  const formatDeltaNumber = (num: number): string => {
+  const formatDeltaNumber = (num: number, isRevenue: boolean = false): string => {
     const absNum = Math.abs(num);
     if (absNum >= 1000000) return `${(absNum / 1000000).toFixed(1)}M`;
     if (absNum >= 1000) return `${(absNum / 1000).toFixed(1)}K`;
-    return absNum.toString();
+    // For revenue, format to 2 decimal places; for counts, use whole number
+    if (isRevenue) return `$${absNum.toFixed(2)}`;
+    return Math.round(absNum).toString();
   };
 
   // Determine colors based on trend (green for increase, red for decrease)
@@ -1920,7 +1922,7 @@ const KPICard: React.FC<{
                 <span className="mr-0">{data.delta.isPositive ? '+' : '−'}</span>
             {data.delta.isPercentage 
                   ? `${Math.abs(data.delta.absoluteValue).toFixed(1)}%`
-              : formatDeltaNumber(data.delta.absoluteValue)}
+              : formatDeltaNumber(data.delta.absoluteValue, data.id === 'revenue')}
           </span>
             )}
         </div>
