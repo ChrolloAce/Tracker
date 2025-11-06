@@ -26,6 +26,7 @@ import { usePermissions } from '../../hooks/usePermissions';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUnreadCounts } from '../../hooks/useUnreadCounts';
 import { Badge } from '../ui/Badge';
+import RefreshCountdown from '../RefreshCountdown';
 import newLogo from '/vtlogo.png';
 
 interface SidebarProps {
@@ -412,6 +413,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Organization Switcher at Bottom - Show on mobile when open */}
       {(!isCollapsed || isMobileOpen) && (
         <OrganizationSwitcher />
+      )}
+
+      {/* Refresh Countdown */}
+      {(!isCollapsed || isMobileOpen) && !isDemoMode && (
+        <RefreshCountdown />
       )}
 
     </div>

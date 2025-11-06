@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { X, Eye, Heart, MessageCircle, Share2, Activity, Video, Users, MousePointerClick, ChevronLeft, ChevronRight, Play, TrendingUp, Upload, RefreshCw } from 'lucide-react';
+import { X, Eye, Heart, MessageCircle, Share2, Activity, Video, Users, MousePointerClick, ChevronLeft, ChevronRight, Play, TrendingUp, Upload } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { TimeInterval, DataAggregationService } from '../services/DataAggregationService';
 import { LinkClick } from '../services/LinkClicksService';
@@ -304,73 +304,6 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
       .slice(0, 10); // Show top 10 most recent
   }, [filteredVideos]);
 
-  // Calculate Refreshed Videos (videos with snapshots captured in the interval, showing growth deltas)
-  const refreshedVideos = useMemo(() => {
-    if (!interval) return [];
-    
-    const videosWithSnapshotsInInterval = filteredVideos.filter((video: VideoSubmission) => {
-      const snapshots = video.snapshots || [];
-      return snapshots.some(snapshot => {
-        const snapshotDate = new Date(snapshot.capturedAt);
-        return DataAggregationService.isDateInInterval(snapshotDate, interval);
-      });
-    });
-
-    return videosWithSnapshotsInInterval
-      .map((video: VideoSubmission) => {
-        const allSnapshots = video.snapshots || [];
-        
-        // Find all snapshots in this interval
-        const snapshotsInInterval = allSnapshots.filter(snapshot => {
-          const snapshotDate = new Date(snapshot.capturedAt);
-          return DataAggregationService.isDateInInterval(snapshotDate, interval);
-        });
-        
-        const latestSnapshot = snapshotsInInterval.sort((a, b) => 
-          new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime()
-        )[0];
-        
-        // Calculate growth in this interval for views
-        const snapshotsInOrBeforeInterval = allSnapshots.filter(snapshot => {
-          const snapshotDate = new Date(snapshot.capturedAt);
-          return snapshotDate <= interval.endDate;
-        });
-        
-        const sortedSnapshots = [...snapshotsInOrBeforeInterval].sort((a, b) => 
-          new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
-        );
-        
-        // Get snapshot at/before interval start (baseline)
-        const snapshotAtStart = sortedSnapshots.filter(s => 
-          new Date(s.capturedAt) <= interval.startDate
-        ).pop();
-        
-        // Get latest snapshot at/before interval end
-        const snapshotAtEnd = sortedSnapshots.filter(s => 
-          new Date(s.capturedAt) <= interval.endDate
-        ).pop();
-        
-        // Calculate delta for views
-        let viewsDelta = 0;
-        if (snapshotAtEnd) {
-          if (snapshotAtStart && snapshotAtStart !== snapshotAtEnd) {
-            viewsDelta = Math.max(0, snapshotAtEnd.views || 0) - (snapshotAtStart.views || 0);
-          } else if (!snapshotAtStart) {
-            viewsDelta = snapshotAtEnd.views || 0;
-          }
-        }
-        
-        return {
-          video,
-          lastRefreshed: latestSnapshot ? new Date(latestSnapshot.capturedAt) : new Date(),
-          snapshotCountInInterval: snapshotsInInterval.length,
-          viewsDelta: viewsDelta
-        };
-      })
-      .sort((a, b) => b.lastRefreshed.getTime() - a.lastRefreshed.getTime())
-      .slice(0, 10);
-  }, [filteredVideos, interval]);
-
   // Calculate Top Gainers (videos with highest growth from snapshots)
   const topGainers = useMemo(() => {
     return filteredVideos
@@ -480,7 +413,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
           </div>
         </div>
 
-        {/* Main Content - 4 Column Layout */}
+        {/* Main Content - 3 Column Layout */}
         <div className="flex gap-3 p-6 overflow-hidden" style={{ height: 'calc(85vh - 100px)' }}>
           {/* Column 1: New Uploads */}
           <div className="w-64 flex-shrink-0 flex flex-col">
@@ -546,71 +479,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             </div>
           </div>
 
-          {/* Column 2: Refreshed Videos */}
-          <div className="w-64 flex-shrink-0 flex flex-col border-l border-white/5 pl-3">
-            <h3 className="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2">
-              <RefreshCw className="w-3.5 h-3.5" />
-              Refreshed Videos ({refreshedVideos.length})
-            </h3>
-            <div className="overflow-auto space-y-2 flex-1">
-              {refreshedVideos.length > 0 ? (
-                refreshedVideos.map((item: any, idx: number) => (
-                  <div 
-                    key={`refreshed-${item.video.id}-${idx}`}
-                    onClick={() => onVideoClick?.(item.video)}
-                    className="bg-[#1a1a1a] rounded-lg p-2.5 border border-white/10 hover:bg-white/5 cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      {/* Thumbnail */}
-                      <div className="flex-shrink-0 w-14 h-14 rounded-md overflow-hidden bg-gray-800">
-                        {item.video.thumbnail ? (
-                          <img 
-                            src={item.video.thumbnail} 
-                            alt={item.video.title || item.video.caption || 'Video'} 
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-              />
-            ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Play className="w-5 h-5 text-gray-600" />
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Metadata */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-white font-medium leading-tight mb-1 line-clamp-2">
-                          {((item.video.title || item.video.caption || '(No caption)').length > 40 
-                            ? (item.video.title || item.video.caption || '(No caption)').substring(0, 40) + '...'
-                            : (item.video.title || item.video.caption || '(No caption)'))}
-                        </p>
-                        <div className="flex items-center gap-1 mb-0.5">
-                          <div className="w-3 h-3">
-                            <PlatformIcon platform={item.video.platform} size="sm" />
-                          </div>
-                          <span className="text-[10px] text-gray-400">
-                            {item.snapshotCountInInterval} snapshot{item.snapshotCountInInterval !== 1 ? 's' : ''}
-                          </span>
-                        </div>
-                        <p className="text-[10px] font-semibold text-emerald-400">
-                          +{formatNumber(item.viewsDelta)} views
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center py-8">
-                  <RefreshCw className="w-10 h-10 text-gray-600 mb-2" />
-                  <p className="text-xs text-gray-500">No refreshed videos</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Column 3: Top Gainers */}
+          {/* Column 2: Top Gainers */}
           <div className="w-64 flex-shrink-0 flex flex-col border-l border-white/5 pl-3">
             <h3 className="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2">
               <TrendingUp className="w-3.5 h-3.5" />

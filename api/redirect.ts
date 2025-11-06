@@ -108,10 +108,15 @@ export default async function handler(
 
     if (!isBot) {
       // Only record analytics for real human clicks
-      recordClickAnalytics(db, linkData, req).catch(err => {
-        console.error('❌ Analytics error:', err);
-        console.error('Link data:', JSON.stringify(linkData, null, 2));
-        console.error('Error details:', err.message, err.stack);
+      // Use Promise.race to timeout after 5 seconds - don't block redirect
+      Promise.race([
+        recordClickAnalytics(db, linkData, req),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Analytics timeout after 5s')), 5000)
+        )
+      ]).catch(err => {
+        console.error('❌ Analytics error:', err.message);
+        // Don't log full details to avoid verbose errors
       });
     } else {
       console.log(`🤖 Bot/preview detected, not recording click: ${userAgent.substring(0, 50)}...`);

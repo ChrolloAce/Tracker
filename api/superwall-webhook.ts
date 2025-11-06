@@ -83,10 +83,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (integrationsSnapshot.empty) {
-      console.error('❌ No active Superwall integration found');
-      return res.status(404).json({ 
-        error: 'Integration not found',
-        details: 'No active Superwall integration found for this organization/project'
+      console.log('ℹ️ No active Superwall integration found - ignoring webhook');
+      // Return 200 to stop external services from retrying
+      return res.status(200).json({ 
+        success: false,
+        message: 'No active Superwall integration configured'
       });
     }
     

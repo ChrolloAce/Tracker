@@ -14,7 +14,6 @@ import {
   DollarSign,
   Download,
   Bookmark,
-  RefreshCw,
   Upload,
   TrendingUp
 } from 'lucide-react';
@@ -2105,14 +2104,12 @@ const KPICard: React.FC<{
         
         const hasTopGainers = topGainersCheck.length > 0;
         const hasNewUploads = videosInInterval.length > 0;
-        const hasRefreshedVideos = videosWithSnapshotsInIntervalCheck.length > 0;
         
         // Dynamic width based on how many columns we show
-        // 1 column: 350px, 2 columns: 650px, 3 columns: 950px
+        // 1 column: 350px, 2 columns: 650px
         let tooltipWidth = 350;
-        const columnsToShow = (hasNewUploads ? 1 : 0) + (hasRefreshedVideos ? 1 : 0) + (hasTopGainers ? 1 : 0);
+        const columnsToShow = (hasNewUploads ? 1 : 0) + (hasTopGainers ? 1 : 0);
         if (columnsToShow === 2) tooltipWidth = 650;
-        if (columnsToShow === 3) tooltipWidth = 950;
         const verticalOffset = 20; // spacing below cursor
         const horizontalPadding = 20; // minimum distance from screen edges
         const windowWidth = window.innerWidth;
@@ -2220,71 +2217,6 @@ const KPICard: React.FC<{
                 return DataAggregationService.isDateInInterval(snapshotDate, interval);
               });
             }) : [];
-            
-            // Refreshed Videos: Videos with snapshots captured in this interval
-            // Sort by most recent snapshot date
-            const refreshedVideos = [...videosWithSnapshotsInInterval]
-              .map((video: VideoSubmission) => {
-                const allSnapshots = video.snapshots || [];
-                
-                // Find all snapshots in this interval
-                const snapshotsInInterval = allSnapshots.filter(snapshot => {
-                  const snapshotDate = new Date(snapshot.capturedAt);
-                  return DataAggregationService.isDateInInterval(snapshotDate, interval);
-                });
-                
-                const latestSnapshot = snapshotsInInterval.sort((a, b) => 
-                  new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime()
-                )[0];
-                
-                // Calculate growth in this interval for the specific metric
-                const snapshotsInOrBeforeInterval = allSnapshots.filter(snapshot => {
-                  const snapshotDate = new Date(snapshot.capturedAt);
-                  return snapshotDate <= interval.endDate;
-                });
-                
-                const sortedSnapshots = [...snapshotsInOrBeforeInterval].sort((a, b) => 
-                  new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
-                );
-                
-                // Get snapshot at/before interval start (baseline)
-                const snapshotAtStart = sortedSnapshots.filter(s => 
-                  new Date(s.capturedAt) <= interval.startDate
-                ).pop();
-                
-                // Get latest snapshot at/before interval end
-                const snapshotAtEnd = sortedSnapshots.filter(s => 
-                  new Date(s.capturedAt) <= interval.endDate
-                ).pop();
-                
-                // Calculate delta for the specific metric
-                const growthMetricKey = data.id === 'views' ? 'views' 
-                  : data.id === 'likes' ? 'likes'
-                  : data.id === 'comments' ? 'comments'
-                  : data.id === 'shares' ? 'shares'
-                  : data.id === 'bookmarks' ? 'bookmarks'
-                  : 'views';
-                
-                let metricDelta = 0;
-                if (snapshotAtEnd) {
-                  if (snapshotAtStart && snapshotAtStart !== snapshotAtEnd) {
-                    // Calculate delta between start and end
-                    metricDelta = Math.max(0, (snapshotAtEnd as any)[growthMetricKey] || 0) - ((snapshotAtStart as any)[growthMetricKey] || 0);
-                  } else if (!snapshotAtStart) {
-                    // No baseline, use full end value
-                    metricDelta = (snapshotAtEnd as any)[growthMetricKey] || 0;
-                  }
-                }
-                
-                return {
-                  video,
-                  lastRefreshed: latestSnapshot ? new Date(latestSnapshot.capturedAt) : new Date(),
-                  snapshotCountInInterval: snapshotsInInterval.length,
-                  metricDelta: metricDelta
-                };
-              })
-              .sort((a, b) => b.lastRefreshed.getTime() - a.lastRefreshed.getTime())
-              .slice(0, 5);
             
             // Top Gainers: Calculate growth based on snapshots in this interval
             // Use videosWithSnapshotsInInterval instead of videosInInterval
@@ -2472,12 +2404,12 @@ const KPICard: React.FC<{
                 {/* Divider */}
                 <div className="border-t border-white/10 mx-5"></div>
                 
-                {/* Three-Column Mega Tooltip Layout - Only for non-published-videos KPIs */}
+                {/* Two-Column Mega Tooltip Layout - Only for non-published-videos KPIs */}
                 {!isPublishedVideosKPI && data.id !== 'accounts' && data.id !== 'link-clicks' && (
                 <div className="flex">
                   {/* Column 1: New Uploads */}
                   {hasNewUploads && (
-                  <div className={`flex-1 px-5 py-3 ${(hasRefreshedVideos || hasTopGainers) ? 'border-r border-white/10' : ''}`}>
+                  <div className={`flex-1 px-5 py-3 ${hasTopGainers ? 'border-r border-white/10' : ''}`}>
                     <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                       <Upload className="w-3.5 h-3.5" />
                       New Uploads ({newUploads.length})
@@ -2536,75 +2468,7 @@ const KPICard: React.FC<{
                   </div>
                   )}
                   
-                  {/* Column 2: Refreshed Videos */}
-                  {hasRefreshedVideos && (
-                  <div className={`flex-1 px-5 py-3 ${hasTopGainers ? 'border-r border-white/10' : ''}`}>
-                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      Refreshed Videos ({refreshedVideos.length})
-                    </h3>
-                    {refreshedVideos.length > 0 ? (
-                      <div className="space-y-2">
-                        {refreshedVideos.map((item: any, idx: number) => (
-                          <div 
-                            key={`refreshed-${item.video.id}-${idx}`}
-                            className="flex items-center gap-2 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
-                          >
-                            {/* Thumbnail */}
-                            <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-gray-800">
-                              {item.video.thumbnail ? (
-                                <img 
-                                  src={item.video.thumbnail} 
-                                  alt={item.video.title || item.video.caption || 'Video'} 
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                  }}
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <Play className="w-4 h-4 text-gray-600" />
-                                </div>
-                              )}
-                            </div>
-                            
-                            {/* Metadata */}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs text-white font-medium leading-tight">
-                                {((item.video.title || item.video.caption || '(No caption)').length > 13 
-                                  ? (item.video.title || item.video.caption || '(No caption)').substring(0, 13) + '...'
-                                  : (item.video.title || item.video.caption || '(No caption)'))}
-                              </p>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                <div className="w-3 h-3">
-                                  <PlatformIcon platform={item.video.platform} size="sm" />
-                                </div>
-                                <span className="text-[10px] text-gray-400">
-                                  {item.snapshotCountInInterval} snapshot{item.snapshotCountInInterval !== 1 ? 's' : ''}
-                                </span>
-                              </div>
-                            </div>
-                            
-                            {/* Metric - Show growth delta in this interval */}
-                            <div className="flex-shrink-0 text-right">
-                              <p className="text-xs font-bold text-emerald-400">
-                                +{formatDisplayNumber(item.metricDelta || 0)}
-                              </p>
-                              <p className="text-[10px] text-gray-500">{metricLabel.toLowerCase()}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-4">
-                        <RefreshCw className="w-6 h-6 text-gray-600 mx-auto mb-1" />
-                        <p className="text-xs text-gray-500">No refreshed videos</p>
-                      </div>
-                    )}
-                  </div>
-                  )}
-                  
-                  {/* Column 3: Top Gainers - Only show if there are gainers */}
+                  {/* Column 2: Top Gainers - Only show if there are gainers */}
                   {hasTopGainers && (
                   <div className="flex-1 px-5 py-3">
                     <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">

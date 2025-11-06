@@ -39,11 +39,20 @@ const db = getFirestore();
  * All accounts in a project refresh at the same time based on their tier.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Verify cron secret
+  // Verify cron secret or Vercel Cron header
   const authHeader = req.headers.authorization;
   const cronSecret = process.env.CRON_SECRET;
+  const isVercelCron = req.headers['x-vercel-cron'] === '1';
   
-  if (authHeader !== cronSecret) {
+  // Allow if:
+  // 1. Authorization header matches CRON_SECRET
+  // 2. Request is from Vercel Cron (x-vercel-cron header)
+  if (!isVercelCron && authHeader !== cronSecret) {
+    console.log('❌ Unauthorized cron request:', { 
+      hasAuth: !!authHeader, 
+      hasVercelCron: isVercelCron,
+      headers: Object.keys(req.headers)
+    });
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
