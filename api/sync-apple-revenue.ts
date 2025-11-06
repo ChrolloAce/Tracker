@@ -249,16 +249,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       days: daysToSync
     });
 
-    let allSalesData: any[] = [];
+    // Build array of all dates to fetch
+    const datesToFetch: string[] = [];
     let currentDate = new Date(startDate);
-    let daysProcessed = 0;
-    let daysWithData = 0;
-
-    // Fetch reports for each day in the range
     while (currentDate <= endDate) {
-      const reportDate = currentDate.toISOString().split('T')[0];
-      daysProcessed++;
-      
+      datesToFetch.push(currentDate.toISOString().split('T')[0]);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    console.log(`🚀 Fetching ${datesToFetch.length} days in parallel...`);
+
+    // Fetch ALL days in parallel (10x faster!)
+    const fetchPromises = datesToFetch.map(async (reportDate, index) => {
       try {
         const dailyData = await fetchAppleSalesReports(
           token,
@@ -267,16 +269,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         );
         
         if (dailyData && dailyData.length > 0) {
-          allSalesData = allSalesData.concat(dailyData);
-          daysWithData++;
-          console.log(`  ✓ ${reportDate}: ${dailyData.length} records (${daysProcessed}/${daysToSync})`);
+          console.log(`  ✓ ${reportDate}: ${dailyData.length} records (${index + 1}/${datesToFetch.length})`);
+          return { success: true, data: dailyData, date: reportDate };
         }
+        return { success: true, data: [], date: reportDate };
       } catch (error) {
         // Silent fail for days without data
+        return { success: false, data: [], date: reportDate };
       }
-      
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
+    });
+
+    // Wait for all parallel fetches to complete
+    const results = await Promise.all(fetchPromises);
+    
+    // Aggregate all the data
+    let allSalesData: any[] = [];
+    let daysWithData = 0;
+    results.forEach(result => {
+      if (result.success && result.data.length > 0) {
+        allSalesData = allSalesData.concat(result.data);
+        daysWithData++;
+      }
+    });
+    
+    const daysProcessed = datesToFetch.length;
 
     // Calculate aggregated metrics and daily breakdown from all records
     let totalRevenue = 0;
