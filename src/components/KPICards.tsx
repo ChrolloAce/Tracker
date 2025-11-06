@@ -872,10 +872,11 @@ const KPICards: React.FC<KPICardsProps> = ({
       return { data, intervalType };
     };
 
-    const formatNumber = (num: number): string => {
+    const formatNumber = (num: number, isRevenue: boolean = false): string => {
       if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
       if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-      return num.toString();
+      // For revenue, format to 2 decimal places; for counts, use whole number
+      return isRevenue ? num.toFixed(2) : Math.round(num).toString();
     };
 
     // Calculate link clicks growth using the same CP vs PP logic
@@ -1318,7 +1319,7 @@ const KPICards: React.FC<KPICardsProps> = ({
         return {
           id: 'revenue',
           label: 'Total Revenue',
-          value: `$${formatNumber(totalRevenue)}`,
+          value: `$${formatNumber(totalRevenue, true)}`,
           icon: DollarSign,
           accent: 'emerald' as const,
           delta: { value: Math.abs(revenueGrowth), isPositive: revenueGrowth >= 0, absoluteValue: revenueGrowthAbsolute },
@@ -2210,26 +2211,31 @@ const KPICard: React.FC<{
             }
             
             // Format value based on metric type
+            const isRevenueMetric = data.id === 'revenue' || data.id === 'downloads';
             const formatDisplayNumber = (num: number): string => {
               if (num >= 1000000) return `${(num / 1000000).toFixed(1)} M`;
               if (num >= 1000) return `${(num / 1000).toFixed(1)} k`;
+              // For revenue, format to 2 decimal places
+              if (isRevenueMetric) return num.toFixed(2);
               return num.toLocaleString();
             };
             
-            const displayValue = typeof value === 'number' ? formatDisplayNumber(value) : value;
+            const displayValue = typeof value === 'number' ? (data.id === 'revenue' ? `$${formatDisplayNumber(value)}` : formatDisplayNumber(value)) : value;
             const ppValue = point.ppValue;
-            const ppDisplayValue = typeof ppValue === 'number' ? formatDisplayNumber(ppValue) : null;
+            const ppDisplayValue = typeof ppValue === 'number' ? (data.id === 'revenue' ? `$${formatDisplayNumber(ppValue)}` : formatDisplayNumber(ppValue)) : null;
             
             // Calculate PP comparison
             const ppComparison = (typeof ppValue === 'number' && ppValue > 0 && typeof value === 'number') ? (() => {
               const diff = value - ppValue;
               const percentChange = ppValue > 0 ? ((diff / ppValue) * 100) : 0;
               const isPositive = diff >= 0;
+              const formattedDiff = isRevenueMetric ? `$${Math.abs(diff).toFixed(2)}` : Math.abs(diff).toLocaleString();
               return {
                 diff,
                 percentChange,
                 isPositive,
-                displayValue: ppDisplayValue
+                displayValue: ppDisplayValue,
+                formattedDiff
               };
             })() : null;
             

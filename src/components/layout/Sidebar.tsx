@@ -403,14 +403,19 @@ const Sidebar: React.FC<SidebarProps> = ({
         )}
       </nav>
 
-      {/* Organization Switcher at Bottom - Show on mobile when open */}
-      {(!isCollapsed || isMobileOpen) && (
-        <OrganizationSwitcher />
-      )}
-
       {/* Refresh Countdown */}
       {(!isCollapsed || isMobileOpen) && !isDemoMode && (
         <RefreshCountdown />
+      )}
+
+      {/* Organization Switcher at Bottom - Show on mobile when open */}
+      {(!isCollapsed || isMobileOpen) && (
+        <div className="px-4 py-3 border-t border-gray-200 dark:border-white/10">
+          <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">
+            Org
+          </label>
+          <OrganizationSwitcher />
+        </div>
       )}
 
     </div>
