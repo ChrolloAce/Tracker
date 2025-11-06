@@ -61,6 +61,12 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
     setError(null);
     
     try {
+      console.log('🔍 Testing Apple App Store Connect credentials...');
+      console.log('Issuer ID:', credentials.issuerID);
+      console.log('Key ID:', credentials.keyID);
+      console.log('Vendor Number:', credentials.vendorNumber);
+      console.log('Private Key length:', credentials.privateKey.length);
+      
       // Test the Apple App Store Connect API connection
       const response = await fetch('/api/apple-test-connection', {
         method: 'POST',
@@ -73,20 +79,25 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
         })
       });
 
+      console.log('📡 Response status:', response.status);
       const result = await response.json();
+      console.log('📋 Response data:', result);
       
       if (response.ok && result.success) {
+        console.log('✅ Connection test successful!');
         setConnectionSuccess(true);
         setConnectionTested(true);
       } else {
+        console.error('❌ Connection test failed:', result);
         setConnectionSuccess(false);
         setConnectionTested(true);
         setError(result.message || 'Connection test failed. Please verify your credentials.');
       }
     } catch (err: any) {
+      console.error('❌ Connection test error:', err);
       setConnectionSuccess(false);
       setConnectionTested(true);
-      setError('Failed to test connection. Please check your credentials and try again.');
+      setError(`Failed to test connection: ${err.message || 'Unknown error'}`);
     } finally {
       setTestingConnection(false);
     }

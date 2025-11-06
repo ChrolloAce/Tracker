@@ -2,7 +2,11 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import * as jose from 'jose';
 
 export default async function (req: VercelRequest, res: VercelResponse) {
+  console.log('🍎 Apple connection test endpoint called');
+  console.log('Method:', req.method);
+  
   if (req.method !== 'POST') {
+    console.log('❌ Invalid method');
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
@@ -12,7 +16,16 @@ export default async function (req: VercelRequest, res: VercelResponse) {
   const finalKeyId = keyID || keyId;
   const finalIssuerId = issuerID || issuerId;
 
+  console.log('📋 Received credentials:', {
+    hasPrivateKey: !!privateKey,
+    privateKeyLength: privateKey?.length || 0,
+    keyID: finalKeyId,
+    issuerID: finalIssuerId,
+    vendorNumber: vendorNumber || 'not provided'
+  });
+
   if (!privateKey || !finalKeyId || !finalIssuerId) {
+    console.log('❌ Missing required credentials');
     return res.status(400).json({ 
       error: 'Missing required credentials', 
       details: 'privateKey, keyId, and issuerId are required',
