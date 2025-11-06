@@ -275,11 +275,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
+    // Calculate aggregated metrics from all records
+    let totalRevenue = 0;
+    let totalDownloads = 0;
+    
+    allSalesData.forEach(record => {
+      // Units = downloads/purchases
+      const units = parseInt(record['Units'] || record['units'] || '0');
+      // Developer Proceeds = revenue after Apple's cut
+      const proceeds = parseFloat(record['Developer Proceeds'] || record['developer_proceeds'] || '0');
+      
+      totalDownloads += units;
+      totalRevenue += proceeds;
+    });
+
     console.log('');
     console.log('=' .repeat(60));
     console.log('📊 SYNC COMPLETE');
     console.log('=' .repeat(60));
     console.log(`✅ Total Records: ${allSalesData.length}`);
+    console.log(`💰 Total Revenue: $${totalRevenue.toFixed(2)}`);
+    console.log(`📥 Total Downloads: ${totalDownloads.toLocaleString()}`);
     console.log(`📅 Date Range: ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`);
     console.log(`📈 Days Processed: ${daysProcessed}`);
     console.log(`💰 Days with Sales: ${daysWithData}`);
@@ -288,14 +304,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const salesData = allSalesData;
 
-    // Update last synced timestamp
+    // Store aggregated metrics in Firestore
+    const metricsRef = db
+      .collection('organizations')
+      .doc(organizationId as string)
+      .collection('projects')
+      .doc(projectId as string)
+      .collection('revenueMetrics')
+      .doc('apple_summary');
+
+    await metricsRef.set({
+      provider: 'apple',
+      totalRevenue,
+      totalDownloads,
+      recordCount: allSalesData.length,
+      dateRange: {
+        start: startDate,
+        end: endDate
+      },
+      lastSynced: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    }, { merge: true });
+
+    // Update integration last synced timestamp
     await integrationDoc.ref.update({
       lastSynced: Timestamp.now(),
       updatedAt: Timestamp.now()
     });
-
-    // TODO: Parse and store revenue transactions in Firestore
-    // For now, we'll just return the raw data
     
     return res.status(200).json({
       success: true,
@@ -303,7 +338,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       data: {
         integrationId: integrationDoc.id,
         dateRange: `${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`,
-        recordCount: Array.isArray(salesData) ? salesData.length : 0,
+        recordCount: allSalesData.length,
+        totalRevenue,
+        totalDownloads,
         lastSynced: new Date().toISOString()
       }
     });
