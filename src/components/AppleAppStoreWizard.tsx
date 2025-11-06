@@ -67,6 +67,9 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
       console.log('Vendor Number:', credentials.vendorNumber);
       console.log('Private Key length:', credentials.privateKey.length);
       
+      // Base64 encode the private key for transmission to API
+      const base64Key = btoa(credentials.privateKey);
+      
       // Test the Apple App Store Connect API connection
       const response = await fetch('/api/apple-test-connection', {
         method: 'POST',
@@ -75,7 +78,7 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
           issuerID: credentials.issuerID,
           keyID: credentials.keyID,
           vendorNumber: credentials.vendorNumber.replace('#', ''),
-          privateKey: credentials.privateKey
+          privateKey: base64Key
         })
       });
 
@@ -136,18 +139,15 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
       reader.onload = (event) => {
         const content = event.target?.result as string;
         
-        // Base64 encode the private key content for secure transmission
-        const base64EncodedKey = btoa(content);
-        
         console.log('📁 File uploaded:', {
           fileName: file.name,
-          originalLength: content.length,
-          base64Length: base64EncodedKey.length
+          contentLength: content.length
         });
         
+        // Store the raw key content - it will be encrypted before saving
         setCredentials(prev => ({
           ...prev,
-          privateKey: base64EncodedKey,
+          privateKey: content,
           privateKeyFileName: file.name
         }));
         setError(null);
