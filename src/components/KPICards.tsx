@@ -1278,16 +1278,26 @@ const KPICards: React.FC<KPICardsProps> = ({
           };
         }
         
-        const totalRevenue = (revenueMetrics.totalRevenue || 0) / 100; // Convert cents to dollars
+        // Filter daily metrics by selected date range
+        const filteredDailyMetrics = revenueMetrics.dailyMetrics?.filter(day => {
+          const dayDate = new Date(day.date);
+          if (dateRangeStart) {
+            return dayDate >= dateRangeStart && dayDate <= dateRangeEnd;
+          }
+          return dayDate <= dateRangeEnd;
+        }) || [];
+        
+        // Calculate revenue from filtered date range only
+        const totalRevenue = filteredDailyMetrics.reduce((sum, day) => sum + (day.revenue / 100), 0);
         const ppRevenue = (revenueMetrics.previousPeriodRevenue || 0) / 100;
         const revenueGrowth = ppRevenue > 0 ? ((totalRevenue - ppRevenue) / ppRevenue) * 100 : 0;
         const revenueGrowthAbsolute = totalRevenue - ppRevenue;
         
-        // Use real daily metrics for sparkline (from Apple sync)
+        // Use filtered daily metrics for sparkline
         const sparklineData: Array<{ value: number }> = [];
-        if (revenueMetrics.dailyMetrics && revenueMetrics.dailyMetrics.length > 0) {
-          // Use actual daily revenue data
-          revenueMetrics.dailyMetrics.forEach(day => {
+        if (filteredDailyMetrics.length > 0) {
+          // Use actual daily revenue data from filtered range
+          filteredDailyMetrics.forEach(day => {
             sparklineData.push({ value: day.revenue / 100 }); // Convert cents to dollars
           });
         } else if (ppRevenue > 0 && totalRevenue > 0) {
@@ -1349,8 +1359,17 @@ const KPICards: React.FC<KPICardsProps> = ({
           };
         }
         
-        // Use active subscriptions from RevenueCat or downloads from Apple
-        const activeSubscriptions = revenueMetrics.activeSubscriptions || revenueMetrics.newSubscriptions || 0;
+        // Filter daily metrics by selected date range
+        const filteredDailyMetrics = revenueMetrics.dailyMetrics?.filter(day => {
+          const dayDate = new Date(day.date);
+          if (dateRangeStart) {
+            return dayDate >= dateRangeStart && dayDate <= dateRangeEnd;
+          }
+          return dayDate <= dateRangeEnd;
+        }) || [];
+        
+        // Calculate downloads from filtered date range only
+        const activeSubscriptions = filteredDailyMetrics.reduce((sum, day) => sum + day.downloads, 0);
         
         // Determine if this is Apple data (downloads) or RevenueCat data (subscriptions)
         const hasAppleIntegration = revenueIntegrations.some(i => i.provider === 'apple' && i.enabled);
@@ -1359,11 +1378,11 @@ const KPICards: React.FC<KPICardsProps> = ({
           ? 'Total app downloads from Apple App Store' 
           : 'Active Subscriptions from RevenueCat';
         
-        // Use real daily metrics for sparkline (from Apple sync)
+        // Use filtered daily metrics for sparkline
         const sparklineData: Array<{ value: number }> = [];
-        if (revenueMetrics.dailyMetrics && revenueMetrics.dailyMetrics.length > 0) {
-          // Use actual daily downloads data
-          revenueMetrics.dailyMetrics.forEach(day => {
+        if (filteredDailyMetrics.length > 0) {
+          // Use actual daily downloads data from filtered range
+          filteredDailyMetrics.forEach(day => {
             sparklineData.push({ value: day.downloads });
           });
         } else if (activeSubscriptions > 0) {
