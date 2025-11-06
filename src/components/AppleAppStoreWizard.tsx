@@ -26,6 +26,9 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [connectionTested, setConnectionTested] = useState(false);
+  const [connectionSuccess, setConnectionSuccess] = useState(false);
 
   const totalSteps = 7;
 
@@ -53,12 +56,53 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
     return btoa(String.fromCharCode(...encrypted));
   };
 
+  const testConnection = async () => {
+    setTestingConnection(true);
+    setError(null);
+    
+    try {
+      // Test the Apple App Store Connect API connection
+      const response = await fetch('/api/apple-test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          issuerID: credentials.issuerID,
+          keyID: credentials.keyID,
+          vendorNumber: credentials.vendorNumber.replace('#', ''),
+          privateKey: credentials.privateKey
+        })
+      });
+
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
+        setConnectionSuccess(true);
+        setConnectionTested(true);
+      } else {
+        setConnectionSuccess(false);
+        setConnectionTested(true);
+        setError(result.message || 'Connection test failed. Please verify your credentials.');
+      }
+    } catch (err: any) {
+      setConnectionSuccess(false);
+      setConnectionTested(true);
+      setError('Failed to test connection. Please check your credentials and try again.');
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
   const handleNext = () => {
     setError(null);
     // Mark current step as completed
     setCompletedSteps(prev => new Set(prev).add(currentStep));
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
+      // Reset connection test when entering step 7
+      if (currentStep === 6) {
+        setConnectionTested(false);
+        setConnectionSuccess(false);
+      }
     }
   };
 
@@ -524,12 +568,44 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
           </div>
         </div>
 
-        <div className="pt-4 border-t border-white/10">
-          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4">
-            <p className="text-emerald-300 text-sm">
-              <strong>✅ Ready to connect!</strong> Click "Complete Setup" to establish the connection. We'll sync your revenue data automatically every 24 hours.
-            </p>
-          </div>
+        <div className="pt-4 border-t border-white/10 space-y-4">
+          {/* Test Connection Button */}
+          {!connectionTested && (
+            <button
+              onClick={testConnection}
+              disabled={testingConnection}
+              className="w-full px-6 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+            >
+              {testingConnection ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Testing Connection...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-5 h-5" />
+                  Test Connection
+                </>
+              )}
+            </button>
+          )}
+
+          {/* Connection Test Result */}
+          {connectionTested && connectionSuccess && (
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4">
+              <p className="text-emerald-300 text-sm">
+                <strong>✅ Connection Successful!</strong> Your credentials are valid. Click "Complete Setup" to finish.
+              </p>
+            </div>
+          )}
+
+          {connectionTested && !connectionSuccess && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+              <p className="text-red-300 text-sm">
+                <strong>❌ Connection Failed</strong> Please verify your credentials and try again.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -567,7 +643,8 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
         const vendorNum = credentials.vendorNumber.trim().replace('#', '');
         return vendorNum.length === 8 && /^\d{8}$/.test(vendorNum);
       case 7:
-        return credentials.issuerID && credentials.keyID && credentials.vendorNumber && credentials.privateKey;
+        // Can only proceed if connection test passed
+        return connectionTested && connectionSuccess;
       default:
         return false;
     }
