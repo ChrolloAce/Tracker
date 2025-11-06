@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Zap } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,7 +12,6 @@ import { useAuth } from '../contexts/AuthContext';
 const RefreshCountdown: React.FC = () => {
   const { currentOrgId, currentProjectId } = useAuth();
   const [accountCount, setAccountCount] = useState(0);
-  const [lastOrchestratorRun, setLastOrchestratorRun] = useState<Date | null>(null);
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   // Update current time every second
@@ -28,7 +27,6 @@ const RefreshCountdown: React.FC = () => {
   useEffect(() => {
     if (!currentOrgId || !currentProjectId) {
       setAccountCount(0);
-      setLastOrchestratorRun(null);
       return;
     }
 
@@ -48,31 +46,10 @@ const RefreshCountdown: React.FC = () => {
         return !data.status || data.status === 'active';
       });
       setAccountCount(activeAccounts.length);
-      
-      // Get the most recently refreshed account to approximate last orchestrator run
-      const accountsWithRefresh = activeAccounts
-        .map(doc => doc.data().lastRefreshed?.toDate())
-        .filter(Boolean) as Date[];
-      
-      if (accountsWithRefresh.length > 0) {
-        const mostRecent = accountsWithRefresh.sort((a, b) => b.getTime() - a.getTime())[0];
-        setLastOrchestratorRun(mostRecent);
-      }
     });
 
     return () => unsubscribeAccounts();
   }, [currentOrgId, currentProjectId]);
-
-  const formatTimeAgo = (date: Date | undefined): string => {
-    if (!date) return 'Never';
-    
-    const seconds = Math.floor((currentTime - date.getTime()) / 1000);
-    
-    if (seconds < 60) return `${seconds}s ago`;
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-    return `${Math.floor(seconds / 86400)}d ago`;
-  };
 
   const getNextCronRun = (): Date => {
     // Cron runs every 12 hours at 00:00 and 12:00
@@ -150,49 +127,21 @@ const RefreshCountdown: React.FC = () => {
 
   return (
     <div className="border-t border-white/5">
-      {/* Header */}
-      <div className="px-4 py-3 bg-white/5">
-        <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-            <Zap className="w-4 h-4 text-white/60" />
-            <span className="text-xs font-semibold text-white/70 uppercase tracking-wider">
-              Orchestrator
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <RefreshCw className={`w-3 h-3 text-white/40 ${isRunning ? 'animate-spin' : ''}`} />
-            <span className="text-[10px] text-white/50">
-              {accountCount} account{accountCount !== 1 ? 's' : ''}
-            </span>
-          </div>
-        </div>
-      </div>
-
       {/* Unified Progress Bar */}
-      <div className="px-4 py-3 border-b border-white/5">
+      <div className="px-4 py-3">
         {/* Timing Info */}
-        <div className="flex items-center justify-between text-[10px] mb-2">
-          <span className="text-white/40">
-            {lastOrchestratorRun ? `Last: ${formatTimeAgo(lastOrchestratorRun)}` : `Runs at 12am & 12pm`}
-          </span>
-          <span className={`font-semibold ${isRunning ? 'text-emerald-400' : 'text-white/60'}`}>
-            {isRunning ? '⚡ Running' : `Next: ${formatTimeUntil()}`}
-        </span>
-      </div>
+        <div className="text-[11px] text-white/60 mb-3 text-center">
+          Data will refresh in {formatTimeUntil()}
+        </div>
 
-      {/* Progress Bar */}
+        {/* Progress Bar */}
         <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-        <div 
+          <div 
             className={`h-full transition-all duration-1000 ease-linear ${
               isRunning ? 'bg-emerald-400' : 'bg-white/40'
             }`}
             style={{ width: `${Math.min(progress, 100)}%` }}
-        />
-        </div>
-
-        {/* Info Text */}
-        <div className="text-[10px] text-white/30 text-center mt-2">
-          All accounts refresh simultaneously every 12 hours
+          />
         </div>
       </div>
     </div>
