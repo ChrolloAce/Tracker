@@ -107,9 +107,12 @@ const RefreshCountdown: React.FC = () => {
     const nextRun = getNextCronRun();
     const secondsUntil = Math.floor((nextRun.getTime() - currentTime) / 1000);
     
-    if (secondsUntil <= 60) return 'Running soon';
+    if (secondsUntil <= 0) return 'Running now';
     if (secondsUntil < 60) return `${secondsUntil}s`;
-    return `${Math.floor(secondsUntil / 60)}m`;
+    
+    const minutes = Math.floor(secondsUntil / 60);
+    const seconds = secondsUntil % 60;
+    return `${minutes}m ${seconds}s`;
   };
 
   const getProgressPercent = (): number => {
