@@ -386,6 +386,9 @@ class RevenueDataService {
       // Apple stores revenue in DOLLARS, but RevenueMetrics expects CENTS
       const totalRevenue = (data.totalRevenue || 0) * 100; // Convert dollars to cents
       const totalDownloads = data.totalDownloads || 0;
+      
+      // Extract daily metrics for charting (if available)
+      const dailyMetrics = data.dailyMetrics || [];
 
       return {
         organizationId: orgId,
@@ -411,6 +414,12 @@ class RevenueDataService {
         startDate: data.dateRange?.start?.toDate() || new Date(),
         endDate: data.dateRange?.end?.toDate() || new Date(),
         calculatedAt: data.lastSynced?.toDate() || new Date(),
+        // Add daily metrics for charting
+        dailyMetrics: dailyMetrics.map((d: any) => ({
+          date: d.date?.toDate() || new Date(),
+          revenue: (d.revenue || 0) * 100, // Convert to cents
+          downloads: d.downloads || 0
+        }))
       } as RevenueMetrics;
     } catch (error) {
       console.error('Failed to fetch Apple metrics:', error);

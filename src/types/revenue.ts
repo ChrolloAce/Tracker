@@ -131,6 +131,13 @@ export interface RevenueMetrics {
   previousPeriodRevenue?: number;
   revenueGrowth?: number; // Percentage
   
+  // Daily metrics for charting (Apple only)
+  dailyMetrics?: Array<{
+    date: Date;
+    revenue: number; // In cents
+    downloads: number;
+  }>;
+  
   calculatedAt: Date;
 }
 

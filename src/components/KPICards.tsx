@@ -1283,11 +1283,15 @@ const KPICards: React.FC<KPICardsProps> = ({
         const revenueGrowth = ppRevenue > 0 ? ((totalRevenue - ppRevenue) / ppRevenue) * 100 : 0;
         const revenueGrowthAbsolute = totalRevenue - ppRevenue;
         
-        // Generate simple sparkline data (showing current period trend)
-        // For now, create a simple upward/downward trend based on growth
+        // Use real daily metrics for sparkline (from Apple sync)
         const sparklineData: Array<{ value: number }> = [];
-        if (ppRevenue > 0 && totalRevenue > 0) {
-          // Create a trend line from PP to current
+        if (revenueMetrics.dailyMetrics && revenueMetrics.dailyMetrics.length > 0) {
+          // Use actual daily revenue data
+          revenueMetrics.dailyMetrics.forEach(day => {
+            sparklineData.push({ value: day.revenue / 100 }); // Convert cents to dollars
+          });
+        } else if (ppRevenue > 0 && totalRevenue > 0) {
+          // Fallback: Create a trend line from PP to current
           const dataPoints = 10;
           for (let i = 0; i <= dataPoints; i++) {
             const progress = i / dataPoints;
@@ -1295,7 +1299,7 @@ const KPICards: React.FC<KPICardsProps> = ({
             sparklineData.push({ value });
           }
         } else if (totalRevenue > 0) {
-          // No PP data, show flat line at current value
+          // No data, show flat line at current value
           for (let i = 0; i < 10; i++) {
             sparklineData.push({ value: totalRevenue });
           }
@@ -1355,10 +1359,15 @@ const KPICards: React.FC<KPICardsProps> = ({
           ? 'Total app downloads from Apple App Store' 
           : 'Active Subscriptions from RevenueCat';
         
-        // Generate simple sparkline
+        // Use real daily metrics for sparkline (from Apple sync)
         const sparklineData: Array<{ value: number }> = [];
-        if (activeSubscriptions > 0) {
-          // Show a simple upward trend leading to current value
+        if (revenueMetrics.dailyMetrics && revenueMetrics.dailyMetrics.length > 0) {
+          // Use actual daily downloads data
+          revenueMetrics.dailyMetrics.forEach(day => {
+            sparklineData.push({ value: day.downloads });
+          });
+        } else if (activeSubscriptions > 0) {
+          // Fallback: Show a simple upward trend leading to current value
           for (let i = 0; i < 10; i++) {
             const progress = i / 9;
             sparklineData.push({ value: Math.round(activeSubscriptions * progress) });

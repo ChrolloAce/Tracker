@@ -278,19 +278,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    // Calculate aggregated metrics from all records
+    // Calculate aggregated metrics and daily breakdown from all records
     let totalRevenue = 0;
     let totalDownloads = 0;
+    const dailyBreakdown: Record<string, { revenue: number; downloads: number; date: Date }> = {};
     
     allSalesData.forEach(record => {
       // Units = downloads/purchases
       const units = parseInt(record['Units'] || record['units'] || '0');
       // Developer Proceeds = revenue after Apple's cut
       const proceeds = parseFloat(record['Developer Proceeds'] || record['developer_proceeds'] || '0');
+      // Begin Date is the sale date
+      const saleDate = record['Begin Date'] || record['begin_date'] || '';
       
       totalDownloads += units;
       totalRevenue += proceeds;
+      
+      // Group by date for daily breakdown
+      if (saleDate) {
+        if (!dailyBreakdown[saleDate]) {
+          dailyBreakdown[saleDate] = { 
+            revenue: 0, 
+            downloads: 0,
+            date: new Date(saleDate)
+          };
+        }
+        dailyBreakdown[saleDate].revenue += proceeds;
+        dailyBreakdown[saleDate].downloads += units;
+      }
     });
+    
+    // Convert daily breakdown to array and sort by date
+    const dailyMetrics = Object.entries(dailyBreakdown)
+      .map(([date, data]) => ({
+        date: data.date,
+        revenue: data.revenue,
+        downloads: data.downloads
+      }))
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
 
     console.log('');
     console.log('=' .repeat(60));
@@ -302,6 +327,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`📅 Date Range: ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`);
     console.log(`📈 Days Processed: ${daysProcessed}`);
     console.log(`💰 Days with Sales: ${daysWithData}`);
+    console.log(`📊 Daily Metrics: ${dailyMetrics.length} days with data`);
     console.log('=' .repeat(60));
     console.log('');
 
@@ -325,9 +351,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         start: startDate,
         end: endDate
       },
+      dailyMetrics: dailyMetrics.map(d => ({
+        date: Timestamp.fromDate(d.date),
+        revenue: d.revenue,
+        downloads: d.downloads
+      })),
       lastSynced: Timestamp.now(),
       updatedAt: Timestamp.now()
     }, { merge: true });
+    
+    console.log(`💾 Stored ${dailyMetrics.length} daily data points for charting`);
 
     // Update integration last synced timestamp
     await integrationDoc.ref.update({
