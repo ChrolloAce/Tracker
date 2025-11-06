@@ -387,92 +387,55 @@ const RevenueManagementPage: React.FC = () => {
       {/* Analytics Tab Content */}
       {activeTab === 'analytics' && (
         <div className="space-y-6">
-          {/* Coming Soon Banner */}
-          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-8 text-center">
-            <TrendingUp className="w-16 h-16 text-blue-400 mx-auto mb-4" />
-            <h3 className="text-2xl font-bold text-white mb-2">Revenue Analytics Coming Soon</h3>
-            <p className="text-white/60 mb-6 max-w-2xl mx-auto">
-              Once you've connected your app store accounts and the backend sync is implemented, you'll be able to view comprehensive revenue reports, transaction history, and analytics here.
-            </p>
-          </div>
-
-          {/* What You'll See */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Revenue Overview */}
-            <div className="bg-white/5 rounded-xl border border-white/10 p-6">
-              <div className="w-12 h-12 bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
-                <DollarSign className="w-6 h-6 text-emerald-400" />
+          {/* Revenue Analytics */}
+          {integrations.length > 0 ? (
+            <>
+              {/* Manual Sync */}
+              <div className="bg-white/5 rounded-xl border border-white/10 p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-lg font-semibold text-white mb-2">Revenue Data Sync</h4>
+                    <p className="text-white/60 text-sm">
+                      Last synced: {integrations[0]?.lastSynced 
+                        ? formatDistanceToNow(integrations[0].lastSynced, { addSuffix: true })
+                        : 'Never'
+                      }
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleSyncRevenue}
+                    disabled={syncing}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                    {syncing ? 'Syncing...' : 'Sync Now'}
+                  </button>
+                </div>
               </div>
-              <h4 className="text-lg font-semibold text-white mb-2">Revenue Overview</h4>
-              <p className="text-white/60 text-sm">
-                View total revenue, trends, and breakdowns by product, platform, and time period.
-              </p>
-            </div>
 
-            {/* Transaction History */}
-            <div className="bg-white/5 rounded-xl border border-white/10 p-6">
-              <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mb-4">
-                <Clock className="w-6 h-6 text-blue-400" />
+              {/* Coming Soon: Revenue analytics dashboard will appear here */}
+              <div className="bg-white/5 rounded-xl border border-white/10 p-12 text-center">
+                <TrendingUp className="w-16 h-16 text-white/20 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-white mb-2">Revenue Analytics</h3>
+                <p className="text-white/60 text-sm">
+                  Revenue charts and transaction history will appear here once data is synced
+                </p>
               </div>
-              <h4 className="text-lg font-semibold text-white mb-2">Transaction History</h4>
-              <p className="text-white/60 text-sm">
-                Browse all purchases, renewals, refunds, and cancellations with detailed information.
-              </p>
-            </div>
-
-            {/* Export Reports */}
-            <div className="bg-white/5 rounded-xl border border-white/10 p-6">
-              <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-4">
-                <Download className="w-6 h-6 text-purple-400" />
-              </div>
-              <h4 className="text-lg font-semibold text-white mb-2">Export Reports</h4>
-              <p className="text-white/60 text-sm">
-                Download revenue reports in CSV or PDF format for accounting and analysis.
-              </p>
-            </div>
-          </div>
-
-          {/* Required Implementation */}
-          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-6">
-            <h4 className="text-lg font-semibold text-amber-300 mb-3">🔧 Backend Implementation Required</h4>
-            <p className="text-amber-200/80 text-sm mb-4">
-              To see revenue data here, you need to implement the backend Cloud Function that:
-            </p>
-            <ol className="text-amber-200/70 text-sm space-y-2 ml-4 list-decimal">
-              <li>Reads encrypted credentials from Firestore</li>
-              <li>Generates JWT tokens for Apple API authentication</li>
-              <li>Fetches sales/financial reports from App Store Connect API</li>
-              <li>Stores revenue transactions in Firestore</li>
-              <li>Runs on a schedule (every 24 hours)</li>
-            </ol>
-            <div className="mt-4 pt-4 border-t border-amber-500/20">
-              <p className="text-amber-200/60 text-xs">
-                Once implemented, revenue data will automatically sync and appear in this analytics tab.
-              </p>
-            </div>
-          </div>
-
-          {/* If integrations exist, show manual sync button */}
-          {integrations.length > 0 && (
-            <div className="bg-white/5 rounded-xl border border-white/10 p-6 text-center">
-              <h4 className="text-lg font-semibold text-white mb-3">Manual Sync</h4>
-              <p className="text-white/60 text-sm mb-4">
-                Manually trigger a revenue sync to fetch the latest data from Apple App Store Connect.
+            </>
+          ) : (
+            <div className="bg-white/5 rounded-xl border border-white/10 p-12 text-center">
+              <DollarSign className="w-16 h-16 text-white/20 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-white mb-2">No Revenue Connections</h3>
+              <p className="text-white/60 text-sm mb-6">
+                Connect your app store to start tracking revenue
               </p>
               <button
-                onClick={handleSyncRevenue}
-                disabled={syncing}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => setActiveTab('connections')}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors"
               >
-                <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-                {syncing ? 'Syncing...' : 'Sync Revenue Data'}
+                <Plus className="w-4 h-4" />
+                Add Connection
               </button>
-              <p className="text-white/40 text-xs mt-3">
-                Last synced: {integrations[0]?.lastSynced 
-                  ? formatDistanceToNow(integrations[0].lastSynced, { addSuffix: true })
-                  : 'Never'
-                }
-              </p>
             </div>
           )}
         </div>
