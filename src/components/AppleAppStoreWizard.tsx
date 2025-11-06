@@ -135,9 +135,19 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
       const reader = new FileReader();
       reader.onload = (event) => {
         const content = event.target?.result as string;
+        
+        // Base64 encode the private key content for secure transmission
+        const base64EncodedKey = btoa(content);
+        
+        console.log('📁 File uploaded:', {
+          fileName: file.name,
+          originalLength: content.length,
+          base64Length: base64EncodedKey.length
+        });
+        
         setCredentials(prev => ({
           ...prev,
-          privateKey: content,
+          privateKey: base64EncodedKey,
           privateKeyFileName: file.name
         }));
         setError(null);
