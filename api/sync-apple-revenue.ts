@@ -169,7 +169,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('🍎 Starting Apple revenue sync...');
 
     // Get organization and project from query params or body
-    const { organizationId, projectId, manual } = req.method === 'POST' 
+    const { organizationId, projectId, manual, dateRange } = req.method === 'POST' 
       ? req.body 
       : req.query;
 
@@ -180,7 +180,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    console.log('📦 Syncing for:', { organizationId, projectId, manual: !!manual });
+    // Parse date range (30, 90, or custom number of days)
+    const daysToSync = dateRange ? parseInt(dateRange as string) : 90;
+    
+    console.log('📦 Syncing for:', { organizationId, projectId, manual: !!manual, days: daysToSync });
 
     // Get Apple integration from Firestore
     const integrationsRef = db
@@ -233,17 +236,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log('✅ JWT token generated successfully');
 
-    // Fetch sales reports for the last 90 days (all available data)
+    // Fetch sales reports for the specified date range
     const endDate = new Date();
     endDate.setDate(endDate.getDate() - 1); // Yesterday (most recent complete day)
     
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - 90); // Last 90 days
+    startDate.setDate(startDate.getDate() - daysToSync);
 
     console.log('📥 Fetching sales reports from:', {
       start: startDate.toISOString().split('T')[0],
       end: endDate.toISOString().split('T')[0],
-      days: 90
+      days: daysToSync
     });
 
     let allSalesData: any[] = [];
@@ -266,7 +269,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (dailyData && dailyData.length > 0) {
           allSalesData = allSalesData.concat(dailyData);
           daysWithData++;
-          console.log(`  ✓ ${reportDate}: ${dailyData.length} records (${daysProcessed}/${90})`);
+          console.log(`  ✓ ${reportDate}: ${dailyData.length} records (${daysProcessed}/${daysToSync})`);
         }
       } catch (error) {
         // Silent fail for days without data
