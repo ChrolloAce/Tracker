@@ -405,10 +405,9 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
           
           {/* Right: Close Button Only */}
           <div className="flex items-center gap-3">
-            {/* Date Filter Removed - Always show all data */}
+            {/* All date filter UI removed */}
             {false && (
               <div style={{ display: 'none' }}>
-                {/* Removed DateRangeFilter */}
                   setDateFilter(filter);
                   setCustomDateRange(customRange);
                   
@@ -456,16 +455,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
               />
             )}
             
-            {/* Time Granularity */}
-            <select
-              value={timeGranularity}
-              onChange={(e) => setTimeGranularity(e.target.value as TimeGranularity)}
-              className="px-3 py-1.5 text-sm bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-white/20 transition-colors"
-            >
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-            </select>
+            {/* Time Granularity removed */}
             
             <button
               onClick={onClose}
