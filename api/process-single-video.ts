@@ -108,9 +108,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw new Error('Video data missing username');
     }
 
-    // For Instagram, if profile picture is missing, fetch it from profile scraper
-    if (video.platform === 'instagram' && !videoData.profile_pic_url) {
-      console.log(`👤 Profile picture missing, fetching from profile scraper for @${videoData.username}...`);
+    // For Instagram, ALWAYS fetch profile data for better quality profile pics and follower count
+    if (video.platform === 'instagram') {
+      console.log(`👤 [INSTAGRAM] Fetching profile data for @${videoData.username} to get HD profile pic and follower count...`);
       try {
         const profileData = await runApifyActor({
           actorId: 'apify/instagram-profile-scraper',
@@ -127,18 +127,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const profiles = profileData.items || [];
         if (profiles.length > 0) {
           const profile = profiles[0];
-          console.log(`📊 Instagram profile fetched: ${profile.followersCount || 0} followers`);
+          console.log(`📊 [INSTAGRAM] Profile fetched: ${profile.followersCount || 0} followers`);
           
-          // Use high-def profile pic if available
-          videoData.profile_pic_url = profile.profilePicUrlHD || profile.profilePicUrl || '';
+          // Use high-def profile pic if available, fallback to video data
+          videoData.profile_pic_url = profile.profilePicUrlHD || profile.profilePicUrl || videoData.profile_pic_url || '';
           videoData.display_name = profile.fullName || videoData.display_name || videoData.username;
           videoData.follower_count = profile.followersCount || videoData.follower_count || 0;
           
-          console.log(`✅ Updated video data with profile info: ${videoData.profile_pic_url ? 'Profile pic found' : 'No profile pic'}`);
+          console.log(`✅ [INSTAGRAM] Updated with profile data - Profile pic: ${videoData.profile_pic_url ? 'YES' : 'NO'}, Followers: ${videoData.follower_count}`);
+        } else {
+          console.warn(`⚠️ [INSTAGRAM] No profile data returned for @${videoData.username}`);
         }
       } catch (profileError) {
-        console.warn('⚠️ Failed to fetch Instagram profile data:', profileError);
-        // Continue without profile data - non-critical
+        console.warn('⚠️ [INSTAGRAM] Failed to fetch profile data:', profileError);
+        // Continue with video data only - non-critical
       }
     }
 

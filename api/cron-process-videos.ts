@@ -1,6 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { runApifyActor } from './apify-client';
 
 // Initialize Firebase Admin (same as sync-single-account)
 if (!getApps().length) {
@@ -104,6 +105,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Validate we have required data
         if (!videoData.username) {
           throw new Error('Video data missing username');
+        }
+
+        // For Instagram, ALWAYS fetch profile data for better quality profile pics and follower count
+        if (video.platform === 'instagram') {
+          console.log(`👤 [INSTAGRAM] Fetching profile data for @${videoData.username}...`);
+          try {
+            const profileData = await runApifyActor({
+              actorId: 'apify/instagram-profile-scraper',
+              input: {
+                usernames: [videoData.username],
+                proxyConfiguration: {
+                  useApifyProxy: true,
+                  apifyProxyGroups: ['RESIDENTIAL'],
+                  apifyProxyCountry: 'US'
+                }
+              }
+            });
+
+            const profiles = profileData.items || [];
+            if (profiles.length > 0) {
+              const profile = profiles[0];
+              console.log(`📊 [INSTAGRAM] Profile fetched: ${profile.followersCount || 0} followers`);
+              
+              // Use high-def profile pic if available, fallback to video data
+              videoData.profile_pic_url = profile.profilePicUrlHD || profile.profilePicUrl || videoData.profile_pic_url || '';
+              videoData.display_name = profile.fullName || videoData.display_name || videoData.username;
+              videoData.follower_count = profile.followersCount || videoData.follower_count || 0;
+              
+              console.log(`✅ [INSTAGRAM] Updated with profile data - Profile pic: ${videoData.profile_pic_url ? 'YES' : 'NO'}, Followers: ${videoData.follower_count}`);
+            }
+          } catch (profileError) {
+            console.warn('⚠️ [INSTAGRAM] Failed to fetch profile data:', profileError);
+            // Continue with video data only - non-critical
+          }
         }
 
         // Check if account exists or needs to be created
