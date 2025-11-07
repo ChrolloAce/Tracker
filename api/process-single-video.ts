@@ -107,6 +107,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw new Error('Video data missing username');
     }
 
+    // For Instagram, if profile picture is missing, fetch it from profile scraper
+    if (video.platform === 'instagram' && !videoData.profile_pic_url) {
+      console.log(`👤 Profile picture missing, fetching from profile scraper for @${videoData.username}...`);
+      try {
+        const profileData = await runApifyActor({
+          actorId: 'apify/instagram-profile-scraper',
+          input: {
+            usernames: [videoData.username],
+            proxyConfiguration: {
+              useApifyProxy: true,
+              apifyProxyGroups: ['RESIDENTIAL'],
+              apifyProxyCountry: 'US'
+            }
+          }
+        });
+
+        const profiles = profileData.items || [];
+        if (profiles.length > 0) {
+          const profile = profiles[0];
+          console.log(`📊 Instagram profile fetched: ${profile.followersCount || 0} followers`);
+          
+          // Use high-def profile pic if available
+          videoData.profile_pic_url = profile.profilePicUrlHD || profile.profilePicUrl || '';
+          videoData.display_name = profile.fullName || videoData.display_name || videoData.username;
+          videoData.follower_count = profile.followersCount || videoData.follower_count || 0;
+          
+          console.log(`✅ Updated video data with profile info: ${videoData.profile_pic_url ? 'Profile pic found' : 'No profile pic'}`);
+        }
+      } catch (profileError) {
+        console.warn('⚠️ Failed to fetch Instagram profile data:', profileError);
+        // Continue without profile data - non-critical
+      }
+    }
+
     // Check if account exists or needs to be created
     const accountsRef = db.collection(`organizations/${orgId}/projects/${projectId}/trackedAccounts`);
     const accountQuery = accountsRef
