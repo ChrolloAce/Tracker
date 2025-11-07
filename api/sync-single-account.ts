@@ -21,9 +21,9 @@ if (!getApps().length) {
       privateKey: privateKey,
     };
 
-    initializeApp({ 
+    initializeApp({
       credential: cert(serviceAccount as any),
-      storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'scrpa-tracker.appspot.com'
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'trackview-6a3a5.firebasestorage.app'
     });
   } catch (error) {
     console.error('Failed to initialize Firebase Admin:', error);
@@ -93,7 +93,7 @@ async function downloadAndUploadImage(
     console.log(`📋 Content type: ${contentType}`);
     
     // Upload to Firebase Storage
-    const bucketName = process.env.FIREBASE_STORAGE_BUCKET || 'scrpa-tracker.appspot.com';
+    const bucketName = process.env.FIREBASE_STORAGE_BUCKET || 'trackview-6a3a5.firebasestorage.app';
     const bucket = storage.bucket(bucketName);
     const storagePath = `organizations/${orgId}/${folder}/${filename}`;
     const file = bucket.file(storagePath);
