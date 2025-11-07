@@ -530,69 +530,107 @@ export default async function handler(
         console.log(`✅ Fetched ${instagramItems.length} Instagram reels`);
         
         // Extract profile data from first post
+        let profileDataExtracted = false;
         if (instagramItems.length > 0) {
           const firstItem = instagramItems[0];
-          console.log(`🔍 First item keys: ${Object.keys(firstItem).join(', ')}`);
-          console.log(`🔍 Has raw_data: ${!!firstItem.raw_data}`);
           
-          // DEBUG: Log what's actually in raw_data
-          if (firstItem.raw_data) {
-            console.log(`🔍 raw_data keys: ${Object.keys(firstItem.raw_data).join(', ')}`);
-            console.log(`🔍 raw_data sample:`, JSON.stringify(firstItem.raw_data).substring(0, 500));
-          }
+          // Profile data is at raw_data.caption.user (NOT raw_data.owner!)
+          const user = firstItem.raw_data?.caption?.user;
+          console.log(`🔍 User data exists: ${!!user}`);
           
-          const owner = firstItem.raw_data?.owner;
-          console.log(`🔍 Owner data exists: ${!!owner}`);
+          if (user && user.profile_pic_url) {
+            console.log(`📊 Instagram profile extracted from caption.user`);
+            console.log(`🔍 Username: ${user.username}`);
+            console.log(`🔍 Full name: ${user.full_name || 'N/A'}`);
+            console.log(`🔍 Profile pic URL: ${user.profile_pic_url ? 'YES' : 'NO'}`);
           
-          if (owner) {
-            console.log(`📊 Instagram profile extracted: ${owner.edge_followed_by?.count || 0} followers`);
-            console.log(`🔍 Profile pic URL (HD): ${owner.profile_pic_url_hd ? 'YES' : 'NO'}`);
-            console.log(`🔍 Profile pic URL (std): ${owner.profile_pic_url ? 'YES' : 'NO'}`);
-          
-          const profileUpdates: any = {
-              displayName: owner.full_name || account.username,
-              followerCount: owner.edge_followed_by?.count || 0,
-              followingCount: owner.edge_follow?.count || 0,
-              isVerified: owner.is_verified || false
-          };
+            const profileUpdates: any = {
+              displayName: user.full_name || account.username,
+              isVerified: user.is_verified || false
+            };
 
-          // Download and upload Instagram profile pic to Firebase Storage (same as TikTok)
-          const profilePicUrl = owner.profile_pic_url_hd || owner.profile_pic_url;
-          console.log(`🔍 Profile pic URL found: ${profilePicUrl ? profilePicUrl.substring(0, 100) + '...' : 'NONE'}`);
-          
-          if (profilePicUrl) {
-            try {
-              console.log(`📸 Downloading Instagram profile pic (HD) for @${account.username}...`);
-              console.log(`🌐 Full URL: ${profilePicUrl}`);
-              const uploadedProfilePic = await downloadAndUploadImage(
-                profilePicUrl,
-                orgId,
-                `instagram_profile_${account.username}.jpg`,
-                'profile'
-              );
-              profileUpdates.profilePicture = uploadedProfilePic;
-              console.log(`✅ Instagram profile picture uploaded to Firebase Storage: ${uploadedProfilePic}`);
-            } catch (uploadError: any) {
-              console.error(`❌ Error uploading Instagram profile picture:`, uploadError);
-              console.error(`❌ Error details:`, {
-                message: uploadError.message,
-                stack: uploadError.stack?.split('\n').slice(0, 3),
-                profilePicUrl: profilePicUrl.substring(0, 100)
-              });
-              // Don't set profile pic if upload fails - Instagram URLs expire quickly
-              console.warn(`⚠️ Skipping profile picture for @${account.username} - will retry on next sync`);
+            // Download and upload Instagram profile pic to Firebase Storage (same as TikTok)
+            const profilePicUrl = user.profile_pic_url;
+            
+            if (profilePicUrl) {
+              try {
+                console.log(`📸 Downloading Instagram profile pic for @${account.username}...`);
+                const uploadedProfilePic = await downloadAndUploadImage(
+                  profilePicUrl,
+                  orgId,
+                  `instagram_profile_${account.username}.jpg`,
+                  'profile'
+                );
+                profileUpdates.profilePicture = uploadedProfilePic;
+                console.log(`✅ Instagram profile picture uploaded to Firebase Storage`);
+                profileDataExtracted = true;
+              } catch (uploadError: any) {
+                console.error(`❌ Error uploading Instagram profile picture:`, uploadError);
+                console.warn(`⚠️ Skipping profile picture - will retry on next sync`);
+              }
             }
-          } else {
-            console.warn(`⚠️ No profile pic URL found in owner data for @${account.username}`);
-          }
 
-          await accountRef.update(profileUpdates);
-          console.log(`✅ Updated Instagram profile for @${account.username}:`, profileUpdates);
+            await accountRef.update(profileUpdates);
+            console.log(`✅ Updated Instagram profile (from caption.user)`);
           } else {
-            console.warn(`⚠️ No owner data found in first Instagram item for @${account.username}`);
+            console.warn(`⚠️ No user data in caption for @${account.username}`);
           }
-        } else {
-          console.warn(`⚠️ No Instagram items returned for @${account.username}`);
+        }
+        
+        // Fallback: Use apify/instagram-profile-scraper for complete profile data (includes follower count)
+        if (!profileDataExtracted || instagramItems.length === 0) {
+          console.log(`📊 Falling back to apify/instagram-profile-scraper for complete profile data...`);
+          try {
+            const profileData = await runApifyActor({
+              actorId: 'apify~instagram-profile-scraper',
+              input: {
+                usernames: [account.username.replace('@', '')],
+                proxyConfiguration: {
+                  useApifyProxy: true,
+                  apifyProxyGroups: ['RESIDENTIAL'],
+                  apifyProxyCountry: 'US'
+                },
+                includeAboutSection: false
+              }
+            });
+            
+            const profiles = profileData.items || [];
+            if (profiles.length > 0) {
+              const profile = profiles[0];
+              console.log(`✅ Fetched profile via apify/instagram-profile-scraper: ${profile.followersCount || 0} followers`);
+              
+              const profileUpdates: any = {
+                displayName: profile.fullName || account.username,
+                followerCount: profile.followersCount || 0,
+                followingCount: profile.followsCount || 0,
+                isVerified: profile.verified || false
+              };
+              
+              // Download and upload profile pic if available
+              if (profile.profilePicUrl) {
+                try {
+                  console.log(`📸 Downloading Instagram profile pic (from profile scraper)...`);
+                  const uploadedProfilePic = await downloadAndUploadImage(
+                    profile.profilePicUrl,
+                    orgId,
+                    `instagram_profile_${account.username}.jpg`,
+                    'profile'
+                  );
+                  profileUpdates.profilePicture = uploadedProfilePic;
+                  console.log(`✅ Instagram profile picture uploaded to Firebase Storage`);
+                } catch (uploadError: any) {
+                  console.error(`❌ Error uploading Instagram profile picture:`, uploadError);
+                }
+              }
+              
+              await accountRef.update(profileUpdates);
+              console.log(`✅ Updated Instagram profile (from profile scraper)`);
+            } else {
+              console.warn(`⚠️ No profile data returned from apify/instagram-profile-scraper`);
+            }
+          } catch (profileError) {
+            console.error(`❌ Failed to fetch profile via apify/instagram-profile-scraper:`, profileError);
+          }
         }
         
         // Transform Instagram data to video format
