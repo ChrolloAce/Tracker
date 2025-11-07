@@ -280,10 +280,6 @@ class FirebaseStorageService {
       // This function is now redundant since we delete thumbnails per-video
       // in deleteAccountVideos, but keeping it for backwards compatibility
       
-      // List all thumbnails
-      const thumbnailsRef = ref(storage, `organizations/${orgId}/thumbnails/`);
-      const listResult = await listAll(thumbnailsRef);
-      
       // Since thumbnails are named {platform}_{videoId}_thumb.jpg,
       // we can't easily filter by accountId
       // This is handled by deleteAccountVideos now
