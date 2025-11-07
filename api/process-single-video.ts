@@ -1,7 +1,8 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
+import { runApifyActor } from './apify-client.js';
 
 // Initialize Firebase Admin (same as sync-single-account)
 if (!getApps().length) {
@@ -255,7 +256,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Update account stats if linked
     if (accountId) {
       const accountRef = accountsRef.doc(accountId);
-      const FieldValue = require('firebase-admin').firestore.FieldValue;
       
       await accountRef.update({
         totalVideos: FieldValue.increment(1),
