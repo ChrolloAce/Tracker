@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, Users, TrendingUp, RefreshCw } from 'lucide-react';
+import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, Users, TrendingUp, RefreshCw, CheckCircle, Info } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -12,6 +12,7 @@ import SubscriptionService from '../services/SubscriptionService';
 import StripeService from '../services/StripeService';
 import { PlanTier, SUBSCRIPTION_PLANS } from '../types/subscription';
 import { ProxiedImage } from './ProxiedImage';
+import NotificationPreferencesService, { NotificationPreferences, DEFAULT_NOTIFICATION_PREFERENCES, NOTIFICATION_TYPES_INFO } from '../services/NotificationPreferencesService';
 
 type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'team' | 'revenue';
 
@@ -392,18 +393,10 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   
   // Notification settings
-  const [emailNotifications, setEmailNotifications] = useState({
-    weeklySummary: true,
-    accountActivity: true,
-    billingAlerts: true,
-    newVideos: false,
-  });
-  
-  const [inAppNotifications, setInAppNotifications] = useState({
-    teamUpdates: true,
-    mentions: true,
-    reports: false,
-  });
+  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>(DEFAULT_NOTIFICATION_PREFERENCES);
+  const [loadingPreferences, setLoadingPreferences] = useState(true);
+  const [savingPreferences, setSavingPreferences] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Load current organization and members
   useEffect(() => {
@@ -426,6 +419,71 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
 
     loadOrganization();
   }, [user, currentOrgId]);
+
+  // Load notification preferences
+  useEffect(() => {
+    const loadPreferences = async () => {
+      if (!user || !currentOrgId) return;
+      
+      setLoadingPreferences(true);
+      try {
+        const prefs = await NotificationPreferencesService.getPreferences(currentOrgId, user.uid);
+        setNotificationPreferences(prefs);
+      } catch (error) {
+        console.error('Failed to load notification preferences:', error);
+      } finally {
+        setLoadingPreferences(false);
+      }
+    };
+
+    loadPreferences();
+  }, [user, currentOrgId]);
+
+  // Auto-save preferences with debounce
+  useEffect(() => {
+    if (!user || !currentOrgId || loadingPreferences) return;
+
+    const timeoutId = setTimeout(async () => {
+      setSavingPreferences(true);
+      try {
+        await NotificationPreferencesService.savePreferences(
+          currentOrgId,
+          user.uid,
+          notificationPreferences
+        );
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 2000);
+      } catch (error) {
+        console.error('Failed to save notification preferences:', error);
+      } finally {
+        setSavingPreferences(false);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timeoutId);
+  }, [notificationPreferences, user, currentOrgId, loadingPreferences]);
+
+  // Helper to update email notification preference
+  const toggleEmailNotification = (key: keyof typeof notificationPreferences.email) => {
+    setNotificationPreferences(prev => ({
+      ...prev,
+      email: {
+        ...prev.email,
+        [key]: !prev.email[key],
+      },
+    }));
+  };
+
+  // Helper to update in-app notification preference
+  const toggleInAppNotification = (key: keyof typeof notificationPreferences.inApp) => {
+    setNotificationPreferences(prev => ({
+      ...prev,
+      inApp: {
+        ...prev.inApp,
+        [key]: !prev.inApp[key],
+      },
+    }));
+  };
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -541,101 +599,175 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
           {/* Notifications Tab */}
           {activeTab === 'notifications' && (
             <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Notifications</h2>
-                <p className="text-gray-600 dark:text-gray-400">Configure how you receive updates</p>
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Notifications</h2>
+                  <p className="text-gray-600 dark:text-gray-400">Configure how you receive updates and alerts</p>
+                </div>
+                {(savingPreferences || saveSuccess) && (
+                  <div className="flex items-center gap-2 text-sm">
+                    {savingPreferences ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                        <span className="text-gray-400">Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-4 h-4 text-emerald-400" />
+                        <span className="text-emerald-400">Saved!</span>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
 
-              {/* Email Notifications */}
-              <div className="bg-black/40 rounded-xl border border-white/10 p-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <Mail className="w-5 h-5 text-emerald-400" />
-                  <div>
-                    <h3 className="text-lg font-semibold text-white">Email Notifications</h3>
-                    <p className="text-sm text-gray-500">Receive updates via email</p>
-                  </div>
+              {loadingPreferences ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
                 </div>
+              ) : (
+                <>
+                  {/* Info Banner */}
+                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 flex items-start gap-3">
+                    <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-blue-300">
+                      <p className="font-medium mb-1">Notification Types Explained</p>
+                      <p className="text-blue-300/80">Toggle the switches below to control which notifications you receive. Settings are saved automatically.</p>
+                    </div>
+                  </div>
 
-                <div className="space-y-4">
-                  {Object.entries(emailNotifications).map(([key, value]) => (
-                    <div key={key} className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-white/5 last:border-0">
+                  {/* Email Notifications */}
+                  <div className="bg-black/40 rounded-xl border border-white/10 p-6">
+                    <div className="flex items-center gap-3 mb-6">
+                      <Mail className="w-5 h-5 text-emerald-400" />
                       <div>
-                        <p className="font-medium text-gray-900 dark:text-white">
-                          {key === 'weeklySummary' && 'Weekly Summary'}
-                          {key === 'accountActivity' && 'Account Activity'}
-                          {key === 'billingAlerts' && 'Billing Alerts'}
-                          {key === 'newVideos' && 'New Videos'}
-                        </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                          {key === 'weeklySummary' && 'Get a weekly digest of your analytics'}
-                          {key === 'accountActivity' && 'Alerts for important account changes'}
-                          {key === 'billingAlerts' && 'Payment and subscription notifications'}
-                          {key === 'newVideos' && 'Notifications when new videos are tracked'}
+                        <h3 className="text-lg font-semibold text-white">Email Notifications</h3>
+                        <p className="text-sm text-gray-500">Receive updates via email at {user?.email}</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      {Object.entries(NOTIFICATION_TYPES_INFO.email).map(([key, info]) => {
+                        const isEnabled = notificationPreferences.email[key as keyof typeof notificationPreferences.email];
+                        return (
+                          <div 
+                            key={key} 
+                            className="flex items-center justify-between py-4 px-4 rounded-lg hover:bg-white/5 transition-colors group"
+                          >
+                            <div className="flex items-start gap-3 flex-1">
+                              <span className="text-2xl mt-0.5">{info.icon}</span>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-gray-900 dark:text-white">{info.label}</p>
+                                  <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-white/10 text-gray-400">
+                                    {info.category}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                  {info.description}
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => toggleEmailNotification(key as keyof typeof notificationPreferences.email)}
+                              className={`
+                                relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ml-4
+                                ${isEnabled ? 'bg-emerald-600' : 'bg-gray-700'}
+                              `}
+                            >
+                              <span
+                                className={`
+                                  inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+                                  ${isEnabled ? 'translate-x-6' : 'translate-x-1'}
+                                `}
+                              />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* In-App Notifications */}
+                  <div className="bg-black/40 rounded-xl border border-white/10 p-6">
+                    <div className="flex items-center gap-3 mb-6">
+                      <Bell className="w-5 h-5 text-emerald-400" />
+                      <div>
+                        <h3 className="text-lg font-semibold text-white">In-App Notifications</h3>
+                        <p className="text-sm text-gray-500">Notifications within the application</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      {Object.entries(NOTIFICATION_TYPES_INFO.inApp).map(([key, info]) => {
+                        const isEnabled = notificationPreferences.inApp[key as keyof typeof notificationPreferences.inApp];
+                        return (
+                          <div 
+                            key={key} 
+                            className="flex items-center justify-between py-4 px-4 rounded-lg hover:bg-white/5 transition-colors group"
+                          >
+                            <div className="flex items-start gap-3 flex-1">
+                              <span className="text-2xl mt-0.5">{info.icon}</span>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-gray-900 dark:text-white">{info.label}</p>
+                                  <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-white/10 text-gray-400">
+                                    {info.category}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                  {info.description}
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => toggleInAppNotification(key as keyof typeof notificationPreferences.inApp)}
+                              className={`
+                                relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ml-4
+                                ${isEnabled ? 'bg-emerald-600' : 'bg-gray-700'}
+                              `}
+                            >
+                              <span
+                                className={`
+                                  inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+                                  ${isEnabled ? 'translate-x-6' : 'translate-x-1'}
+                                `}
+                              />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Notification Email Settings */}
+                  <div className="bg-black/40 rounded-xl border border-white/10 p-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Delivery Settings</h3>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Notification Email (Optional)
+                        </label>
+                        <input
+                          type="email"
+                          value={notificationPreferences.delivery.emailAddress}
+                          onChange={(e) => setNotificationPreferences(prev => ({
+                            ...prev,
+                            delivery: { ...prev.delivery, emailAddress: e.target.value }
+                          }))}
+                          placeholder={user?.email || 'Use account email'}
+                          className="w-full px-4 py-3 bg-zinc-800 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-emerald-600 focus:border-transparent"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Leave empty to use your account email ({user?.email})
                         </p>
                       </div>
-                      <button
-                        onClick={() => setEmailNotifications(prev => ({ ...prev, [key]: !value }))}
-                        className={`
-                          relative inline-flex h-6 w-11 items-center rounded-full transition-colors
-                          ${value ? 'bg-emerald-600' : 'bg-gray-700'}
-                        `}
-                      >
-                        <span
-                          className={`
-                            inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                            ${value ? 'translate-x-6' : 'translate-x-1'}
-                          `}
-                        />
-                      </button>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* In-App Notifications */}
-              <div className="bg-black/40 rounded-xl border border-white/10 p-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <Bell className="w-5 h-5 text-emerald-400" />
-                  <div>
-                    <h3 className="text-lg font-semibold text-white">In-App Notifications</h3>
-                    <p className="text-sm text-gray-500">Notifications within the application</p>
                   </div>
-                </div>
-
-                <div className="space-y-4">
-                  {Object.entries(inAppNotifications).map(([key, value]) => (
-                    <div key={key} className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-white/5 last:border-0">
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">
-                          {key === 'teamUpdates' && 'Team Updates'}
-                          {key === 'mentions' && 'Mentions'}
-                          {key === 'reports' && 'Reports'}
-                        </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                          {key === 'teamUpdates' && 'Updates from your team members'}
-                          {key === 'mentions' && 'When someone mentions you'}
-                          {key === 'reports' && 'Weekly and monthly reports'}
-        </p>
-      </div>
-                <button
-                        onClick={() => setInAppNotifications(prev => ({ ...prev, [key]: !value }))}
-                        className={`
-                          relative inline-flex h-6 w-11 items-center rounded-full transition-colors
-                          ${value ? 'bg-emerald-600' : 'bg-gray-700'}
-                        `}
-                      >
-                        <span
-                          className={`
-                            inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                            ${value ? 'translate-x-6' : 'translate-x-1'}
-                          `}
-                        />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
+                </>
+              )}
             </div>
           )}
 

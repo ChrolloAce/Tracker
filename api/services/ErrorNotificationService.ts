@@ -3,6 +3,7 @@
  * 
  * Handles error notifications for failed account syncs and video processing
  * Sends emails to admins and logs errors to Firestore
+ * Respects user notification preferences
  */
 
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
@@ -24,19 +25,121 @@ interface ErrorDetails {
 
 export class ErrorNotificationService {
   /**
+   * Get user notification preferences
+   */
+  private static async getUserPreferences(orgId: string, userId?: string): Promise<any> {
+    if (!userId) return null;
+    
+    try {
+      const db = getFirestore();
+      const prefDoc = await db
+        .collection('organizations')
+        .doc(orgId)
+        .collection('userPreferences')
+        .doc(userId)
+        .get();
+      
+      return prefDoc.exists ? prefDoc.data() : null;
+    } catch (error) {
+      console.error('Failed to load user preferences:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Check if user should receive email notification
+   */
+  private static async shouldSendEmail(details: ErrorDetails, userId?: string): Promise<{
+    shouldSend: boolean;
+    emailAddress: string;
+  }> {
+    const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'ernesto@maktubtechnologies.com';
+    
+    // Always send to admin by default
+    let emailAddress = ADMIN_EMAIL;
+    
+    // If we have a userId, check their preferences
+    if (userId) {
+      const prefs = await this.getUserPreferences(details.orgId, userId);
+      
+      if (prefs) {
+        // Check if error alerts are enabled
+        const errorAlertsEnabled = prefs.email?.errorAlerts !== false;
+        
+        // Check specific error type preferences
+        let specificTypeEnabled = true;
+        if (details.type === 'account_sync') {
+          specificTypeEnabled = prefs.email?.accountSyncIssues !== false;
+        } else if (details.type === 'video_processing') {
+          specificTypeEnabled = prefs.email?.videoProcessingIssues !== false;
+        }
+        
+        if (!errorAlertsEnabled || !specificTypeEnabled) {
+          console.log(`🔕 User has disabled ${details.type} notifications - skipping email`);
+          return { shouldSend: false, emailAddress: ADMIN_EMAIL };
+        }
+        
+        // Use custom email if provided
+        if (prefs.delivery?.emailAddress) {
+          emailAddress = prefs.delivery.emailAddress;
+        }
+        
+        // Check quiet hours
+        if (prefs.delivery?.quietHoursEnabled) {
+          const timezone = prefs.delivery.timezone || 'UTC';
+          const now = new Date();
+          const currentTime = now.toLocaleTimeString('en-US', { 
+            hour12: false, 
+            hour: '2-digit', 
+            minute: '2-digit',
+            timeZone: timezone
+          });
+          
+          const start = prefs.delivery.quietHoursStart || '22:00';
+          const end = prefs.delivery.quietHoursEnd || '08:00';
+          
+          // Check if current time is within quiet hours
+          if (start > end) {
+            // Quiet hours span midnight (e.g., 22:00 to 08:00)
+            if (currentTime >= start || currentTime <= end) {
+              console.log(`🔕 Quiet hours active (${start} - ${end}) - skipping email`);
+              return { shouldSend: false, emailAddress };
+            }
+          } else {
+            // Normal quiet hours (e.g., 01:00 to 06:00)
+            if (currentTime >= start && currentTime <= end) {
+              console.log(`🔕 Quiet hours active (${start} - ${end}) - skipping email`);
+              return { shouldSend: false, emailAddress };
+            }
+          }
+        }
+      }
+    }
+    
+    return { shouldSend: true, emailAddress };
+  }
+
+  /**
    * Send error notification email to admin
    */
-  static async sendErrorEmail(details: ErrorDetails): Promise<void> {
+  static async sendErrorEmail(details: ErrorDetails, userId?: string): Promise<void> {
     const RESEND_API_KEY = process.env.RESEND_API_KEY;
-    const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'ernesto@maktubtechnologies.com';
     
     if (!RESEND_API_KEY) {
       console.warn('⚠️ RESEND_API_KEY not configured - skipping error email notification');
       return;
     }
 
+    // Check user preferences
+    const { shouldSend, emailAddress } = await this.shouldSendEmail(details, userId);
+    
+    if (!shouldSend) {
+      console.log('⏭️ Skipping email notification due to user preferences');
+      return;
+    }
+
     try {
-      console.log(`📧 Sending error notification email to ${ADMIN_EMAIL}...`);
+      console.log(`📧 Sending error notification email to ${emailAddress}...`);
       
       const subject = `❌ ${details.type === 'account_sync' ? 'Account Sync' : 'Video Processing'} Failed - ${details.platform.toUpperCase()}`;
       
@@ -138,7 +241,7 @@ export class ErrorNotificationService {
         },
         body: JSON.stringify({
           from: 'ViewTrack Errors <errors@viewtrack.app>',
-          to: [ADMIN_EMAIL],
+          to: [emailAddress],
           subject: subject,
           html: html
         })
@@ -194,12 +297,12 @@ export class ErrorNotificationService {
    * Handle complete error notification flow
    * (email + Firestore logging)
    */
-  static async notifyError(details: ErrorDetails): Promise<void> {
+  static async notifyError(details: ErrorDetails, userId?: string): Promise<void> {
     console.log(`🚨 Error notification triggered: ${details.type} - ${details.platform} - ${details.username || details.videoUrl}`);
     
     // Run both in parallel
     await Promise.all([
-      this.sendErrorEmail(details),
+      this.sendErrorEmail(details, userId),
       this.logError(details)
     ]);
   }
