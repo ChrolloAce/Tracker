@@ -22,8 +22,6 @@ if (!getApps().length) {
   }
 }
 
-const db = getFirestore();
-
 interface CleanupStats {
   videosDeleted: number;
   accountsDeleted: number;
@@ -89,6 +87,7 @@ export class CleanupService {
     };
 
     try {
+      const db = getFirestore(); // Lazy initialization
       console.log(`🧹 [CLEANUP] Starting video cleanup for org: ${orgId}, project: ${projectId}`);
 
       // Get all videos
@@ -165,6 +164,7 @@ export class CleanupService {
     };
 
     try {
+      const db = getFirestore(); // Lazy initialization
       console.log(`🧹 [CLEANUP] Starting account cleanup for org: ${orgId}, project: ${projectId}`);
 
       // Get all tracked accounts

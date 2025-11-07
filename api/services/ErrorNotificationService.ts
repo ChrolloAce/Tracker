@@ -7,8 +7,6 @@
 
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 
-const db = getFirestore();
-
 interface ErrorDetails {
   type: 'account_sync' | 'video_processing';
   platform: string;
@@ -163,6 +161,7 @@ export class ErrorNotificationService {
    */
   static async logError(details: ErrorDetails): Promise<void> {
     try {
+      const db = getFirestore(); // Lazy initialization
       const errorRef = db.collection('errors').doc();
       
       await errorRef.set({
@@ -210,6 +209,7 @@ export class ErrorNotificationService {
    */
   static async markErrorResolved(errorId: string, resolvedBy: string, notes?: string): Promise<void> {
     try {
+      const db = getFirestore(); // Lazy initialization
       const errorRef = db.collection('errors').doc(errorId);
       
       await errorRef.update({
