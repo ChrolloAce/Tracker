@@ -529,108 +529,60 @@ export default async function handler(
         const instagramItems = data.items || [];
         console.log(`✅ Fetched ${instagramItems.length} Instagram reels`);
         
-        // Extract profile data from first post
-        let profileDataExtracted = false;
-        if (instagramItems.length > 0) {
-          const firstItem = instagramItems[0];
+        // ALWAYS use apify/instagram-profile-scraper for profile pic + follower count
+        // (hpix~ig-reels-scraper doesn't consistently include follower count)
+        console.log(`👤 Fetching complete profile data via apify/instagram-profile-scraper...`);
+        try {
+          const profileData = await runApifyActor({
+            actorId: 'apify~instagram-profile-scraper',
+            input: {
+              usernames: [account.username.replace('@', '')],
+              proxyConfiguration: {
+                useApifyProxy: true,
+                apifyProxyGroups: ['RESIDENTIAL'],
+                apifyProxyCountry: 'US'
+              },
+              includeAboutSection: false
+            }
+          });
           
-          // Profile data is at raw_data.caption.user (NOT raw_data.owner!)
-          const user = firstItem.raw_data?.caption?.user;
-          console.log(`🔍 User data exists: ${!!user}`);
-          
-          if (user && user.profile_pic_url) {
-            console.log(`📊 Instagram profile extracted from caption.user`);
-            console.log(`🔍 Username: ${user.username}`);
-            console.log(`🔍 Full name: ${user.full_name || 'N/A'}`);
-            console.log(`🔍 Profile pic URL: ${user.profile_pic_url ? 'YES' : 'NO'}`);
-          
-            const profileUpdates: any = {
-              displayName: user.full_name || account.username,
-              isVerified: user.is_verified || false
-            };
-
-            // Download and upload Instagram profile pic to Firebase Storage (same as TikTok)
-            const profilePicUrl = user.profile_pic_url;
+          const profiles = profileData.items || [];
+          if (profiles.length > 0) {
+            const profile = profiles[0];
+            console.log(`✅ Fetched profile: ${profile.followersCount || 0} followers`);
             
-            if (profilePicUrl) {
+            const profileUpdates: any = {
+              displayName: profile.fullName || account.username,
+              followerCount: profile.followersCount || 0,
+              followingCount: profile.followsCount || 0,
+              isVerified: profile.verified || false
+            };
+            
+            // Download and upload profile pic to Firebase Storage (same as TikTok)
+            if (profile.profilePicUrl) {
               try {
                 console.log(`📸 Downloading Instagram profile pic for @${account.username}...`);
                 const uploadedProfilePic = await downloadAndUploadImage(
-                  profilePicUrl,
+                  profile.profilePicUrl,
                   orgId,
                   `instagram_profile_${account.username}.jpg`,
                   'profile'
                 );
                 profileUpdates.profilePicture = uploadedProfilePic;
                 console.log(`✅ Instagram profile picture uploaded to Firebase Storage`);
-                profileDataExtracted = true;
               } catch (uploadError: any) {
                 console.error(`❌ Error uploading Instagram profile picture:`, uploadError);
                 console.warn(`⚠️ Skipping profile picture - will retry on next sync`);
               }
             }
-
-            await accountRef.update(profileUpdates);
-            console.log(`✅ Updated Instagram profile (from caption.user)`);
-          } else {
-            console.warn(`⚠️ No user data in caption for @${account.username}`);
-          }
-        }
-        
-        // Fallback: Use apify/instagram-profile-scraper for complete profile data (includes follower count)
-        if (!profileDataExtracted || instagramItems.length === 0) {
-          console.log(`📊 Falling back to apify/instagram-profile-scraper for complete profile data...`);
-          try {
-            const profileData = await runApifyActor({
-              actorId: 'apify~instagram-profile-scraper',
-              input: {
-                usernames: [account.username.replace('@', '')],
-                proxyConfiguration: {
-                  useApifyProxy: true,
-                  apifyProxyGroups: ['RESIDENTIAL'],
-                  apifyProxyCountry: 'US'
-                },
-                includeAboutSection: false
-              }
-            });
             
-            const profiles = profileData.items || [];
-            if (profiles.length > 0) {
-              const profile = profiles[0];
-              console.log(`✅ Fetched profile via apify/instagram-profile-scraper: ${profile.followersCount || 0} followers`);
-              
-              const profileUpdates: any = {
-                displayName: profile.fullName || account.username,
-                followerCount: profile.followersCount || 0,
-                followingCount: profile.followsCount || 0,
-                isVerified: profile.verified || false
-              };
-              
-              // Download and upload profile pic if available
-              if (profile.profilePicUrl) {
-                try {
-                  console.log(`📸 Downloading Instagram profile pic (from profile scraper)...`);
-                  const uploadedProfilePic = await downloadAndUploadImage(
-                    profile.profilePicUrl,
-                    orgId,
-                    `instagram_profile_${account.username}.jpg`,
-                    'profile'
-                  );
-                  profileUpdates.profilePicture = uploadedProfilePic;
-                  console.log(`✅ Instagram profile picture uploaded to Firebase Storage`);
-                } catch (uploadError: any) {
-                  console.error(`❌ Error uploading Instagram profile picture:`, uploadError);
-                }
-              }
-              
-              await accountRef.update(profileUpdates);
-              console.log(`✅ Updated Instagram profile (from profile scraper)`);
-            } else {
-              console.warn(`⚠️ No profile data returned from apify/instagram-profile-scraper`);
-            }
-          } catch (profileError) {
-            console.error(`❌ Failed to fetch profile via apify/instagram-profile-scraper:`, profileError);
+            await accountRef.update(profileUpdates);
+            console.log(`✅ Updated Instagram profile: ${profile.fullName || account.username}`);
+          } else {
+            console.warn(`⚠️ No profile data returned from apify/instagram-profile-scraper`);
           }
+        } catch (profileError) {
+          console.error(`❌ Failed to fetch profile via apify/instagram-profile-scraper:`, profileError);
         }
         
         // Transform Instagram data to video format
