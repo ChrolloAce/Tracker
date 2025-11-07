@@ -641,7 +641,8 @@ export default async function handler(
             continue;
           }
           
-          const owner = item.raw_data?.owner || {};
+          // Profile data is at raw_data.caption.user (NOT raw_data.owner!)
+          const user = item.raw_data?.caption?.user || {};
           const views = item.play_count || item.view_count || 0;
           const likes = item.like_count || 0;
           const comments = item.comment_count || 0;
@@ -656,8 +657,8 @@ export default async function handler(
             videoUrl: `https://www.instagram.com/reel/${videoCode}/`,
             platform: 'instagram',
             thumbnail: thumbnailUrl,
-            accountUsername: owner.username || account.username,
-            accountDisplayName: owner.full_name || account.username,
+            accountUsername: user.username || account.username,
+            accountDisplayName: user.full_name || account.username,
             uploadDate: uploadDate,
             views: views,
             likes: likes,
@@ -665,7 +666,7 @@ export default async function handler(
             shares: 0, // Instagram API doesn't provide share count
             caption: caption,
             duration: duration,
-            isVerified: owner.is_verified || false
+            isVerified: user.is_verified || false
           });
         }
         
