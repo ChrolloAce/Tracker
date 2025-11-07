@@ -3,21 +3,28 @@ import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, Cartesia
 import { TrendingUp, BarChart2, Activity, Info } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import DataAggregationService, { IntervalType } from '../services/DataAggregationService';
+import DayVideosModal from './DayVideosModal';
 
 interface ComparisonGraphProps {
   submissions: VideoSubmission[];
   granularity?: 'day' | 'week' | 'month' | 'year';
   dateRange?: { startDate: Date; endDate: Date }; // Optional: use filter's date range instead of deriving from submissions
+  onVideoClick?: (video: VideoSubmission) => void;
 }
 
 type MetricType = 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'videos';
 type ChartType = 'line' | 'area' | 'bar';
 
-const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granularity = 'week', dateRange }) => {
+const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granularity = 'week', dateRange, onVideoClick }) => {
   const [metric1, setMetric1] = useState<MetricType>('views');
   const [metric2, setMetric2] = useState<MetricType>('likes');
   const [chartType, setChartType] = useState<ChartType>('bar');
   const [showTooltipInfo, setShowTooltipInfo] = useState(false);
+  
+  // Day Videos Modal state
+  const [isDayModalOpen, setIsDayModalOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDayVideos, setSelectedDayVideos] = useState<VideoSubmission[]>([]);
 
   // Format number for display
   const formatNumber = (num: number): string => {
@@ -57,6 +64,33 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
       case 'engagement': return 'Engagement %';
       case 'videos': return 'Video Count';
     }
+  };
+
+  // Handle clicking on a chart bar/point to see videos
+  const handleChartClick = (data: any) => {
+    if (!data || !data.activePayload || !data.activePayload[0]) return;
+    
+    const payload = data.activePayload[0].payload;
+    const clickedDate = payload.date;
+    const interval = payload.interval;
+    
+    if (!interval) return;
+    
+    // Filter videos for this interval
+    const videosForInterval = submissions.filter(video => {
+      const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
+      return DataAggregationService.isDateInInterval(uploadDate, interval);
+    });
+    
+    console.log('📊 Clicked chart interval:', {
+      date: clickedDate,
+      intervalType: interval.intervalType,
+      videosCount: videosForInterval.length
+    });
+    
+    setSelectedDate(clickedDate);
+    setSelectedDayVideos(videosForInterval);
+    setIsDayModalOpen(true);
   };
 
   // Aggregate data by selected granularity
@@ -110,7 +144,8 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
         date: dateLabel,
         metric1: metric1Value,
         metric2: metric2Value,
-        timestamp: interval.timestamp
+        timestamp: interval.timestamp,
+        interval: interval // Include interval for filtering videos
       };
     });
     
@@ -150,6 +185,12 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
               </div>
             ))}
           </div>
+          {/* Click to expand hint */}
+          <div className="mt-3 pt-3 border-t border-white/10 text-center">
+            <span className="text-[10px] text-gray-500 uppercase tracking-wider">
+              Click to see videos
+            </span>
+          </div>
         </div>
       );
     }
@@ -160,6 +201,8 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
   const renderChart = () => {
     const commonProps = {
       data: chartData,
+      onClick: handleChartClick,
+      style: { cursor: 'pointer' },
       margin: { top: 10, right: 40, left: 0, bottom: 5 }
     };
 
@@ -516,6 +559,22 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
           )}
         </div>
       </div>
+
+      {/* Day Videos Modal */}
+      {selectedDate && (
+        <DayVideosModal
+          isOpen={isDayModalOpen}
+          onClose={() => {
+            setIsDayModalOpen(false);
+            setSelectedDate(null);
+            setSelectedDayVideos([]);
+          }}
+          date={selectedDate}
+          videos={selectedDayVideos}
+          metricLabel={getMetricLabel(metric1)}
+          onVideoClick={onVideoClick}
+        />
+      )}
     </div>
   );
 };

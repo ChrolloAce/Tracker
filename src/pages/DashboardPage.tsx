@@ -3484,6 +3484,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   submissions={filteredSubmissions}
                   granularity={granularity}
                   dateRange={currentDateRange}
+                  onVideoClick={handleVideoClick}
                 />
               );
             
