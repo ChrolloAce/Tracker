@@ -1152,7 +1152,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       
       // Trigger the appropriate action based on active tab
       if (activeTab === 'dashboard') {
-        setIsModalOpen(true);
+        setIsTypeSelectorOpen(true);
       } else if (activeTab === 'accounts') {
         accountsPageRef.current?.openAddModal();
       } else if (activeTab === 'videos') {

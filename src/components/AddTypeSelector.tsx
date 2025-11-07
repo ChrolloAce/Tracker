@@ -14,20 +14,20 @@ export function AddTypeSelector({ isOpen, onClose, onSelectType }: AddTypeSelect
       onClose={onClose}
       title="What would you like to track?"
     >
-      <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-4">
         <button
           onClick={() => {
             onSelectType('video');
           }}
-          className="w-full p-6 rounded-lg border-2 border-gray-700 dark:border-gray-700 bg-gray-800 dark:bg-gray-800 hover:bg-gray-700 dark:hover:bg-gray-700 hover:border-gray-600 dark:hover:border-gray-600 transition-all group"
+          className="p-8 rounded-lg border border-white/10 bg-zinc-900/40 hover:bg-white/5 hover:border-white/20 transition-all group"
         >
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-lg bg-blue-500/20 text-blue-400 group-hover:bg-blue-500/30 transition-colors">
-              <Video className="w-6 h-6" />
+          <div className="flex flex-col items-center gap-4 text-center">
+            <div className="p-4 rounded-lg bg-white/5 text-white/70 group-hover:bg-white/10 group-hover:text-white transition-all">
+              <Video className="w-8 h-8" />
             </div>
-            <div className="flex-1 text-left">
-              <h3 className="text-lg font-semibold text-white mb-1">Track Video</h3>
-              <p className="text-sm text-gray-400">
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-2">Track Video</h3>
+              <p className="text-sm text-white/50">
                 Add individual videos from TikTok, Instagram, YouTube, or Twitter
               </p>
             </div>
@@ -38,15 +38,15 @@ export function AddTypeSelector({ isOpen, onClose, onSelectType }: AddTypeSelect
           onClick={() => {
             onSelectType('account');
           }}
-          className="w-full p-6 rounded-lg border-2 border-gray-700 dark:border-gray-700 bg-gray-800 dark:bg-gray-800 hover:bg-gray-700 dark:hover:bg-gray-700 hover:border-gray-600 dark:hover:border-gray-600 transition-all group"
+          className="p-8 rounded-lg border border-white/10 bg-zinc-900/40 hover:bg-white/5 hover:border-white/20 transition-all group"
         >
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-lg bg-purple-500/20 text-purple-400 group-hover:bg-purple-500/30 transition-colors">
-              <UserPlus className="w-6 h-6" />
+          <div className="flex flex-col items-center gap-4 text-center">
+            <div className="p-4 rounded-lg bg-white/5 text-white/70 group-hover:bg-white/10 group-hover:text-white transition-all">
+              <UserPlus className="w-8 h-8" />
             </div>
-            <div className="flex-1 text-left">
-              <h3 className="text-lg font-semibold text-white mb-1">Track Account</h3>
-              <p className="text-sm text-gray-400">
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-2">Track Account</h3>
+              <p className="text-sm text-white/50">
                 Track all videos from a social media account automatically
               </p>
             </div>
