@@ -118,7 +118,7 @@ export const AddVideoModal: React.FC<AddVideoModalProps> = ({ isOpen, onClose, o
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-[#151515] rounded-[14px] w-full max-w-[580px] shadow-2xl" style={{ padding: '24px' }}>
         {/* Header */}
         <div className="flex items-start justify-between mb-6">

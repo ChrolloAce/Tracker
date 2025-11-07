@@ -18,7 +18,6 @@ export function AddTypeSelector({ isOpen, onClose, onSelectType }: AddTypeSelect
         <button
           onClick={() => {
             onSelectType('video');
-            onClose();
           }}
           className="w-full p-6 rounded-lg border-2 border-gray-700 dark:border-gray-700 bg-gray-800 dark:bg-gray-800 hover:bg-gray-700 dark:hover:bg-gray-700 hover:border-gray-600 dark:hover:border-gray-600 transition-all group"
         >
@@ -38,7 +37,6 @@ export function AddTypeSelector({ isOpen, onClose, onSelectType }: AddTypeSelect
         <button
           onClick={() => {
             onSelectType('account');
-            onClose();
           }}
           className="w-full p-6 rounded-lg border-2 border-gray-700 dark:border-gray-700 bg-gray-800 dark:bg-gray-800 hover:bg-gray-700 dark:hover:bg-gray-700 hover:border-gray-600 dark:hover:border-gray-600 transition-all group"
         >

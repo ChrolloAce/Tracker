@@ -3236,11 +3236,15 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         isOpen={isTypeSelectorOpen}
         onClose={() => setIsTypeSelectorOpen(false)}
         onSelectType={(type) => {
-          if (type === 'video') {
-            setIsModalOpen(true);
-          } else if (type === 'account') {
-            accountsPageRef.current?.openAddModal();
-          }
+          // Close type selector first, then open the selected modal after a brief delay
+          setIsTypeSelectorOpen(false);
+          setTimeout(() => {
+            if (type === 'video') {
+              setIsModalOpen(true);
+            } else if (type === 'account') {
+              accountsPageRef.current?.openAddModal();
+            }
+          }, 100);
         }}
       />
 
