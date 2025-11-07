@@ -534,6 +534,13 @@ export default async function handler(
           const firstItem = instagramItems[0];
           console.log(`🔍 First item keys: ${Object.keys(firstItem).join(', ')}`);
           console.log(`🔍 Has raw_data: ${!!firstItem.raw_data}`);
+          
+          // DEBUG: Log what's actually in raw_data
+          if (firstItem.raw_data) {
+            console.log(`🔍 raw_data keys: ${Object.keys(firstItem.raw_data).join(', ')}`);
+            console.log(`🔍 raw_data sample:`, JSON.stringify(firstItem.raw_data).substring(0, 500));
+          }
+          
           const owner = firstItem.raw_data?.owner;
           console.log(`🔍 Owner data exists: ${!!owner}`);
           
