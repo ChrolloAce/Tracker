@@ -1019,6 +1019,7 @@ async function saveVideosToFirestore(
     let likes = 0;
     let comments = 0;
     let shares = 0;
+    let saves = 0; // ✅ ADD SAVES DECLARATION
     let url = '';
     let thumbnail = '';
     let caption = '';
@@ -1057,7 +1058,7 @@ async function saveVideosToFirestore(
       likes = video.likes || 0;
       comments = video.comments || 0;
       shares = video.shares || 0;
-      const saves = video.bookmarks || 0; // ✅ ADD BOOKMARKS
+      saves = video.bookmarks || 0; // ✅ ADD BOOKMARKS (remove const to make it available outside block)
       url = video.tiktok_url || videoObj.url || '';
       
       // ROBUST THUMBNAIL EXTRACTION: handle nested + flat keys
