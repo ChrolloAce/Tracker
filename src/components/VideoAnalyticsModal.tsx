@@ -4,7 +4,6 @@ import { X, Eye, Heart, MessageCircle, Share2, TrendingUp, TrendingDown, Minus, 
 import { VideoSubmission } from '../types';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { PlatformIcon } from './ui/PlatformIcon';
-import DateRangeFilter, { DateFilterType as ImportedDateFilterType } from './DateRangeFilter';
 import { VideoHistoricalMetricsChart } from './VideoHistoricalMetricsChart';
 
 interface VideoAnalyticsModalProps {
@@ -12,7 +11,6 @@ interface VideoAnalyticsModalProps {
   isOpen: boolean;
   onClose: () => void;
   totalCreatorVideos?: number; // Total number of videos from this creator
-  hideDateFilter?: boolean; // Hide date filter and always show all time data
 }
 
 interface ChartDataPoint {
@@ -26,7 +24,7 @@ interface ChartDataPoint {
   timestamp: number;
 }
 
-const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose, totalCreatorVideos, hideDateFilter = false }) => {
+const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose, totalCreatorVideos }) => {
   // Tooltip state for smooth custom tooltips
   const [tooltipData, setTooltipData] = useState<{ 
     x: number; 
@@ -44,9 +42,6 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   const [snapshotsPage, setSnapshotsPage] = useState(1);
   const snapshotsPerPage = 5;
   
-  // Always load all data - no date filtering
-  const hideDateFilterForced = true; // Force all data to be loaded
-
   // Extract title without hashtags and separate hashtags
   const { cleanTitle, hashtags } = useMemo(() => {
     if (!video) return { cleanTitle: '', hashtags: [] };

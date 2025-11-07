@@ -78,7 +78,6 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const currentMetric = metrics.find(m => m.key === selectedMetric) || metrics[0];
-  const MetricIcon = currentMetric.icon;
 
   // Calculate max value for Y-axis
   const maxValue = useMemo(() => {
