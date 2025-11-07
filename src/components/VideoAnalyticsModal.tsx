@@ -5,6 +5,7 @@ import { VideoSubmission } from '../types';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { PlatformIcon } from './ui/PlatformIcon';
 import DateRangeFilter, { DateFilterType as ImportedDateFilterType } from './DateRangeFilter';
+import { VideoHistoricalMetricsChart } from './VideoHistoricalMetricsChart';
 
 interface VideoAnalyticsModalProps {
   video: VideoSubmission | null;
