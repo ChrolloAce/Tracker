@@ -1316,6 +1316,21 @@ const KPICards: React.FC<KPICardsProps> = ({
           }
         }
         
+        // Format period date range
+        let periodLabel = '';
+        if (dateRangeStart) {
+          const formatDate = (date: Date) => {
+            const month = date.toLocaleDateString('en-US', { month: 'short' });
+            return `${month} ${date.getDate()}`;
+          };
+          
+          if (dateRangeStart.getTime() === dateRangeEnd.getTime()) {
+            periodLabel = formatDate(dateRangeStart);
+          } else {
+            periodLabel = `${formatDate(dateRangeStart)} – ${formatDate(dateRangeEnd)}`;
+          }
+        }
+        
         return {
           id: 'revenue',
           label: 'Total Revenue',
@@ -1323,6 +1338,7 @@ const KPICards: React.FC<KPICardsProps> = ({
           icon: DollarSign,
           accent: 'emerald' as const,
           delta: { value: Math.abs(revenueGrowth), isPositive: revenueGrowth >= 0, absoluteValue: revenueGrowthAbsolute },
+          period: periodLabel || undefined,
           sparklineData: sparklineData.length > 0 ? sparklineData : undefined,
           intervalType: 'day' as IntervalType,
           isIncreasing: revenueGrowth >= 0,
@@ -1394,12 +1410,28 @@ const KPICards: React.FC<KPICardsProps> = ({
           }
         }
         
+        // Format period date range (same as revenue)
+        let periodLabel = '';
+        if (dateRangeStart) {
+          const formatDate = (date: Date) => {
+            const month = date.toLocaleDateString('en-US', { month: 'short' });
+            return `${month} ${date.getDate()}`;
+          };
+          
+          if (dateRangeStart.getTime() === dateRangeEnd.getTime()) {
+            periodLabel = formatDate(dateRangeStart);
+          } else {
+            periodLabel = `${formatDate(dateRangeStart)} – ${formatDate(dateRangeEnd)}`;
+          }
+        }
+        
         return {
           id: 'downloads',
           label,
           value: formatNumber(activeSubscriptions),
           icon: Download,
           accent: 'blue' as const,
+          period: periodLabel || undefined,
           sparklineData: sparklineData.length > 0 ? sparklineData : undefined,
           intervalType: 'day' as IntervalType,
           isIncreasing: true,
