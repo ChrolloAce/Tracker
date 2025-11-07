@@ -1734,7 +1734,7 @@ const _KPISparkline: React.FC<{
                 <div className="bg-[#1a1a1a] backdrop-blur-xl text-white px-5 py-3 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] text-sm space-y-2 min-w-[240px] border border-white/10 pointer-events-none" style={{ zIndex: 999999, position: 'relative' }}>
                   {/* Show date at top */}
                   {dateStr && (
-                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+                    <p className="text-xs text-gray-400 font-medium tracking-wider">
                       {dateStr}
                     </p>
                   )}
@@ -2448,7 +2448,7 @@ const KPICard: React.FC<{
                 <div className="px-5 pt-4 pb-3 space-y-2.5">
                   {/* Current Period Line */}
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+                    <p className="text-xs text-gray-400 font-medium tracking-wider">
                       {dateStr}
                     </p>
                     <div className="flex items-baseline gap-2">
@@ -2466,7 +2466,7 @@ const KPICard: React.FC<{
                   {/* Previous Period Line */}
                   {ppComparison && ppComparison.displayValue && ppDateStr && (
                     <div className="flex items-center justify-between">
-                      <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">
+                      <p className="text-xs text-gray-500 font-medium tracking-wider">
                         {ppDateStr}
                       </p>
                       <p className="text-lg font-semibold text-gray-400">
