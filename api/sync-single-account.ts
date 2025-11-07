@@ -514,10 +514,15 @@ export default async function handler(
         // Extract profile data from first post
         if (instagramItems.length > 0) {
           const firstItem = instagramItems[0];
+          console.log(`🔍 First item keys: ${Object.keys(firstItem).join(', ')}`);
+          console.log(`🔍 Has raw_data: ${!!firstItem.raw_data}`);
           const owner = firstItem.raw_data?.owner;
+          console.log(`🔍 Owner data exists: ${!!owner}`);
           
           if (owner) {
             console.log(`📊 Instagram profile extracted: ${owner.edge_followed_by?.count || 0} followers`);
+            console.log(`🔍 Profile pic URL (HD): ${owner.profile_pic_url_hd ? 'YES' : 'NO'}`);
+            console.log(`🔍 Profile pic URL (std): ${owner.profile_pic_url ? 'YES' : 'NO'}`);
           
           const profileUpdates: any = {
               displayName: owner.full_name || account.username,
@@ -541,15 +546,26 @@ export default async function handler(
               if (uploadedProfilePic && uploadedProfilePic.includes('storage.googleapis.com')) {
                 profileUpdates.profilePicture = uploadedProfilePic;
                 console.log(`✅ Instagram profile picture uploaded to Firebase Storage`);
+              } else {
+                // Fallback to direct Instagram URL if Firebase upload fails
+                profileUpdates.profilePicture = profilePicUrl;
+                console.warn(`⚠️ Using direct Instagram URL as fallback for @${account.username}`);
               }
             } catch (uploadError) {
               console.error(`❌ Error uploading Instagram profile picture:`, uploadError);
+              // Fallback to direct Instagram URL
+              profileUpdates.profilePicture = profilePicUrl;
+              console.warn(`⚠️ Using direct Instagram URL as fallback for @${account.username}`);
             }
           }
 
           await accountRef.update(profileUpdates);
           console.log(`✅ Updated Instagram profile for @${account.username}:`, profileUpdates);
-        }
+          } else {
+            console.warn(`⚠️ No owner data found in first Instagram item for @${account.username}`);
+          }
+        } else {
+          console.warn(`⚠️ No Instagram items returned for @${account.username}`);
         }
         
         // Transform Instagram data to video format
