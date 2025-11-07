@@ -3,6 +3,7 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { runApifyActor } from './apify-client.js';
+import { ErrorNotificationService } from './services/ErrorNotificationService.js';
 
 // Initialize Firebase Admin (same as sync-single-account)
 if (!getApps().length) {
@@ -435,13 +436,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error) {
     console.error(`❌ Failed to process video ${videoId}:`, error);
     
-    // Update video with error
+    // Update video with error and send notifications
     try {
       const videoRef = db.doc(`organizations/${orgId}/projects/${projectId}/videos/${videoId}`);
+      const videoDoc = await videoRef.get();
+      const video = videoDoc.data();
+
       await videoRef.update({
-        syncStatus: 'failed',
+        syncStatus: 'error',
+        hasError: true,
         syncError: error instanceof Error ? error.message : String(error),
+        lastSyncErrorAt: Timestamp.now(),
         lastRefreshed: Timestamp.now()
+      });
+
+      // Send error notification email and log to Firestore
+      await ErrorNotificationService.notifyError({
+        type: 'video_processing',
+        platform: video?.platform || 'unknown',
+        videoId: videoId,
+        videoUrl: video?.url || 'unknown',
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+        orgId: orgId,
+        projectId: projectId,
+        timestamp: new Date()
       });
     } catch (updateError) {
       console.error('Failed to update video with error:', updateError);
@@ -449,7 +468,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
+      message: 'Video processing failed - admin notified'
     });
   }
 }
