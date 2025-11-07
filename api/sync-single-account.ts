@@ -3,6 +3,7 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { runApifyActor } from './apify-client.js';
+import { ErrorNotificationService } from './services/ErrorNotificationService.js';
 
 // Initialize Firebase Admin (same as cron job)
 if (!getApps().length) {
@@ -532,56 +533,56 @@ export default async function handler(
         // ALWAYS use apify/instagram-profile-scraper for profile pic + follower count
         // (hpix~ig-reels-scraper doesn't consistently include follower count)
         console.log(`👤 Fetching complete profile data via apify/instagram-profile-scraper...`);
-        try {
-          const profileData = await runApifyActor({
+      try {
+        const profileData = await runApifyActor({
             actorId: 'apify~instagram-profile-scraper',
-            input: {
+          input: {
               usernames: [account.username.replace('@', '')],
-              proxyConfiguration: {
-                useApifyProxy: true,
-                apifyProxyGroups: ['RESIDENTIAL'],
-                apifyProxyCountry: 'US'
+            proxyConfiguration: {
+              useApifyProxy: true,
+              apifyProxyGroups: ['RESIDENTIAL'],
+              apifyProxyCountry: 'US'
               },
               includeAboutSection: false
-            }
-          });
-          
-          const profiles = profileData.items || [];
-          if (profiles.length > 0) {
-            const profile = profiles[0];
+          }
+        });
+
+        const profiles = profileData.items || [];
+        if (profiles.length > 0) {
+          const profile = profiles[0];
             console.log(`✅ Fetched profile: ${profile.followersCount || 0} followers`);
-            
-            const profileUpdates: any = {
-              displayName: profile.fullName || account.username,
-              followerCount: profile.followersCount || 0,
-              followingCount: profile.followsCount || 0,
-              isVerified: profile.verified || false
-            };
-            
+          
+          const profileUpdates: any = {
+            displayName: profile.fullName || account.username,
+            followerCount: profile.followersCount || 0,
+            followingCount: profile.followsCount || 0,
+            isVerified: profile.verified || false
+          };
+
             // Download and upload profile pic to Firebase Storage (same as TikTok)
             if (profile.profilePicUrl) {
-              try {
+            try {
                 console.log(`📸 Downloading Instagram profile pic for @${account.username}...`);
-                const uploadedProfilePic = await downloadAndUploadImage(
+              const uploadedProfilePic = await downloadAndUploadImage(
                   profile.profilePicUrl,
-                  orgId,
-                  `instagram_profile_${account.username}.jpg`,
-                  'profile'
-                );
+                orgId,
+                `instagram_profile_${account.username}.jpg`,
+                'profile'
+              );
                 profileUpdates.profilePicture = uploadedProfilePic;
                 console.log(`✅ Instagram profile picture uploaded to Firebase Storage`);
               } catch (uploadError: any) {
-                console.error(`❌ Error uploading Instagram profile picture:`, uploadError);
+              console.error(`❌ Error uploading Instagram profile picture:`, uploadError);
                 console.warn(`⚠️ Skipping profile picture - will retry on next sync`);
-              }
             }
-            
-            await accountRef.update(profileUpdates);
+          }
+
+          await accountRef.update(profileUpdates);
             console.log(`✅ Updated Instagram profile: ${profile.fullName || account.username}`);
           } else {
             console.warn(`⚠️ No profile data returned from apify/instagram-profile-scraper`);
-          }
-        } catch (profileError) {
+        }
+      } catch (profileError) {
           console.error(`❌ Failed to fetch profile via apify/instagram-profile-scraper:`, profileError);
         }
         
@@ -848,8 +849,7 @@ export default async function handler(
   } catch (error: any) {
     console.error(`❌ Error in immediate sync:`, error);
 
-    // Don't retry on immediate sync - cron will handle that
-    // Just mark as pending so cron picks it up
+    // Mark account with error status and send notifications
     try {
       const accountRef = db
         .collection('organizations')
@@ -859,14 +859,35 @@ export default async function handler(
         .collection('trackedAccounts')
         .doc(accountId);
 
+      // Get account data for error notification
+      const accountDoc = await accountRef.get();
+      const account = accountDoc.data();
+
       await accountRef.update({
-        syncStatus: 'pending',
+        syncStatus: 'error',
+        hasError: true,
         lastSyncError: error.message || String(error),
+        lastSyncErrorAt: Timestamp.now(),
+        syncRetryCount: (account?.syncRetryCount || 0) + 1,
         syncProgress: {
           current: 0,
           total: 100,
-          message: 'Queued for background sync...'
+          message: `Error: ${error.message || String(error)}`
         }
+      });
+
+      // Send error notification email and log to Firestore
+      await ErrorNotificationService.notifyError({
+        type: 'account_sync',
+        platform: account?.platform || 'unknown',
+        accountId: accountId,
+        username: account?.username || 'unknown',
+        errorMessage: error.message || String(error),
+        errorStack: error.stack,
+        orgId: orgId,
+        projectId: projectId,
+        timestamp: new Date(),
+        attemptNumber: (account?.syncRetryCount || 0) + 1
       });
     } catch (updateError) {
       console.error('Failed to update account status:', updateError);
@@ -875,7 +896,7 @@ export default async function handler(
     return res.status(500).json({
       success: false,
       error: error.message || String(error),
-      message: 'Sync failed, queued for background retry'
+      message: 'Sync failed - admin notified'
     });
   }
 }

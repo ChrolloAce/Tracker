@@ -41,7 +41,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   // Pagination state for snapshots
   const [snapshotsPage, setSnapshotsPage] = useState(1);
   const snapshotsPerPage = 5;
-  
+
   // Extract title without hashtags and separate hashtags
   const { cleanTitle, hashtags } = useMemo(() => {
     if (!video) return { cleanTitle: '', hashtags: [] };
@@ -158,25 +158,25 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     // Append current video stats if different from last snapshot
     const allSnapshots = [...sortedSnapshots];
     const lastSnapshotData = sortedSnapshots[sortedSnapshots.length - 1];
-    const hasNewData = !lastSnapshotData || 
-      lastSnapshotData.views !== video.views ||
-      lastSnapshotData.likes !== video.likes ||
-      lastSnapshotData.comments !== video.comments ||
-      (lastSnapshotData.shares || 0) !== (video.shares || 0);
-    
-    if (hasNewData) {
-      allSnapshots.push({
-        id: `current-${Date.now()}`,
-        videoId: video.id,
-        views: video.views,
-        likes: video.likes,
-        comments: video.comments,
-        shares: video.shares || 0,
-        saves: video.saves || 0,
-        capturedAt: new Date(),
-        capturedBy: 'manual_refresh'
-      });
-    }
+      const hasNewData = !lastSnapshotData || 
+        lastSnapshotData.views !== video.views ||
+        lastSnapshotData.likes !== video.likes ||
+        lastSnapshotData.comments !== video.comments ||
+        (lastSnapshotData.shares || 0) !== (video.shares || 0);
+      
+      if (hasNewData) {
+        allSnapshots.push({
+          id: `current-${Date.now()}`,
+          videoId: video.id,
+          views: video.views,
+          likes: video.likes,
+          comments: video.comments,
+          shares: video.shares || 0,
+          saves: video.saves || 0,
+          capturedAt: new Date(),
+          capturedBy: 'manual_refresh'
+        });
+      }
 
     // Create data points - show absolute values (not deltas)
     const data: ChartDataPoint[] = allSnapshots.map(snapshot => {
@@ -197,20 +197,20 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     if (!video) return { views: 0, likes: 0, comments: 0, shares: 0, saves: 0, engagementRate: 0 };
     
     // Always show current video totals
-    const views = video.views || 0;
-    const likes = video.likes || 0;
-    const comments = video.comments || 0;
-    const shares = video.shares || 0;
-    const saves = video.saves || 0;
-    
-    return {
-      views,
-      likes,
-      comments,
-      shares,
-      saves,
-      engagementRate: views > 0 ? ((likes + comments + shares) / views) * 100 : 0,
-    };
+      const views = video.views || 0;
+      const likes = video.likes || 0;
+      const comments = video.comments || 0;
+      const shares = video.shares || 0;
+      const saves = video.saves || 0;
+      
+      return {
+        views,
+        likes,
+        comments,
+        shares,
+        saves,
+        engagementRate: views > 0 ? ((likes + comments + shares) / views) * 100 : 0,
+      };
   }, [video?.views, video?.likes, video?.comments, video?.shares, video?.saves]);
 
   // Calculate growth since last snapshot and time elapsed
@@ -396,8 +396,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
           {/* Left: Empty space (date filter removed) */}
           <div className="flex items-center gap-3">
             {/* Date filtering completely removed */}
-          </div>
-          
+                </div>
+                
           {/* Right: Close Button Only */}
           <div className="flex items-center gap-3">
             <button
