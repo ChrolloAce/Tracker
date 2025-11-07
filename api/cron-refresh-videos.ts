@@ -511,7 +511,8 @@ async function refreshAccountVideos(
   if (initialBatch.length > 0) {
     const firstVideo = initialBatch[0];
     if (platform === 'instagram') {
-      isVerified = firstVideo.is_verified || false;
+      // hpix~ig-reels-scraper: verified status is in raw_data.owner.is_verified
+      isVerified = firstVideo.raw_data?.owner?.is_verified || false;
     } else if (platform === 'tiktok') {
       isVerified = firstVideo['authorMeta.verified'] || firstVideo.authorMeta?.verified || false;
     } else if (platform === 'twitter') {
@@ -598,24 +599,22 @@ async function fetchVideosFromPlatform(
   let input: any;
 
   if (platform === 'instagram') {
-    actorId = 'scraper-engine~instagram-reels-scraper';
+    actorId = 'hpix~ig-reels-scraper';
     input = {
-      urls: [`https://www.instagram.com/${username}/`],
-      sortOrder: "newest",
-      maxComments: 0,
-      maxReels: maxVideos,
-      proxyConfiguration: {
+      tags: [`https://www.instagram.com/${username}/reels/`],
+      target: 'reels_only',
+      reels_count: maxVideos,
+      include_raw_data: true,
+      custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
+      proxy: {
         useApifyProxy: true,
-        apifyProxyGroups: ['RESIDENTIAL', 'BUYPROXIES94952'],
+        apifyProxyGroups: ['RESIDENTIAL'],
         apifyProxyCountry: 'US'
       },
-      maxRequestRetries: 5, // Increased retries for Instagram
-      requestHandlerTimeoutSecs: 180, // Longer timeout
       maxConcurrency: 1,
-      // Additional Instagram-specific settings
-      sessionPoolName: 'INSTAGRAM_SESSION',
-      maxSessionRotations: 10,
-      maxSessionsPerCrawl: 5
+      maxRequestRetries: 3,
+      handlePageTimeoutSecs: 120,
+      debugLog: false
     };
   } else if (platform === 'tiktok') {
     actorId = 'clockworks~tiktok-scraper';
@@ -683,8 +682,8 @@ async function videoExistsInDatabase(
  */
 function extractVideoId(video: any, platform: string): string | null {
     if (platform === 'instagram') {
-    const media = video.reel_data?.media || video.media || video;
-    return media.code || media.shortCode || media.id || null;
+    // hpix~ig-reels-scraper format
+    return video.code || video.id || null;
     } else if (platform === 'tiktok') {
     const urlMatch = (video.webVideoUrl || '').match(/video\/(\d+)/);
     return urlMatch ? urlMatch[1] : (video.id || video.videoId || null);
@@ -977,15 +976,10 @@ async function saveVideosToFirestore(
     let media: any = video; // Default to the video object itself
     
     if (platform === 'instagram') {
-      // Parse new Instagram reels scraper format
-      media = video.reel_data?.media || video.media || video;
+      // hpix~ig-reels-scraper format
+      media = video;
       
-      // Only process video content (media_type: 2 = video)
-      if (media.media_type !== 2 && media.product_type !== 'clips') {
-        continue;
-      }
-      
-      platformVideoId = media.code || media.shortCode || media.id;
+      platformVideoId = video.code || video.id;
     } else if (platform === 'tiktok') {
       // TikTok API doesn't return an 'id' field, extract from webVideoUrl
       // URL format: https://www.tiktok.com/@username/video/7519910249533377823
@@ -1024,20 +1018,16 @@ async function saveVideosToFirestore(
     let uploadDate: Date = new Date();
 
     if (platform === 'instagram') {
-      // Use Instagram reels scraper field names
-      views = media.play_count || media.ig_play_count || 0;
-      likes = media.like_count || 0;
-      comments = media.comment_count || 0;
+      // hpix~ig-reels-scraper field names
+      const owner = video.raw_data?.owner || {};
+      views = video.play_count || video.view_count || 0;
+      likes = video.like_count || 0;
+      comments = video.comment_count || 0;
       shares = 0; // Instagram API doesn't provide share count
-      url = `https://www.instagram.com/reel/${media.code || media.shortCode}/`;
+      url = `https://www.instagram.com/reel/${video.code}/`;
       
-      // Get thumbnail from Instagram API (actual field structure)
-      const instaThumbnail = 
-        media.image_versions2?.additional_candidates?.first_frame?.url || 
-        media.image_versions2?.candidates?.[0]?.url || 
-        media.thumbnail_url || 
-        media.display_url || 
-        '';
+      // Get thumbnail from hpix~ig-reels-scraper
+      const instaThumbnail = video.thumbnail_url || '';
       
       // Download and upload thumbnail to Firebase Storage
       if (instaThumbnail) {
@@ -1050,10 +1040,9 @@ async function saveVideosToFirestore(
         );
       } else {
         console.warn(`    ⚠️ Instagram reel ${platformVideoId} has no thumbnail in API response`);
-        console.log(`    🔍 Available Instagram fields:`, Object.keys(media).slice(0, 20).join(', '));
       }
-      caption = media.caption?.text || media.caption || '';
-      uploadDate = media.taken_at ? new Date(media.taken_at * 1000) : new Date();
+      caption = video.caption || '';
+      uploadDate = video.taken_at ? new Date(video.taken_at * 1000) : new Date();
     } else if (platform === 'tiktok') {
       views = video.playCount || 0;
       likes = video.diggCount || 0;

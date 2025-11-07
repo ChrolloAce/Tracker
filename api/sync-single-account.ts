@@ -484,113 +484,90 @@ export default async function handler(
         };
       });
     } else if (account.platform === 'instagram') {
-      console.log(`👤 Fetching profile data for ${account.username}...`);
+      console.log(`👤 Fetching Instagram profile + reels for ${account.username} using unified scraper...`);
       
-      // STEP 1: Fetch Instagram Profile Data (for follower count)
       try {
-        const profileData = await runApifyActor({
-          actorId: 'apify/instagram-profile-scraper',
+        // Use single scraper for both profile and reels (hpix~ig-reels-scraper)
+        const data = await runApifyActor({
+          actorId: 'hpix~ig-reels-scraper',
           input: {
-            usernames: [account.username],
-            proxyConfiguration: {
+            tags: [`https://www.instagram.com/${account.username}/reels/`],
+            target: 'reels_only',
+            reels_count: maxVideos, // Use user's preference
+            include_raw_data: true,
+            custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
+            proxy: {
               useApifyProxy: true,
               apifyProxyGroups: ['RESIDENTIAL'],
               apifyProxyCountry: 'US'
-            }
-          }
-        });
-
-        const profiles = profileData.items || [];
-        if (profiles.length > 0) {
-          const profile = profiles[0];
-          console.log(`📊 Instagram profile fetched: ${profile.followersCount || 0} followers`);
-          
-          const profileUpdates: any = {
-            displayName: profile.fullName || account.username,
-            followerCount: profile.followersCount || 0,
-            followingCount: profile.followsCount || 0,
-            isVerified: profile.verified || false
-          };
-
-          // Download and upload Instagram profile pic to Firebase Storage
-          if (profile.profilePicUrlHD || profile.profilePicUrl) {
-            try {
-              const profilePicUrl = profile.profilePicUrlHD || profile.profilePicUrl;
-              console.log(`📸 Downloading Instagram profile pic (HD) for @${account.username}...`);
-              const uploadedProfilePic = await downloadAndUploadImage(
-                profilePicUrl,
-                orgId,
-                `instagram_profile_${account.username}.jpg`,
-                'profile'
-              );
-              
-              if (uploadedProfilePic && uploadedProfilePic.includes('storage.googleapis.com')) {
-                profileUpdates.profilePicture = uploadedProfilePic;
-                console.log(`✅ Instagram profile picture uploaded to Firebase Storage`);
-              }
-            } catch (uploadError) {
-              console.error(`❌ Error uploading Instagram profile picture:`, uploadError);
-            }
-          }
-
-          await accountRef.update(profileUpdates);
-          console.log(`✅ Updated Instagram profile for @${account.username}:`, profileUpdates);
-        }
-      } catch (profileError) {
-        console.error('❌ Instagram profile fetch error:', profileError);
-      }
-
-      // STEP 2: Fetch Instagram Reels/Videos
-      console.log(`📸 Fetching Instagram reels for ${account.username} using NEW scraper...`);
-      
-      try {
-        // Call NEW Instagram Reels Scraper with RESIDENTIAL proxies (prevents 429 errors)
-        const data = await runApifyActor({
-          actorId: 'scraper-engine~instagram-reels-scraper',
-          input: {
-            urls: [`https://www.instagram.com/${account.username}/`],
-            sortOrder: "newest",
-            maxComments: 10,
-            maxReels: maxVideos, // Use user's preference
-            proxyConfiguration: {
-              useApifyProxy: true,
-              apifyProxyGroups: ['RESIDENTIAL'],  // 🔑 Use RESIDENTIAL proxies to avoid Instagram 429 blocks
-              apifyProxyCountry: 'US'  // Use US proxies for better compatibility
             },
-            // Additional anti-blocking measures
-            maxRequestRetries: 5,  // Retry failed requests
-            requestHandlerTimeoutSecs: 300,  // 5 minute timeout
-            maxConcurrency: 1  // Reduce concurrency to avoid rate limits
+            maxConcurrency: 1,
+            maxRequestRetries: 3,
+            handlePageTimeoutSecs: 120,
+            debugLog: false
           }
         });
 
         const instagramItems = data.items || [];
         console.log(`✅ Fetched ${instagramItems.length} Instagram reels`);
         
+        // Extract profile data from first post
+        if (instagramItems.length > 0) {
+          const firstItem = instagramItems[0];
+          const owner = firstItem.raw_data?.owner;
+          
+          if (owner) {
+            console.log(`📊 Instagram profile extracted: ${owner.edge_followed_by?.count || 0} followers`);
+            
+            const profileUpdates: any = {
+              displayName: owner.full_name || account.username,
+              followerCount: owner.edge_followed_by?.count || 0,
+              followingCount: owner.edge_follow?.count || 0,
+              isVerified: owner.is_verified || false
+            };
+
+            // Download and upload Instagram profile pic to Firebase Storage
+            const profilePicUrl = owner.profile_pic_url_hd || owner.profile_pic_url;
+            if (profilePicUrl) {
+              try {
+                console.log(`📸 Downloading Instagram profile pic (HD) for @${account.username}...`);
+                const uploadedProfilePic = await downloadAndUploadImage(
+                  profilePicUrl,
+                  orgId,
+                  `instagram_profile_${account.username}.jpg`,
+                  'profile'
+                );
+                
+                if (uploadedProfilePic && uploadedProfilePic.includes('storage.googleapis.com')) {
+                  profileUpdates.profilePicture = uploadedProfilePic;
+                  console.log(`✅ Instagram profile picture uploaded to Firebase Storage`);
+                }
+              } catch (uploadError) {
+                console.error(`❌ Error uploading Instagram profile picture:`, uploadError);
+              }
+            }
+
+            await accountRef.update(profileUpdates);
+            console.log(`✅ Updated Instagram profile for @${account.username}:`, profileUpdates);
+          }
+        }
+        
         // Transform Instagram data to video format
         for (const item of instagramItems) {
-          const media = item.reel_data?.media || item.media || item;
-          
-          // Only process video content (media_type: 2 = video)
-          if (media.media_type !== 2 && media.product_type !== 'clips') {
-            continue;
-          }
-          
-          const videoCode = media.code || media.shortCode || media.id;
+          const videoCode = item.code || item.id;
           if (!videoCode) {
             console.warn('⚠️ Skipping item - no video code found');
             continue;
           }
           
-          const views = media.play_count || media.ig_play_count || 0;
-          const likes = media.like_count || 0;
-          const comments = media.comment_count || 0;
-          const caption = media.caption?.text || (typeof media.caption === 'string' ? media.caption : '') || '';
-          const uploadDate = media.taken_at ? Timestamp.fromMillis(media.taken_at * 1000) : Timestamp.now();
-          const thumbnailUrl = media.image_versions2?.candidates?.[0]?.url || 
-                             media.thumbnail_url || 
-                             '';
-          const duration = media.video_duration || 0;
+          const owner = item.raw_data?.owner || {};
+          const views = item.play_count || item.view_count || 0;
+          const likes = item.like_count || 0;
+          const comments = item.comment_count || 0;
+          const caption = item.caption || '';
+          const uploadDate = item.taken_at ? Timestamp.fromMillis(item.taken_at * 1000) : Timestamp.now();
+          const thumbnailUrl = item.thumbnail_url || '';
+          const duration = item.raw_data?.video_duration || item.duration || 0;
           
           videos.push({
             videoId: videoCode,
@@ -598,8 +575,8 @@ export default async function handler(
             videoUrl: `https://www.instagram.com/reel/${videoCode}/`,
             platform: 'instagram',
             thumbnail: thumbnailUrl,
-            accountUsername: account.username,
-            accountDisplayName: media.user?.full_name || media.owner?.full_name || account.username,
+            accountUsername: owner.username || account.username,
+            accountDisplayName: owner.full_name || account.username,
             uploadDate: uploadDate,
             views: views,
             likes: likes,
@@ -607,13 +584,13 @@ export default async function handler(
             shares: 0, // Instagram API doesn't provide share count
             caption: caption,
             duration: duration,
-            isVerified: media.user?.is_verified || media.owner?.is_verified || false
+            isVerified: owner.is_verified || false
           });
         }
         
-        console.log(`✅ Fetched ${videos.length} Instagram reels`);
+        console.log(`✅ Processed ${videos.length} Instagram reels`);
       } catch (instagramError) {
-        console.error('Instagram fetch error:', instagramError);
+        console.error('❌ Instagram fetch error:', instagramError);
         throw instagramError;
       }
     }

@@ -2,10 +2,15 @@
  * InstagramScraperService
  * 
  * Centralized service for managing all Instagram scraping operations.
- * Handles 3 types of Instagram scrapers:
- * 1. Profile Scraper - Gets account profile data
- * 2. Reels Scraper - Fetches multiple reels from a profile
- * 3. Post Scraper - Fetches individual reel/post data
+ * Uses ONLY hpix~ig-reels-scraper for everything:
+ * - Individual posts (post_urls)
+ * - Profile data (extracted from first post)
+ * - Account reels (tags with /reels/ URL)
+ * 
+ * This single scraper provides:
+ * - Video metrics (play_count, like_count, comment_count)
+ * - Profile data (username, full_name, profile_pic_url, is_verified, follower_count)
+ * - Post data (id, code, caption, thumbnail_url, video_url, duration)
  */
 
 import { runApifyActor } from '../apify-client';
@@ -22,6 +27,7 @@ export interface InstagramProfileData {
   verified: boolean;
   profilePicUrl: string;
   isPrivate: boolean;
+  id: string;
 }
 
 export interface InstagramReelData {
@@ -39,6 +45,9 @@ export interface InstagramReelData {
   ownerUsername: string;
   ownerFullName: string;
   ownerId: string;
+  ownerProfilePicUrl: string;
+  ownerVerified: boolean;
+  ownerFollowerCount: number;
   width: number;
   height: number;
   duration: number;
@@ -59,6 +68,9 @@ export interface InstagramPostData {
   ownerUsername: string;
   ownerFullName: string;
   ownerProfilePicUrl: string;
+  ownerVerified: boolean;
+  ownerFollowerCount: number;
+  ownerId: string;
   width: number;
   height: number;
   duration: number;
@@ -73,9 +85,7 @@ interface ProxyConfig {
 // ==================== SERVICE CLASS ====================
 
 export class InstagramScraperService {
-  private static readonly PROFILE_SCRAPER = 'apify/instagram-profile-scraper';
-  private static readonly REELS_SCRAPER = 'scraper-engine~instagram-reels-scraper';
-  private static readonly POST_SCRAPER = 'hpix~ig-reels-scraper';
+  private static readonly SCRAPER = 'hpix~ig-reels-scraper';
 
   private static readonly DEFAULT_PROXY: ProxyConfig = {
     useApifyProxy: true,
@@ -84,69 +94,143 @@ export class InstagramScraperService {
   };
 
   /**
-   * Get Instagram session ID from environment
+   * Extract profile data from a post's raw_data.owner object
    */
-  private static getSessionId(): string {
-    return process.env.INSTAGRAM_SESSION_ID || '';
-  }
+  private static extractProfileFromPost(post: any): InstagramProfileData | null {
+    const owner = post.raw_data?.owner;
+    if (!owner) {
+      console.warn('⚠️ [Instagram] No owner data in post');
+      return null;
+    }
 
-  /**
-   * Build session cookies for authenticated requests
-   */
-  private static buildSessionCookies(sessionId: string) {
-    if (!sessionId) return {};
-    
     return {
-      sessionCookie: sessionId,
-      additionalCookies: [
-        {
-          name: 'sessionid',
-          value: sessionId,
-          domain: '.instagram.com'
-        }
-      ]
+      username: owner.username || '',
+      fullName: owner.full_name || owner.username || '',
+      followersCount: owner.edge_followed_by?.count || 0,
+      followsCount: owner.edge_follow?.count || 0,
+      postsCount: owner.edge_owner_to_timeline_media?.count || 0,
+      biography: owner.biography || '',
+      verified: owner.is_verified || false,
+      profilePicUrl: owner.profile_pic_url || owner.profile_pic_url_hd || '',
+      isPrivate: owner.is_private || false,
+      id: owner.id || ''
     };
   }
 
-  // ==================== 1. PROFILE SCRAPER ====================
+  /**
+   * Extract best video URL from video_versions array
+   */
+  private static extractVideoUrl(videoVersions: any[]): string {
+    if (!Array.isArray(videoVersions) || videoVersions.length === 0) {
+      return '';
+    }
+    return videoVersions[0] || '';
+  }
 
   /**
-   * Fetch Instagram profile data
-   * Uses: apify/instagram-profile-scraper
+   * Transform raw scraper output to InstagramReelData
+   */
+  private static transformToReelData(item: any): InstagramReelData {
+    const owner = item.raw_data?.owner || {};
+    const videoUrl = this.extractVideoUrl(item.video_versions || []);
+
+    return {
+      id: item.id || '',
+      shortCode: item.code || '',
+      url: item.input || `https://www.instagram.com/reel/${item.code}/`,
+      caption: item.caption || '',
+      timestamp: item.taken_at ? new Date(item.taken_at * 1000).toISOString() : '',
+      videoViewCount: item.play_count || item.view_count || 0,
+      likeCount: item.like_count || 0,
+      commentCount: item.comment_count || 0,
+      playCount: item.play_count || item.view_count || 0,
+      thumbnailUrl: item.thumbnail_url || '',
+      videoUrl: videoUrl,
+      ownerUsername: owner.username || '',
+      ownerFullName: owner.full_name || owner.username || '',
+      ownerId: owner.id || item.owner_id || '',
+      ownerProfilePicUrl: owner.profile_pic_url || owner.profile_pic_url_hd || '',
+      ownerVerified: owner.is_verified || false,
+      ownerFollowerCount: owner.edge_followed_by?.count || 0,
+      width: item.raw_data?.dimensions?.width || 0,
+      height: item.raw_data?.dimensions?.height || 0,
+      duration: item.raw_data?.video_duration || item.duration || 0
+    };
+  }
+
+  /**
+   * Transform raw scraper output to InstagramPostData
+   */
+  private static transformToPostData(item: any, postUrl: string): InstagramPostData {
+    const owner = item.raw_data?.owner || {};
+    const videoUrl = this.extractVideoUrl(item.video_versions || []);
+
+    return {
+      id: item.id || '',
+      shortCode: item.code || this.extractShortCodeFromUrl(postUrl),
+      url: postUrl,
+      caption: item.caption || '',
+      timestamp: item.taken_at ? new Date(item.taken_at * 1000).toISOString() : '',
+      likes: item.like_count || 0,
+      comments: item.comment_count || 0,
+      shares: 0, // Not provided by scraper
+      plays: item.play_count || item.view_count || 0,
+      thumbnailUrl: item.thumbnail_url || '',
+      videoUrl: videoUrl,
+      ownerUsername: owner.username || '',
+      ownerFullName: owner.full_name || owner.username || '',
+      ownerProfilePicUrl: owner.profile_pic_url || owner.profile_pic_url_hd || '',
+      ownerVerified: owner.is_verified || false,
+      ownerFollowerCount: owner.edge_followed_by?.count || 0,
+      ownerId: owner.id || item.owner_id || '',
+      width: item.raw_data?.dimensions?.width || 0,
+      height: item.raw_data?.dimensions?.height || 0,
+      duration: item.raw_data?.video_duration || item.duration || 0
+    };
+  }
+
+  // ==================== 1. PROFILE DATA ====================
+
+  /**
+   * Fetch Instagram profile data by fetching one reel and extracting owner info
+   * Uses: hpix~ig-reels-scraper with tags pointing to /reels/
    */
   static async fetchProfile(username: string): Promise<InstagramProfileData | null> {
     console.log(`👤 [Instagram Profile] Fetching profile for @${username}...`);
     
     try {
       const result = await runApifyActor({
-        actorId: this.PROFILE_SCRAPER,
+        actorId: this.SCRAPER,
         input: {
-          usernames: [username],
-          proxyConfiguration: this.DEFAULT_PROXY
+          tags: [`https://www.instagram.com/${username}/reels/`],
+          target: 'reels_only',
+          reels_count: 1, // Only need 1 post to extract profile
+          include_raw_data: true,
+          custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
+          proxy: this.DEFAULT_PROXY,
+          maxConcurrency: 1,
+          maxRequestRetries: 3,
+          handlePageTimeoutSecs: 120,
+          debugLog: false
         }
       });
 
-      const profiles = result.items || [];
+      const items = result.items || [];
       
-      if (profiles.length === 0) {
-        console.warn(`⚠️ [Instagram Profile] No profile found for @${username}`);
+      if (items.length === 0) {
+        console.warn(`⚠️ [Instagram Profile] No posts found for @${username} (account may be private or have no reels)`);
         return null;
       }
 
-      const profile = profiles[0];
-      console.log(`✅ [Instagram Profile] Fetched @${username}: ${profile.followersCount || 0} followers`);
+      const profile = this.extractProfileFromPost(items[0]);
+      
+      if (!profile) {
+        console.warn(`⚠️ [Instagram Profile] Failed to extract profile data for @${username}`);
+        return null;
+      }
 
-      return {
-        username: profile.username || username,
-        fullName: profile.fullName || username,
-        followersCount: profile.followersCount || 0,
-        followsCount: profile.followsCount || 0,
-        postsCount: profile.postsCount || 0,
-        biography: profile.biography || '',
-        verified: profile.verified || false,
-        profilePicUrl: profile.profilePicUrl || '',
-        isPrivate: profile.private || false
-      };
+      console.log(`✅ [Instagram Profile] Fetched @${username}: ${profile.followersCount} followers`);
+      return profile;
     } catch (error) {
       console.error(`❌ [Instagram Profile] Error fetching @${username}:`, error);
       return null;
@@ -157,7 +241,7 @@ export class InstagramScraperService {
 
   /**
    * Fetch multiple reels from an Instagram profile
-   * Uses: scraper-engine~instagram-reels-scraper
+   * Uses: hpix~ig-reels-scraper with tags pointing to /reels/
    */
   static async fetchProfileReels(
     username: string, 
@@ -165,46 +249,27 @@ export class InstagramScraperService {
   ): Promise<InstagramReelData[]> {
     console.log(`📸 [Instagram Reels] Fetching ${maxReels} reels for @${username}...`);
     
-    const sessionId = this.getSessionId();
-    
     try {
       const result = await runApifyActor({
-        actorId: this.REELS_SCRAPER,
+        actorId: this.SCRAPER,
         input: {
-          urls: [`https://www.instagram.com/${username}/`],
-          sortOrder: 'newest',
-          maxComments: 10,
-          maxReels: maxReels,
-          ...this.buildSessionCookies(sessionId),
-          proxyConfiguration: this.DEFAULT_PROXY,
-          maxRequestRetries: 5,
-          requestHandlerTimeoutSecs: 300,
-          maxConcurrency: 1
+          tags: [`https://www.instagram.com/${username}/reels/`],
+          target: 'reels_only',
+          reels_count: maxReels,
+          include_raw_data: true,
+          custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
+          proxy: this.DEFAULT_PROXY,
+          maxConcurrency: 1,
+          maxRequestRetries: 3,
+          handlePageTimeoutSecs: 120,
+          debugLog: false
         }
       });
 
       const items = result.items || [];
       console.log(`✅ [Instagram Reels] Fetched ${items.length} reels for @${username}`);
 
-      return items.map((item: any) => ({
-        id: item.id || '',
-        shortCode: item.shortCode || '',
-        url: item.url || `https://www.instagram.com/reel/${item.shortCode}/`,
-        caption: item.caption || '',
-        timestamp: item.timestamp || item.takenAt || '',
-        videoViewCount: item.videoViewCount || item.playCount || 0,
-        likeCount: item.likesCount || item.likeCount || 0,
-        commentCount: item.commentsCount || item.commentCount || 0,
-        playCount: item.videoViewCount || item.playCount || 0,
-        thumbnailUrl: item.displayUrl || item.thumbnailUrl || '',
-        videoUrl: item.videoUrl || '',
-        ownerUsername: item.ownerUsername || username,
-        ownerFullName: item.ownerFullName || username,
-        ownerId: item.ownerId || '',
-        width: item.width || 0,
-        height: item.height || 0,
-        duration: item.videoDuration || 0
-      }));
+      return items.map((item: any) => this.transformToReelData(item));
     } catch (error) {
       console.error(`❌ [Instagram Reels] Error fetching reels for @${username}:`, error);
       return [];
@@ -215,14 +280,14 @@ export class InstagramScraperService {
 
   /**
    * Fetch individual Instagram reel/post data
-   * Uses: hpix~ig-reels-scraper
+   * Uses: hpix~ig-reels-scraper with post_urls
    */
   static async fetchPost(postUrl: string): Promise<InstagramPostData | null> {
     console.log(`📥 [Instagram Post] Fetching post: ${postUrl}`);
     
     try {
       const result = await runApifyActor({
-        actorId: this.POST_SCRAPER,
+        actorId: this.SCRAPER,
         input: {
           post_urls: [postUrl],
           target: 'reels_only',
@@ -245,27 +310,10 @@ export class InstagramScraperService {
       }
 
       const post = items[0];
-      console.log(`✅ [Instagram Post] Fetched post: ${post.play_count || 0} views`);
-
-      return {
-        id: post.id || '',
-        shortCode: post.shortcode || this.extractShortCodeFromUrl(postUrl),
-        url: postUrl,
-        caption: post.caption?.text || post.caption || '',
-        timestamp: post.taken_at_timestamp ? new Date(post.taken_at_timestamp * 1000).toISOString() : '',
-        likes: post.like_count || 0,
-        comments: post.comment_count || 0,
-        shares: post.share_count || 0,
-        plays: post.play_count || post.video_view_count || 0,
-        thumbnailUrl: post.thumbnail_url || post.display_url || '',
-        videoUrl: post.video_url || '',
-        ownerUsername: post.owner?.username || '',
-        ownerFullName: post.owner?.full_name || '',
-        ownerProfilePicUrl: post.owner?.profile_pic_url || '',
-        width: post.dimensions?.width || 0,
-        height: post.dimensions?.height || 0,
-        duration: post.video_duration || 0
-      };
+      const postData = this.transformToPostData(post, postUrl);
+      
+      console.log(`✅ [Instagram Post] Fetched post: @${postData.ownerUsername} - ${postData.plays} views`);
+      return postData;
     } catch (error) {
       console.error(`❌ [Instagram Post] Error fetching ${postUrl}:`, error);
       return null;
@@ -348,6 +396,7 @@ export class InstagramScraperService {
 
   /**
    * Fetch profile data AND reels in one call
+   * Optimized: Uses single scraper call, extracts profile from first reel
    */
   static async fetchProfileWithReels(
     username: string,
@@ -358,14 +407,42 @@ export class InstagramScraperService {
   }> {
     console.log(`🎯 [Instagram Full] Fetching profile + reels for @${username}...`);
     
-    const [profile, reels] = await Promise.all([
-      this.fetchProfile(username),
-      this.fetchProfileReels(username, maxReels)
-    ]);
-    
-    console.log(`✅ [Instagram Full] Complete for @${username}: ${reels.length} reels`);
-    
-    return { profile, reels };
+    try {
+      const result = await runApifyActor({
+        actorId: this.SCRAPER,
+        input: {
+          tags: [`https://www.instagram.com/${username}/reels/`],
+          target: 'reels_only',
+          reels_count: maxReels,
+          include_raw_data: true,
+          custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
+          proxy: this.DEFAULT_PROXY,
+          maxConcurrency: 1,
+          maxRequestRetries: 3,
+          handlePageTimeoutSecs: 120,
+          debugLog: false
+        }
+      });
+
+      const items = result.items || [];
+      
+      if (items.length === 0) {
+        console.warn(`⚠️ [Instagram Full] No posts found for @${username}`);
+        return { profile: null, reels: [] };
+      }
+
+      // Extract profile from first post
+      const profile = this.extractProfileFromPost(items[0]);
+      
+      // Transform all reels
+      const reels = items.map((item: any) => this.transformToReelData(item));
+      
+      console.log(`✅ [Instagram Full] Complete for @${username}: ${reels.length} reels, ${profile?.followersCount || 0} followers`);
+      
+      return { profile, reels };
+    } catch (error) {
+      console.error(`❌ [Instagram Full] Error fetching profile + reels for @${username}:`, error);
+      return { profile: null, reels: [] };
+    }
   }
 }
-

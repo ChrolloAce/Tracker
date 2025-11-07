@@ -108,40 +108,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw new Error('Video data missing username');
     }
 
-    // For Instagram, ALWAYS fetch profile data for better quality profile pics and follower count
+    // Log Instagram profile data (already extracted from hpix~ig-reels-scraper)
     if (video.platform === 'instagram') {
-      console.log(`👤 [INSTAGRAM] Fetching profile data for @${videoData.username} to get HD profile pic and follower count...`);
-      try {
-        const profileData = await runApifyActor({
-          actorId: 'apify/instagram-profile-scraper',
-          input: {
-            usernames: [videoData.username],
-            proxyConfiguration: {
-              useApifyProxy: true,
-              apifyProxyGroups: ['RESIDENTIAL'],
-              apifyProxyCountry: 'US'
-            }
-          }
-        });
-
-        const profiles = profileData.items || [];
-        if (profiles.length > 0) {
-          const profile = profiles[0];
-          console.log(`📊 [INSTAGRAM] Profile fetched: ${profile.followersCount || 0} followers`);
-          
-          // Use high-def profile pic if available, fallback to video data
-          videoData.profile_pic_url = profile.profilePicUrlHD || profile.profilePicUrl || videoData.profile_pic_url || '';
-          videoData.display_name = profile.fullName || videoData.display_name || videoData.username;
-          videoData.follower_count = profile.followersCount || videoData.follower_count || 0;
-          
-          console.log(`✅ [INSTAGRAM] Updated with profile data - Profile pic: ${videoData.profile_pic_url ? 'YES' : 'NO'}, Followers: ${videoData.follower_count}`);
-        } else {
-          console.warn(`⚠️ [INSTAGRAM] No profile data returned for @${videoData.username}`);
-        }
-      } catch (profileError) {
-        console.warn('⚠️ [INSTAGRAM] Failed to fetch profile data:', profileError);
-        // Continue with video data only - non-critical
-      }
+      console.log(`✅ [INSTAGRAM] Profile data extracted from scraper: @${videoData.username}`);
+      console.log(`📊 [INSTAGRAM] Followers: ${videoData.follower_count || 0}, Profile pic: ${videoData.profile_pic_url ? 'YES' : 'NO'}`);
     }
 
     // Check if account exists or needs to be created
@@ -412,9 +382,9 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       view_count: rawData.play_count || rawData.view_count || 0,
       share_count: 0, // Not provided by hpix scraper
       timestamp: rawData.taken_at ? new Date(rawData.taken_at * 1000).toISOString() : new Date().toISOString(),
-      profile_pic_url: owner.profile_pic_url || '',
+      profile_pic_url: owner.profile_pic_url || owner.profile_pic_url_hd || '',
       display_name: displayName,
-      follower_count: 0 // Not provided in individual post endpoint
+      follower_count: owner.edge_followed_by?.count || 0
     };
   } else if (platform === 'youtube') {
     // YouTube structure - handle both YouTube API v3 and Apify scraper formats
