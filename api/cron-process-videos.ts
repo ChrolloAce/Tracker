@@ -283,17 +283,54 @@ function transformVideoData(rawData: any, platform: string): VideoData {
     const username = owner.username || '';
     const displayName = owner.full_name || username;
     
+    // ROBUST THUMBNAIL EXTRACTION (strongest → weakest fallback)
+    let thumbnailUrl = '';
+    if (rawData.thumbnail_url) {
+      thumbnailUrl = rawData.thumbnail_url;
+    } else if (rawData.raw_data?.thumbnail_src) {
+      thumbnailUrl = rawData.raw_data.thumbnail_src;
+    } else if (rawData.raw_data?.display_url) {
+      thumbnailUrl = rawData.raw_data.display_url;
+    } else if (rawData.raw_data?.display_resources && Array.isArray(rawData.raw_data.display_resources)) {
+      // Pick the largest image (highest config_width) or last item
+      const resources = rawData.raw_data.display_resources;
+      const largest = resources.reduce((best: any, current: any) => {
+        if (!best) return current;
+        return (current.config_width || 0) > (best.config_width || 0) ? current : best;
+      }, null);
+      thumbnailUrl = largest?.src || resources[resources.length - 1]?.src || '';
+    } else {
+      // Last resort: scan caption for HTTPS image URL
+      const urlMatch = caption.match(/https:\/\/[^\s]+\.(jpg|jpeg|png|webp)/i);
+      thumbnailUrl = urlMatch ? urlMatch[0] : '';
+    }
+    
+    // ROBUST PROFILE PIC EXTRACTION (strongest → weakest fallback)
+    let profilePicUrl = '';
+    if (owner.profile_pic_url_hd) {
+      profilePicUrl = owner.profile_pic_url_hd;
+    } else if (owner.profile_pic_url) {
+      profilePicUrl = owner.profile_pic_url;
+    } else {
+      // Last resort: scan caption for profile image URL
+      const profileUrlMatch = caption.match(/https:\/\/[^\s]+profile[^\s]+\.(jpg|jpeg|png)/i);
+      profilePicUrl = profileUrlMatch ? profileUrlMatch[0] : '';
+    }
+    
+    // ROBUST VIEW COUNT EXTRACTION (prefer play_count → view_count → video_view_count → video_play_count)
+    const viewCount = rawData.play_count || rawData.view_count || rawData.video_view_count || rawData.video_play_count || 0;
+    
     return {
       id: rawData.id || rawData.code || '',
-      thumbnail_url: rawData.thumbnail_url || '',
+      thumbnail_url: thumbnailUrl,
       caption: caption,
       username: username,
       like_count: rawData.like_count || 0,
       comment_count: rawData.comment_count || 0,
-      view_count: rawData.play_count || rawData.view_count || 0,
+      view_count: viewCount,
       share_count: 0, // Not provided by hpix scraper
       timestamp: rawData.taken_at ? new Date(rawData.taken_at * 1000).toISOString() : new Date().toISOString(),
-      profile_pic_url: owner.profile_pic_url || owner.profile_pic_url_hd || '',
+      profile_pic_url: profilePicUrl,
       display_name: displayName,
       follower_count: owner.edge_followed_by?.count || 0
     };

@@ -103,6 +103,9 @@ export class InstagramScraperService {
       return null;
     }
 
+    const caption = post.caption || '';
+    const profilePicUrl = this.extractProfilePicUrl(owner, caption);
+
     return {
       username: owner.username || '',
       fullName: owner.full_name || owner.username || '',
@@ -111,7 +114,7 @@ export class InstagramScraperService {
       postsCount: owner.edge_owner_to_timeline_media?.count || 0,
       biography: owner.biography || '',
       verified: owner.is_verified || false,
-      profilePicUrl: owner.profile_pic_url || owner.profile_pic_url_hd || '',
+      profilePicUrl: profilePicUrl,
       isPrivate: owner.is_private || false,
       id: owner.id || ''
     };
@@ -128,28 +131,85 @@ export class InstagramScraperService {
   }
 
   /**
+   * Extract thumbnail URL with robust fallback chain
+   */
+  private static extractThumbnailUrl(item: any): string {
+    const caption = item.caption || '';
+    
+    // 1. Top-level thumbnail_url
+    if (item.thumbnail_url) return item.thumbnail_url;
+    
+    // 2. raw_data.thumbnail_src
+    if (item.raw_data?.thumbnail_src) return item.raw_data.thumbnail_src;
+    
+    // 3. raw_data.display_url
+    if (item.raw_data?.display_url) return item.raw_data.display_url;
+    
+    // 4. raw_data.display_resources (pick largest or last)
+    if (item.raw_data?.display_resources && Array.isArray(item.raw_data.display_resources)) {
+      const resources = item.raw_data.display_resources;
+      const largest = resources.reduce((best: any, current: any) => {
+        if (!best) return current;
+        return (current.config_width || 0) > (best.config_width || 0) ? current : best;
+      }, null);
+      if (largest?.src) return largest.src;
+      if (resources[resources.length - 1]?.src) return resources[resources.length - 1].src;
+    }
+    
+    // 5. Last resort: scan caption for HTTPS image URL
+    const urlMatch = caption.match(/https:\/\/[^\s]+\.(jpg|jpeg|png|webp)/i);
+    return urlMatch ? urlMatch[0] : '';
+  }
+
+  /**
+   * Extract profile pic URL with robust fallback chain
+   */
+  private static extractProfilePicUrl(owner: any, caption: string = ''): string {
+    // 1. HD profile pic
+    if (owner.profile_pic_url_hd) return owner.profile_pic_url_hd;
+    
+    // 2. Standard profile pic
+    if (owner.profile_pic_url) return owner.profile_pic_url;
+    
+    // 3. Last resort: scan caption for profile image URL
+    const profileUrlMatch = caption.match(/https:\/\/[^\s]+profile[^\s]+\.(jpg|jpeg|png)/i);
+    return profileUrlMatch ? profileUrlMatch[0] : '';
+  }
+
+  /**
+   * Extract view count with robust fallback chain
+   */
+  private static extractViewCount(item: any): number {
+    return item.play_count || item.view_count || item.video_view_count || item.video_play_count || 0;
+  }
+
+  /**
    * Transform raw scraper output to InstagramReelData
    */
   private static transformToReelData(item: any): InstagramReelData {
     const owner = item.raw_data?.owner || {};
+    const caption = item.caption || '';
     const videoUrl = this.extractVideoUrl(item.video_versions || []);
+    const thumbnailUrl = this.extractThumbnailUrl(item);
+    const profilePicUrl = this.extractProfilePicUrl(owner, caption);
+    const viewCount = this.extractViewCount(item);
 
     return {
       id: item.id || '',
       shortCode: item.code || '',
       url: item.input || `https://www.instagram.com/reel/${item.code}/`,
-      caption: item.caption || '',
+      caption: caption,
       timestamp: item.taken_at ? new Date(item.taken_at * 1000).toISOString() : '',
-      videoViewCount: item.play_count || item.view_count || 0,
+      videoViewCount: viewCount,
       likeCount: item.like_count || 0,
       commentCount: item.comment_count || 0,
-      playCount: item.play_count || item.view_count || 0,
-      thumbnailUrl: item.thumbnail_url || '',
+      playCount: viewCount,
+      thumbnailUrl: thumbnailUrl,
       videoUrl: videoUrl,
       ownerUsername: owner.username || '',
       ownerFullName: owner.full_name || owner.username || '',
       ownerId: owner.id || item.owner_id || '',
-      ownerProfilePicUrl: owner.profile_pic_url || owner.profile_pic_url_hd || '',
+      ownerProfilePicUrl: profilePicUrl,
       ownerVerified: owner.is_verified || false,
       ownerFollowerCount: owner.edge_followed_by?.count || 0,
       width: item.raw_data?.dimensions?.width || 0,
@@ -163,23 +223,27 @@ export class InstagramScraperService {
    */
   private static transformToPostData(item: any, postUrl: string): InstagramPostData {
     const owner = item.raw_data?.owner || {};
+    const caption = item.caption || '';
     const videoUrl = this.extractVideoUrl(item.video_versions || []);
+    const thumbnailUrl = this.extractThumbnailUrl(item);
+    const profilePicUrl = this.extractProfilePicUrl(owner, caption);
+    const viewCount = this.extractViewCount(item);
 
     return {
       id: item.id || '',
       shortCode: item.code || this.extractShortCodeFromUrl(postUrl),
       url: postUrl,
-      caption: item.caption || '',
+      caption: caption,
       timestamp: item.taken_at ? new Date(item.taken_at * 1000).toISOString() : '',
       likes: item.like_count || 0,
       comments: item.comment_count || 0,
       shares: 0, // Not provided by scraper
-      plays: item.play_count || item.view_count || 0,
-      thumbnailUrl: item.thumbnail_url || '',
+      plays: viewCount,
+      thumbnailUrl: thumbnailUrl,
       videoUrl: videoUrl,
       ownerUsername: owner.username || '',
       ownerFullName: owner.full_name || owner.username || '',
-      ownerProfilePicUrl: owner.profile_pic_url || owner.profile_pic_url_hd || '',
+      ownerProfilePicUrl: profilePicUrl,
       ownerVerified: owner.is_verified || false,
       ownerFollowerCount: owner.edge_followed_by?.count || 0,
       ownerId: owner.id || item.owner_id || '',
