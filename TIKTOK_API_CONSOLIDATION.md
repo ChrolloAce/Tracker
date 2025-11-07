@@ -48,9 +48,21 @@ This replaces the previous `clockworks~tiktok-scraper` and provides a cleaner, m
 | `diggCount` | `likes` |
 | `commentCount` | `comments` |
 | `shareCount` | `shares` |
-| `collectCount` | `bookmarks` |
+| `collectCount` | `bookmarks` → **saves** (stored in DB) |
 | `createTime` | `uploadedAt` or `uploaded_at` |
 | `webVideoUrl` | `tiktok_url` or `video.url` |
+
+**⚠️ IMPORTANT: Flat Keys**
+
+The `apidojo/tiktok-scraper` returns data in **TWO FORMATS**:
+1. **Nested objects**: `item.channel.name`, `item.video.cover`
+2. **Flat keys (string keys)**: `item['channel.name']`, `item.cover`
+
+**Our code handles BOTH formats** with fallback chains:
+```typescript
+channel.name || item['channel.name'] || ''
+video.cover || item.cover || item.thumbnail || ''
+```
 
 ---
 
@@ -61,15 +73,19 @@ The new scraper uses a **fallback chain** for thumbnails (strongest → weakest)
 ```typescript
 let thumbnailUrl = '';
 if (video.cover) {
-  thumbnailUrl = video.cover; // 🥇 Best quality
+  thumbnailUrl = video.cover; // 🥇 Best quality (nested)
 } else if (video.thumbnail) {
-  thumbnailUrl = video.thumbnail; // 🥈 Fallback
+  thumbnailUrl = video.thumbnail; // 🥈 Fallback (nested)
+} else if (item.cover) {
+  thumbnailUrl = item.cover; // 🥉 Flat key format
+} else if (item.thumbnail) {
+  thumbnailUrl = item.thumbnail; // 🏅 Flat key fallback
 } else if (item.images && item.images.length > 0) {
-  thumbnailUrl = item.images[0].url; // 🥉 Photo Mode posts
+  thumbnailUrl = item.images[0].url; // 🎖️ Photo Mode posts
 }
 ```
 
-This ensures we **always** get the best available thumbnail, even for edge cases like Photo Mode posts.
+This ensures we **always** get the best available thumbnail, handling both **nested objects** and **flat keys**.
 
 ---
 
@@ -173,6 +189,7 @@ This ensures we **always** get the best available thumbnail, even for edge cases
 ### 🚀 **Reliability**
 - Residential proxies reduce blocking/rate limiting
 - Better error handling with consistent field names
+- Handles both nested and flat key formats
 
 ### 🧹 **Maintainability**
 - One scraper to update when TikTok changes
@@ -182,16 +199,19 @@ This ensures we **always** get the best available thumbnail, even for edge cases
 - Always includes profile data with videos (no separate profile API needed)
 - Supports Photo Mode posts (multiple images)
 - Better thumbnail quality with fallback logic
+- **✅ Bookmarks/Saves tracking** (TikTok-specific metric)
 
 ---
 
 ## Testing Checklist
 
 - [ ] **Account Sync**: Track a TikTok account and verify profile picture, follower count, and videos load correctly
-- [ ] **Individual Video**: Add a single TikTok video URL and verify it processes with correct metrics
+- [ ] **Individual Video**: Add a single TikTok video URL and verify it processes with correct metrics (including bookmarks)
 - [ ] **Bulk Refresh**: Trigger a refresh for an account with existing videos and verify metrics update
 - [ ] **Profile Picture Upload**: Verify profile pictures are uploaded to Firebase Storage (not direct TikTok URLs)
 - [ ] **Photo Mode Posts**: Test with a TikTok photo carousel post to ensure thumbnails work
+- [ ] **Bookmarks/Saves**: Verify TikTok bookmarks display correctly in dashboard KPI graphs and video cards
+- [ ] **Thumbnails**: Ensure thumbnails load for videos (handles both nested and flat key formats)
 
 ---
 
