@@ -243,13 +243,13 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
       </div>
 
       {/* Chart */}
-      <div className="relative z-10 p-6" style={{ height: '350px' }}>
-        {/* Total Value Display - Inside Chart (Top Right) */}
-        <div className="absolute top-8 right-8 z-20 text-right">
-          <div className="text-xs text-gray-400 mb-0.5 font-medium tracking-wide">
+      <div className="relative z-10 p-6 pt-16" style={{ height: '400px' }}>
+        {/* Total Value Display - Above Chart */}
+        <div className="absolute top-6 right-8 z-20 text-right">
+          <div className="text-xs text-gray-500 mb-0.5 font-medium tracking-wide uppercase">
             {currentMetric.label}
           </div>
-          <div className="text-3xl font-bold tracking-tight text-white">
+          <div className="text-4xl font-bold tracking-tight text-white">
             {formattedTotal}
           </div>
         </div>

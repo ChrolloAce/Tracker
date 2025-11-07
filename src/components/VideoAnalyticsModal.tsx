@@ -44,13 +44,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   const [snapshotsPage, setSnapshotsPage] = useState(1);
   const snapshotsPerPage = 5;
   
-  // Date filter state - force 'all' when hideDateFilter is true
-  type DateFilterType = ImportedDateFilterType;
-  type TimeGranularity = 'daily' | 'weekly' | 'monthly';
-  const [dateFilter, setDateFilter] = useState<DateFilterType>(hideDateFilter ? 'all' : 'all');
-  const [customDateRange, setCustomDateRange] = useState<{ startDate: Date; endDate: Date } | undefined>();
-  const [timeGranularity, setTimeGranularity] = useState<TimeGranularity>('daily');
-  const [showPreviousPeriod, setShowPreviousPeriod] = useState(false);
+  // Always load all data - no date filtering
+  const hideDateFilterForced = true; // Force all data to be loaded
 
   // Extract title without hashtags and separate hashtags
   const { cleanTitle, hashtags } = useMemo(() => {
@@ -690,13 +685,13 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       >
         {/* Header */}
         <div className="flex items-center justify-between gap-3 mb-4">
-          {/* Left: Period Date Display */}
+          {/* Left: Video Title */}
           <div className="flex items-center gap-3">
-            {/* Only show date range when not hiding date filter */}
-            {!hideDateFilter && (
+            {/* Removed date filter - always show all data */}
+            {false && (
               <>
                 <div className="text-sm text-gray-400">
-                  {showPreviousPeriod ? (
+                  {false ? (
                     <span>
                       {periodRanges.prevStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       {' - '}
@@ -747,14 +742,12 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
             )}
           </div>
           
-          {/* Right: Filters & Close */}
+          {/* Right: Close Button Only */}
           <div className="flex items-center gap-3">
-            {/* Date Filter - Hidden when hideDateFilter is true */}
-            {!hideDateFilter && (
-              <DateRangeFilter 
-                selectedFilter={dateFilter}
-                customRange={customDateRange}
-                onFilterChange={(filter, customRange) => {
+            {/* Date Filter Removed - Always show all data */}
+            {false && (
+              <div style={{ display: 'none' }}>
+                {/* Removed DateRangeFilter */}
                   setDateFilter(filter);
                   setCustomDateRange(customRange);
                   
