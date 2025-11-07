@@ -396,22 +396,23 @@ function transformVideoData(rawData: any, platform: string): VideoData {
     console.log('📸 [INSTAGRAM Transform] Raw data keys:', Object.keys(rawData).join(', '));
     console.log('📸 [INSTAGRAM Transform] Raw data:', JSON.stringify(rawData, null, 2));
     
-    // hpix~ig-reels-scraper format
-    const caption = rawData.caption?.text || rawData.caption || '';
-    const username = rawData.owner?.username || '';
-    const displayName = rawData.owner?.full_name || username;
+    // hpix~ig-reels-scraper format - owner data is inside raw_data
+    const owner = rawData.raw_data?.owner || {};
+    const caption = rawData.caption || '';
+    const username = owner.username || '';
+    const displayName = owner.full_name || username;
     
     return {
-      id: rawData.id || rawData.shortcode || '',
-      thumbnail_url: rawData.thumbnail_url || rawData.display_url || '',
+      id: rawData.id || rawData.code || '',
+      thumbnail_url: rawData.thumbnail_url || '',
       caption: caption,
       username: username,
       like_count: rawData.like_count || 0,
       comment_count: rawData.comment_count || 0,
-      view_count: rawData.play_count || rawData.video_view_count || 0,
-      share_count: rawData.share_count || 0,
-      timestamp: rawData.taken_at_timestamp ? new Date(rawData.taken_at_timestamp * 1000).toISOString() : new Date().toISOString(),
-      profile_pic_url: rawData.owner?.profile_pic_url || '',
+      view_count: rawData.play_count || rawData.view_count || 0,
+      share_count: 0, // Not provided by hpix scraper
+      timestamp: rawData.taken_at ? new Date(rawData.taken_at * 1000).toISOString() : new Date().toISOString(),
+      profile_pic_url: owner.profile_pic_url || '',
       display_name: displayName,
       follower_count: 0 // Not provided in individual post endpoint
     };
