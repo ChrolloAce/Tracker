@@ -1229,6 +1229,7 @@ async function saveVideosToFirestore(
         likes: videoData.likes,
         comments: videoData.comments,
         shares: videoData.shares,
+        saves: videoData.saves || 0, // ✅ ADD BOOKMARKS
         capturedAt: now,
         timestamp: now, // Backwards compatibility
         capturedBy: isManualTrigger ? 'manual_refresh' : 'scheduled_refresh'
