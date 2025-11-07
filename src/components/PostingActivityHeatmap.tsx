@@ -1,15 +1,18 @@
 import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { VideoSubmission } from '../types';
-import { format, eachDayOfInterval, startOfDay, subYears } from 'date-fns';
+import { format, eachDayOfInterval, startOfDay, subYears, subDays, min, max } from 'date-fns';
 import { Play } from 'lucide-react';
 import { PlatformIcon } from './ui/PlatformIcon';
 import DayVideosModal from './DayVideosModal';
+import { DateFilterType } from './DateRangeFilter';
 
 interface PostingActivityHeatmapProps {
   submissions: VideoSubmission[];
   onVideoClick?: (video: VideoSubmission) => void;
   onDateClick?: (date: Date, videos: VideoSubmission[]) => void;
+  dateFilter?: DateFilterType;
+  customRange?: { startDate: Date; endDate: Date };
 }
 
 interface DayData {
@@ -21,19 +24,47 @@ interface DayData {
 const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({ 
   submissions, 
   onVideoClick,
-  onDateClick 
+  onDateClick,
+  dateFilter = 'all',
+  customRange
 }) => {
   const [hoveredDay, setHoveredDay] = useState<DayData | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [selectedDay, setSelectedDay] = useState<DayData | null>(null);
 
-  // Calculate heatmap data for the last year (ending TODAY)
+  // Calculate heatmap data based on date filter
   const heatmapData = useMemo(() => {
-    const today = startOfDay(new Date()); // End at today
-    const yearAgo = startOfDay(subYears(today, 1)); // Start 1 year ago
+    const today = startOfDay(new Date());
+    let startDate: Date;
     
-    // Get all days from 1 year ago to today (no future dates)
-    const allDays = eachDayOfInterval({ start: yearAgo, end: today });
+    // Determine date range based on filter
+    if (dateFilter === 'all' || dateFilter === 'allTime') {
+      // For "all time", use the earliest video date or 1 year ago, whichever is earlier
+      if (submissions.length > 0) {
+        const dates = submissions.map(s => new Date(s.uploadDate || s.dateSubmitted));
+        const earliestVideo = min(dates);
+        const yearAgo = startOfDay(subYears(today, 1));
+        startDate = earliestVideo < yearAgo ? earliestVideo : yearAgo;
+      } else {
+        startDate = startOfDay(subYears(today, 1));
+      }
+    } else if (dateFilter === 'last7days') {
+      startDate = startOfDay(subDays(today, 6)); // 7 days including today
+    } else if (dateFilter === 'last14days') {
+      startDate = startOfDay(subDays(today, 13)); // 14 days including today
+    } else if (dateFilter === 'last30days') {
+      startDate = startOfDay(subDays(today, 29)); // 30 days including today
+    } else if (dateFilter === 'last90days') {
+      startDate = startOfDay(subDays(today, 89)); // 90 days including today
+    } else if (dateFilter === 'custom' && customRange) {
+      startDate = startOfDay(customRange.startDate);
+    } else {
+      // Default to last year
+      startDate = startOfDay(subYears(today, 1));
+    }
+    
+    // Get all days in the range
+    const allDays = eachDayOfInterval({ start: startDate, end: today });
     
     // Group submissions by day - deduplicate videos first
     const uniqueVideos = new Map<string, VideoSubmission>();
@@ -112,7 +143,7 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
     });
     
     return dayData;
-  }, [submissions]);
+  }, [submissions, dateFilter, customRange]);
 
   // Organize data into weeks
   const weeks = useMemo(() => {
@@ -227,18 +258,19 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
           <div className="h-3 sm:h-4 leading-none">S</div>
         </div>
 
-        {/* Heatmap grid - Fixed minimum cell size for readability */}
-        <div className="flex-1 min-w-max">
+        {/* Heatmap grid - Dynamic cell sizing based on date range */}
+        <div className="flex-1">
           <div className="grid gap-[2px] sm:gap-[3px]" style={{ 
-            gridTemplateColumns: `repeat(${weeks.length}, minmax(10px, 16px))`,
-            gridAutoFlow: 'column'
+            gridTemplateColumns: `repeat(${weeks.length}, 1fr)`,
+            gridAutoFlow: 'column',
+            width: '100%'
           }}>
             {weeks.map((week, weekIndex) => (
               <div key={weekIndex} className="flex flex-col gap-[2px] sm:gap-[3px]">
                 {/* Fill empty days at the start of the first week */}
                 {weekIndex === 0 && week[0] && week[0].date.getDay() > 0 && (
                   Array.from({ length: week[0].date.getDay() }).map((_, i) => (
-                    <div key={`empty-${i}`} className="w-[10px] sm:w-[12px] md:w-[16px] h-[10px] sm:h-[12px] md:h-[16px]" />
+                    <div key={`empty-${i}`} style={{ aspectRatio: '1 / 1' }} />
                   ))
                 )}
                 
@@ -246,10 +278,11 @@ const PostingActivityHeatmap: React.FC<PostingActivityHeatmapProps> = ({
                   <div
                     key={format(day.date, 'yyyy-MM-dd')}
                     className={`
-                      w-[10px] sm:w-[12px] md:w-[16px] h-[10px] sm:h-[12px] md:h-[16px] rounded-sm transition-all cursor-pointer
+                      rounded-sm transition-all cursor-pointer
                       ${getColorIntensity(day.count)}
                       ${day.count > 0 ? 'hover:ring-1 sm:hover:ring-2 hover:ring-emerald-400 hover:ring-offset-1 hover:ring-offset-zinc-900' : ''}
                     `}
+                    style={{ aspectRatio: '1 / 1' }}
                     onClick={() => handleCellClick(day)}
                     onMouseEnter={(e) => handleMouseEnter(day, e)}
                     onMouseLeave={handleMouseLeave}
