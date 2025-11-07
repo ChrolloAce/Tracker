@@ -647,6 +647,24 @@ export default async function handler(
     let savedCount = 0;
 
     for (const video of videos) {
+      // Download and upload thumbnail to Firebase Storage (if available)
+      let firebaseThumbnailUrl = video.thumbnail;
+      if (video.thumbnail && video.thumbnail.startsWith('http')) {
+        try {
+          console.log(`    📸 Downloading thumbnail for video ${video.videoId}...`);
+          firebaseThumbnailUrl = await downloadAndUploadImage(
+            video.thumbnail,
+            orgId,
+            `${account.platform}_${video.videoId}_thumb.jpg`,
+            'thumbnails'
+          );
+          console.log(`    ✅ Thumbnail uploaded to Firebase Storage`);
+        } catch (thumbError) {
+          console.warn(`    ⚠️ Could not upload thumbnail for ${video.videoId}:`, thumbError);
+          // Keep original URL as fallback
+        }
+      }
+
       // Save to main videos collection (for dashboard)
       const videoRef = db
         .collection('organizations')
@@ -658,6 +676,7 @@ export default async function handler(
 
       batch.set(videoRef, {
         ...video,
+        thumbnail: firebaseThumbnailUrl, // Use Firebase Storage URL
         orgId: orgId,
         projectId: projectId,
         trackedAccountId: accountId,
@@ -680,6 +699,7 @@ export default async function handler(
         likes: video.likes || 0,
         comments: video.comments || 0,
         shares: video.shares || 0,
+        saves: video.saves || 0, // ✅ ADD BOOKMARKS TO SNAPSHOT
         capturedAt: snapshotTime,
         timestamp: snapshotTime,
         capturedBy: 'initial_sync'
