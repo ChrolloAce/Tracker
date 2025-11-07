@@ -473,7 +473,13 @@ async function downloadAndUploadImage(
 }
 
 /**
- * Refresh videos for a single account by fetching from Apify
+ * OPTIMIZED: Refresh videos for a single account using incremental fetch + bulk refresh
+ * 
+ * Strategy:
+ * 1. Fetch 2-5 newest videos at a time
+ * 2. Check if any already exist in database
+ * 3. Once we find an existing video, STOP fetching new videos
+ * 4. Refresh all existing videos using platform-specific unique endpoints
  */
 async function refreshAccountVideos(
   orgId: string,
@@ -483,33 +489,135 @@ async function refreshAccountVideos(
   platform: 'instagram' | 'tiktok' | 'youtube' | 'twitter',
   isManualTrigger: boolean
 ): Promise<{ fetched: number; updated: number; added: number; skipped: number; verified?: boolean; blueVerified?: boolean }> {
-  // Use the appropriate Apify actor based on platform
+  console.log(`    🔄 [${platform.toUpperCase()}] Starting optimized refresh for @${username}...`);
+  
+  // STEP 1: Fetch initial batch of newest videos (2-5 videos)
+  const INITIAL_BATCH_SIZE = 2;
+  const newVideos: any[] = [];
+  let foundExisting = false;
+  let isVerified: boolean | undefined;
+  let isBlueVerified: boolean | undefined;
+
+  console.log(`    📥 [${platform.toUpperCase()}] Fetching ${INITIAL_BATCH_SIZE} newest videos...`);
+  
+  const initialBatch = await fetchVideosFromPlatform(platform, username, INITIAL_BATCH_SIZE);
+  
+  if (!initialBatch || initialBatch.length === 0) {
+    console.log(`    ⚠️ [${platform.toUpperCase()}] No videos returned`);
+    return { fetched: 0, updated: 0, added: 0, skipped: 0 };
+  }
+
+  // Extract verified status from first video
+  if (initialBatch.length > 0) {
+    const firstVideo = initialBatch[0];
+    if (platform === 'instagram') {
+      isVerified = firstVideo.is_verified || false;
+    } else if (platform === 'tiktok') {
+      isVerified = firstVideo['authorMeta.verified'] || firstVideo.authorMeta?.verified || false;
+    } else if (platform === 'twitter') {
+      isVerified = firstVideo.isVerified || false;
+      isBlueVerified = firstVideo.isBlueVerified || false;
+    }
+  }
+
+  // Check each video in initial batch
+  for (const video of initialBatch) {
+    const videoId = extractVideoId(video, platform);
+    if (!videoId) continue;
+
+    const exists = await videoExistsInDatabase(orgId, projectId, videoId);
+    
+    if (exists) {
+      console.log(`    ✓ [${platform.toUpperCase()}] Found existing video: ${videoId} - stopping new fetch`);
+      foundExisting = true;
+      break;
+    } else {
+      console.log(`    ✨ [${platform.toUpperCase()}] New video detected: ${videoId}`);
+      newVideos.push(video);
+    }
+  }
+
+  // STEP 2: If no existing videos found in first batch, continue fetching
+  if (!foundExisting && initialBatch.length === INITIAL_BATCH_SIZE) {
+    console.log(`    📥 [${platform.toUpperCase()}] No existing videos in first batch, fetching more...`);
+    
+    // Fetch a larger batch (10-20 more videos)
+    const secondBatch = await fetchVideosFromPlatform(platform, username, 20, INITIAL_BATCH_SIZE);
+    
+    for (const video of secondBatch) {
+      const videoId = extractVideoId(video, platform);
+      if (!videoId) continue;
+
+      const exists = await videoExistsInDatabase(orgId, projectId, videoId);
+      
+      if (exists) {
+        console.log(`    ✓ [${platform.toUpperCase()}] Found existing video: ${videoId} - stopping`);
+        foundExisting = true;
+        break;
+      } else {
+        newVideos.push(video);
+      }
+    }
+  }
+
+  console.log(`    📊 [${platform.toUpperCase()}] Found ${newVideos.length} new videos`);
+
+  // STEP 3: Save new videos to database
+  let added = 0;
+  if (newVideos.length > 0) {
+    const counts = await saveVideosToFirestore(orgId, projectId, accountId, newVideos, platform, isManualTrigger);
+    added = counts.added;
+  }
+
+  // STEP 4: Refresh all existing videos using platform-specific bulk refresh
+  console.log(`    🔄 [${platform.toUpperCase()}] Refreshing existing videos...`);
+  const updated = await refreshExistingVideos(orgId, projectId, accountId, platform);
+  
+  console.log(`    ✅ [${platform.toUpperCase()}] Complete: ${added} new, ${updated} refreshed`);
+
+  return {
+    fetched: newVideos.length,
+    updated: updated,
+    added: added,
+    skipped: 0,
+    verified: isVerified,
+    blueVerified: isBlueVerified
+  };
+}
+
+/**
+ * Fetch videos from platform with specified batch size
+ */
+async function fetchVideosFromPlatform(
+  platform: string,
+  username: string,
+  maxVideos: number,
+  skipVideos: number = 0
+): Promise<any[]> {
   let actorId: string;
   let input: any;
 
   if (platform === 'instagram') {
-    // Use NEW Instagram Reels Scraper with RESIDENTIAL proxies
     actorId = 'scraper-engine~instagram-reels-scraper';
     input = {
       urls: [`https://www.instagram.com/${username}/`],
       sortOrder: "newest",
-      maxComments: 0,  // Don't fetch comments for refresh (faster)
-      maxReels: 50,
+      maxComments: 0,
+      maxReels: maxVideos,
       proxyConfiguration: {
         useApifyProxy: true,
-        apifyProxyGroups: ['RESIDENTIAL'],  // Use RESIDENTIAL proxies to avoid Instagram 429 blocks
+        apifyProxyGroups: ['RESIDENTIAL'],
         apifyProxyCountry: 'US'
       },
-      maxRequestRetries: 5,
-      requestHandlerTimeoutSecs: 300,
-      maxConcurrency: 1  // Reduce concurrency to avoid rate limits
+      maxRequestRetries: 3,
+      requestHandlerTimeoutSecs: 120,
+      maxConcurrency: 1
     };
   } else if (platform === 'tiktok') {
-    // FIXED: Use correct actor ID (clockworks~tiktok-scraper, not tiktok-profile-scraper)
     actorId = 'clockworks~tiktok-scraper';
     input = {
       profiles: [username],
-      resultsPerPage: 100,
+      resultsPerPage: maxVideos,
       shouldDownloadVideos: false,
       shouldDownloadCovers: false,
       shouldDownloadSubtitles: false,
@@ -521,7 +629,7 @@ async function refreshAccountVideos(
     actorId = 'apidojo/tweet-scraper';
     input = {
       twitterHandles: [username],
-      maxItems: 100,
+      maxItems: maxVideos,
       sort: 'Latest',
       onlyImage: false,
       onlyVideo: false,
@@ -534,58 +642,257 @@ async function refreshAccountVideos(
     throw new Error(`Unsupported platform: ${platform}`);
   }
 
-  // Run Apify actor using the helper function
   const result = await runApifyActor({
     actorId: actorId,
     input: input
   });
 
   const videos = result.items || [];
-
-  console.log(`    📊 Apify returned ${videos.length} items for ${platform}`);
-
-  // Extract verified status from first video (all videos from same account have same author info)
-  let isVerified: boolean | undefined;
-  let isBlueVerified: boolean | undefined;
   
-  if (videos && videos.length > 0) {
-    const firstVideo = videos[0];
+  // Skip videos if needed (for pagination)
+  return skipVideos > 0 ? videos.slice(skipVideos) : videos;
+}
+
+/**
+ * Check if a video exists in the database
+ */
+async function videoExistsInDatabase(
+  orgId: string,
+  projectId: string,
+  videoId: string
+): Promise<boolean> {
+  const videosRef = db
+    .collection('organizations')
+    .doc(orgId)
+    .collection('projects')
+    .doc(projectId)
+    .collection('videos');
     
-    if (platform === 'instagram') {
-      // Instagram: is_verified field
-      isVerified = firstVideo.is_verified || false;
-    } else if (platform === 'tiktok') {
-      // TikTok: authorMeta.verified field
-      isVerified = firstVideo['authorMeta.verified'] || firstVideo.authorMeta?.verified || false;
-    } else if (platform === 'twitter') {
-      // Twitter/X: isVerified and isBlueVerified fields
-      isVerified = firstVideo.isVerified || false;
-      isBlueVerified = firstVideo.isBlueVerified || false;
+  const query = videosRef.where('videoId', '==', videoId).limit(1);
+  const snapshot = await query.get();
+  
+  return !snapshot.empty;
+}
+
+/**
+ * Extract video ID from platform-specific video object
+ */
+function extractVideoId(video: any, platform: string): string | null {
+  if (platform === 'instagram') {
+    const media = video.reel_data?.media || video.media || video;
+    return media.code || media.shortCode || media.id || null;
+  } else if (platform === 'tiktok') {
+    const urlMatch = (video.webVideoUrl || '').match(/video\/(\d+)/);
+    return urlMatch ? urlMatch[1] : (video.id || video.videoId || null);
+  } else if (platform === 'twitter') {
+    return video.id || null;
+  }
+  return null;
+}
+
+/**
+ * Refresh all existing videos for an account using platform-specific bulk endpoints
+ */
+async function refreshExistingVideos(
+  orgId: string,
+  projectId: string,
+  accountId: string,
+  platform: string
+): Promise<number> {
+  // Get all existing videos for this account
+  const videosRef = db
+    .collection('organizations')
+    .doc(orgId)
+    .collection('projects')
+    .doc(projectId)
+    .collection('videos');
+    
+  const query = videosRef.where('trackedAccountId', '==', accountId).limit(100);
+  const snapshot = await query.get();
+  
+  if (snapshot.empty) {
+    console.log(`    ℹ️ [${platform.toUpperCase()}] No existing videos to refresh`);
+    return 0;
+  }
+
+  console.log(`    📊 [${platform.toUpperCase()}] Refreshing ${snapshot.size} existing videos...`);
+
+  if (platform === 'tiktok') {
+    // TikTok: Bulk refresh using unique videos API
+    return await refreshTikTokVideosBulk(orgId, projectId, snapshot.docs);
+  } else if (platform === 'instagram') {
+    // Instagram: Sequential refresh using unique video endpoint
+    return await refreshInstagramVideosSequential(orgId, projectId, snapshot.docs);
+  } else if (platform === 'twitter') {
+    // Twitter: Batch refresh (can submit multiple URLs)
+    return await refreshTwitterVideosBatch(orgId, projectId, snapshot.docs);
+  }
+
+  return 0;
+}
+
+/**
+ * TikTok: Bulk refresh using unique videos API
+ */
+async function refreshTikTokVideosBulk(
+  orgId: string,
+  projectId: string,
+  videoDocs: any[]
+): Promise<number> {
+  // TikTok has a unique videos API that accepts multiple video URLs
+  const videoUrls = videoDocs.map(doc => doc.data().url || doc.data().videoUrl).filter(Boolean);
+  
+  if (videoUrls.length === 0) return 0;
+
+  console.log(`    🔄 [TIKTOK] Bulk refreshing ${videoUrls.length} videos...`);
+  
+  try {
+    const result = await runApifyActor({
+      actorId: 'clockworks~tiktok-scraper',
+      input: {
+        postURLs: videoUrls,
+        shouldDownloadVideos: false,
+        shouldDownloadCovers: false,
+        shouldDownloadSubtitles: false,
+        proxy: {
+          useApifyProxy: true
+        }
+      }
+    });
+
+    const refreshedVideos = result.items || [];
+    let updatedCount = 0;
+
+    // Update each video with fresh metrics
+    for (const video of refreshedVideos) {
+      const videoId = extractVideoId(video, 'tiktok');
+      if (!videoId) continue;
+
+      const videoDoc = videoDocs.find(doc => doc.data().videoId === videoId);
+      if (!videoDoc) continue;
+
+      await videoDoc.ref.update({
+        views: video.playCount || 0,
+        likes: video.diggCount || 0,
+        comments: video.commentCount || 0,
+        shares: video.shareCount || 0,
+        saves: video.collectCount || 0,
+        lastRefreshed: Timestamp.now()
+      });
+
+      updatedCount++;
     }
-    
-    console.log(`    ✓ Account verified status: ${isVerified}${isBlueVerified ? ' (Blue verified)' : ''}`);
-  }
 
-  // Save videos to Firestore (update existing ones AND add new ones)
-  let updated = 0;
-  let added = 0;
-  let skipped = 0;
+    console.log(`    ✅ [TIKTOK] Bulk refresh complete: ${updatedCount} videos updated`);
+    return updatedCount;
+  } catch (error) {
+    console.error(`    ❌ [TIKTOK] Bulk refresh failed:`, error);
+    return 0;
+  }
+}
+
+/**
+ * Instagram: Sequential refresh using unique video endpoint
+ */
+async function refreshInstagramVideosSequential(
+  orgId: string,
+  projectId: string,
+  videoDocs: any[]
+): Promise<number> {
+  console.log(`    🔄 [INSTAGRAM] Sequential refresh of ${videoDocs.length} videos...`);
   
-  if (videos && videos.length > 0) {
-    const counts = await saveVideosToFirestore(orgId, projectId, accountId, videos, platform, isManualTrigger);
-    updated = counts.updated;
-    added = counts.added;
-    skipped = counts.skipped;
+  let updatedCount = 0;
+
+  for (const videoDoc of videoDocs) {
+    const videoData = videoDoc.data();
+    const videoUrl = videoData.url || videoData.videoUrl;
+    
+    if (!videoUrl) continue;
+
+    try {
+      const result = await runApifyActor({
+        actorId: 'apify/instagram-reel-scraper',
+        input: {
+          directUrls: [videoUrl],
+          resultsLimit: 1
+        }
+      });
+
+      const videos = result.items || [];
+      if (videos.length === 0) continue;
+
+      const video = videos[0];
+      
+      await videoDoc.ref.update({
+        views: video.videoViewCount || video.viewCount || 0,
+        likes: video.likesCount || 0,
+        comments: video.commentsCount || 0,
+        lastRefreshed: Timestamp.now()
+      });
+
+      updatedCount++;
+      console.log(`    ✓ [INSTAGRAM] Refreshed: ${videoData.videoId}`);
+    } catch (error) {
+      console.error(`    ⚠️ [INSTAGRAM] Failed to refresh ${videoData.videoId}:`, error);
+    }
   }
 
-  return {
-    fetched: videos.length,
-    updated: updated,
-    added: added,
-    skipped: skipped,
-    verified: isVerified,
-    blueVerified: isBlueVerified
-  };
+  console.log(`    ✅ [INSTAGRAM] Sequential refresh complete: ${updatedCount}/${videoDocs.length} videos updated`);
+  return updatedCount;
+}
+
+/**
+ * Twitter: Batch refresh (can submit multiple URLs)
+ */
+async function refreshTwitterVideosBatch(
+  orgId: string,
+  projectId: string,
+  videoDocs: any[]
+): Promise<number> {
+  // Twitter API can handle multiple tweet IDs at once
+  const tweetIds = videoDocs.map(doc => doc.data().videoId).filter(Boolean);
+  
+  if (tweetIds.length === 0) return 0;
+
+  console.log(`    🔄 [TWITTER] Batch refreshing ${tweetIds.length} tweets...`);
+  
+  try {
+    const result = await runApifyActor({
+      actorId: 'apidojo/tweet-scraper',
+      input: {
+        tweetIds: tweetIds,
+        sort: 'Latest'
+      }
+    });
+
+    const refreshedTweets = result.items || [];
+    let updatedCount = 0;
+
+    // Update each tweet with fresh metrics
+    for (const tweet of refreshedTweets) {
+      const tweetId = tweet.id;
+      if (!tweetId) continue;
+
+      const videoDoc = videoDocs.find(doc => doc.data().videoId === tweetId);
+      if (!videoDoc) continue;
+
+      await videoDoc.ref.update({
+        views: tweet.viewCount || 0,
+        likes: tweet.likeCount || 0,
+        comments: tweet.replyCount || 0,
+        shares: tweet.retweetCount || 0,
+        lastRefreshed: Timestamp.now()
+      });
+
+      updatedCount++;
+    }
+
+    console.log(`    ✅ [TWITTER] Batch refresh complete: ${updatedCount} tweets updated`);
+    return updatedCount;
+  } catch (error) {
+    console.error(`    ❌ [TWITTER] Batch refresh failed:`, error);
+    return 0;
+  }
 }
 
 /**
