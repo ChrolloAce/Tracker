@@ -66,10 +66,10 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
   }, [initialMetric]);
 
   // Handle clicking on a chart point to see videos
-  const handleChartClick = useCallback((dataIndex: number) => {
-    if (dataIndex < 0 || dataIndex >= chartData.length) return;
+  const handleChartClick = (dataIndex: number, currentChartData: typeof chartData) => {
+    if (dataIndex < 0 || dataIndex >= currentChartData.length) return;
     
-    const clickedData = chartData[dataIndex];
+    const clickedData = currentChartData[dataIndex];
     const clickedDate = clickedData.date;
     
     // Filter videos for this specific date
@@ -92,11 +92,18 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
       return clickDate.getTime() === cDate.getTime();
     });
     
+    console.log('📊 Clicked chart point:', {
+      dataIndex,
+      date: clickedDate,
+      videosCount: videosForDate.length,
+      clicksCount: clicksForDate.length
+    });
+    
     setSelectedDate(clickedDate);
     setSelectedDayVideos(videosForDate);
     setSelectedDayClicks(clicksForDate);
     setIsDayModalOpen(true);
-  }, [chartData, submissions, linkClicks]);
+  };
 
   // Helper function to get metric value from video
   const getMetricValue = useCallback((video: VideoSubmission, metric: MetricType): number => {
@@ -438,8 +445,9 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
               {/* SVG Chart */}
               <svg 
                 viewBox="0 0 1000 400" 
-                className="w-full h-full cursor-pointer" 
+                className="w-full h-full cursor-pointer focus:outline-none" 
                 preserveAspectRatio="none"
+                style={{ outline: 'none' }}
                 onMouseMove={(e) => {
                   const svg = e.currentTarget;
                   const rect = svg.getBoundingClientRect();
@@ -461,6 +469,8 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
                   setHoveredPoint(nearestIndex);
                 }}
                 onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   const svg = e.currentTarget;
                   const rect = svg.getBoundingClientRect();
                   const x = ((e.clientX - rect.left) / rect.width) * 1000;
@@ -478,7 +488,7 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
                     }
                   });
                   
-                  handleChartClick(nearestIndex);
+                  handleChartClick(nearestIndex, chartData);
                 }}
                 onMouseLeave={() => setHoveredPoint(null)}
               >
