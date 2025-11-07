@@ -131,20 +131,64 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (accountSnapshot.empty && !accountId) {
       console.log(`✨ [${video.platform.toUpperCase()}] Creating new account for @${videoData.username}`);
       
-      // For Instagram, download and upload profile pic to Firebase Storage
+      // For Instagram, ALWAYS use apify/instagram-profile-scraper for complete profile data
       let uploadedProfilePic = videoData.profile_pic_url || '';
-      if (video.platform === 'instagram' && videoData.profile_pic_url) {
+      let followerCount = videoData.follower_count || 0;
+      let displayName = videoData.display_name || videoData.username;
+      let isVerified = false;
+      
+      if (video.platform === 'instagram') {
+        console.log(`👤 [INSTAGRAM] Fetching complete profile data via apify/instagram-profile-scraper...`);
         try {
-          console.log(`📸 [INSTAGRAM] Downloading profile pic to Firebase Storage for @${videoData.username}...`);
-          uploadedProfilePic = await downloadAndUploadThumbnail(
-            videoData.profile_pic_url,
-            orgId,
-            `instagram_profile_${videoData.username}.jpg`
+          const profileResponse = await fetch(
+            `https://api.apify.com/v2/acts/apify~instagram-profile-scraper/run-sync-get-dataset-items?token=${process.env.APIFY_TOKEN}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                usernames: [videoData.username.replace('@', '')],
+                proxyConfiguration: {
+                  useApifyProxy: true,
+                  apifyProxyGroups: ['RESIDENTIAL'],
+                  apifyProxyCountry: 'US'
+                },
+                includeAboutSection: false
+              })
+            }
           );
-          console.log(`✅ [INSTAGRAM] Profile picture uploaded to Firebase Storage`);
-        } catch (uploadError) {
-          console.warn(`⚠️ [INSTAGRAM] Profile pic upload failed, using direct URL:`, uploadError);
-          uploadedProfilePic = videoData.profile_pic_url; // Fallback to direct URL
+          
+          if (profileResponse.ok) {
+            const profiles = await profileResponse.json();
+            if (profiles && profiles.length > 0) {
+              const profile = profiles[0];
+              console.log(`✅ [INSTAGRAM] Fetched profile: ${profile.followersCount || 0} followers`);
+              
+              followerCount = profile.followersCount || 0;
+              displayName = profile.fullName || videoData.username;
+              isVerified = profile.verified || false;
+              
+              // Download and upload profile pic from profile scraper
+              if (profile.profilePicUrl) {
+                try {
+                  console.log(`📸 [INSTAGRAM] Downloading profile pic to Firebase Storage for @${videoData.username}...`);
+                  uploadedProfilePic = await downloadAndUploadThumbnail(
+                    profile.profilePicUrl,
+                    orgId,
+                    `instagram_profile_${videoData.username}.jpg`
+                  );
+                  console.log(`✅ [INSTAGRAM] Profile picture uploaded to Firebase Storage`);
+                } catch (uploadError) {
+                  console.warn(`⚠️ [INSTAGRAM] Profile pic upload failed:`, uploadError);
+                }
+              }
+            } else {
+              console.warn(`⚠️ [INSTAGRAM] No profile data returned from profile scraper`);
+            }
+          } else {
+            console.warn(`⚠️ [INSTAGRAM] Profile scraper request failed: ${profileResponse.status}`);
+          }
+        } catch (profileError) {
+          console.error(`❌ [INSTAGRAM] Failed to fetch profile:`, profileError);
         }
       }
       
@@ -153,9 +197,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         id: newAccountRef.id,
         username: videoData.username.toLowerCase(), // Lowercase for consistency with queries
         platform: video.platform,
-        displayName: videoData.display_name || videoData.username,
+        displayName: displayName,
         profilePicture: uploadedProfilePic,
-        followerCount: videoData.follower_count || 0,
+        followerCount: followerCount,
+        isVerified: isVerified,
         isActive: true,
         isRead: false,
         accountType: 'my',
