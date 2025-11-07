@@ -170,6 +170,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           console.log(`✅ Created account: ${accountId}`);
         } else if (!accountSnapshot.empty) {
           accountId = accountSnapshot.docs[0].id;
+          const existingAccountRef = accountSnapshot.docs[0].ref;
+          
+          // Update existing account with latest profile data from video scrape
+          const updateData: any = {
+            lastSynced: Timestamp.now()
+          };
+          
+          // Update follower count if available (Instagram single video scrape provides this)
+          if (videoData.follower_count && videoData.follower_count > 0) {
+            updateData.followerCount = videoData.follower_count;
+            console.log(`📊 Updating follower count: ${videoData.follower_count}`);
+          }
+          
+          // Update profile pic if available
+          if (videoData.profile_pic_url) {
+            updateData.profilePicture = videoData.profile_pic_url;
+            console.log(`📸 Updating profile picture`);
+          }
+          
+          // Update display name if available
+          if (videoData.display_name) {
+            updateData.displayName = videoData.display_name;
+          }
+          
+          await existingAccountRef.update(updateData);
+          console.log(`✅ Using existing account: ${accountId} (updated profile data)`);
         }
 
         // Update video with fetched data

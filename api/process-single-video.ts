@@ -166,7 +166,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log(`✅ [${video.platform.toUpperCase()}] Created account: ${accountId}`);
     } else if (!accountSnapshot.empty) {
       accountId = accountSnapshot.docs[0].id;
-      console.log(`✅ [${video.platform.toUpperCase()}] Using existing account: ${accountId}`);
+      const existingAccountRef = accountSnapshot.docs[0].ref;
+      
+      // Update existing account with latest profile data from video scrape
+      const updateData: any = {
+        lastSynced: Timestamp.now()
+      };
+      
+      // Update follower count if available (Instagram single video scrape provides this)
+      if (videoData.follower_count && videoData.follower_count > 0) {
+        updateData.followerCount = videoData.follower_count;
+        console.log(`📊 [${video.platform.toUpperCase()}] Updating follower count: ${videoData.follower_count}`);
+      }
+      
+      // Update profile pic if available
+      if (videoData.profile_pic_url) {
+        updateData.profilePicture = videoData.profile_pic_url;
+        console.log(`📸 [${video.platform.toUpperCase()}] Updating profile picture`);
+      }
+      
+      // Update display name if available
+      if (videoData.display_name) {
+        updateData.displayName = videoData.display_name;
+      }
+      
+      await existingAccountRef.update(updateData);
+      console.log(`✅ [${video.platform.toUpperCase()}] Using existing account: ${accountId} (updated profile data)`);
     }
 
     // Download and upload thumbnail to Firebase Storage for permanent URL
@@ -412,6 +437,11 @@ function transformVideoData(rawData: any, platform: string): VideoData {
     const viewCount = rawData.play_count || rawData.view_count || rawData.video_view_count || rawData.video_play_count || 0;
     console.log(`📊 [INSTAGRAM] View count: ${viewCount}`);
     
+    // EXTRACT FOLLOWER COUNT from owner.edge_followed_by.count
+    const followerCount = owner.edge_followed_by?.count || 0;
+    console.log(`👥 [INSTAGRAM] Followers extracted: ${followerCount} (from owner.edge_followed_by.count)`);
+    console.log(`✨ [INSTAGRAM] Complete profile data: @${username} (${displayName}) - ${followerCount} followers`);
+    
     return {
       id: rawData.id || rawData.code || '',
       thumbnail_url: thumbnailUrl,
@@ -424,7 +454,7 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       timestamp: rawData.taken_at ? new Date(rawData.taken_at * 1000).toISOString() : new Date().toISOString(),
       profile_pic_url: profilePicUrl,
       display_name: displayName,
-      follower_count: owner.edge_followed_by?.count || 0
+      follower_count: followerCount
     };
   } else if (platform === 'youtube') {
     // YouTube structure - handle both YouTube API v3 and Apify scraper formats
