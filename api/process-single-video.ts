@@ -672,12 +672,13 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
     if (platform === 'tiktok') {
       actorId = 'apidojo/tiktok-scraper';
       input = {
-        postURLs: [url],
-        resultsPerPage: 1,
-        shouldDownloadVideos: false,
-        shouldDownloadCovers: false,
-        shouldDownloadSubtitles: false,
-        shouldDownloadSlideshowImages: false,
+        startUrls: [url],
+        maxItems: 1,
+        sortType: 'RELEVANCE',
+        dateRange: 'DEFAULT',
+        location: 'US',
+        includeSearchKeywords: false,
+        customMapFunction: '(object) => { return {...object} }',
         proxy: {
           useApifyProxy: true,
           apifyProxyGroups: ['RESIDENTIAL']

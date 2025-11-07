@@ -200,15 +200,17 @@ export default async function handler(
       
       try {
         // Call Apify directly (no HTTP proxy) - using apidojo/tiktok-scraper
+        const username = account.username.replace('@', '');
         const data = await runApifyActor({
           actorId: 'apidojo/tiktok-scraper',
           input: {
-            profiles: [`@${account.username.replace('@', '')}`], // Ensure @ prefix
-            resultsPerPage: maxVideos, // Use user's preference
-            shouldDownloadVideos: false,
-            shouldDownloadCovers: false,
-            shouldDownloadSubtitles: false,
-            shouldDownloadSlideshowImages: false,
+            startUrls: [`https://www.tiktok.com/@${username}`],
+            maxItems: maxVideos, // Use user's preference
+            sortType: 'RELEVANCE',
+            dateRange: 'DEFAULT',
+            location: 'US',
+            includeSearchKeywords: false,
+            customMapFunction: '(object) => { return {...object} }',
             proxy: {
               useApifyProxy: true,
               apifyProxyGroups: ['RESIDENTIAL']

@@ -619,13 +619,15 @@ async function fetchVideosFromPlatform(
     };
   } else if (platform === 'tiktok') {
     actorId = 'apidojo/tiktok-scraper';
+    const usernameClean = username.replace('@', '');
     input = {
-      profiles: [`@${username.replace('@', '')}`], // Ensure @ prefix
-      resultsPerPage: maxVideos,
-      shouldDownloadVideos: false,
-      shouldDownloadCovers: false,
-      shouldDownloadSubtitles: false,
-      shouldDownloadSlideshowImages: false,
+      startUrls: [`https://www.tiktok.com/@${usernameClean}`],
+      maxItems: maxVideos,
+      sortType: 'RELEVANCE',
+      dateRange: 'DEFAULT',
+      location: 'US',
+      includeSearchKeywords: false,
+      customMapFunction: '(object) => { return {...object} }',
       proxy: {
         useApifyProxy: true,
         apifyProxyGroups: ['RESIDENTIAL']
@@ -756,11 +758,13 @@ async function refreshTikTokVideosBulk(
     const result = await runApifyActor({
       actorId: 'apidojo/tiktok-scraper',
       input: {
-        postURLs: videoUrls,
-        shouldDownloadVideos: false,
-        shouldDownloadCovers: false,
-        shouldDownloadSubtitles: false,
-        shouldDownloadSlideshowImages: false,
+        startUrls: videoUrls,
+        maxItems: videoUrls.length,
+        sortType: 'RELEVANCE',
+        dateRange: 'DEFAULT',
+        location: 'US',
+        includeSearchKeywords: false,
+        customMapFunction: '(object) => { return {...object} }',
         proxy: {
           useApifyProxy: true,
           apifyProxyGroups: ['RESIDENTIAL']
