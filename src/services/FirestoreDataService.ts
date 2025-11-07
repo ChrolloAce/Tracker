@@ -391,6 +391,7 @@ class FirestoreDataService {
               likes: video.likes,
               comments: video.comments,
               shares: video.shares || 0,
+              duration: video.duration || 0,
               lastRefreshed: Timestamp.now()
             });
           } else {

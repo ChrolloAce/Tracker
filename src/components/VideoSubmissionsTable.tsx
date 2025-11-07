@@ -818,7 +818,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       <div className="flex items-center space-x-2">
                         <Share2 className="w-4 h-4 text-gray-900 dark:text-white" />
                         <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {formatNumber(submission.shares || 0)}
+                          {submission.shares && submission.shares > 0 ? formatNumber(submission.shares) : 'N/A'}
                         </span>
                       </div>
                     </td>
@@ -828,7 +828,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       <div className="flex items-center space-x-2">
                         <Bookmark className="w-4 h-4 text-gray-900 dark:text-white" />
                         <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {formatNumber((submission as any).saves || 0)}
+                          {(submission as any).saves && (submission as any).saves > 0 ? formatNumber((submission as any).saves) : 'N/A'}
                         </span>
                       </div>
                     </td>
