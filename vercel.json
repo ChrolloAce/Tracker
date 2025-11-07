@@ -53,12 +53,22 @@
     },
     "api/sync-usage-counts.ts": {
       "maxDuration": 60
+    },
+    "api/cleanup-invalid-data.ts": {
+      "maxDuration": 180
+    },
+    "api/cron-cleanup-invalid.ts": {
+      "maxDuration": 180
     }
   },
   "crons": [
     {
       "path": "/api/cron-orchestrator",
       "schedule": "0 */12 * * *"
+    },
+    {
+      "path": "/api/cron-cleanup-invalid",
+      "schedule": "0 */6 * * *"
     }
   ],
   "routes": [

@@ -4,6 +4,7 @@ import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { runApifyActor } from './apify-client.js';
 import { ErrorNotificationService } from './services/ErrorNotificationService.js';
+import { CleanupService } from './services/CleanupService.js';
 
 // Initialize Firebase Admin (same as cron job)
 if (!getApps().length) {
@@ -842,6 +843,16 @@ export default async function handler(
     } catch (emailError) {
       console.error('Failed to send notification email:', emailError);
       // Don't fail the request if email fails
+    }
+
+    // 🧹 Auto-cleanup: Delete any invalid videos/accounts (no username, no stats, etc.)
+    try {
+      console.log(`🧹 Running auto-cleanup for invalid videos/accounts...`);
+      const cleanupStats = await CleanupService.runFullCleanup(orgId, projectId);
+      console.log(`✅ Cleanup complete: ${cleanupStats.videosDeleted} videos, ${cleanupStats.accountsDeleted} accounts deleted`);
+    } catch (cleanupError) {
+      console.error('❌ Cleanup failed (non-fatal):', cleanupError);
+      // Don't fail the request if cleanup fails
     }
 
     return res.status(200).json({
