@@ -1060,12 +1060,16 @@ async function saveVideosToFirestore(
       const saves = video.bookmarks || 0; // ✅ ADD BOOKMARKS
       url = video.tiktok_url || videoObj.url || '';
       
-      // ROBUST THUMBNAIL EXTRACTION: video.cover → video.thumbnail → fallback
+      // ROBUST THUMBNAIL EXTRACTION: handle nested + flat keys
       let tiktokThumbnail = '';
       if (videoObj.cover) {
         tiktokThumbnail = videoObj.cover;
       } else if (videoObj.thumbnail) {
         tiktokThumbnail = videoObj.thumbnail;
+      } else if (video['video.cover']) { // Flat key: "video.cover"
+        tiktokThumbnail = video['video.cover'];
+      } else if (video['video.thumbnail']) { // Flat key: "video.thumbnail"
+        tiktokThumbnail = video['video.thumbnail'];
       } else if (video.images && Array.isArray(video.images) && video.images.length > 0) {
         tiktokThumbnail = video.images[0].url || '';
       }

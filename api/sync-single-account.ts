@@ -265,12 +265,16 @@ export default async function handler(
           const channel = item.channel || {};
           const video = item.video || {};
           
-          // Robust thumbnail extraction: video.cover → video.thumbnail → item.cover → fallback
+          // Robust thumbnail extraction: handle nested + flat keys
           let thumbnail = '';
           if (video.cover) {
             thumbnail = video.cover;
           } else if (video.thumbnail) {
             thumbnail = video.thumbnail;
+          } else if (item['video.cover']) { // Flat key: "video.cover"
+            thumbnail = item['video.cover'];
+          } else if (item['video.thumbnail']) { // Flat key: "video.thumbnail"
+            thumbnail = item['video.thumbnail'];
           } else if (item.cover) {
             thumbnail = item.cover;
           } else if (item.thumbnail) {

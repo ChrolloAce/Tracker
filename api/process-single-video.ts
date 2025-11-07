@@ -417,6 +417,10 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       thumbnailUrl = video.cover;
     } else if (video.thumbnail) {
       thumbnailUrl = video.thumbnail;
+    } else if (rawData['video.cover']) { // Flat key: "video.cover"
+      thumbnailUrl = rawData['video.cover'];
+    } else if (rawData['video.thumbnail']) { // Flat key: "video.thumbnail"
+      thumbnailUrl = rawData['video.thumbnail'];
     } else if (rawData.cover) {
       thumbnailUrl = rawData.cover;
     } else if (rawData.thumbnail) {
