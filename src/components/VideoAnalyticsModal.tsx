@@ -124,14 +124,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Prepare chart data from snapshots (showing incremental changes/deltas)
-  // Reset previous period toggle when date filter changes
-  React.useEffect(() => {
-    setShowPreviousPeriod(false);
-  }, [dateFilter]);
-
-  // Calculate period ranges for current and previous periods
-  const periodRanges = useMemo(() => {
+  // Prepare chart data from snapshots - always showing ALL data
+  const chartData = useMemo((): ChartDataPoint[] => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     let currentEnd = new Date(now);
@@ -249,10 +243,6 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       periodLength: Math.round(periodLength / (1000 * 60 * 60 * 24)) + ' days'
     });
     
-    return { currentStart, currentEnd, prevStart, prevEnd };
-  }, [dateFilter, customDateRange, video]);
-
-  const chartData = useMemo((): ChartDataPoint[] => {
     if (!video) return [];
     
     // Helper to create a data point with cumulative stats (for KPI display)
@@ -282,132 +272,39 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       return [dataPoint, { ...dataPoint }];
     }
 
-    // Sort snapshots by date
+    // Sort all snapshots by date - NO FILTERING, always show all data
     const sortedSnapshots = [...video.snapshots].sort(
       (a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
     );
     
-    // Apply date filter based on current or previous period (skip if hideDateFilter is true)
-    let filteredSnapshots = sortedSnapshots;
-    if (!hideDateFilter) {
-      const filterStart = showPreviousPeriod ? periodRanges.prevStart : periodRanges.currentStart;
-      const filterEnd = showPreviousPeriod ? periodRanges.prevEnd : periodRanges.currentEnd;
-      
-      filteredSnapshots = sortedSnapshots.filter(snapshot => {
-        const snapshotTime = new Date(snapshot.capturedAt).getTime();
-        return snapshotTime >= filterStart.getTime() && snapshotTime <= filterEnd.getTime();
+    // Append current video stats if different from last snapshot
+    const allSnapshots = [...sortedSnapshots];
+    const lastSnapshotData = sortedSnapshots[sortedSnapshots.length - 1];
+    const hasNewData = !lastSnapshotData || 
+      lastSnapshotData.views !== video.views ||
+      lastSnapshotData.likes !== video.likes ||
+      lastSnapshotData.comments !== video.comments ||
+      (lastSnapshotData.shares || 0) !== (video.shares || 0);
+    
+    if (hasNewData) {
+      allSnapshots.push({
+        id: `current-${Date.now()}`,
+        videoId: video.id,
+        views: video.views,
+        likes: video.likes,
+        comments: video.comments,
+        shares: video.shares || 0,
+        saves: video.saves || 0,
+        capturedAt: new Date(),
+        capturedBy: 'manual_refresh'
       });
     }
 
-    // Append current video stats if different from last snapshot (only for current period, not previous)
-    const allSnapshots = [...filteredSnapshots];
-    if (!showPreviousPeriod) {
-      const lastSnapshotData = filteredSnapshots[filteredSnapshots.length - 1];
-      const hasNewData = !lastSnapshotData || 
-        lastSnapshotData.views !== video.views ||
-        lastSnapshotData.likes !== video.likes ||
-        lastSnapshotData.comments !== video.comments ||
-        (lastSnapshotData.shares || 0) !== (video.shares || 0);
-      
-      if (hasNewData) {
-        allSnapshots.push({
-          id: `current-${Date.now()}`,
-          videoId: video.id,
-          views: video.views,
-          likes: video.likes,
-          comments: video.comments,
-          shares: video.shares || 0,
-          saves: video.saves || 0,
-          capturedAt: new Date(),
-          capturedBy: 'manual_refresh'
-        });
-      }
-    }
-
-    // Aggregate snapshots based on timeGranularity
-    const aggregateSnapshots = (snapshots: any[], granularity: 'daily' | 'weekly' | 'monthly') => {
-      if (snapshots.length === 0) return [];
-      
-      // Group snapshots by time period
-      const groups = new Map<string, any[]>();
-      
-      snapshots.forEach(snapshot => {
-        const date = new Date(snapshot.capturedAt);
-        let key: string;
-        
-        switch (granularity) {
-          case 'daily':
-            key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-            break;
-          case 'weekly':
-            // Get week number
-            const weekStart = new Date(date);
-            weekStart.setDate(date.getDate() - date.getDay());
-            key = `${weekStart.getFullYear()}-W${Math.ceil((weekStart.getDate()) / 7)}`;
-            break;
-          case 'monthly':
-            key = `${date.getFullYear()}-${date.getMonth()}`;
-            break;
-        }
-        
-        if (!groups.has(key)) {
-          groups.set(key, []);
-        }
-        groups.get(key)!.push(snapshot);
-      });
-      
-      // Take the last snapshot from each group (most recent data for that period)
-      const aggregated: any[] = [];
-      groups.forEach((group) => {
-        const lastSnapshot = group[group.length - 1];
-        aggregated.push(lastSnapshot);
-      });
-      
-      return aggregated.sort((a, b) => 
-        new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
-      );
-    };
-    
-    // Aggregate based on selected granularity
-    const aggregatedSnapshots = aggregateSnapshots(allSnapshots, timeGranularity);
-    
-    // Create data points with DELTAS (incremental changes)
-    // First point shows initial snapshot values, subsequent points show changes
-    const data: ChartDataPoint[] = [];
-    
-    for (let i = 0; i < aggregatedSnapshots.length; i++) {
-      const snapshot = aggregatedSnapshots[i];
+    // Create data points - show absolute values (not deltas)
+    const data: ChartDataPoint[] = allSnapshots.map(snapshot => {
       const timestamp = new Date(snapshot.capturedAt);
-      
-      if (i === 0) {
-        // First point: show absolute values
-        data.push(createDataPoint(snapshot, timestamp));
-      } else {
-        // Subsequent points: show delta/difference from previous snapshot
-        const prevSnapshot = aggregatedSnapshots[i - 1];
-        const deltaViews = snapshot.views - prevSnapshot.views;
-        const deltaLikes = snapshot.likes - prevSnapshot.likes;
-        const deltaComments = snapshot.comments - prevSnapshot.comments;
-        const deltaShares = (snapshot.shares || 0) - (prevSnapshot.shares || 0);
-        const deltaSaves = (snapshot.saves || 0) - (prevSnapshot.saves || 0);
-        const totalDeltaEngagement = deltaLikes + deltaComments + deltaShares;
-        const deltaEngagementRate = deltaViews > 0 ? (totalDeltaEngagement / deltaViews) * 100 : 0;
-        
-        data.push({
-          date: timestamp.toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric'
-          }),
-          views: deltaViews,
-          likes: deltaLikes,
-          comments: deltaComments,
-          shares: deltaShares,
-          saves: deltaSaves,
-          engagementRate: deltaEngagementRate,
-          timestamp: timestamp.getTime(),
-        });
-      }
-    }
+      return createDataPoint(snapshot, timestamp);
+    });
     
     // If only one data point, duplicate it to create a flat line
     if (data.length === 1) {
@@ -415,85 +312,18 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     }
     
     return data;
-  }, [video?.id, video?.views, video?.likes, video?.comments, video?.shares, video?.snapshots?.length, dateFilter, showPreviousPeriod, periodRanges, timeGranularity, hideDateFilter]);
+  }, [video?.id, video?.views, video?.likes, video?.comments, video?.shares, video?.saves, video?.snapshots?.length]);
 
-  // Calculate cumulative totals for KPI display based on filtered period
+  // Calculate cumulative totals - always showing all data
   const cumulativeTotals = useMemo(() => {
     if (!video) return { views: 0, likes: 0, comments: 0, shares: 0, saves: 0, engagementRate: 0 };
     
-    // If "all time" is selected, show current video totals
-    if (dateFilter === 'all') {
-      const views = video.views || 0;
-      const likes = video.likes || 0;
-      const comments = video.comments || 0;
-      const shares = video.shares || 0;
-      const saves = video.saves || 0;
-      
-      return {
-        views,
-        likes,
-        comments,
-        shares,
-        saves,
-        engagementRate: views > 0 ? ((likes + comments + shares) / views) * 100 : 0,
-      };
-    }
-    
-    // For specific date ranges, calculate from snapshots only
-    if (!video.snapshots || video.snapshots.length === 0) {
-      // No snapshots - check if upload date is in range
-      const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
-      const filterStart = showPreviousPeriod ? periodRanges.prevStart : periodRanges.currentStart;
-      const filterEnd = showPreviousPeriod ? periodRanges.prevEnd : periodRanges.currentEnd;
-      
-      if (uploadDate >= filterStart && uploadDate <= filterEnd) {
-        // Video was uploaded in this period, show its current stats
-        const views = video.views || 0;
-        const likes = video.likes || 0;
-        const comments = video.comments || 0;
-        const shares = video.shares || 0;
-        const saves = video.saves || 0;
-        
-        return {
-          views,
-          likes,
-          comments,
-          shares,
-          saves,
-          engagementRate: views > 0 ? ((likes + comments + shares) / views) * 100 : 0,
-        };
-      }
-      
-      // Video not in this period, return zeros
-      return { views: 0, likes: 0, comments: 0, shares: 0, saves: 0, engagementRate: 0 };
-    }
-    
-    // Filter snapshots to selected date range
-    const filterStart = showPreviousPeriod ? periodRanges.prevStart : periodRanges.currentStart;
-    const filterEnd = showPreviousPeriod ? periodRanges.prevEnd : periodRanges.currentEnd;
-    
-    const filteredSnapshots = video.snapshots.filter(snapshot => {
-      const snapshotTime = new Date(snapshot.capturedAt).getTime();
-      return snapshotTime >= filterStart.getTime() && snapshotTime <= filterEnd.getTime();
-    });
-    
-    if (filteredSnapshots.length === 0) {
-      return { views: 0, likes: 0, comments: 0, shares: 0, saves: 0, engagementRate: 0 };
-    }
-    
-    // Get first and last snapshot in the range
-    const sortedSnapshots = [...filteredSnapshots].sort(
-      (a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
-    );
-    const firstSnapshot = sortedSnapshots[0];
-    const lastSnapshot = sortedSnapshots[sortedSnapshots.length - 1];
-    
-    // Calculate delta (growth) between first and last snapshot in period
-    const views = lastSnapshot.views - firstSnapshot.views;
-    const likes = lastSnapshot.likes - firstSnapshot.likes;
-    const comments = lastSnapshot.comments - firstSnapshot.comments;
-    const shares = (lastSnapshot.shares || 0) - (firstSnapshot.shares || 0);
-    const saves = (lastSnapshot.saves || 0) - (firstSnapshot.saves || 0);
+    // Always show current video totals
+    const views = video.views || 0;
+    const likes = video.likes || 0;
+    const comments = video.comments || 0;
+    const shares = video.shares || 0;
+    const saves = video.saves || 0;
     
     return {
       views,
@@ -503,7 +333,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       saves,
       engagementRate: views > 0 ? ((likes + comments + shares) / views) * 100 : 0,
     };
-  }, [video, dateFilter, showPreviousPeriod, periodRanges, video?.snapshots?.length]);
+  }, [video?.views, video?.likes, video?.comments, video?.shares, video?.saves]);
 
   // Calculate growth since last snapshot and time elapsed
   const metricGrowthWithTime = useMemo(() => {
