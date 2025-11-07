@@ -132,13 +132,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log(`✨ [${video.platform.toUpperCase()}] Creating new account for @${videoData.username}`);
       
       // For Instagram, ALWAYS use apify/instagram-profile-scraper for complete profile data
-      let uploadedProfilePic = videoData.profile_pic_url || '';
+      // DO NOT use videoData.profile_pic_url - it's from the wrong API!
+      let uploadedProfilePic = '';
       let followerCount = videoData.follower_count || 0;
       let displayName = videoData.display_name || videoData.username;
       let isVerified = false;
       
       if (video.platform === 'instagram') {
-        console.log(`👤 [INSTAGRAM] Fetching complete profile data via apify/instagram-profile-scraper...`);
+        console.log(`👤 [INSTAGRAM] Fetching complete profile data via apify/instagram-profile-scraper (ONLY SOURCE)...`);
         try {
           const profileResponse = await fetch(
             `https://api.apify.com/v2/acts/apify~instagram-profile-scraper/run-sync-get-dataset-items?token=${process.env.APIFY_TOKEN}`,
@@ -161,25 +162,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const profiles = await profileResponse.json();
             if (profiles && profiles.length > 0) {
               const profile = profiles[0];
-              console.log(`✅ [INSTAGRAM] Fetched profile: ${profile.followersCount || 0} followers`);
+              console.log(`✅ [INSTAGRAM] Fetched profile from profile scraper: ${profile.followersCount || 0} followers`);
+              console.log(`🔍 [INSTAGRAM] Profile pic URL from profile scraper: ${profile.profilePicUrl ? 'YES' : 'NO'}`);
               
               followerCount = profile.followersCount || 0;
               displayName = profile.fullName || videoData.username;
               isVerified = profile.verified || false;
               
-              // Download and upload profile pic from profile scraper
+              // Download and upload profile pic from profile scraper ONLY
               if (profile.profilePicUrl) {
                 try {
-                  console.log(`📸 [INSTAGRAM] Downloading profile pic to Firebase Storage for @${videoData.username}...`);
+                  console.log(`📸 [INSTAGRAM] Downloading profile pic from PROFILE SCRAPER for @${videoData.username}...`);
+                  console.log(`🌐 [INSTAGRAM] Profile pic URL: ${profile.profilePicUrl.substring(0, 100)}...`);
                   uploadedProfilePic = await downloadAndUploadThumbnail(
                     profile.profilePicUrl,
                     orgId,
                     `instagram_profile_${videoData.username}.jpg`
                   );
-                  console.log(`✅ [INSTAGRAM] Profile picture uploaded to Firebase Storage`);
+                  console.log(`✅ [INSTAGRAM] Profile picture uploaded to Firebase Storage: ${uploadedProfilePic}`);
                 } catch (uploadError) {
-                  console.warn(`⚠️ [INSTAGRAM] Profile pic upload failed:`, uploadError);
+                  console.error(`❌ [INSTAGRAM] Profile pic upload failed:`, uploadError);
+                  // DO NOT fallback to videoData.profile_pic_url - it's from the wrong API!
+                  console.warn(`⚠️ [INSTAGRAM] No fallback - will retry on next sync`);
                 }
+              } else {
+                console.warn(`⚠️ [INSTAGRAM] Profile scraper returned no profile pic URL`);
               }
             } else {
               console.warn(`⚠️ [INSTAGRAM] No profile data returned from profile scraper`);
