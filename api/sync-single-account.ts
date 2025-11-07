@@ -646,22 +646,27 @@ export default async function handler(
     let savedCount = 0;
 
     for (const video of videos) {
-      // Download and upload thumbnail to Firebase Storage (if available)
-      let firebaseThumbnailUrl = video.thumbnail;
+      // Download and upload thumbnail to Firebase Storage (REQUIRED - no fallback to direct URLs)
+      let firebaseThumbnailUrl = '';
       if (video.thumbnail && video.thumbnail.startsWith('http')) {
         try {
-          console.log(`    📸 Downloading thumbnail for video ${video.videoId}...`);
+          console.log(`    📸 [${account.platform.toUpperCase()}] Downloading thumbnail for video ${video.videoId}...`);
+          console.log(`    🌐 [${account.platform.toUpperCase()}] Thumbnail URL: ${video.thumbnail.substring(0, 100)}...`);
           firebaseThumbnailUrl = await downloadAndUploadImage(
             video.thumbnail,
             orgId,
             `${account.platform}_${video.videoId}_thumb.jpg`,
             'thumbnails'
           );
-          console.log(`    ✅ Thumbnail uploaded to Firebase Storage`);
+          console.log(`    ✅ [${account.platform.toUpperCase()}] Thumbnail uploaded to Firebase Storage: ${firebaseThumbnailUrl}`);
         } catch (thumbError) {
-          console.warn(`    ⚠️ Could not upload thumbnail for ${video.videoId}:`, thumbError);
-          // Keep original URL as fallback
+          console.error(`    ❌ [${account.platform.toUpperCase()}] Thumbnail upload failed for ${video.videoId}:`, thumbError);
+          // DO NOT use direct URLs as fallback (they expire)
+          // Leave empty - will retry on next sync
+          console.warn(`    ⚠️ [${account.platform.toUpperCase()}] No fallback - thumbnail will retry on next sync`);
         }
+      } else {
+        console.warn(`    ⚠️ [${account.platform.toUpperCase()}] No valid thumbnail URL for video ${video.videoId}`);
       }
 
       // Save to main videos collection (for dashboard)

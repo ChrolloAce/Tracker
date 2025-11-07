@@ -282,19 +282,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Download and upload thumbnail to Firebase Storage for permanent URL
-    // For now, just use the original URL directly (Firebase Storage can be flaky with Instagram URLs)
-    const finalThumbnail = videoData.thumbnail_url || '';
-    
-    // Optionally try to upload to Firebase Storage in the background
+    // DO NOT use direct URLs as fallback (they expire quickly)
+    let finalThumbnail = '';
     if (videoData.thumbnail_url) {
-      // Don't await - let it happen in background, use original URL regardless
-      downloadAndUploadThumbnail(
+      try {
+        console.log(`📸 [${video.platform.toUpperCase()}] Downloading thumbnail to Firebase Storage...`);
+        console.log(`🌐 [${video.platform.toUpperCase()}] Thumbnail URL: ${videoData.thumbnail_url.substring(0, 100)}...`);
+        finalThumbnail = await downloadAndUploadThumbnail(
           videoData.thumbnail_url,
           orgId,
-          `${videoData.id}_thumb.jpg`
-      ).catch(err => {
-        console.warn('⚠️ Background thumbnail upload failed (using original URL):', err.message);
-      });
+          `${video.platform}_${videoData.id}_thumb.jpg`
+        );
+        console.log(`✅ [${video.platform.toUpperCase()}] Thumbnail uploaded to Firebase Storage: ${finalThumbnail}`);
+      } catch (thumbError) {
+        console.error(`❌ [${video.platform.toUpperCase()}] Thumbnail upload failed:`, thumbError);
+        // DO NOT use direct URLs as fallback (they expire)
+        // Leave empty - will retry on next sync
+        console.warn(`⚠️ [${video.platform.toUpperCase()}] No fallback - thumbnail will retry on next sync`);
+      }
+    } else {
+      console.warn(`⚠️ [${video.platform.toUpperCase()}] No thumbnail URL provided`);
     }
 
     // Update video with fetched data
@@ -728,15 +735,10 @@ async function downloadAndUploadThumbnail(
     return publicUrl;
   } catch (error) {
     console.error(`Failed to download/upload thumbnail:`, error);
-    // Return the original URL as fallback or empty for Instagram
-    if (thumbnailUrl.includes('cdninstagram') || thumbnailUrl.includes('fbcdn')) {
-      // Instagram URLs expire, return empty string
-      console.warn(`Instagram thumbnail download failed, returning empty (URL will expire anyway)`);
-      return '';
-    }
-    // For other platforms, return original URL as fallback
-    console.warn(`Using original URL as fallback: ${thumbnailUrl.substring(0, 80)}...`);
-    return thumbnailUrl;
+    // DO NOT return original URL as fallback for ANY platform (all CDN URLs expire)
+    // Instagram, TikTok, YouTube, Twitter URLs all have expiring signatures
+    console.warn(`Thumbnail download failed, returning empty (CDN URLs expire - will retry later)`);
+    throw error; // Throw error so caller knows upload failed
   }
 }
 

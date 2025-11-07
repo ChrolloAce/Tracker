@@ -460,15 +460,10 @@ async function downloadAndUploadImage(
     return publicUrl;
   } catch (error) {
     console.error(`    ❌ Failed to download/upload thumbnail:`, error);
-    // Return the original URL as fallback (will work for TikTok/YouTube, but may fail for Instagram)
-    // Better than placeholder as it might still work
-    if (imageUrl.includes('cdninstagram') || imageUrl.includes('fbcdn')) {
-      // Instagram URLs expire, return empty string instead
-      console.warn(`    ⚠️ Instagram thumbnail download failed, returning empty (URL will expire anyway)`);
-      return '';
-    }
-    console.warn(`    ⚠️ Using original URL as fallback: ${imageUrl.substring(0, 80)}...`);
-    return imageUrl;
+    // DO NOT return original URL as fallback for ANY platform (all CDN URLs expire)
+    // Instagram, TikTok, YouTube, Twitter URLs all have expiring signatures
+    console.warn(`    ⚠️ Thumbnail download failed, returning empty (CDN URLs expire - will retry later)`);
+    throw error; // Throw error so caller knows upload failed
   }
 }
 
