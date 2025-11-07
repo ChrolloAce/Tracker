@@ -147,6 +147,7 @@ const CreatorPortalPage: React.FC = () => {
         likes: video.likes || 0,
         comments: video.comments || 0,
         shares: video.shares || 0,
+        duration: video.duration || 0,
         dateSubmitted: video.dateAdded.toDate(),
         uploadDate: video.uploadDate.toDate(),
         lastRefreshed: video.lastRefreshed?.toDate(),
