@@ -155,7 +155,7 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
         }}
       />
 
-      {/* Header with Title and Total Display */}
+      {/* Header with Title and Metric Selector */}
       <div className="relative z-10 px-6 pt-5 pb-3 flex items-center justify-between border-b border-white/5">
         <div className="flex items-center gap-2.5">
           <div className="p-1.5 rounded-lg bg-white/5 border border-white/5">
@@ -166,109 +166,104 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
           </h3>
         </div>
 
-        {/* Total Value Display */}
-        <div className="flex items-center gap-4">
-          <div className="text-right">
-            <div className="text-xs text-gray-400 mb-0.5">
-              Total {currentMetric.label}
-            </div>
-            <div className="text-2xl font-bold text-white tracking-tight">
-              {formattedTotal}
-            </div>
-          </div>
+        {/* Metric Selector Dropdown */}
+        <div className="relative z-[100]">
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border transition-all"
+            style={{
+              backgroundColor: isDropdownOpen ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)',
+              borderColor: isDropdownOpen ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)',
+            }}
+          >
+            <div 
+              className="w-2.5 h-2.5 rounded-full"
+              style={{ backgroundColor: currentMetric.color }}
+            />
+            <span className="text-sm font-semibold text-white">{currentMetric.label}</span>
+            <ChevronDown 
+              className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} 
+            />
+          </button>
 
-          {/* Metric Selector Dropdown */}
-          <div className="relative z-[100]">
-            <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border transition-all"
-              style={{
-                backgroundColor: isDropdownOpen ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)',
-                borderColor: isDropdownOpen ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)',
-              }}
-            >
-              <MetricIcon 
-                className="w-4 h-4"
-                style={{ color: currentMetric.color }}
+          {/* Dropdown Menu */}
+          {isDropdownOpen && (
+            <>
+              {/* Backdrop */}
+              <div 
+                className="fixed inset-0 z-[99]"
+                onClick={() => setIsDropdownOpen(false)}
               />
-              <span className="text-sm font-semibold text-white">{currentMetric.label}</span>
-              <ChevronDown 
-                className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} 
-              />
-            </button>
-
-            {/* Dropdown Menu */}
-            {isDropdownOpen && (
-              <>
-                {/* Backdrop */}
-                <div 
-                  className="fixed inset-0 z-[99]"
-                  onClick={() => setIsDropdownOpen(false)}
-                />
-                
-                {/* Menu */}
-                <div 
-                  className="absolute right-0 mt-2 w-56 rounded-xl border shadow-2xl z-[100] overflow-hidden"
-                  style={{ 
-                    backgroundColor: '#0a0a0b',
-                    borderColor: 'rgba(255,255,255,0.1)',
-                  }}
-                >
-                  {metrics.map((metric) => {
-                    const Icon = metric.icon;
-                    const isSelected = selectedMetric === metric.key;
-                    return (
-                      <button
-                        key={metric.key}
-                        onClick={() => {
-                          setSelectedMetric(metric.key);
-                          setIsDropdownOpen(false);
-                        }}
-                        className="w-full flex items-center gap-3 px-4 py-3 transition-all"
-                        style={{
-                          backgroundColor: isSelected ? 'rgba(255,255,255,0.08)' : 'transparent',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isSelected) {
-                            e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isSelected) {
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                          }
-                        }}
-                      >
-                        <div
-                          className="flex items-center justify-center w-8 h-8 rounded-lg"
-                          style={{ backgroundColor: `${metric.color}20` }}
-                        >
-                          <Icon 
-                            className="w-4 h-4"
-                            style={{ color: metric.color }}
-                          />
-                        </div>
-                        <span className="text-sm font-medium text-white flex-1 text-left">
-                          {metric.label}
-                        </span>
-                        {isSelected && (
-                          <div 
-                            className="w-2 h-2 rounded-full" 
-                            style={{ backgroundColor: metric.color }} 
-                          />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </div>
+              
+              {/* Menu */}
+              <div 
+                className="absolute right-0 mt-2 w-48 rounded-xl border shadow-2xl z-[100] overflow-hidden"
+                style={{ 
+                  backgroundColor: '#0a0a0b',
+                  borderColor: 'rgba(255,255,255,0.1)',
+                }}
+              >
+                {metrics.map((metric) => {
+                  const isSelected = selectedMetric === metric.key;
+                  return (
+                    <button
+                      key={metric.key}
+                      onClick={() => {
+                        setSelectedMetric(metric.key);
+                        setIsDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 transition-all"
+                      style={{
+                        backgroundColor: isSelected ? 'rgba(255,255,255,0.08)' : 'transparent',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isSelected) {
+                          e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isSelected) {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }
+                      }}
+                    >
+                      <div 
+                        className="w-2.5 h-2.5 rounded-full"
+                        style={{ backgroundColor: metric.color }}
+                      />
+                      <span className="text-sm font-medium text-white flex-1 text-left">
+                        {metric.label}
+                      </span>
+                      {isSelected && (
+                        <div 
+                          className="w-2 h-2 rounded-full" 
+                          style={{ backgroundColor: metric.color }} 
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
       {/* Chart */}
       <div className="relative z-10 p-6" style={{ height: '350px' }}>
+        {/* Total Value Display - Inside Chart (Top Right) */}
+        <div className="absolute top-8 right-8 z-20 text-right">
+          <div className="text-xs text-gray-400 mb-0.5 font-medium tracking-wide">
+            {currentMetric.label}
+          </div>
+          <div 
+            className="text-3xl font-bold tracking-tight"
+            style={{ color: currentMetric.color }}
+          >
+            {formattedTotal}
+          </div>
+        </div>
+
         <ResponsiveContainer width="100%" height="100%">
           <LineChart 
             data={data}
