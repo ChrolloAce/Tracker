@@ -721,7 +721,7 @@ export default async function handler(
         accountId: accountId,
         videoId: video.videoId,
         url: video.videoUrl,
-        thumbnail: video.thumbnail,
+        thumbnail: firebaseThumbnailUrl, // ✅ USE FIREBASE STORAGE URL
         description: video.caption,
         caption: video.caption,
         title: video.videoTitle,
@@ -734,6 +734,8 @@ export default async function handler(
         commentsCount: video.comments || 0,
         shares: video.shares || 0,
         sharesCount: video.shares || 0,
+        saves: video.saves || 0, // ✅ ADD BOOKMARKS
+        savesCount: video.saves || 0, // ✅ ADD BOOKMARKS COUNT
         duration: video.duration || 0,
         isSponsored: false,
         hashtags: [],
