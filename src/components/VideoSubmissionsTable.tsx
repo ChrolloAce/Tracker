@@ -497,7 +497,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
               </button>
               
               {showColumnToggle && (
-                <div className="absolute right-0 top-full mt-2 w-64 bg-zinc-800 border border-white/10 rounded-lg shadow-xl p-4 z-50">
+                <div className="absolute right-0 top-full mt-2 w-64 bg-zinc-800 border border-white/10 rounded-lg shadow-xl p-4 z-[9999]">
                   <h3 className="text-sm font-semibold text-white mb-3">Toggle Columns</h3>
                   <div className="space-y-2">
                     {Object.entries({
