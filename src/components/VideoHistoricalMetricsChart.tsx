@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Eye, Heart, MessageCircle, Share2, TrendingUp, Bookmark, ChevronDown } from 'lucide-react';
+import '../styles/no-select.css';
 
 interface ChartDataPoint {
   date: string;
@@ -146,7 +147,7 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
   }
 
   return (
-    <div className="relative rounded-2xl border border-white/5 shadow-lg overflow-hidden" style={{ backgroundColor: '#121214' }}>
+    <div className="relative rounded-2xl border border-white/5 shadow-lg overflow-hidden select-none" style={{ backgroundColor: '#121214', userSelect: 'none' }}>
       {/* Depth Gradient Overlay */}
       <div 
         className="absolute inset-0 pointer-events-none z-0"
@@ -156,7 +157,7 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
       />
 
       {/* Header with Title and Metric Selector */}
-      <div className="relative z-10 px-6 pt-5 pb-3 flex items-center justify-between border-b border-white/5">
+      <div className="relative px-6 pt-5 pb-3 flex items-center justify-between border-b border-white/5" style={{ zIndex: 100 }}>
         <div className="flex items-center gap-2.5">
           <div className="p-1.5 rounded-lg bg-white/5 border border-white/5">
             <TrendingUp className="w-4 h-4 text-gray-400" />
@@ -167,10 +168,10 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
         </div>
 
         {/* Metric Selector Dropdown */}
-        <div className="relative" style={{ zIndex: 9999 }}>
+        <div className="relative" style={{ zIndex: 10000 }}>
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border transition-all"
+            className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border transition-all outline-none focus:outline-none"
             style={{
               backgroundColor: isDropdownOpen ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)',
               borderColor: isDropdownOpen ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)',
@@ -188,7 +189,7 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
               {/* Backdrop */}
               <div 
                 className="fixed inset-0"
-                style={{ zIndex: 9998 }}
+                style={{ zIndex: 9999 }}
                 onClick={() => setIsDropdownOpen(false)}
               />
               
@@ -198,7 +199,7 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
                 style={{ 
                   backgroundColor: '#0a0a0b',
                   borderColor: 'rgba(255,255,255,0.1)',
-                  zIndex: 9999,
+                  zIndex: 10000,
                 }}
               >
                 {metrics.map((metric) => {
@@ -206,11 +207,12 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
                   return (
                     <button
                       key={metric.key}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setSelectedMetric(metric.key);
                         setIsDropdownOpen(false);
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-3 transition-all"
+                      className="w-full flex items-center gap-3 px-4 py-3 transition-all outline-none focus:outline-none"
                       style={{
                         backgroundColor: isSelected ? 'rgba(255,255,255,0.08)' : 'transparent',
                       }}
@@ -294,7 +296,12 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
               domain={[0, Math.ceil(maxValue * 1.1)]}
             />
             
-            <Tooltip content={<CustomTooltip />} cursor={false} />
+            <Tooltip 
+              content={<CustomTooltip />} 
+              cursor={{ stroke: '#22c55e', strokeWidth: 1, strokeDasharray: '5 5' }}
+              animationDuration={200}
+              isAnimationActive={true}
+            />
             
             <Line 
               type="monotone"
@@ -304,17 +311,21 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
               dot={{ 
                 fill: currentMetric.color, 
                 strokeWidth: 2, 
-                r: 4,
-                stroke: '#121214'
+                r: 5,
+                stroke: '#121214',
+                style: { cursor: 'pointer' }
               }}
               activeDot={{ 
-                r: 6, 
+                r: 7, 
                 fill: currentMetric.color,
                 stroke: '#121214',
-                strokeWidth: 2
+                strokeWidth: 2,
+                style: { cursor: 'pointer' }
               }}
               fill={`url(#gradient-${selectedMetric})`}
               fillOpacity={1}
+              isAnimationActive={true}
+              animationDuration={300}
             />
           </LineChart>
         </ResponsiveContainer>
@@ -325,7 +336,7 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
         className="absolute bottom-4 right-6 text-xs font-semibold tracking-wider opacity-10 pointer-events-none"
         style={{ color: 'white' }}
       >
-        viral.app
+        viewtrack.app
       </div>
     </div>
   );
