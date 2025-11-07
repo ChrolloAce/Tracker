@@ -2943,7 +2943,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             submissions={filteredSubmissions}
                             onVideoClick={handleVideoClick}
                             dateFilter={dateFilter}
-                            customRange={customRange}
+                            customRange={customDateRange}
                           />
                         );
                       case 'tracked-accounts':
@@ -3341,7 +3341,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   submissions={filteredSubmissions}
                   onVideoClick={handleVideoClick}
                   dateFilter={dateFilter}
-                  customRange={customRange}
+                  customRange={customDateRange}
                 />
               );
             case 'tracked-accounts':
