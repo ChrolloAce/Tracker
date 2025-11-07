@@ -398,61 +398,9 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       >
         {/* Header */}
         <div className="flex items-center justify-between gap-3 mb-4">
-          {/* Left: Video Title */}
+          {/* Left: Empty space (date filter removed) */}
           <div className="flex items-center gap-3">
-            {/* Removed date filter - always show all data */}
-            {false && (
-              <>
-                <div className="text-sm text-gray-400">
-                  {false ? (
-                    <span>
-                      {periodRanges.prevStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      {' - '}
-                      {periodRanges.prevEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </span>
-                  ) : (
-                    <span>
-                      {periodRanges.currentStart.getTime() > 0 
-                        ? periodRanges.currentStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                        : 'All time'
-                      }
-                      {periodRanges.currentStart.getTime() > 0 && (
-                        <>
-                          {' - '}
-                          {periodRanges.currentEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </>
-                      )}
-                    </span>
-                  )}
-                </div>
-                
-                {/* Previous Period Toggle */}
-                {dateFilter !== 'all' && (
-                  <button
-                    onClick={() => setShowPreviousPeriod(!showPreviousPeriod)}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-lg text-emerald-400 hover:text-emerald-300 transition-all"
-                  >
-                    {showPreviousPeriod ? (
-                      <>
-                        <ChevronRight className="w-4 h-4" />
-                        Show Current Period
-                      </>
-                    ) : (
-                      <>
-                        <ChevronLeft className="w-4 h-4" />
-                        Show Previous {
-                          dateFilter === 'last7days' ? '7 Days' :
-                          dateFilter === 'last14days' ? '14 Days' :
-                          dateFilter === 'last30days' ? '30 Days' :
-                          dateFilter === 'last90days' ? '90 Days' :
-                          'Period'
-                        }
-                      </>
-                    )}
-                  </button>
-                )}
-              </>
-            )}
+            {/* Date filtering completely removed */}
           </div>
           
           {/* Right: Close Button Only */}
@@ -947,30 +895,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                 );
                 
                 // Apply date filter
-                const now = new Date();
-                const filterDate = new Date();
-                switch (dateFilter) {
-                  case 'last7days':
-                    filterDate.setDate(now.getDate() - 7);
-                    break;
-                  case 'last14days':
-                    filterDate.setDate(now.getDate() - 14);
-                    break;
-                  case 'last30days':
-                    filterDate.setDate(now.getDate() - 30);
-                    break;
-                  case 'last90days':
-                    filterDate.setDate(now.getDate() - 90);
-                    break;
-                  case 'all':
-                  default:
-                    filterDate.setTime(0);
-                    break;
-                }
-                
-                const filteredSnapshots = sortedSnapshots.filter(snapshot => 
-                  new Date(snapshot.capturedAt).getTime() >= filterDate.getTime()
-                );
+                // Always show all snapshots - no filtering
+                const filteredSnapshots = sortedSnapshots;
                 
                 // Calculate engagement for each snapshot with trend
                 const snapshotsWithEngagement = filteredSnapshots.map((snapshot, idx) => {
