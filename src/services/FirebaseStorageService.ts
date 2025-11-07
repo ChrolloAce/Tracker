@@ -270,10 +270,10 @@ class FirebaseStorageService {
   /**
    * Delete all thumbnails for a specific account
    * NOTE: This function is deprecated in favor of deleting thumbnails per-video
-   * @param orgId Organization ID
+   * @param _orgId Organization ID (unused - kept for backwards compatibility)
    * @param accountId Account identifier
    */
-  static async deleteAccountThumbnails(orgId: string, accountId: string): Promise<void> {
+  static async deleteAccountThumbnails(_orgId: string, accountId: string): Promise<void> {
     try {
       console.log(`🗑️ Deleting all thumbnails for account: ${accountId}`);
       
