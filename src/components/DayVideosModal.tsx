@@ -708,8 +708,8 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                     <p className="text-xs text-gray-600 mt-1">Videos need snapshots</p>
                   </div>
                 )}
-              </div>
             </div>
+          </div>
           </div>
         </div>
       </div>

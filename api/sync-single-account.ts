@@ -518,38 +518,38 @@ export default async function handler(
           
           if (owner) {
             console.log(`📊 Instagram profile extracted: ${owner.edge_followed_by?.count || 0} followers`);
-            
-            const profileUpdates: any = {
+          
+          const profileUpdates: any = {
               displayName: owner.full_name || account.username,
               followerCount: owner.edge_followed_by?.count || 0,
               followingCount: owner.edge_follow?.count || 0,
               isVerified: owner.is_verified || false
-            };
+          };
 
-            // Download and upload Instagram profile pic to Firebase Storage
+          // Download and upload Instagram profile pic to Firebase Storage
             const profilePicUrl = owner.profile_pic_url_hd || owner.profile_pic_url;
             if (profilePicUrl) {
-              try {
-                console.log(`📸 Downloading Instagram profile pic (HD) for @${account.username}...`);
-                const uploadedProfilePic = await downloadAndUploadImage(
-                  profilePicUrl,
-                  orgId,
-                  `instagram_profile_${account.username}.jpg`,
-                  'profile'
-                );
-                
-                if (uploadedProfilePic && uploadedProfilePic.includes('storage.googleapis.com')) {
-                  profileUpdates.profilePicture = uploadedProfilePic;
-                  console.log(`✅ Instagram profile picture uploaded to Firebase Storage`);
-                }
-              } catch (uploadError) {
-                console.error(`❌ Error uploading Instagram profile picture:`, uploadError);
+            try {
+              console.log(`📸 Downloading Instagram profile pic (HD) for @${account.username}...`);
+              const uploadedProfilePic = await downloadAndUploadImage(
+                profilePicUrl,
+                orgId,
+                `instagram_profile_${account.username}.jpg`,
+                'profile'
+              );
+              
+              if (uploadedProfilePic && uploadedProfilePic.includes('storage.googleapis.com')) {
+                profileUpdates.profilePicture = uploadedProfilePic;
+                console.log(`✅ Instagram profile picture uploaded to Firebase Storage`);
               }
+            } catch (uploadError) {
+              console.error(`❌ Error uploading Instagram profile picture:`, uploadError);
             }
-
-            await accountRef.update(profileUpdates);
-            console.log(`✅ Updated Instagram profile for @${account.username}:`, profileUpdates);
           }
+
+          await accountRef.update(profileUpdates);
+          console.log(`✅ Updated Instagram profile for @${account.username}:`, profileUpdates);
+        }
         }
         
         // Transform Instagram data to video format

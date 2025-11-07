@@ -130,13 +130,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (accountSnapshot.empty && !accountId) {
       console.log(`✨ [${video.platform.toUpperCase()}] Creating new account for @${videoData.username}`);
       
+      // For Instagram, download and upload profile pic to Firebase Storage
+      let uploadedProfilePic = videoData.profile_pic_url || '';
+      if (video.platform === 'instagram' && videoData.profile_pic_url) {
+        try {
+          console.log(`📸 [INSTAGRAM] Downloading profile pic to Firebase Storage for @${videoData.username}...`);
+          uploadedProfilePic = await downloadAndUploadThumbnail(
+            videoData.profile_pic_url,
+            orgId,
+            `instagram_profile_${videoData.username}.jpg`
+          );
+          console.log(`✅ [INSTAGRAM] Profile picture uploaded to Firebase Storage`);
+        } catch (uploadError) {
+          console.warn(`⚠️ [INSTAGRAM] Profile pic upload failed, using direct URL:`, uploadError);
+          uploadedProfilePic = videoData.profile_pic_url; // Fallback to direct URL
+        }
+      }
+      
       const newAccountRef = accountsRef.doc();
       await newAccountRef.set({
         id: newAccountRef.id,
         username: videoData.username.toLowerCase(), // Lowercase for consistency with queries
         platform: video.platform,
         displayName: videoData.display_name || videoData.username,
-        profilePicture: videoData.profile_pic_url || '',
+        profilePicture: uploadedProfilePic,
         followerCount: videoData.follower_count || 0,
         isActive: true,
         isRead: false,
@@ -179,10 +196,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.log(`📊 [${video.platform.toUpperCase()}] Updating follower count: ${videoData.follower_count}`);
       }
       
-      // Update profile pic if available
+      // Update profile pic if available - for Instagram, upload to Firebase Storage
       if (videoData.profile_pic_url) {
-        updateData.profilePicture = videoData.profile_pic_url;
-        console.log(`📸 [${video.platform.toUpperCase()}] Updating profile picture`);
+        if (video.platform === 'instagram') {
+          try {
+            console.log(`📸 [INSTAGRAM] Downloading updated profile pic to Firebase Storage for @${videoData.username}...`);
+            const uploadedProfilePic = await downloadAndUploadThumbnail(
+              videoData.profile_pic_url,
+              orgId,
+              `instagram_profile_${videoData.username}.jpg`
+            );
+            updateData.profilePicture = uploadedProfilePic;
+            console.log(`✅ [INSTAGRAM] Updated profile picture uploaded to Firebase Storage`);
+          } catch (uploadError) {
+            console.warn(`⚠️ [INSTAGRAM] Profile pic upload failed, using direct URL:`, uploadError);
+            updateData.profilePicture = videoData.profile_pic_url; // Fallback to direct URL
+          }
+        } else {
+          updateData.profilePicture = videoData.profile_pic_url;
+          console.log(`📸 [${video.platform.toUpperCase()}] Updating profile picture`);
+        }
       }
       
       // Update display name if available
