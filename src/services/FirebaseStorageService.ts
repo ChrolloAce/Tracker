@@ -228,7 +228,48 @@ class FirebaseStorageService {
   }
 
   /**
+   * Delete a single video thumbnail
+   * @param orgId Organization ID
+   * @param videoId Video identifier (used in filename patterns like tiktok_{videoId}_thumb.jpg)
+   */
+  static async deleteVideoThumbnail(orgId: string, videoId: string): Promise<void> {
+    try {
+      console.log(`🗑️ Deleting thumbnail for video: ${videoId}`);
+      
+      // Try to delete all possible thumbnail patterns for this video
+      // Pattern: {platform}_{videoId}_thumb.jpg
+      const platforms = ['tiktok', 'instagram', 'youtube', 'twitter'];
+      const thumbnailsRef = ref(storage, `organizations/${orgId}/thumbnails/`);
+      
+      try {
+        const listResult = await listAll(thumbnailsRef);
+        
+        // Find and delete thumbnails matching any platform pattern
+        const matchingThumbnails = listResult.items.filter(item => {
+          // Check if filename contains the videoId
+          return platforms.some(platform => 
+            item.name === `${platform}_${videoId}_thumb.jpg` ||
+            item.name.includes(`_${videoId}_`)
+          );
+        });
+        
+        if (matchingThumbnails.length > 0) {
+          await Promise.all(matchingThumbnails.map(item => deleteObject(item)));
+          console.log(`✅ Deleted ${matchingThumbnails.length} thumbnail(s) for video: ${videoId}`);
+        } else {
+          console.log(`ℹ️ No thumbnails found for video: ${videoId}`);
+        }
+      } catch (listError) {
+        console.error(`⚠️ Failed to list thumbnails for video ${videoId}:`, listError);
+      }
+    } catch (error) {
+      console.error(`❌ Failed to delete thumbnail for video ${videoId}:`, error);
+    }
+  }
+
+  /**
    * Delete all thumbnails for a specific account
+   * NOTE: This function is deprecated in favor of deleting thumbnails per-video
    * @param orgId Organization ID
    * @param accountId Account identifier
    */
@@ -236,17 +277,18 @@ class FirebaseStorageService {
     try {
       console.log(`🗑️ Deleting all thumbnails for account: ${accountId}`);
       
-      // List all thumbnails starting with the account ID prefix
+      // This function is now redundant since we delete thumbnails per-video
+      // in deleteAccountVideos, but keeping it for backwards compatibility
+      
+      // List all thumbnails
       const thumbnailsRef = ref(storage, `organizations/${orgId}/thumbnails/`);
       const listResult = await listAll(thumbnailsRef);
       
-      // Filter and delete thumbnails for this account
-      const deletePromises = listResult.items
-        .filter(item => item.name.startsWith(accountId))
-        .map(item => deleteObject(item));
+      // Since thumbnails are named {platform}_{videoId}_thumb.jpg,
+      // we can't easily filter by accountId
+      // This is handled by deleteAccountVideos now
       
-      await Promise.all(deletePromises);
-      console.log(`✅ Deleted ${deletePromises.length} thumbnails for account: ${accountId}`);
+      console.log(`ℹ️ Account thumbnails are now deleted per-video (handled by deleteAccountVideos)`);
     } catch (error) {
       console.error(`❌ Failed to delete account thumbnails:`, error);
     }

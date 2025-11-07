@@ -479,6 +479,32 @@ class FirestoreDataService {
     try {
       console.log(`🗑️ Deleting video ${videoId}`);
       
+      // STEP 1: Delete all snapshots for this video
+      try {
+        const snapshotsRef = collection(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId, 'snapshots');
+        const snapshotsSnapshot = await getDocs(snapshotsRef);
+        
+        if (snapshotsSnapshot.docs.length > 0) {
+          const snapshotBatch = writeBatch(db);
+          snapshotsSnapshot.docs.forEach(snapshotDoc => {
+            snapshotBatch.delete(snapshotDoc.ref);
+          });
+          await snapshotBatch.commit();
+          console.log(`✅ Deleted ${snapshotsSnapshot.docs.length} snapshots for video ${videoId}`);
+        }
+      } catch (snapshotError) {
+        console.error('⚠️ Failed to delete video snapshots (non-critical):', snapshotError);
+      }
+      
+      // STEP 2: Delete thumbnail from Firebase Storage
+      try {
+        const FirebaseStorageService = (await import('./FirebaseStorageService')).default;
+        await FirebaseStorageService.deleteVideoThumbnail(orgId, videoId);
+      } catch (storageError) {
+        console.error('⚠️ Failed to delete video thumbnail (non-critical):', storageError);
+      }
+      
+      // STEP 3: Delete video document
       const batch = writeBatch(db);
       const videoRef = doc(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId);
       batch.delete(videoRef);
@@ -529,7 +555,45 @@ class FirestoreDataService {
         return;
       }
       
-      // Delete in batches
+      console.log(`📊 Found ${videoCount} videos to delete`);
+      
+      // STEP 1: Delete all snapshots and thumbnails for each video
+      const FirebaseStorageService = (await import('./FirebaseStorageService')).default;
+      let snapshotsDeleted = 0;
+      let thumbnailsDeleted = 0;
+      
+      for (const videoDoc of snapshot.docs) {
+        const videoId = videoDoc.id;
+        
+        // Delete snapshots for this video
+        try {
+          const snapshotsRef = collection(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId, 'snapshots');
+          const snapshotsSnapshot = await getDocs(snapshotsRef);
+          
+          if (snapshotsSnapshot.docs.length > 0) {
+            const snapshotBatch = writeBatch(db);
+            snapshotsSnapshot.docs.forEach(snapshotDoc => {
+              snapshotBatch.delete(snapshotDoc.ref);
+            });
+            await snapshotBatch.commit();
+            snapshotsDeleted += snapshotsSnapshot.docs.length;
+          }
+        } catch (snapshotError) {
+          console.error(`⚠️ Failed to delete snapshots for video ${videoId}:`, snapshotError);
+        }
+        
+        // Delete thumbnail for this video
+        try {
+          await FirebaseStorageService.deleteVideoThumbnail(orgId, videoId);
+          thumbnailsDeleted++;
+        } catch (thumbnailError) {
+          console.error(`⚠️ Failed to delete thumbnail for video ${videoId}:`, thumbnailError);
+        }
+      }
+      
+      console.log(`✅ Deleted ${snapshotsDeleted} snapshots and ${thumbnailsDeleted} thumbnails`);
+      
+      // STEP 2: Delete video documents in batches
       const batchSize = 500;
       for (let i = 0; i < snapshot.docs.length; i += batchSize) {
         const batch = writeBatch(db);
