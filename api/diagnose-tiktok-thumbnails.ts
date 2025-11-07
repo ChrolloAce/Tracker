@@ -69,7 +69,8 @@ export default async function handler(
     };
 
     // Check storage for thumbnail files
-    const bucket = storage.bucket();
+    const bucketName = process.env.FIREBASE_STORAGE_BUCKET || 'trackview-6a3a5.firebasestorage.app';
+    const bucket = storage.bucket(bucketName);
     const thumbnailsPath = `organizations/${orgId}/thumbnails/`;
     
     let storageFiles: string[] = [];

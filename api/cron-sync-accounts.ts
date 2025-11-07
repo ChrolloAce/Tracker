@@ -689,7 +689,8 @@ async function downloadAndUploadThumbnail(
     const contentType = response.headers.get('content-type') || 'image/jpeg';
     
     // Upload to Firebase Storage
-    const bucket = storage.bucket();
+    const bucketName = process.env.FIREBASE_STORAGE_BUCKET || 'trackview-6a3a5.firebasestorage.app';
+    const bucket = storage.bucket(bucketName);
     const storagePath = `organizations/${orgId}/thumbnails/${filename}`;
     const file = bucket.file(storagePath);
     
