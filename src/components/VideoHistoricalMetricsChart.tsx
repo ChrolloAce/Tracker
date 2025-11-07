@@ -32,42 +32,42 @@ const metrics: MetricConfig[] = [
     key: 'views',
     label: 'Views',
     icon: Eye,
-    color: '#8b5cf6',
+    color: '#22c55e', // Green for all
     formatValue: (value) => value >= 1000 ? `${(value / 1000).toFixed(1)}K` : value.toString(),
   },
   {
     key: 'likes',
     label: 'Likes',
     icon: Heart,
-    color: '#ec4899',
+    color: '#22c55e', // Green for all
     formatValue: (value) => value >= 1000 ? `${(value / 1000).toFixed(1)}K` : value.toString(),
   },
   {
     key: 'comments',
     label: 'Comments',
     icon: MessageCircle,
-    color: '#06b6d4',
+    color: '#22c55e', // Green for all
     formatValue: (value) => value >= 1000 ? `${(value / 1000).toFixed(1)}K` : value.toString(),
   },
   {
     key: 'shares',
     label: 'Shares',
     icon: Share2,
-    color: '#10b981',
+    color: '#22c55e', // Green for all
     formatValue: (value) => value >= 1000 ? `${(value / 1000).toFixed(1)}K` : value.toString(),
   },
   {
     key: 'saves',
     label: 'Bookmarks',
     icon: Bookmark,
-    color: '#f59e0b',
+    color: '#22c55e', // Green for all
     formatValue: (value) => value >= 1000 ? `${(value / 1000).toFixed(1)}K` : value.toString(),
   },
   {
     key: 'engagementRate',
     label: 'Engagement',
     icon: TrendingUp,
-    color: '#22c55e',
+    color: '#22c55e', // Green for all
     formatValue: (value) => `${value.toFixed(1)}%`,
   },
 ];
@@ -167,7 +167,7 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
         </div>
 
         {/* Metric Selector Dropdown */}
-        <div className="relative z-[100]">
+        <div className="relative" style={{ zIndex: 9999 }}>
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border transition-all"
@@ -176,10 +176,6 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
               borderColor: isDropdownOpen ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)',
             }}
           >
-            <div 
-              className="w-2.5 h-2.5 rounded-full"
-              style={{ backgroundColor: currentMetric.color }}
-            />
             <span className="text-sm font-semibold text-white">{currentMetric.label}</span>
             <ChevronDown 
               className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} 
@@ -191,16 +187,18 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
             <>
               {/* Backdrop */}
               <div 
-                className="fixed inset-0 z-[99]"
+                className="fixed inset-0"
+                style={{ zIndex: 9998 }}
                 onClick={() => setIsDropdownOpen(false)}
               />
               
               {/* Menu */}
               <div 
-                className="absolute right-0 mt-2 w-48 rounded-xl border shadow-2xl z-[100] overflow-hidden"
+                className="absolute right-0 mt-2 w-48 rounded-xl border shadow-2xl overflow-hidden"
                 style={{ 
                   backgroundColor: '#0a0a0b',
                   borderColor: 'rgba(255,255,255,0.1)',
+                  zIndex: 9999,
                 }}
               >
                 {metrics.map((metric) => {
@@ -227,18 +225,11 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
                         }
                       }}
                     >
-                      <div 
-                        className="w-2.5 h-2.5 rounded-full"
-                        style={{ backgroundColor: metric.color }}
-                      />
                       <span className="text-sm font-medium text-white flex-1 text-left">
                         {metric.label}
                       </span>
                       {isSelected && (
-                        <div 
-                          className="w-2 h-2 rounded-full" 
-                          style={{ backgroundColor: metric.color }} 
-                        />
+                        <div className="w-1.5 h-1.5 rounded-full bg-white" />
                       )}
                     </button>
                   );
@@ -256,10 +247,7 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
           <div className="text-xs text-gray-400 mb-0.5 font-medium tracking-wide">
             {currentMetric.label}
           </div>
-          <div 
-            className="text-3xl font-bold tracking-tight"
-            style={{ color: currentMetric.color }}
-          >
+          <div className="text-3xl font-bold tracking-tight text-white">
             {formattedTotal}
           </div>
         </div>
@@ -271,8 +259,8 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
           >
             <defs>
               <linearGradient id={`gradient-${selectedMetric}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={currentMetric.color} stopOpacity={0.3} />
-                <stop offset="95%" stopColor={currentMetric.color} stopOpacity={0} />
+                <stop offset="0%" stopColor="#22c55e" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
               </linearGradient>
             </defs>
             
