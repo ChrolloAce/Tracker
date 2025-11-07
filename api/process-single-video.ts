@@ -38,6 +38,7 @@ interface VideoData {
   view_count?: number;
   timestamp: string;
   share_count?: number;
+  save_count?: number; // ✅ ADD BOOKMARKS/SAVES
   profile_pic_url?: string;
   display_name?: string;
   follower_count?: number;
@@ -258,6 +259,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       likes: videoData.like_count || 0,
       comments: videoData.comment_count || 0,
       shares: videoData.share_count || 0,
+      saves: videoData.save_count || 0, // ✅ ADD BOOKMARKS
       trackedAccountId: accountId,
       syncStatus: 'completed',
       syncError: null,
@@ -276,6 +278,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       likes: videoData.like_count || 0,
       comments: videoData.comment_count || 0,
       shares: videoData.share_count || 0,
+      saves: videoData.save_count || 0, // ✅ ADD BOOKMARKS
       capturedAt: snapshotTime,
       timestamp: snapshotTime,
       capturedBy: 'initial_manual_add'
@@ -404,7 +407,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
  */
 function transformVideoData(rawData: any, platform: string): VideoData {
   if (platform === 'tiktok') {
-    // TikTok uses apidojo/tiktok-scraper format (channel + video objects)
+    // TikTok uses apidojo/tiktok-scraper format (channel + video objects or flat keys)
     const channel = rawData.channel || {};
     const video = rawData.video || {};
     
@@ -414,6 +417,10 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       thumbnailUrl = video.cover;
     } else if (video.thumbnail) {
       thumbnailUrl = video.thumbnail;
+    } else if (rawData.cover) {
+      thumbnailUrl = rawData.cover;
+    } else if (rawData.thumbnail) {
+      thumbnailUrl = rawData.thumbnail;
     } else if (rawData.images && Array.isArray(rawData.images) && rawData.images.length > 0) {
       // Photo Mode post - use first image
       thumbnailUrl = rawData.images[0].url || '';
@@ -423,14 +430,15 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       id: rawData.id || rawData.post_id || '',
       thumbnail_url: thumbnailUrl,
       caption: rawData.title || rawData.subtitle || rawData.caption || '',
-      username: channel.username || '',
+      username: channel.username || rawData['channel.username'] || '',
       like_count: rawData.likes || 0,
       comment_count: rawData.comments || 0,
       view_count: rawData.views || 0,
       share_count: rawData.shares || 0,
+      save_count: rawData.bookmarks || 0, // ✅ ADD BOOKMARKS
       timestamp: rawData.uploadedAt || rawData.uploaded_at || Math.floor(Date.now() / 1000),
-      profile_pic_url: channel.avatar || channel.avatar_url || '',
-      display_name: channel.name || channel.username || '',
+      profile_pic_url: channel.avatar || channel.avatar_url || rawData['channel.avatar'] || '',
+      display_name: channel.name || rawData['channel.name'] || channel.username || '',
       follower_count: channel.followers || 0
     };
   } else if (platform === 'instagram') {

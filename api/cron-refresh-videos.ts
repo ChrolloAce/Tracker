@@ -788,7 +788,7 @@ async function refreshTikTokVideosBulk(
         likes: video.likes || 0,
         comments: video.comments || 0,
         shares: video.shares || 0,
-        saves: video.bookmarks || 0,
+        saves: video.bookmarks || 0, // ✅ BOOKMARKS
         lastRefreshed: Timestamp.now()
       });
 
@@ -1057,6 +1057,7 @@ async function saveVideosToFirestore(
       likes = video.likes || 0;
       comments = video.comments || 0;
       shares = video.shares || 0;
+      const saves = video.bookmarks || 0; // ✅ ADD BOOKMARKS
       url = video.tiktok_url || videoObj.url || '';
       
       // ROBUST THUMBNAIL EXTRACTION: video.cover → video.thumbnail → fallback
@@ -1135,6 +1136,7 @@ async function saveVideosToFirestore(
         likes,
         comments,
         shares,
+        saves: platform === 'tiktok' ? (saves || 0) : 0, // ✅ ADD BOOKMARKS (TikTok only)
         orgId,
         projectId,
         trackedAccountId: accountId,
@@ -1160,6 +1162,7 @@ async function saveVideosToFirestore(
         likes,
         comments,
         shares,
+        saves: platform === 'tiktok' ? (saves || 0) : 0, // ✅ ADD BOOKMARKS
         capturedAt: snapshotTime,
         timestamp: snapshotTime, // Backwards compatibility
         capturedBy: isManualTrigger ? 'manual_refresh_initial' : 'scheduled_refresh_initial'
@@ -1178,6 +1181,7 @@ async function saveVideosToFirestore(
         likes,
         comments,
         shares,
+        saves: platform === 'tiktok' ? (saves || 0) : (existingData.saves || 0), // ✅ ADD BOOKMARKS
         lastRefreshed: Timestamp.now()
       };
 

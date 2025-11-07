@@ -261,15 +261,20 @@ export default async function handler(
         
         // Transform TikTok data to video format (apidojo/tiktok-scraper format)
         videos = tiktokVideos.map((item: any, index: number) => {
+          // Handle both nested and flat key formats
           const channel = item.channel || {};
           const video = item.video || {};
           
-          // Robust thumbnail extraction: video.cover → video.thumbnail → fallback
+          // Robust thumbnail extraction: video.cover → video.thumbnail → item.cover → fallback
           let thumbnail = '';
           if (video.cover) {
             thumbnail = video.cover;
           } else if (video.thumbnail) {
             thumbnail = video.thumbnail;
+          } else if (item.cover) {
+            thumbnail = item.cover;
+          } else if (item.thumbnail) {
+            thumbnail = item.thumbnail;
           } else if (item.images && item.images.length > 0) {
             thumbnail = item.images[0].url || '';
           }
@@ -277,11 +282,11 @@ export default async function handler(
           return {
             videoId: item.id || item.post_id || `tiktok_${Date.now()}_${index}`,
             videoTitle: item.title || item.caption || item.subtitle || 'Untitled TikTok',
-            videoUrl: video.url || '',
+            videoUrl: video.url || item.videoUrl || '',
             platform: 'tiktok',
             thumbnail: thumbnail,
             accountUsername: account.username,
-            accountDisplayName: channel.name || account.username,
+            accountDisplayName: channel.name || item['channel.name'] || account.username,
             uploadDate: item.uploadedAt ? Timestamp.fromMillis(item.uploadedAt * 1000) : 
                        item.uploaded_at ? Timestamp.fromMillis(item.uploaded_at * 1000) : 
                        Timestamp.now(),
@@ -289,6 +294,7 @@ export default async function handler(
             likes: item.likes || 0,
             comments: item.comments || 0,
             shares: item.shares || 0,
+            saves: item.bookmarks || 0, // ✅ ADD BOOKMARKS
             caption: item.title || item.subtitle || item.caption || '',
             duration: video.duration || 0
           };
