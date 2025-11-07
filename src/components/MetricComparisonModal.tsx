@@ -4,6 +4,7 @@ import { VideoSubmission } from '../types';
 import { LinkClick } from '../services/LinkClicksService';
 import { DateFilterType } from './DateRangeFilter';
 import DateRangeFilter from './DateRangeFilter';
+import DayVideosModal from './DayVideosModal';
 
 interface MetricComparisonModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface MetricComparisonModalProps {
   customRange?: { startDate: Date; endDate: Date };
   onDateFilterChange?: (filter: DateFilterType, customRange?: { startDate: Date; endDate: Date }) => void;
   initialMetric?: 'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts' | 'engagement' | 'engagementRate' | 'linkClicks';
+  onVideoClick?: (video: VideoSubmission) => void;
 }
 
 type MetricType = 'views' | 'likes' | 'comments' | 'shares' | 'videos' | 'accounts' | 'engagement' | 'engagementRate' | 'linkClicks';
@@ -45,16 +47,56 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
   customRange,
   onDateFilterChange,
   initialMetric = 'views',
+  onVideoClick,
 }) => {
   const [primaryMetric, setPrimaryMetric] = useState<MetricType>(initialMetric);
   const [secondaryMetric, setSecondaryMetric] = useState<MetricType | null>(null);
   const [tertiaryMetric, setTertiaryMetric] = useState<MetricType | null>(null);
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
+  
+  // Day Videos Modal state
+  const [isDayModalOpen, setIsDayModalOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDayVideos, setSelectedDayVideos] = useState<VideoSubmission[]>([]);
+  const [selectedDayClicks, setSelectedDayClicks] = useState<LinkClick[]>([]);
 
   // Update primary metric when initialMetric changes (when different KPI is clicked)
   useEffect(() => {
     setPrimaryMetric(initialMetric);
   }, [initialMetric]);
+
+  // Handle clicking on a chart point to see videos
+  const handleChartClick = useCallback((dataIndex: number) => {
+    if (dataIndex < 0 || dataIndex >= chartData.length) return;
+    
+    const clickedData = chartData[dataIndex];
+    const clickedDate = clickedData.date;
+    
+    // Filter videos for this specific date
+    const videosForDate = submissions.filter(video => {
+      const videoDate = video.uploadDate || video.dateSubmitted;
+      if (!videoDate) return false;
+      const vDate = new Date(videoDate);
+      vDate.setHours(0, 0, 0, 0);
+      const cDate = new Date(clickedDate);
+      cDate.setHours(0, 0, 0, 0);
+      return vDate.getTime() === cDate.getTime();
+    });
+    
+    // Filter link clicks for this date
+    const clicksForDate = linkClicks.filter(click => {
+      const clickDate = new Date(click.timestamp);
+      clickDate.setHours(0, 0, 0, 0);
+      const cDate = new Date(clickedDate);
+      cDate.setHours(0, 0, 0, 0);
+      return clickDate.getTime() === cDate.getTime();
+    });
+    
+    setSelectedDate(clickedDate);
+    setSelectedDayVideos(videosForDate);
+    setSelectedDayClicks(clicksForDate);
+    setIsDayModalOpen(true);
+  }, [chartData, submissions, linkClicks]);
 
   // Helper function to get metric value from video
   const getMetricValue = useCallback((video: VideoSubmission, metric: MetricType): number => {
@@ -396,7 +438,7 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
               {/* SVG Chart */}
               <svg 
                 viewBox="0 0 1000 400" 
-                className="w-full h-full" 
+                className="w-full h-full cursor-pointer" 
                 preserveAspectRatio="none"
                 onMouseMove={(e) => {
                   const svg = e.currentTarget;
@@ -417,6 +459,26 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
                   });
                   
                   setHoveredPoint(nearestIndex);
+                }}
+                onClick={(e) => {
+                  const svg = e.currentTarget;
+                  const rect = svg.getBoundingClientRect();
+                  const x = ((e.clientX - rect.left) / rect.width) * 1000;
+                  
+                  // Find nearest data point
+                  let nearestIndex = 0;
+                  let minDistance = Infinity;
+                  
+                  chartData.forEach((_, i) => {
+                    const pointX = (i / (chartData.length - 1)) * 1000;
+                    const distance = Math.abs(x - pointX);
+                    if (distance < minDistance) {
+                      minDistance = distance;
+                      nearestIndex = i;
+                    }
+                  });
+                  
+                  handleChartClick(nearestIndex);
                 }}
                 onMouseLeave={() => setHoveredPoint(null)}
               >
@@ -701,6 +763,13 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
                       </div>
                     )}
                   </div>
+                  
+                  {/* Click to expand hint */}
+                  <div className="mt-3 pt-3 border-t border-white/10 text-center">
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider">
+                      Click to see videos
+                    </span>
+                  </div>
                 </div>
               )}
 
@@ -725,6 +794,24 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Day Videos Modal */}
+      {selectedDate && (
+        <DayVideosModal
+          isOpen={isDayModalOpen}
+          onClose={() => {
+            setIsDayModalOpen(false);
+            setSelectedDate(null);
+            setSelectedDayVideos([]);
+            setSelectedDayClicks([]);
+          }}
+          date={selectedDate}
+          videos={selectedDayVideos}
+          metricLabel={primaryMetric.charAt(0).toUpperCase() + primaryMetric.slice(1)}
+          onVideoClick={onVideoClick}
+          linkClicks={selectedDayClicks}
+        />
+      )}
     </div>
   );
 };
