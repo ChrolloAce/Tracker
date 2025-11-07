@@ -132,16 +132,16 @@ const RefreshCountdown: React.FC = () => {
         {/* Timing Info */}
         <div className="text-[11px] text-white/60 mb-3 text-center">
           Data will refresh in {formatTimeUntil()}
-        </div>
+      </div>
 
-        {/* Progress Bar */}
+      {/* Progress Bar */}
         <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-          <div 
+        <div 
             className={`h-full transition-all duration-1000 ease-linear ${
               isRunning ? 'bg-emerald-400' : 'bg-white/40'
             }`}
             style={{ width: `${Math.min(progress, 100)}%` }}
-          />
+        />
         </div>
       </div>
     </div>

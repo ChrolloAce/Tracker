@@ -16,8 +16,8 @@ if (getApps().length === 0) {
     privateKey = privateKey.replace(/\\n/g, '\n');
 
     const serviceAccount = {
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
       privateKey: privateKey,
     };
 
@@ -263,11 +263,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const fetchPromises = datesToFetch.map(async (reportDate, index) => {
       try {
         const dailyData = await fetchAppleSalesReports(
-          token,
-          integration.credentials.vendorNumber,
-          reportDate
-        );
-        
+      token,
+      integration.credentials.vendorNumber,
+      reportDate
+    );
+
         if (dailyData && dailyData.length > 0) {
           console.log(`  ✓ ${reportDate}: ${dailyData.length} records (${index + 1}/${datesToFetch.length})`);
           return { success: true, data: dailyData, date: reportDate };

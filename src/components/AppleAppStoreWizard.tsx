@@ -457,41 +457,41 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
           <p className="text-white/50 text-sm">
             10-character alphanumeric ID found in the Keys list
           </p>
-        </div>
+          </div>
 
-        <div className="pt-4 border-t border-white/10">
-          <label className="block">
+          <div className="pt-4 border-t border-white/10">
+            <label className="block">
             <p className="text-white font-medium mb-3">Private Key File (.p8) *</p>
-            <div className={`
-              relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
-              transition-colors
-              ${credentials.privateKeyFileName 
-                ? 'border-emerald-500/50 bg-emerald-500/10' 
-                : 'border-white/20 hover:border-white/40 bg-white/5'
-              }
-            `}>
-              <input
-                type="file"
-                accept=".p8"
-                onChange={handleFileUpload}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              />
-              
-              {credentials.privateKeyFileName ? (
-                <div className="space-y-2">
-                  <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto" />
-                  <p className="text-white font-medium">{credentials.privateKeyFileName}</p>
-                  <p className="text-white/50 text-sm">Click to replace</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Upload className="w-12 h-12 text-white/40 mx-auto" />
-                  <p className="text-white font-medium">Drop your .p8 file here or click to browse</p>
-                  <p className="text-white/50 text-sm">AuthKey_XXXXXXXXXX.p8</p>
-                </div>
-              )}
-            </div>
-          </label>
+              <div className={`
+                relative border-2 border-dashed rounded-lg p-8 text-center cursor-pointer
+                transition-colors
+                ${credentials.privateKeyFileName 
+                  ? 'border-emerald-500/50 bg-emerald-500/10' 
+                  : 'border-white/20 hover:border-white/40 bg-white/5'
+                }
+              `}>
+                <input
+                  type="file"
+                  accept=".p8"
+                  onChange={handleFileUpload}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                
+                {credentials.privateKeyFileName ? (
+                  <div className="space-y-2">
+                    <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto" />
+                    <p className="text-white font-medium">{credentials.privateKeyFileName}</p>
+                    <p className="text-white/50 text-sm">Click to replace</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Upload className="w-12 h-12 text-white/40 mx-auto" />
+                    <p className="text-white font-medium">Drop your .p8 file here or click to browse</p>
+                    <p className="text-white/50 text-sm">AuthKey_XXXXXXXXXX.p8</p>
+                  </div>
+                )}
+              </div>
+            </label>
         </div>
 
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4">
@@ -613,8 +613,8 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
 
           {/* Connection Test Result */}
           {connectionTested && connectionSuccess && (
-            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4">
-              <p className="text-emerald-300 text-sm">
+          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4">
+            <p className="text-emerald-300 text-sm">
                 <strong>✅ Connection Successful!</strong> Your credentials are valid. Click "Complete Setup" to finish.
               </p>
             </div>
@@ -624,8 +624,8 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
             <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
               <p className="text-red-300 text-sm">
                 <strong>❌ Connection Failed</strong> Please verify your credentials and try again.
-              </p>
-            </div>
+            </p>
+          </div>
           )}
         </div>
       </div>

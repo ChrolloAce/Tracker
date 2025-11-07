@@ -415,7 +415,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">
               Org
             </label>
-            <OrganizationSwitcher />
+        <OrganizationSwitcher />
           </div>
         </div>
       )}

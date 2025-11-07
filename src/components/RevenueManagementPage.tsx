@@ -393,18 +393,18 @@ const RevenueManagementPage: React.FC = () => {
           {integrations.length > 0 ? (
             <>
               {/* Manual Sync */}
-              <div className="bg-white/5 rounded-xl border border-white/10 p-6">
+            <div className="bg-white/5 rounded-xl border border-white/10 p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h4 className="text-lg font-semibold text-white mb-2">Revenue Data Sync</h4>
-                    <p className="text-white/60 text-sm">
+              <p className="text-white/60 text-sm">
                       Last synced: {integrations[0]?.lastSynced 
                         ? formatDistanceToNow(integrations[0].lastSynced, { addSuffix: true })
                         : 'Never'
                       }
-                    </p>
-                  </div>
-                </div>
+              </p>
+            </div>
+          </div>
 
                 {/* Date Range Selector */}
                 <div className="mb-4">
@@ -423,17 +423,17 @@ const RevenueManagementPage: React.FC = () => {
                   </select>
                   <p className="text-xs text-white/40 mt-2">
                     Select how many days of revenue data to sync from Apple.
-                  </p>
-                </div>
+              </p>
+          </div>
 
-                <button
-                  onClick={handleSyncRevenue}
-                  disabled={syncing}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+              <button
+                onClick={handleSyncRevenue}
+                disabled={syncing}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
                   {syncing ? 'Syncing...' : 'Sync Now'}
-                </button>
+              </button>
               </div>
 
               {/* Coming Soon: Revenue analytics dashboard will appear here */}

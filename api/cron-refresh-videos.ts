@@ -652,7 +652,7 @@ async function fetchVideosFromPlatform(
   });
 
   const videos = result.items || [];
-  
+
   // Skip videos if needed (for pagination)
   return skipVideos > 0 ? videos.slice(skipVideos) : videos;
 }
@@ -682,13 +682,13 @@ async function videoExistsInDatabase(
  * Extract video ID from platform-specific video object
  */
 function extractVideoId(video: any, platform: string): string | null {
-  if (platform === 'instagram') {
+    if (platform === 'instagram') {
     const media = video.reel_data?.media || video.media || video;
     return media.code || media.shortCode || media.id || null;
-  } else if (platform === 'tiktok') {
+    } else if (platform === 'tiktok') {
     const urlMatch = (video.webVideoUrl || '').match(/video\/(\d+)/);
     return urlMatch ? urlMatch[1] : (video.id || video.videoId || null);
-  } else if (platform === 'twitter') {
+    } else if (platform === 'twitter') {
     return video.id || null;
   }
   return null;
@@ -812,7 +812,7 @@ async function refreshInstagramVideosSequential(
     const videoDoc = videoDocs[i];
     const videoData = videoDoc.data();
     const videoUrl = videoData.url || videoData.videoUrl;
-    
+  
     if (!videoUrl) {
       console.log(`    ⚠️ [INSTAGRAM] Skipping video ${i + 1}/${videoDocs.length} - no URL`);
       continue;

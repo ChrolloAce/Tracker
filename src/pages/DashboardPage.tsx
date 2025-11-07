@@ -1019,14 +1019,14 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           console.log('✅ Apple revenue metrics loaded:', metrics);
         } else {
           // For other providers (RevenueCat, etc.), recalculate from transactions
-          const metrics = await RevenueDataService.calculateMetricsFromTransactions(
-            currentOrgId,
-            currentProjectId,
-            startDate,
-            endDate
-          );
-          setRevenueMetrics(metrics);
-          console.log('✅ Revenue data synced and metrics calculated');
+        const metrics = await RevenueDataService.calculateMetricsFromTransactions(
+          currentOrgId,
+          currentProjectId,
+          startDate,
+          endDate
+        );
+        setRevenueMetrics(metrics);
+        console.log('✅ Revenue data synced and metrics calculated');
         }
       } catch (error) {
         console.error('❌ Failed to sync revenue for date range:', error);
@@ -2942,8 +2942,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                           <PostingActivityHeatmap 
                             submissions={filteredSubmissions}
                             onVideoClick={handleVideoClick}
-                            dateFilter={dateFilter}
-                            customRange={customDateRange}
                           />
                         );
                       case 'tracked-accounts':
@@ -3241,11 +3239,11 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           // Close type selector first, then open the selected modal after a brief delay
           setIsTypeSelectorOpen(false);
           setTimeout(() => {
-            if (type === 'video') {
-              setIsModalOpen(true);
-            } else if (type === 'account') {
-              accountsPageRef.current?.openAddModal();
-            }
+          if (type === 'video') {
+            setIsModalOpen(true);
+          } else if (type === 'account') {
+            accountsPageRef.current?.openAddModal();
+          }
           }, 100);
         }}
       />
@@ -3340,8 +3338,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 <PostingActivityHeatmap 
                   submissions={filteredSubmissions}
                   onVideoClick={handleVideoClick}
-                  dateFilter={dateFilter}
-                  customRange={customDateRange}
                 />
               );
             case 'tracked-accounts':

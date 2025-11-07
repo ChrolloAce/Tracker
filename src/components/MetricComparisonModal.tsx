@@ -25,15 +25,15 @@ interface MetricOption {
 }
 
 const metricOptions: MetricOption[] = [
-  { id: 'views', label: 'Views', color: '#B47CFF' },
-  { id: 'likes', label: 'Likes', color: '#B47CFF' },
-  { id: 'comments', label: 'Comments', color: '#B47CFF' },
-  { id: 'shares', label: 'Shares', color: '#B47CFF' },
-  { id: 'videos', label: 'Videos', color: '#B47CFF' },
-  { id: 'accounts', label: 'Accounts', color: '#B47CFF' },
-  { id: 'engagement', label: 'Engagement', color: '#B47CFF' },
-  { id: 'engagementRate', label: 'Engagement Rate', color: '#B47CFF' },
-  { id: 'linkClicks', label: 'Link Clicks', color: '#B47CFF' },
+  { id: 'views', label: 'Views', color: '#FFFFFF' },
+  { id: 'likes', label: 'Likes', color: '#FFFFFF' },
+  { id: 'comments', label: 'Comments', color: '#FFFFFF' },
+  { id: 'shares', label: 'Shares', color: '#FFFFFF' },
+  { id: 'videos', label: 'Videos', color: '#FFFFFF' },
+  { id: 'accounts', label: 'Accounts', color: '#FFFFFF' },
+  { id: 'engagement', label: 'Engagement', color: '#FFFFFF' },
+  { id: 'engagementRate', label: 'Engagement Rate', color: '#FFFFFF' },
+  { id: 'linkClicks', label: 'Link Clicks', color: '#FFFFFF' },
 ];
 
 const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
@@ -117,11 +117,15 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
       minDate.setDate(minDate.getDate() - 30);
     }
 
-    // Extend range slightly for padding
+    // For "all time", always extend maxDate to today
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    
+    // Use actual dates without extending (prevents issues with large date ranges)
     const startDate = new Date(minDate);
-    startDate.setDate(startDate.getDate() - 1);
-    const endDate = new Date(maxDate);
-    endDate.setDate(endDate.getDate() + 1);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = maxDate < today ? today : new Date(maxDate);
+    endDate.setHours(23, 59, 59, 999);
 
     // Initialize all dates in range with 0
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
@@ -236,9 +240,9 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
     return path;
   };
 
-  const primaryColor = '#B47CFF';
-  const secondaryColor = '#7C3AED';
-  const tertiaryColor = '#3B82F6';
+  const primaryColor = '#FFFFFF';
+  const secondaryColor = '#A1A1AA';
+  const tertiaryColor = '#71717A';
 
   const maxValue = Math.max(
     ...chartData.map(d => {
@@ -302,8 +306,8 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
         <div className="flex items-center space-x-2 sm:space-x-3 px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 flex-wrap gap-y-2 sm:gap-y-3">
           {/* Primary Metric */}
           <div className="relative">
-            <div className="flex items-center space-x-2 bg-gray-900/50 border border-purple-500/30 rounded-xl px-4 py-2.5 backdrop-blur-sm">
-              <div className="w-3 h-3 rounded-sm bg-gradient-to-br from-purple-400 to-purple-600 shadow-lg shadow-purple-500/50" />
+            <div className="flex items-center space-x-2 bg-gray-900/50 border border-white/20 rounded-xl px-4 py-2.5 backdrop-blur-sm">
+              <div className="w-3 h-3 rounded-sm bg-white shadow-lg shadow-white/50" />
               <select
                 value={primaryMetric}
                 onChange={(e) => setPrimaryMetric(e.target.value as MetricType)}
@@ -325,7 +329,7 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
           <div className="relative">
             <div className="flex items-center space-x-2 bg-gray-900/50 border border-gray-700/50 rounded-xl px-4 py-2.5 backdrop-blur-sm">
               {secondaryMetric && (
-                <div className="w-3 h-3 rounded-sm bg-gradient-to-br from-purple-300 to-indigo-500 shadow-lg shadow-purple-400/30" />
+                <div className="w-3 h-3 rounded-sm bg-zinc-400 shadow-lg shadow-gray-400/30" />
               )}
               <select
                 value={secondaryMetric || ''}
@@ -349,7 +353,7 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
           <div className="relative">
             <div className="flex items-center space-x-2 bg-gray-900/50 border border-gray-700/50 rounded-xl px-4 py-2.5 backdrop-blur-sm">
               {tertiaryMetric && (
-                <div className="w-3 h-3 rounded-sm bg-gradient-to-br from-blue-400 to-blue-600 shadow-lg shadow-blue-400/30" />
+                <div className="w-3 h-3 rounded-sm bg-zinc-600 shadow-lg shadow-gray-600/30" />
               )}
               <select
                 value={tertiaryMetric || ''}
@@ -715,7 +719,7 @@ const MetricComparisonModal: React.FC<MetricComparisonModalProps> = ({
 
             {/* Watermark */}
             <div className="absolute bottom-4 right-6 flex items-center space-x-2 opacity-10">
-              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-blue-500" />
+              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-white to-gray-500" />
               <span className="text-lg font-bold text-white">viral.app</span>
             </div>
           </div>

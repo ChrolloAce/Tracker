@@ -89,67 +89,67 @@ export async function runApifyActor(options: ApifyRunOptions): Promise<ApifyResp
   try {
     // Wrap Instagram calls in retry logic
     const executeCall = async () => {
-      // Try run-sync-get-dataset-items first (fastest)
-      const syncUrl = `https://api.apify.com/v2/acts/${normalizedActorId}/run-sync-get-dataset-items?token=${APIFY_TOKEN}`;
+    // Try run-sync-get-dataset-items first (fastest)
+    const syncUrl = `https://api.apify.com/v2/acts/${normalizedActorId}/run-sync-get-dataset-items?token=${APIFY_TOKEN}`;
+    
+    const response = await fetch(syncUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    
+    if (response.ok) {
+      const items = await response.json();
+      const itemsArray = Array.isArray(items) ? items : [];
       
-      const response = await fetch(syncUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(input),
-      });
-      
-      if (response.ok) {
-        const items = await response.json();
-        const itemsArray = Array.isArray(items) ? items : [];
-        
-        console.log(`✅ Apify returned ${itemsArray.length} items`);
-        
-        return {
-          items: itemsArray,
-          run: { id: 'sync', status: 'SUCCEEDED' }
-        };
-      }
-      
-      // If sync fails, try regular run endpoint
-      console.warn(`⚠️ Sync endpoint failed (${response.status}), trying regular run...`);
-      
-      const runUrl = `https://api.apify.com/v2/acts/${normalizedActorId}/runs?token=${APIFY_TOKEN}`;
-      const runResponse = await fetch(runUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(input),
-      });
-      
-      if (!runResponse.ok) {
-        const errorText = await runResponse.text();
-        throw new Error(`Apify API error: ${runResponse.status} - ${errorText}`);
-      }
-      
-      const runData = await runResponse.json();
-      const runId = runData.data.id;
-      
-      console.log(`🏃 Waiting for run ${runId} to complete...`);
-      
-      // Wait for completion
-      const completedRun = await waitForRunCompletion(runId, APIFY_TOKEN);
-      
-      // Get dataset items
-      const datasetId = completedRun.defaultDatasetId;
-      const datasetUrl = `https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_TOKEN}&format=json`;
-      
-      const datasetResponse = await fetch(datasetUrl);
-      if (!datasetResponse.ok) {
-        throw new Error(`Failed to fetch dataset: ${datasetResponse.status}`);
-      }
-      
-      const items = await datasetResponse.json();
-      
-      console.log(`✅ Got ${items.length} items from dataset`);
+      console.log(`✅ Apify returned ${itemsArray.length} items`);
       
       return {
-        items: Array.isArray(items) ? items : [],
-        run: completedRun
+        items: itemsArray,
+        run: { id: 'sync', status: 'SUCCEEDED' }
       };
+    }
+    
+    // If sync fails, try regular run endpoint
+    console.warn(`⚠️ Sync endpoint failed (${response.status}), trying regular run...`);
+    
+    const runUrl = `https://api.apify.com/v2/acts/${normalizedActorId}/runs?token=${APIFY_TOKEN}`;
+    const runResponse = await fetch(runUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    
+    if (!runResponse.ok) {
+      const errorText = await runResponse.text();
+      throw new Error(`Apify API error: ${runResponse.status} - ${errorText}`);
+    }
+    
+    const runData = await runResponse.json();
+    const runId = runData.data.id;
+    
+    console.log(`🏃 Waiting for run ${runId} to complete...`);
+    
+    // Wait for completion
+    const completedRun = await waitForRunCompletion(runId, APIFY_TOKEN);
+    
+    // Get dataset items
+    const datasetId = completedRun.defaultDatasetId;
+    const datasetUrl = `https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_TOKEN}&format=json`;
+    
+    const datasetResponse = await fetch(datasetUrl);
+    if (!datasetResponse.ok) {
+      throw new Error(`Failed to fetch dataset: ${datasetResponse.status}`);
+    }
+    
+    const items = await datasetResponse.json();
+    
+    console.log(`✅ Got ${items.length} items from dataset`);
+    
+    return {
+      items: Array.isArray(items) ? items : [],
+      run: completedRun
+    };
     };
     
     // Use retry logic for Instagram, direct call for others
