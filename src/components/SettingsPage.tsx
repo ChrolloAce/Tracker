@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, Users, TrendingUp, RefreshCw, CheckCircle, Info } from 'lucide-react';
+import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, Users, TrendingUp, RefreshCw, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -628,15 +628,6 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                 </div>
               ) : (
                 <>
-                  {/* Info Banner */}
-                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 flex items-start gap-3">
-                    <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-                    <div className="text-sm text-blue-300">
-                      <p className="font-medium mb-1">Notification Types Explained</p>
-                      <p className="text-blue-300/80">Toggle the switches below to control which notifications you receive. Settings are saved automatically.</p>
-                    </div>
-                  </div>
-
                   {/* Email Notifications */}
                   <div className="bg-black/40 rounded-xl border border-white/10 p-6">
                     <div className="flex items-center gap-3 mb-6">
@@ -653,21 +644,18 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                         return (
                           <div 
                             key={key} 
-                            className="flex items-center justify-between py-4 px-4 rounded-lg hover:bg-white/5 transition-colors group"
+                            className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-white/5 transition-colors border-b border-white/5 last:border-0"
                           >
-                            <div className="flex items-start gap-3 flex-1">
-                              <span className="text-2xl mt-0.5">{info.icon}</span>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <p className="font-medium text-gray-900 dark:text-white">{info.label}</p>
-                                  <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-white/10 text-gray-400">
-                                    {info.category}
-                                  </span>
-                                </div>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                  {info.description}
-                                </p>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-white text-sm">{info.label}</p>
+                                <span className="px-2 py-0.5 text-xs font-medium rounded bg-white/5 text-gray-500">
+                                  {info.category}
+                                </span>
                               </div>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {info.description}
+                              </p>
                             </div>
                             <button
                               onClick={() => toggleEmailNotification(key as keyof typeof notificationPreferences.email)}
@@ -705,21 +693,18 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                         return (
                           <div 
                             key={key} 
-                            className="flex items-center justify-between py-4 px-4 rounded-lg hover:bg-white/5 transition-colors group"
+                            className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-white/5 transition-colors border-b border-white/5 last:border-0"
                           >
-                            <div className="flex items-start gap-3 flex-1">
-                              <span className="text-2xl mt-0.5">{info.icon}</span>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <p className="font-medium text-gray-900 dark:text-white">{info.label}</p>
-                                  <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-white/10 text-gray-400">
-                                    {info.category}
-                                  </span>
-                                </div>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                  {info.description}
-                                </p>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-white text-sm">{info.label}</p>
+                                <span className="px-2 py-0.5 text-xs font-medium rounded bg-white/5 text-gray-500">
+                                  {info.category}
+                                </span>
                               </div>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {info.description}
+                              </p>
                             </div>
                             <button
                               onClick={() => toggleInAppNotification(key as keyof typeof notificationPreferences.inApp)}
