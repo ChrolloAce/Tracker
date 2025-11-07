@@ -531,32 +531,34 @@ export default async function handler(
               isVerified: owner.is_verified || false
           };
 
-          // Download and upload Instagram profile pic to Firebase Storage
-            const profilePicUrl = owner.profile_pic_url_hd || owner.profile_pic_url;
-            if (profilePicUrl) {
+          // Download and upload Instagram profile pic to Firebase Storage (same as TikTok)
+          const profilePicUrl = owner.profile_pic_url_hd || owner.profile_pic_url;
+          console.log(`🔍 Profile pic URL found: ${profilePicUrl ? profilePicUrl.substring(0, 100) + '...' : 'NONE'}`);
+          
+          if (profilePicUrl) {
             try {
               console.log(`📸 Downloading Instagram profile pic (HD) for @${account.username}...`);
+              console.log(`🌐 Full URL: ${profilePicUrl}`);
               const uploadedProfilePic = await downloadAndUploadImage(
                 profilePicUrl,
                 orgId,
                 `instagram_profile_${account.username}.jpg`,
                 'profile'
               );
-              
-              if (uploadedProfilePic && uploadedProfilePic.includes('storage.googleapis.com')) {
-                profileUpdates.profilePicture = uploadedProfilePic;
-                console.log(`✅ Instagram profile picture uploaded to Firebase Storage`);
-              } else {
-                // Fallback to direct Instagram URL if Firebase upload fails
-                profileUpdates.profilePicture = profilePicUrl;
-                console.warn(`⚠️ Using direct Instagram URL as fallback for @${account.username}`);
-              }
-            } catch (uploadError) {
+              profileUpdates.profilePicture = uploadedProfilePic;
+              console.log(`✅ Instagram profile picture uploaded to Firebase Storage: ${uploadedProfilePic}`);
+            } catch (uploadError: any) {
               console.error(`❌ Error uploading Instagram profile picture:`, uploadError);
-              // Fallback to direct Instagram URL
-              profileUpdates.profilePicture = profilePicUrl;
-              console.warn(`⚠️ Using direct Instagram URL as fallback for @${account.username}`);
+              console.error(`❌ Error details:`, {
+                message: uploadError.message,
+                stack: uploadError.stack?.split('\n').slice(0, 3),
+                profilePicUrl: profilePicUrl.substring(0, 100)
+              });
+              // Don't set profile pic if upload fails - Instagram URLs expire quickly
+              console.warn(`⚠️ Skipping profile picture for @${account.username} - will retry on next sync`);
             }
+          } else {
+            console.warn(`⚠️ No profile pic URL found in owner data for @${account.username}`);
           }
 
           await accountRef.update(profileUpdates);
