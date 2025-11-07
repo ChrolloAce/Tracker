@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { X, Eye, Heart, MessageCircle, Share2, Activity, Video, Users, MousePointerClick, ChevronLeft, ChevronRight, Play, TrendingUp, Upload } from 'lucide-react';
+import { X, Eye, Heart, MessageCircle, Share2, Activity, Video, Users, MousePointerClick, Play, TrendingUp, Upload } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { TimeInterval } from '../services/DataAggregationService';
 import { LinkClick } from '../services/LinkClicksService';
@@ -277,22 +277,6 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
     };
   }, [ppVideos, accountFilter, ppLinkClicks, dayOfWeek, hourRange]);
 
-  // Generate button text with actual dates for clarity
-  const getToggleButtonText = () => {
-    if (!ppInterval) return { show: 'Show Previous Period', showing: 'Show Current Period' };
-    
-    // Show the actual date/period being compared to for clarity
-    const ppLabel = formatIntervalRange(ppInterval);
-    const cpLabel = interval ? formatIntervalRange(interval) : '';
-    
-    return { 
-      show: `Show Previous Period (${ppLabel})`, 
-      showing: `Show Current Period (${cpLabel})` 
-    };
-  };
-
-  const buttonText = getToggleButtonText();
-
   // Calculate New Uploads (most recent videos in the period)
   const newUploads = useMemo(() => {
     return [...filteredVideos]
@@ -341,245 +325,86 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
       onClick={onClose}
     >
       <div 
-        className="bg-zinc-900/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-[1400px] max-h-[85vh] overflow-hidden border border-white/10 ring-1 ring-white/5"
+        className="bg-[#0a0a0a] rounded-xl shadow-2xl w-full max-w-7xl max-h-[90vh] overflow-hidden border border-white/[0.06]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/5">
-          <div>
-            <h2 className="text-2xl font-bold text-white">
+        {/* Minimal Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-semibold text-white">
               {(() => {
                 // If filtering by day of week and hour, show special format
                 if (dayOfWeek !== undefined && hourRange) {
                   const dayName = getDayName(dayOfWeek);
                   const timeRange = formatHourRange(hourRange.start, hourRange.end);
-                  return `Every video posted ${dayName} ${timeRange} - ${dateRangeLabel || 'All Time'}`;
+                  return `${dayName} ${timeRange}`;
                 }
                 
                 const currentInterval = showPreviousPeriod ? ppInterval : interval;
                 // Priority: interval > dateRangeLabel > fallback to formatted date
                 if (currentInterval) {
                   return accountFilter 
-                    ? `@${accountFilter} ${formatIntervalRange(currentInterval)}`
+                    ? `@${accountFilter} · ${formatIntervalRange(currentInterval)}`
                     : formatIntervalRange(currentInterval);
                 }
                 if (dateRangeLabel && accountFilter) {
-                  return `@${accountFilter} ${dateRangeLabel} Stats`;
+                  return `@${accountFilter} · ${dateRangeLabel}`;
                 }
                 return dateRangeLabel || formatDate(date);
               })()}
             </h2>
-            <p className={`text-sm mt-1 font-medium ${showPreviousPeriod ? 'text-red-400' : 'text-emerald-400'}`}>
-              {showPreviousPeriod 
-                ? 'Viewing data from a past period' 
-                : 'Viewing data from current period'
-              }
-            </p>
+            <span className={`text-xs px-2 py-0.5 rounded-full ${showPreviousPeriod ? 'bg-white/5 text-gray-400' : 'bg-white/5 text-gray-400'}`}>
+              {showPreviousPeriod ? 'Previous Period' : 'Current Period'}
+            </span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {/* Previous Period Toggle */}
             {hasPPData && (
               <button
                 onClick={() => setShowPreviousPeriod(!showPreviousPeriod)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex items-center gap-2 ${
-                  showPreviousPeriod
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25'
-                    : 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/25'
-                }`}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all bg-white/5 text-gray-300 hover:bg-white/10 border border-white/[0.06]"
               >
                 {showPreviousPeriod ? (
-                  <>
-                    <ChevronRight className="w-4 h-4" />
-                    {buttonText.showing}
-                  </>
+                  <>Previous Period</>
                 ) : (
-                  <>
-                    <ChevronLeft className="w-4 h-4" />
-                    {buttonText.show}
-                  </>
+                  <>Compare Period</>
                 )}
               </button>
             )}
             <button
               onClick={onClose}
-              className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+              className="p-1.5 hover:bg-white/5 rounded-lg transition-colors"
             >
-              <X className="w-5 h-5 text-gray-400 hover:text-white transition-colors" />
+              <X className="w-4 h-4 text-gray-400" />
             </button>
           </div>
         </div>
 
-        {/* Main Content - 3 Column Layout */}
-        <div className="flex gap-3 p-6 overflow-hidden" style={{ height: 'calc(85vh - 100px)' }}>
-          {/* Column 1: New Uploads */}
-          <div className="w-64 flex-shrink-0 flex flex-col">
-            <h3 className="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2">
-              <Upload className="w-3.5 h-3.5" />
-              New Uploads ({newUploads.length})
-            </h3>
-            <div className="overflow-auto space-y-2 flex-1">
-              {newUploads.length > 0 ? (
-                newUploads.map((video, idx) => (
-                  <div 
-                    key={`new-${video.id}-${idx}`}
-                    onClick={() => onVideoClick?.(video)}
-                    className="bg-[#1a1a1a] rounded-lg p-2.5 border border-white/10 hover:bg-white/5 cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      {/* Thumbnail */}
-                      <div className="flex-shrink-0 w-14 h-14 rounded-md overflow-hidden bg-gray-800">
-                        {video.thumbnail ? (
-                          <img 
-                            src={video.thumbnail} 
-                            alt={video.title || video.caption || 'Video'} 
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Play className="w-5 h-5 text-gray-600" />
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Metadata */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-white font-medium leading-tight mb-1 line-clamp-2">
-                          {((video.title || video.caption || '(No caption)').length > 40 
-                            ? (video.title || video.caption || '(No caption)').substring(0, 40) + '...'
-                            : (video.title || video.caption || '(No caption)'))}
-                        </p>
-                        <div className="flex items-center gap-1 mb-0.5">
-                          <div className="w-3 h-3">
-                            <PlatformIcon platform={video.platform} size="sm" />
-                          </div>
-                          <span className="text-[10px] text-gray-400">
-                            {video.uploaderHandle || video.platform}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-gray-500">
-                          {formatNumber(video.views || 0)} views
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center py-8">
-                  <Upload className="w-10 h-10 text-gray-600 mb-2" />
-                  <p className="text-xs text-gray-500">No new uploads</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Column 2: Top Gainers */}
-          <div className="w-64 flex-shrink-0 flex flex-col border-l border-white/5 pl-3">
-            <h3 className="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2">
-              <TrendingUp className="w-3.5 h-3.5" />
-              Top Gainers ({topGainers.length})
-                </h3>
-            <div className="overflow-auto space-y-2 flex-1">
-              {topGainers.length > 0 ? (
-                topGainers.map((item: any, idx: number) => (
-                  <div 
-                    key={`gainer-${item.video.id}-${idx}`}
-                    onClick={() => onVideoClick?.(item.video)}
-                    className="bg-[#1a1a1a] rounded-lg p-2.5 border border-white/10 hover:bg-white/5 cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      {/* Thumbnail */}
-                      <div className="flex-shrink-0 w-14 h-14 rounded-md overflow-hidden bg-gray-800 relative">
-                        {item.video.thumbnail ? (
-                          <img 
-                            src={item.video.thumbnail} 
-                            alt={item.video.title || item.video.caption || 'Video'} 
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Play className="w-5 h-5 text-gray-600" />
-                          </div>
-                        )}
-                        {/* Growth badge */}
-                        <div className="absolute top-0.5 right-0.5 bg-emerald-500/90 backdrop-blur-sm rounded px-1 py-0.5">
-                          <span className="text-[9px] font-bold text-white">
-                            +{item.growth.toFixed(0)}%
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {/* Metadata */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-white font-medium leading-tight mb-1 line-clamp-2">
-                          {((item.video.title || item.video.caption || '(No caption)').length > 40 
-                            ? (item.video.title || item.video.caption || '(No caption)').substring(0, 40) + '...'
-                            : (item.video.title || item.video.caption || '(No caption)'))}
-                        </p>
-                        <div className="flex items-center gap-1 mb-0.5">
-                          <div className="w-3 h-3">
-                            <PlatformIcon platform={item.video.platform} size="sm" />
-                          </div>
-                          <span className="text-[10px] text-gray-400">
-                            {item.snapshotCount} snapshots
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-[10px] font-semibold text-emerald-400">
-                            +{formatNumber(item.viewsGained)}
-                          </p>
-                          <span className="text-[10px] text-gray-500">→</span>
-                          <p className="text-[10px] text-gray-300">
-                            {formatNumber(item.currentViews)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center py-8">
-                  <TrendingUp className="w-10 h-10 text-gray-600 mb-2" />
-                  <p className="text-xs text-gray-500">No growth data</p>
-                  <p className="text-[10px] text-gray-600 mt-1">Videos need snapshots</p>
-              </div>
-            )}
-            </div>
-          </div>
-
-          {/* Column 4: KPI Metrics Grid - More Compact */}
-          <div className="flex-1 flex flex-col border-l border-white/5 pl-3">
-            <h3 className="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider">All Metrics</h3>
-            <div className="grid grid-cols-2 gap-2.5 overflow-auto content-start" style={{ height: 'calc(85vh - 150px)' }}>
+        {/* Main Content - Reorganized Layout */}
+        <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 65px)' }}>
+          {/* Metrics Grid - Primary Focus */}
+          <div className="grid grid-cols-4 gap-3 mb-6">
             {/* Views */}
-            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10 min-h-[90px] flex flex-col justify-between">
-              {/* Icon and label */}
-              <div className="flex items-center gap-1.5">
-                <Eye className="w-3.5 h-3.5 text-white/60" />
-                <p className="text-[10px] text-gray-400 font-medium">Views</p>
+            <div className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-500 font-medium">Views</span>
+                <Eye className="w-3.5 h-3.5 text-gray-600" />
               </div>
-              
-              {/* Value with percentage */}
-              <div className="flex items-baseline gap-1.5 mt-1.5">
-                <p className="text-xl font-bold text-white">
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-semibold text-white">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.views : cpKPIMetrics.views)}
-                </p>
+                </span>
                 {hasPPData && (() => {
                   const comp = showPreviousPeriod 
                     ? calculateComparison(ppKPIMetrics.views, cpKPIMetrics.views)
                     : calculateComparison(cpKPIMetrics.views, ppKPIMetrics.views);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-[9px] font-semibold ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
+                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {comp.isPositive ? '+' : '-'}{comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;
                 })()}
@@ -587,22 +412,22 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             </div>
 
             {/* Likes */}
-            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10 min-h-[90px] flex flex-col justify-between">
-              <div className="flex items-center gap-1.5">
-                <Heart className="w-3.5 h-3.5 text-white/60" />
-                <p className="text-[10px] text-gray-400 font-medium">Likes</p>
+            <div className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-500 font-medium">Likes</span>
+                <Heart className="w-3.5 h-3.5 text-gray-600" />
               </div>
-              <div className="flex items-baseline gap-1.5 mt-1.5">
-                <p className="text-xl font-bold text-white">
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-semibold text-white">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.likes : cpKPIMetrics.likes)}
-                </p>
+                </span>
                 {hasPPData && (() => {
                   const comp = showPreviousPeriod 
                     ? calculateComparison(ppKPIMetrics.likes, cpKPIMetrics.likes)
                     : calculateComparison(cpKPIMetrics.likes, ppKPIMetrics.likes);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-[9px] font-semibold ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
+                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {comp.isPositive ? '+' : '-'}{comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;
                 })()}
@@ -610,22 +435,22 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             </div>
 
             {/* Comments */}
-            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10 min-h-[90px] flex flex-col justify-between">
-              <div className="flex items-center gap-1.5">
-                <MessageCircle className="w-3.5 h-3.5 text-white/60" />
-                <p className="text-[10px] text-gray-400 font-medium">Comments</p>
+            <div className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-500 font-medium">Comments</span>
+                <MessageCircle className="w-3.5 h-3.5 text-gray-600" />
               </div>
-              <div className="flex items-baseline gap-1.5 mt-1.5">
-                <p className="text-xl font-bold text-white">
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-semibold text-white">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.comments : cpKPIMetrics.comments)}
-                </p>
+                </span>
                 {hasPPData && (() => {
                   const comp = showPreviousPeriod 
                     ? calculateComparison(ppKPIMetrics.comments, cpKPIMetrics.comments)
                     : calculateComparison(cpKPIMetrics.comments, ppKPIMetrics.comments);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-[9px] font-semibold ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
+                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {comp.isPositive ? '+' : '-'}{comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;
                 })()}
@@ -633,22 +458,22 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             </div>
 
             {/* Shares */}
-            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10 min-h-[90px] flex flex-col justify-between">
-              <div className="flex items-center gap-1.5">
-                <Share2 className="w-3.5 h-3.5 text-white/60" />
-                <p className="text-[10px] text-gray-400 font-medium">Shares</p>
+            <div className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-500 font-medium">Shares</span>
+                <Share2 className="w-3.5 h-3.5 text-gray-600" />
               </div>
-              <div className="flex items-baseline gap-1.5 mt-1.5">
-                <p className="text-xl font-bold text-white">
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-semibold text-white">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.shares : cpKPIMetrics.shares)}
-                </p>
+                </span>
                 {hasPPData && (() => {
                   const comp = showPreviousPeriod 
                     ? calculateComparison(ppKPIMetrics.shares, cpKPIMetrics.shares)
                     : calculateComparison(cpKPIMetrics.shares, ppKPIMetrics.shares);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-[9px] font-semibold ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
+                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {comp.isPositive ? '+' : '-'}{comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;
                 })()}
@@ -656,22 +481,22 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             </div>
 
             {/* Engagement Rate */}
-            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10 min-h-[90px] flex flex-col justify-between">
-              <div className="flex items-center gap-1.5">
-                <Activity className="w-3.5 h-3.5 text-white/60" />
-                <p className="text-[10px] text-gray-400 font-medium">Engagement</p>
+            <div className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-500 font-medium">Engagement</span>
+                <Activity className="w-3.5 h-3.5 text-gray-600" />
               </div>
-              <div className="flex items-baseline gap-1.5 mt-1.5">
-                <p className="text-xl font-bold text-white">
-                  {(showPreviousPeriod ? ppKPIMetrics.engagementRate : cpKPIMetrics.engagementRate).toFixed(2)}%
-                </p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-semibold text-white">
+                  {(showPreviousPeriod ? ppKPIMetrics.engagementRate : cpKPIMetrics.engagementRate).toFixed(1)}%
+                </span>
                 {hasPPData && (() => {
                   const comp = showPreviousPeriod 
                     ? calculateComparison(ppKPIMetrics.engagementRate, cpKPIMetrics.engagementRate)
                     : calculateComparison(cpKPIMetrics.engagementRate, ppKPIMetrics.engagementRate);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-[9px] font-semibold ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
+                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {comp.isPositive ? '+' : '-'}{comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;
                 })()}
@@ -679,22 +504,22 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             </div>
 
             {/* Videos */}
-            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10 min-h-[90px] flex flex-col justify-between">
-              <div className="flex items-center gap-1.5">
-                <Video className="w-3.5 h-3.5 text-white/60" />
-                <p className="text-[10px] text-gray-400 font-medium">Videos</p>
+            <div className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-500 font-medium">Videos</span>
+                <Video className="w-3.5 h-3.5 text-gray-600" />
               </div>
-              <div className="flex items-baseline gap-1.5 mt-1.5">
-                <p className="text-xl font-bold text-white">
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-semibold text-white">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.videos : cpKPIMetrics.videos)}
-                </p>
+                </span>
                 {hasPPData && (() => {
                   const comp = showPreviousPeriod 
                     ? calculateComparison(ppKPIMetrics.videos, cpKPIMetrics.videos)
-                    : calculateComparison(cpKPIMetrics.videos, cpKPIMetrics.videos);
+                    : calculateComparison(cpKPIMetrics.videos, ppKPIMetrics.videos);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-[9px] font-semibold ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
+                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {comp.isPositive ? '+' : '-'}{comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;
                 })()}
@@ -702,22 +527,22 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             </div>
 
             {/* Accounts */}
-            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10 min-h-[90px] flex flex-col justify-between">
-              <div className="flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5 text-white/60" />
-                <p className="text-[10px] text-gray-400 font-medium">Accounts</p>
+            <div className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-500 font-medium">Accounts</span>
+                <Users className="w-3.5 h-3.5 text-gray-600" />
               </div>
-              <div className="flex items-baseline gap-1.5 mt-1.5">
-                <p className="text-xl font-bold text-white">
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-semibold text-white">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.accounts : cpKPIMetrics.accounts)}
-                </p>
+                </span>
                 {hasPPData && (() => {
                   const comp = showPreviousPeriod 
                     ? calculateComparison(ppKPIMetrics.accounts, cpKPIMetrics.accounts)
-                    : calculateComparison(ppKPIMetrics.accounts, cpKPIMetrics.accounts);
+                    : calculateComparison(cpKPIMetrics.accounts, ppKPIMetrics.accounts);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-[9px] font-semibold ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
+                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {comp.isPositive ? '+' : '-'}{comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;
                 })()}
@@ -725,28 +550,166 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             </div>
 
             {/* Link Clicks */}
-            <div className="bg-[#1a1a1a] rounded-lg p-3 border border-white/10 min-h-[90px] flex flex-col justify-between">
-              <div className="flex items-center gap-1.5">
-                <MousePointerClick className="w-3.5 h-3.5 text-white/60" />
-                <p className="text-[10px] text-gray-400 font-medium">Clicks</p>
+            <div className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-500 font-medium">Clicks</span>
+                <MousePointerClick className="w-3.5 h-3.5 text-gray-600" />
               </div>
-              <div className="flex items-baseline gap-1.5 mt-1.5">
-                <p className="text-xl font-bold text-white">
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-semibold text-white">
                   {formatNumber(showPreviousPeriod ? ppKPIMetrics.clicks : cpKPIMetrics.clicks)}
-                </p>
+                </span>
                 {hasPPData && (() => {
                   const comp = showPreviousPeriod 
                     ? calculateComparison(ppKPIMetrics.clicks, cpKPIMetrics.clicks)
                     : calculateComparison(cpKPIMetrics.clicks, ppKPIMetrics.clicks);
                   return comp.percentChange > 0 ? (
-                    <span className={`text-[9px] font-semibold ${comp.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {comp.isPositive ? '↑' : '↓'} {comp.percentChange.toFixed(0)}%
+                    <span className={`text-[10px] font-medium ${comp.isPositive ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {comp.isPositive ? '+' : '-'}{comp.percentChange.toFixed(0)}%
                     </span>
                   ) : null;
                 })()}
               </div>
             </div>
           </div>
+
+          {/* Secondary Content - New Uploads & Top Gainers */}
+          <div className="grid grid-cols-2 gap-6">
+            {/* New Uploads */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 px-1">
+                <Upload className="w-3.5 h-3.5 text-gray-500" />
+                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  New Uploads · {newUploads.length}
+                </h3>
+              </div>
+              <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
+                {newUploads.length > 0 ? (
+                  newUploads.map((video, idx) => (
+                    <div 
+                      key={`new-${video.id}-${idx}`}
+                      onClick={() => onVideoClick?.(video)}
+                      className="bg-white/[0.02] rounded-lg p-3 border border-white/[0.04] hover:bg-white/[0.04] cursor-pointer transition-colors group"
+                    >
+                      <div className="flex gap-3">
+                        {/* Thumbnail */}
+                        <div className="flex-shrink-0 w-16 h-16 rounded overflow-hidden bg-white/[0.02]">
+                          {video.thumbnail ? (
+                            <img 
+                              src={video.thumbnail} 
+                              alt={video.title || video.caption || 'Video'} 
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Play className="w-5 h-5 text-gray-700" />
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-white font-medium mb-1 line-clamp-2 group-hover:text-gray-200 transition-colors">
+                            {video.title || video.caption || '(No caption)'}
+                          </p>
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <div className="w-3 h-3">
+                              <PlatformIcon platform={video.platform} size="sm" />
+                            </div>
+                            <span>{video.uploaderHandle || video.platform}</span>
+                            <span>·</span>
+                            <span>{formatNumber(video.views || 0)} views</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="w-12 h-12 rounded-full bg-white/[0.02] flex items-center justify-center mb-3">
+                      <Upload className="w-5 h-5 text-gray-600" />
+                    </div>
+                    <p className="text-sm text-gray-500">No new uploads</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Top Gainers */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 px-1">
+                <TrendingUp className="w-3.5 h-3.5 text-gray-500" />
+                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Top Gainers · {topGainers.length}
+                </h3>
+              </div>
+              <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
+                {topGainers.length > 0 ? (
+                  topGainers.map((item: any, idx: number) => (
+                    <div 
+                      key={`gainer-${item.video.id}-${idx}`}
+                      onClick={() => onVideoClick?.(item.video)}
+                      className="bg-white/[0.02] rounded-lg p-3 border border-white/[0.04] hover:bg-white/[0.04] cursor-pointer transition-colors group"
+                    >
+                      <div className="flex gap-3">
+                        {/* Thumbnail with Badge */}
+                        <div className="flex-shrink-0 w-16 h-16 rounded overflow-hidden bg-white/[0.02] relative">
+                          {item.video.thumbnail ? (
+                            <img 
+                              src={item.video.thumbnail} 
+                              alt={item.video.title || item.video.caption || 'Video'} 
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Play className="w-5 h-5 text-gray-700" />
+                            </div>
+                          )}
+                          {/* Growth Badge */}
+                          <div className="absolute top-1 right-1 bg-white/90 backdrop-blur-sm rounded px-1.5 py-0.5">
+                            <span className="text-[9px] font-bold text-black">
+                              +{item.growth.toFixed(0)}%
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-white font-medium mb-1 line-clamp-2 group-hover:text-gray-200 transition-colors">
+                            {item.video.title || item.video.caption || '(No caption)'}
+                          </p>
+                          <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+                            <div className="w-3 h-3">
+                              <PlatformIcon platform={item.video.platform} size="sm" />
+                            </div>
+                            <span>{item.snapshotCount} snapshots</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <span className="text-gray-400 font-medium">+{formatNumber(item.viewsGained)}</span>
+                            <span className="text-gray-600">→</span>
+                            <span className="text-gray-400">{formatNumber(item.currentViews)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="w-12 h-12 rounded-full bg-white/[0.02] flex items-center justify-center mb-3">
+                      <TrendingUp className="w-5 h-5 text-gray-600" />
+                    </div>
+                    <p className="text-sm text-gray-500">No growth data</p>
+                    <p className="text-xs text-gray-600 mt-1">Videos need snapshots</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -755,4 +718,3 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
 };
 
 export default DayVideosModal;
-
