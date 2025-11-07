@@ -606,12 +606,16 @@ async function fetchVideosFromPlatform(
       maxReels: maxVideos,
       proxyConfiguration: {
         useApifyProxy: true,
-        apifyProxyGroups: ['RESIDENTIAL'],
+        apifyProxyGroups: ['RESIDENTIAL', 'BUYPROXIES94952'],
         apifyProxyCountry: 'US'
       },
-      maxRequestRetries: 3,
-      requestHandlerTimeoutSecs: 120,
-      maxConcurrency: 1
+      maxRequestRetries: 5, // Increased retries for Instagram
+      requestHandlerTimeoutSecs: 180, // Longer timeout
+      maxConcurrency: 1,
+      // Additional Instagram-specific settings
+      sessionPoolName: 'INSTAGRAM_SESSION',
+      maxSessionRotations: 10,
+      maxSessionsPerCrawl: 5
     };
   } else if (platform === 'tiktok') {
     actorId = 'clockworks~tiktok-scraper';
@@ -802,24 +806,47 @@ async function refreshInstagramVideosSequential(
   console.log(`    🔄 [INSTAGRAM] Sequential refresh of ${videoDocs.length} videos...`);
   
   let updatedCount = 0;
+  let failedCount = 0;
 
-  for (const videoDoc of videoDocs) {
+  for (let i = 0; i < videoDocs.length; i++) {
+    const videoDoc = videoDocs[i];
     const videoData = videoDoc.data();
     const videoUrl = videoData.url || videoData.videoUrl;
     
-    if (!videoUrl) continue;
+    if (!videoUrl) {
+      console.log(`    ⚠️ [INSTAGRAM] Skipping video ${i + 1}/${videoDocs.length} - no URL`);
+      continue;
+    }
 
     try {
+      // Add delay between requests to avoid rate limiting (2-4 seconds)
+      if (i > 0) {
+        const delay = 2000 + Math.random() * 2000; // Random delay 2-4s
+        console.log(`    ⏳ [INSTAGRAM] Waiting ${Math.round(delay)}ms before next request...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+
+      console.log(`    📥 [INSTAGRAM] Fetching ${i + 1}/${videoDocs.length}: ${videoData.videoId}`);
+
       const result = await runApifyActor({
         actorId: 'apify/instagram-reel-scraper',
         input: {
           directUrls: [videoUrl],
-          resultsLimit: 1
+          resultsLimit: 1,
+          proxyConfiguration: {
+            useApifyProxy: true,
+            apifyProxyGroups: ['RESIDENTIAL', 'BUYPROXIES94952'],
+            apifyProxyCountry: 'US'
+          }
         }
       });
 
       const videos = result.items || [];
-      if (videos.length === 0) continue;
+      if (videos.length === 0) {
+        console.log(`    ⚠️ [INSTAGRAM] No data returned for ${videoData.videoId}`);
+        failedCount++;
+        continue;
+      }
 
       const video = videos[0];
       
@@ -831,13 +858,20 @@ async function refreshInstagramVideosSequential(
       });
 
       updatedCount++;
-      console.log(`    ✓ [INSTAGRAM] Refreshed: ${videoData.videoId}`);
-    } catch (error) {
-      console.error(`    ⚠️ [INSTAGRAM] Failed to refresh ${videoData.videoId}:`, error);
+      console.log(`    ✓ [INSTAGRAM] Refreshed ${i + 1}/${videoDocs.length}: ${videoData.videoId} (${video.videoViewCount || 0} views)`);
+    } catch (error: any) {
+      failedCount++;
+      const errorMsg = error.message || String(error);
+      console.error(`    ❌ [INSTAGRAM] Failed ${i + 1}/${videoDocs.length}: ${videoData.videoId} - ${errorMsg.substring(0, 150)}`);
+      
+      // Continue with next video instead of failing entire batch
+      // Instagram errors are often temporary
+      continue;
     }
   }
 
-  console.log(`    ✅ [INSTAGRAM] Sequential refresh complete: ${updatedCount}/${videoDocs.length} videos updated`);
+  const successRate = videoDocs.length > 0 ? Math.round((updatedCount / videoDocs.length) * 100) : 0;
+  console.log(`    ✅ [INSTAGRAM] Complete: ${updatedCount} updated, ${failedCount} failed (${successRate}% success rate)`);
   return updatedCount;
 }
 
