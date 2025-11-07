@@ -100,7 +100,7 @@ const CompensationBuilder: React.FC<CompensationBuilderProps> = ({ value, onChan
       case 'total_views_target':
         return rule.targetAmount && assumedViews >= (rule.targetViews || 0) ? `$${rule.targetAmount}` : '$0';
       case 'bonus_tier':
-        return rule.tierAmount || '$0';
+        return rule.tierAmount ? `$${rule.tierAmount}` : '$0';
       case 'engagement_bonus':
         return rule.engagementBonusAmount ? `$${rule.engagementBonusAmount}` : '$0';
       case 'milestone_bonus':
@@ -128,11 +128,10 @@ const CompensationBuilder: React.FC<CompensationBuilderProps> = ({ value, onChan
             <p className="text-white/30 text-xs mt-1">Click "Add Payment Rule" to get started</p>
           </div>
         ) : (
-          value.rules.map((rule, index) => (
+          value.rules.map((rule) => (
             <RuleCard
               key={rule.id}
               rule={rule}
-              index={index}
               ruleTypeInfo={ruleTypeInfo[rule.type]}
               onUpdate={(updates) => updateRule(rule.id, updates)}
               onRemove={() => removeRule(rule.id)}
@@ -200,7 +199,6 @@ const CompensationBuilder: React.FC<CompensationBuilderProps> = ({ value, onChan
 
 interface RuleCardProps {
   rule: CompensationRule;
-  index: number;
   ruleTypeInfo: { icon: React.ReactNode; label: string; description: string };
   onUpdate: (updates: Partial<CompensationRule>) => void;
   onRemove: () => void;
@@ -210,7 +208,6 @@ interface RuleCardProps {
 
 const RuleCard: React.FC<RuleCardProps> = ({ 
   rule, 
-  index, 
   ruleTypeInfo, 
   onUpdate, 
   onRemove,
