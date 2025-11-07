@@ -287,20 +287,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
  */
 function transformVideoData(rawData: any, platform: string): VideoData {
   if (platform === 'tiktok') {
-    // TikTok uses authorMeta structure
+    // TikTok uses apidojo/tiktok-scraper format (channel + video objects)
+    const channel = rawData.channel || {};
+    const video = rawData.video || {};
+    
+    // ROBUST THUMBNAIL EXTRACTION (strongest → weakest fallback)
+    let thumbnailUrl = '';
+    if (video.cover) {
+      thumbnailUrl = video.cover;
+    } else if (video.thumbnail) {
+      thumbnailUrl = video.thumbnail;
+    } else if (rawData.images && Array.isArray(rawData.images) && rawData.images.length > 0) {
+      // Photo Mode post - use first image
+      thumbnailUrl = rawData.images[0].url || '';
+    }
+    
     return {
-      id: rawData.id || rawData.videoId || '',
-      thumbnail_url: rawData.videoMeta?.coverUrl || rawData.covers?.default || '',
-      caption: rawData.text || '',
-      username: rawData['authorMeta.name'] || rawData.authorMeta?.name || '',
-      like_count: rawData.diggCount || rawData['videoMeta.diggCount'] || 0,
-      comment_count: rawData.commentCount || rawData['videoMeta.commentCount'] || 0,
-      view_count: rawData.playCount || rawData['videoMeta.playCount'] || 0,
-      share_count: rawData.shareCount || rawData['videoMeta.shareCount'] || 0,
-      timestamp: rawData.createTime || rawData.createTimeISO || new Date().toISOString(),
-      profile_pic_url: rawData['authorMeta.avatar'] || rawData.authorMeta?.avatar || '',
-      display_name: rawData['authorMeta.nickName'] || rawData.authorMeta?.nickName || '',
-      follower_count: rawData['authorMeta.fans'] || rawData.authorMeta?.fans || 0
+      id: rawData.id || rawData.post_id || '',
+      thumbnail_url: thumbnailUrl,
+      caption: rawData.title || rawData.subtitle || rawData.caption || '',
+      username: channel.username || '',
+      like_count: rawData.likes || 0,
+      comment_count: rawData.comments || 0,
+      view_count: rawData.views || 0,
+      share_count: rawData.shares || 0,
+      timestamp: rawData.uploadedAt || rawData.uploaded_at || Math.floor(Date.now() / 1000),
+      profile_pic_url: channel.avatar || channel.avatar_url || '',
+      display_name: channel.name || channel.username || '',
+      follower_count: channel.followers || 0
     };
   } else if (platform === 'instagram') {
     // Instagram - Handle hpix~ig-reels-scraper format - owner data is inside raw_data
@@ -442,10 +456,18 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
     let input: any;
 
     if (platform === 'tiktok') {
-      actorId = 'clockworks~tiktok-scraper';
+      actorId = 'apidojo/tiktok-scraper';
       input = {
         postURLs: [url],
-        resultsPerPage: 1
+        resultsPerPage: 1,
+        shouldDownloadVideos: false,
+        shouldDownloadCovers: false,
+        shouldDownloadSubtitles: false,
+        shouldDownloadSlideshowImages: false,
+        proxy: {
+          useApifyProxy: true,
+          apifyProxyGroups: ['RESIDENTIAL']
+        }
       };
     } else if (platform === 'instagram') {
       // Use hpix~ig-reels-scraper for individual Instagram posts/reels

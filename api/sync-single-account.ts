@@ -199,14 +199,19 @@ export default async function handler(
       console.log(`🎵 Fetching TikTok videos for ${account.username}...`);
       
       try {
-        // Call Apify directly (no HTTP proxy)
+        // Call Apify directly (no HTTP proxy) - using apidojo/tiktok-scraper
         const data = await runApifyActor({
-          actorId: 'clockworks~tiktok-scraper',
+          actorId: 'apidojo/tiktok-scraper',
           input: {
-            profiles: [account.username],
+            profiles: [`@${account.username.replace('@', '')}`], // Ensure @ prefix
             resultsPerPage: maxVideos, // Use user's preference
+            shouldDownloadVideos: false,
+            shouldDownloadCovers: false,
+            shouldDownloadSubtitles: false,
+            shouldDownloadSlideshowImages: false,
             proxy: {
-              useApifyProxy: true
+              useApifyProxy: true,
+              apifyProxyGroups: ['RESIDENTIAL']
             }
           }
         });
@@ -217,9 +222,10 @@ export default async function handler(
         // Get profile data from first video (if available)
         if (tiktokVideos.length > 0 && tiktokVideos[0]) {
           const firstVideo = tiktokVideos[0];
-          const profilePictureUrl = firstVideo['authorMeta.avatar'] || firstVideo.authorMeta?.avatar || '';
-          const followerCount = firstVideo['authorMeta.fans'] || firstVideo.authorMeta?.fans || 0;
-          const displayName = firstVideo['authorMeta.nickName'] || firstVideo.authorMeta?.nickName || firstVideo['authorMeta.name'] || firstVideo.authorMeta?.name || account.username;
+          const channel = firstVideo.channel || {};
+          const profilePictureUrl = channel.avatar || channel.avatar_url || '';
+          const followerCount = channel.followers || 0;
+          const displayName = channel.name || account.username;
           
           // Update account profile if we have new data
           if (profilePictureUrl || followerCount > 0) {
@@ -227,7 +233,7 @@ export default async function handler(
               const profileUpdates: any = {
                 displayName: displayName,
                 followerCount: followerCount,
-                isVerified: firstVideo['authorMeta.verified'] || firstVideo.authorMeta?.verified || false
+                isVerified: channel.verified || false
               };
               
               // Download and upload TikTok profile pic to Firebase Storage
@@ -251,38 +257,38 @@ export default async function handler(
           }
         }
         
-        // Transform TikTok data to video format
+        // Transform TikTok data to video format (apidojo/tiktok-scraper format)
         videos = tiktokVideos.map((item: any, index: number) => {
-          // Handle both flat keys ("authorMeta.name") and nested objects (authorMeta.name)
-          const getField = (flatKey: string, nestedPath: string[]) => {
-            if (item[flatKey]) return item[flatKey];
-            let obj = item;
-            for (const key of nestedPath) {
-              if (obj && obj[key]) obj = obj[key];
-              else return null;
-            }
-            return obj;
-          };
+          const channel = item.channel || {};
+          const video = item.video || {};
+          
+          // Robust thumbnail extraction: video.cover → video.thumbnail → fallback
+          let thumbnail = '';
+          if (video.cover) {
+            thumbnail = video.cover;
+          } else if (video.thumbnail) {
+            thumbnail = video.thumbnail;
+          } else if (item.images && item.images.length > 0) {
+            thumbnail = item.images[0].url || '';
+          }
           
           return {
-            videoId: item.id || `tiktok_${Date.now()}_${index}`,
-            videoTitle: item.text || 'Untitled TikTok',
-            videoUrl: item.videoUrl || item.webVideoUrl || '',
+            videoId: item.id || item.post_id || `tiktok_${Date.now()}_${index}`,
+            videoTitle: item.title || item.caption || item.subtitle || 'Untitled TikTok',
+            videoUrl: video.url || '',
             platform: 'tiktok',
-            thumbnail: getField('videoMeta.coverUrl', ['videoMeta', 'coverUrl']) || item.covers?.default || '',
+            thumbnail: thumbnail,
             accountUsername: account.username,
-            accountDisplayName: getField('authorMeta.nickName', ['authorMeta', 'nickName']) || 
-                               getField('authorMeta.name', ['authorMeta', 'name']) || 
-                               account.username,
-            uploadDate: item.createTime ? Timestamp.fromMillis(item.createTime * 1000) : 
-                       item.createTimeISO ? Timestamp.fromDate(new Date(item.createTimeISO)) : 
+            accountDisplayName: channel.name || account.username,
+            uploadDate: item.uploadedAt ? Timestamp.fromMillis(item.uploadedAt * 1000) : 
+                       item.uploaded_at ? Timestamp.fromMillis(item.uploaded_at * 1000) : 
                        Timestamp.now(),
-            views: item.playCount || item.viewCount || 0,
-            likes: item.diggCount || item.likes || 0,
-            comments: item.commentCount || item.comments || 0,
-            shares: item.shareCount || item.shares || 0,
-            caption: item.text || '',
-            duration: getField('videoMeta.duration', ['videoMeta', 'duration']) || 0
+            views: item.views || 0,
+            likes: item.likes || 0,
+            comments: item.comments || 0,
+            shares: item.shares || 0,
+            caption: item.title || item.subtitle || item.caption || '',
+            duration: video.duration || 0
           };
         });
       } catch (tiktokError) {

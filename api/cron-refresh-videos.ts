@@ -514,7 +514,8 @@ async function refreshAccountVideos(
       // hpix~ig-reels-scraper: verified status is in raw_data.owner.is_verified
       isVerified = firstVideo.raw_data?.owner?.is_verified || false;
     } else if (platform === 'tiktok') {
-      isVerified = firstVideo['authorMeta.verified'] || firstVideo.authorMeta?.verified || false;
+      // apidojo/tiktok-scraper: verified status is in channel.verified
+      isVerified = firstVideo.channel?.verified || false;
     } else if (platform === 'twitter') {
       isVerified = firstVideo.isVerified || false;
       isBlueVerified = firstVideo.isBlueVerified || false;
@@ -617,15 +618,17 @@ async function fetchVideosFromPlatform(
       debugLog: false
     };
   } else if (platform === 'tiktok') {
-    actorId = 'clockworks~tiktok-scraper';
+    actorId = 'apidojo/tiktok-scraper';
     input = {
-      profiles: [username],
+      profiles: [`@${username.replace('@', '')}`], // Ensure @ prefix
       resultsPerPage: maxVideos,
       shouldDownloadVideos: false,
       shouldDownloadCovers: false,
       shouldDownloadSubtitles: false,
+      shouldDownloadSlideshowImages: false,
       proxy: {
-        useApifyProxy: true
+        useApifyProxy: true,
+        apifyProxyGroups: ['RESIDENTIAL']
       }
     };
   } else if (platform === 'twitter') {
@@ -685,8 +688,8 @@ function extractVideoId(video: any, platform: string): string | null {
     // hpix~ig-reels-scraper format
     return video.code || video.id || null;
     } else if (platform === 'tiktok') {
-    const urlMatch = (video.webVideoUrl || '').match(/video\/(\d+)/);
-    return urlMatch ? urlMatch[1] : (video.id || video.videoId || null);
+    // apidojo/tiktok-scraper format: direct id field or extract from tiktok_url
+    return video.id || video.post_id || null;
     } else if (platform === 'twitter') {
     return video.id || null;
   }
@@ -751,14 +754,16 @@ async function refreshTikTokVideosBulk(
   
   try {
     const result = await runApifyActor({
-      actorId: 'clockworks~tiktok-scraper',
+      actorId: 'apidojo/tiktok-scraper',
       input: {
         postURLs: videoUrls,
         shouldDownloadVideos: false,
         shouldDownloadCovers: false,
         shouldDownloadSubtitles: false,
+        shouldDownloadSlideshowImages: false,
         proxy: {
-          useApifyProxy: true
+          useApifyProxy: true,
+          apifyProxyGroups: ['RESIDENTIAL']
         }
       }
     });
@@ -766,7 +771,7 @@ async function refreshTikTokVideosBulk(
     const refreshedVideos = result.items || [];
     let updatedCount = 0;
 
-    // Update each video with fresh metrics
+    // Update each video with fresh metrics (apidojo/tiktok-scraper format)
     for (const video of refreshedVideos) {
       const videoId = extractVideoId(video, 'tiktok');
       if (!videoId) continue;
@@ -775,11 +780,11 @@ async function refreshTikTokVideosBulk(
       if (!videoDoc) continue;
 
       await videoDoc.ref.update({
-        views: video.playCount || 0,
-        likes: video.diggCount || 0,
-        comments: video.commentCount || 0,
-        shares: video.shareCount || 0,
-        saves: video.collectCount || 0,
+        views: video.views || 0,
+        likes: video.likes || 0,
+        comments: video.comments || 0,
+        shares: video.shares || 0,
+        saves: video.bookmarks || 0,
         lastRefreshed: Timestamp.now()
       });
 
@@ -981,10 +986,8 @@ async function saveVideosToFirestore(
       
       platformVideoId = video.code || video.id;
     } else if (platform === 'tiktok') {
-      // TikTok API doesn't return an 'id' field, extract from webVideoUrl
-      // URL format: https://www.tiktok.com/@username/video/7519910249533377823
-      const urlMatch = (video.webVideoUrl || '').match(/video\/(\d+)/);
-      platformVideoId = urlMatch ? urlMatch[1] : (video.id || video.videoId || '');
+      // apidojo/tiktok-scraper: direct id field
+      platformVideoId = video.id || video.post_id || '';
     } else if (platform === 'twitter') {
       platformVideoId = video.id;
     } else {
@@ -1044,18 +1047,23 @@ async function saveVideosToFirestore(
       caption = video.caption || '';
       uploadDate = video.taken_at ? new Date(video.taken_at * 1000) : new Date();
     } else if (platform === 'tiktok') {
-      views = video.playCount || 0;
-      likes = video.diggCount || 0;
-      comments = video.commentCount || 0;
-      shares = video.shareCount || 0;
-      url = video.webVideoUrl || video.videoUrl || '';
+      // apidojo/tiktok-scraper format
+      const videoObj = video.video || {};
+      views = video.views || 0;
+      likes = video.likes || 0;
+      comments = video.comments || 0;
+      shares = video.shares || 0;
+      url = video.tiktok_url || videoObj.url || '';
       
-      // Get thumbnail from TikTok API (field name has a dot in it, so use bracket notation)
-      const tiktokThumbnail = video['videoMeta.coverUrl'] || 
-                             video.videoMeta?.coverUrl || 
-                             video.coverUrl || 
-                             video.thumbnail || 
-                             '';
+      // ROBUST THUMBNAIL EXTRACTION: video.cover → video.thumbnail → fallback
+      let tiktokThumbnail = '';
+      if (videoObj.cover) {
+        tiktokThumbnail = videoObj.cover;
+      } else if (videoObj.thumbnail) {
+        tiktokThumbnail = videoObj.thumbnail;
+      } else if (video.images && Array.isArray(video.images) && video.images.length > 0) {
+        tiktokThumbnail = video.images[0].url || '';
+      }
       
       // Download and upload thumbnail to Firebase Storage
       if (tiktokThumbnail) {
@@ -1070,8 +1078,10 @@ async function saveVideosToFirestore(
         console.warn(`    ⚠️ TikTok video ${platformVideoId} has no thumbnail URL in API response`);
         console.log(`    🔍 Available TikTok fields:`, Object.keys(video).slice(0, 20).join(', '));
       }
-      caption = video.text || '';
-      uploadDate = video.createTime ? new Date(video.createTime * 1000) : new Date();
+      caption = video.title || video.subtitle || video.caption || '';
+      uploadDate = video.uploadedAt ? new Date(video.uploadedAt * 1000) : 
+                   video.uploaded_at ? new Date(video.uploaded_at * 1000) : 
+                   new Date();
     } else if (platform === 'twitter') {
       views = video.viewCount || 0;
       likes = video.likeCount || 0;
