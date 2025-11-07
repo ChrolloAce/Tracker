@@ -424,6 +424,7 @@ class FirestoreDataService {
               likes: video.likes,
               comments: video.comments,
               shares: video.shares || 0,
+              saves: (video as any).saves || 0,
               duration: video.duration || 0,
               hashtags: video.hashtags || [],
               status: 'active',

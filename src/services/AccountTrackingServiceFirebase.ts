@@ -971,6 +971,7 @@ export class AccountTrackingServiceFirebase {
         likes: item.diggCount || 0,
         comments: item.commentCount || 0,
         shares: item.shareCount || 0,
+        saves: item.collectCount || 0,
         duration: item['videoMeta.duration'] || item.videoMeta?.duration || 0,
         isSponsored: false,
         hashtags: item.hashtags || [],

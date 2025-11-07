@@ -161,8 +161,9 @@ class TikTokApiService {
       timestamp: tiktokData.createTimeISO || new Date().toISOString()
     };
 
-    // Store share count separately for TikTok videos
+    // Store share count and bookmarks separately for TikTok videos
     (transformedData as any).share_count = tiktokData.shareCount || 0;
+    (transformedData as any).save_count = tiktokData.collectCount || 0; // TikTok bookmarks/favorites
     
     // Store author metadata for profile information
     (transformedData as any).profile_pic_url = tiktokData['authorMeta.avatar'] || '';
@@ -177,6 +178,7 @@ class TikTokApiService {
       comments: transformedData.comment_count,
       views: transformedData.view_count,
       shares: tiktokData.shareCount || 0,
+      bookmarks: tiktokData.collectCount || 0,
       duration: tiktokData['videoMeta.duration'] || 0,
       uploadDate: new Date(transformedData.timestamp).toLocaleDateString(),
       thumbnail: transformedData.thumbnail_url ? 'Downloaded locally' : 'Using original URL',

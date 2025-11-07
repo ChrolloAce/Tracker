@@ -50,6 +50,7 @@ export interface AccountVideo {
   playsCount?: number;
   sharesCount?: number;
   shares?: number;
+  saves?: number;
   duration?: number;
   isSponsored?: boolean;
   hashtags?: string[];
