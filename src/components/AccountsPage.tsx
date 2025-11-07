@@ -3083,7 +3083,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
               ).length
             : undefined
         }
-        hideDateFilter={true}
       />
 
       {/* Delete Confirmation Modal */}

@@ -3267,7 +3267,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           isOpen={isAnalyticsModalOpen}
           onClose={handleCloseAnalyticsModal}
           totalCreatorVideos={totalCreatorVideos}
-          hideDateFilter={true}
         />
       )}
 
