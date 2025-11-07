@@ -30,11 +30,66 @@ export type CampaignType =
   | 'individual';  // Individual goals per creator, everyone can win
 
 /**
- * Compensation Type for Campaign
+ * Compensation Rule Type - Individual payment components
+ */
+export type CompensationRuleType =
+  | 'base_per_video'        // Fixed amount per video (e.g., $50/video)
+  | 'cpm'                   // Pay per 1000 views (e.g., $1.50/1K views)
+  | 'total_views_target'    // Total payment for reaching view target (e.g., $3,000 for 1.5M views)
+  | 'bonus_tier'            // Performance-based bonus tier (e.g., $500 bonus at 500K views)
+  | 'engagement_bonus'      // Bonus based on engagement rate (e.g., $100 for >5% ER)
+  | 'milestone_bonus';      // Bonus for reaching specific milestones
+
+/**
+ * Single Compensation Rule
+ */
+export interface CompensationRule {
+  id: string;
+  type: CompensationRuleType;
+  description: string;         // User-friendly description
+  enabled: boolean;            // Can be toggled on/off
+  
+  // For base_per_video
+  amountPerVideo?: number;
+  
+  // For CPM
+  cpmRate?: number;            // $ per 1000 views
+  
+  // For total_views_target
+  targetViews?: number;        // Required views to earn payment
+  targetAmount?: number;       // Payment amount when target reached
+  
+  // For bonus_tier
+  tierThreshold?: number;      // Views/engagement threshold
+  tierAmount?: number;         // Bonus amount
+  tierMetric?: 'views' | 'likes' | 'comments' | 'shares' | 'engagement_rate';
+  
+  // For engagement_bonus
+  minEngagementRate?: number;  // Minimum ER required (e.g., 5.0 = 5%)
+  engagementBonusAmount?: number;
+  
+  // For milestone_bonus
+  milestoneType?: 'views' | 'videos' | 'days';
+  milestoneValue?: number;
+  milestoneAmount?: number;
+}
+
+/**
+ * Full Compensation Structure (replaces old compensationType/compensationAmount)
+ */
+export interface CompensationStructure {
+  rules: CompensationRule[];   // Array of compensation rules
+  estimatedTotal?: number;     // Estimated total payout (optional)
+  notes?: string;              // Additional notes for creators
+}
+
+/**
+ * Legacy Compensation Type (kept for backwards compatibility)
  */
 export type CompensationType =
   | 'flat_cpm'      // Pay per 1000 views
   | 'flat_per_video' // Fixed amount per video
+  | 'flexible'       // NEW: Use flexible compensation structure
   | 'none';          // Use creator's individual payment method
 
 /**
@@ -127,7 +182,8 @@ export interface Campaign {
   
   // Compensation
   compensationType: CompensationType;
-  compensationAmount?: number;  // CPM rate or flat fee amount
+  compensationAmount?: number;  // CPM rate or flat fee amount (legacy)
+  compensationStructure?: CompensationStructure;  // NEW: Flexible compensation system
   
   // Rewards
   rewards: CampaignReward[];    // Position-based rewards (1st, 2nd, 3rd)
@@ -179,6 +235,7 @@ export interface CreateCampaignInput {
   goalAmount: number;
   compensationType: CompensationType;
   compensationAmount?: number;
+  compensationStructure?: CompensationStructure;  // NEW: Flexible compensation
   rewards: CampaignReward[];
   bonusRewards: BonusReward[];
   metricGuarantees: MetricGuarantee[];  // Minimum metrics per video

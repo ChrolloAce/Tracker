@@ -14,10 +14,11 @@ import {
   Youtube,
   Twitter
 } from 'lucide-react';
-import { CampaignGoalType, CompensationType, CampaignReward, MetricGuarantee, CampaignType } from '../types/campaigns';
+import { CampaignGoalType, CompensationType, CampaignReward, MetricGuarantee, CampaignType, CompensationStructure } from '../types/campaigns';
 import CampaignService from '../services/CampaignService';
 import OrganizationService from '../services/OrganizationService';
 import RulesService from '../services/RulesService';
+import CompensationBuilder from './CompensationBuilder';
 import { OrgMember } from '../types/firestore';
 import { TrackingRule } from '../types/rules';
 import FirebaseStorageService from '../services/FirebaseStorageService';
@@ -68,8 +69,12 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
   const [newRuleKeywords, setNewRuleKeywords] = useState('');
   
   // Step 4: Rewards & Compensation
-  const [compensationType, setCompensationType] = useState<CompensationType>('none');
+  const [compensationType, setCompensationType] = useState<CompensationType>('flexible'); // NEW: Default to flexible
   const [compensationAmount, setCompensationAmount] = useState<number>(0);
+  const [compensationStructure, setCompensationStructure] = useState<CompensationStructure>({
+    rules: [],
+    notes: ''
+  });
   const [rewards, setRewards] = useState<CampaignReward[]>([
     { position: 1, amount: 500, description: '1st Place' },
     { position: 2, amount: 300, description: '2nd Place' },
@@ -178,7 +183,8 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
         isIndefinite,
         goalType,
         goalAmount,
-        compensationType,
+        compensationType: 'flexible', // Always use flexible compensation
+        compensationStructure, // NEW: Include flexible compensation structure
         rewards,
         bonusRewards: [],
         metricGuarantees,
@@ -186,8 +192,8 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
         participantIds: selectedCreatorIds,
       };
       
-      // Only add compensationAmount if it exists and compensationType is not 'none'
-      if (compensationType !== 'none' && compensationAmount > 0) {
+      // Legacy: Only add compensationAmount if using old system
+      if (compensationType !== 'none' && compensationType !== 'flexible' && compensationAmount > 0) {
         campaignData.compensationAmount = compensationAmount;
       }
       
@@ -918,38 +924,11 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-white/5 space-y-3">
-                <label className="text-sm font-medium text-gray-400">
-                  Base Compensation (Optional)
-                </label>
-                
-                <select
-                  value={compensationType}
-                  onChange={(e) => setCompensationType(e.target.value as CompensationType)}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-emerald-500/50"
-                >
-                  <option value="none">None (rewards only)</option>
-                  <option value="flat_cpm">Flat CPM (per 1000 views)</option>
-                  <option value="flat_fee_per_video">Flat Fee per Video</option>
-                </select>
-
-                {compensationType !== 'none' && (
-                  <div className="flex items-center gap-2 px-4 py-3 bg-white/5 border border-white/10 rounded-lg">
-                    <span className="text-gray-400">$</span>
-                    <input
-                      type="number"
-                      value={compensationAmount}
-                      onChange={(e) => setCompensationAmount(Number(e.target.value))}
-                      step="0.01"
-                      min="0"
-                      placeholder={compensationType === 'flat_cpm' ? 'e.g., 1.50' : 'e.g., 10.00'}
-                      className="flex-1 bg-transparent text-white focus:outline-none"
-                    />
-                    <span className="text-gray-500 text-sm">
-                      {compensationType === 'flat_cpm' ? 'per 1K views' : 'per video'}
-                    </span>
-                  </div>
-                )}
+              <div className="pt-4 border-t border-white/5">
+                <CompensationBuilder
+                  value={compensationStructure}
+                  onChange={setCompensationStructure}
+                />
               </div>
             </div>
           )}
