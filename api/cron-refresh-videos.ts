@@ -829,15 +829,22 @@ async function refreshInstagramVideosSequential(
       console.log(`    📥 [INSTAGRAM] Fetching ${i + 1}/${videoDocs.length}: ${videoData.videoId}`);
 
       const result = await runApifyActor({
-        actorId: 'apify/instagram-reel-scraper',
+        actorId: 'hpix~ig-reels-scraper',
         input: {
-          directUrls: [videoUrl],
-          resultsLimit: 1,
-          proxyConfiguration: {
+          post_urls: [videoUrl],
+          target: 'reels_only',
+          reels_count: 12,
+          include_raw_data: true,
+          custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
+          proxy: {
             useApifyProxy: true,
-            apifyProxyGroups: ['RESIDENTIAL', 'BUYPROXIES94952'],
+            apifyProxyGroups: ['RESIDENTIAL'],
             apifyProxyCountry: 'US'
-          }
+          },
+          maxConcurrency: 1,
+          maxRequestRetries: 3,
+          handlePageTimeoutSecs: 120,
+          debugLog: false
         }
       });
 
@@ -851,9 +858,10 @@ async function refreshInstagramVideosSequential(
       const video = videos[0];
       
       await videoDoc.ref.update({
-        views: video.videoViewCount || video.viewCount || 0,
-        likes: video.likesCount || 0,
-        comments: video.commentsCount || 0,
+        views: video.play_count || video.video_view_count || 0,
+        likes: video.like_count || 0,
+        comments: video.comment_count || 0,
+        shares: video.share_count || 0,
         lastRefreshed: Timestamp.now()
       });
 

@@ -390,29 +390,28 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       follower_count: rawData['authorMeta.fans'] || rawData.authorMeta?.fans || 0
     };
   } else if (platform === 'instagram') {
-    // Instagram - Handle alpha-scraper~instagram-video-scraper format
+    // Instagram - Handle hpix~ig-reels-scraper format
     console.log('📸 [INSTAGRAM Transform] Raw data keys:', Object.keys(rawData).join(', '));
     console.log('📸 [INSTAGRAM Transform] Raw data:', JSON.stringify(rawData, null, 2));
     
-    // alpha-scraper format: id, ownerUsername, ownerFullName, description, likesCount, commentsCount, videoViewCount, etc.
-    // Note: ownerFullName can be empty string, so use ownerUsername as fallback
-    const displayName = (rawData.ownerFullName && rawData.ownerFullName.trim()) 
-      ? rawData.ownerFullName 
-      : rawData.ownerUsername || '';
+    // hpix~ig-reels-scraper format
+    const caption = rawData.caption?.text || rawData.caption || '';
+    const username = rawData.owner?.username || '';
+    const displayName = rawData.owner?.full_name || username;
     
     return {
-      id: rawData.id || '',
-      thumbnail_url: rawData.thumbnail_url || '',
-      caption: rawData.description || '',
-      username: rawData.ownerUsername || '',
-      like_count: rawData.likesCount || 0,
-      comment_count: rawData.commentsCount || 0,
-      view_count: rawData.videoViewCount || 0,
-      share_count: 0, // Instagram doesn't expose share count
-      timestamp: rawData.upload_date || new Date().toISOString(),
-      profile_pic_url: '', // Not provided by alpha-scraper
+      id: rawData.id || rawData.shortcode || '',
+      thumbnail_url: rawData.thumbnail_url || rawData.display_url || '',
+      caption: caption,
+      username: username,
+      like_count: rawData.like_count || 0,
+      comment_count: rawData.comment_count || 0,
+      view_count: rawData.play_count || rawData.video_view_count || 0,
+      share_count: rawData.share_count || 0,
+      timestamp: rawData.taken_at_timestamp ? new Date(rawData.taken_at_timestamp * 1000).toISOString() : new Date().toISOString(),
+      profile_pic_url: rawData.owner?.profile_pic_url || '',
       display_name: displayName,
-      follower_count: 0 // Not provided in video endpoint
+      follower_count: 0 // Not provided in individual post endpoint
     };
   } else if (platform === 'youtube') {
     // YouTube structure - handle both YouTube API v3 and Apify scraper formats
@@ -587,20 +586,25 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
         resultsPerPage: 1
       };
     } else if (platform === 'instagram') {
-      // Use alpha-scraper~instagram-video-scraper
-      console.log('📸 [INSTAGRAM] Using alpha-scraper~instagram-video-scraper for video:', url);
-      actorId = 'alpha-scraper~instagram-video-scraper';
+      // Use hpix~ig-reels-scraper for individual Instagram posts/reels
+      console.log('📸 [INSTAGRAM] Using hpix~ig-reels-scraper for video:', url);
+      actorId = 'hpix~ig-reels-scraper';
       
       input = {
-        proxyConfiguration: {
+        post_urls: [url],
+        target: 'reels_only',
+        reels_count: 12,
+        include_raw_data: true,
+        custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
+        proxy: {
           useApifyProxy: true,
-          apifyProxyGroups: ['RESIDENTIAL']
+          apifyProxyGroups: ['RESIDENTIAL'],
+          apifyProxyCountry: 'US'
         },
-        startUrls: [
-          {
-            url: url
-          }
-        ]
+        maxConcurrency: 1,
+        maxRequestRetries: 3,
+        handlePageTimeoutSecs: 120,
+        debugLog: false
       };
       console.log('📸 [INSTAGRAM] Input:', JSON.stringify(input, null, 2));
     } else if (platform === 'youtube') {

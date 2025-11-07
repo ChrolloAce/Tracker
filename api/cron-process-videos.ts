@@ -270,21 +270,24 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       follower_count: rawData['authorMeta.fans'] || rawData.authorMeta?.fans || 0
     };
   } else if (platform === 'instagram') {
-    // Instagram - Handle pratikdani/instagram-reels-scraper format
-    // video_play_count is the accurate view count, not just "views"
+    // Instagram - Handle hpix~ig-reels-scraper format
+    const caption = rawData.caption?.text || rawData.caption || '';
+    const username = rawData.owner?.username || '';
+    const displayName = rawData.owner?.full_name || username;
+    
     return {
-      id: rawData.post_id || rawData.content_id || rawData.shortcode || rawData.id || '',
-      thumbnail_url: rawData.thumbnail || rawData.thumbnail_url || rawData.displayUrl || rawData.thumbnailUrl || '',
-      caption: rawData.description || rawData.caption || rawData.text || '',
-      username: rawData.user_posted || rawData.username || rawData.ownerUsername || '',
-      like_count: rawData.likes || rawData.like_count || rawData.likesCount || 0,
-      comment_count: rawData.num_comments || rawData.comment_count || rawData.commentsCount || 0,
-      view_count: rawData.video_play_count || rawData.view_count || rawData.videoViewCount || rawData.views || 0,
-      share_count: 0, // Instagram doesn't expose share count
-      timestamp: rawData.date_posted || rawData.timestamp || rawData.taken_at_timestamp || new Date().toISOString(),
-      profile_pic_url: rawData.profile_pic_url || rawData.ownerProfilePicUrl || '',
-      display_name: rawData.user_posted || rawData.display_name || rawData.ownerFullName || '',
-      follower_count: rawData.followers || rawData.follower_count || rawData.ownerFollowersCount || 0
+      id: rawData.id || rawData.shortcode || '',
+      thumbnail_url: rawData.thumbnail_url || rawData.display_url || '',
+      caption: caption,
+      username: username,
+      like_count: rawData.like_count || 0,
+      comment_count: rawData.comment_count || 0,
+      view_count: rawData.play_count || rawData.video_view_count || 0,
+      share_count: rawData.share_count || 0,
+      timestamp: rawData.taken_at_timestamp ? new Date(rawData.taken_at_timestamp * 1000).toISOString() : new Date().toISOString(),
+      profile_pic_url: rawData.owner?.profile_pic_url || '',
+      display_name: displayName,
+      follower_count: 0 // Not provided in individual post endpoint
     };
   } else if (platform === 'youtube') {
     // YouTube structure - handle both YouTube API v3 and Apify scraper formats
@@ -374,19 +377,24 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
         resultsPerPage: 1
       };
     } else if (platform === 'instagram') {
-      // Use pratikdani/instagram-reels-scraper
-      actorId = 'pratikdani~instagram-reels-scraper'; // Use tilde for Apify API
-      
-      // Get Instagram session cookie if available
-      const instagramSessionId = process.env.INSTAGRAM_SESSION_ID || '';
+      // Use hpix~ig-reels-scraper for individual Instagram posts/reels
+      actorId = 'hpix~ig-reels-scraper';
       
       input = {
-        url: url, // Singular, not array
-        use_cache: false,
-        // Add session cookie for authentication
-        ...(instagramSessionId && {
-          sessionid: instagramSessionId
-        })
+        post_urls: [url],
+        target: 'reels_only',
+        reels_count: 12,
+        include_raw_data: true,
+        custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
+        proxy: {
+          useApifyProxy: true,
+          apifyProxyGroups: ['RESIDENTIAL'],
+          apifyProxyCountry: 'US'
+        },
+        maxConcurrency: 1,
+        maxRequestRetries: 3,
+        handlePageTimeoutSecs: 120,
+        debugLog: false
       };
     } else if (platform === 'youtube') {
       // Use YouTube API directly instead of Apify for better reliability
