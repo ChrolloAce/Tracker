@@ -13,8 +13,8 @@ interface VideoAnalyticsModalProps {
   isOpen: boolean;
   onClose: () => void;
   totalCreatorVideos?: number; // Total number of videos from this creator
-  orgId?: string; // Organization ID for deleting tracked videos
-  projectId?: string; // Project ID for deleting tracked videos
+  orgId?: string | null; // Organization ID for deleting tracked videos
+  projectId?: string | null; // Project ID for deleting tracked videos
 }
 
 interface ChartDataPoint {

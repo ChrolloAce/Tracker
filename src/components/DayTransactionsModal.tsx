@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { X } from 'lucide-react';
-import { RevenueTransaction, RevenueMetrics } from '../types/revenue';
+import { RevenueMetrics } from '../types/revenue';
 import { TimeInterval } from '../services/DataAggregationService';
 
 interface DayTransactionsModalProps {

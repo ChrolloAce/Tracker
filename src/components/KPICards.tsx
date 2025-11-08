@@ -1773,7 +1773,7 @@ const KPICards: React.FC<KPICardsProps> = ({
           isOpen={isTransactionsModalOpen}
           onClose={() => setIsTransactionsModalOpen(false)}
           date={selectedDate}
-          revenueMetrics={revenueMetrics}
+          revenueMetrics={revenueMetrics || null}
           metricType={transactionsMetricType}
           interval={selectedInterval}
           ppInterval={selectedPPInterval}

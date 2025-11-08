@@ -4,7 +4,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { Creator, CreatorLink } from '../types/firestore';
 import { VideoSubmission } from '../types';
-import { ChevronDown, Users, User, Info } from 'lucide-react';
+import { ChevronDown, Users, Info } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface TopTeamCreatorsListProps {
@@ -368,13 +368,13 @@ const TopTeamCreatorsList: React.FC<TopTeamCreatorsListProps> = ({ submissions, 
                     {/* Profile Icon (Spearhead) */}
                     <div className="absolute left-0 z-10 flex-shrink-0">
                       <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 bg-gray-700/50 backdrop-blur-sm relative flex items-center justify-center">
-                        {stats.creator.photoURL && !imageErrors.has(stats.creator.userId) ? (
+                        {stats.creator.photoURL && !imageErrors.has(stats.creator.id) ? (
                           <img 
                             src={stats.creator.photoURL} 
                             alt={stats.creator.displayName}
                             className="w-full h-full object-cover"
                             onError={() => {
-                              setImageErrors(prev => new Set(prev).add(stats.creator.userId));
+                              setImageErrors(prev => new Set(prev).add(stats.creator.id));
                             }}
                           />
                         ) : (
