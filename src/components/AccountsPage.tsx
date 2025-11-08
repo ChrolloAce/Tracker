@@ -1486,6 +1486,26 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
             />
           ) : (
           <div className="bg-zinc-900/60 dark:bg-zinc-900/60 rounded-xl shadow-sm border border-white/10 overflow-hidden">
+            {/* Table Header */}
+            <div className="relative px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 border-b border-white/5 z-10" style={{ backgroundColor: 'rgba(18, 18, 20, 0.6)' }}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">
+                    {dateFilter.value === 'all' 
+                      ? 'All Time Accounts' 
+                      : dateFilter.value === 'custom'
+                      ? `${new Date(dateFilter.startDate!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - ${new Date(dateFilter.endDate!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                      : `Accounts - Last ${dateFilter.value === '7days' ? '7' : dateFilter.value === '30days' ? '30' : dateFilter.value === '90days' ? '90' : '365'} Days`
+                    }
+                  </h2>
+                </div>
+                <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
+                  <div className="text-xs sm:text-sm text-gray-400">
+                    {processedAccounts.length} {processedAccounts.length === 1 ? 'account' : 'accounts'}
+                  </div>
+                </div>
+              </div>
+            </div>
           {(
             <div className="overflow-x-auto -mx-3 sm:-mx-0">
               <table className="w-full min-w-max">
