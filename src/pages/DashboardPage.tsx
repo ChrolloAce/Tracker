@@ -177,7 +177,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
-  const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
   const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false);
   const [campaignStatusFilter, setCampaignStatusFilter] = useState<'all' | CampaignStatus>('all');
   const [campaignCounts, setCampaignCounts] = useState({ active: 0, draft: 0, completed: 0, cancelled: 0 });
