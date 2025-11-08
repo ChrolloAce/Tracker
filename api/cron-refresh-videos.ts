@@ -969,12 +969,33 @@ async function refreshTwitterVideosBatch(
       const videoDoc = videoDocs.find(doc => doc.data().videoId === tweetId);
       if (!videoDoc) continue;
 
-      await videoDoc.ref.update({
+      const now = Timestamp.now();
+      const metrics = {
         views: tweet.viewCount || 0,
         likes: tweet.likeCount || 0,
         comments: tweet.replyCount || 0,
         shares: tweet.retweetCount || 0,
-        lastRefreshed: Timestamp.now()
+        saves: tweet.bookmarkCount || 0, // ✅ BOOKMARKS
+        lastRefreshed: now
+      };
+
+      // Update video metrics
+      await videoDoc.ref.update(metrics);
+
+      // Create refresh snapshot
+      const snapshotRef = videoDoc.ref.collection('snapshots').doc();
+      await snapshotRef.set({
+        id: snapshotRef.id,
+        videoId: tweetId,
+        views: metrics.views,
+        likes: metrics.likes,
+        comments: metrics.comments,
+        shares: metrics.shares,
+        saves: metrics.saves,
+        capturedAt: now,
+        timestamp: now, // Backwards compatibility
+        capturedBy: 'scheduled_refresh',
+        isInitialSnapshot: false // This is a refresh snapshot
       });
 
       updatedCount++;
