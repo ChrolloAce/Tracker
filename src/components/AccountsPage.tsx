@@ -1846,10 +1846,15 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                       const isAccountSyncing = syncingAccounts.has(account.id);
                       
                       return (
-                      <tr 
+                      <tr
                         key={account.id}
+                        onClick={() => {
+                          if (!isAccountSyncing) {
+                            navigate(`/accounts/${account.id}`);
+                          }
+                        }}
                         className={clsx(
-                          'transition-colors',
+                          'transition-colors cursor-pointer',
                           {
                             'bg-gray-200 dark:bg-gray-800': selectedAccount?.id === account.id && !isAccountSyncing,
                             'bg-white/5 dark:bg-white/5 border-l-2 border-white/20 animate-pulse-slow': isAccountSyncing,
