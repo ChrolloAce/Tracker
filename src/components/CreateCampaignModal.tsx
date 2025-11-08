@@ -959,55 +959,55 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
 
               {/* Legacy Mode UI */}
               {payoutMode === 'legacy' && (
-                <div className="space-y-6">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-gray-400">
-                        Position Rewards
-                      </label>
-                      <button
-                        type="button"
-                        onClick={addReward}
-                        className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-sm font-medium rounded-lg transition-all flex items-center gap-2"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Add Place
-                      </button>
-                    </div>
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-gray-400">
+                    Position Rewards
+                  </label>
+                  <button
+                    type="button"
+                    onClick={addReward}
+                    className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-sm font-medium rounded-lg transition-all flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Place
+                  </button>
+                </div>
 
-                    <div className="space-y-2">
-                      {rewards.map((reward, index) => (
-                        <div key={index} className="flex items-center gap-3">
-                          <div className="flex-1 flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-lg">
-                            <div className="text-white font-medium min-w-[80px]">
-                              {getPlaceLabel(reward.position)}
-                            </div>
-                            <div className="flex items-center flex-1">
-                              <span className="text-gray-400 mr-2">$</span>
-                              <input
-                                type="number"
-                                value={reward.amount}
-                                onChange={(e) => updateReward(index, 'amount', Number(e.target.value))}
-                                placeholder="Amount"
-                                min="0"
-                                step="10"
-                                className="flex-1 bg-transparent text-white focus:outline-none"
-                              />
-                            </div>
-                          </div>
-                          {rewards.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => removeReward(index)}
-                              className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
+                <div className="space-y-2">
+                  {rewards.map((reward, index) => (
+                    <div key={index} className="flex items-center gap-3">
+                      <div className="flex-1 flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-lg">
+                        <div className="text-white font-medium min-w-[80px]">
+                          {getPlaceLabel(reward.position)}
                         </div>
-                      ))}
+                        <div className="flex items-center flex-1">
+                          <span className="text-gray-400 mr-2">$</span>
+                          <input
+                            type="number"
+                            value={reward.amount}
+                            onChange={(e) => updateReward(index, 'amount', Number(e.target.value))}
+                            placeholder="Amount"
+                            min="0"
+                            step="10"
+                            className="flex-1 bg-transparent text-white focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                      {rewards.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeReward(index)}
+                          className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
-                  </div>
+                  ))}
+                </div>
+              </div>
 
                   <div className="pt-4 border-t border-white/5">
                     <CompensationBuilder
@@ -1015,8 +1015,8 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
                       onChange={setCompensationStructure}
                     />
                   </div>
-                </div>
-              )}
+                  </div>
+                )}
             </div>
           )}
 

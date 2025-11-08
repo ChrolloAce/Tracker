@@ -754,44 +754,44 @@ export default async function handler(
         console.log(`    🔄 Updated existing video ${video.videoId} + created refresh snapshot`);
       } else {
         // NEW VIDEO - Create with initial snapshot
-        const videoRef = db
-          .collection('organizations')
-          .doc(orgId)
-          .collection('projects')
-          .doc(projectId)
-          .collection('videos')
-          .doc();
+      const videoRef = db
+        .collection('organizations')
+        .doc(orgId)
+        .collection('projects')
+        .doc(projectId)
+        .collection('videos')
+        .doc();
 
-        batch.set(videoRef, {
-          ...video,
+      batch.set(videoRef, {
+        ...video,
           thumbnail: firebaseThumbnailUrl, // Use Firebase Storage URL
-          orgId: orgId,
-          projectId: projectId,
-          trackedAccountId: accountId,
-          platform: account.platform,
+        orgId: orgId,
+        projectId: projectId,
+        trackedAccountId: accountId,
+        platform: account.platform,
           dateAdded: snapshotTime,
-          addedBy: account.syncRequestedBy || account.addedBy || 'system',
+        addedBy: account.syncRequestedBy || account.addedBy || 'system',
           lastRefreshed: snapshotTime,
-          status: 'active',
-          isRead: false,
-          isSingular: false
-        });
+        status: 'active',
+        isRead: false,
+        isSingular: false
+      });
 
-        // Create initial snapshot for this new video
-        const snapshotRef = videoRef.collection('snapshots').doc();
-        batch.set(snapshotRef, {
-          id: snapshotRef.id,
-          videoId: video.videoId,
-          views: video.views || 0,
-          likes: video.likes || 0,
-          comments: video.comments || 0,
-          shares: video.shares || 0,
+      // Create initial snapshot for this new video
+      const snapshotRef = videoRef.collection('snapshots').doc();
+      batch.set(snapshotRef, {
+        id: snapshotRef.id,
+        videoId: video.videoId,
+        views: video.views || 0,
+        likes: video.likes || 0,
+        comments: video.comments || 0,
+        shares: video.shares || 0,
           saves: video.saves || 0,
-          capturedAt: snapshotTime,
-          timestamp: snapshotTime,
+        capturedAt: snapshotTime,
+        timestamp: snapshotTime,
           capturedBy: 'initial_sync',
           isInitialSnapshot: true // Mark as initial snapshot - won't count towards graphs
-        });
+      });
 
         console.log(`    ✅ Created new video ${video.videoId} + initial snapshot`);
       }

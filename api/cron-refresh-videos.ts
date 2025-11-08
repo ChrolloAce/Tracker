@@ -693,8 +693,21 @@ function extractVideoId(video: any, platform: string): string | null {
     // hpix~ig-reels-scraper format
     return video.code || video.id || null;
     } else if (platform === 'tiktok') {
-    // apidojo/tiktok-scraper format: direct id field or extract from tiktok_url
-    return video.id || video.post_id || null;
+    // apidojo/tiktok-scraper format: direct id field or extract from postPage URL
+    if (video.id || video.post_id) {
+      return video.id || video.post_id;
+    }
+    // Try to extract from postPage URL: https://www.tiktok.com/@user/video/7563144408766450975
+    if (video.postPage) {
+      const match = video.postPage.match(/\/video\/(\d+)/);
+      if (match) return match[1];
+    }
+    // Fallback to tiktok_url
+    if (video.tiktok_url) {
+      const match = video.tiktok_url.match(/\/video\/(\d+)/);
+      if (match) return match[1];
+    }
+    return null;
     } else if (platform === 'twitter') {
     return video.id || null;
   }
@@ -743,35 +756,27 @@ async function refreshExistingVideos(
 }
 
 /**
- * TikTok: Bulk refresh by fetching account's latest videos
- * NEW APPROACH: Fetch from profile instead of individual URLs (which may be deleted)
+ * TikTok: Bulk refresh using unique videos API
  */
 async function refreshTikTokVideosBulk(
   orgId: string,
   projectId: string,
   videoDocs: any[]
 ): Promise<number> {
-  if (videoDocs.length === 0) return 0;
-
-  // Get account handle from first video
-  const firstVideoData = videoDocs[0].data();
-  const accountHandle = firstVideoData.uploaderHandle || firstVideoData.username;
+  // TikTok has a unique videos API that accepts multiple video URLs
+  const videoUrls = videoDocs.map(doc => doc.data().url || doc.data().videoUrl).filter(Boolean);
   
-  if (!accountHandle) {
-    console.log(`    ⚠️ [TIKTOK] No account handle found in videos`);
-    return 0;
-  }
+  if (videoUrls.length === 0) return 0;
 
-  console.log(`    🔄 [TIKTOK] Fetching latest videos from @${accountHandle} to refresh ${videoDocs.length} existing videos...`);
+  console.log(`    🔄 [TIKTOK] Bulk refreshing ${videoUrls.length} videos...`);
   
   try {
-    // Fetch account's latest videos (up to 100)
     const result = await runApifyActor({
       actorId: 'apidojo/tiktok-scraper',
       input: {
-        startUrls: [`https://www.tiktok.com/@${accountHandle}`],
-        maxItems: 100, // Get up to 100 latest videos
-        sortType: 'NEWEST',
+        startUrls: videoUrls,
+        maxItems: videoUrls.length,
+        sortType: 'RELEVANCE',
         dateRange: 'DEFAULT',
         location: 'US',
         includeSearchKeywords: false,
@@ -786,28 +791,23 @@ async function refreshTikTokVideosBulk(
     const refreshedVideos = result.items || [];
     let updatedCount = 0;
 
-    console.log(`    🔍 [TIKTOK] Got ${refreshedVideos.length} videos from account, matching with ${videoDocs.length} DB videos...`);
-    
-    // Filter out error responses
-    const validVideos = refreshedVideos.filter(v => !v.error && !v.noResults);
-    console.log(`    ✅ [TIKTOK] ${validVideos.length} valid videos (${refreshedVideos.length - validVideos.length} errors/no results)`);
-    
-    // Log first valid video structure to debug
-    if (validVideos.length > 0) {
-      console.log(`    📦 [TIKTOK] First video structure (keys):`, Object.keys(validVideos[0]));
-    }
+    console.log(`    🔍 [TIKTOK] Matching ${refreshedVideos.length} API results with ${videoDocs.length} DB videos...`);
 
     // Update each video with fresh metrics (apidojo/tiktok-scraper format)
-    for (const video of validVideos) {
+    for (const video of refreshedVideos) {
       const videoId = extractVideoId(video, 'tiktok');
       if (!videoId) {
-        console.log(`    ⚠️ [TIKTOK] Could not extract videoId, available keys:`, Object.keys(video).slice(0, 10));
+        console.log(`    ⚠️ [TIKTOK] Could not extract videoId from:`, {
+          id: video.id,
+          post_id: video.post_id,
+          tiktok_url: video.tiktok_url?.substring(0, 50)
+        });
         continue;
       }
 
       const videoDoc = videoDocs.find(doc => doc.data().videoId === videoId);
       if (!videoDoc) {
-        // Not in our DB, skip it
+        console.log(`    ⚠️ [TIKTOK] No DB match for videoId: ${videoId} (checking against ${videoDocs.length} docs)`);
         continue;
       }
 
@@ -1151,7 +1151,7 @@ async function saveVideosToFirestore(
       comments = video.comments || 0;
       shares = video.shares || 0;
       saves = video.bookmarks || 0; // ✅ ADD BOOKMARKS (remove const to make it available outside block)
-      url = video.tiktok_url || videoObj.url || '';
+      url = video.postPage || video.tiktok_url || videoObj.url || ''; // ✅ USE postPage first!
       
       // ROBUST THUMBNAIL EXTRACTION: handle nested + flat keys
       let tiktokThumbnail = '';
