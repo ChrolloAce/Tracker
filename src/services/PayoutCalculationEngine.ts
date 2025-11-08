@@ -4,7 +4,6 @@ import type {
   PayoutMetric,
   PayoutCondition,
   CreatorPayoutRecord,
-  CPMPayoutComponent,
   TieredBonusPayoutComponent
 } from '../types/payouts';
 import type { VideoSubmission } from '../types';
@@ -80,18 +79,19 @@ export class PayoutCalculationEngine {
     let totalPayout = 0;
 
     // Process each component in the structure
-    for (const component of structure.components) {
+    structure.components.forEach((component, index) => {
       const calculation = this.calculateComponent(
         component,
         performance,
-        overrides?.[component.id]
+        overrides?.[component.id || `comp-${index}`],
+        index
       );
 
       if (calculation.amount > 0) {
         componentBreakdown.push(calculation);
         totalPayout += calculation.amount;
       }
-    }
+    });
 
     // Apply structure-level cap if specified
     let appliedCap: { maxPayout: number; originalTotal: number } | undefined;
@@ -118,7 +118,8 @@ export class PayoutCalculationEngine {
   static calculateComponent(
     component: PayoutComponent,
     performance: CreatorPerformance,
-    overrides?: any
+    overrides?: any,
+    index?: number
   ): ComponentCalculation {
     // Apply overrides
     const effectiveComponent = { ...component, ...overrides };
@@ -167,8 +168,8 @@ export class PayoutCalculationEngine {
     }
 
     return {
-        componentId: component.id || `comp-${index}`,
-        componentName: component.name || `Component ${index + 1}`,
+      componentId: component.id || `comp-${index || 0}`,
+      componentName: component.name || `Component ${(index || 0) + 1}`,
       type: component.type,
       amount: Math.round(amount * 100) / 100, // Round to 2 decimals
       details,
@@ -181,7 +182,7 @@ export class PayoutCalculationEngine {
    * Calculate CPM component
    */
   private static calculateCPM(
-    component: PayoutComponent,
+    component: any,
     performance: CreatorPerformance
   ): number {
     const metric = component.metric || 'views';
@@ -205,22 +206,26 @@ export class PayoutCalculationEngine {
     component: PayoutComponent,
     performance: CreatorPerformance
   ): { amount: number; details: string } {
-        const tieredComponent = component as TieredBonusPayoutComponent;
-        if (!tieredComponent.tiers || tieredComponent.tiers.length === 0) {
+    const tieredComponent = component as TieredBonusPayoutComponent;
+    if (!tieredComponent.tiers || tieredComponent.tiers.length === 0) {
       return { amount: 0, details: 'No tiers defined' };
     }
 
-    // Sort tiers by condition value (descending) to find highest tier met
-    const sortedTiers = [...component.tiers].sort((a, b) => {
-      return b.condition.value - a.condition.value;
+    // Sort tiers by threshold (descending) to find highest tier met
+    const sortedTiers = [...tieredComponent.tiers].sort((a, b) => {
+      return b.threshold - a.threshold;
     });
 
     // Find highest tier that creator qualifies for
+    // Tiers use threshold (simple number check), not condition objects
+    const metric = (tieredComponent as any).metric || 'views';
+    const metricValue = this.getMetricValue(metric, performance);
+    
     for (const tier of sortedTiers) {
-      if (this.checkCondition(tier.condition, performance)) {
+      if (metricValue >= tier.threshold) {
         return {
           amount: tier.amount,
-          details: `Tier bonus: ${this.formatCondition(tier.condition, performance)} → $${tier.amount}`
+          details: `Tier bonus: ${this.formatNumber(metricValue)} ${metric} (≥ ${this.formatNumber(tier.threshold)}) → $${tier.amount}`
         };
       }
     }
@@ -309,9 +314,11 @@ export class PayoutCalculationEngine {
       shares: 'shares',
       saves: 'saves',
       engagement_rate: '% engagement',
-      video_count: 'videos',
-      total_payout: 'total payout',
-      conversions: 'conversions'
+      videos_posted: 'videos',
+      conversions: 'conversions',
+      ig_reel_plays: 'IG reel plays',
+      yt_views: 'YT views',
+      tt_views: 'TikTok views'
     };
 
     return labels[metric] || metric;
@@ -388,29 +395,35 @@ export class PayoutCalculationEngine {
    */
   static createPayoutRecord(
     campaignId: string,
-    orgId: string,
-    projectId: string,
+    _orgId: string,
+    _projectId: string,
     calculation: PayoutCalculationResult,
-    periodStart: Date,
-    periodEnd: Date
+    _periodStart: Date,
+    _periodEnd: Date
   ): Omit<CreatorPayoutRecord, 'id'> {
     return {
       campaignId,
       creatorId: calculation.creatorId,
-      organizationId: orgId,
-      projectId,
-      calculatedAt: Timestamp.now(),
-      periodStart: Timestamp.fromDate(periodStart),
-      periodEnd: Timestamp.fromDate(periodEnd),
-      totalPayout: calculation.totalPayout,
-      componentBreakdown: calculation.componentBreakdown.map(comp => ({
-        componentId: comp.componentId,
-        componentName: comp.componentName,
-        type: comp.type as any,
+      calculatedAt: Timestamp.now() as any,
+      componentPayouts: calculation.componentBreakdown.map((comp, idx) => ({
+        componentType: comp.type as any,
+        componentIndex: idx,
+        description: comp.componentName,
         amount: comp.amount,
-        details: comp.details
+        details: { original: comp.details }
       })),
-      competitionPayouts: [], // Will be added by competition calculation
+      subtotal: calculation.totalPayout,
+      total: calculation.totalPayout,
+      capApplied: calculation.appliedCap?.maxPayout,
+      performanceData: {
+        views: calculation.performance.totalViews,
+        likes: calculation.performance.totalLikes,
+        comments: calculation.performance.totalComments,
+        shares: calculation.performance.totalShares,
+        saves: calculation.performance.totalSaves,
+        videosPosted: calculation.performance.videoCount,
+        engagementRate: calculation.performance.engagementRate
+      },
       status: 'pending'
     };
   }

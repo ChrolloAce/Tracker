@@ -103,10 +103,10 @@ export class CampaignCompetitionService {
         targetValue: data.targetValue,
         eligibility: data.eligibility,
         isActive: true,
-        startsAt: Timestamp.fromDate(data.startsAt),
-        endsAt: Timestamp.fromDate(data.endsAt),
-        createdAt: now,
-        updatedAt: now
+        startDate: Timestamp.fromDate(data.startsAt) as any,
+        endDate: Timestamp.fromDate(data.endsAt) as any,
+        createdAt: now as any,
+        createdBy: 'system' // Will be updated by campaign creation
       };
 
       await setDoc(competitionRef, competition);
@@ -490,7 +490,7 @@ export class CampaignCompetitionService {
         return performance.totalSaves;
       case 'engagement_rate':
         return performance.engagementRate;
-      case 'video_count':
+      case 'videos_posted':
         return performance.videoCount;
       default:
         return 0;

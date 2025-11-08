@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, X, Trophy, Target, TrendingUp, Shuffle, Trash2 } from 'lucide-react';
+import { Plus, X, Trophy, Target, TrendingUp, Shuffle, Trash2, Award, Users } from 'lucide-react';
 import type {
   CampaignCompetition,
   CampaignCompetitionType,
@@ -41,7 +41,7 @@ export default function CampaignCompetitionManager({
       startDate: campaignStartDate,
       endDate: campaignEndDate || new Date(),
       createdAt: new Date() as any,
-      updatedAt: new Date() as any
+      createdBy: '' // Will be set when campaign is created
     };
 
     setEditingCompetition(newComp);
@@ -370,7 +370,7 @@ function CompetitionEditor({ competition, onSave, onCancel }: CompetitionEditorP
             <div key={index} className="flex items-center gap-2">
               <div className="flex items-center gap-2 flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg">
                 <span className="text-white/60 text-sm min-w-[50px]">
-                  {prize.rank}{getRankSuffix(prize.rank)}
+                  {prize.rank || (index + 1)}{getRankSuffix(prize.rank || (index + 1))}
                 </span>
                 <span className="text-white/40">$</span>
                 <input

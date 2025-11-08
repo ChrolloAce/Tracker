@@ -112,15 +112,14 @@ export class PayoutStructureService {
       const now = Timestamp.now();
       const structure: PayoutStructure = {
         id: structureRef.id,
-        organizationId: orgId,
-        projectId: projectId,
+        orgId,
         name: data.name,
         description: data.description,
         components: data.components,
         maxPayout: data.maxPayout,
-        createdAt: now,
-        createdBy: userId,
-        updatedAt: now
+        isActive: true,
+        createdAt: now as any,
+        createdBy: userId
       };
 
       await setDoc(structureRef, structure);
@@ -390,8 +389,8 @@ export class PayoutStructureService {
           errors.push('At least one tier is required for tiered bonus');
         }
         component.tiers?.forEach((tier, index) => {
-          if (!tier.condition) {
-            errors.push(`Tier ${index + 1}: condition is required`);
+          if (tier.threshold === undefined || tier.threshold < 0) {
+            errors.push(`Tier ${index + 1}: threshold is required and must be positive`);
           }
           if (tier.amount === undefined || tier.amount < 0) {
             errors.push(`Tier ${index + 1}: amount must be a positive number`);

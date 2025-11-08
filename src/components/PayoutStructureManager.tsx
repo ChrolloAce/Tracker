@@ -44,13 +44,12 @@ export default function PayoutStructureManager({
     setEditingStructure({
       id: '',
       orgId: orgId,
-      projectId: projectId,
       name: 'New Payout Structure',
       description: '',
       components: [],
+      isActive: true,
       createdAt: new Date() as any,
-      createdBy: userId,
-      updatedAt: new Date() as any
+      createdBy: userId
     });
     setIsCreating(true);
   };
@@ -324,25 +323,70 @@ function StructureEditor({ structure, onSave, onCancel }: StructureEditorProps) 
   const [maxPayout, setMaxPayout] = useState<number | undefined>(structure.maxPayout);
 
   const addComponent = (type: PayoutComponentType) => {
-    const newComponent: PayoutComponent = {
-      id: `comp_${Date.now()}`,
-      type,
-      name: `${type.charAt(0).toUpperCase() + type.slice(1)} Payment`,
-      amount: type === 'base' || type === 'flat' || type === 'bonus' ? 100 : undefined,
-      rate: type === 'cpm' ? 10 : undefined,
-      metric: type === 'cpm' || type === 'bonus' ? 'views' : undefined,
-      condition: type === 'bonus' ? { metric: 'views', value: 50000, operator: 'gte' } : undefined,
-      tiers: type === 'bonus_tiered' ? [
-        { condition: { metric: 'views', value: 50000, operator: 'gte' }, amount: 100 }
-      ] : undefined
-    };
+    let newComponent: PayoutComponent;
+    
+    if (type === 'base' || type === 'flat') {
+      newComponent = {
+        id: `comp_${Date.now()}`,
+        type,
+        name: `${type.charAt(0).toUpperCase() + type.slice(1)} Payment`,
+        amount: 100
+      } as PayoutComponent;
+    } else if (type === 'cpm') {
+      newComponent = {
+        id: `comp_${Date.now()}`,
+        type: 'cpm',
+        name: 'CPM Payment',
+        rate: 10,
+        metric: 'views'
+      } as PayoutComponent;
+    } else if (type === 'bonus') {
+      newComponent = {
+        id: `comp_${Date.now()}`,
+        type: 'bonus',
+        name: 'Bonus Payment',
+        amount: 100,
+        condition: { metric: 'views', value: 50000, operator: '>=' }
+      } as PayoutComponent;
+    } else if (type === 'bonus_tiered') {
+      newComponent = {
+        id: `comp_${Date.now()}`,
+        type: 'bonus_tiered',
+        name: 'Tiered Bonus Payment',
+        tiers: [
+          { threshold: 50000, amount: 100 }
+        ]
+      } as PayoutComponent;
+    } else if (type === 'conversion') {
+      newComponent = {
+        id: `comp_${Date.now()}`,
+        type: 'conversion',
+        name: 'Conversion Payment',
+        amountPerConversion: 10
+      } as PayoutComponent;
+    } else if (type === 'per_video') {
+      newComponent = {
+        id: `comp_${Date.now()}`,
+        type: 'per_video',
+        name: 'Per Video Payment',
+        amountPerVideo: 50
+      } as PayoutComponent;
+    } else {
+      // Default for other types
+      newComponent = {
+        id: `comp_${Date.now()}`,
+        type: 'base',
+        name: 'Base Payment',
+        amount: 100
+      } as PayoutComponent;
+    }
 
     setComponents([...components, newComponent]);
   };
 
   const updateComponent = (index: number, updates: Partial<PayoutComponent>) => {
     const updated = [...components];
-    updated[index] = { ...updated[index], ...updates };
+    updated[index] = { ...updated[index], ...updates } as PayoutComponent;
     setComponents(updated);
   };
 
@@ -559,11 +603,11 @@ function ComponentEditor({ component, onUpdate, onRemove }: ComponentEditorProps
                   step="0.1"
                 />
                 <select
-                  value={component.metric || 'views'}
-                  onChange={(e) => onUpdate({ metric: e.target.value as PayoutMetric })}
+                  value={(component.metric as string) || 'views'}
+                  onChange={(e) => onUpdate({ metric: e.target.value as any })}
                   className="px-3 py-2 bg-black/20 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {metricOptions.map(m => (
+                  {metricOptions.filter(m => m !== 'engagement_rate').map(m => (
                     <option key={m} value={m}>{m}</option>
                   ))}
                 </select>
@@ -592,13 +636,13 @@ function ComponentEditor({ component, onUpdate, onRemove }: ComponentEditorProps
           {component.type === 'bonus' && component.condition && (
             <div className="grid grid-cols-3 gap-3">
               <select
-                value={component.condition.metric}
+                value={component.condition.metric as string}
                 onChange={(e) => onUpdate({
-                  condition: { ...component.condition!, metric: e.target.value as PayoutMetric }
+                  condition: { ...component.condition!, metric: e.target.value as any }
                 })}
                 className="px-3 py-2 bg-black/20 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {metricOptions.map(m => (
+                {metricOptions.filter(m => m !== 'engagement_rate').map(m => (
                   <option key={m} value={m}>{m}</option>
                 ))}
               </select>
