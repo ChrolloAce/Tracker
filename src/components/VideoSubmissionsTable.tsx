@@ -660,7 +660,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   Last Refresh
                 </ColumnHeader>
               )}
-              <th className="w-8 sm:w-12 px-2 sm:px-4 md:px-6 py-3 sm:py-4 text-left"></th>
+              <th className="w-8 sm:w-12 px-2 sm:px-4 md:px-6 py-3 sm:py-4 text-left sticky right-0 z-20" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -944,7 +944,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       </div>
                     </td>
                   )}
-                  <td className="px-6 py-5">
+                  <td className="px-6 py-5 sticky right-0 z-20 group-hover:bg-white/5" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}>
                     <div className="relative opacity-0 group-hover:opacity-100 transition-opacity">
                       <DropdownMenu submission={submission} onDelete={onDelete} />
                     </div>

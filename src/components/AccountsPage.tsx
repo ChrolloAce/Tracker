@@ -1676,7 +1676,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                         }
                       }}
                     />
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-zinc-900/60 backdrop-blur z-20">
                       Actions
                     </th>
                   </tr>
@@ -1825,7 +1825,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                       </td>
 
                       {/* Actions Column */}
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-white/5 dark:bg-white/5 backdrop-blur z-20">
                         <div className="flex items-center justify-end space-x-2">
                           <button
                             onClick={() => {
@@ -2029,7 +2029,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                         </td>
 
                         {/* Actions Column */}
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-zinc-900/60 backdrop-blur z-20 group-hover:bg-white/5">
                           <div className="flex items-center justify-end space-x-2 relative">
                             <button
                               onClick={(e) => {
