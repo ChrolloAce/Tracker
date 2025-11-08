@@ -782,16 +782,25 @@ const KPICards: React.FC<KPICardsProps> = ({
               }
             } else if (DataAggregationService.isDateInInterval(uploadDate, interval)) {
               // Video was uploaded during this interval
-              // Use the initial snapshot value (baseline when video was added)
-              if (video.snapshots && video.snapshots.length > 0) {
-                const initialSnapshot = video.snapshots
-                  .filter(s => s.isInitialSnapshot)
-                  .sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime())[0];
-                intervalValue += initialSnapshot ? (initialSnapshot[metric] || 0) : (video[metric] || 0);
-              } else {
-                // No snapshots, use current value
-                intervalValue += video[metric] || 0;
+              // Do NOT count initial snapshot - it's baseline data, not growth
+              // Check if there are any non-initial snapshots in this interval to show actual growth
+              const nonInitialSnapshots = video.snapshots?.filter(s => !s.isInitialSnapshot) || [];
+              const snapshotsInInterval = nonInitialSnapshots.filter(s => {
+                const snapDate = new Date(s.capturedAt);
+                return DataAggregationService.isDateInInterval(snapDate, interval);
+              });
+              
+              if (snapshotsInInterval.length > 0) {
+                // There are refresh snapshots in this interval - calculate growth from initial
+                const initialSnapshot = video.snapshots?.find(s => s.isInitialSnapshot);
+                const latestSnapshotInInterval = snapshotsInInterval
+                  .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
+                
+                const baseline = initialSnapshot ? (initialSnapshot[metric] || 0) : 0;
+                const growth = Math.max(0, (latestSnapshotInInterval[metric] || 0) - baseline);
+                intervalValue += growth;
               }
+              // If no refresh snapshots yet, don't add anything (0 growth)
             }
           });
           
