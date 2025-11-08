@@ -19,9 +19,11 @@ import CampaignService from '../services/CampaignService';
 import OrganizationService from '../services/OrganizationService';
 import RulesService from '../services/RulesService';
 import CompensationBuilder from './CompensationBuilder';
+import PayoutStructureManager from './PayoutStructureManager';
 import { OrgMember } from '../types/firestore';
 import { TrackingRule } from '../types/rules';
 import FirebaseStorageService from '../services/FirebaseStorageService';
+import type { PayoutStructure, CampaignCreatorAssignment } from '../types/payouts';
 
 interface CreateCampaignModalProps {
   isOpen: boolean;
@@ -80,6 +82,12 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
     { position: 2, amount: 300, description: '2nd Place' },
     { position: 3, amount: 200, description: '3rd Place' }
   ]);
+  
+  // NEW: Flexible Payout System
+  const [payoutMode, setPayoutMode] = useState<'legacy' | 'flexible'>('flexible');
+  const [selectedPayoutStructure, setSelectedPayoutStructure] = useState<PayoutStructure | null>(null);
+  const [creatorAssignments, setCreatorAssignments] = useState<CampaignCreatorAssignment[]>([]);
+  const [defaultPayoutStructureId, setDefaultPayoutStructureId] = useState<string>('');
   
   // Step 5: Participants
   const [availableCreators, setAvailableCreators] = useState<OrgMember[]>([]);
@@ -183,17 +191,22 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
         isIndefinite,
         goalType,
         goalAmount,
-        compensationType: 'flexible', // Always use flexible compensation
-        compensationStructure, // NEW: Include flexible compensation structure
-        rewards,
+        compensationType: payoutMode === 'flexible' ? 'flexible' : compensationType,
+        compensationStructure: payoutMode === 'legacy' ? compensationStructure : undefined, // Legacy compensation
+        rewards: payoutMode === 'legacy' ? rewards : [],
         bonusRewards: [],
         metricGuarantees,
         defaultRuleIds: defaultRuleId ? [defaultRuleId] : undefined,
         participantIds: selectedCreatorIds,
+        
+        // NEW: Flexible Payout System fields
+        useFlexiblePayouts: payoutMode === 'flexible',
+        defaultPayoutStructureId: payoutMode === 'flexible' ? defaultPayoutStructureId : undefined,
+        creatorAssignments: payoutMode === 'flexible' ? creatorAssignments : undefined,
       };
       
       // Legacy: Only add compensationAmount if using old system
-      if (compensationType !== 'none' && compensationType !== 'flexible' && compensationAmount > 0) {
+      if (payoutMode === 'legacy' && compensationType !== 'none' && compensationType !== 'flexible' && compensationAmount > 0) {
         campaignData.compensationAmount = compensationAmount;
       }
       
@@ -872,64 +885,125 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
             </div>
           )}
 
-          {/* Step 4: Rewards */}
+          {/* Step 4: Rewards & Payouts */}
           {currentStep === 4 && (
             <div className="space-y-6">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-gray-400">
-                    Position Rewards
-                  </label>
-                  <button
-                    type="button"
-                    onClick={addReward}
-                    className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-sm font-medium rounded-lg transition-all flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Place
-                  </button>
-                </div>
+              {/* Payout Mode Toggle */}
+              <div className="flex gap-2 p-1 bg-white/5 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => setPayoutMode('flexible')}
+                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    payoutMode === 'flexible'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  💰 Flexible Payouts (New)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPayoutMode('legacy')}
+                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    payoutMode === 'legacy'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  🏆 Position Rewards (Legacy)
+                </button>
+              </div>
 
-                <div className="space-y-2">
-                  {rewards.map((reward, index) => (
-                    <div key={index} className="flex items-center gap-3">
-                      <div className="flex-1 flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-lg">
-                        <div className="text-white font-medium min-w-[80px]">
-                          {getPlaceLabel(reward.position)}
-                        </div>
-                        <div className="flex items-center flex-1">
-                          <span className="text-gray-400 mr-2">$</span>
-                          <input
-                            type="number"
-                            value={reward.amount}
-                            onChange={(e) => updateReward(index, 'amount', Number(e.target.value))}
-                            placeholder="Amount"
-                            min="0"
-                            step="10"
-                            className="flex-1 bg-transparent text-white focus:outline-none"
-                          />
-                        </div>
-                      </div>
-                      {rewards.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeReward(index)}
-                          className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
+              {/* Flexible Payouts UI */}
+              {payoutMode === 'flexible' && (
+                <div className="space-y-6">
+                  <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                    <p className="text-sm text-blue-400">
+                      <strong>Flexible Payouts:</strong> Create reusable payout templates with any combination of base pay, CPM, bonuses, and caps. Assign different structures to each creator.
+                    </p>
+                  </div>
+
+                  <PayoutStructureManager
+                    orgId={currentOrgId!}
+                    projectId={currentProjectId!}
+                    userId={user!.uid}
+                    onSelect={(structure) => {
+                      setSelectedPayoutStructure(structure);
+                      setDefaultPayoutStructureId(structure.id);
+                    }}
+                    selectedStructureId={defaultPayoutStructureId}
+                  />
+
+                  {selectedPayoutStructure && (
+                    <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+                      <p className="text-sm text-green-400">
+                        ✓ <strong>{selectedPayoutStructure.name}</strong> will be used as the default payout structure for all creators in this campaign. You can customize per-creator after adding participants.
+                      </p>
                     </div>
-                  ))}
+                  )}
                 </div>
-              </div>
+              )}
 
-              <div className="pt-4 border-t border-white/5">
-                <CompensationBuilder
-                  value={compensationStructure}
-                  onChange={setCompensationStructure}
-                />
-              </div>
+              {/* Legacy Mode UI */}
+              {payoutMode === 'legacy' && (
+                <div className="space-y-6">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-gray-400">
+                        Position Rewards
+                      </label>
+                      <button
+                        type="button"
+                        onClick={addReward}
+                        className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-sm font-medium rounded-lg transition-all flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add Place
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {rewards.map((reward, index) => (
+                        <div key={index} className="flex items-center gap-3">
+                          <div className="flex-1 flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-lg">
+                            <div className="text-white font-medium min-w-[80px]">
+                              {getPlaceLabel(reward.position)}
+                            </div>
+                            <div className="flex items-center flex-1">
+                              <span className="text-gray-400 mr-2">$</span>
+                              <input
+                                type="number"
+                                value={reward.amount}
+                                onChange={(e) => updateReward(index, 'amount', Number(e.target.value))}
+                                placeholder="Amount"
+                                min="0"
+                                step="10"
+                                className="flex-1 bg-transparent text-white focus:outline-none"
+                              />
+                            </div>
+                          </div>
+                          {rewards.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeReward(index)}
+                              className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-white/5">
+                    <CompensationBuilder
+                      value={compensationStructure}
+                      onChange={setCompensationStructure}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
