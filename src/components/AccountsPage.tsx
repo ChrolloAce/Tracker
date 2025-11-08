@@ -1850,7 +1850,11 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                         key={account.id}
                         onClick={() => {
                           if (!isAccountSyncing) {
-                            navigate(`/accounts/${account.id}`);
+                            setSelectedAccount(account);
+                            setViewMode('details');
+                            onViewModeChange('details');
+                            loadAccountVideos(account.id);
+                            navigate(`/accounts`);
                           }
                         }}
                         className={clsx(
