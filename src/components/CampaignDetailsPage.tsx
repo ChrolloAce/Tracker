@@ -11,7 +11,11 @@ import {
   Target,
   Edit2,
   Save,
-  X as XIcon
+  X as XIcon,
+  Image as ImageIcon,
+  UserPlus,
+  UserMinus,
+  Send
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Campaign, CampaignVideoSubmission, MetricGuarantee } from '../types/campaigns';
@@ -23,6 +27,7 @@ import OrganizationService from '../services/OrganizationService';
 import CampaignVideoSubmissionsTable from './CampaignVideoSubmissionsTable';
 import CampaignVideoSubmissionModal from './CampaignVideoSubmissionModal';
 import CampaignResourcesManager from './CampaignResourcesManager';
+import FirebaseStorageService from '../services/FirebaseStorageService';
 
 const CampaignDetailsPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -41,10 +46,17 @@ const CampaignDetailsPage: React.FC = () => {
   // Edit states
   const [editingTimeline, setEditingTimeline] = useState(false);
   const [editingRequirements, setEditingRequirements] = useState(false);
+  const [editingHeader, setEditingHeader] = useState(false);
+  const [editingParticipants, setEditingParticipants] = useState(false);
   const [editedStartDate, setEditedStartDate] = useState('');
   const [editedEndDate, setEditedEndDate] = useState('');
   const [editedDescription, setEditedDescription] = useState('');
+  const [editedName, setEditedName] = useState('');
+  const [editedCoverImage, setEditedCoverImage] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [editedMetricGuarantees, setEditedMetricGuarantees] = useState<MetricGuarantee[]>([]);
+  const [editedParticipantIds, setEditedParticipantIds] = useState<string[]>([]);
+  const [allMembers, setAllMembers] = useState<OrgMember[]>([]);
 
   useEffect(() => {
     loadCampaign();
@@ -116,8 +128,9 @@ const CampaignDetailsPage: React.FC = () => {
     if (!currentOrgId || !campaign) return;
 
     try {
-      const allMembers = await OrganizationService.getOrgMembers(currentOrgId);
-      const campaignCreators = allMembers.filter(member => 
+      const members = await OrganizationService.getOrgMembers(currentOrgId);
+      setAllMembers(members);
+      const campaignCreators = members.filter(member => 
         campaign.participantIds.includes(member.userId)
       );
       setCreators(campaignCreators);
@@ -133,7 +146,10 @@ const CampaignDetailsPage: React.FC = () => {
       setEditedStartDate(campaign.startDate instanceof Date ? campaign.startDate.toISOString().split('T')[0] : new Date(campaign.startDate.toDate()).toISOString().split('T')[0]);
       setEditedEndDate(campaign.endDate ? (campaign.endDate instanceof Date ? campaign.endDate.toISOString().split('T')[0] : new Date(campaign.endDate.toDate()).toISOString().split('T')[0]) : '');
       setEditedDescription(campaign.description);
+      setEditedName(campaign.name);
+      setEditedCoverImage(campaign.coverImage || '');
       setEditedMetricGuarantees(campaign.metricGuarantees || []);
+      setEditedParticipantIds(campaign.participantIds || []);
     }
   }, [campaign]);
 
@@ -177,6 +193,96 @@ const CampaignDetailsPage: React.FC = () => {
     } catch (error) {
       console.error('Failed to update requirements:', error);
       alert('Failed to update requirements');
+    }
+  };
+
+  const handleSaveHeader = async () => {
+    if (!campaignId || !currentOrgId || !currentProjectId) return;
+
+    try {
+      await CampaignService.updateCampaign(
+        currentOrgId,
+        currentProjectId,
+        campaignId,
+        {
+          name: editedName,
+          coverImage: editedCoverImage
+        }
+      );
+      await loadCampaign();
+      setEditingHeader(false);
+    } catch (error) {
+      console.error('Failed to update campaign:', error);
+      alert('Failed to update campaign');
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentOrgId) return;
+
+    setUploadingImage(true);
+    try {
+      const imageUrl = await FirebaseStorageService.uploadCampaignImage(
+        currentOrgId,
+        campaignId!,
+        file
+      );
+      setEditedCoverImage(imageUrl);
+    } catch (error) {
+      console.error('Failed to upload image:', error);
+      alert('Failed to upload image');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleSaveParticipants = async () => {
+    if (!campaignId || !currentOrgId || !currentProjectId) return;
+
+    try {
+      await CampaignService.updateCampaign(
+        currentOrgId,
+        currentProjectId,
+        campaignId,
+        {
+          participantIds: editedParticipantIds
+        }
+      );
+      await loadCampaign();
+      setEditingParticipants(false);
+    } catch (error) {
+      console.error('Failed to update participants:', error);
+      alert('Failed to update participants');
+    }
+  };
+
+  const handlePublishCampaign = async () => {
+    if (!campaignId || !currentOrgId || !currentProjectId) return;
+    
+    if (!confirm('Publish this campaign? Creators will be able to see it and submit videos.')) {
+      return;
+    }
+
+    try {
+      await CampaignService.updateCampaignStatus(
+        currentOrgId,
+        currentProjectId,
+        campaignId,
+        'active'
+      );
+      await loadCampaign();
+    } catch (error) {
+      console.error('Failed to publish campaign:', error);
+      alert('Failed to publish campaign');
+    }
+  };
+
+  const toggleParticipant = (userId: string) => {
+    if (editedParticipantIds.includes(userId)) {
+      setEditedParticipantIds(editedParticipantIds.filter(id => id !== userId));
+    } else {
+      setEditedParticipantIds([...editedParticipantIds, userId]);
     }
   };
 
@@ -232,12 +338,83 @@ const CampaignDetailsPage: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        {/* Action Buttons */}
+        {!isCreator && (
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            {campaign.status === 'draft' && (
+              <button
+                onClick={handlePublishCampaign}
+                className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-white/90 text-black rounded-lg transition-colors font-medium"
+              >
+                <Send className="w-4 h-4" />
+                Publish Campaign
+              </button>
+            )}
+            {!editingHeader && (
+              <button
+                onClick={() => setEditingHeader(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors border border-white/10"
+              >
+                <Edit2 className="w-4 h-4" />
+                Edit Details
+              </button>
+            )}
+            {!editingParticipants && (
+              <button
+                onClick={() => setEditingParticipants(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-colors border border-white/10"
+              >
+                <UserPlus className="w-4 h-4" />
+                Manage Participants
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Campaign Header - Horizontal Layout */}
         <div className="mb-6 sm:mb-8 bg-zinc-900/40 rounded-2xl border border-white/10 overflow-hidden">
           <div className="flex flex-col lg:flex-row">
             {/* Left: Campaign Cover Image - Square */}
-            <div className="w-full lg:w-80 aspect-square flex-shrink-0 relative overflow-hidden">
-              {campaign.coverImage ? (
+            <div className="w-full lg:w-80 aspect-square flex-shrink-0 relative overflow-hidden group">
+              {editingHeader ? (
+                <div className="w-full h-full bg-gradient-to-br from-zinc-900 to-zinc-800 flex flex-col items-center justify-center p-6">
+                  {uploadingImage ? (
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white/20"></div>
+                  ) : editedCoverImage ? (
+                    <div className="relative w-full h-full">
+                      <img 
+                        src={editedCoverImage} 
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                      <label className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
+                        <div className="text-center">
+                          <ImageIcon className="w-12 h-12 text-white mx-auto mb-2" />
+                          <p className="text-white text-sm">Change Image</p>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  ) : (
+                    <label className="cursor-pointer text-center">
+                      <ImageIcon className="w-16 h-16 text-white/40 mx-auto mb-3" />
+                      <p className="text-white/60 text-sm mb-1">Click to upload</p>
+                      <p className="text-white/40 text-xs">JPG, PNG or GIF</p>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
+              ) : campaign.coverImage ? (
                 <img 
                   src={campaign.coverImage} 
                   alt={campaign.name}
@@ -252,23 +429,56 @@ const CampaignDetailsPage: React.FC = () => {
 
             {/* Right: Campaign Info */}
             <div className="flex-1 p-4 sm:p-6 lg:p-8">
-              {/* Name and Status */}
-              <div className="flex flex-col sm:flex-row items-start justify-between mb-4 sm:mb-6 gap-3">
-                <div className="flex-1">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">{campaign.name}</h1>
-                  <p className="text-sm sm:text-base text-white/60">{campaign.description}</p>
-                </div>
-                <div className="w-full sm:w-auto">
-                  <div className={`px-4 py-2 rounded-lg font-semibold whitespace-nowrap text-center border ${
-                    campaign.status === 'active' ? 'bg-white/10 text-white border-white/20' :
-                    campaign.status === 'draft' ? 'bg-white/5 text-white/60 border-white/10' :
-                    campaign.status === 'completed' ? 'bg-white/5 text-white/60 border-white/10' :
-                    'bg-white/5 text-white/40 border-white/10'
-                  }`}>
-                    {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
+              {editingHeader ? (
+                <div className="space-y-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-white/80 mb-2">Campaign Name</label>
+                    <input
+                      type="text"
+                      value={editedName}
+                      onChange={(e) => setEditedName(e.target.value)}
+                      className="w-full px-4 py-2 bg-zinc-800 border border-white/10 rounded-lg text-white text-lg focus:outline-none focus:ring-2 focus:ring-white/20"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleSaveHeader}
+                      className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-white/90 text-black rounded-lg transition-colors font-medium"
+                    >
+                      <Save className="w-4 h-4" />
+                      Save
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingHeader(false);
+                        setEditedName(campaign.name);
+                        setEditedCoverImage(campaign.coverImage || '');
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-white/5 text-white/60 rounded-lg hover:bg-white/10 transition-colors border border-white/10"
+                    >
+                      <XIcon className="w-4 h-4" />
+                      Cancel
+                    </button>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row items-start justify-between mb-4 sm:mb-6 gap-3">
+                  <div className="flex-1">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">{campaign.name}</h1>
+                    <p className="text-sm sm:text-base text-white/60">{campaign.description}</p>
+                  </div>
+                  <div className="w-full sm:w-auto">
+                    <div className={`px-4 py-2 rounded-lg font-semibold whitespace-nowrap text-center border ${
+                      campaign.status === 'active' ? 'bg-white/10 text-white border-white/20' :
+                      campaign.status === 'draft' ? 'bg-white/5 text-white/60 border-white/10' :
+                      campaign.status === 'completed' ? 'bg-white/5 text-white/60 border-white/10' :
+                      'bg-white/5 text-white/40 border-white/10'
+                    }`}>
+                      {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Key Stats - Compact Grid */}
               <div className={`grid grid-cols-2 ${isCreator ? 'sm:grid-cols-2' : 'sm:grid-cols-4'} gap-3 sm:gap-4 mb-4 sm:mb-6`}>
@@ -703,6 +913,121 @@ const CampaignDetailsPage: React.FC = () => {
             onClose={() => setShowSubmissionModal(false)}
             onSuccess={loadSubmissions}
           />
+        )}
+
+        {/* Modal for Participants Management */}
+        {editingParticipants && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-zinc-900 rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col border border-white/10">
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b border-white/10">
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  Manage Participants
+                </h3>
+                <button
+                  onClick={() => {
+                    setEditingParticipants(false);
+                    setEditedParticipantIds(campaign.participantIds || []);
+                  }}
+                  className="p-1 text-white/60 hover:text-white"
+                >
+                  <XIcon className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="space-y-2">
+                  {allMembers.length === 0 ? (
+                    <div className="text-center py-8 text-white/60">
+                      No team members found
+                    </div>
+                  ) : (
+                    allMembers.map((member) => {
+                      const isSelected = editedParticipantIds.includes(member.userId);
+                      return (
+                        <button
+                          key={member.userId}
+                          type="button"
+                          onClick={() => toggleParticipant(member.userId)}
+                          className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left ${
+                            isSelected
+                              ? 'bg-white/10 border-white/20'
+                              : 'bg-white/5 border-white/10 hover:border-white/20'
+                          }`}
+                        >
+                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                            isSelected 
+                              ? 'bg-white border-white' 
+                              : 'border-white/40'
+                          }`}>
+                            {isSelected && <CheckCircle className="w-4 h-4 text-black" />}
+                          </div>
+
+                          {member.photoURL ? (
+                            <img
+                              src={member.photoURL}
+                              alt={member.displayName || 'Member'}
+                              className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                              <Users className="w-5 h-5 text-white/60" />
+                            </div>
+                          )}
+
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-white text-sm truncate">
+                              {member.displayName || 'Unnamed Member'}
+                            </div>
+                            <div className="text-xs text-white/60 truncate">
+                              {member.email}
+                            </div>
+                          </div>
+
+                          <div className={`px-2.5 py-1 rounded-md text-xs font-medium border ${
+                            member.role === 'owner'
+                              ? 'bg-white/10 text-white border-white/20'
+                              : member.role === 'admin'
+                              ? 'bg-white/5 text-white/80 border-white/10'
+                              : 'bg-white/5 text-white/60 border-white/10'
+                          }`}>
+                            {member.role}
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <p className="text-sm text-blue-400">
+                    <strong>Selected:</strong> {editedParticipantIds.length} participant{editedParticipantIds.length !== 1 ? 's' : ''}
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex gap-3 p-6 border-t border-white/10">
+                <button
+                  onClick={handleSaveParticipants}
+                  className="flex-1 px-4 py-2 bg-white hover:bg-white/90 text-black rounded-lg transition-colors font-medium"
+                >
+                  Save Changes
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingParticipants(false);
+                    setEditedParticipantIds(campaign.participantIds || []);
+                  }}
+                  className="px-4 py-2 bg-white/5 text-white/60 rounded-lg hover:bg-white/10 transition-colors border border-white/10"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
