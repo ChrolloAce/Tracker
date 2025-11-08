@@ -3198,7 +3198,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           {activeTab === 'team' && <TeamManagementPage />}
 
           {/* Revenue Tab */}
-          {activeTab === 'revenue' && <RevenueManagementPage />}
+          {activeTab === 'revenue' && <RevenueManagementPage initialTab="connections" />}
 
           {/* Other Tabs - Placeholder */}
           {!['dashboard', 'accounts', 'videos', 'subscription', 'settings', 'analytics', 'creators', 'campaigns', 'cron', 'team', 'revenue', 'invitations'].includes(activeTab) && (

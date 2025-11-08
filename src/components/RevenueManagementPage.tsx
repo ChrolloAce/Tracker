@@ -6,9 +6,13 @@ import RevenueDataService from '../services/RevenueDataService';
 import { RevenueIntegration } from '../types/revenue';
 import { formatDistanceToNow } from 'date-fns';
 
-const RevenueManagementPage: React.FC = () => {
+interface RevenueManagementPageProps {
+  initialTab?: 'connections' | 'analytics';
+}
+
+const RevenueManagementPage: React.FC<RevenueManagementPageProps> = ({ initialTab }) => {
   const { currentOrgId, currentProjectId } = useAuth();
-  const [activeTab, setActiveTab] = useState<'connections' | 'analytics'>('connections');
+  const [activeTab, setActiveTab] = useState<'connections' | 'analytics'>(initialTab || 'connections');
   const [showWizard, setShowWizard] = useState(false);
   const [integrations, setIntegrations] = useState<RevenueIntegration[]>([]);
   const [loading, setLoading] = useState(true);
