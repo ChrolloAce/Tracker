@@ -130,7 +130,7 @@ interface AccountWithFilteredStats extends TrackedAccount {
   filteredTotalBookmarks?: number;
   highestViewedVideo?: { title: string; views: number; videoId: string };
   postingStreak?: number;
-  viralityRate?: number;
+  postingFrequency?: string; // e.g., "2/day", "every 3 days", "3x/week"
   avgEngagementRate?: number;
 }
 
@@ -248,7 +248,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   const [syncError, setSyncError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingAccountDetail, setLoadingAccountDetail] = useState(false);
-  const [sortBy, setSortBy] = useState<'username' | 'followers' | 'videos' | 'views' | 'likes' | 'comments' | 'shares' | 'bookmarks' | 'engagementRate' | 'highestViewed' | 'lastRefresh' | 'postingStreak' | 'viralityRate' | 'dateAdded'>('dateAdded');
+  const [sortBy, setSortBy] = useState<'username' | 'followers' | 'videos' | 'views' | 'likes' | 'comments' | 'shares' | 'bookmarks' | 'engagementRate' | 'highestViewed' | 'lastRefresh' | 'postingStreak' | 'postingFrequency' | 'dateAdded'>('dateAdded');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState<TrackedAccount | null>(null);
@@ -920,16 +920,28 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
             postingStreak = currentStreak;
           }
 
-          // Calculate virality rate (% of videos with 10x median views)
-          let viralityRate = 0;
-          if (rulesFilteredVideos.length > 0) {
-            const viewCounts = rulesFilteredVideos.map(v => v.views || 0).sort((a, b) => a - b);
-            const medianViews = viewCounts.length % 2 === 0
-              ? (viewCounts[viewCounts.length / 2 - 1] + viewCounts[viewCounts.length / 2]) / 2
-              : viewCounts[Math.floor(viewCounts.length / 2)];
+          // Calculate posting frequency based on date filter
+          let postingFrequency = 'N/A';
+          if (dateFiltered.length > 0 && dateFilter.startDate && dateFilter.endDate) {
+            const daysDiff = Math.ceil((dateFilter.endDate.getTime() - dateFilter.startDate.getTime()) / (1000 * 60 * 60 * 24));
+            const postCount = dateFiltered.length;
             
-            const viralVideos = rulesFilteredVideos.filter(v => (v.views || 0) >= medianViews * 10);
-            viralityRate = viralVideos.length / rulesFilteredVideos.length;
+            if (daysDiff > 0) {
+              const postsPerDay = postCount / daysDiff;
+              
+              if (postsPerDay >= 1) {
+                // Multiple posts per day
+                postingFrequency = `${postsPerDay.toFixed(1)}/day`;
+              } else if (postsPerDay >= 0.14) {
+                // Posts per week (0.14 posts/day = ~1 post/week)
+                const postsPerWeek = postsPerDay * 7;
+                postingFrequency = `${postsPerWeek.toFixed(1)}x/week`;
+              } else {
+                // Days between posts
+                const daysBetweenPosts = 1 / postsPerDay;
+                postingFrequency = `every ${Math.round(daysBetweenPosts)} days`;
+              }
+            }
           }
 
           // Calculate average engagement rate across videos in the time period
@@ -956,7 +968,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
               videoId: highestViewedVideo.id || ''
             } : undefined,
             postingStreak,
-            viralityRate,
+            postingFrequency,
             avgEngagementRate
           };
         });
@@ -1057,9 +1069,15 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         case 'postingStreak':
           comparison = ((a as AccountWithFilteredStats).postingStreak || 0) - ((b as AccountWithFilteredStats).postingStreak || 0);
           break;
-        case 'viralityRate':
-          comparison = ((a as AccountWithFilteredStats).viralityRate || 0) - ((b as AccountWithFilteredStats).viralityRate || 0);
+        case 'postingFrequency': {
+          // Sort by posting frequency string (N/A goes last)
+          const aFreq = (a as AccountWithFilteredStats).postingFrequency || 'N/A';
+          const bFreq = (b as AccountWithFilteredStats).postingFrequency || 'N/A';
+          if (aFreq === 'N/A' && bFreq !== 'N/A') comparison = 1;
+          else if (aFreq !== 'N/A' && bFreq === 'N/A') comparison = -1;
+          else comparison = aFreq.localeCompare(bFreq);
           break;
+        }
         case 'dateAdded':
           comparison = a.dateAdded.toDate().getTime() - b.dateAdded.toDate().getTime();
           break;
@@ -1700,17 +1718,17 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                       }}
                     />
                     <ColumnHeader
-                      label="Virality"
-                      tooltip="Percentage of posts that achieved exceptional performance (significantly above average views) in the selected period. High virality indicates consistent ability to create trending content."
+                      label="Posting Frequency"
+                      tooltip="How often this account posts content in the selected time period. Shows posting rate as posts per day, posts per week, or average days between posts."
                       sortable
-                      sortKey="viralityRate"
+                      sortKey="postingFrequency"
                       currentSortBy={sortBy}
                       sortOrder={sortOrder}
                       onSort={() => {
-                        if (sortBy === 'viralityRate') {
+                        if (sortBy === 'postingFrequency') {
                           setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                         } else {
-                          setSortBy('viralityRate');
+                          setSortBy('postingFrequency');
                           setSortOrder('desc');
                         }
                       }}
@@ -1862,7 +1880,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                         <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '1.0s' }}></div>
                       </td>
-                      {/* Virality Column */}
+                      {/* Posting Frequency Column */}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                         <div className="w-12 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '1.1s' }}></div>
                       </td>
@@ -2063,15 +2081,15 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                           })()}
                         </td>
 
-                        {/* Virality Rate Column */}
+                        {/* Posting Frequency Column */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {(account as AccountWithFilteredStats).viralityRate !== undefined ? (
+                          {(account as AccountWithFilteredStats).postingFrequency && (account as AccountWithFilteredStats).postingFrequency !== 'N/A' ? (
                             <div className="flex items-center gap-1">
-                              <Activity className="w-3.5 h-3.5 text-purple-500" />
-                              <span>{((account as AccountWithFilteredStats).viralityRate! * 100).toFixed(1)}%</span>
+                              <Calendar className="w-3.5 h-3.5 text-blue-400" />
+                              <span>{(account as AccountWithFilteredStats).postingFrequency}</span>
                             </div>
                           ) : (
-                            <span className="text-white/30">—</span>
+                            <span className="text-white/30">N/A</span>
                           )}
                         </td>
 
