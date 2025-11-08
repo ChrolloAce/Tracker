@@ -21,8 +21,7 @@ import {
   X,
   ChevronDown,
   MoreVertical,
-  TrendingUp,
-  CheckCircle
+  TrendingUp
   } from 'lucide-react';
 import profileAnimation from '../../public/lottie/Target Audience.json';
 import { AccountVideo } from '../types/accounts';
@@ -1492,10 +1491,28 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                 <div className="min-w-0 flex-1">
                   <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">
                     {dateFilter.value === 'all' 
-                      ? 'All Time Accounts' 
+                      ? 'Account stats - All Time' 
                       : dateFilter.value === 'custom'
-                      ? `${new Date(dateFilter.startDate!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - ${new Date(dateFilter.endDate!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-                      : `Accounts - Last ${dateFilter.value === '7days' ? '7' : dateFilter.value === '30days' ? '30' : dateFilter.value === '90days' ? '90' : '365'} Days`
+                      ? `Account stats - ${new Date(dateFilter.startDate!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${new Date(dateFilter.endDate!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                      : dateFilter.value === 'today'
+                      ? 'Account stats - Today'
+                      : dateFilter.value === 'yesterday'
+                      ? 'Account stats - Yesterday'
+                      : dateFilter.value === 'last7days'
+                      ? 'Account stats - Last 7 days'
+                      : dateFilter.value === 'last14days'
+                      ? 'Account stats - Last 14 days'
+                      : dateFilter.value === 'last30days'
+                      ? 'Account stats - Last 30 days'
+                      : dateFilter.value === 'last90days'
+                      ? 'Account stats - Last 90 days'
+                      : dateFilter.value === 'mtd'
+                      ? 'Account stats - Month to Date'
+                      : dateFilter.value === 'lastmonth'
+                      ? 'Account stats - Last Month'
+                      : dateFilter.value === 'ytd'
+                      ? 'Account stats - Year to Date'
+                      : 'Account stats'
                     }
                   </h2>
                 </div>
@@ -1761,7 +1778,11 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                             <div className="text-sm font-bold text-white flex items-center gap-1.5">
                                       {matchingAccount?.displayName || `@${procAccount.username}`}
                               {matchingAccount?.isVerified && (
-                                <CheckCircle className="w-3.5 h-3.5 text-blue-500 fill-blue-500" />
+                                <img 
+                                  src="/LANDINGPAGE-PHOOTS/Twitter_Verified_Badge.svg.png" 
+                                  alt="Verified" 
+                                  className="w-3.5 h-3.5"
+                                />
                               )}
                             </div>
                             <div className="text-xs text-white/40 font-medium flex items-center gap-1">
@@ -1914,7 +1935,11 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                   {account.displayName || account.username}
                                   {/* Verified Badge next to username */}
                                   {account.isVerified && (
-                                    <CheckCircle className="w-3.5 h-3.5 text-blue-500 fill-blue-500" />
+                                    <img 
+                                      src="/LANDINGPAGE-PHOOTS/Twitter_Verified_Badge.svg.png" 
+                                      alt="Verified" 
+                                      className="w-3.5 h-3.5"
+                                    />
                                   )}
                                 </div>
                                 {isAccountSyncing && (
