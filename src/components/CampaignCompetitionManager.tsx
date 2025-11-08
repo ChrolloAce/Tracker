@@ -38,8 +38,8 @@ export default function CampaignCompetitionManager({
       ],
       n: 3,
       isActive: true,
-      startsAt: campaignStartDate as any,
-      endsAt: (campaignEndDate || new Date()) as any,
+      startDate: campaignStartDate,
+      endDate: campaignEndDate || new Date(),
       createdAt: new Date() as any,
       updatedAt: new Date() as any
     };
@@ -135,7 +135,9 @@ function CompetitionCard({ competition, onEdit, onDelete }: CompetitionCardProps
     top_n: Trophy,
     first_to_hit: Target,
     most_improved: TrendingUp,
-    random_draw: Shuffle
+    random_draw: Shuffle,
+    consistency: Award,
+    engagement_king: Users
   };
 
   const Icon = typeIcons[competition.type] || Trophy;
@@ -219,7 +221,7 @@ function CompetitionEditor({ competition, onSave, onCancel }: CompetitionEditorP
   const [n, setN] = useState(competition.n || 3);
   const [targetValue, setTargetValue] = useState(competition.targetValue || 100000);
 
-  const metricOptions: PayoutMetric[] = ['views', 'likes', 'comments', 'shares', 'saves', 'video_count', 'engagement_rate'];
+  const metricOptions: PayoutMetric[] = ['views', 'likes', 'comments', 'shares', 'saves', 'videos_posted', 'engagement_rate'];
 
   const typeOptions: { value: CampaignCompetitionType; label: string; icon: any }[] = [
     { value: 'top_n', label: 'Top N Performers', icon: Trophy },

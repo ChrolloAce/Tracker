@@ -43,7 +43,7 @@ export default function PayoutStructureManager({
   const handleCreateNew = () => {
     setEditingStructure({
       id: '',
-      organizationId: orgId,
+      orgId: orgId,
       projectId: projectId,
       name: 'New Payout Structure',
       description: '',
@@ -225,13 +225,15 @@ function StructureCard({
     videoCount: 10
   });
 
-  const componentTypeIcons: Record<PayoutComponentType, any> = {
-    base: DollarSign,
-    flat: DollarSign,
-    cpm: TrendingUp,
-    bonus: Award,
-    bonus_tiered: Zap
-  };
+    const componentTypeIcons: Record<PayoutComponentType, any> = {
+      base: DollarSign,
+      flat: DollarSign,
+      cpm: TrendingUp,
+      bonus: Award,
+      bonus_tiered: Zap,
+      conversion: DollarSign,
+      per_video: DollarSign
+    };
 
   return (
     <div
@@ -517,7 +519,7 @@ interface ComponentEditorProps {
 }
 
 function ComponentEditor({ component, onUpdate, onRemove }: ComponentEditorProps) {
-  const metricOptions: PayoutMetric[] = ['views', 'likes', 'comments', 'shares', 'saves', 'video_count'];
+  const metricOptions: PayoutMetric[] = ['views', 'likes', 'comments', 'shares', 'saves', 'videos_posted'];
 
   return (
     <div className="p-4 bg-zinc-900/40 border border-white/10 rounded-lg">

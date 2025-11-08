@@ -14,7 +14,6 @@ import {
   X as XIcon,
   Image as ImageIcon,
   UserPlus,
-  UserMinus,
   Send
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
