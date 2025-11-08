@@ -8,13 +8,18 @@ import {
   CheckCircle,
   AlertCircle,
   Upload,
-  Target
+  Target,
+  Edit2,
+  Save,
+  X as XIcon
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { Campaign, CampaignVideoSubmission } from '../types/campaigns';
+import { Campaign, CampaignVideoSubmission, MetricGuarantee } from '../types/campaigns';
 import { TrackingRule } from '../types/rules';
+import { OrgMember } from '../types/firestore';
 import CampaignService from '../services/CampaignService';
 import RulesService from '../services/RulesService';
+import OrganizationService from '../services/OrganizationService';
 import CampaignVideoSubmissionsTable from './CampaignVideoSubmissionsTable';
 import CampaignVideoSubmissionModal from './CampaignVideoSubmissionModal';
 import CampaignResourcesManager from './CampaignResourcesManager';
@@ -27,14 +32,24 @@ const CampaignDetailsPage: React.FC = () => {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [submissions, setSubmissions] = useState<CampaignVideoSubmission[]>([]);
   const [campaignRules, setCampaignRules] = useState<TrackingRule[]>([]);
+  const [creators, setCreators] = useState<OrgMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
 
+  // Edit states
+  const [editingTimeline, setEditingTimeline] = useState(false);
+  const [editingRequirements, setEditingRequirements] = useState(false);
+  const [editedStartDate, setEditedStartDate] = useState('');
+  const [editedEndDate, setEditedEndDate] = useState('');
+  const [editedDescription, setEditedDescription] = useState('');
+  const [editedMetricGuarantees, setEditedMetricGuarantees] = useState<MetricGuarantee[]>([]);
+
   useEffect(() => {
     loadCampaign();
     loadSubmissions();
+    loadCreators();
   }, [campaignId, currentOrgId, currentProjectId]);
 
   const loadCampaign = async () => {
@@ -94,6 +109,74 @@ const CampaignDetailsPage: React.FC = () => {
       console.error('Failed to load submissions:', error);
     } finally {
       setLoadingSubmissions(false);
+    }
+  };
+
+  const loadCreators = async () => {
+    if (!currentOrgId || !campaign) return;
+
+    try {
+      const allMembers = await OrganizationService.getOrgMembers(currentOrgId);
+      const campaignCreators = allMembers.filter(member => 
+        campaign.participantIds.includes(member.userId)
+      );
+      setCreators(campaignCreators);
+    } catch (error) {
+      console.error('Failed to load creators:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (campaign) {
+      loadCreators();
+      // Initialize edit states
+      setEditedStartDate(campaign.startDate instanceof Date ? campaign.startDate.toISOString().split('T')[0] : new Date(campaign.startDate.toDate()).toISOString().split('T')[0]);
+      setEditedEndDate(campaign.endDate ? (campaign.endDate instanceof Date ? campaign.endDate.toISOString().split('T')[0] : new Date(campaign.endDate.toDate()).toISOString().split('T')[0]) : '');
+      setEditedDescription(campaign.description);
+      setEditedMetricGuarantees(campaign.metricGuarantees || []);
+    }
+  }, [campaign]);
+
+  const handleSaveTimeline = async () => {
+    if (!campaignId || !currentOrgId || !currentProjectId) return;
+
+    try {
+      await CampaignService.updateCampaign(
+        currentOrgId,
+        currentProjectId,
+        campaignId,
+        {
+          startDate: new Date(editedStartDate),
+          endDate: editedEndDate ? new Date(editedEndDate) : undefined,
+          isIndefinite: !editedEndDate
+        }
+      );
+      await loadCampaign();
+      setEditingTimeline(false);
+    } catch (error) {
+      console.error('Failed to update timeline:', error);
+      alert('Failed to update timeline');
+    }
+  };
+
+  const handleSaveRequirements = async () => {
+    if (!campaignId || !currentOrgId || !currentProjectId) return;
+
+    try {
+      await CampaignService.updateCampaign(
+        currentOrgId,
+        currentProjectId,
+        campaignId,
+        {
+          description: editedDescription,
+          metricGuarantees: editedMetricGuarantees
+        }
+      );
+      await loadCampaign();
+      setEditingRequirements(false);
+    } catch (error) {
+      console.error('Failed to update requirements:', error);
+      alert('Failed to update requirements');
     }
   };
 

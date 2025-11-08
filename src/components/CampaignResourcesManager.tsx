@@ -165,7 +165,7 @@ const CampaignResourcesManager: React.FC<CampaignResourcesManagerProps> = ({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white/20"></div>
       </div>
     );
   }
@@ -185,7 +185,7 @@ const CampaignResourcesManager: React.FC<CampaignResourcesManagerProps> = ({
         {isAdmin && (
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-white/90 text-black rounded-lg transition-colors font-medium"
           >
             <Plus className="w-4 h-4" />
             Add Resource
@@ -207,7 +207,7 @@ const CampaignResourcesManager: React.FC<CampaignResourcesManagerProps> = ({
           {resources.map(resource => (
             <div
               key={resource.id}
-              className="bg-white/5 rounded-lg border border-white/10 p-4 hover:bg-white/10 hover:border-emerald-500/50 transition-all group"
+              className="bg-white/5 rounded-lg border border-white/10 p-4 hover:bg-white/10 hover:border-white/20 transition-all group"
             >
               <div className="flex items-center justify-between">
                 {/* Left: Icon and Info */}
@@ -242,7 +242,7 @@ const CampaignResourcesManager: React.FC<CampaignResourcesManagerProps> = ({
                 <div className="flex items-center gap-2 ml-4 flex-shrink-0">
                   <button
                     onClick={() => handleDownload(resource)}
-                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors flex items-center gap-2 font-medium"
+                    className="px-4 py-2 bg-white hover:bg-white/90 text-black rounded-lg transition-colors flex items-center gap-2 font-medium"
                   >
                     {resource.type === 'link' ? (
                       <>
@@ -259,7 +259,7 @@ const CampaignResourcesManager: React.FC<CampaignResourcesManagerProps> = ({
                   {isAdmin && (
                     <button
                       onClick={() => handleDeleteResource(resource)}
-                      className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                      className="p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -297,8 +297,8 @@ const CampaignResourcesManager: React.FC<CampaignResourcesManagerProps> = ({
                 onClick={() => setAddType('link')}
                 className={`flex-1 py-3 px-4 rounded-lg border-2 transition-colors flex items-center justify-center gap-2 ${
                   addType === 'link'
-                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
-                    : 'border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400'
+                    ? 'border-white/20 bg-white/10 text-white'
+                    : 'border-white/10 text-white/60'
                 }`}
               >
                 <LinkIcon className="w-5 h-5" />
@@ -308,8 +308,8 @@ const CampaignResourcesManager: React.FC<CampaignResourcesManagerProps> = ({
                 onClick={() => setAddType('file')}
                 className={`flex-1 py-3 px-4 rounded-lg border-2 transition-colors flex items-center justify-center gap-2 ${
                   addType === 'file'
-                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
-                    : 'border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400'
+                    ? 'border-white/20 bg-white/10 text-white'
+                    : 'border-white/10 text-white/60'
                 }`}
               >
                 <Upload className="w-5 h-5" />
@@ -355,7 +355,7 @@ const CampaignResourcesManager: React.FC<CampaignResourcesManagerProps> = ({
                     <input
                       type="file"
                       onChange={handleFileChange}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-white/10 rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-emerald-50 dark:file:bg-emerald-900/20 file:text-emerald-600 dark:file:text-emerald-400 file:cursor-pointer hover:file:bg-emerald-100 dark:hover:file:bg-emerald-900/30"
+                      className="w-full px-4 py-2 border border-white/10 rounded-lg bg-zinc-800 text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-white/10 file:text-white file:cursor-pointer hover:file:bg-white/20"
                     />
                     {file && (
                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
@@ -399,7 +399,7 @@ const CampaignResourcesManager: React.FC<CampaignResourcesManagerProps> = ({
                   setShowAddModal(false);
                   resetForm();
                 }}
-                className="flex-1 px-4 py-2 bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
+                className="flex-1 px-4 py-2 bg-white/5 text-white/60 rounded-lg hover:bg-white/10 transition-colors border border-white/10"
                 disabled={uploading}
               >
                 Cancel
@@ -407,7 +407,7 @@ const CampaignResourcesManager: React.FC<CampaignResourcesManagerProps> = ({
               <button
                 onClick={addType === 'link' ? handleAddLink : handleUploadFile}
                 disabled={uploading || !name || (addType === 'link' ? !url : !file)}
-                className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2 bg-white hover:bg-white/90 text-black rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
               >
                 {uploading ? (
                   <>
