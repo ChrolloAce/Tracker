@@ -954,8 +954,14 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                                 })}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <span className="text-xs text-gray-400 px-2.5 py-1 rounded-md bg-white/5 border border-white/10">
-                                  {snapshot.capturedBy?.replace('_', ' ') || 'unknown'}
+                                <span className={`text-xs px-2.5 py-1 rounded-md border ${
+                                  snapshot.isInitialSnapshot 
+                                    ? 'text-blue-400 bg-blue-500/10 border-blue-500/20' 
+                                    : 'text-gray-400 bg-white/5 border-white/10'
+                                }`}>
+                                  {snapshot.isInitialSnapshot 
+                                    ? 'Added' 
+                                    : (snapshot.capturedBy?.replace('_', ' ') || 'unknown')}
                                 </span>
                               </td>
                               <td className="px-6 py-4 text-center text-sm font-semibold text-white whitespace-nowrap">

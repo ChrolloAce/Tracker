@@ -340,7 +340,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           shares,
           capturedAt: snapshotTime,
           timestamp: snapshotTime,
-          capturedBy: isManualTrigger ? 'manual_refresh_initial' : 'scheduled_refresh_initial'
+          capturedBy: isManualTrigger ? 'manual_refresh_initial' : 'scheduled_refresh_initial',
+          isInitialSnapshot: true // Mark as initial snapshot - won't count towards graphs
         });
 
         addedCount++;
@@ -382,7 +383,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           shares,
           capturedAt: now,
           timestamp: now,
-          capturedBy: isManualTrigger ? 'manual_refresh' : 'scheduled_refresh'
+          capturedBy: isManualTrigger ? 'manual_refresh' : 'scheduled_refresh',
+          isInitialSnapshot: false // This is a refresh snapshot, not initial
         });
 
         updatedCount++;

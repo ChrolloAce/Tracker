@@ -156,8 +156,11 @@ class DateFilterService {
       // Non-strict mode: Video is in range if uploaded OR has snapshots in period
       const uploadedInRange = uploadDate >= dateRange.startDate && uploadDate <= dateRange.endDate;
       
-      // Check if video has any snapshots within the date range
+      // Check if video has any NON-INITIAL snapshots within the date range
+      // Initial snapshots don't count towards date filtering (they're just baseline data)
       const hasSnapshotsInRange = video.snapshots && video.snapshots.some(snapshot => {
+        // Exclude initial snapshots from date filtering
+        if (snapshot.isInitialSnapshot) return false;
         const snapshotDate = new Date(snapshot.capturedAt);
         return snapshotDate >= dateRange.startDate && snapshotDate <= dateRange.endDate;
       });

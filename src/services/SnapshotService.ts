@@ -34,7 +34,8 @@ class SnapshotService {
       comments: video.comments,
       shares: video.shares || 0,
       capturedAt: snapshotDate,
-      capturedBy: 'initial_upload'
+      capturedBy: 'initial_upload',
+      isInitialSnapshot: true // Mark as initial snapshot - won't count towards graphs
     };
 
     console.log(`📸 Created initial snapshot for video "${video.title.substring(0, 30)}..." at ${snapshotDate.toLocaleDateString()}:`, {
@@ -64,7 +65,8 @@ class SnapshotService {
       comments: currentMetrics.comments,
       shares: currentMetrics.shares || 0,
       capturedAt: new Date(),
-      capturedBy: 'manual_refresh'
+      capturedBy: 'manual_refresh',
+      isInitialSnapshot: false // This is a refresh snapshot, not initial
     };
 
     console.log(`📸 Created refresh snapshot for video "${video.title.substring(0, 30)}...":`, {
@@ -103,6 +105,7 @@ class SnapshotService {
 
   /**
    * Get snapshots within a specific date range
+   * NOTE: Excludes initial snapshots as they don't represent actual growth
    */
   static getSnapshotsInRange(video: VideoSubmission, dateRange: DateRange): VideoSnapshot[] {
     if (!video.snapshots || video.snapshots.length === 0) {
@@ -110,6 +113,8 @@ class SnapshotService {
     }
 
     return video.snapshots.filter(snapshot => {
+      // Exclude initial snapshots from growth calculations
+      if (snapshot.isInitialSnapshot) return false;
       const snapshotDate = new Date(snapshot.capturedAt);
       return snapshotDate >= dateRange.startDate && snapshotDate <= dateRange.endDate;
     });

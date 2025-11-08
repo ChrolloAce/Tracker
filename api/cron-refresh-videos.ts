@@ -1233,7 +1233,8 @@ async function saveVideosToFirestore(
         saves: videoData.saves || 0, // ✅ ADD BOOKMARKS
         capturedAt: now,
         timestamp: now, // Backwards compatibility
-        capturedBy: isManualTrigger ? 'manual_refresh' : 'scheduled_refresh'
+        capturedBy: isManualTrigger ? 'manual_refresh' : 'scheduled_refresh',
+        isInitialSnapshot: false // This is a refresh snapshot, not initial
       });
 
       updatedCount++;

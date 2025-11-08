@@ -708,7 +708,8 @@ export default async function handler(
         saves: video.saves || 0, // ✅ ADD BOOKMARKS TO SNAPSHOT
         capturedAt: snapshotTime,
         timestamp: snapshotTime,
-        capturedBy: 'initial_sync'
+        capturedBy: 'initial_sync',
+        isInitialSnapshot: true // Mark as initial snapshot - won't count towards graphs
       });
 
       // ALSO save to tracked account's videos subcollection (for real-time listener)

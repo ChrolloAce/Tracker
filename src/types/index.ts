@@ -10,6 +10,7 @@ export interface VideoSnapshot {
   capturedAt: Date;
   timestamp?: Date; // Backwards compatibility
   capturedBy: 'initial_upload' | 'manual_refresh' | 'scheduled_refresh';
+  isInitialSnapshot?: boolean; // True if this is the first snapshot (when video was added) - excluded from graphs/growth calculations
 }
 
 export interface VideoSubmission {

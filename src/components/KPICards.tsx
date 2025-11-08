@@ -750,14 +750,17 @@ const KPICards: React.FC<KPICardsProps> = ({
               // Video was uploaded before our analysis period
               // Check if it has growth during this interval via snapshots
               if (video.snapshots && video.snapshots.length > 0) {
-                const snapshotAtEnd = video.snapshots
+                // Filter out initial snapshots - they don't represent growth
+                const nonInitialSnapshots = video.snapshots.filter(s => !s.isInitialSnapshot);
+                
+                const snapshotAtEnd = nonInitialSnapshots
                   .filter(s => new Date(s.capturedAt) <= interval.endDate)
                   .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
                 
                 // Calculate delta if we have a snapshot at interval end
                 if (snapshotAtEnd) {
                   // Find the previous snapshot before the interval end for baseline
-                  const allSnapshotsBeforeEnd = video.snapshots
+                  const allSnapshotsBeforeEnd = nonInitialSnapshots
                     .filter(s => new Date(s.capturedAt) < new Date(snapshotAtEnd.capturedAt))
                     .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime());
                   
@@ -768,18 +771,23 @@ const KPICards: React.FC<KPICardsProps> = ({
                     const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - (previousSnapshot[metric] || 0));
                   intervalValue += delta;
                   } else {
-                    // This is the first snapshot ever - count its full value
-                    intervalValue += snapshotAtEnd[metric] || 0;
+                    // This is the first non-initial snapshot - count its growth from video's initial value
+                    // Use the initial snapshot as baseline if it exists
+                    const initialSnapshot = video.snapshots.find(s => s.isInitialSnapshot);
+                    const baseline = initialSnapshot ? (initialSnapshot[metric] || 0) : 0;
+                    const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - baseline);
+                    intervalValue += delta;
                   }
                 }
               }
             } else if (DataAggregationService.isDateInInterval(uploadDate, interval)) {
               // Video was uploaded during this interval
-              // Use either the first snapshot or current value
+              // Use the initial snapshot value (baseline when video was added)
               if (video.snapshots && video.snapshots.length > 0) {
-                const firstSnapshot = video.snapshots
+                const initialSnapshot = video.snapshots
+                  .filter(s => s.isInitialSnapshot)
                   .sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime())[0];
-                intervalValue += firstSnapshot[metric] || 0;
+                intervalValue += initialSnapshot ? (initialSnapshot[metric] || 0) : (video[metric] || 0);
               } else {
                 // No snapshots, use current value
                 intervalValue += video[metric] || 0;
@@ -2288,6 +2296,8 @@ const KPICard: React.FC<{
             const videosWithSnapshotsInInterval = interval ? submissions.filter((video: VideoSubmission) => {
               const snapshots = video.snapshots || [];
               return snapshots.some(snapshot => {
+                // Exclude initial snapshots from interval filtering
+                if (snapshot.isInitialSnapshot) return false;
                 const snapshotDate = new Date(snapshot.capturedAt);
                 return DataAggregationService.isDateInInterval(snapshotDate, interval);
               });
@@ -2297,10 +2307,11 @@ const KPICard: React.FC<{
             // Use videosWithSnapshotsInInterval instead of videosInInterval
             const topGainers = videosWithSnapshotsInInterval
               .map((video: VideoSubmission) => {
-                const allSnapshots = video.snapshots || [];
+                // Exclude initial snapshots from growth calculations
+                const nonInitialSnapshots = (video.snapshots || []).filter(s => !s.isInitialSnapshot);
                 
                 // Filter to snapshots within the interval OR just before it (for baseline)
-                const snapshotsInOrBeforeInterval = allSnapshots.filter(snapshot => {
+                const snapshotsInOrBeforeInterval = nonInitialSnapshots.filter(snapshot => {
                   const snapshotDate = new Date(snapshot.capturedAt);
                   return snapshotDate <= interval.endDate;
                 });
@@ -2322,8 +2333,30 @@ const KPICard: React.FC<{
                 ).pop();
                 
                 // Need both start and end snapshots to calculate growth
-                if (!snapshotAtStart || !snapshotAtEnd || snapshotAtStart === snapshotAtEnd) {
-                  return null;
+                // OR if snapshotAtStart is missing, use the initial snapshot as baseline
+                if (!snapshotAtEnd) return null;
+                
+                if (!snapshotAtStart || snapshotAtStart === snapshotAtEnd) {
+                  // Use initial snapshot as baseline if available
+                  const initialSnapshot = video.snapshots?.find(s => s.isInitialSnapshot);
+                  if (!initialSnapshot) return null;
+                  // Use initial snapshot as baseline for comparison
+                  const growthMetricKey = data.id === 'views' ? 'views' 
+                    : data.id === 'likes' ? 'likes'
+                    : data.id === 'comments' ? 'comments'
+                    : data.id === 'shares' ? 'shares'
+                    : data.id === 'bookmarks' ? 'bookmarks'
+                    : 'views';
+                  const startValue = (initialSnapshot as any)[growthMetricKey] || 0;
+                  const endValue = (snapshotAtEnd as any)[growthMetricKey] || 0;
+                  const growth = endValue - startValue;
+                  const growthPercentage = startValue > 0 ? ((endValue - startValue) / startValue) * 100 : 0;
+                  
+                  return {
+                    video,
+                    growth,
+                    growthPercentage
+                  };
                 }
                 
                 // Calculate growth percentage based on KPI metric

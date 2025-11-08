@@ -298,6 +298,7 @@ export interface VideoSnapshot extends VideoMetrics {
   videoId: string;
   capturedAt: Timestamp;
   capturedBy: string; // 'system' | userId
+  isInitialSnapshot?: boolean; // True if this is the first snapshot (when video was added) - excluded from graphs/growth calculations
   
   // Optional: store raw API response
   rawData?: Record<string, any>;

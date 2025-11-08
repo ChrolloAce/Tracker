@@ -345,7 +345,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       saves: videoData.save_count || 0, // ✅ ADD BOOKMARKS
       capturedAt: snapshotTime,
       timestamp: snapshotTime,
-      capturedBy: 'initial_manual_add'
+      capturedBy: 'initial_manual_add',
+      isInitialSnapshot: true // Mark as initial snapshot - won't count towards graphs
     });
 
     console.log(`📸 Created initial snapshot for manually added video`);

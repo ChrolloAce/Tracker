@@ -653,7 +653,8 @@ class FirestoreDataService {
       comments: metrics.comments,
       shares: metrics.shares,
       capturedAt: Timestamp.now(),
-      capturedBy: userId
+      capturedBy: userId,
+      isInitialSnapshot: false // Manual snapshot from user, not initial
     };
     
     batch.set(snapshotRef, snapshotData);
