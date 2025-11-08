@@ -743,27 +743,35 @@ async function refreshExistingVideos(
 }
 
 /**
- * TikTok: Bulk refresh using unique videos API
+ * TikTok: Bulk refresh by fetching account's latest videos
+ * NEW APPROACH: Fetch from profile instead of individual URLs (which may be deleted)
  */
 async function refreshTikTokVideosBulk(
   orgId: string,
   projectId: string,
   videoDocs: any[]
 ): Promise<number> {
-  // TikTok has a unique videos API that accepts multiple video URLs
-  const videoUrls = videoDocs.map(doc => doc.data().url || doc.data().videoUrl).filter(Boolean);
-  
-  if (videoUrls.length === 0) return 0;
+  if (videoDocs.length === 0) return 0;
 
-  console.log(`    🔄 [TIKTOK] Bulk refreshing ${videoUrls.length} videos...`);
+  // Get account handle from first video
+  const firstVideoData = videoDocs[0].data();
+  const accountHandle = firstVideoData.uploaderHandle || firstVideoData.username;
+  
+  if (!accountHandle) {
+    console.log(`    ⚠️ [TIKTOK] No account handle found in videos`);
+    return 0;
+  }
+
+  console.log(`    🔄 [TIKTOK] Fetching latest videos from @${accountHandle} to refresh ${videoDocs.length} existing videos...`);
   
   try {
+    // Fetch account's latest videos (up to 100)
     const result = await runApifyActor({
       actorId: 'apidojo/tiktok-scraper',
       input: {
-        startUrls: videoUrls,
-        maxItems: videoUrls.length,
-        sortType: 'RELEVANCE',
+        startUrls: [`https://www.tiktok.com/@${accountHandle}`],
+        maxItems: 100, // Get up to 100 latest videos
+        sortType: 'NEWEST',
         dateRange: 'DEFAULT',
         location: 'US',
         includeSearchKeywords: false,
