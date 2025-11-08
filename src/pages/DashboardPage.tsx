@@ -3250,6 +3250,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           isOpen={isAnalyticsModalOpen}
           onClose={handleCloseAnalyticsModal}
           totalCreatorVideos={totalCreatorVideos}
+          orgId={currentOrgId}
+          projectId={currentProjectId}
         />
       )}
 

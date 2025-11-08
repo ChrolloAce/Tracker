@@ -3093,6 +3093,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
               ).length
             : undefined
         }
+        orgId={currentOrgId}
+        projectId={currentProjectId}
       />
 
       {/* Delete Confirmation Modal */}

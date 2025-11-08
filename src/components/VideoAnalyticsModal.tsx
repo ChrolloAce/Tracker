@@ -5,12 +5,16 @@ import { VideoSubmission } from '../types';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { VideoHistoricalMetricsChart } from './VideoHistoricalMetricsChart';
+import FirestoreDataService from '../services/FirestoreDataService';
+import FirebaseService from '../services/FirebaseService';
 
 interface VideoAnalyticsModalProps {
   video: VideoSubmission | null;
   isOpen: boolean;
   onClose: () => void;
   totalCreatorVideos?: number; // Total number of videos from this creator
+  orgId?: string; // Organization ID for deleting tracked videos
+  projectId?: string; // Project ID for deleting tracked videos
 }
 
 interface ChartDataPoint {
@@ -24,7 +28,7 @@ interface ChartDataPoint {
   timestamp: number;
 }
 
-const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose, totalCreatorVideos }) => {
+const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose, totalCreatorVideos, orgId, projectId }) => {
   // Tooltip state for smooth custom tooltips
   const [tooltipData, setTooltipData] = useState<{ 
     x: number; 
@@ -405,13 +409,35 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   ];
 
   // Quick action handlers
-  const handleDeleteVideo = () => {
-    if (window.confirm('Are you sure you want to delete this video? This action cannot be undone.')) {
-      // TODO: Implement delete video functionality
-      console.log('Delete video:', video.id);
-      // You would typically call a service method here
-      // e.g., VideoService.deleteVideo(video.id);
+  const handleDeleteVideo = async () => {
+    if (!window.confirm('Are you sure you want to delete this video? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      console.log('🗑️ Deleting video:', video.id);
+      
+      // If we have orgId and projectId, this is a tracked account video
+      if (orgId && projectId) {
+        await FirestoreDataService.deleteVideo(orgId, projectId, video.id);
+        console.log('✅ Successfully deleted tracked video');
+      } else {
+        // Fallback to legacy FirebaseService for user-submitted videos
+        await FirebaseService.deleteVideo(video.id);
+        console.log('✅ Successfully deleted user video');
+      }
+      
+      // Close modal and show success
       onClose();
+      
+      // Optional: Show a toast notification (if you have a toast service)
+      // toast.success('Video deleted successfully');
+      
+      // Reload the page to update the UI
+      window.location.reload();
+    } catch (error) {
+      console.error('❌ Failed to delete video:', error);
+      alert('Failed to delete video. Please try again.');
     }
   };
 
