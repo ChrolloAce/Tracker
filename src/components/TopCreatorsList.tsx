@@ -13,6 +13,7 @@ type MetricType = 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'vi
 const TopCreatorsList: React.FC<TopCreatorsListProps> = ({ submissions, onCreatorClick }) => {
   const [topCount, setTopCount] = useState(10);
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('views');
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
 
   // Calculate aggregated creator stats
   const creatorStats = useMemo(() => {
@@ -253,14 +254,17 @@ const TopCreatorsList: React.FC<TopCreatorsListProps> = ({ submissions, onCreato
                 <div className="relative flex items-center gap-4">
                   {/* Profile Image */}
                   <div className="flex-shrink-0">
-                    {creator.profileImage ? (
+                    {creator.profileImage && !imageErrors.has(creator.handle) ? (
                       <img
                         src={creator.profileImage}
                         alt={creator.displayName}
                         className="w-12 h-12 rounded-full object-cover border-2 border-white/10"
+                        onError={() => {
+                          setImageErrors(prev => new Set(prev).add(creator.handle));
+                        }}
                       />
                     ) : (
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg border-2 border-white/10">
                         {creator.displayName.charAt(0).toUpperCase()}
                       </div>
                     )}

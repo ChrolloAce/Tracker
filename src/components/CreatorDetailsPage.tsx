@@ -72,6 +72,7 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
   
   // Campaigns state
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -316,15 +317,16 @@ const CreatorDetailsPage: React.FC<CreatorDetailsPageProps> = ({
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-3">
-              {creator.photoURL ? (
+              {creator.photoURL && !imageError ? (
                 <img
                   src={creator.photoURL}
                   alt={creator.displayName || 'Creator'}
                   className="w-12 h-12 rounded-full object-cover"
+                  onError={() => setImageError(true)}
                 />
               ) : (
-                <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center">
-                  <span className="text-xl font-medium text-white">
+                <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <span className="text-xl font-bold text-white">
                     {(creator.displayName || creator.email || 'C')[0].toUpperCase()}
                   </span>
                 </div>

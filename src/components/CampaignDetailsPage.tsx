@@ -56,6 +56,7 @@ const CampaignDetailsPage: React.FC = () => {
   const [editedMetricGuarantees, setEditedMetricGuarantees] = useState<MetricGuarantee[]>([]);
   const [editedParticipantIds, setEditedParticipantIds] = useState<string[]>([]);
   const [allMembers, setAllMembers] = useState<OrgMember[]>([]);
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadCampaign();
@@ -829,15 +830,18 @@ const CampaignDetailsPage: React.FC = () => {
                       key={creator.userId}
                       className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors"
                     >
-                      {creator.photoURL ? (
+                      {creator.photoURL && !imageErrors.has(creator.userId) ? (
                         <img
                           src={creator.photoURL}
                           alt={creator.displayName || 'Creator'}
                           className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                          onError={() => {
+                            setImageErrors(prev => new Set(prev).add(creator.userId));
+                          }}
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-                          <Users className="w-5 h-5 text-white/60" />
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                          {(creator.displayName || creator.email || 'C').charAt(0).toUpperCase()}
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
@@ -964,15 +968,18 @@ const CampaignDetailsPage: React.FC = () => {
                             {isSelected && <CheckCircle className="w-4 h-4 text-black" />}
                           </div>
 
-                          {member.photoURL ? (
+                          {member.photoURL && !imageErrors.has(member.userId) ? (
                             <img
                               src={member.photoURL}
                               alt={member.displayName || 'Member'}
                               className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                              onError={() => {
+                                setImageErrors(prev => new Set(prev).add(member.userId));
+                              }}
                             />
                           ) : (
-                            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-                              <Users className="w-5 h-5 text-white/60" />
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                              {(member.displayName || member.email || 'M').charAt(0).toUpperCase()}
                             </div>
                           )}
 

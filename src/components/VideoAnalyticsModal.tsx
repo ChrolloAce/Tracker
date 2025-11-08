@@ -41,6 +41,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   // Pagination state for snapshots
   const [snapshotsPage, setSnapshotsPage] = useState(1);
   const snapshotsPerPage = 5;
+  const [imageError, setImageError] = useState(false);
 
   // Extract title without hashtags and separate hashtags
   const { cleanTitle, hashtags } = useMemo(() => {
@@ -733,15 +734,16 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                   <div className="flex items-center gap-3">
                     {/* Profile Picture */}
                     <div className="relative flex-shrink-0">
-                      {video.uploaderProfilePicture ? (
+                      {video.uploaderProfilePicture && !imageError ? (
                         <img 
                           src={video.uploaderProfilePicture} 
                           alt={video.uploader || video.uploaderHandle}
                           className="w-12 h-12 rounded-full object-cover ring-2 ring-white/10"
+                          onError={() => setImageError(true)}
                         />
                       ) : (
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-700/50 to-gray-800/50 flex items-center justify-center ring-2 ring-white/10">
-                          <span className="text-white/70 font-semibold text-sm">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center ring-2 ring-white/10">
+                          <span className="text-white font-bold text-sm">
                             {(video.uploader || video.uploaderHandle || 'U').charAt(0).toUpperCase()}
                           </span>
                         </div>

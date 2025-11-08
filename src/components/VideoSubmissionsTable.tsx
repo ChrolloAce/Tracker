@@ -134,6 +134,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
   const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
   const [selectedVideoForPlayer, setSelectedVideoForPlayer] = useState<VideoSubmission | null>(null);
   const [showColumnToggle, setShowColumnToggle] = useState(false);
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
   
   // Load column preferences from localStorage
   const [visibleColumns, setVisibleColumns] = useState(() => {
@@ -691,27 +692,18 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                     <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 sticky left-0 z-20 group-hover:bg-white/5" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}>
                       <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4">
                         <div className="relative flex-shrink-0">
-                          {submission.uploaderProfilePicture ? (
+                          {submission.uploaderProfilePicture && !imageErrors.has(submission.id) ? (
                             <img
                               src={submission.uploaderProfilePicture}
                               alt={submission.uploaderHandle || submission.uploader || 'Account'}
                               className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover flex-shrink-0 ring-1 sm:ring-2 ring-white shadow-sm"
-                              onError={(e) => {
-                                // Fallback to default avatar if profile picture fails to load
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                const parent = target.parentElement;
-                                if (parent) {
-                                  const fallback = document.createElement('div');
-                                  fallback.className = 'w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 ring-2 ring-white shadow-sm';
-                                  fallback.innerHTML = `<span class="text-sm font-bold text-gray-900 dark:text-white">${(submission.uploaderHandle || submission.uploader || 'U').charAt(0).toUpperCase()}</span>`;
-                                  parent.appendChild(fallback);
-                                }
+                              onError={() => {
+                                setImageErrors(prev => new Set(prev).add(submission.id));
                               }}
                             />
                           ) : (
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 ring-1 sm:ring-2 ring-white shadow-sm">
-                              <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0 ring-1 sm:ring-2 ring-white shadow-sm">
+                              <span className="text-xs sm:text-sm font-bold text-white">
                                 {(submission.uploaderHandle || submission.uploader || 'U').charAt(0).toUpperCase()}
                               </span>
                             </div>

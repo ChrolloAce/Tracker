@@ -253,6 +253,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState<TrackedAccount | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
   const [showAttachCreatorModal, setShowAttachCreatorModal] = useState(false);
   const [showCreateLinkModal, setShowCreateLinkModal] = useState(false);
   const [creators, setCreators] = useState<Creator[]>([]);
@@ -1850,11 +1851,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                         key={account.id}
                         onClick={() => {
                           if (!isAccountSyncing) {
-                            setSelectedAccount(account);
-                            setViewMode('details');
-                            onViewModeChange('details');
-                            loadAccountVideos(account.id);
-                            navigate(`/accounts`);
+                            navigate(`/accounts/${account.id}`);
                           }
                         }}
                         className={clsx(
@@ -1870,23 +1867,20 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center space-x-3">
                             <div className="relative w-10 h-10">
-                              {account.profilePicture ? (
+                              {account.profilePicture && !imageErrors.has(account.id) ? (
                                 <img
                                   src={account.profilePicture}
                                   alt={`@${account.username}`}
                                   className="w-10 h-10 rounded-full object-cover"
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                    const placeholder = e.currentTarget.parentElement?.querySelector('.placeholder-icon');
-                                    if (placeholder) {
-                                      placeholder.classList.remove('hidden');
-                                    }
+                                  onError={() => {
+                                    setImageErrors(prev => new Set(prev).add(account.id));
                                   }}
                                 />
-                              ) : null}
-                              <div className={`placeholder-icon w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center ${account.profilePicture ? 'hidden' : ''}`}>
-                                <Users className="w-5 h-5 text-gray-500" />
+                              ) : (
+                                <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                  {(account.username || account.platform || 'A').charAt(0).toUpperCase()}
                               </div>
+                              )}
                               {/* Platform Icon Overlay */}
                               <div className="absolute -top-1 -right-1 w-5 h-5 bg-zinc-900 rounded-full p-0.5 flex items-center justify-center border border-white/20">
                                 <PlatformIcon platform={account.platform} size="xs" />

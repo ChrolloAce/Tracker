@@ -10,6 +10,7 @@ const TeamMembersTable: React.FC = () => {
   const [members, setMembers] = useState<OrgMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserRole, setCurrentUserRole] = useState<string>('');
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadMembers();
@@ -112,17 +113,24 @@ const TeamMembersTable: React.FC = () => {
                 {/* Member Info */}
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
-                    {member.photoURL ? (
+                    <div className="relative w-10 h-10">
+                      {member.photoURL && !imageErrors.has(member.userId) ? (
+                        <>
                       <img
                         src={member.photoURL}
                         alt={member.displayName}
                         className="w-10 h-10 rounded-full object-cover ring-2 ring-white/10"
+                            onError={() => {
+                              setImageErrors(prev => new Set(prev).add(member.userId));
+                            }}
                       />
+                        </>
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
-                        <User className="w-5 h-5 text-white/60" />
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm ring-2 ring-white/10">
+                          {(member.displayName || member.email || 'U').charAt(0).toUpperCase()}
                       </div>
                     )}
+                    </div>
                     <div>
                       <div className="text-sm font-medium text-white">
                         {member.displayName || 'Unknown User'}

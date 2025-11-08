@@ -28,6 +28,7 @@ const TopTeamCreatorsList: React.FC<TopTeamCreatorsListProps> = ({ submissions, 
     y: number;
   } | null>(null);
   const [showInfo, setShowInfo] = useState(false);
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
 
   // Fetch creators and their linked accounts
   useEffect(() => {
@@ -367,14 +368,19 @@ const TopTeamCreatorsList: React.FC<TopTeamCreatorsListProps> = ({ submissions, 
                     {/* Profile Icon (Spearhead) */}
                     <div className="absolute left-0 z-10 flex-shrink-0">
                       <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 bg-gray-700/50 backdrop-blur-sm relative flex items-center justify-center">
-                        {stats.creator.photoURL ? (
+                        {stats.creator.photoURL && !imageErrors.has(stats.creator.userId) ? (
                           <img 
                             src={stats.creator.photoURL} 
                             alt={stats.creator.displayName}
                             className="w-full h-full object-cover"
+                            onError={() => {
+                              setImageErrors(prev => new Set(prev).add(stats.creator.userId));
+                            }}
                           />
                         ) : (
-                          <User className="w-5 h-5 text-gray-400" />
+                          <div className="w-full h-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                            {(stats.creator.displayName || stats.creator.email || 'C').charAt(0).toUpperCase()}
+                          </div>
                         )}
                       </div>
                     </div>

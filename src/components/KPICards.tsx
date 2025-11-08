@@ -26,6 +26,7 @@ import { DateFilterType } from './DateRangeFilter';
 import { TimePeriodType } from './TimePeriodSelector';
 import DayVideosModal from './DayVideosModal';
 import DayClicksModal from './DayClicksModal';
+import DayTransactionsModal from './DayTransactionsModal';
 import LinkAnalyticsModalEnhanced from './LinkAnalyticsModalEnhanced';
 import { TrackedLinksKPICard } from './TrackedLinksKPICard';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -102,6 +103,10 @@ const KPICards: React.FC<KPICardsProps> = ({
   const [hoveredInterval, setHoveredInterval] = useState<TimeInterval | null>(null);
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval | null>(null);
   
+  // Transactions Modal state
+  const [isTransactionsModalOpen, setIsTransactionsModalOpen] = useState(false);
+  const [transactionsMetricType, setTransactionsMetricType] = useState<'revenue' | 'downloads'>('revenue');
+  
   // Link analytics modal state
   const [isLinkAnalyticsModalOpen, setIsLinkAnalyticsModalOpen] = useState(false);
   const [selectedLink, setSelectedLink] = useState<TrackedLink | null>(null);
@@ -134,6 +139,51 @@ const KPICards: React.FC<KPICardsProps> = ({
       navigate('/settings');
       // Set the active tab to revenue when navigating
       localStorage.setItem('settingsActiveTab', 'revenue');
+      return;
+    }
+    
+    // If it's revenue or downloads WITH data, show transactions modal
+    if ((metricId === 'revenue' || metricId === 'downloads') && revenueMetrics) {
+      setTransactionsMetricType(metricId as 'revenue' | 'downloads');
+      
+      // Set the interval data for the modal
+      if (hoveredInterval) {
+        setSelectedInterval(hoveredInterval);
+        
+        // Calculate PP interval if date filter is active
+        if (dateFilter !== 'all') {
+          let daysBack = 1;
+          if (dateFilter === 'last7days') daysBack = 7;
+          else if (dateFilter === 'last14days') daysBack = 14;
+          else if (dateFilter === 'last30days') daysBack = 30;
+          else if (dateFilter === 'last90days') daysBack = 90;
+          else if (customRange) {
+            const rangeLength = Math.ceil((customRange.endDate.getTime() - customRange.startDate.getTime()) / (1000 * 60 * 60 * 24));
+            daysBack = rangeLength;
+          }
+          
+          const intervalLength = hoveredInterval.endDate.getTime() - hoveredInterval.startDate.getTime();
+          const ppEndDate = new Date(hoveredInterval.endDate.getTime() - (daysBack * 24 * 60 * 60 * 1000));
+          const ppStartDate = new Date(ppEndDate.getTime() - intervalLength);
+          
+          setSelectedPPInterval({
+            startDate: ppStartDate,
+            endDate: ppEndDate,
+            timestamp: ppStartDate.getTime(),
+            intervalType: hoveredInterval.intervalType,
+            label: DataAggregationService.formatIntervalLabel(ppStartDate, hoveredInterval.intervalType)
+          });
+        } else {
+          setSelectedPPInterval(null);
+        }
+      } else {
+        // Use the full current period
+        setSelectedInterval(null);
+        setSelectedPPInterval(null);
+      }
+      
+      setSelectedDate(hoveredInterval ? new Date(hoveredInterval.startDate) : new Date());
+      setIsTransactionsModalOpen(true);
       return;
     }
     
@@ -963,6 +1013,50 @@ const KPICards: React.FC<KPICardsProps> = ({
         isIncreasing: true
       },
       (() => {
+        // Active Accounts KPI - counts unique accounts that have posted videos in the period
+        const uniqueAccountsInCP = new Set<string>();
+        submissions.forEach((video: VideoSubmission) => {
+          const handle = video.uploaderHandle || video.uploader;
+          if (handle) uniqueAccountsInCP.add(handle);
+        });
+        const currentCount = uniqueAccountsInCP.size;
+        
+        // Calculate previous period count
+        let previousCount = 0;
+        if (dateRangeStart && allSubmissions) {
+          const uniqueAccountsInPP = new Set<string>();
+          const periodLength = dateRangeEnd.getTime() - dateRangeStart.getTime();
+          const ppStartDate = new Date(dateRangeStart.getTime() - periodLength);
+          
+          allSubmissions.forEach((video: VideoSubmission) => {
+            const uploadDate = video.uploadDate ? new Date(video.uploadDate) : new Date(video.dateSubmitted);
+            if (uploadDate >= ppStartDate && uploadDate < dateRangeStart) {
+              const handle = video.uploaderHandle || video.uploader;
+              if (handle) uniqueAccountsInPP.add(handle);
+            }
+          });
+          previousCount = uniqueAccountsInPP.size;
+        }
+        
+        const accountsGrowthAbsolute = currentCount - previousCount;
+        const accountsGrowth = previousCount > 0 ? ((accountsGrowthAbsolute / previousCount) * 100) : 0;
+        
+        // Generate sparkline data using the same pattern as other metrics
+        const accountsSparklineResult = generateSparklineData('accounts');
+        
+        return {
+          id: 'active-accounts',
+          label: 'Active Accounts',
+          value: formatNumber(currentCount),
+          icon: AtSign,
+          accent: 'slate' as const,
+          delta: { value: Math.abs(accountsGrowth), isPositive: accountsGrowthAbsolute >= 0, absoluteValue: accountsGrowthAbsolute },
+          sparklineData: accountsSparklineResult.data,
+          intervalType: accountsSparklineResult.intervalType,
+          isIncreasing: accountsGrowthAbsolute >= 0
+        };
+      })(),
+      (() => {
         // Generate engagement rate sparkline data (per-interval, not cumulative)
         let actualStartDate: Date;
         let actualEndDate: Date = new Date();
@@ -1270,12 +1364,56 @@ const KPICards: React.FC<KPICardsProps> = ({
         const revenueGrowth = ppRevenue > 0 ? ((totalRevenue - ppRevenue) / ppRevenue) * 100 : 0;
         const revenueGrowthAbsolute = totalRevenue - ppRevenue;
         
-        // Use filtered daily metrics for sparkline
-        const sparklineData: Array<{ value: number }> = [];
-        if (filteredDailyMetrics.length > 0) {
-          // Use actual daily revenue data from filtered range
-          filteredDailyMetrics.forEach(day => {
-            sparklineData.push({ value: day.revenue / 100 }); // Convert cents to dollars
+        // Aggregate daily metrics by granularity for sparkline
+        const sparklineData: Array<{ value: number; timestamp?: number; interval?: TimeInterval; revenue?: number; downloads?: number }> = [];
+        if (filteredDailyMetrics.length > 0 && dateRangeStart && dateRangeEnd) {
+          // Generate intervals based on granularity
+          const intervals = DataAggregationService.generateIntervals(
+            { startDate: dateRangeStart, endDate: dateRangeEnd },
+            granularity
+          );
+          
+          // Aggregate revenue by interval
+          intervals.forEach(interval => {
+            const metricsInInterval = filteredDailyMetrics.filter(day => {
+              const dayDate = new Date(day.date);
+              return DataAggregationService.isDateInInterval(dayDate, interval);
+            });
+            
+            const intervalRevenue = metricsInInterval.reduce((sum, day) => sum + (day.revenue / 100), 0);
+            const intervalDownloads = metricsInInterval.reduce((sum, day) => sum + day.downloads, 0);
+            
+            // Aggregate app-level data for this interval
+            const appDataMap = new Map<string, { appBundleId: string; appName: string; appIcon?: string; revenue: number; downloads: number }>();
+            metricsInInterval.forEach(day => {
+              if (day.revenueByApp) {
+                day.revenueByApp.forEach(app => {
+                  const existing = appDataMap.get(app.appBundleId);
+                  if (existing) {
+                    existing.revenue += app.revenue;
+                    existing.downloads += app.downloads;
+                  } else {
+                    appDataMap.set(app.appBundleId, {
+                      appBundleId: app.appBundleId,
+                      appName: app.appName,
+                      appIcon: app.appIcon,
+                      revenue: app.revenue,
+                      downloads: app.downloads
+                    });
+                  }
+                });
+              }
+            });
+            const revenueByApp = Array.from(appDataMap.values()).sort((a, b) => b.revenue - a.revenue);
+            
+            sparklineData.push({
+              value: intervalRevenue,
+              timestamp: interval.timestamp,
+              interval,
+              revenue: intervalRevenue,
+              downloads: intervalDownloads,
+              revenueByApp: revenueByApp.length > 0 ? revenueByApp : undefined
+            } as any);
           });
         } else if (ppRevenue > 0 && totalRevenue > 0) {
           // Fallback: Create a trend line from PP to current
@@ -1316,7 +1454,7 @@ const KPICards: React.FC<KPICardsProps> = ({
           delta: { value: Math.abs(revenueGrowth), isPositive: revenueGrowth >= 0, absoluteValue: revenueGrowthAbsolute },
           period: periodLabel || undefined,
           sparklineData: sparklineData.length > 0 ? sparklineData : undefined,
-          intervalType: 'day' as IntervalType,
+          intervalType: granularity,
           isIncreasing: revenueGrowth >= 0,
           tooltip: 'Total revenue from all transactions in this period',
           onClick: onOpenRevenueSettings
@@ -1372,12 +1510,56 @@ const KPICards: React.FC<KPICardsProps> = ({
           ? 'Total app downloads from Apple App Store' 
           : 'Active Subscriptions from RevenueCat';
         
-        // Use filtered daily metrics for sparkline
-        const sparklineData: Array<{ value: number }> = [];
-        if (filteredDailyMetrics.length > 0) {
-          // Use actual daily downloads data from filtered range
-          filteredDailyMetrics.forEach(day => {
-            sparklineData.push({ value: day.downloads });
+        // Aggregate daily metrics by granularity for sparkline
+        const sparklineData: Array<{ value: number; timestamp?: number; interval?: TimeInterval; revenue?: number; downloads?: number }> = [];
+        if (filteredDailyMetrics.length > 0 && dateRangeStart && dateRangeEnd) {
+          // Generate intervals based on granularity
+          const intervals = DataAggregationService.generateIntervals(
+            { startDate: dateRangeStart, endDate: dateRangeEnd },
+            granularity
+          );
+          
+          // Aggregate downloads by interval
+          intervals.forEach(interval => {
+            const metricsInInterval = filteredDailyMetrics.filter(day => {
+              const dayDate = new Date(day.date);
+              return DataAggregationService.isDateInInterval(dayDate, interval);
+            });
+            
+            const intervalRevenue = metricsInInterval.reduce((sum, day) => sum + (day.revenue / 100), 0);
+            const intervalDownloads = metricsInInterval.reduce((sum, day) => sum + day.downloads, 0);
+            
+            // Aggregate app-level data for this interval
+            const appDataMap = new Map<string, { appBundleId: string; appName: string; appIcon?: string; revenue: number; downloads: number }>();
+            metricsInInterval.forEach(day => {
+              if (day.revenueByApp) {
+                day.revenueByApp.forEach(app => {
+                  const existing = appDataMap.get(app.appBundleId);
+                  if (existing) {
+                    existing.revenue += app.revenue;
+                    existing.downloads += app.downloads;
+                  } else {
+                    appDataMap.set(app.appBundleId, {
+                      appBundleId: app.appBundleId,
+                      appName: app.appName,
+                      appIcon: app.appIcon,
+                      revenue: app.revenue,
+                      downloads: app.downloads
+                    });
+                  }
+                });
+              }
+            });
+            const revenueByApp = Array.from(appDataMap.values()).sort((a, b) => b.downloads - a.downloads);
+            
+            sparklineData.push({
+              value: intervalDownloads,
+              timestamp: interval.timestamp,
+              interval,
+              revenue: intervalRevenue,
+              downloads: intervalDownloads,
+              revenueByApp: revenueByApp.length > 0 ? revenueByApp : undefined
+            } as any);
           });
         } else if (activeSubscriptions > 0) {
           // Fallback: Show a simple upward trend leading to current value
@@ -1410,7 +1592,7 @@ const KPICards: React.FC<KPICardsProps> = ({
           accent: 'blue' as const,
           period: periodLabel || undefined,
           sparklineData: sparklineData.length > 0 ? sparklineData : undefined,
-          intervalType: 'day' as IntervalType,
+          intervalType: granularity,
           isIncreasing: true,
           tooltip,
           onClick: onOpenRevenueSettings
@@ -1582,6 +1764,19 @@ const KPICards: React.FC<KPICardsProps> = ({
           ppInterval={selectedPPInterval}
           linkClicks={selectedLinkClicks}
           ppLinkClicks={selectedPPLinkClicks}
+        />
+      )}
+
+      {/* Day Transactions Modal for Revenue & Downloads */}
+      {selectedDate && (
+        <DayTransactionsModal
+          isOpen={isTransactionsModalOpen}
+          onClose={() => setIsTransactionsModalOpen(false)}
+          date={selectedDate}
+          revenueMetrics={revenueMetrics}
+          metricType={transactionsMetricType}
+          interval={selectedInterval}
+          ppInterval={selectedPPInterval}
         />
       )}
 
@@ -1784,6 +1979,7 @@ const KPICard: React.FC<{
   // Tooltip state for Portal rendering
   const [tooltipData, setTooltipData] = useState<{ x: number; y: number; point: any; lineX: number } | null>(null);
   const cardRef = React.useRef<HTMLDivElement>(null);
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
   
   const formatDeltaNumber = (num: number, isRevenue: boolean = false): string => {
     const absNum = Math.abs(num);
@@ -2356,7 +2552,7 @@ const KPICard: React.FC<{
             
             // Sort by the relevant metric
             let sortedItems: any[] = [];
-            if (data.id === 'accounts') {
+            if (data.id === 'accounts' || data.id === 'active-accounts') {
               // For accounts: group by uploaderHandle and sum total views
               const accountsMap = new Map<string, { handle: string; platform: string; totalViews: number; videoCount: number; profilePicture?: string }>();
               videosInInterval.forEach(video => {
@@ -2430,6 +2626,7 @@ const KPICard: React.FC<{
               : data.id === 'shares' ? 'Shares'
               : data.id === 'bookmarks' ? 'Bookmarks'
               : data.id === 'accounts' ? 'Total Views'
+              : data.id === 'active-accounts' ? 'Total Views'
               : data.id === 'link-clicks' ? 'Clicks'
               : data.id === 'published-videos' ? 'Videos'
               : 'Views';
@@ -2450,39 +2647,135 @@ const KPICard: React.FC<{
                 <div className="px-5 pt-4 pb-3 space-y-2.5">
                   {/* Current Period Line */}
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-gray-400 font-medium tracking-wider">
-                      {dateStr}
-                    </p>
-                    <div className="flex items-baseline gap-2">
-                      <p className="text-xl font-bold text-white">
-                        {displayValue}
-                      </p>
-                      {ppComparison && (
-                        <span className={`text-xs font-semibold ${ppComparison.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                          {ppComparison.isPositive ? '↑' : '↓'} {Math.abs(ppComparison.percentChange).toFixed(0)}%
-                        </span>
-                      )}
-                    </div>
+                    {/* For revenue and downloads, show compact format: "Aug 5 - $400" */}
+                    {(data.id === 'revenue' || data.id === 'downloads') ? (
+                      <>
+                        <div className="flex items-baseline gap-2 flex-1">
+                          <p className="text-xs text-gray-400 font-medium tracking-wider">
+                            {dateStr}
+                          </p>
+                          <p className="text-xl font-bold text-white">
+                            {displayValue}
+                          </p>
+                        </div>
+                        {ppComparison && (
+                          <span className={`text-xs font-semibold ${ppComparison.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {ppComparison.isPositive ? '↑' : '↓'} {Math.abs(ppComparison.percentChange).toFixed(0)}%
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs text-gray-400 font-medium tracking-wider">
+                          {dateStr}
+                        </p>
+                        <div className="flex items-baseline gap-2">
+                          <p className="text-xl font-bold text-white">
+                            {displayValue}
+                          </p>
+                          {ppComparison && (
+                            <span className={`text-xs font-semibold ${ppComparison.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                              {ppComparison.isPositive ? '↑' : '↓'} {Math.abs(ppComparison.percentChange).toFixed(0)}%
+                            </span>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                   
                   {/* Previous Period Line */}
                   {ppComparison && ppComparison.displayValue && ppDateStr && (
                     <div className="flex items-center justify-between">
-                      <p className="text-xs text-gray-500 font-medium tracking-wider">
-                        {ppDateStr}
-                      </p>
-                      <p className="text-lg font-semibold text-gray-400">
-                        {ppComparison.displayValue}
-                      </p>
+                      {(data.id === 'revenue' || data.id === 'downloads') ? (
+                        <>
+                          <div className="flex items-baseline gap-2 flex-1">
+                            <p className="text-xs text-gray-500 font-medium tracking-wider">
+                              {ppDateStr}
+                            </p>
+                            <p className="text-lg font-semibold text-gray-400">
+                              {ppComparison.displayValue}
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-xs text-gray-500 font-medium tracking-wider">
+                            {ppDateStr}
+                          </p>
+                          <p className="text-lg font-semibold text-gray-400">
+                            {ppComparison.displayValue}
+                          </p>
+                        </>
+                      )}
                     </div>
                   )}
             </div>
                 
-                {/* Divider */}
-                <div className="border-t border-white/10 mx-5"></div>
+                {/* Revenue/Downloads App Breakdown */}
+                {(data.id === 'revenue' || data.id === 'downloads') && point.revenue !== undefined && point.downloads !== undefined && (() => {
+                  // Get app breakdown from the interval data if available
+                  const revenueByApp = (point as any).revenueByApp || [];
+                  
+                  return (
+                    <>
+                      {revenueByApp.length > 0 && (
+                        <div className="px-5 py-3 border-t border-white/10 space-y-2">
+                          {revenueByApp.map((app: any, idx: number) => (
+                            <div 
+                              key={`${app.appBundleId}-${idx}`}
+                              className="flex items-center gap-3 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                            >
+                              {/* App Icon */}
+                              <div className="flex-shrink-0 w-10 h-10 rounded-xl overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                                {app.appIcon ? (
+                                  <img 
+                                    src={app.appIcon} 
+                                    alt={app.appName} 
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <span className="text-white font-bold text-sm">
+                                    {(app.appName || 'App').charAt(0).toUpperCase()}
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {/* App Info */}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-white font-medium truncate">
+                                  {app.appName || 'Unknown App'}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {app.downloads.toLocaleString()} downloads
+                                </p>
+                              </div>
+                              
+                              {/* Revenue */}
+                              <div className="flex-shrink-0 text-right">
+                                <p className="text-sm font-bold text-emerald-400">
+                                  ${(app.revenue / 100).toFixed(2)}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      <div className="px-5 py-3 border-t border-white/10">
+                        <button className="w-full flex items-center justify-center gap-2 py-2 text-xs text-gray-400 hover:text-white transition-colors">
+                          <span>Click to view detailed breakdown</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </>
+                  );
+                })()}
+                
+                {/* Divider for other metrics */}
+                {data.id !== 'revenue' && data.id !== 'downloads' && <div className="border-t border-white/10 mx-5"></div>}
                 
                 {/* Two-Column Mega Tooltip Layout - Only for non-published-videos KPIs */}
-                {!isPublishedVideosKPI && data.id !== 'accounts' && data.id !== 'link-clicks' && (
+                {!isPublishedVideosKPI && data.id !== 'accounts' && data.id !== 'active-accounts' && data.id !== 'link-clicks' && data.id !== 'revenue' && data.id !== 'downloads' && (
                 <div className="flex">
                   {/* Column 1: New Uploads */}
                   {hasNewUploads && (
@@ -2618,9 +2911,9 @@ const KPICard: React.FC<{
                 )}
                 
                 {/* Old single column content (fallback for accounts/links/published-videos) */}
-                {(data.id === 'accounts' || data.id === 'link-clicks' || isPublishedVideosKPI) && sortedItems.length > 0 ? (
+                {(data.id === 'accounts' || data.id === 'active-accounts' || data.id === 'link-clicks' || isPublishedVideosKPI) && sortedItems.length > 0 ? (
                   <div className="px-5 py-3 border-t border-white/10">
-                    {data.id === 'accounts' ? (
+                    {(data.id === 'accounts' || data.id === 'active-accounts') ? (
                       // Render Accounts with Profile Pictures
                       sortedItems.map((account: any, idx: number) => (
                         <div 
@@ -2630,18 +2923,18 @@ const KPICard: React.FC<{
                           {/* Profile Picture with Platform Icon */}
                           <div className="flex-shrink-0 w-12 h-12 relative">
                             <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-800">
-                              {account.profilePicture ? (
+                              {account.profilePicture && !imageErrors.has(account.handle) ? (
                                 <img 
                                   src={account.profilePicture} 
                                   alt={account.handle} 
                                   className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
+                                  onError={() => {
+                                    setImageErrors(prev => new Set(prev).add(account.handle));
                                   }}
                                 />
                               ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <AtSign className="w-6 h-6 text-gray-600" />
+                                <div className="w-full h-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                                  {(account.handle || 'A').charAt(0).toUpperCase()}
                                 </div>
                               )}
                             </div>

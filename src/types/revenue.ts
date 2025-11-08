@@ -61,6 +61,12 @@ export interface RevenueTransaction {
   productName?: string;
   subscriptionPeriod?: SubscriptionPeriod;
   
+  // App info (for multi-app tracking)
+  appBundleId?: string;      // e.g., "com.trackview.ios"
+  appName?: string;          // e.g., "TrackView"
+  appAppleId?: string;       // e.g., "1234567890"
+  appIcon?: string;          // URL or path to app icon
+  
   // Timing
   purchaseDate: Date;
   expirationDate?: Date;
@@ -136,6 +142,24 @@ export interface RevenueMetrics {
     date: Date;
     revenue: number; // In cents
     downloads: number;
+    revenueByApp?: Array<{
+      appBundleId: string;
+      appName: string;
+      appIcon?: string;
+      revenue: number;
+      downloads: number;
+    }>;
+  }>;
+  
+  // Revenue breakdown by app
+  revenueByApp?: Array<{
+    appBundleId: string;
+    appName: string;
+    appIcon?: string;
+    appAppleId?: string;
+    revenue: number;
+    downloads: number;
+    activeSubscriptions: number;
   }>;
   
   calculatedAt: Date;

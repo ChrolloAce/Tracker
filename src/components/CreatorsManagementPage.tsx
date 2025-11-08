@@ -476,14 +476,14 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
                                 alt={creator.displayName || 'Creator'}
                                 className="w-10 h-10 rounded-full object-cover ring-2 ring-white/10"
                                 fallback={
-                                  <div className="w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center ring-2 ring-white/10">
-                                    <User className="w-5 h-5 text-gray-500" />
+                                  <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center ring-2 ring-white/10 text-white font-bold text-sm">
+                                    {(creator.displayName || creator.email || 'C').charAt(0).toUpperCase()}
                                   </div>
                                 }
                               />
                             ) : (
-                              <div className="w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center ring-2 ring-white/10">
-                                <User className="w-5 h-5 text-gray-500" />
+                              <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center ring-2 ring-white/10 text-white font-bold text-sm">
+                                {(creator.displayName || creator.email || 'C').charAt(0).toUpperCase()}
                               </div>
                             )}
                           </div>
