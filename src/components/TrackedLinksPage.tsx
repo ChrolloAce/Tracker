@@ -614,7 +614,6 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           {/* Total Links */}
           <div className="bg-white/5 rounded-xl border border-white/10 p-4 hover:bg-white/10 transition-colors">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full bg-blue-400"></div>
               <span className="text-sm text-gray-400 font-medium">Total Links</span>
             </div>
             <div className="text-3xl font-bold text-white">{totalLinks}</div>
@@ -623,7 +622,6 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           {/* Total Clicks */}
           <div className="bg-white/5 rounded-xl border border-white/10 p-4 hover:bg-white/10 transition-colors">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full bg-green-400"></div>
               <span className="text-sm text-gray-400 font-medium">Total Clicks</span>
             </div>
             <div className="text-3xl font-bold text-white">{totalClicks}</div>
@@ -632,7 +630,6 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           {/* Unique Visitors */}
           <div className="bg-white/5 rounded-xl border border-white/10 p-4 hover:bg-white/10 transition-colors">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full bg-purple-400"></div>
               <span className="text-sm text-gray-400 font-medium">Unique Visitors</span>
             </div>
             <div className="text-3xl font-bold text-white">{uniqueVisitors}</div>
@@ -642,7 +639,6 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           <div className="bg-white/5 rounded-xl border border-white/10 p-4 hover:bg-white/10 transition-colors">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-sm text-gray-400 font-medium">Top Performer</span>
-              <div className="w-2 h-2 rounded-full bg-yellow-400"></div>
             </div>
             <div className="text-lg font-bold text-white truncate" title={topPerformer}>
               {topPerformer}
@@ -715,10 +711,10 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           {/* Geographic Distribution */}
           <div className="bg-white/5 rounded-xl border border-white/10 p-6">
             <h3 className="text-lg font-semibold text-white mb-4">Clicks by Country</h3>
-            <div className="space-y-2">
+            <div className="divide-y divide-white/10">
               {topCountries.length > 0 ? (
                 topCountries.map((country, index) => (
-                  <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-white/5 rounded-lg transition-colors">
+                  <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-white/5 transition-colors first:pt-0">
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{country.flag}</span>
                       <span className="text-sm font-medium text-white">{country.name}</span>
@@ -793,10 +789,24 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
               return sourceData.length > 0 ? (
                 <div className="flex flex-col items-center">
                   {/* Donut Chart */}
-                  <div className="relative w-64 h-64">
+                  <div className="relative w-64 h-64 mx-auto">
+                    {/* HTML Tooltip */}
+                    {hoveredSource && (
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none">
+                        <div className="bg-zinc-900 border border-white/20 rounded-lg px-4 py-3 shadow-xl">
+                          <div className="text-center">
+                            <div className="text-lg mb-1">{getSourceIcon(hoveredSource)}</div>
+                            <div className="text-sm font-semibold text-white mb-1">{hoveredSource}</div>
+                            <div className="text-xs text-white/60">
+                              {Math.round((sourceCounts[hoveredSource] / totalClicks) * 100)}% • {sourceCounts[hoveredSource]} {sourceCounts[hoveredSource] === 1 ? 'click' : 'clicks'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <svg viewBox="0 0 100 100" className="transform -rotate-90">
                       {(() => {
-                        const colors = ['#5B8DEF', '#7BA5F3', '#9BBDF7', '#BBD5FB', '#DBEAFE'];
+                        const colors = ['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.7)', 'rgba(255,255,255,0.5)', 'rgba(255,255,255,0.3)', 'rgba(255,255,255,0.2)'];
                         const radius = 42;
                         const innerRadius = 30;
                         
@@ -842,46 +852,6 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                                   filter: isHovered ? 'brightness(1.2)' : 'none'
                                 }}
                               />
-                              {/* Tooltip when hovered */}
-                              {isHovered && (
-                                <g className="pointer-events-none" transform="rotate(90 50 50)">
-                                  <text
-                                    x="50"
-                                    y="45"
-                                    textAnchor="middle"
-                                    style={{ 
-                                      fontSize: '8px', 
-                                      fill: 'white', 
-                                      fontWeight: 'bold'
-                                    }}
-                                  >
-                                    {getSourceIcon(source)} {source}
-                                  </text>
-                                  <text
-                                    x="50"
-                                    y="55"
-                                    textAnchor="middle"
-                                    style={{ 
-                                      fontSize: '10px', 
-                                      fill: 'white', 
-                                      fontWeight: 'bold'
-                                    }}
-                                  >
-                                    {percentage}%
-                                  </text>
-                                  <text
-                                    x="50"
-                                    y="62"
-                                    textAnchor="middle"
-                                    style={{ 
-                                      fontSize: '6px', 
-                                      fill: 'rgba(255,255,255,0.7)'
-                                    }}
-                                  >
-                                    {clicks} clicks
-                                  </text>
-                                </g>
-                              )}
                             </g>
                           );
                         }
@@ -937,35 +907,6 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                                   filter: isHovered ? 'brightness(1.2)' : 'none'
                                 }}
                               />
-                              {/* Tooltip when hovered */}
-                              {isHovered && (
-                                <g className="pointer-events-none" transform={`rotate(90 ${tooltipX} ${tooltipY})`}>
-                                  <text
-                                    x={tooltipX}
-                                    y={tooltipY - 3}
-                                    textAnchor="middle"
-                                    style={{ 
-                                      fontSize: '6px', 
-                                      fill: 'white', 
-                                      fontWeight: 'bold'
-                                    }}
-                                  >
-                                    {getSourceIcon(source)} {source}
-                                  </text>
-                                  <text
-                                    x={tooltipX}
-                                    y={tooltipY + 3}
-                                    textAnchor="middle"
-                                    style={{ 
-                                      fontSize: '8px', 
-                                      fill: 'white', 
-                                      fontWeight: 'bold'
-                                    }}
-                                  >
-                                    {percentage}% ({clicks})
-                                  </text>
-                                </g>
-                              )}
                             </g>
                           );
                         });
