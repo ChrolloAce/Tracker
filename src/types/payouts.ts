@@ -193,7 +193,8 @@ export type CompetitionType =
   | 'first_to_hit' // First to reach threshold
   | 'most_improved' // Biggest % growth
   | 'consistency' // Most consistent performer
-  | 'engagement_king'; // Best engagement rate
+  | 'engagement_king' // Best engagement rate
+  | 'random_draw'; // Random draw from eligible participants
 
 /**
  * Legacy alias for CompetitionType
@@ -217,7 +218,7 @@ export interface CampaignCompetition {
   campaignId: string;
   name: string; // e.g. "Top 3 Views in November"
   description?: string;
-  metric: 'views' | 'likes' | 'comments' | 'shares' | 'saves' | 'conversions' | 'engagement_rate' | 'videos_posted';
+  metric: 'views' | 'likes' | 'comments' | 'shares' | 'saves' | 'conversions' | 'engagement_rate' | 'videos_posted' | 'ig_reel_plays' | 'yt_views' | 'tt_views';
   type: CompetitionType;
   
   // Top N config
@@ -236,6 +237,7 @@ export interface CampaignCompetition {
   eligibility?: {
     creatorIds?: string[];
     minVideos?: number;
+    minEngagementRate?: number;
     tags?: string[];
   }; // Legacy eligibility format
   

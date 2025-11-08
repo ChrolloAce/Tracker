@@ -19,7 +19,8 @@ import type {
   CampaignCompetitionPrize
 } from '../types/payouts';
 // import type { VideoSubmission } from '../types'; // Unused for now
-import { PayoutCalculationEngine, CreatorPerformance } from './PayoutCalculationEngine';
+// import { PayoutCalculationEngine, CreatorPerformance } from './PayoutCalculationEngine'; // Unused for now
+import type { CreatorPerformance } from './PayoutCalculationEngine';
 
 /**
  * Competition Result for a Single Creator

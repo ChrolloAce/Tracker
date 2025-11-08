@@ -4,7 +4,8 @@ import type {
   PayoutMetric,
   PayoutCondition,
   CreatorPayoutRecord,
-  PayoutComponentType
+  CPMPayoutComponent,
+  TieredBonusPayoutComponent
 } from '../types/payouts';
 import type { VideoSubmission } from '../types';
 import { Timestamp } from 'firebase/firestore';
@@ -166,8 +167,8 @@ export class PayoutCalculationEngine {
     }
 
     return {
-      componentId: component.id,
-      componentName: component.name,
+        componentId: component.id || `comp-${index}`,
+        componentName: component.name || `Component ${index + 1}`,
       type: component.type,
       amount: Math.round(amount * 100) / 100, // Round to 2 decimals
       details,
@@ -204,7 +205,8 @@ export class PayoutCalculationEngine {
     component: PayoutComponent,
     performance: CreatorPerformance
   ): { amount: number; details: string } {
-    if (!component.tiers || component.tiers.length === 0) {
+        const tieredComponent = component as TieredBonusPayoutComponent;
+        if (!tieredComponent.tiers || tieredComponent.tiers.length === 0) {
       return { amount: 0, details: 'No tiers defined' };
     }
 
