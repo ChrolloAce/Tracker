@@ -1308,10 +1308,15 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
 
   const confirmDeleteAccount = useCallback(async () => {
     if (!currentOrgId || !currentProjectId || !accountToDelete) return;
-    // Simplified - no text confirmation needed
+    
+    console.log(`🗑️ [UI] Starting account deletion for: @${accountToDelete.username} (ID: ${accountToDelete.id})`);
+    console.log(`🗑️ [UI] Account claims to have ${accountToDelete.totalVideos || 0} videos`);
 
     try {
+      console.log(`🗑️ [UI] Calling removeAccount service...`);
       await AccountTrackingServiceFirebase.removeAccount(currentOrgId, currentProjectId, accountToDelete.id);
+      console.log(`✅ [UI] Account deletion completed successfully`);
+      
       setAccounts(prev => prev.filter(a => a.id !== accountToDelete.id));
       
       if (selectedAccount?.id === accountToDelete.id) {
@@ -1323,9 +1328,12 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       setShowDeleteModal(false);
       setAccountToDelete(null);
       setDeleteConfirmText('');
+      
+      console.log(`✅ [UI] UI state updated, account removed from list`);
     } catch (error) {
-      console.error('Failed to remove account:', error);
-      alert('Failed to remove account. Please try again.');
+      console.error('❌ [UI] Failed to remove account:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to remove account: ${errorMessage}\n\nCheck browser console for details.`);
     }
   }, [accountToDelete, deleteConfirmText, selectedAccount, currentOrgId, currentProjectId]);
 
