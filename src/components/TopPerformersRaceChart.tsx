@@ -109,7 +109,13 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
     // Use snapshot gains for 'gainers' type, otherwise use absolute values
     if (type === 'gainers') {
       return videosArray
-        .filter(video => video.snapshots && video.snapshots.length > 0) // Only videos with snapshots
+        .filter(video => {
+          // Only videos with snapshots
+          if (!video.snapshots || video.snapshots.length === 0) return false;
+          // Only show videos with actual positive growth
+          const gain = calculateSnapshotGain(video, videosMetric);
+          return gain > 0;
+        })
         .sort((a, b) => calculateSnapshotGain(b, videosMetric) - calculateSnapshotGain(a, videosMetric))
         .slice(0, topVideosCount);
     }
@@ -318,6 +324,11 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
   const showVideos = type === 'videos' || type === 'gainers' || type === 'both';
   const showAccounts = type === 'accounts' || type === 'both';
   const showBoth = type === 'both';
+
+  // For gainers type, hide the entire section if there are no gainers
+  if (type === 'gainers' && topVideos.length === 0) {
+    return null; // Don't render anything if there are no gainers
+  }
 
   return (
     <div className={showBoth ? "grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6" : ""}>

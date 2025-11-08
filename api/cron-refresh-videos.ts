@@ -298,7 +298,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log('📧 Sending refresh summary emails...');
       
       for (const [orgId, stats] of processedOrgs.entries()) {
-        if (stats.email && (stats.videosAdded > 0 || stats.videosUpdated > 0)) {
+        // Send email if there was any activity (added, updated, or just refreshed)
+        if (stats.email && (stats.videosAdded > 0 || stats.videosUpdated > 0 || stats.accountsProcessed > 0)) {
           try {
             const triggerTypeText = isManualTrigger ? 'Manual' : 'Automated';
             const emailResponse = await fetch('https://api.resend.com/emails', {
@@ -777,13 +778,27 @@ async function refreshTikTokVideosBulk(
     const refreshedVideos = result.items || [];
     let updatedCount = 0;
 
+    console.log(`    🔍 [TIKTOK] Matching ${refreshedVideos.length} API results with ${videoDocs.length} DB videos...`);
+
     // Update each video with fresh metrics (apidojo/tiktok-scraper format)
     for (const video of refreshedVideos) {
       const videoId = extractVideoId(video, 'tiktok');
-      if (!videoId) continue;
+      if (!videoId) {
+        console.log(`    ⚠️ [TIKTOK] Could not extract videoId from:`, {
+          id: video.id,
+          post_id: video.post_id,
+          tiktok_url: video.tiktok_url?.substring(0, 50)
+        });
+        continue;
+      }
 
       const videoDoc = videoDocs.find(doc => doc.data().videoId === videoId);
-      if (!videoDoc) continue;
+      if (!videoDoc) {
+        console.log(`    ⚠️ [TIKTOK] No DB match for videoId: ${videoId} (checking against ${videoDocs.length} docs)`);
+        continue;
+      }
+
+      console.log(`    ✓ [TIKTOK] Matched videoId ${videoId}, updating metrics...`);
 
       const now = Timestamp.now();
       const metrics = {
