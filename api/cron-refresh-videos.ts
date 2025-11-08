@@ -887,16 +887,37 @@ async function refreshInstagramVideosSequential(
 
       const video = videos[0];
       
-      await videoDoc.ref.update({
+      const now = Timestamp.now();
+      const metrics = {
         views: video.play_count || video.video_view_count || 0,
         likes: video.like_count || 0,
         comments: video.comment_count || 0,
         shares: video.share_count || 0,
-        lastRefreshed: Timestamp.now()
+        saves: video.save_count || 0, // ✅ BOOKMARKS
+        lastRefreshed: now
+      };
+
+      // Update video metrics
+      await videoDoc.ref.update(metrics);
+
+      // Create refresh snapshot
+      const snapshotRef = videoDoc.ref.collection('snapshots').doc();
+      await snapshotRef.set({
+        id: snapshotRef.id,
+        videoId: videoData.videoId,
+        views: metrics.views,
+        likes: metrics.likes,
+        comments: metrics.comments,
+        shares: metrics.shares,
+        saves: metrics.saves,
+        capturedAt: now,
+        timestamp: now, // Backwards compatibility
+        capturedBy: 'scheduled_refresh',
+        isInitialSnapshot: false // This is a refresh snapshot
       });
 
       updatedCount++;
-      console.log(`    ✓ [INSTAGRAM] Refreshed ${i + 1}/${videoDocs.length}: ${videoData.videoId} (${video.videoViewCount || 0} views)`);
+      console.log(`    ✓ [INSTAGRAM] Refreshed ${i + 1}/${videoDocs.length}: ${videoData.videoId} (${metrics.views} views)`);
     } catch (error: any) {
       failedCount++;
       const errorMsg = error.message || String(error);
