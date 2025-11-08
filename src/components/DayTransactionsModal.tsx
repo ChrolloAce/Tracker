@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { X, DollarSign, TrendingUp, Calendar, Package, Download } from 'lucide-react';
+import { X } from 'lucide-react';
 import { RevenueTransaction, RevenueMetrics } from '../types/revenue';
 import { TimeInterval } from '../services/DataAggregationService';
 
@@ -173,19 +173,6 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
         <div className="px-6 py-5 border-b border-white/[0.08] flex items-center justify-between flex-shrink-0">
           <div className="flex-1">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl ${
-                metricType === 'revenue' 
-                  ? 'bg-emerald-500/10' 
-                  : 'bg-blue-500/10'
-              } flex items-center justify-center`}>
-                {metricType === 'revenue' ? (
-                  <DollarSign className={`w-5 h-5 ${
-                    metricType === 'revenue' ? 'text-emerald-400' : 'text-blue-400'
-                  }`} />
-                ) : (
-                  <Download className="w-5 h-5 text-blue-400" />
-                )}
-              </div>
               <div>
                 <h2 className="text-xl font-semibold text-white">
                   {metricType === 'revenue' ? 'Revenue Details' : 'Downloads Details'}
@@ -239,7 +226,6 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
               {/* Total Revenue */}
               <div className="bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
                 <div className="flex items-center gap-2 mb-2">
-                  <DollarSign className="w-4 h-4 text-emerald-400" />
                   <span className="text-xs text-gray-400 uppercase tracking-wider">Revenue</span>
                 </div>
                 <div className="flex items-end gap-2">
@@ -265,7 +251,6 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
               {/* Total Downloads */}
               <div className="bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
                 <div className="flex items-center gap-2 mb-2">
-                  <Download className="w-4 h-4 text-blue-400" />
                   <span className="text-xs text-gray-400 uppercase tracking-wider">Downloads</span>
                 </div>
                 <div className="flex items-end gap-2">
@@ -291,7 +276,6 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
               {/* Conversion Rate */}
               <div className="bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
                 <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="w-4 h-4 text-violet-400" />
                   <span className="text-xs text-gray-400 uppercase tracking-wider">Conversion</span>
                 </div>
                 <p className="text-2xl font-bold text-white">
@@ -307,7 +291,6 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
               {/* Average Revenue Per Download */}
               <div className="bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]">
                 <div className="flex items-center gap-2 mb-2">
-                  <Calendar className="w-4 h-4 text-gray-400" />
                   <span className="text-xs text-gray-400 uppercase tracking-wider">ARPU</span>
                 </div>
                 <p className="text-2xl font-bold text-white">
@@ -325,7 +308,6 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
             {revenueMetrics?.revenueByApp && revenueMetrics.revenueByApp.length > 0 && (
               <div className="mb-6">
                 <div className="flex items-center gap-2 px-1 mb-3">
-                  <Package className="w-3.5 h-3.5 text-gray-500" />
                   <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Revenue by App · {revenueMetrics.revenueByApp.length}
                   </h3>
@@ -338,7 +320,7 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
                     >
                       <div className="flex items-center gap-3 mb-3">
                         {/* App Icon */}
-                        <div className="flex-shrink-0 w-12 h-12 rounded-xl overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                        <div className="flex-shrink-0 w-12 h-12 rounded-xl overflow-hidden bg-white/[0.05] flex items-center justify-center border border-white/[0.08]">
                           {app.appIcon ? (
                             <img 
                               src={app.appIcon} 
@@ -346,7 +328,7 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
                               className="w-full h-full object-cover"
                             />
                           ) : (
-                            <span className="text-white font-bold text-lg">
+                            <span className="text-gray-400 font-bold text-lg">
                               {(app.appName || 'App').charAt(0).toUpperCase()}
                             </span>
                           )}
@@ -367,7 +349,7 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-gray-400">Revenue</span>
-                          <span className="text-sm font-bold text-emerald-400">
+                          <span className="text-sm font-bold text-white">
                             {formatCurrency(app.revenue)}
                           </span>
                         </div>
@@ -395,7 +377,6 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
               {/* Top Revenue Days */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2 px-1">
-                  <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
                   <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Top Revenue Days · {topRevenueDays.length}
                   </h3>
@@ -407,26 +388,21 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
                         key={`revenue-${day.date}-${idx}`}
                         className="bg-white/[0.03] rounded-lg p-4 border border-white/[0.08] hover:bg-white/[0.05] transition-colors"
                       >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                              <span className="text-sm font-bold text-emerald-400">#{idx + 1}</span>
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-white">
-                                {new Date(day.date).toLocaleDateString('en-US', { 
-                                  month: 'short', 
-                                  day: 'numeric',
-                                  year: 'numeric'
-                                })}
-                              </p>
-                              <p className="text-xs text-gray-600">
-                                {new Date(day.date).toLocaleDateString('en-US', { weekday: 'long' })}
-                              </p>
-                            </div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-white">
+                              {new Date(day.date).toLocaleDateString('en-US', { 
+                                month: 'short', 
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </p>
+                            <p className="text-xs text-gray-600">
+                              {new Date(day.date).toLocaleDateString('en-US', { weekday: 'long' })}
+                            </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-lg font-bold text-emerald-400">
+                            <p className="text-lg font-bold text-white">
                               {formatCurrency(day.revenue)}
                             </p>
                             <p className="text-xs text-gray-600">
@@ -434,26 +410,10 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 text-xs">
-                          <div className="flex-1 bg-white/[0.02] rounded-full h-1.5 overflow-hidden">
-                            <div 
-                              className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full"
-                              style={{ 
-                                width: `${topRevenueDays.length > 0 ? (day.revenue / topRevenueDays[0].revenue) * 100 : 0}%` 
-                              }}
-                            />
-                          </div>
-                          <span className="text-gray-600 font-medium">
-                            {topRevenueDays.length > 0 ? ((day.revenue / topRevenueDays[0].revenue) * 100).toFixed(0) : 0}%
-                          </span>
-                        </div>
                       </div>
                     ))
                   ) : (
                     <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <div className="w-12 h-12 rounded-full bg-white/[0.02] flex items-center justify-center mb-3">
-                        <DollarSign className="w-5 h-5 text-gray-600" />
-                      </div>
                       <p className="text-sm text-gray-500">No revenue data</p>
                     </div>
                   )}
@@ -463,7 +423,6 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
               {/* Top Download Days */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2 px-1">
-                  <Download className="w-3.5 h-3.5 text-blue-500" />
                   <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Top Download Days · {topDownloadDays.length}
                   </h3>
@@ -475,26 +434,21 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
                         key={`downloads-${day.date}-${idx}`}
                         className="bg-white/[0.03] rounded-lg p-4 border border-white/[0.08] hover:bg-white/[0.05] transition-colors"
                       >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                              <span className="text-sm font-bold text-blue-400">#{idx + 1}</span>
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-white">
-                                {new Date(day.date).toLocaleDateString('en-US', { 
-                                  month: 'short', 
-                                  day: 'numeric',
-                                  year: 'numeric'
-                                })}
-                              </p>
-                              <p className="text-xs text-gray-600">
-                                {new Date(day.date).toLocaleDateString('en-US', { weekday: 'long' })}
-                              </p>
-                            </div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-white">
+                              {new Date(day.date).toLocaleDateString('en-US', { 
+                                month: 'short', 
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </p>
+                            <p className="text-xs text-gray-600">
+                              {new Date(day.date).toLocaleDateString('en-US', { weekday: 'long' })}
+                            </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-lg font-bold text-blue-400">
+                            <p className="text-lg font-bold text-white">
                               {formatNumber(day.downloads)}
                             </p>
                             <p className="text-xs text-gray-600">
@@ -502,26 +456,10 @@ const DayTransactionsModal: React.FC<DayTransactionsModalProps> = ({
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 text-xs">
-                          <div className="flex-1 bg-white/[0.02] rounded-full h-1.5 overflow-hidden">
-                            <div 
-                              className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full"
-                              style={{ 
-                                width: `${topDownloadDays.length > 0 ? (day.downloads / topDownloadDays[0].downloads) * 100 : 0}%` 
-                              }}
-                            />
-                          </div>
-                          <span className="text-gray-600 font-medium">
-                            {topDownloadDays.length > 0 ? ((day.downloads / topDownloadDays[0].downloads) * 100).toFixed(0) : 0}%
-                          </span>
-                        </div>
                       </div>
                     ))
                   ) : (
                     <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <div className="w-12 h-12 rounded-full bg-white/[0.02] flex items-center justify-center mb-3">
-                        <Download className="w-5 h-5 text-gray-600" />
-                      </div>
                       <p className="text-sm text-gray-500">No download data</p>
                     </div>
                   )}

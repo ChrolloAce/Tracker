@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Eye, Heart, MessageCircle, Share2, TrendingUp, TrendingDown, Minus, Bookmark, Clock, Flame, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Eye, Heart, MessageCircle, Share2, TrendingUp, TrendingDown, Minus, Bookmark, Clock, Flame, ExternalLink, ChevronLeft, ChevronRight, Trash2, Link2, Copy, Check } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -42,6 +42,28 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   const [snapshotsPage, setSnapshotsPage] = useState(1);
   const snapshotsPerPage = 5;
   const [imageError, setImageError] = useState(false);
+
+  // Quick actions state
+  const [showCopyDropdown, setShowCopyDropdown] = useState(false);
+  const [copiedItem, setCopiedItem] = useState<string | null>(null);
+  const copyDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (copyDropdownRef.current && !copyDropdownRef.current.contains(event.target as Node)) {
+        setShowCopyDropdown(false);
+      }
+    };
+
+    if (showCopyDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showCopyDropdown]);
 
   // Extract title without hashtags and separate hashtags
   const { cleanTitle, hashtags } = useMemo(() => {
@@ -382,6 +404,57 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     },
   ];
 
+  // Quick action handlers
+  const handleDeleteVideo = () => {
+    if (window.confirm('Are you sure you want to delete this video? This action cannot be undone.')) {
+      // TODO: Implement delete video functionality
+      console.log('Delete video:', video.id);
+      // You would typically call a service method here
+      // e.g., VideoService.deleteVideo(video.id);
+      onClose();
+    }
+  };
+
+  const handleGoToVideo = () => {
+    if (video.url) {
+      window.open(video.url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const handleCopy = async (type: 'link' | 'videoId' | 'accountLink') => {
+    let textToCopy = '';
+    
+    switch (type) {
+      case 'link':
+        textToCopy = video.url || '';
+        break;
+      case 'videoId':
+        textToCopy = video.id || '';
+        break;
+      case 'accountLink':
+        // Construct account/profile link based on platform
+        const handle = video.uploaderHandle || video.uploader || '';
+        if (video.platform === 'tiktok') {
+          textToCopy = `https://www.tiktok.com/@${handle}`;
+        } else if (video.platform === 'instagram') {
+          textToCopy = `https://www.instagram.com/${handle}`;
+        } else if (video.platform === 'youtube') {
+          textToCopy = `https://www.youtube.com/@${handle}`;
+        }
+        break;
+    }
+
+    if (textToCopy) {
+      try {
+        await navigator.clipboard.writeText(textToCopy);
+        setCopiedItem(type);
+        setTimeout(() => setCopiedItem(null), 2000);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
+    }
+  };
+
   return (
     <div 
       className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-3"
@@ -394,10 +467,73 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       >
         {/* Header */}
         <div className="flex items-center justify-between gap-3 mb-4">
-          {/* Left: Empty space (date filter removed) */}
-          <div className="flex items-center gap-3">
-            {/* Date filtering completely removed */}
+          {/* Left: Quick Actions */}
+          <div className="flex items-center gap-2">
+            {/* Trash - Delete Video */}
+            <button
+              onClick={handleDeleteVideo}
+              className="p-2 text-white/60 hover:text-red-400 bg-white/5 hover:bg-red-500/10 rounded-lg transition-all border border-white/5 hover:border-red-500/20"
+              title="Delete video"
+            >
+              <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+            </button>
+
+            {/* Link - Go to Video */}
+            <button
+              onClick={handleGoToVideo}
+              className="p-2 text-white/60 hover:text-blue-400 bg-white/5 hover:bg-blue-500/10 rounded-lg transition-all border border-white/5 hover:border-blue-500/20"
+              title="Go to video"
+            >
+              <Link2 className="w-4 h-4" strokeWidth={1.5} />
+            </button>
+
+            {/* Copy - Dropdown */}
+            <div className="relative" ref={copyDropdownRef}>
+              <button
+                onClick={() => setShowCopyDropdown(!showCopyDropdown)}
+                className="p-2 text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all border border-white/5 hover:border-white/20"
+                title="Copy options"
+              >
+                <Copy className="w-4 h-4" strokeWidth={1.5} />
+              </button>
+
+              {/* Dropdown Menu */}
+              {showCopyDropdown && (
+                <div className="absolute left-0 top-full mt-2 w-48 bg-zinc-900 border border-white/10 rounded-lg shadow-xl overflow-hidden z-50">
+                  <button
+                    onClick={() => {
+                      handleCopy('link');
+                      setShowCopyDropdown(false);
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/5 transition-colors flex items-center justify-between gap-2"
+                  >
+                    <span>Copy link</span>
+                    {copiedItem === 'link' && <Check className="w-4 h-4 text-emerald-400" />}
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleCopy('videoId');
+                      setShowCopyDropdown(false);
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/5 transition-colors flex items-center justify-between gap-2 border-t border-white/5"
+                  >
+                    <span>Copy video ID</span>
+                    {copiedItem === 'videoId' && <Check className="w-4 h-4 text-emerald-400" />}
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleCopy('accountLink');
+                      setShowCopyDropdown(false);
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/5 transition-colors flex items-center justify-between gap-2 border-t border-white/5"
+                  >
+                    <span>Copy account link</span>
+                    {copiedItem === 'accountLink' && <Check className="w-4 h-4 text-emerald-400" />}
+                  </button>
                 </div>
+              )}
+            </div>
+          </div>
                 
           {/* Right: Close Button Only */}
           <div className="flex items-center gap-3">
