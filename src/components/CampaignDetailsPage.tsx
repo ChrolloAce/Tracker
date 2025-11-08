@@ -415,37 +415,83 @@ const CampaignDetailsPage: React.FC = () => {
           <div className="space-y-4 sm:space-y-6">
             {/* Submission Requirements */}
             <div className="bg-zinc-900/40 rounded-xl p-4 sm:p-6 border border-white/10">
-              <h2 className="text-lg sm:text-xl font-bold text-white mb-4 flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-white" />
-                Submission Requirements
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-white" />
+                  Submission Requirements
+                </h2>
+                {!isCreator && !editingRequirements && (
+                  <button
+                    onClick={() => setEditingRequirements(true)}
+                    className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
 
-              {/* Metric Guarantees */}
-              {campaign.metricGuarantees && campaign.metricGuarantees.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="text-base sm:text-lg font-semibold text-white mb-3">Minimum Metrics Per Video</h3>
-                  <div className="space-y-2">
-                    {campaign.metricGuarantees.map((guarantee, index) => (
-                      <div key={index} className="flex items-center gap-2 sm:gap-3 p-3 bg-white/5 border border-white/10 rounded-lg">
-                        <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-white flex-shrink-0" />
-                        <div className="text-white text-sm sm:text-base">
-                          <span className="font-semibold capitalize">{guarantee.metric.replace(/_/g, ' ')}: </span>
-                          <span className="text-white font-bold">
-                            {guarantee.minValue.toLocaleString()}
-                            {guarantee.metric === 'engagement_rate' && '%'}
-                          </span>
-                          <span className="text-white/60 ml-2">minimum</span>
-                        </div>
-                      </div>
-                    ))}
+              {editingRequirements ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-white/80 mb-2">Description</label>
+                    <textarea
+                      value={editedDescription}
+                      onChange={(e) => setEditedDescription(e.target.value)}
+                      rows={4}
+                      className="w-full px-4 py-2 bg-zinc-800 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/20"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleSaveRequirements}
+                      className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-white/90 text-black rounded-lg transition-colors font-medium"
+                    >
+                      <Save className="w-4 h-4" />
+                      Save
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingRequirements(false);
+                        setEditedDescription(campaign.description);
+                        setEditedMetricGuarantees(campaign.metricGuarantees || []);
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-white/5 text-white/60 rounded-lg hover:bg-white/10 transition-colors border border-white/10"
+                    >
+                      <XIcon className="w-4 h-4" />
+                      Cancel
+                    </button>
                   </div>
                 </div>
-              )}
+              ) : (
+                <>
+                  {/* Metric Guarantees */}
+                  {campaign.metricGuarantees && campaign.metricGuarantees.length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="text-base sm:text-lg font-semibold text-white mb-3">Minimum Metrics Per Video</h3>
+                      <div className="space-y-2">
+                        {campaign.metricGuarantees.map((guarantee, index) => (
+                          <div key={index} className="flex items-center gap-2 sm:gap-3 p-3 bg-white/5 border border-white/10 rounded-lg">
+                            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-white flex-shrink-0" />
+                            <div className="text-white text-sm sm:text-base">
+                              <span className="font-semibold capitalize">{guarantee.metric.replace(/_/g, ' ')}: </span>
+                              <span className="text-white font-bold">
+                                {guarantee.minValue.toLocaleString()}
+                                {guarantee.metric === 'engagement_rate' && '%'}
+                              </span>
+                              <span className="text-white/60 ml-2">minimum</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-              {/* Description as Requirements */}
-              <div className="prose prose-invert max-w-none">
-                <div className="text-sm sm:text-base text-white/70 whitespace-pre-wrap">{campaign.description}</div>
-              </div>
+                  {/* Description as Requirements */}
+                  <div className="prose prose-invert max-w-none">
+                    <div className="text-sm sm:text-base text-white/70 whitespace-pre-wrap">{campaign.description}</div>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Campaign Resources */}
@@ -479,32 +525,134 @@ const CampaignDetailsPage: React.FC = () => {
 
             {/* Timeline */}
             <div className="bg-zinc-900/40 rounded-xl p-4 sm:p-6 border border-white/10">
-              <h2 className="text-lg sm:text-xl font-bold text-white mb-4 flex items-center gap-2">
-                <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
-                Timeline
-              </h2>
-              <div className="space-y-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-white/60">Start Date</span>
-                  <span className="text-white font-medium">
-                    {new Date(campaign.startDate instanceof Date ? campaign.startDate : campaign.startDate.toDate()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                  </span>
-                </div>
-                {campaign.isIndefinite ? (
-                  <div className="flex items-center justify-between">
-                    <span className="text-white/60">End Date</span>
-                    <span className="text-white font-medium">Indefinite</span>
-                  </div>
-                ) : campaign.endDate && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-white/60">End Date</span>
-                    <span className="text-white font-medium">
-                      {new Date(campaign.endDate instanceof Date ? campaign.endDate : campaign.endDate.toDate()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </span>
-                  </div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
+                  Timeline
+                </h2>
+                {!isCreator && !editingTimeline && (
+                  <button
+                    onClick={() => setEditingTimeline(true)}
+                    className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
                 )}
               </div>
+
+              {editingTimeline ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-white/80 mb-2">Start Date</label>
+                    <input
+                      type="date"
+                      value={editedStartDate}
+                      onChange={(e) => setEditedStartDate(e.target.value)}
+                      className="w-full px-4 py-2 bg-zinc-800 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-white/80 mb-2">End Date (Optional)</label>
+                    <input
+                      type="date"
+                      value={editedEndDate}
+                      onChange={(e) => setEditedEndDate(e.target.value)}
+                      className="w-full px-4 py-2 bg-zinc-800 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/20"
+                    />
+                    <p className="text-xs text-white/40 mt-1">Leave empty for indefinite</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleSaveTimeline}
+                      className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-white/90 text-black rounded-lg transition-colors font-medium"
+                    >
+                      <Save className="w-4 h-4" />
+                      Save
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingTimeline(false);
+                        setEditedStartDate(campaign.startDate instanceof Date ? campaign.startDate.toISOString().split('T')[0] : new Date(campaign.startDate.toDate()).toISOString().split('T')[0]);
+                        setEditedEndDate(campaign.endDate ? (campaign.endDate instanceof Date ? campaign.endDate.toISOString().split('T')[0] : new Date(campaign.endDate.toDate()).toISOString().split('T')[0]) : '');
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-white/5 text-white/60 rounded-lg hover:bg-white/10 transition-colors border border-white/10"
+                    >
+                      <XIcon className="w-4 h-4" />
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-white/60">Start Date</span>
+                    <span className="text-white font-medium">
+                      {new Date(campaign.startDate instanceof Date ? campaign.startDate : campaign.startDate.toDate()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  </div>
+                  {campaign.isIndefinite ? (
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/60">End Date</span>
+                      <span className="text-white font-medium">Indefinite</span>
+                    </div>
+                  ) : campaign.endDate && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/60">End Date</span>
+                      <span className="text-white font-medium">
+                        {new Date(campaign.endDate instanceof Date ? campaign.endDate : campaign.endDate.toDate()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
+
+            {/* Creators List */}
+            {!isCreator && creators.length > 0 && (
+              <div className="bg-zinc-900/40 rounded-xl p-4 sm:p-6 border border-white/10">
+                <h2 className="text-lg sm:text-xl font-bold text-white mb-4 flex items-center gap-2">
+                  <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+                  Creators ({creators.length})
+                </h2>
+                <div className="space-y-2">
+                  {creators.map((creator) => (
+                    <div
+                      key={creator.userId}
+                      className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors"
+                    >
+                      {creator.photoURL ? (
+                        <img
+                          src={creator.photoURL}
+                          alt={creator.displayName || 'Creator'}
+                          className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                          <Users className="w-5 h-5 text-white/60" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-white text-sm truncate">
+                          {creator.displayName || 'Unnamed Creator'}
+                        </div>
+                        <div className="text-xs text-white/60 truncate">
+                          {creator.email}
+                        </div>
+                      </div>
+                      <div className={`px-2.5 py-1 rounded-md text-xs font-medium border ${
+                        creator.role === 'owner'
+                          ? 'bg-white/10 text-white border-white/20'
+                          : creator.role === 'admin'
+                          ? 'bg-white/5 text-white/80 border-white/10'
+                          : 'bg-white/5 text-white/60 border-white/10'
+                      }`}>
+                        {creator.role}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Campaign Type Badge */}
             <div className="bg-zinc-900/40 rounded-xl p-4 sm:p-6 border border-white/10">
