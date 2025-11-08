@@ -7,7 +7,7 @@ import {
   updateDoc,
   deleteDoc,
   query,
-  where,
+  // where, // Unused for now
   orderBy,
   Timestamp
 } from 'firebase/firestore';
@@ -18,7 +18,7 @@ import type {
   PayoutMetric,
   CampaignCompetitionPrize
 } from '../types/payouts';
-import type { VideoSubmission } from '../types';
+// import type { VideoSubmission } from '../types'; // Unused for now
 import { PayoutCalculationEngine, CreatorPerformance } from './PayoutCalculationEngine';
 
 /**

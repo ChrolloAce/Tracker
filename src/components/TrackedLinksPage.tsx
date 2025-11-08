@@ -877,9 +877,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                         
                         // Special case: single source (100%) - draw full donut using two semicircles
                         if (sourceData.length === 1) {
-                          const [source, clicks] = sourceData[0];
+                          const [source] = sourceData[0];
                           const color = colors[0];
-                          const percentage = 100;
                           const isHovered = hoveredSource === source;
                           
                           // Draw two 180-degree arcs to form a complete circle (workaround for 360-degree arc issue)
@@ -923,9 +922,8 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                         
                         // Multiple sources - draw arcs
                         let currentAngle = 0;
-                        return sourceData.map(([source, clicks], index) => {
-                          const percentage = Math.round((clicks / totalClicks) * 100);
-                          const angle = (clicks / totalClicks) * 360;
+                        return sourceData.map(([source], index) => {
+                          const angle = (sourceCounts[source] / totalClicks) * 360;
                           
                           // Clamp angle to prevent 360-degree arcs
                           const clampedAngle = angle >= 360 ? 359.99 : angle;
@@ -948,13 +946,6 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                           const largeArc = clampedAngle > 180 ? 1 : 0;
                           
                           const isHovered = hoveredSource === source;
-                          
-                          // Calculate midpoint for tooltip positioning
-                          const midAngle = startAngle + clampedAngle / 2;
-                          const midRad = (midAngle - 90) * (Math.PI / 180);
-                          const tooltipRadius = (radius + innerRadius) / 2;
-                          const tooltipX = 50 + tooltipRadius * Math.cos(midRad);
-                          const tooltipY = 50 + tooltipRadius * Math.sin(midRad);
                           
                           return (
                             <g 

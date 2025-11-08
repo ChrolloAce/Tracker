@@ -132,6 +132,34 @@ class FirebaseStorageService {
   }
 
   /**
+   * Upload campaign cover image
+   */
+  static async uploadCampaignImage(orgId: string, campaignId: string, imageFile: File): Promise<string> {
+    try {
+      console.log(`📤 Uploading campaign image to Firebase Storage: ${campaignId}`);
+      
+      // Generate unique filename
+      const timestamp = Date.now();
+      const filename = `${timestamp}-${imageFile.name}`;
+      
+      // Create a reference to the campaign image location
+      const imageRef = ref(storage, `organizations/${orgId}/campaigns/${campaignId}/${filename}`);
+      
+      // Upload the file
+      await uploadBytes(imageRef, imageFile);
+      
+      // Get the download URL
+      const downloadURL = await getDownloadURL(imageRef);
+      
+      console.log(`✅ Campaign image uploaded successfully: ${campaignId}`);
+      return downloadURL;
+    } catch (error) {
+      console.error('❌ Failed to upload campaign image:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Download an image from URL and upload to Firebase Storage
    * @param orgId Organization ID
    * @param imageUrl Original image URL

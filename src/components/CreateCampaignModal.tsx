@@ -87,7 +87,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
   // NEW: Flexible Payout System
   const [payoutMode, setPayoutMode] = useState<'legacy' | 'flexible'>('flexible');
   const [selectedPayoutStructure, setSelectedPayoutStructure] = useState<PayoutStructure | null>(null);
-  const [creatorAssignments, setCreatorAssignments] = useState<CampaignCreatorAssignment[]>([]);
+  const [creatorAssignments, _setCreatorAssignments] = useState<CampaignCreatorAssignment[]>([]);
   const [defaultPayoutStructureId, setDefaultPayoutStructureId] = useState<string>('');
   const [competitions, setCompetitions] = useState<CampaignCompetition[]>([]);
   

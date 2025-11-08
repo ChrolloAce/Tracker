@@ -11,6 +11,25 @@
 // ==================== COMPONENT TYPES ====================
 
 /**
+ * Payout component type enum
+ */
+export type PayoutComponentType = 'base' | 'cpm' | 'flat' | 'bonus' | 'bonus_tiered' | 'conversion' | 'per_video';
+
+/**
+ * Payout metrics
+ */
+export type PayoutMetric = 'views' | 'likes' | 'comments' | 'shares' | 'saves' | 'conversions' | 'videos_posted' | 'engagement_rate' | 'ig_reel_plays' | 'yt_views' | 'tt_views';
+
+/**
+ * Condition for bonus payouts
+ */
+export interface PayoutCondition {
+  metric: PayoutMetric;
+  value: number;
+  operator?: '>=' | '>' | '=' | '<' | '<=';
+}
+
+/**
  * Base component - guaranteed payment
  */
 export interface BasePayoutComponent {
@@ -163,6 +182,20 @@ export type CompetitionType =
   | 'engagement_king'; // Best engagement rate
 
 /**
+ * Legacy alias for CompetitionType
+ */
+export type CampaignCompetitionType = CompetitionType;
+
+/**
+ * Competition prize structure
+ */
+export interface CampaignCompetitionPrize {
+  rank?: number;
+  amount: number;
+  description?: string;
+}
+
+/**
  * Campaign-level competition
  */
 export interface CampaignCompetition {
@@ -175,19 +208,22 @@ export interface CampaignCompetition {
   
   // Top N config
   topN?: number; // For top_n type
+  n?: number; // Alias for topN (backward compatibility)
   
   // First to hit config
   threshold?: number; // For first_to_hit type
+  targetValue?: number; // Alias for threshold (backward compatibility)
   
   // Prizes
-  prizes: Array<{
-    rank?: number; // For top_n (1, 2, 3)
-    amount: number;
-    description?: string;
-  }>;
+  prizes: CampaignCompetitionPrize[];
   
   // Eligibility
   eligibleCreatorIds?: string[]; // If empty, all creators eligible
+  eligibility?: {
+    creatorIds?: string[];
+    minVideos?: number;
+    tags?: string[];
+  }; // Legacy eligibility format
   
   // Timing
   startDate?: Date; // If different from campaign dates
@@ -276,6 +312,12 @@ export interface CreatorDefaultPayout {
   updatedAt: Date;
   updatedBy: string;
 }
+
+/**
+ * Creator payout record (final calculated payout)
+ * Alias for PayoutCalculation for backward compatibility
+ */
+export type CreatorPayoutRecord = PayoutCalculation;
 
 // ==================== FIRESTORE TYPES ====================
 

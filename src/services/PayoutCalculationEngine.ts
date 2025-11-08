@@ -3,7 +3,8 @@ import type {
   PayoutComponent,
   PayoutMetric,
   PayoutCondition,
-  CreatorPayoutRecord
+  CreatorPayoutRecord,
+  PayoutComponentType
 } from '../types/payouts';
 import type { VideoSubmission } from '../types';
 import { Timestamp } from 'firebase/firestore';

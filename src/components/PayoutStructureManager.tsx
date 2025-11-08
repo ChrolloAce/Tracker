@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, X, Copy, Trash2, DollarSign, TrendingUp, Award, Zap, Target } from 'lucide-react';
+import { Plus, X, Copy, Trash2, DollarSign, TrendingUp, Award, Zap } from 'lucide-react';
 import { PayoutStructureService } from '../services/PayoutStructureService';
 import { PayoutCalculationEngine } from '../services/PayoutCalculationEngine';
 import type { PayoutStructure, PayoutComponent, PayoutComponentType, PayoutMetric } from '../types/payouts';
