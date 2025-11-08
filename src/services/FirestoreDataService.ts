@@ -565,18 +565,24 @@ class FirestoreDataService {
       for (const videoDoc of snapshot.docs) {
         const videoId = videoDoc.id;
         
-        // Delete snapshots for this video
+        // Delete snapshots for this video (in batches of 500)
         try {
           const snapshotsRef = collection(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId, 'snapshots');
           const snapshotsSnapshot = await getDocs(snapshotsRef);
           
           if (snapshotsSnapshot.docs.length > 0) {
-            const snapshotBatch = writeBatch(db);
-            snapshotsSnapshot.docs.forEach(snapshotDoc => {
-              snapshotBatch.delete(snapshotDoc.ref);
-            });
-            await snapshotBatch.commit();
-            snapshotsDeleted += snapshotsSnapshot.docs.length;
+            const BATCH_SIZE = 500;
+            for (let i = 0; i < snapshotsSnapshot.docs.length; i += BATCH_SIZE) {
+              const snapshotBatch = writeBatch(db);
+              const batchDocs = snapshotsSnapshot.docs.slice(i, i + BATCH_SIZE);
+              
+              batchDocs.forEach(snapshotDoc => {
+                snapshotBatch.delete(snapshotDoc.ref);
+              });
+              
+              await snapshotBatch.commit();
+              snapshotsDeleted += batchDocs.length;
+            }
           }
         } catch (snapshotError) {
           console.error(`⚠️ Failed to delete snapshots for video ${videoId}:`, snapshotError);
