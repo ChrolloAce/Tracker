@@ -882,11 +882,17 @@ class RevenueDataService {
 
       console.log(`✅ Fetched ${appleTransactions.length} Apple transactions`);
 
-      // Convert to RevenueTransaction format
+      // Convert to RevenueTransaction format with app metadata
       const transactions = AppleAppStoreService.convertToRevenueTransactions(
         appleTransactions,
         orgId,
-        projectId
+        projectId,
+        {
+          bundleId: integration.credentials.appId,
+          appName: integration.settings?.appName,
+          appIcon: integration.settings?.appIcon,
+          appleId: integration.settings?.appleId
+        }
       );
 
       // Save to Firestore

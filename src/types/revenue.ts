@@ -30,6 +30,11 @@ export interface RevenueIntegration {
     syncInterval?: number; // Minutes
     currency?: string;
     timezone?: string;
+    // App metadata (for Apple/Google integrations)
+    appName?: string;      // e.g., "TrackView"
+    appIcon?: string;      // URL or path to app icon
+    appleId?: string;      // e.g., "1234567890" (for Apple App Store)
+    googlePlayPackage?: string; // e.g., "com.example.app" (for Google Play)
   };
   lastSynced?: Date;
   createdAt: Date;

@@ -138,7 +138,13 @@ class AppleAppStoreService {
   static convertToRevenueTransactions(
     appleTransactions: AppleTransaction[],
     orgId: string,
-    projectId: string
+    projectId: string,
+    appMetadata?: {
+      bundleId: string;
+      appName?: string;
+      appIcon?: string;
+      appleId?: string;
+    }
   ): RevenueTransaction[] {
     return appleTransactions.map(transaction => {
       const isRenewal = transaction.type === 'auto-renewable-subscription';
@@ -166,6 +172,11 @@ class AppleAppStoreService {
         netAmount: transaction.price ? Math.round(transaction.price * 0.7 * 100) : 0, // ~70% after Apple's cut
         productId: transaction.productId,
         productName: transaction.productId,
+        // App info (for multi-app tracking)
+        appBundleId: appMetadata?.bundleId,
+        appName: appMetadata?.appName,
+        appAppleId: appMetadata?.appleId,
+        appIcon: appMetadata?.appIcon,
         purchaseDate: transaction.purchaseDate,
         expirationDate: transaction.expiresDate,
         refundDate: transaction.revocationDate,

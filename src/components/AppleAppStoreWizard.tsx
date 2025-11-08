@@ -12,6 +12,10 @@ export interface AppleAppStoreCredentials {
   vendorNumber: string;
   privateKey: string;
   privateKeyFileName: string;
+  // App metadata (optional)
+  appName?: string;
+  appIcon?: string;
+  appleId?: string;
 }
 
 const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onComplete }) => {
@@ -506,9 +510,9 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
   const renderStep6 = () => (
     <div className="space-y-6">
       <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold text-white">Enter Vendor Number</h2>
+        <h2 className="text-2xl font-bold text-white">Vendor Number & App Info</h2>
         <p className="text-white/60">
-          Your financial reporting identifier from App Store Connect
+          Complete your integration setup
         </p>
       </div>
 
@@ -533,6 +537,46 @@ const AppleAppStoreWizard: React.FC<AppleAppStoreWizardProps> = ({ onClose, onCo
           <p className="text-white/50 text-sm">
             8-digit number used for financial reporting (may include # prefix)
           </p>
+        </div>
+
+        {/* App Metadata (Optional) */}
+        <div className="border-t border-white/10 pt-4 space-y-4">
+          <p className="text-white/60 text-sm font-medium">App Information (Optional - helps identify revenue by app)</p>
+          
+          <div className="space-y-2">
+            <label className="text-white/80 text-sm block">App Name</label>
+            <input
+              type="text"
+              value={credentials.appName || ''}
+              onChange={(e) => setCredentials(prev => ({ ...prev, appName: e.target.value }))}
+              placeholder="e.g., TrackView"
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-white/30"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-white/80 text-sm block">Apple ID</label>
+            <input
+              type="text"
+              value={credentials.appleId || ''}
+              onChange={(e) => setCredentials(prev => ({ ...prev, appleId: e.target.value }))}
+              placeholder="e.g., 1234567890"
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-white/30 font-mono"
+            />
+            <p className="text-white/40 text-xs">Find this in App Store Connect under your app details</p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-white/80 text-sm block">App Icon URL</label>
+            <input
+              type="text"
+              value={credentials.appIcon || ''}
+              onChange={(e) => setCredentials(prev => ({ ...prev, appIcon: e.target.value }))}
+              placeholder="e.g., https://example.com/icon.png"
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-white/30"
+            />
+            <p className="text-white/40 text-xs">Direct link to your app's icon image</p>
+          </div>
         </div>
 
         <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
