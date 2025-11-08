@@ -778,32 +778,28 @@ async function refreshTikTokVideosBulk(
     const refreshedVideos = result.items || [];
     let updatedCount = 0;
 
-    console.log(`    🔍 [TIKTOK] Matching ${refreshedVideos.length} API results with ${videoDocs.length} DB videos...`);
+    console.log(`    🔍 [TIKTOK] Got ${refreshedVideos.length} videos from account, matching with ${videoDocs.length} DB videos...`);
     
-    // Log first video structure to debug
-    if (refreshedVideos.length > 0) {
-      console.log(`    📦 [TIKTOK] First video structure (keys):`, Object.keys(refreshedVideos[0]));
-      console.log(`    📦 [TIKTOK] First video sample:`, JSON.stringify(refreshedVideos[0], null, 2).substring(0, 500));
+    // Filter out error responses
+    const validVideos = refreshedVideos.filter(v => !v.error && !v.noResults);
+    console.log(`    ✅ [TIKTOK] ${validVideos.length} valid videos (${refreshedVideos.length - validVideos.length} errors/no results)`);
+    
+    // Log first valid video structure to debug
+    if (validVideos.length > 0) {
+      console.log(`    📦 [TIKTOK] First video structure (keys):`, Object.keys(validVideos[0]));
     }
 
     // Update each video with fresh metrics (apidojo/tiktok-scraper format)
-    for (const video of refreshedVideos) {
+    for (const video of validVideos) {
       const videoId = extractVideoId(video, 'tiktok');
       if (!videoId) {
-        console.log(`    ⚠️ [TIKTOK] Could not extract videoId from:`, {
-          id: video.id,
-          post_id: video.post_id,
-          tiktok_url: video.tiktok_url,
-          webVideoUrl: video.webVideoUrl,
-          videoUrl: video.videoUrl,
-          availableKeys: Object.keys(video).slice(0, 20) // Show first 20 keys
-        });
+        console.log(`    ⚠️ [TIKTOK] Could not extract videoId, available keys:`, Object.keys(video).slice(0, 10));
         continue;
       }
 
       const videoDoc = videoDocs.find(doc => doc.data().videoId === videoId);
       if (!videoDoc) {
-        console.log(`    ⚠️ [TIKTOK] No DB match for videoId: ${videoId} (checking against ${videoDocs.length} docs)`);
+        // Not in our DB, skip it
         continue;
       }
 
