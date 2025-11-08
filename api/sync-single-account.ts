@@ -705,46 +705,96 @@ export default async function handler(
         console.warn(`    ⚠️ [${account.platform.toUpperCase()}] No valid thumbnail URL for video ${video.videoId}`);
       }
 
-      // Save to main videos collection (for dashboard)
-      const videoRef = db
+      // Check if video already exists
+      const existingVideoQuery = await db
         .collection('organizations')
         .doc(orgId)
         .collection('projects')
         .doc(projectId)
         .collection('videos')
-        .doc();
+        .where('videoId', '==', video.videoId)
+        .where('platform', '==', account.platform)
+        .limit(1)
+        .get();
 
-      batch.set(videoRef, {
-        ...video,
-        thumbnail: firebaseThumbnailUrl, // Use Firebase Storage URL
-        orgId: orgId,
-        projectId: projectId,
-        trackedAccountId: accountId,
-        platform: account.platform,
-        dateAdded: Timestamp.now(),
-        addedBy: account.syncRequestedBy || account.addedBy || 'system',
-        lastRefreshed: Timestamp.now(),
-        status: 'active',
-        isRead: false,
-        isSingular: false
-      });
-
-      // Create initial snapshot for this new video
-      const snapshotRef = videoRef.collection('snapshots').doc();
       const snapshotTime = Timestamp.now();
-      batch.set(snapshotRef, {
-        id: snapshotRef.id,
-        videoId: video.videoId,
-        views: video.views || 0,
-        likes: video.likes || 0,
-        comments: video.comments || 0,
-        shares: video.shares || 0,
-        saves: video.saves || 0, // ✅ ADD BOOKMARKS TO SNAPSHOT
-        capturedAt: snapshotTime,
-        timestamp: snapshotTime,
-        capturedBy: 'initial_sync',
-        isInitialSnapshot: true // Mark as initial snapshot - won't count towards graphs
-      });
+      const isManualTrigger = account.syncRequestedBy ? true : false;
+
+      if (!existingVideoQuery.empty) {
+        // VIDEO EXISTS - Update metrics and create refresh snapshot
+        const videoRef = existingVideoQuery.docs[0].ref;
+        
+        // Update video with new metrics
+        batch.update(videoRef, {
+          views: video.views || 0,
+          likes: video.likes || 0,
+          comments: video.comments || 0,
+          shares: video.shares || 0,
+          saves: video.saves || 0,
+          lastRefreshed: snapshotTime,
+          thumbnail: firebaseThumbnailUrl || existingVideoQuery.docs[0].data().thumbnail // Update thumbnail if new one available
+        });
+
+        // Create refresh snapshot
+        const snapshotRef = videoRef.collection('snapshots').doc();
+        batch.set(snapshotRef, {
+          id: snapshotRef.id,
+          videoId: video.videoId,
+          views: video.views || 0,
+          likes: video.likes || 0,
+          comments: video.comments || 0,
+          shares: video.shares || 0,
+          saves: video.saves || 0,
+          capturedAt: snapshotTime,
+          timestamp: snapshotTime,
+          capturedBy: isManualTrigger ? 'manual_refresh' : 'scheduled_refresh',
+          isInitialSnapshot: false // This is a refresh snapshot, not initial
+        });
+
+        console.log(`    🔄 Updated existing video ${video.videoId} + created refresh snapshot`);
+      } else {
+        // NEW VIDEO - Create with initial snapshot
+        const videoRef = db
+          .collection('organizations')
+          .doc(orgId)
+          .collection('projects')
+          .doc(projectId)
+          .collection('videos')
+          .doc();
+
+        batch.set(videoRef, {
+          ...video,
+          thumbnail: firebaseThumbnailUrl, // Use Firebase Storage URL
+          orgId: orgId,
+          projectId: projectId,
+          trackedAccountId: accountId,
+          platform: account.platform,
+          dateAdded: snapshotTime,
+          addedBy: account.syncRequestedBy || account.addedBy || 'system',
+          lastRefreshed: snapshotTime,
+          status: 'active',
+          isRead: false,
+          isSingular: false
+        });
+
+        // Create initial snapshot for this new video
+        const snapshotRef = videoRef.collection('snapshots').doc();
+        batch.set(snapshotRef, {
+          id: snapshotRef.id,
+          videoId: video.videoId,
+          views: video.views || 0,
+          likes: video.likes || 0,
+          comments: video.comments || 0,
+          shares: video.shares || 0,
+          saves: video.saves || 0,
+          capturedAt: snapshotTime,
+          timestamp: snapshotTime,
+          capturedBy: 'initial_sync',
+          isInitialSnapshot: true // Mark as initial snapshot - won't count towards graphs
+        });
+
+        console.log(`    ✅ Created new video ${video.videoId} + initial snapshot`);
+      }
 
       // ALSO save to tracked account's videos subcollection (for real-time listener)
       const accountVideoRef = db
