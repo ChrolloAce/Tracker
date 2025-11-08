@@ -252,8 +252,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (videoData.follower_count && videoData.follower_count > 0) {
         updateData.followerCount = videoData.follower_count;
         console.log(`📊 [${video.platform.toUpperCase()}] Updating follower count: ${videoData.follower_count}`);
-      }
-      
+    }
+
       // Update profile pic if available - for Instagram, upload to Firebase Storage
       if (videoData.profile_pic_url) {
         if (video.platform === 'instagram') {

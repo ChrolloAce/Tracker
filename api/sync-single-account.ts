@@ -21,7 +21,7 @@ if (!getApps().length) {
       privateKey: privateKey,
     };
 
-    initializeApp({
+    initializeApp({ 
       credential: cert(serviceAccount as any),
       storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'trackview-6a3a5.firebasestorage.app'
     });
