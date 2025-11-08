@@ -2872,7 +2872,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             timePeriod="days"
                             granularity={granularity}
                             onVideoClick={handleVideoClick}
-                            onOpenRevenueSettings={() => setIsRevenueModalOpen(true)}
+                            onOpenRevenueSettings={() => navigate('/revenue')}
                             revenueMetrics={revenueMetrics}
                             revenueIntegrations={revenueIntegrations}
                             isEditMode={isEditingLayout}

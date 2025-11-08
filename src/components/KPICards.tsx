@@ -1335,7 +1335,8 @@ const KPICards: React.FC<KPICardsProps> = ({
             accent: 'blue' as const,
             isEmpty: true,
             ctaText: 'Setup',
-            isIncreasing: true
+            isIncreasing: true,
+            onClick: onOpenRevenueSettings
           };
         }
         
