@@ -384,12 +384,6 @@ const CampaignManagementCard: React.FC<{
                   <DollarSign className="w-4 h-4" />
                   <span>Add budget</span>
                 </button>
-                <button
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-all"
-                  title="More options"
-                >
-                  <MoreVertical className="w-4 h-4" />
-                </button>
               </div>
             </div>
 
