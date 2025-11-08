@@ -779,6 +779,12 @@ async function refreshTikTokVideosBulk(
     let updatedCount = 0;
 
     console.log(`    🔍 [TIKTOK] Matching ${refreshedVideos.length} API results with ${videoDocs.length} DB videos...`);
+    
+    // Log first video structure to debug
+    if (refreshedVideos.length > 0) {
+      console.log(`    📦 [TIKTOK] First video structure (keys):`, Object.keys(refreshedVideos[0]));
+      console.log(`    📦 [TIKTOK] First video sample:`, JSON.stringify(refreshedVideos[0], null, 2).substring(0, 500));
+    }
 
     // Update each video with fresh metrics (apidojo/tiktok-scraper format)
     for (const video of refreshedVideos) {
@@ -787,7 +793,10 @@ async function refreshTikTokVideosBulk(
         console.log(`    ⚠️ [TIKTOK] Could not extract videoId from:`, {
           id: video.id,
           post_id: video.post_id,
-          tiktok_url: video.tiktok_url?.substring(0, 50)
+          tiktok_url: video.tiktok_url,
+          webVideoUrl: video.webVideoUrl,
+          videoUrl: video.videoUrl,
+          availableKeys: Object.keys(video).slice(0, 20) // Show first 20 keys
         });
         continue;
       }
