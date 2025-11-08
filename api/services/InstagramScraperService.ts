@@ -308,18 +308,24 @@ export class InstagramScraperService {
    * Uses: hpix~ig-reels-scraper with tags pointing to /reels/
    */
   static async fetchProfileReels(
-    username: string, 
+    username: string,
     maxReels: number = 30
   ): Promise<InstagramReelData[]> {
     console.log(`📸 [Instagram Reels] Fetching ${maxReels} reels for @${username}...`);
     
     try {
+      // Use date range to get all reels
+      const beginDate = new Date().toISOString().split('T')[0]; // Current date (YYYY-MM-DD)
+      const endDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 1 year ago
+      
       const result = await runApifyActor({
         actorId: this.SCRAPER,
         input: {
           tags: [`https://www.instagram.com/${username}/reels/`],
           target: 'reels_only',
           reels_count: maxReels,
+          beginDate: beginDate, // Current time
+          endDate: endDate, // 1 year ago
           include_raw_data: true,
           custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
           proxy: this.DEFAULT_PROXY,
@@ -472,12 +478,18 @@ export class InstagramScraperService {
     console.log(`🎯 [Instagram Full] Fetching profile + reels for @${username}...`);
     
     try {
+      // Use date range to get all reels
+      const beginDate = new Date().toISOString().split('T')[0]; // Current date (YYYY-MM-DD)
+      const endDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 1 year ago
+      
       const result = await runApifyActor({
         actorId: this.SCRAPER,
         input: {
           tags: [`https://www.instagram.com/${username}/reels/`],
           target: 'reels_only',
           reels_count: maxReels,
+          beginDate: beginDate, // Current time
+          endDate: endDate, // 1 year ago
           include_raw_data: true,
           custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
           proxy: this.DEFAULT_PROXY,
