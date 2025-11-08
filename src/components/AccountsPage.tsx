@@ -144,7 +144,8 @@ const ColumnHeader: React.FC<{
   currentSortBy?: string;
   sortOrder?: 'asc' | 'desc';
   onSort?: () => void;
-}> = ({ label, tooltip, sortable, sortKey, currentSortBy, sortOrder, onSort }) => {
+  sticky?: boolean;
+}> = ({ label, tooltip, sortable, sortKey, currentSortBy, sortOrder, onSort, sticky }) => {
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
   
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -158,7 +159,7 @@ const ColumnHeader: React.FC<{
   return (
     <>
       <th 
-        className={`px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider ${sortable ? 'cursor-pointer hover:bg-zinc-800/40 transition-colors' : ''}`}
+        className={`px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wider ${sortable ? 'cursor-pointer hover:bg-zinc-800/40 transition-colors' : ''} ${sticky ? 'sticky left-0 bg-zinc-900/60 backdrop-blur z-20' : ''}`}
         onClick={sortable ? onSort : undefined}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
@@ -1505,6 +1506,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                           setSortOrder('asc');
                         }
                       }}
+                      sticky
                     />
                     <ColumnHeader
                       label="Creator"
@@ -1716,7 +1718,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                               className="bg-white/5 dark:bg-white/5 border-l-2 border-white/20 transition-all duration-500"
                     >
                       {/* Username Column */}
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 whitespace-nowrap sticky left-0 bg-white/5 dark:bg-white/5 backdrop-blur z-20">
                         <div className="flex items-center space-x-3">
                           <div className="relative w-10 h-10">
                                     {matchingAccount?.profilePicture ? (
@@ -1864,7 +1866,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                         )}
                       >
                         {/* Username Column */}
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-6 py-4 whitespace-nowrap sticky left-0 bg-zinc-900/60 backdrop-blur z-20 group-hover:bg-white/5">
                           <div className="flex items-center space-x-3">
                             <div className="relative w-10 h-10">
                               {account.profilePicture && !imageErrors.has(account.id) ? (

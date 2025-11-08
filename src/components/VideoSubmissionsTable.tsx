@@ -52,12 +52,12 @@ const DropdownMenu: React.FC<{
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-10"
+            className="fixed inset-0 z-[99998]"
             onClick={() => setIsOpen(false)}
           />
           
           {/* Dropdown */}
-          <div className="absolute right-0 top-8 z-20 w-48 bg-white dark:bg-[#1A1A1A] rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 py-1">
+          <div className="absolute right-0 top-8 z-[99999] w-48 bg-white dark:bg-[#1A1A1A] rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 py-1">
             {/* Actions */}
             <button
               onClick={(e) => {
@@ -945,7 +945,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                     </td>
                   )}
                   <td className="px-6 py-5 sticky right-0 z-20 group-hover:bg-white/5" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}>
-                    <div className="relative opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="relative">
                       <DropdownMenu submission={submission} onDelete={onDelete} />
                     </div>
                   </td>
