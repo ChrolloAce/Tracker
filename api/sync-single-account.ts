@@ -507,7 +507,39 @@ export default async function handler(
     } else if (account.platform === 'instagram') {
       console.log(`👤 Fetching Instagram profile + reels for ${account.username} using unified scraper...`);
       
+      // Get oldest video date for this account to set proper date range
+      let oldestVideoDate: Date | null = null;
       try {
+        const existingVideosSnapshot = await db
+          .collection('organizations')
+          .doc(orgId)
+          .collection('projects')
+          .doc(projectId)
+          .collection('videos')
+          .where('trackedAccountId', '==', accountId)
+          .where('platform', '==', 'instagram')
+          .orderBy('uploadDate', 'asc')
+          .limit(1)
+          .get();
+        
+        if (!existingVideosSnapshot.empty) {
+          const oldestVideo = existingVideosSnapshot.docs[0].data();
+          oldestVideoDate = oldestVideo.uploadDate?.toDate() || null;
+          console.log(`📅 Oldest video date: ${oldestVideoDate?.toISOString()}`);
+        }
+      } catch (err) {
+        console.warn(`⚠️ Could not fetch oldest video date:`, err);
+      }
+      
+      try {
+        // Use date range to get all videos between oldest and now
+        const beginDate = new Date().toISOString().split('T')[0]; // Current date (YYYY-MM-DD)
+        const endDate = oldestVideoDate 
+          ? oldestVideoDate.toISOString().split('T')[0]
+          : new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // Default to 1 year ago
+        
+        console.log(`📅 Date range: ${endDate} (oldest) to ${beginDate} (now)`);
+        
         // Use single scraper for both profile and reels (hpix~ig-reels-scraper)
         const data = await runApifyActor({
           actorId: 'hpix~ig-reels-scraper',
@@ -515,6 +547,8 @@ export default async function handler(
             tags: [`https://www.instagram.com/${account.username}/reels/`],
             target: 'reels_only',
             reels_count: maxVideos, // Use user's preference
+            beginDate: beginDate, // Current time
+            endDate: endDate, // Oldest video or 1 year ago
             include_raw_data: true,
             custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
             proxy: {
