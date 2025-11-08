@@ -745,63 +745,22 @@ const KPICards: React.FC<KPICardsProps> = ({
             const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
             
             // === CURRENT PERIOD (CP) CALCULATION ===
-            // Check if video was uploaded before the analysis period started
-            if (uploadDate < actualStartDate) {
-              // Video was uploaded before our analysis period
-              // Check if it has growth during this interval via snapshots
-              if (video.snapshots && video.snapshots.length > 0) {
-                // Filter out initial snapshots - they don't represent growth
-                const nonInitialSnapshots = video.snapshots.filter(s => !s.isInitialSnapshot);
-                
-                const snapshotAtEnd = nonInitialSnapshots
-                  .filter(s => new Date(s.capturedAt) <= interval.endDate)
-                  .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-                
-                // Calculate delta if we have a snapshot at interval end
-                if (snapshotAtEnd) {
-                  // Find the previous snapshot before the interval end for baseline
-                  const allSnapshotsBeforeEnd = nonInitialSnapshots
-                    .filter(s => new Date(s.capturedAt) < new Date(snapshotAtEnd.capturedAt))
-                    .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime());
-                  
-                  const previousSnapshot = allSnapshotsBeforeEnd[0];
-                  
-                  if (previousSnapshot) {
-                    // Calculate growth from previous snapshot to current
-                    const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - (previousSnapshot[metric] || 0));
-                  intervalValue += delta;
-                  } else {
-                    // This is the first non-initial snapshot - count its growth from video's initial value
-                    // Use the initial snapshot as baseline if it exists
-                    const initialSnapshot = video.snapshots.find(s => s.isInitialSnapshot);
-                    const baseline = initialSnapshot ? (initialSnapshot[metric] || 0) : 0;
-                    const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - baseline);
-                    intervalValue += delta;
-                  }
-                }
+            // ONLY count videos that were UPLOADED during this interval
+            // (Snapshot growth is shown separately in Top Gainers, not in main sparkline)
+            if (DataAggregationService.isDateInInterval(uploadDate, interval)) {
+              // Video was uploaded during this interval - count its initial value
+              // This represents NEW CONTENT added during this period
+              const initialSnapshot = video.snapshots?.find(s => s.isInitialSnapshot);
+              if (initialSnapshot) {
+                // Use the initial snapshot value (what the video had when first added)
+                intervalValue += initialSnapshot[metric] || 0;
+              } else {
+                // No initial snapshot, use current value as fallback
+                intervalValue += video[metric] || 0;
               }
-            } else if (DataAggregationService.isDateInInterval(uploadDate, interval)) {
-              // Video was uploaded during this interval
-              // Do NOT count initial snapshot - it's baseline data, not growth
-              // Check if there are any non-initial snapshots in this interval to show actual growth
-              const nonInitialSnapshots = video.snapshots?.filter(s => !s.isInitialSnapshot) || [];
-              const snapshotsInInterval = nonInitialSnapshots.filter(s => {
-                const snapDate = new Date(s.capturedAt);
-                return DataAggregationService.isDateInInterval(snapDate, interval);
-              });
-              
-              if (snapshotsInInterval.length > 0) {
-                // There are refresh snapshots in this interval - calculate growth from initial
-                const initialSnapshot = video.snapshots?.find(s => s.isInitialSnapshot);
-                const latestSnapshotInInterval = snapshotsInInterval
-                  .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
-                
-                const baseline = initialSnapshot ? (initialSnapshot[metric] || 0) : 0;
-                const growth = Math.max(0, (latestSnapshotInInterval[metric] || 0) - baseline);
-                intervalValue += growth;
-              }
-              // If no refresh snapshots yet, don't add anything (0 growth)
             }
+            // Note: Videos uploaded BEFORE the period are NOT counted in sparkline
+            // Their growth is tracked separately in Top Gainers tooltip
           });
           
           // === PREVIOUS PERIOD (PP) CALCULATION ===
