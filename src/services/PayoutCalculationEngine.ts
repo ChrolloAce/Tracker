@@ -240,15 +240,15 @@ export class PayoutCalculationEngine {
     const operator = condition.operator || 'gte';
 
     switch (operator) {
-      case 'gt':
-        return metricValue > targetValue;
-      case 'gte':
+      case '>=':
         return metricValue >= targetValue;
-      case 'lt':
+      case '>':
+        return metricValue > targetValue;
+      case '<':
         return metricValue < targetValue;
-      case 'lte':
+      case '<=':
         return metricValue <= targetValue;
-      case 'eq':
+      case '=':
         return metricValue === targetValue;
       default:
         return metricValue >= targetValue;
@@ -275,7 +275,7 @@ export class PayoutCalculationEngine {
         return performance.totalSaves;
       case 'engagement_rate':
         return performance.engagementRate;
-      case 'video_count':
+      case 'videos_posted':
         return performance.videoCount;
       case 'conversions':
         return performance.conversions || 0;
