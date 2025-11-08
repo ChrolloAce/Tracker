@@ -104,10 +104,13 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
   };
 
     const calculateMetrics = (linksData: TrackedLink[], clicksData: LinkClick[]) => {
+      // Apply date filter first
+      const dateFilteredClicks = filterClicksByDate(clicksData);
+      
       // Filter clicks based on selected link
       const filteredClicks = linkFilter === 'all' 
-        ? clicksData 
-        : clicksData.filter(click => click.linkId === linkFilter);
+        ? dateFilteredClicks 
+        : dateFilteredClicks.filter(click => click.linkId === linkFilter);
       
       // Filter links if specific link is selected
       const filteredLinks = linkFilter === 'all'
@@ -170,7 +173,10 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
             if (customDateRange) {
               const start = 'start' in customDateRange ? customDateRange.start : customDateRange.startDate;
               const end = 'end' in customDateRange ? customDateRange.end : customDateRange.endDate;
-              return clickDate >= start && clickDate <= end;
+              // Set end date to end of day (23:59:59.999) to include entire day
+              const endOfDay = new Date(end);
+              endOfDay.setHours(23, 59, 59, 999);
+              return clickDate >= start && clickDate <= endOfDay;
             }
             return true;
           default:
@@ -685,10 +691,10 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
           {/* Top Performing Links */}
           <div className="bg-white/5 rounded-xl border border-white/10 p-6">
             <h3 className="text-lg font-semibold text-white mb-4">Top Performing Links</h3>
-            <div className="space-y-2">
+            <div className="divide-y divide-white/10">
               {linkPerformance.length > 0 ? (
                 linkPerformance.map((link, index) => (
-                  <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-white/5 rounded-lg transition-colors">
+                  <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-white/5 transition-colors first:pt-0">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-white truncate">{link.title}</div>
                       <div className="text-xs text-gray-500">/{link.shortCode}</div>
@@ -806,7 +812,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
                     )}
                     <svg viewBox="0 0 100 100" className="transform -rotate-90">
                       {(() => {
-                        const colors = ['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.7)', 'rgba(255,255,255,0.5)', 'rgba(255,255,255,0.3)', 'rgba(255,255,255,0.2)'];
+                        const colors = ['#5B8DEF', '#7BA5F3', '#9BBDF7', '#BBD5FB', '#DBEAFE'];
                         const radius = 42;
                         const innerRadius = 30;
                         
@@ -952,7 +958,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
 
             {interval === 'hourly' ? (
               // Device View
-              <div className="space-y-2">
+              <div className="divide-y divide-white/10">
                 {(() => {
                   const deviceCounts = filteredLinkClicks.reduce((acc: { [key: string]: number }, click) => {
                     const device = click.deviceType || 'Unknown';
@@ -973,7 +979,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
 
                   return deviceData.length > 0 ? (
                     deviceData.map(([device, clicks], index) => (
-                      <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-white/5 rounded-lg transition-colors">
+                      <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-white/5 transition-colors first:pt-0">
                         <div className="flex items-center gap-3">
                           <span className="text-2xl">{getDeviceIcon(device)}</span>
                           <span className="text-sm font-medium text-white capitalize">{device}</span>
@@ -993,7 +999,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
               </div>
             ) : (
               // Browser View
-              <div className="space-y-2">
+              <div className="divide-y divide-white/10">
                 {(() => {
                   const browserCounts = filteredLinkClicks.reduce((acc: { [key: string]: number }, click) => {
                     const browser = click.browser || 'Unknown';
@@ -1017,7 +1023,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
 
                   return browserData.length > 0 ? (
                     browserData.map(([browser, clicks], index) => (
-                      <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-white/5 rounded-lg transition-colors">
+                      <div key={index} className="flex items-center justify-between py-3 px-3 hover:bg-white/5 transition-colors first:pt-0">
                         <div className="flex items-center gap-3">
                           <span className="text-2xl">{getBrowserIcon(browser)}</span>
                           <span className="text-sm font-medium text-white">{browser}</span>
