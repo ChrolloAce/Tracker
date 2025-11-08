@@ -260,35 +260,51 @@ class FirebaseStorageService {
    * @param orgId Organization ID
    * @param videoId Video identifier (used in filename patterns like tiktok_{videoId}_thumb.jpg)
    */
-  static async deleteVideoThumbnail(orgId: string, videoId: string): Promise<void> {
+  static async deleteVideoThumbnail(
+    orgId: string, 
+    videoId: string, 
+    platform?: string, 
+    platformVideoId?: string
+  ): Promise<void> {
     try {
-      console.log(`🗑️ Deleting thumbnail for video: ${videoId}`);
+      // Build all possible thumbnail filenames to try
+      const possibleFilenames: string[] = [];
+      const platforms = platform ? [platform] : ['tiktok', 'tt', 'instagram', 'ig', 'youtube', 'yt', 'twitter', 'x'];
+      const videoIds = platformVideoId ? [platformVideoId, videoId] : [videoId];
       
-      // Try to delete all possible thumbnail patterns for this video
-      // Pattern: {platform}_{videoId}_thumb.jpg
-      const platforms = ['tiktok', 'instagram', 'youtube', 'twitter'];
-      const thumbnailsRef = ref(storage, `organizations/${orgId}/thumbnails/`);
-      
-      try {
-        const listResult = await listAll(thumbnailsRef);
-        
-        // Find and delete thumbnails matching any platform pattern
-        const matchingThumbnails = listResult.items.filter(item => {
-          // Check if filename contains the videoId
-          return platforms.some(platform => 
-            item.name === `${platform}_${videoId}_thumb.jpg` ||
-            item.name.includes(`_${videoId}_`)
-          );
-        });
-        
-        if (matchingThumbnails.length > 0) {
-          await Promise.all(matchingThumbnails.map(item => deleteObject(item)));
-          console.log(`✅ Deleted ${matchingThumbnails.length} thumbnail(s) for video: ${videoId}`);
-        } else {
-          console.log(`ℹ️ No thumbnails found for video: ${videoId}`);
+      // Generate all possible combinations
+      for (const p of platforms) {
+        for (const vid of videoIds) {
+          possibleFilenames.push(`${p}_${vid}_thumb.jpg`);
         }
-      } catch (listError) {
-        console.error(`⚠️ Failed to list thumbnails for video ${videoId}:`, listError);
+      }
+      
+      console.log(`🗑️ [STORAGE] Attempting to delete thumbnails for video ${videoId} (trying ${possibleFilenames.length} patterns)`);
+      
+      let deleted = 0;
+      let notFound = 0;
+      
+      // Try to delete each possible thumbnail
+      for (const filename of possibleFilenames) {
+        try {
+          const thumbnailRef = ref(storage, `organizations/${orgId}/thumbnails/${filename}`);
+          await deleteObject(thumbnailRef);
+          deleted++;
+          console.log(`  ✅ [STORAGE] Deleted: ${filename}`);
+        } catch (error: any) {
+          if (error.code === 'storage/object-not-found') {
+            notFound++;
+            // Expected - not all combinations will exist
+          } else {
+            console.error(`  ⚠️ [STORAGE] Error deleting ${filename}:`, error.message);
+          }
+        }
+      }
+      
+      if (deleted > 0) {
+        console.log(`✅ [STORAGE] Deleted ${deleted} thumbnail(s) for video ${videoId}`);
+      } else {
+        console.log(`ℹ️ [STORAGE] No thumbnails found (tried ${notFound} filenames)`);
       }
     } catch (error) {
       console.error(`❌ Failed to delete thumbnail for video ${videoId}:`, error);

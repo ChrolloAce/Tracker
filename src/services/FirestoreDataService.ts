@@ -539,7 +539,9 @@ class FirestoreDataService {
    */
   static async deleteAccountVideos(orgId: string, projectId: string, accountId: string): Promise<void> {
     try {
-      console.log(`🗑️ Deleting all videos for account ${accountId}`);
+      console.log(`🗑️ [DELETE] Starting video deletion for account ${accountId}`);
+      console.log(`🗑️ [DELETE] Query path: organizations/${orgId}/projects/${projectId}/videos`);
+      console.log(`🗑️ [DELETE] Filter: trackedAccountId == ${accountId}`);
       
       // Get all videos for this account
       const q = query(
@@ -550,25 +552,53 @@ class FirestoreDataService {
       const snapshot = await getDocs(q);
       const videoCount = snapshot.docs.length;
       
+      console.log(`📊 [DELETE] Query returned ${videoCount} videos`);
+      
       if (videoCount === 0) {
-        console.log('✅ No videos to delete');
+        console.warn(`⚠️ [DELETE] No videos found for account ${accountId}. This might indicate:`);
+        console.warn(`   - Videos use different trackedAccountId value`);
+        console.warn(`   - Videos were already deleted`);
+        console.warn(`   - Account has no videos`);
+        console.log('✅ [DELETE] Proceeding with account deletion');
         return;
       }
       
-      console.log(`📊 Found ${videoCount} videos to delete`);
+      console.log(`📊 [DELETE] Found ${videoCount} videos to delete`);
+      
+      // Log first video details for debugging
+      if (snapshot.docs.length > 0) {
+        const firstVideo = snapshot.docs[0].data();
+        console.log(`🔍 [DELETE] First video sample:`, {
+          id: snapshot.docs[0].id,
+          videoId: firstVideo.videoId,
+          trackedAccountId: firstVideo.trackedAccountId,
+          platform: firstVideo.platform,
+          url: firstVideo.url?.substring(0, 50)
+        });
+      }
       
       // STEP 1: Delete all snapshots and thumbnails for each video
       const FirebaseStorageService = (await import('./FirebaseStorageService')).default;
       let snapshotsDeleted = 0;
       let thumbnailsDeleted = 0;
+      let thumbnailErrors = 0;
+      let snapshotErrors = 0;
       
-      for (const videoDoc of snapshot.docs) {
+      console.log(`🗑️ [DELETE] Step 1: Deleting snapshots and thumbnails for ${videoCount} videos...`);
+      
+      for (let idx = 0; idx < snapshot.docs.length; idx++) {
+        const videoDoc = snapshot.docs[idx];
         const videoId = videoDoc.id;
+        const videoData = videoDoc.data();
+        
+        console.log(`  🗑️ [DELETE] Processing video ${idx + 1}/${videoCount}: ${videoId}`);
         
         // Delete snapshots for this video (in batches of 500)
         try {
           const snapshotsRef = collection(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId, 'snapshots');
           const snapshotsSnapshot = await getDocs(snapshotsRef);
+          
+          console.log(`    📸 [DELETE] Found ${snapshotsSnapshot.docs.length} snapshots for video ${videoId}`);
           
           if (snapshotsSnapshot.docs.length > 0) {
             const BATCH_SIZE = 500;
@@ -582,25 +612,42 @@ class FirestoreDataService {
               
               await snapshotBatch.commit();
               snapshotsDeleted += batchDocs.length;
+              console.log(`    ✅ [DELETE] Deleted snapshot batch ${Math.floor(i / BATCH_SIZE) + 1}`);
             }
           }
         } catch (snapshotError) {
-          console.error(`⚠️ Failed to delete snapshots for video ${videoId}:`, snapshotError);
+          snapshotErrors++;
+          console.error(`    ❌ [DELETE] Failed to delete snapshots for video ${videoId}:`, snapshotError);
         }
         
         // Delete thumbnail for this video
         try {
-          await FirebaseStorageService.deleteVideoThumbnail(orgId, videoId);
+          const platform = videoData.platform || 'unknown';
+          const videoIdFromData = videoData.videoId || videoId;
+          console.log(`    🖼️ [DELETE] Attempting to delete thumbnail: ${platform}_${videoIdFromData}_thumb.jpg`);
+          await FirebaseStorageService.deleteVideoThumbnail(orgId, videoId, platform, videoIdFromData);
           thumbnailsDeleted++;
-        } catch (thumbnailError) {
-          console.error(`⚠️ Failed to delete thumbnail for video ${videoId}:`, thumbnailError);
+          console.log(`    ✅ [DELETE] Deleted thumbnail for video ${videoId}`);
+        } catch (thumbnailError: any) {
+          thumbnailErrors++;
+          // Don't log 404 errors as they're expected if thumbnail doesn't exist
+          if (!thumbnailError.message?.includes('404') && !thumbnailError.message?.includes('not found')) {
+            console.error(`    ⚠️ [DELETE] Failed to delete thumbnail for video ${videoId}:`, thumbnailError.message);
+          } else {
+            console.log(`    ℹ️ [DELETE] No thumbnail found for video ${videoId} (expected if never uploaded)`);
+          }
         }
       }
       
-      console.log(`✅ Deleted ${snapshotsDeleted} snapshots and ${thumbnailsDeleted} thumbnails`);
+      console.log(`✅ [DELETE] Step 1 complete: ${snapshotsDeleted} snapshots deleted, ${thumbnailsDeleted} thumbnails deleted`);
+      if (snapshotErrors > 0) console.warn(`⚠️ [DELETE] ${snapshotErrors} snapshot deletion errors`);
+      if (thumbnailErrors > 0) console.warn(`⚠️ [DELETE] ${thumbnailErrors} thumbnail deletion errors (may be expected)`);
       
       // STEP 2: Delete video documents in batches
+      console.log(`🗑️ [DELETE] Step 2: Deleting ${videoCount} video documents...`);
       const batchSize = 500;
+      let batchesCommitted = 0;
+      
       for (let i = 0; i < snapshot.docs.length; i += batchSize) {
         const batch = writeBatch(db);
         const batchDocs = snapshot.docs.slice(i, i + batchSize);
@@ -616,23 +663,37 @@ class FirestoreDataService {
             videoCount: increment(-videoCount),
             updatedAt: Timestamp.now()
           });
+          console.log(`  📊 [DELETE] Updating project video count (-${videoCount})`);
         }
         
         await batch.commit();
+        batchesCommitted++;
+        console.log(`  ✅ [DELETE] Committed batch ${batchesCommitted} (${batchDocs.length} videos)`);
       }
       
       // Decrement organization usage counter
       try {
         const UsageTrackingService = (await import('./UsageTrackingService')).default;
         await UsageTrackingService.decrementUsage(orgId, 'trackedVideos', videoCount);
-        console.log(`✅ Decremented video usage counter by ${videoCount} for org ${orgId}`);
+        console.log(`✅ [DELETE] Decremented org usage counter by ${videoCount}`);
       } catch (error) {
-        console.error('⚠️ Failed to decrement video usage counter (non-critical):', error);
+        console.error('⚠️ [DELETE] Failed to decrement video usage counter (non-critical):', error);
       }
       
-      console.log(`✅ Deleted ${videoCount} videos for account ${accountId}`);
+      console.log(`✅ [DELETE] Successfully deleted ${videoCount} videos for account ${accountId}`);
+      console.log(`📊 [DELETE] Summary:`);
+      console.log(`   - ${videoCount} videos deleted`);
+      console.log(`   - ${snapshotsDeleted} snapshots deleted`);
+      console.log(`   - ${thumbnailsDeleted} thumbnails deleted`);
+      console.log(`   - ${batchesCommitted} batch(es) committed`);
     } catch (error) {
-      console.error('❌ Failed to delete account videos:', error);
+      console.error('❌ [DELETE] Failed to delete account videos:', error);
+      console.error('❌ [DELETE] Error details:', {
+        accountId,
+        orgId,
+        projectId,
+        error: error instanceof Error ? error.message : String(error)
+      });
       throw error;
     }
   }
