@@ -20,10 +20,11 @@ import OrganizationService from '../services/OrganizationService';
 import RulesService from '../services/RulesService';
 import CompensationBuilder from './CompensationBuilder';
 import PayoutStructureManager from './PayoutStructureManager';
+import CampaignCompetitionManager from './CampaignCompetitionManager';
 import { OrgMember } from '../types/firestore';
 import { TrackingRule } from '../types/rules';
 import FirebaseStorageService from '../services/FirebaseStorageService';
-import type { PayoutStructure, CampaignCreatorAssignment } from '../types/payouts';
+import type { PayoutStructure, CampaignCreatorAssignment, CampaignCompetition } from '../types/payouts';
 
 interface CreateCampaignModalProps {
   isOpen: boolean;
@@ -88,6 +89,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
   const [selectedPayoutStructure, setSelectedPayoutStructure] = useState<PayoutStructure | null>(null);
   const [creatorAssignments, setCreatorAssignments] = useState<CampaignCreatorAssignment[]>([]);
   const [defaultPayoutStructureId, setDefaultPayoutStructureId] = useState<string>('');
+  const [competitions, setCompetitions] = useState<CampaignCompetition[]>([]);
   
   // Step 5: Participants
   const [availableCreators, setAvailableCreators] = useState<OrgMember[]>([]);
@@ -203,6 +205,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
         useFlexiblePayouts: payoutMode === 'flexible',
         defaultPayoutStructureId: payoutMode === 'flexible' ? defaultPayoutStructureId : undefined,
         creatorAssignments: payoutMode === 'flexible' ? creatorAssignments : undefined,
+        competitionIds: payoutMode === 'flexible' && competitions.length > 0 ? competitions.map(c => c.id) : undefined,
       };
       
       // Legacy: Only add compensationAmount if using old system
@@ -941,6 +944,16 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
                       </p>
                     </div>
                   )}
+
+                  {/* Competitions */}
+                  <div className="pt-4 border-t border-white/10">
+                    <CampaignCompetitionManager
+                      competitions={competitions}
+                      onChange={setCompetitions}
+                      campaignStartDate={startDate ? new Date(startDate) : new Date()}
+                      campaignEndDate={endDate ? new Date(endDate) : undefined}
+                    />
+                  </div>
                 </div>
               )}
 
