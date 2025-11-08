@@ -1,6 +1,6 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { ExternalLink, Copy, Trash2, Edit2, BarChart } from 'lucide-react';
+import { ExternalLink, Copy, Trash2, Edit2, BarChart, Info } from 'lucide-react';
 import { DateFilterType } from './DateRangeFilter';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 import LinkClicksService, { LinkClick } from '../services/LinkClicksService';
@@ -103,6 +103,33 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     }
   };
 
+    // Get human-readable date range label
+    const getDateRangeLabel = () => {
+      switch (dateFilter) {
+        case 'today': return 'Today';
+        case 'yesterday': return 'Yesterday';
+        case 'last7days': return 'Last 7 Days';
+        case 'last14days': return 'Last 14 Days';
+        case 'last30days': return 'Last 30 Days';
+        case 'last90days': return 'Last 90 Days';
+        case 'mtd': return 'Month to Date';
+        case 'ytd': return 'Year to Date';
+        case 'custom': 
+          if (customDateRange) {
+            const start = 'start' in customDateRange ? customDateRange.start : customDateRange.startDate;
+            const end = 'end' in customDateRange ? customDateRange.end : customDateRange.endDate;
+            const formatDate = (date: Date) => {
+              const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+              return `${months[date.getMonth()]} ${date.getDate()}`;
+            };
+            return `${formatDate(start)} - ${formatDate(end)}`;
+          }
+          return 'Custom Range';
+        case 'all': return 'All Time';
+        default: return 'All Time';
+      }
+    };
+
     const calculateMetrics = (linksData: TrackedLink[], clicksData: LinkClick[]) => {
       // Apply date filter first
       const dateFilteredClicks = filterClicksByDate(clicksData);
@@ -117,7 +144,11 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         ? linksData
         : linksData.filter(link => link.id === linkFilter);
 
-      setTotalLinks(filteredLinks.length);
+      // Calculate ACTIVE links (links that had clicks in the time period)
+      const activeLinkIds = new Set(filteredClicks.map(click => click.linkId));
+      const activeLinksCount = filteredLinks.filter(link => activeLinkIds.has(link.id)).length;
+      
+      setTotalLinks(activeLinksCount);
       setTotalClicks(filteredClicks.length);
 
       // Calculate unique visitors (unique user agents)
@@ -617,34 +648,58 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
 
         {/* KPI Metrics */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {/* Total Links */}
+          {/* Active Links */}
           <div className="bg-white/5 rounded-xl border border-white/10 p-4 hover:bg-white/10 transition-colors">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-sm text-gray-400 font-medium">Total Links</span>
+            <div className="flex items-center gap-1.5 mb-2">
+              <span className="text-sm text-gray-400 font-medium">Active Links</span>
+              <div className="group relative">
+                <Info className="w-3.5 h-3.5 text-gray-500 cursor-help" />
+                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-zinc-900 border border-white/20 rounded-lg shadow-xl text-xs text-white/80 z-50">
+                  Links that received clicks during the selected time period
+                </div>
+              </div>
             </div>
             <div className="text-3xl font-bold text-white">{totalLinks}</div>
           </div>
 
           {/* Total Clicks */}
           <div className="bg-white/5 rounded-xl border border-white/10 p-4 hover:bg-white/10 transition-colors">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-1.5 mb-2">
               <span className="text-sm text-gray-400 font-medium">Total Clicks</span>
+              <div className="group relative">
+                <Info className="w-3.5 h-3.5 text-gray-500 cursor-help" />
+                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-zinc-900 border border-white/20 rounded-lg shadow-xl text-xs text-white/80 z-50">
+                  Total number of clicks in the selected time period
+                </div>
+              </div>
             </div>
             <div className="text-3xl font-bold text-white">{totalClicks}</div>
           </div>
 
           {/* Unique Visitors */}
           <div className="bg-white/5 rounded-xl border border-white/10 p-4 hover:bg-white/10 transition-colors">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-1.5 mb-2">
               <span className="text-sm text-gray-400 font-medium">Unique Visitors</span>
+              <div className="group relative">
+                <Info className="w-3.5 h-3.5 text-gray-500 cursor-help" />
+                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-zinc-900 border border-white/20 rounded-lg shadow-xl text-xs text-white/80 z-50">
+                  Unique visitors based on user agent in the selected time period
+                </div>
+              </div>
             </div>
             <div className="text-3xl font-bold text-white">{uniqueVisitors}</div>
           </div>
 
           {/* Top Performer */}
           <div className="bg-white/5 rounded-xl border border-white/10 p-4 hover:bg-white/10 transition-colors">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-1.5 mb-2">
               <span className="text-sm text-gray-400 font-medium">Top Performer</span>
+              <div className="group relative">
+                <Info className="w-3.5 h-3.5 text-gray-500 cursor-help" />
+                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-zinc-900 border border-white/20 rounded-lg shadow-xl text-xs text-white/80 z-50">
+                  Link with the most clicks in the selected time period
+                </div>
+              </div>
             </div>
             <div className="text-lg font-bold text-white truncate" title={topPerformer}>
               {topPerformer}
@@ -655,7 +710,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         {/* Clicks Trend Chart */}
         <div className="bg-white/5 rounded-xl border border-white/10 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white">Clicks Over Time</h3>
+            <h3 className="text-lg font-semibold text-white">Clicks Over Time - {getDateRangeLabel()}</h3>
           </div>
           <div className="h-64 flex items-end gap-1">
             {clicksByTime.map((data, index) => {
@@ -690,7 +745,7 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Top Performing Links */}
           <div className="bg-white/5 rounded-xl border border-white/10 p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Top Performing Links</h3>
+            <h3 className="text-lg font-semibold text-white mb-4">Top Performing Links - {getDateRangeLabel()}</h3>
             <div className="divide-y divide-white/10">
               {linkPerformance.length > 0 ? (
                 linkPerformance.map((link, index) => (
