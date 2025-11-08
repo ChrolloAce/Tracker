@@ -295,11 +295,15 @@ class TeamInvitationService {
       // Proceed with accepting invitation
       const batch = writeBatch(db);
       
-      // Update invitation status
-      batch.update(inviteRef, { 
-        status: 'accepted',
-        acceptedAt: Timestamp.now()
-      });
+      // Delete the invitation document (cleanup after acceptance)
+      batch.delete(inviteRef);
+      
+      // Also delete from the lookup collection if it exists
+      const lookupRef = doc(db, 'invitationsLookup', invitationId);
+      const lookupDoc = await getDoc(lookupRef);
+      if (lookupDoc.exists()) {
+        batch.delete(lookupRef);
+      }
       
       // Add user as member with email and displayName
       const memberRef = doc(db, 'organizations', orgId, 'members', userId);

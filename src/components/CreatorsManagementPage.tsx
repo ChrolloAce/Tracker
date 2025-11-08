@@ -10,7 +10,7 @@ import FirestoreDataService from '../services/FirestoreDataService';
 import DateFilterService from '../services/DateFilterService';
 import TeamInvitationService from '../services/TeamInvitationService';
 import { DateFilterType } from './DateRangeFilter';
-import { User, TrendingUp, Plus, Mail, Clock, X, FileText, UserPlus, Copy } from 'lucide-react';
+import { User, TrendingUp, Plus, Mail, Clock, X, FileText, UserPlus, Copy, Trash2 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { EmptyState } from './ui/EmptyState';
 import Pagination from './ui/Pagination';
@@ -319,6 +319,27 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
       });
   };
 
+  const handleRemoveCreator = async (creatorId: string) => {
+    if (!currentOrgId || !currentProjectId) return;
+
+    setActionLoading(creatorId);
+    try {
+      // Remove all creator links and creator profile from the project
+      await CreatorLinksService.removeAllCreatorLinks(currentOrgId, currentProjectId, creatorId);
+      
+      // Remove from organization members
+      await OrganizationService.removeMember(currentOrgId, creatorId);
+      
+      // Reload data
+      await loadData();
+    } catch (error) {
+      console.error('Failed to remove creator:', error);
+      alert('Failed to remove creator. Please try again.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   if (loading) {
     return <PageLoadingSkeleton type="creators" />;
   }
@@ -421,6 +442,9 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
                   <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
                     Joined
                   </th>
+                  <th className="px-6 py-4 text-right text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -430,21 +454,20 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
                   return (
                     <tr 
                       key={creator.userId} 
-                      onClick={() => {
-                        // Redirect to dashboard with creator filter instead of separate creator page
-                        // Get linked accounts for this creator to filter by
-                        const linkedAccounts = (creator as any).linkedAccounts || [];
-                        if (linkedAccounts.length > 0) {
-                          // Navigate to dashboard with creator filter in URL
-                          navigate(`/dashboard?creator=${creator.userId}`);
-                        } else {
-                          // No accounts, just go to dashboard
-                          navigate('/dashboard');
-                        }
-                      }}
-                      className="hover:bg-white/5 transition-colors group cursor-pointer"
+                      className="hover:bg-white/5 transition-colors group"
                     >
-                      <td className="px-6 py-4">
+                      <td 
+                        className="px-6 py-4 cursor-pointer"
+                        onClick={() => {
+                          // Redirect to dashboard with creator filter instead of separate creator page
+                          const linkedAccounts = (creator as any).linkedAccounts || [];
+                          if (linkedAccounts.length > 0) {
+                            navigate(`/dashboard?creator=${creator.userId}`);
+                          } else {
+                            navigate('/dashboard');
+                          }
+                        }}
+                      >
                         <div className="flex items-center gap-3">
                           <div className="relative w-10 h-10 flex-shrink-0">
                             {creator.photoURL ? (
@@ -476,7 +499,17 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td 
+                        className="px-6 py-4 cursor-pointer"
+                        onClick={() => {
+                          const linkedAccounts = (creator as any).linkedAccounts || [];
+                          if (linkedAccounts.length > 0) {
+                            navigate(`/dashboard?creator=${creator.userId}`);
+                          } else {
+                            navigate('/dashboard');
+                          }
+                        }}
+                      >
                         <div className="text-sm text-white font-medium">
                           {profile?.linkedAccountsCount || 0} {profile?.linkedAccountsCount === 1 ? 'account' : 'accounts'}
                         </div>
@@ -486,12 +519,32 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4">
+                      <td 
+                        className="px-6 py-4 cursor-pointer"
+                        onClick={() => {
+                          const linkedAccounts = (creator as any).linkedAccounts || [];
+                          if (linkedAccounts.length > 0) {
+                            navigate(`/dashboard?creator=${creator.userId}`);
+                          } else {
+                            navigate('/dashboard');
+                          }
+                        }}
+                      >
                         <div className="text-sm text-white font-medium">
                           {videoCounts.get(creator.userId) || 0} {videoCounts.get(creator.userId) === 1 ? 'video' : 'videos'}
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td 
+                        className="px-6 py-4 cursor-pointer"
+                        onClick={() => {
+                          const linkedAccounts = (creator as any).linkedAccounts || [];
+                          if (linkedAccounts.length > 0) {
+                            navigate(`/dashboard?creator=${creator.userId}`);
+                          } else {
+                            navigate('/dashboard');
+                          }
+                        }}
+                      >
                         <div className="flex items-center gap-2">
                           <div className="text-sm font-semibold text-white">
                             ${(calculatedEarnings.get(creator.userId) || 0).toFixed(2)}
@@ -506,9 +559,36 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4">
+                      <td 
+                        className="px-6 py-4 cursor-pointer"
+                        onClick={() => {
+                          const linkedAccounts = (creator as any).linkedAccounts || [];
+                          if (linkedAccounts.length > 0) {
+                            navigate(`/dashboard?creator=${creator.userId}`);
+                          } else {
+                            navigate('/dashboard');
+                          }
+                        }}
+                      >
                         <div className="text-sm text-gray-400">
                           {formatDate(creator.joinedAt)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-2">
+                          {isAdmin && (
+                            <button
+                              onClick={() => {
+                                if (confirm(`Remove ${creator.displayName || creator.email} from your team?\n\nThis will:\n• Remove them from the organization\n• Delete their creator profile\n• Unlink all their accounts\n• Remove all creator links`)) {
+                                  handleRemoveCreator(creator.userId);
+                                }
+                              }}
+                              className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
+                              title="Remove Creator"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
