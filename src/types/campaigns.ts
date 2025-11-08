@@ -202,6 +202,14 @@ export interface Campaign {
   participantIds: string[];     // Array of creator user IDs
   participants: CampaignParticipant[];
   
+  // NEW: Flexible Payout System
+  useFlexiblePayouts?: boolean; // If true, use creatorAssignments instead of old compensation system
+  creatorAssignments?: import('./payouts').CampaignCreatorAssignment[]; // Per-creator payout structures
+  defaultPayoutStructureId?: string; // Default structure for new creators added to campaign
+  
+  // NEW: Campaign-level competitions
+  competitionIds?: string[]; // Array of competition IDs
+  
   // Analytics
   totalViews: number;
   totalLikes: number;
@@ -235,12 +243,18 @@ export interface CreateCampaignInput {
   goalAmount: number;
   compensationType: CompensationType;
   compensationAmount?: number;
-  compensationStructure?: CompensationStructure;  // NEW: Flexible compensation
+  compensationStructure?: CompensationStructure;  // NEW: Flexible compensation (legacy)
   rewards: CampaignReward[];
   bonusRewards: BonusReward[];
   metricGuarantees: MetricGuarantee[];  // Minimum metrics per video
   defaultRuleIds?: string[];      // Optional default tracking rules
   participantIds: string[];
+  
+  // NEW: Flexible Payout System
+  useFlexiblePayouts?: boolean; // Enable new payout system
+  creatorAssignments?: import('./payouts').CampaignCreatorAssignment[]; // Per-creator payout structures
+  defaultPayoutStructureId?: string; // Default structure for new creators
+  competitionIds?: string[]; // Campaign-level competitions
 }
 
 /**
