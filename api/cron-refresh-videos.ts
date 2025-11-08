@@ -785,13 +785,33 @@ async function refreshTikTokVideosBulk(
       const videoDoc = videoDocs.find(doc => doc.data().videoId === videoId);
       if (!videoDoc) continue;
 
-      await videoDoc.ref.update({
+      const now = Timestamp.now();
+      const metrics = {
         views: video.views || 0,
         likes: video.likes || 0,
         comments: video.comments || 0,
         shares: video.shares || 0,
         saves: video.bookmarks || 0, // ✅ BOOKMARKS
-        lastRefreshed: Timestamp.now()
+        lastRefreshed: now
+      };
+
+      // Update video metrics
+      await videoDoc.ref.update(metrics);
+
+      // Create refresh snapshot
+      const snapshotRef = videoDoc.ref.collection('snapshots').doc();
+      await snapshotRef.set({
+        id: snapshotRef.id,
+        videoId: videoId,
+        views: metrics.views,
+        likes: metrics.likes,
+        comments: metrics.comments,
+        shares: metrics.shares,
+        saves: metrics.saves,
+        capturedAt: now,
+        timestamp: now, // Backwards compatibility
+        capturedBy: 'scheduled_refresh',
+        isInitialSnapshot: false // This is a refresh snapshot
       });
 
       updatedCount++;
