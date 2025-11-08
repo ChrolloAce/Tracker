@@ -227,15 +227,19 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
       ? links
       : links.filter(link => link.id === linkFilter);
 
-    // Calculate link performance data
-    const linkPerformance = filteredLinks.slice(0, 10).map(link => {
-      const linkClicksData = filteredLinkClicks.filter(click => click.linkId === link.id);
-      return {
-        title: link.title || link.shortCode,
-        clicks: linkClicksData.length,
-        shortCode: link.shortCode
-      };
-    }).sort((a, b) => b.clicks - a.clicks);
+    // Calculate link performance data - only show links with clicks
+    const linkPerformance = filteredLinks
+      .map(link => {
+        const linkClicksData = filteredLinkClicks.filter(click => click.linkId === link.id);
+        return {
+          title: link.title || link.shortCode,
+          clicks: linkClicksData.length,
+          shortCode: link.shortCode
+        };
+      })
+      .filter(link => link.clicks > 0) // Only show links with actual clicks
+      .sort((a, b) => b.clicks - a.clicks)
+      .slice(0, 10); // Get top 10 after filtering and sorting
 
     // Calculate clicks by country
     const clicksByCountry = filteredLinkClicks.reduce((acc: { [key: string]: number }, click) => {
