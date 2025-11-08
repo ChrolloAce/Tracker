@@ -33,6 +33,8 @@ export interface PayoutCondition {
  * Base component - guaranteed payment
  */
 export interface BasePayoutComponent {
+  id?: string; // Optional ID for tracking
+  name?: string; // Optional name for display
   type: 'base';
   amount: number;
   payAt?: 'on_assign' | 'on_publish' | 'on_campaign_end';
@@ -43,6 +45,8 @@ export interface BasePayoutComponent {
  * CPM component - performance-based per 1000 views/metric
  */
 export interface CPMPayoutComponent {
+  id?: string;
+  name?: string;
   type: 'cpm';
   rate: number; // $ per 1000 of metric
   metric: 'views' | 'likes' | 'comments' | 'shares' | 'saves' | 'ig_reel_plays' | 'yt_views' | 'tt_views';
@@ -55,6 +59,8 @@ export interface CPMPayoutComponent {
  * Flat upfront component - one-time payment
  */
 export interface FlatPayoutComponent {
+  id?: string;
+  name?: string;
   type: 'flat';
   amount: number;
   payAt?: 'on_assign' | 'on_publish' | 'on_campaign_end';
@@ -65,6 +71,8 @@ export interface FlatPayoutComponent {
  * Single bonus component - pay when condition is met
  */
 export interface BonusPayoutComponent {
+  id?: string;
+  name?: string;
   type: 'bonus';
   condition: {
     metric: 'views' | 'likes' | 'comments' | 'shares' | 'saves' | 'conversions' | 'videos_posted';
@@ -81,6 +89,8 @@ export interface BonusPayoutComponent {
  * Tiered bonus component - multiple thresholds
  */
 export interface TieredBonusPayoutComponent {
+  id?: string;
+  name?: string;
   type: 'bonus_tiered';
   metric: 'views' | 'likes' | 'comments' | 'shares' | 'saves' | 'conversions' | 'videos_posted';
   tiers: Array<{
@@ -95,6 +105,8 @@ export interface TieredBonusPayoutComponent {
  * Conversion-based component - pay per conversion/sale
  */
 export interface ConversionPayoutComponent {
+  id?: string;
+  name?: string;
   type: 'conversion';
   amountPerConversion: number;
   cap?: number; // Max total payout from conversions
@@ -106,6 +118,8 @@ export interface ConversionPayoutComponent {
  * Video-based component - pay per video posted
  */
 export interface VideoPayoutComponent {
+  id?: string;
+  name?: string;
   type: 'per_video';
   amountPerVideo: number;
   maxVideos?: number; // Cap number of videos paid for
