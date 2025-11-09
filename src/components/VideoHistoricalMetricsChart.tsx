@@ -113,28 +113,31 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
     return totalValue.toLocaleString();
   }, [totalValue, selectedMetric]);
 
-  // Custom tooltip
+  // Custom tooltip - shows the DELTA (difference) for this snapshot
   const CustomTooltip = ({ active, payload }: any) => {
     if (!active || !payload || !payload.length) return null;
 
     const dataPoint = payload[0].payload;
-    const value = dataPoint[selectedMetric];
+    const deltaValue = dataPoint[selectedMetric]; // This is already the delta from chart data
     
     return (
       <div 
-        className="rounded-lg border border-white/10 shadow-xl p-3 min-w-[140px]"
+        className="rounded-lg border border-white/10 shadow-xl p-3 min-w-[160px]"
         style={{ backgroundColor: 'rgba(18, 18, 20, 0.98)' }}
       >
         <div className="text-xs text-gray-400 mb-2">{dataPoint.date}</div>
-        <div className="space-y-1">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-xs text-gray-500">Growth:</span>
-            <span className="text-base font-bold text-emerald-400">
-              +{currentMetric.formatValue(value)}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div 
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: '#3b82f6' }}
+              />
+              <span className="text-xs text-gray-400">Growth:</span>
+            </div>
+            <span className="text-sm font-bold text-white">
+              +{currentMetric.formatValue(deltaValue)}
             </span>
-          </div>
-          <div className="text-[10px] text-gray-600 uppercase tracking-wide">
-            {currentMetric.label} gained
           </div>
         </div>
       </div>

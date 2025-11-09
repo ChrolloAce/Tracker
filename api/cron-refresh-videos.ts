@@ -863,17 +863,17 @@ async function refreshInstagramVideosSequential(
   // Collect all post URLs
   const postUrls: string[] = [];
   const videoDocMap = new Map<string, any>(); // Map videoId -> videoDoc
-  
+
   for (const videoDoc of videoDocs) {
     const videoData = videoDoc.data();
     const videoUrl = videoData.url || videoData.videoUrl;
     const videoId = videoData.videoId;
-    
+  
     if (!videoUrl || !videoId) {
       console.log(`    ⚠️ [INSTAGRAM] Skipping video - missing URL or ID`);
       continue;
     }
-    
+
     postUrls.push(videoUrl);
     videoDocMap.set(videoId, videoDoc);
   }
@@ -881,31 +881,31 @@ async function refreshInstagramVideosSequential(
   if (postUrls.length === 0) {
     console.log(`    ℹ️ [INSTAGRAM] No valid videos to refresh`);
     return 0;
-  }
-  
+      }
+
   console.log(`    📦 [INSTAGRAM] Fetching metrics for ${postUrls.length} videos in single batch...`);
-  
+
   try {
     // Make ONE API call with ALL post URLs
-    const result = await runApifyActor({
-      actorId: 'hpix~ig-reels-scraper',
-      input: {
+      const result = await runApifyActor({
+        actorId: 'hpix~ig-reels-scraper',
+        input: {
         post_urls: postUrls, // ALL VIDEOS IN ONE CALL!
-        target: 'reels_only',
+          target: 'reels_only',
         reels_count: postUrls.length,
-        include_raw_data: true,
-        custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
-        proxy: {
-          useApifyProxy: true,
-          apifyProxyGroups: ['RESIDENTIAL'],
-          apifyProxyCountry: 'US'
-        },
-        maxConcurrency: 1,
-        maxRequestRetries: 3,
-        handlePageTimeoutSecs: 120,
-        debugLog: false
-      }
-    });
+          include_raw_data: true,
+          custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
+          proxy: {
+            useApifyProxy: true,
+            apifyProxyGroups: ['RESIDENTIAL'],
+            apifyProxyCountry: 'US'
+          },
+          maxConcurrency: 1,
+          maxRequestRetries: 3,
+          handlePageTimeoutSecs: 120,
+          debugLog: false
+        }
+      });
 
     const refreshedVideos = result.items || [];
     console.log(`    📊 [INSTAGRAM] API returned ${refreshedVideos.length} videos, matching to ${videoDocMap.size} DB videos...`);
@@ -966,8 +966,8 @@ async function refreshInstagramVideosSequential(
     console.log(`    ✅ [INSTAGRAM] Batch complete: ${updatedCount} updated, ${failedCount} not found (${successRate}% success rate)`);
     
     return updatedCount;
-  } catch (error: any) {
-    const errorMsg = error.message || String(error);
+    } catch (error: any) {
+      const errorMsg = error.message || String(error);
     console.error(`    ❌ [INSTAGRAM] Batch refresh failed: ${errorMsg.substring(0, 150)}`);
     return 0;
   }

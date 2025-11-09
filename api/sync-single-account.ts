@@ -514,28 +514,28 @@ export default async function handler(
       try {
         // Check if we have existing reels to determine date range
         let mostRecentReelDate: Date | null = null;
-        try {
-          const existingVideosSnapshot = await db
-            .collection('organizations')
-            .doc(orgId)
-            .collection('projects')
-            .doc(projectId)
-            .collection('videos')
-            .where('trackedAccountId', '==', accountId)
-            .where('platform', '==', 'instagram')
+      try {
+        const existingVideosSnapshot = await db
+          .collection('organizations')
+          .doc(orgId)
+          .collection('projects')
+          .doc(projectId)
+          .collection('videos')
+          .where('trackedAccountId', '==', accountId)
+          .where('platform', '==', 'instagram')
             .orderBy('uploadDate', 'desc') // Get MOST RECENT (not oldest!)
-            .limit(1)
-            .get();
-          
-          if (!existingVideosSnapshot.empty) {
+          .limit(1)
+          .get();
+        
+        if (!existingVideosSnapshot.empty) {
             const mostRecentVideo = existingVideosSnapshot.docs[0].data();
             mostRecentReelDate = mostRecentVideo.uploadDate?.toDate() || null;
             console.log(`📅 Most recent reel date: ${mostRecentReelDate?.toISOString()}`);
-          }
-        } catch (err) {
-          console.warn(`⚠️ Could not fetch most recent reel date:`, err);
         }
-        
+      } catch (err) {
+          console.warn(`⚠️ Could not fetch most recent reel date:`, err);
+      }
+      
         // Build input for Instagram scraper
         const scraperInput: any = {
           tags: [`https://www.instagram.com/${account.username}/reels/`],
@@ -611,25 +611,25 @@ export default async function handler(
                 
                 // Make second API call with post_urls
                 const refreshData = await runApifyActor({
-                  actorId: 'hpix~ig-reels-scraper',
-                  input: {
+          actorId: 'hpix~ig-reels-scraper',
+          input: {
                     post_urls: postUrls,
-                    target: 'reels_only',
+            target: 'reels_only',
                     reels_count: postUrls.length,
-                    include_raw_data: true,
-                    custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
-                    proxy: {
-                      useApifyProxy: true,
-                      apifyProxyGroups: ['RESIDENTIAL'],
-                      apifyProxyCountry: 'US'
-                    },
-                    maxConcurrency: 1,
-                    maxRequestRetries: 3,
-                    handlePageTimeoutSecs: 120,
-                    debugLog: false
-                  }
-                });
-                
+            include_raw_data: true,
+            custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
+            proxy: {
+              useApifyProxy: true,
+              apifyProxyGroups: ['RESIDENTIAL'],
+              apifyProxyCountry: 'US'
+            },
+            maxConcurrency: 1,
+            maxRequestRetries: 3,
+            handlePageTimeoutSecs: 120,
+            debugLog: false
+          }
+        });
+
                 const refreshedReels = refreshData.items || [];
                 console.log(`✅ Refreshed ${refreshedReels.length} existing reels`);
                 
