@@ -82,9 +82,10 @@ function extractUsernameFromUrl(url: string, platform: string): string | null {
     
     if (platform === 'youtube') {
       // YouTube: https://www.youtube.com/@username or /c/username or /user/username
-      const match = cleanPath.match(/^\/@?([^\/]+)\/?$/) || 
-                   cleanPath.match(/^\/c\/([^\/]+)\/?$/) ||
-                   cleanPath.match(/^\/user\/([^\/]+)\/?$/);
+      // Allow paths like /@username/shorts, /@username/videos, etc.
+      const match = cleanPath.match(/^\/@?([^\/]+)/) || 
+                   cleanPath.match(/^\/c\/([^\/]+)/) ||
+                   cleanPath.match(/^\/user\/([^\/]+)/);
       return match ? match[1] : null;
     }
     
