@@ -5,6 +5,7 @@ import { getStorage } from 'firebase-admin/storage';
 import { runApifyActor } from './apify-client.js';
 import { ErrorNotificationService } from './services/ErrorNotificationService.js';
 import { CleanupService } from './services/CleanupService.js';
+import sharp from 'sharp';
 
 // Initialize Firebase Admin (same as cron job)
 if (!getApps().length) {
@@ -97,11 +98,28 @@ async function downloadAndUploadImage(
     
     // Determine content type from response or default to jpg
     let contentType = response.headers.get('content-type') || 'image/jpeg';
+    let processedBuffer = buffer;
     
-    // Handle HEIC/HEIF images from TikTok (detect from URL if not in headers)
-    if (imageUrl.includes('.heic') || imageUrl.includes('.heif')) {
-      contentType = 'image/heic';
-      console.log(`📸 Detected HEIC/HEIF image from URL`);
+    // Handle HEIC/HEIF images from TikTok (detect from URL or content-type)
+    const isHeic = imageUrl.includes('.heic') || 
+                   imageUrl.includes('.heif') || 
+                   contentType.includes('heic') || 
+                   contentType.includes('heif');
+    
+    if (isHeic) {
+      console.log(`📸 Detected HEIC/HEIF image - converting to WebP for browser compatibility`);
+      try {
+        // Convert HEIC to WebP using sharp
+        processedBuffer = await sharp(buffer)
+          .webp({ quality: 80 })
+          .toBuffer();
+        contentType = 'image/webp';
+        console.log(`✅ Converted HEIC to WebP: ${buffer.length} bytes → ${processedBuffer.length} bytes`);
+      } catch (conversionError) {
+        console.error(`❌ HEIC conversion failed:`, conversionError);
+        // Fall back to original buffer if conversion fails
+        console.log(`⚠️ Using original HEIC buffer as fallback`);
+      }
     }
     
     console.log(`📋 Content type: ${contentType}`);
@@ -112,15 +130,16 @@ async function downloadAndUploadImage(
     const storagePath = `organizations/${orgId}/${folder}/${filename}`;
     const file = bucket.file(storagePath);
     
-    console.log(`☁️ Uploading ${buffer.length} bytes to Firebase Storage at: ${storagePath}`);
+    console.log(`☁️ Uploading ${processedBuffer.length} bytes to Firebase Storage at: ${storagePath}`);
     
-    await file.save(buffer, {
+    await file.save(processedBuffer, {
       metadata: {
         contentType: contentType,
         metadata: {
           uploadedAt: new Date().toISOString(),
           originalUrl: imageUrl,
-          fileFormat: contentType.split('/')[1] || 'unknown'
+          fileFormat: contentType.split('/')[1] || 'unknown',
+          convertedFromHeic: isHeic ? 'true' : 'false'
         }
       },
       public: true
@@ -307,11 +326,7 @@ export default async function handler(
             thumbnail = item.images[0].url || '';
           }
           
-          // Convert HEIC URLs to WebP for browser compatibility
-          if (thumbnail && thumbnail.includes('.heic')) {
-            thumbnail = thumbnail.replace('.heic', '.webp').replace('q:300:400:q72.heic', 'q:300:400:q72.webp');
-            console.log(`🔄 [TIKTOK] Converted HEIC to WebP URL for browser compatibility`);
-          }
+          // Note: Keep original HEIC URLs - they will be converted server-side during download
           
           // 🔥 VIDEO URL: Always use postPage, fallback to reconstruction from video ID
           const videoId = item.id || item.post_id || '';
