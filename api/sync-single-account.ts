@@ -577,7 +577,73 @@ export default async function handler(
         });
 
         const instagramItems = data.items || [];
-        console.log(`✅ Fetched ${instagramItems.length} Instagram reels`);
+        console.log(`✅ Fetched ${instagramItems.length} NEW Instagram reels`);
+        
+        // SECOND API CALL: Refresh metrics for ALL existing reels (if this is an incremental sync)
+        if (mostRecentReelDate) {
+          console.log(`🔄 Fetching updated metrics for existing reels...`);
+          
+          try {
+            // Get all existing Instagram reels for this account
+            const allExistingReelsSnapshot = await db
+              .collection('organizations')
+              .doc(orgId)
+              .collection('projects')
+              .doc(projectId)
+              .collection('videos')
+              .where('trackedAccountId', '==', accountId)
+              .where('platform', '==', 'instagram')
+              .get();
+            
+            if (!allExistingReelsSnapshot.empty) {
+              // Build post URLs for existing reels
+              const postUrls = allExistingReelsSnapshot.docs
+                .map(doc => {
+                  const videoId = doc.data().videoId;
+                  if (!videoId) return null;
+                  // Instagram URLs are: https://www.instagram.com/p/{videoId}/ or /reel/{videoId}/
+                  return `https://www.instagram.com/p/${videoId}/`;
+                })
+                .filter(Boolean) as string[];
+              
+              if (postUrls.length > 0) {
+                console.log(`📊 Refreshing metrics for ${postUrls.length} existing reels...`);
+                
+                // Make second API call with post_urls
+                const refreshData = await runApifyActor({
+                  actorId: 'hpix~ig-reels-scraper',
+                  input: {
+                    post_urls: postUrls,
+                    target: 'reels_only',
+                    reels_count: postUrls.length,
+                    include_raw_data: true,
+                    custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
+                    proxy: {
+                      useApifyProxy: true,
+                      apifyProxyGroups: ['RESIDENTIAL'],
+                      apifyProxyCountry: 'US'
+                    },
+                    maxConcurrency: 1,
+                    maxRequestRetries: 3,
+                    handlePageTimeoutSecs: 120,
+                    debugLog: false
+                  }
+                });
+                
+                const refreshedReels = refreshData.items || [];
+                console.log(`✅ Refreshed ${refreshedReels.length} existing reels`);
+                
+                // Add refreshed reels to instagramItems array (will be processed together)
+                instagramItems.push(...refreshedReels);
+              }
+            }
+          } catch (refreshError) {
+            console.error('⚠️ Failed to refresh existing reels (non-fatal):', refreshError);
+            // Don't fail the whole sync if refresh fails
+          }
+        }
+        
+        console.log(`📦 Total reels to process: ${instagramItems.length} (${instagramItems.length - (data.items?.length || 0)} refreshed + ${data.items?.length || 0} new)`);
         
         // ALWAYS use apify/instagram-profile-scraper for profile pic + follower count
         // (hpix~ig-reels-scraper doesn't consistently include follower count)
