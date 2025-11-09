@@ -670,7 +670,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
           {/* Right: SCROLLABLE Content */}
           <div className="space-y-4 min-w-0 overflow-hidden">
             {/* Historical Metrics Chart - Replace KPI Cards */}
-            <VideoHistoricalMetricsChart data={chartData} />
+            <VideoHistoricalMetricsChart data={chartData} cumulativeTotals={cumulativeTotals} />
 
             {/* OLD 6 Metric Charts in 3-Column Grid - HIDDEN */}
             <div className="grid grid-cols-3 gap-4 min-w-0" style={{ display: 'none' }}>

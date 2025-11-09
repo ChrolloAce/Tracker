@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Eye, Heart, MessageCircle, Share2, TrendingUp, Bookmark, ChevronDown } from 'lucide-react';
 import '../styles/no-select.css';
 
@@ -16,6 +16,14 @@ interface ChartDataPoint {
 
 interface VideoHistoricalMetricsChartProps {
   data: ChartDataPoint[];
+  cumulativeTotals: {
+    views: number;
+    likes: number;
+    comments: number;
+    shares: number;
+    saves: number;
+    engagementRate: number;
+  };
 }
 
 type MetricKey = 'views' | 'likes' | 'comments' | 'shares' | 'saves' | 'engagementRate';
@@ -73,7 +81,7 @@ const metrics: MetricConfig[] = [
   },
 ];
 
-export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartProps> = ({ data }) => {
+export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartProps> = ({ data, cumulativeTotals }) => {
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>('views');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -86,12 +94,10 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
     return Math.max(...values, 10);
   }, [data, selectedMetric]);
 
-  // Calculate total (latest/cumulative value)
+  // Get cumulative total for selected metric
   const totalValue = useMemo(() => {
-    if (data.length === 0) return 0;
-    // Get the latest (most recent) value
-    return data[data.length - 1][selectedMetric];
-  }, [data, selectedMetric]);
+    return cumulativeTotals[selectedMetric];
+  }, [cumulativeTotals, selectedMetric]);
 
   // Format total value for display
   const formattedTotal = useMemo(() => {
@@ -104,7 +110,7 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
     if (totalValue >= 1000) {
       return `${(totalValue / 1000).toFixed(1)}K`;
     }
-    return totalValue.toString();
+    return totalValue.toLocaleString();
   }, [totalValue, selectedMetric]);
 
   // Custom tooltip
@@ -247,25 +253,25 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
 
       {/* Chart */}
       <div className="relative z-10 p-6 pt-16" style={{ height: '400px' }}>
-        {/* Total Growth Display - Above Chart */}
+        {/* Total Amount Display - Above Chart */}
         <div className="absolute top-6 right-8 z-20 text-right">
           <div className="text-xs text-gray-500 mb-0.5 font-medium tracking-wide uppercase">
-            Latest Growth
+            Total {currentMetric.label}
           </div>
           <div className="text-4xl font-bold tracking-tight text-white">
-            +{formattedTotal}
+            {formattedTotal}
           </div>
         </div>
 
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart 
+          <AreaChart 
             data={data}
             margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
           >
             <defs>
               <linearGradient id={`gradient-${selectedMetric}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.5} />
+                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05} />
               </linearGradient>
             </defs>
             
@@ -306,11 +312,13 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
               isAnimationActive={true}
             />
             
-            <Line 
+            <Area 
               type="monotone"
               dataKey={selectedMetric}
               stroke="#3b82f6"
               strokeWidth={3}
+              fill={`url(#gradient-${selectedMetric})`}
+              fillOpacity={1}
               dot={{ 
                 fill: '#3b82f6', 
                 strokeWidth: 2, 
@@ -325,12 +333,10 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
                 strokeWidth: 2,
                 style: { cursor: 'pointer' }
               }}
-              fill={`url(#gradient-${selectedMetric})`}
-              fillOpacity={1}
               isAnimationActive={true}
               animationDuration={300}
             />
-          </LineChart>
+          </AreaChart>
         </ResponsiveContainer>
       </div>
 
