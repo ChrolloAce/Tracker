@@ -185,10 +185,21 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       return [dataPoint, { ...dataPoint }];
     }
 
-    // Sort all snapshots by date - NO FILTERING, always show all data
-    const sortedSnapshots = [...video.snapshots].sort(
-      (a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
-    );
+    // Sort all snapshots by date and filter out initial snapshots (they're duplicates of video creation)
+    const sortedSnapshots = [...video.snapshots]
+      .filter(snapshot => !snapshot.isInitialSnapshot) // Skip initial snapshots
+      .sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime());
+    
+    console.log('📊 Video snapshots:', {
+      total: video.snapshots.length,
+      filtered: sortedSnapshots.length,
+      snapshots: sortedSnapshots.map(s => ({
+        date: new Date(s.capturedAt).toLocaleString(),
+        views: s.views,
+        likes: s.likes,
+        isInitial: s.isInitialSnapshot
+      }))
+    });
     
     // Append current video stats if different from last snapshot
     const allSnapshots = [...sortedSnapshots];
