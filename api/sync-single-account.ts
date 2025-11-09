@@ -364,94 +364,119 @@ export default async function handler(
         throw tiktokError;
       }
     } else if (account.platform === 'youtube') {
-      console.log(`📺 Fetching YouTube videos for ${account.username}...`);
+      console.log(`📺 Fetching YouTube Shorts for ${account.username}...`);
       
       try {
-        // Call YouTube Data API directly instead of through intermediate endpoint
-        const apiKey = process.env.YOUTUBE_API_KEY;
-        if (!apiKey) {
-          console.error('❌ YOUTUBE_API_KEY not configured');
-          throw new Error('YouTube API key not configured');
-        }
-
-        // Step 1: Get channel info by handle
-        const channelHandle = account.username.startsWith('@') ? account.username.substring(1) : account.username;
-        console.log(`🔍 Looking up channel by handle: ${channelHandle}`);
-        console.log(`🔑 API Key configured: ${apiKey ? 'YES' : 'NO'} (first 10 chars: ${apiKey?.substring(0, 10)}...)`);
+        // Use grow_media/youtube-shorts-scraper via Apify
+        const channelHandle = account.username.startsWith('@') ? account.username : `@${account.username}`;
+        console.log(`🔍 Scraping YouTube Shorts for: ${channelHandle}`);
         
-        const channelUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&forHandle=${encodeURIComponent(channelHandle)}&key=${apiKey}`;
-        console.log(`📡 Making request to YouTube API...`);
-        const channelResponse = await fetch(channelUrl);
-        console.log(`📨 Response received: ${channelResponse.status}`);
-        
-        if (!channelResponse.ok) {
-          const errorText = await channelResponse.text();
-          console.error('❌ YouTube channel lookup failed:', channelResponse.status, errorText);
-          throw new Error(`YouTube API error: ${channelResponse.status}`);
-        }
-
-        const channelData = await channelResponse.json();
-        if (!channelData.items || channelData.items.length === 0) {
-          console.error('❌ Channel not found for handle:', channelHandle);
-          throw new Error('Channel not found');
-        }
-
-        const channelId = channelData.items[0].id;
-        console.log(`✅ Found YouTube channel ID: ${channelId}`);
-        
-        // Step 2: Search for Shorts videos from this channel
-        const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${encodeURIComponent(channelId)}&type=video&videoDuration=short&maxResults=${videoLimit}&order=date&key=${apiKey}`;
-        const searchResponse = await fetch(searchUrl);
-        
-        if (!searchResponse.ok) {
-          const errorText = await searchResponse.text();
-          console.error('❌ YouTube search failed:', searchResponse.status, errorText);
-          throw new Error(`YouTube search error: ${searchResponse.status}`);
-        }
-
-        const searchData = await searchResponse.json();
-        const videoIds = (searchData.items || []).map((item: any) => item.id.videoId).filter(Boolean);
-
-        if (videoIds.length === 0) {
-          console.log('⚠️ No Shorts found for this channel');
-          videos = [];
-        } else {
-          // Step 3: Get full video details (statistics)
-          const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${videoIds.join(',')}&key=${apiKey}`;
-          const videoResponse = await fetch(videoUrl);
-
-          if (!videoResponse.ok) {
-            const errorText = await videoResponse.text();
-            console.error('❌ YouTube videos fetch failed:', videoResponse.status, errorText);
-            throw new Error(`YouTube videos error: ${videoResponse.status}`);
+        const data = await runApifyActor({
+          actorId: 'grow_media/youtube-shorts-scraper',
+          input: {
+            channels: [channelHandle],
+            maxResults: maxVideos,
+            sortBy: 'latest',
+            proxy: {
+              useApifyProxy: true,
+              apifyProxyGroups: ['RESIDENTIAL']
+            }
           }
+        });
 
-          const videoData = await videoResponse.json();
-          const youtubeVideos = videoData.items || [];
+        const youtubeVideos = data.items || [];
+        console.log(`✅ Fetched ${youtubeVideos.length} YouTube Shorts`);
+        
+        // Extract profile/channel data from first video
+        if (youtubeVideos.length > 0 && youtubeVideos[0]) {
+          const firstVideo = youtubeVideos[0];
+          const channelAvatarUrl = firstVideo.channelAvatarUrl || '';
+          const followerCount = firstVideo.numberOfSubscribers || 0;
+          const channelName = firstVideo.channelName || account.username;
           
-          console.log(`✅ Fetched ${youtubeVideos.length} YouTube videos`);
+          console.log(`👤 Channel: ${channelName} (${followerCount} subscribers)`);
           
-          // Transform YouTube data to video format
-          videos = youtubeVideos.map((video: any) => ({
-            videoId: video.id,
-            videoTitle: video.snippet?.title || 'Untitled Video',
-            videoUrl: `https://youtube.com/watch?v=${video.id}`,
-            platform: 'youtube',
-            thumbnail: video.snippet?.thumbnails?.high?.url || video.snippet?.thumbnails?.default?.url || '',
-            accountUsername: account.username,
-            accountDisplayName: video.snippet?.channelTitle || account.username,
-            uploadDate: video.snippet?.publishedAt ? Timestamp.fromDate(new Date(video.snippet.publishedAt)) : Timestamp.now(),
-            views: parseInt(video.statistics?.viewCount || '0', 10),
-            likes: parseInt(video.statistics?.likeCount || '0', 10),
-            comments: parseInt(video.statistics?.commentCount || '0', 10),
-            shares: 0,
-            caption: video.snippet?.description || '',
-            duration: 0
-          }));
+          // Update profile data
+          const profileUpdates: any = {
+            displayName: channelName,
+            followerCount: followerCount,
+            isVerified: firstVideo.isChannelVerified || false
+          };
+          
+          // Download and upload YouTube profile pic to Firebase Storage
+          if (channelAvatarUrl) {
+            try {
+              console.log(`📸 Downloading YouTube profile pic for ${channelHandle}...`);
+              const uploadedProfilePic = await downloadAndUploadImage(
+                channelAvatarUrl,
+                orgId,
+                `youtube_profile_${account.username}.jpg`,
+                'profile'
+              );
+              profileUpdates.profilePicture = uploadedProfilePic;
+              console.log(`✅ YouTube profile picture uploaded to Firebase Storage`);
+            } catch (uploadError: any) {
+              console.error(`❌ Error uploading YouTube profile picture:`, uploadError);
+              console.warn(`⚠️ Skipping profile picture - will retry on next sync`);
+            }
+          }
+          
+          await accountRef.update(profileUpdates);
+          console.log(`✅ Updated YouTube profile: ${followerCount} subscribers`);
         }
+        
+        // Transform YouTube data to video format
+        videos = youtubeVideos.map((video: any) => {
+          // Parse duration (format: "PT27S" or "PT1M7S")
+          let durationSeconds = 0;
+          if (video.duration) {
+            const durationStr = video.duration;
+            const match = durationStr.match(/PT(?:(\d+)M)?(?:(\d+)S)?/);
+            if (match) {
+              const minutes = parseInt(match[1] || '0', 10);
+              const seconds = parseInt(match[2] || '0', 10);
+              durationSeconds = minutes * 60 + seconds;
+            }
+          }
+          
+          // Get best thumbnail (maxres > standard > high > medium > default)
+          let thumbnail = '';
+          if (video.thumbnails?.maxres?.url) {
+            thumbnail = video.thumbnails.maxres.url;
+          } else if (video.thumbnails?.standard?.url) {
+            thumbnail = video.thumbnails.standard.url;
+          } else if (video.thumbnails?.high?.url) {
+            thumbnail = video.thumbnails.high.url;
+          } else if (video.thumbnails?.medium?.url) {
+            thumbnail = video.thumbnails.medium.url;
+          } else if (video.thumbnails?.default?.url) {
+            thumbnail = video.thumbnails.default.url;
+          } else if (video.thumbnailUrl) {
+            thumbnail = video.thumbnailUrl;
+          }
+          
+          return {
+            videoId: video.id,
+            videoTitle: video.title || 'Untitled Short',
+            videoUrl: video.url || `https://youtube.com/shorts/${video.id}`,
+            platform: 'youtube',
+            thumbnail: thumbnail,
+            accountUsername: account.username,
+            accountDisplayName: video.channelName || account.username,
+            uploadDate: video.date ? Timestamp.fromDate(new Date(video.date)) : Timestamp.now(),
+            views: video.viewCount || 0,
+            likes: video.likes || 0,
+            comments: video.commentsCount || 0,
+            shares: 0, // YouTube doesn't expose share count via API
+            caption: video.text || '',
+            duration: durationSeconds
+          };
+        });
+        
+        console.log(`✅ Processed ${videos.length} YouTube Shorts`);
       } catch (youtubeError) {
         console.error('❌ YouTube fetch error:', youtubeError);
-        throw youtubeError; // Propagate error so user sees it
+        throw youtubeError;
       }
     } else if (account.platform === 'twitter') {
       console.log(`🐦 Fetching tweets for ${account.username}...`);
