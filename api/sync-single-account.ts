@@ -268,16 +268,20 @@ export default async function handler(
           const channel = item.channel || {};
           const video = item.video || {};
           
-          // Robust thumbnail extraction: handle nested + flat keys
+          // THUMBNAIL EXTRACTION: Check flat keys FIRST (TikTok API returns flat keys like "video.cover")
           let thumbnail = '';
-          if (video.cover) {
+          if (item['video.cover']) { 
+            // Flat key: "video.cover" (THIS IS THE PRIMARY SOURCE)
+            thumbnail = item['video.cover'];
+          } else if (item['video.thumbnail']) { 
+            // Flat key: "video.thumbnail"
+            thumbnail = item['video.thumbnail'];
+          } else if (video.cover) {
+            // Nested object: video.video.cover
             thumbnail = video.cover;
           } else if (video.thumbnail) {
+            // Nested object: video.video.thumbnail
             thumbnail = video.thumbnail;
-          } else if (item['video.cover']) { // Flat key: "video.cover"
-            thumbnail = item['video.cover'];
-          } else if (item['video.thumbnail']) { // Flat key: "video.thumbnail"
-            thumbnail = item['video.thumbnail'];
           } else if (item.cover) {
             thumbnail = item.cover;
           } else if (item.thumbnail) {
@@ -289,7 +293,7 @@ export default async function handler(
           return {
             videoId: item.id || item.post_id || `tiktok_${Date.now()}_${index}`,
             videoTitle: item.title || item.caption || item.subtitle || 'Untitled TikTok',
-            videoUrl: video.url || item.videoUrl || '',
+            videoUrl: item.postPage || item.tiktok_url || video.url || item.videoUrl || '', // ✅ USE postPage FIRST!
             platform: 'tiktok',
             thumbnail: thumbnail,
             accountUsername: account.username,
