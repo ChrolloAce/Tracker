@@ -52,12 +52,12 @@ const DropdownMenu: React.FC<{
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-[999998]"
+            className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
           />
           
           {/* Dropdown */}
-          <div className="absolute right-0 top-8 z-[999999] w-48 bg-white dark:bg-[#1A1A1A] rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 py-1">
+          <div className="absolute right-0 top-8 z-50 w-48 bg-white dark:bg-[#1A1A1A] rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 py-1">
             {/* Actions */}
             <button
               onClick={(e) => {

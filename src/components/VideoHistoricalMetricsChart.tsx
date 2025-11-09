@@ -179,7 +179,7 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
         </div>
 
         {/* Metric Selector Dropdown */}
-        <div className="relative" style={{ zIndex: 10000 }}>
+        <div className="relative z-30">
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border transition-all outline-none focus:outline-none"

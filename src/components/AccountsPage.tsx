@@ -178,7 +178,7 @@ const ColumnHeader: React.FC<{
       {/* Tooltip portal - follows mouse cursor */}
       {tooltipPosition && createPortal(
         <div
-          className="fixed z-[999999] pointer-events-none"
+          className="absolute z-50 pointer-events-none"
           style={{
             left: `${tooltipPosition.x}px`,
             top: `${tooltipPosition.y + 20}px`,
@@ -922,12 +922,31 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
             postingStreak = currentStreak;
           }
 
-          // Calculate posting frequency based on date filter
+          // Calculate posting frequency from oldest to newest video
           let postingFrequency = 'N/A';
-          if (dateFiltered.length > 0 && dateFilter !== 'all') {
-            const dateRange = DateFilterService.getDateRange(dateFilter);
-            const daysDiff = Math.ceil((dateRange.endDate.getTime() - dateRange.startDate.getTime()) / (1000 * 60 * 60 * 24));
+          if (dateFiltered.length > 0) {
+            let daysDiff: number;
             const postCount = dateFiltered.length;
+            
+            if (dateFilter !== 'all') {
+              // Use date filter range
+              const dateRange = DateFilterService.getDateRange(dateFilter);
+              daysDiff = Math.ceil((dateRange.endDate.getTime() - dateRange.startDate.getTime()) / (1000 * 60 * 60 * 24));
+            } else {
+              // For "all time", calculate from oldest to newest video
+              const videoDates = dateFiltered
+                .map(v => v.uploadDate ? new Date(v.uploadDate).getTime() : null)
+                .filter((d): d is number => d !== null)
+                .sort((a, b) => a - b);
+              
+              if (videoDates.length >= 2) {
+                const oldestDate = videoDates[0];
+                const newestDate = videoDates[videoDates.length - 1];
+                daysDiff = Math.ceil((newestDate - oldestDate) / (1000 * 60 * 60 * 24));
+              } else {
+                daysDiff = 0;
+              }
+            }
             
             if (daysDiff > 0) {
               const postsPerDay = postCount / daysDiff;
@@ -2113,13 +2132,13 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                             {openDropdownId === account.id && (
                               <>
                                 <div 
-                                  className="fixed inset-0 z-[999998]" 
+                                  className="fixed inset-0 z-40" 
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setOpenDropdownId(null);
                                   }}
                                 />
-                                <div className="absolute right-0 top-8 mt-1 w-48 bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-xl z-[999999] py-1">
+                                <div className="absolute right-0 top-8 mt-1 w-48 bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-xl z-50 py-1">
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();

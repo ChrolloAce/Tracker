@@ -703,7 +703,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
       {/* Video Tooltip */}
       {hoveredVideo && createPortal(
         <div
-          className="fixed z-[999999] pointer-events-none"
+          className="absolute z-50 pointer-events-none"
           style={{
             left: `${hoveredVideo.x}px`,
             top: `${hoveredVideo.y - 10}px`,
@@ -801,7 +801,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
       {/* Account Tooltip */}
       {hoveredAccount && createPortal(
         <div
-          className="fixed z-[999999] pointer-events-none"
+          className="absolute z-50 pointer-events-none"
           style={{
             left: `${hoveredAccount.x}px`,
             top: `${hoveredAccount.y - 10}px`,
