@@ -1161,19 +1161,23 @@ async function saveVideosToFirestore(
       likes = video.likes || 0;
       comments = video.comments || 0;
       shares = video.shares || 0;
-      saves = video.bookmarks || 0; // ✅ ADD BOOKMARKS (remove const to make it available outside block)
+      saves = video.bookmarks || 0; // Bookmarks (TikTok only)
       url = video.postPage || video.tiktok_url || videoObj.url || ''; // ✅ USE postPage first!
       
-      // ROBUST THUMBNAIL EXTRACTION: handle nested + flat keys
+      // THUMBNAIL EXTRACTION: Check flat keys FIRST (TikTok API returns flat keys like "video.cover")
       let tiktokThumbnail = '';
-      if (videoObj.cover) {
+      if (video['video.cover']) { 
+        // Flat key: "video.cover" (THIS IS THE PRIMARY SOURCE)
+        tiktokThumbnail = video['video.cover'];
+      } else if (video['video.thumbnail']) { 
+        // Flat key: "video.thumbnail"
+        tiktokThumbnail = video['video.thumbnail'];
+      } else if (videoObj.cover) {
+        // Nested object: video.video.cover
         tiktokThumbnail = videoObj.cover;
       } else if (videoObj.thumbnail) {
+        // Nested object: video.video.thumbnail
         tiktokThumbnail = videoObj.thumbnail;
-      } else if (video['video.cover']) { // Flat key: "video.cover"
-        tiktokThumbnail = video['video.cover'];
-      } else if (video['video.thumbnail']) { // Flat key: "video.thumbnail"
-        tiktokThumbnail = video['video.thumbnail'];
       } else if (video.images && Array.isArray(video.images) && video.images.length > 0) {
         tiktokThumbnail = video.images[0].url || '';
       }
