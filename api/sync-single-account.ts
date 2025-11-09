@@ -47,10 +47,12 @@ async function downloadAndUploadImage(
     console.log(`📥 Downloading ${isInstagram ? 'Instagram' : 'image'} from: ${imageUrl.substring(0, 150)}...`);
     
     // Download image with proper headers for Instagram
+    const isTikTok = imageUrl.includes('tiktokcdn');
+    
     const fetchOptions: any = {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        'Accept': 'image/heic,image/heif,image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
         'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120"',
         'sec-ch-ua-mobile': '?0',
@@ -64,6 +66,11 @@ async function downloadAndUploadImage(
     // Add Referer for Instagram
     if (isInstagram) {
       fetchOptions.headers['Referer'] = 'https://www.instagram.com/';
+    }
+    
+    // Add Referer for TikTok
+    if (isTikTok) {
+      fetchOptions.headers['Referer'] = 'https://www.tiktok.com/';
     }
     
     console.log(`🔧 Using headers:`, JSON.stringify(fetchOptions.headers, null, 2));
@@ -89,7 +96,14 @@ async function downloadAndUploadImage(
     }
     
     // Determine content type from response or default to jpg
-    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    let contentType = response.headers.get('content-type') || 'image/jpeg';
+    
+    // Handle HEIC/HEIF images from TikTok (detect from URL if not in headers)
+    if (imageUrl.includes('.heic') || imageUrl.includes('.heif')) {
+      contentType = 'image/heic';
+      console.log(`📸 Detected HEIC/HEIF image from URL`);
+    }
+    
     console.log(`📋 Content type: ${contentType}`);
     
     // Upload to Firebase Storage
@@ -105,7 +119,8 @@ async function downloadAndUploadImage(
         contentType: contentType,
         metadata: {
           uploadedAt: new Date().toISOString(),
-          originalUrl: imageUrl
+          originalUrl: imageUrl,
+          fileFormat: contentType.split('/')[1] || 'unknown'
         }
       },
       public: true
@@ -121,15 +136,17 @@ async function downloadAndUploadImage(
     console.error('❌ Failed to download/upload image:', error);
     console.log(`⚠️ Image download/upload failed for: ${imageUrl.substring(0, 100)}...`);
     
-    // For Instagram, DON'T return the original URL since it expires quickly
-    // Better to have no profile pic than a broken one
-    if (imageUrl.includes('cdninstagram') || imageUrl.includes('fbcdn')) {
-      console.log(`🚫 Instagram URL detected, returning empty string (URLs expire quickly)`);
+    // For Instagram and TikTok, DON'T return the original URL since it expires quickly
+    // Better to have no thumbnail than a broken one - will retry on next sync
+    if (imageUrl.includes('cdninstagram') || 
+        imageUrl.includes('fbcdn') || 
+        imageUrl.includes('tiktokcdn')) {
+      console.log(`🚫 Instagram/TikTok CDN URL detected, returning empty string (URLs expire quickly)`);
       throw error; // Throw error so caller knows it failed
     }
     
-    // For other platforms, return original URL as fallback
-    console.log(`📷 Using original URL as fallback for non-Instagram: ${imageUrl.substring(0, 100)}...`);
+    // For other platforms (YouTube, Twitter), return original URL as fallback
+    console.log(`📷 Using original URL as fallback for non-CDN platform: ${imageUrl.substring(0, 100)}...`);
     return imageUrl;
   }
 }

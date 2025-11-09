@@ -41,13 +41,24 @@ async function downloadAndUploadImage(
   folder: string = 'thumbnails'
 ): Promise<string> {
   try {
-    console.log(`📥 Downloading thumbnail from ${imageUrl.includes('instagram') ? 'Instagram' : 'platform'}...`);
+    const isInstagram = imageUrl.includes('cdninstagram') || imageUrl.includes('fbcdn');
+    const isTikTok = imageUrl.includes('tiktokcdn');
+    console.log(`📥 Downloading thumbnail from ${isInstagram ? 'Instagram' : isTikTok ? 'TikTok' : 'platform'}...`);
     
-    const response = await fetch(imageUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
-    });
+    const headers: any = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'image/heic,image/heif,image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9'
+    };
+    
+    // Add platform-specific headers
+    if (isInstagram) {
+      headers['Referer'] = 'https://www.instagram.com/';
+    } else if (isTikTok) {
+      headers['Referer'] = 'https://www.tiktok.com/';
+    }
+    
+    const response = await fetch(imageUrl, { headers });
     
     if (!response.ok) {
       throw new Error(`Failed to download: ${response.status}`);
@@ -56,6 +67,18 @@ async function downloadAndUploadImage(
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     
+    if (buffer.length < 100) {
+      throw new Error(`Downloaded data too small (${buffer.length} bytes)`);
+    }
+    
+    // Determine content type from response or detect from URL
+    let contentType = response.headers.get('content-type') || 'image/jpeg';
+    
+    // Handle HEIC/HEIF images from TikTok
+    if (imageUrl.includes('.heic') || imageUrl.includes('.heif')) {
+      contentType = 'image/heic';
+    }
+    
     const bucketName = process.env.FIREBASE_STORAGE_BUCKET || 'trackview-6a3a5.firebasestorage.app';
     const bucket = storage.bucket(bucketName);
     const storagePath = `organizations/${orgId}/${folder}/${filename}`;
@@ -63,16 +86,23 @@ async function downloadAndUploadImage(
     
     await file.save(buffer, {
       metadata: {
-        contentType: response.headers.get('content-type') || 'image/jpeg',
+        contentType: contentType,
+        metadata: {
+          uploadedAt: new Date().toISOString(),
+          originalUrl: imageUrl,
+          fileFormat: contentType.split('/')[1] || 'unknown'
+        }
       },
       public: true,
     });
     
+    await file.makePublic();
     const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
     console.log(`    ✅ Uploaded thumbnail to Firebase Storage`);
     return publicUrl;
   } catch (error) {
     console.error(`    ❌ Failed to download/upload thumbnail:`, error);
+    // Return empty string to retry on next sync (don't use expiring CDN URLs)
     return '';
   }
 }

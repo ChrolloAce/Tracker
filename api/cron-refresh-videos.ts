@@ -405,13 +405,14 @@ async function downloadAndUploadImage(
 ): Promise<string> {
   try {
     const isInstagram = imageUrl.includes('cdninstagram') || imageUrl.includes('fbcdn');
-    console.log(`    📥 Downloading thumbnail from ${isInstagram ? 'Instagram' : 'platform'}...`);
+    const isTikTok = imageUrl.includes('tiktokcdn');
+    console.log(`    📥 Downloading thumbnail from ${isInstagram ? 'Instagram' : isTikTok ? 'TikTok' : 'platform'}...`);
     
-    // Download image with proper headers for Instagram
+    // Download image with proper headers for Instagram and TikTok
     const fetchOptions: any = {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        'Accept': 'image/heic,image/heif,image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
         'sec-fetch-dest': 'image',
         'sec-fetch-mode': 'no-cors',
@@ -421,6 +422,8 @@ async function downloadAndUploadImage(
     
     if (isInstagram) {
       fetchOptions.headers['Referer'] = 'https://www.instagram.com/';
+    } else if (isTikTok) {
+      fetchOptions.headers['Referer'] = 'https://www.tiktok.com/';
     }
     
     const response = await fetch(imageUrl, fetchOptions);
@@ -436,7 +439,14 @@ async function downloadAndUploadImage(
       throw new Error(`Data too small (${buffer.length} bytes)`);
     }
     
-    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    // Determine content type from response or detect from URL
+    let contentType = response.headers.get('content-type') || 'image/jpeg';
+    
+    // Handle HEIC/HEIF images from TikTok
+    if (imageUrl.includes('.heic') || imageUrl.includes('.heif')) {
+      contentType = 'image/heic';
+      console.log(`    📸 Detected HEIC/HEIF image from TikTok`);
+    }
     
     // Upload to Firebase Storage
     const bucketName = process.env.FIREBASE_STORAGE_BUCKET || 'trackview-6a3a5.firebasestorage.app';
@@ -449,7 +459,8 @@ async function downloadAndUploadImage(
         contentType: contentType,
         metadata: {
           uploadedAt: new Date().toISOString(),
-          originalUrl: imageUrl
+          originalUrl: imageUrl,
+          fileFormat: contentType.split('/')[1] || 'unknown'
         }
       },
       public: true
