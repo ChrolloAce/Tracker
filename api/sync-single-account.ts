@@ -307,6 +307,12 @@ export default async function handler(
             thumbnail = item.images[0].url || '';
           }
           
+          // Convert HEIC URLs to WebP for browser compatibility
+          if (thumbnail && thumbnail.includes('.heic')) {
+            thumbnail = thumbnail.replace('.heic', '.webp').replace('q:300:400:q72.heic', 'q:300:400:q72.webp');
+            console.log(`🔄 [TIKTOK] Converted HEIC to WebP URL for browser compatibility`);
+          }
+          
           // 🔥 VIDEO URL: Always use postPage, fallback to reconstruction from video ID
           const videoId = item.id || item.post_id || '';
           let videoUrl = item.postPage || item.tiktok_url || video.url || item.videoUrl || '';

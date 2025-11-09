@@ -1204,6 +1204,12 @@ async function saveVideosToFirestore(
         tiktokThumbnail = video.images[0].url || '';
       }
       
+      // Convert HEIC URLs to WebP for browser compatibility
+      if (tiktokThumbnail && tiktokThumbnail.includes('.heic')) {
+        tiktokThumbnail = tiktokThumbnail.replace('.heic', '.webp').replace('q:300:400:q72.heic', 'q:300:400:q72.webp');
+        console.log(`    🔄 [TIKTOK] Converted HEIC to WebP URL for browser compatibility`);
+      }
+      
       // Download and upload thumbnail to Firebase Storage
       if (tiktokThumbnail) {
         console.log(`    🎬 TikTok thumbnail URL found: ${tiktokThumbnail.substring(0, 80)}...`);
