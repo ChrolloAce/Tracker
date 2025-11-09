@@ -1134,12 +1134,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       e.preventDefault();
       
       // Trigger the appropriate action based on active tab
-      if (activeTab === 'dashboard') {
+      // ✅ Show AddTypeSelector on dashboard, accounts, and videos tabs
+      if (activeTab === 'dashboard' || activeTab === 'accounts' || activeTab === 'videos') {
         setIsTypeSelectorOpen(true);
-      } else if (activeTab === 'accounts') {
-        accountsPageRef.current?.openAddModal();
-      } else if (activeTab === 'videos') {
-        setIsModalOpen(true);
       } else if (activeTab === 'analytics') {
         trackedLinksPageRef.current?.openCreateModal();
       } else if (activeTab === 'campaigns') {
@@ -3763,10 +3760,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       {activeTab !== 'settings' && activeTab !== 'subscription' && activeTab !== 'cron' && activeTab !== 'invitations' && activeTab !== 'creators' && (
         <button
           onClick={() => {
-            if (activeTab === 'dashboard') {
+            // ✅ Show AddTypeSelector on dashboard, accounts, and videos tabs
+            if (activeTab === 'dashboard' || activeTab === 'accounts' || activeTab === 'videos') {
               setIsTypeSelectorOpen(true);
-            } else if (activeTab === 'accounts') {
-              accountsPageRef.current?.openAddModal();
             } else if (activeTab === 'analytics') {
               trackedLinksPageRef.current?.openCreateModal();
             } else if (activeTab === 'campaigns') {
@@ -3778,8 +3774,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           }}
           className="fixed bottom-4 right-4 md:bottom-8 md:right-8 z-50 flex items-center justify-center p-3 md:p-4 rounded-full transition-all transform hover:scale-105 active:scale-95 bg-white/10 hover:bg-white/15 text-white border border-white/20 hover:border-white/30 shadow-2xl group"
           aria-label={
-            activeTab === 'dashboard' ? 'Track Content' :
-            activeTab === 'accounts' ? 'Track Account' :
+            (activeTab === 'dashboard' || activeTab === 'accounts' || activeTab === 'videos') ? 'Track Content' :
             activeTab === 'analytics' ? 'Create Link' :
             activeTab === 'campaigns' ? 'Create Campaign' :
             activeTab === 'team' ? 'Invite Team Member' :
@@ -3800,8 +3795,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             />
           </svg>
           <span className="absolute -top-12 right-0 bg-gray-900 text-white text-sm px-3 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-            {activeTab === 'dashboard' && 'Track Content'}
-            {activeTab === 'accounts' && 'Track Account'}
+            {(activeTab === 'dashboard' || activeTab === 'accounts' || activeTab === 'videos') && 'Track Content'}
             {activeTab === 'analytics' && 'Create Link'}
             {activeTab === 'campaigns' && 'Create Campaign'}
             {activeTab === 'team' && 'Invite Team Member'}
