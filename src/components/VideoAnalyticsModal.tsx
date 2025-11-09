@@ -228,8 +228,21 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     const data: ChartDataPoint[] = allSnapshots.map((snapshot, index) => {
       const timestamp = new Date(snapshot.capturedAt);
       const previousSnapshot = index > 0 ? allSnapshots[index - 1] : undefined;
-      return createDataPoint(snapshot, timestamp, previousSnapshot);
+      const dataPoint = createDataPoint(snapshot, timestamp, previousSnapshot);
+      
+      console.log(`📈 Chart Point ${index + 1}:`, {
+        date: dataPoint.date,
+        currentViews: snapshot.views,
+        previousViews: previousSnapshot?.views,
+        chartViews: dataPoint.views,
+        isDelta: index > 0,
+        calculation: index > 0 ? `${snapshot.views} - ${previousSnapshot.views} = ${dataPoint.views}` : 'absolute'
+      });
+      
+      return dataPoint;
     });
+    
+    console.log('📊 Final chart data:', data.map(d => ({ date: d.date, views: d.views, likes: d.likes })));
     
     // If only one data point, duplicate it to create a flat line
     if (data.length === 1) {
