@@ -406,7 +406,7 @@ export default async function handler(
           await accountRef.update(profileUpdates);
           console.log(`✅ Updated YouTube profile: ${followerCount} subscribers`);
         }
-        
+
         // Transform YouTube data to video format
         videos = youtubeVideos.map((video: any) => {
           // Parse duration (format: "PT27S" or "PT1M7S")

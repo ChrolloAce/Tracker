@@ -598,45 +598,45 @@ class FirestoreDataService {
         
         // Process videos in this group concurrently
         await Promise.all(videoGroup.map(async (videoDoc, idx) => {
-          const videoId = videoDoc.id;
-          const videoData = videoDoc.data();
+        const videoId = videoDoc.id;
+        const videoData = videoDoc.data();
           const globalIdx = groupStart + idx;
-          
+        
           console.log(`    🗑️ [DELETE] Video ${globalIdx + 1}/${videoCount}: ${videoId}`);
+        
+        // Delete snapshots for this video (in batches of 500)
+        try {
+          const snapshotsRef = collection(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId, 'snapshots');
+          const snapshotsSnapshot = await getDocs(snapshotsRef);
           
-          // Delete snapshots for this video (in batches of 500)
-          try {
-            const snapshotsRef = collection(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId, 'snapshots');
-            const snapshotsSnapshot = await getDocs(snapshotsRef);
-            
-            if (snapshotsSnapshot.docs.length > 0) {
+          if (snapshotsSnapshot.docs.length > 0) {
               console.log(`      📸 [DELETE] Found ${snapshotsSnapshot.docs.length} snapshots`);
-              const BATCH_SIZE = 500;
-              for (let i = 0; i < snapshotsSnapshot.docs.length; i += BATCH_SIZE) {
-                const snapshotBatch = writeBatch(db);
-                const batchDocs = snapshotsSnapshot.docs.slice(i, i + BATCH_SIZE);
-                
-                batchDocs.forEach(snapshotDoc => {
-                  snapshotBatch.delete(snapshotDoc.ref);
-                });
-                
-                await snapshotBatch.commit();
-                snapshotsDeleted += batchDocs.length;
-              }
+            const BATCH_SIZE = 500;
+            for (let i = 0; i < snapshotsSnapshot.docs.length; i += BATCH_SIZE) {
+              const snapshotBatch = writeBatch(db);
+              const batchDocs = snapshotsSnapshot.docs.slice(i, i + BATCH_SIZE);
+              
+              batchDocs.forEach(snapshotDoc => {
+                snapshotBatch.delete(snapshotDoc.ref);
+              });
+              
+              await snapshotBatch.commit();
+              snapshotsDeleted += batchDocs.length;
             }
-          } catch (snapshotError) {
-            snapshotErrors++;
-            console.error(`      ❌ [DELETE] Failed to delete snapshots for video ${videoId}:`, snapshotError);
           }
-          
+        } catch (snapshotError) {
+          snapshotErrors++;
+            console.error(`      ❌ [DELETE] Failed to delete snapshots for video ${videoId}:`, snapshotError);
+        }
+        
           // Delete thumbnail for this video (silently handles 404s)
-          try {
-            const platform = videoData.platform || 'unknown';
-            const videoIdFromData = videoData.videoId || videoId;
-            await FirebaseStorageService.deleteVideoThumbnail(orgId, videoId, platform, videoIdFromData);
-            thumbnailsDeleted++;
-          } catch (thumbnailError: any) {
-            thumbnailErrors++;
+        try {
+          const platform = videoData.platform || 'unknown';
+          const videoIdFromData = videoData.videoId || videoId;
+          await FirebaseStorageService.deleteVideoThumbnail(orgId, videoId, platform, videoIdFromData);
+          thumbnailsDeleted++;
+        } catch (thumbnailError: any) {
+          thumbnailErrors++;
             // Silently handle 404s - they're expected if thumbnail doesn't exist
             if (!thumbnailError.message?.includes('404') && 
                 !thumbnailError.message?.includes('not found') &&
@@ -681,9 +681,9 @@ class FirestoreDataService {
         }
         
         try {
-          await batch.commit();
-          batchesCommitted++;
-          console.log(`  ✅ [DELETE] Committed batch ${batchesCommitted} (${batchDocs.length} videos)`);
+        await batch.commit();
+        batchesCommitted++;
+        console.log(`  ✅ [DELETE] Committed batch ${batchesCommitted} (${batchDocs.length} videos)`);
           
           // Add delay between batches if not the last one
           if (i + batchSize < snapshot.docs.length) {

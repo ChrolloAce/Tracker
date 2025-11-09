@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, Edit3, ChevronUp, ChevronDown, Filter, TrendingUp, TrendingDown, Minus, Bookmark, Clock, Loader } from 'lucide-react';
+import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, Edit3, ChevronUp, ChevronDown, Filter, TrendingUp, TrendingDown, Minus, Bookmark, Clock, Loader, RefreshCw } from 'lucide-react';
 import Lottie from 'lottie-react';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -683,16 +683,20 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                     isSyncing && 'bg-zinc-900/30', // Subtle background for syncing videos
                     {
                       'hover:bg-white/5 cursor-pointer': !isLoading,
-                      'bg-yellow-900/10 animate-pulse cursor-not-allowed pointer-events-none': isLoading
+                      'bg-white/5 dark:bg-white/5 border-l-2 border-white/20 cursor-not-allowed pointer-events-none': isLoading
                     }
                   )}
                   style={{ backgroundColor: isLoading ? undefined : '#121214' }}
                 >
                   {visibleColumns.video && (
-                    <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 sticky left-0 z-20 group-hover:bg-white/5" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}>
+                    <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 sticky left-0 z-20 group-hover:bg-white/5" style={{ backgroundColor: isLoading ? 'rgba(255, 255, 255, 0.05)' : 'rgba(18, 18, 20, 0.95)' }}>
                       <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4">
                         <div className="relative flex-shrink-0">
-                          {submission.uploaderProfilePicture && !imageErrors.has(submission.id) ? (
+                          {isLoading ? (
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center relative overflow-hidden bg-white/10">
+                              <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 text-white/60 animate-spin" />
+                            </div>
+                          ) : submission.uploaderProfilePicture && !imageErrors.has(submission.id) ? (
                             <img
                               src={submission.uploaderProfilePicture}
                               alt={submission.uploaderHandle || submission.uploader || 'Account'}
@@ -713,58 +717,76 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                           </div>
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1 sm:gap-2">
-                            <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate" title={submission.title || submission.caption || ''}>
-                              {(() => {
-                                const fullTitle = submission.title || submission.caption || '(No caption)';
-                                return fullTitle.length > 20 ? fullTitle.substring(0, 20) + '...' : fullTitle;
-                              })()}
-                            </p>
-                            {(isLoading || isSyncing) && (
-                              <Loader className="animate-spin h-3 w-3 text-blue-400 flex-shrink-0" />
-                            )}
-                          </div>
-                          <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1 truncate">
-                            @{submission.uploaderHandle || submission.uploader || 'unknown'}
-                          </p>
+                          {isLoading ? (
+                            <>
+                              <div className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
+                                Processing video...
+                              </div>
+                              <div className="text-[10px] sm:text-xs text-white/40 font-medium flex items-center gap-1 mt-0.5 sm:mt-1">
+                                <span className="inline-block w-1.5 h-1.5 bg-white/40 rounded-full animate-pulse"></span>
+                                Fetching data from {submission.platform}...
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-1 sm:gap-2">
+                                <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate" title={submission.title || submission.caption || ''}>
+                                  {(() => {
+                                    const fullTitle = submission.title || submission.caption || '(No caption)';
+                                    return fullTitle.length > 20 ? fullTitle.substring(0, 20) + '...' : fullTitle;
+                                  })()}
+                                </p>
+                                {isSyncing && (
+                                  <Loader className="animate-spin h-3 w-3 text-blue-400 flex-shrink-0" />
+                                )}
+                              </div>
+                              <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1 truncate">
+                                @{submission.uploaderHandle || submission.uploader || 'unknown'}
+                              </p>
+                            </>
+                          )}
                         </div>
                       </div>
                     </td>
                   )}
                   {visibleColumns.preview && (
                     <td className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          
-                          console.log('Opening video player:', {
-                            videoId: submission.id,
-                            url: submission.url,
-                            platform: submission.platform,
-                            hasUrl: !!submission.url
-                          });
-                          
-                          // Validate URL before opening player
-                          if (!submission.url || submission.url.trim() === '') {
-                            console.error('❌ Video URL is empty, cannot open player');
-                            alert('This video has no URL. Please try refreshing the page.');
-                            return;
-                          }
-                          
-                          setSelectedVideoForPlayer(submission);
-                          setVideoPlayerOpen(true);
-                        }}
-                        className="block hover:opacity-80 transition-opacity group cursor-pointer"
-                      >
-                        <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-sm hover:shadow-md transition-all relative">
-                          <ThumbnailImage submission={submission} />
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                            <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                            </svg>
+                      {isLoading ? (
+                        <div className="w-16 h-16 rounded-lg bg-white/10 animate-pulse"></div>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            
+                            console.log('Opening video player:', {
+                              videoId: submission.id,
+                              url: submission.url,
+                              platform: submission.platform,
+                              hasUrl: !!submission.url
+                            });
+                            
+                            // Validate URL before opening player
+                            if (!submission.url || submission.url.trim() === '') {
+                              console.error('❌ Video URL is empty, cannot open player');
+                              alert('This video has no URL. Please try refreshing the page.');
+                              return;
+                            }
+                            
+                            setSelectedVideoForPlayer(submission);
+                            setVideoPlayerOpen(true);
+                          }}
+                          className="block hover:opacity-80 transition-opacity group cursor-pointer"
+                        >
+                          <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-sm hover:shadow-md transition-all relative">
+                            <ThumbnailImage submission={submission} />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                              <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                              </svg>
+                            </div>
                           </div>
-                        </div>
-                      </button>
+                        </button>
+                      )}
                     </td>
                   )}
                   {visibleColumns.trend && (
@@ -777,58 +799,77 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   )}
                   {visibleColumns.views && (
                     <td className="px-6 py-5">
-                      <div className="flex items-center space-x-2">
-                        <Eye className="w-4 h-4 text-gray-900 dark:text-white" />
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {formatNumber(submission.views)}
-                        </span>
-                      </div>
+                      {isLoading ? (
+                        <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse"></div>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <Eye className="w-4 h-4 text-gray-900 dark:text-white" />
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {formatNumber(submission.views)}
+                          </span>
+                        </div>
+                      )}
                     </td>
                   )}
                   {visibleColumns.likes && (
                     <td className="px-6 py-5">
-                      <div className="flex items-center space-x-2">
-                        <Heart className="w-4 h-4 text-gray-900 dark:text-white" />
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {formatNumber(submission.likes)}
-                        </span>
-                      </div>
+                      {isLoading ? (
+                        <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <Heart className="w-4 h-4 text-gray-900 dark:text-white" />
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {formatNumber(submission.likes)}
+                          </span>
+                        </div>
+                      )}
                     </td>
                   )}
                   {visibleColumns.comments && (
                     <td className="px-6 py-5">
-                      <div className="flex items-center space-x-2">
-                        <MessageCircle className="w-4 h-4 text-gray-900 dark:text-white" />
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {formatNumber(submission.comments)}
-                        </span>
-                      </div>
+                      {isLoading ? (
+                        <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <MessageCircle className="w-4 h-4 text-gray-900 dark:text-white" />
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {formatNumber(submission.comments)}
+                          </span>
+                        </div>
+                      )}
                     </td>
                   )}
                   {visibleColumns.shares && (
                     <td className="px-6 py-5">
-                      <div className="flex items-center space-x-2">
-                        <Share2 className="w-4 h-4 text-gray-900 dark:text-white" />
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {(() => {
-                            // TikTok and YouTube have shares available
-                            if (submission.platform === 'tiktok' || submission.platform === 'youtube') {
-                              return formatNumber(submission.shares || 0);
-                            }
-                            // Instagram and Twitter don't have shares
-                            return 'N/A';
-                          })()}
-                        </span>
-                      </div>
+                      {isLoading ? (
+                        <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <Share2 className="w-4 h-4 text-gray-900 dark:text-white" />
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {(() => {
+                              // TikTok and YouTube have shares available
+                              if (submission.platform === 'tiktok' || submission.platform === 'youtube') {
+                                return formatNumber(submission.shares || 0);
+                              }
+                              // Instagram and Twitter don't have shares
+                              return 'N/A';
+                            })()}
+                          </span>
+                        </div>
+                      )}
                     </td>
                   )}
                   {visibleColumns.bookmarks && (
                     <td className="px-6 py-5">
-                      <div className="flex items-center space-x-2">
-                        <Bookmark className="w-4 h-4 text-gray-900 dark:text-white" />
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {(() => {
-                            // Twitter and TikTok have bookmarks/saves
+                      {isLoading ? (
+                        <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <Bookmark className="w-4 h-4 text-gray-900 dark:text-white" />
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {(() => {
+                              // Twitter and TikTok have bookmarks/saves
                             if (submission.platform === 'twitter' || submission.platform === 'tiktok') {
                               const saves = (submission as any).saves || submission.bookmarks || 0;
                               return formatNumber(saves);
@@ -852,28 +893,32 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   )}
                   {visibleColumns.engagement && (
                     <td className="px-6 py-5">
-                      <div
-                        className={clsx(
-                          'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all',
-                          {
-                            "bg-green-500/15 text-green-400 border-green-500/30": engagementRate >= 5,
-                            "bg-green-500/10 text-green-400 border-green-500/20": engagementRate >= 3 && engagementRate < 5,
-                            "bg-gray-500/10 text-gray-400 border-gray-500/20": engagementRate >= 1 && engagementRate < 3,
-                            "bg-red-500/10 text-red-400 border-red-500/20": engagementRate < 1,
-                          }
-                        )}
-                      >
-                        {engagementRate >= 5 ? (
-                          <TrendingUp className="w-3.5 h-3.5" />
-                        ) : engagementRate >= 3 ? (
-                          <TrendingUp className="w-3.5 h-3.5" />
-                        ) : engagementRate >= 1 ? (
-                          <Minus className="w-3.5 h-3.5" />
-                        ) : (
-                          <TrendingDown className="w-3.5 h-3.5" />
-                        )}
-                        <span>{engagementRate.toFixed(2)}%</span>
-                      </div>
+                      {isLoading ? (
+                        <div className="w-20 h-6 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+                      ) : (
+                        <div
+                          className={clsx(
+                            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all',
+                            {
+                              "bg-green-500/15 text-green-400 border-green-500/30": engagementRate >= 5,
+                              "bg-green-500/10 text-green-400 border-green-500/20": engagementRate >= 3 && engagementRate < 5,
+                              "bg-gray-500/10 text-gray-400 border-gray-500/20": engagementRate >= 1 && engagementRate < 3,
+                              "bg-red-500/10 text-red-400 border-red-500/20": engagementRate < 1,
+                            }
+                          )}
+                        >
+                          {engagementRate >= 5 ? (
+                            <TrendingUp className="w-3.5 h-3.5" />
+                          ) : engagementRate >= 3 ? (
+                            <TrendingUp className="w-3.5 h-3.5" />
+                          ) : engagementRate >= 1 ? (
+                            <Minus className="w-3.5 h-3.5" />
+                          ) : (
+                            <TrendingDown className="w-3.5 h-3.5" />
+                          )}
+                          <span>{engagementRate.toFixed(2)}%</span>
+                        </div>
+                      )}
                     </td>
                   )}
                   {visibleColumns.outlier && (() => {
@@ -910,38 +955,50 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   })()}
                   {visibleColumns.uploadDate && (
                     <td className="px-6 py-5">
-                      <div className="text-sm text-zinc-300">
-                        {submission.uploadDate ? 
-                          new Date(submission.uploadDate).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          }) : 
-                          new Date(submission.dateSubmitted).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })
-                        }
-                      </div>
+                      {isLoading ? (
+                        <div className="w-24 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.6s' }}></div>
+                      ) : (
+                        <div className="text-sm text-zinc-300">
+                          {submission.uploadDate ? 
+                            new Date(submission.uploadDate).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }) : 
+                            new Date(submission.dateSubmitted).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })
+                          }
+                        </div>
+                      )}
                     </td>
                   )}
                   {visibleColumns.dateAdded && (
                     <td className="px-6 py-5">
-                      <div className="text-sm text-zinc-300">
-                        {new Date(submission.dateSubmitted).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}
-                      </div>
+                      {isLoading ? (
+                        <div className="w-24 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.7s' }}></div>
+                      ) : (
+                        <div className="text-sm text-zinc-300">
+                          {new Date(submission.dateSubmitted).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </div>
+                      )}
                     </td>
                   )}
                   {visibleColumns.lastRefresh && (
                     <td className="px-6 py-5">
-                      <div className="text-sm text-zinc-400">
-                        {submission.lastRefreshed ? getRelativeTime(new Date(submission.lastRefreshed)) : 'Never'}
-                      </div>
+                      {isLoading ? (
+                        <div className="w-20 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.8s' }}></div>
+                      ) : (
+                        <div className="text-sm text-zinc-400">
+                          {submission.lastRefreshed ? getRelativeTime(new Date(submission.lastRefreshed)) : 'Never'}
+                        </div>
+                      )}
                     </td>
                   )}
                   <td className="px-6 py-5 sticky right-0 z-20 group-hover:bg-white/5" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}>
