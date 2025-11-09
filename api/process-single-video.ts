@@ -144,7 +144,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       let displayName = videoData.display_name || videoData.username;
       let isVerified = false;
       
-      if (video.platform === 'instagram') {
+      if (video.platform === 'youtube') {
+        // For YouTube, upload the channel thumbnail to Firebase Storage
+        console.log(`👤 [YOUTUBE] Uploading channel thumbnail for @${videoData.username}...`);
+        if (videoData.profile_pic_url) {
+          try {
+            uploadedProfilePic = await downloadAndUploadThumbnail(
+              videoData.profile_pic_url,
+              orgId,
+              `youtube_profile_${videoData.username}.jpg`
+            );
+            console.log(`✅ [YOUTUBE] Channel thumbnail uploaded to Firebase Storage: ${uploadedProfilePic}`);
+          } catch (uploadError) {
+            console.error(`❌ [YOUTUBE] Channel thumbnail upload failed:`, uploadError);
+            console.warn(`⚠️ [YOUTUBE] Using original URL as fallback`);
+            uploadedProfilePic = videoData.profile_pic_url; // Fallback to original URL
+          }
+        }
+        followerCount = videoData.follower_count || 0;
+        displayName = videoData.display_name || videoData.username;
+      } else if (video.platform === 'instagram') {
         console.log(`👤 [INSTAGRAM] Fetching complete profile data via apify/instagram-profile-scraper (ONLY SOURCE)...`);
         try {
           const profileResponse = await fetch(
@@ -921,16 +940,58 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
       console.log('✅ [YOUTUBE] API returned video:', {
         title: rawVideoData.snippet?.title,
         channelTitle: rawVideoData.snippet?.channelTitle,
+        channelId: rawVideoData.snippet?.channelId,
         views: rawVideoData.statistics?.viewCount,
         likes: rawVideoData.statistics?.likeCount
       });
+      
+      // 🔥 Fetch channel data to get channel thumbnail and subscriber count
+      const channelId = rawVideoData.snippet?.channelId;
+      let channelThumbnail = '';
+      let subscriberCount = 0;
+      
+      if (channelId) {
+        try {
+          console.log('👤 [YOUTUBE] Fetching channel data for:', channelId);
+          const channelUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${encodeURIComponent(channelId)}&key=${youtubeApiKey}`;
+          const channelResponse = await fetch(channelUrl);
+          
+          if (channelResponse.ok) {
+            const channelData = await channelResponse.json();
+            if (channelData.items && channelData.items.length > 0) {
+              const channel = channelData.items[0];
+              // Get highest quality channel thumbnail
+              const channelThumbnails = channel.snippet?.thumbnails;
+              channelThumbnail = channelThumbnails?.high?.url || 
+                                channelThumbnails?.medium?.url || 
+                                channelThumbnails?.default?.url || '';
+              subscriberCount = parseInt(channel.statistics?.subscriberCount || '0', 10);
+              
+              console.log('✅ [YOUTUBE] Channel data fetched:', {
+                thumbnail: channelThumbnail ? 'YES' : 'NO',
+                subscribers: subscriberCount
+              });
+            }
+          } else {
+            console.warn('⚠️ [YOUTUBE] Failed to fetch channel data:', channelResponse.status);
+          }
+        } catch (channelError) {
+          console.warn('⚠️ [YOUTUBE] Error fetching channel data:', channelError);
+        }
+      }
+      
+      // Add channel data to raw video data before transforming
+      rawVideoData.channelThumbnail = channelThumbnail;
+      rawVideoData.subscribers = subscriberCount;
       
       const transformedData = transformVideoData(rawVideoData, platform);
       console.log('🔄 [YOUTUBE] Transformed data:', {
         id: transformedData.id,
         username: transformedData.username,
         view_count: transformedData.view_count,
-        like_count: transformedData.like_count
+        like_count: transformedData.like_count,
+        profile_pic_url: transformedData.profile_pic_url ? 'YES' : 'NO',
+        follower_count: transformedData.follower_count
       });
       
       return transformedData;
