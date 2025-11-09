@@ -3,7 +3,6 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp, WriteBatch } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { runApifyActor } from './apify-client.js';
-import sharp from 'sharp';
 
 // Initialize Firebase Admin
 if (!getApps().length) {
@@ -74,28 +73,11 @@ async function downloadAndUploadImage(
     
     // Determine content type from response or detect from URL
     let contentType = response.headers.get('content-type') || 'image/jpeg';
-    let processedBuffer = buffer;
     
-    // Handle HEIC/HEIF images from TikTok (detect from URL or content-type)
-    const isHeic = imageUrl.includes('.heic') || 
-                   imageUrl.includes('.heif') || 
-                   contentType.includes('heic') || 
-                   contentType.includes('heif');
-    
-    if (isHeic) {
-      console.log(`    📸 Detected HEIC/HEIF image - converting to WebP for browser compatibility`);
-      try {
-        // Convert HEIC to WebP using sharp
-        processedBuffer = await sharp(buffer)
-          .webp({ quality: 80 })
-          .toBuffer();
-        contentType = 'image/webp';
-        console.log(`    ✅ Converted HEIC to WebP: ${buffer.length} bytes → ${processedBuffer.length} bytes`);
-      } catch (conversionError) {
-        console.error(`    ❌ HEIC conversion failed:`, conversionError);
-        // Fall back to original buffer if conversion fails
-        console.log(`    ⚠️ Using original HEIC buffer as fallback`);
-      }
+    // Note: TikTok serves HEIC images which browsers can't display natively
+    // We upload them as-is to Firebase Storage since Sharp can't convert HEIC in Vercel environment
+    if (imageUrl.includes('.heic') || imageUrl.includes('.heif') || contentType.includes('heic') || contentType.includes('heif')) {
+      console.log(`    📸 Detected HEIC/HEIF image (browser compatibility limited)`);
     }
     
     const bucketName = process.env.FIREBASE_STORAGE_BUCKET || 'trackview-6a3a5.firebasestorage.app';
@@ -103,14 +85,13 @@ async function downloadAndUploadImage(
     const storagePath = `organizations/${orgId}/${folder}/${filename}`;
     const file = bucket.file(storagePath);
     
-    await file.save(processedBuffer, {
+    await file.save(buffer, {
       metadata: {
         contentType: contentType,
         metadata: {
           uploadedAt: new Date().toISOString(),
           originalUrl: imageUrl,
-          fileFormat: contentType.split('/')[1] || 'unknown',
-          convertedFromHeic: isHeic ? 'true' : 'false'
+          fileFormat: contentType.split('/')[1] || 'unknown'
         }
       },
       public: true,
