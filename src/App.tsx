@@ -483,7 +483,7 @@ function App() {
         } 
       />
 
-      {/* Account details - redirects to dashboard */}
+      {/* Account details - redirects to dashboard with account filter */}
       <Route 
         path="/accounts/:accountId" 
         element={

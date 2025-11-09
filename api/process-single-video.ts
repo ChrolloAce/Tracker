@@ -5,6 +5,7 @@ import { getStorage } from 'firebase-admin/storage';
 import { runApifyActor } from './apify-client.js';
 import { ErrorNotificationService } from './services/ErrorNotificationService.js';
 import { CleanupService } from './services/CleanupService.js';
+import sharp from 'sharp';
 
 // Initialize Firebase Admin (same as sync-single-account)
 if (!getApps().length) {
@@ -554,6 +555,16 @@ function transformVideoData(rawData: any, platform: string): VideoData {
     const channel = rawData.channel || {};
     const video = rawData.video || {};
     
+    // Log channel data for debugging
+    console.log('🎵 [TIKTOK Transform] Channel keys:', Object.keys(channel).join(', '));
+    console.log('🎵 [TIKTOK Transform] Followers data:', {
+      'channel.followers': channel.followers,
+      'channel.followerCount': channel.followerCount,
+      'channel.fans': channel.fans,
+      'rawData.followers': rawData.followers,
+      'rawData.followerCount': rawData.followerCount
+    });
+    
     // ROBUST THUMBNAIL EXTRACTION (strongest → weakest fallback)
     let thumbnailUrl = '';
     if (video.cover) {
@@ -584,6 +595,17 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       console.log(`🔧 [TIKTOK] Reconstructed URL from ID: ${videoUrl}`);
     }
     
+    // 🔥 FOLLOWER COUNT: Try multiple possible field names
+    const followerCount = channel.followers || 
+                         channel.followerCount || 
+                         channel.fans || 
+                         rawData.followers || 
+                         rawData.followerCount || 
+                         rawData['channel.followers'] ||
+                         0;
+    
+    console.log(`📊 [TIKTOK Transform] Final follower count: ${followerCount}`);
+    
     return {
       id: videoId,
       url: videoUrl,
@@ -598,7 +620,7 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       timestamp: rawData.uploadedAt || rawData.uploaded_at || Math.floor(Date.now() / 1000),
       profile_pic_url: channel.avatar || channel.avatar_url || rawData['channel.avatar'] || '',
       display_name: channel.name || rawData['channel.name'] || channel.username || '',
-      follower_count: channel.followers || 0
+      follower_count: followerCount
     };
   } else if (platform === 'instagram') {
     // Instagram - Handle hpix~ig-reels-scraper format
@@ -760,18 +782,23 @@ async function downloadAndUploadThumbnail(
 ): Promise<string> {
   try {
     const isInstagram = thumbnailUrl.includes('cdninstagram') || thumbnailUrl.includes('fbcdn');
+    const isTikTok = thumbnailUrl.includes('tiktokcdn');
     
     // Download image with proper headers
     const fetchOptions: any = {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+        'Accept': 'image/heic,image/heif,image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9'
       }
     };
     
     if (isInstagram) {
       fetchOptions.headers['Referer'] = 'https://www.instagram.com/';
+    }
+    
+    if (isTikTok) {
+      fetchOptions.headers['Referer'] = 'https://www.tiktok.com/';
     }
     
     const response = await fetch(thumbnailUrl, fetchOptions);
@@ -781,13 +808,40 @@ async function downloadAndUploadThumbnail(
     }
     
     const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    let buffer = Buffer.from(arrayBuffer);
     
     if (buffer.length < 100) {
       throw new Error(`Data too small (${buffer.length} bytes)`);
     }
     
-    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    let contentType = response.headers.get('content-type') || 'image/jpeg';
+    
+    // 🔥 HEIC Detection and Conversion
+    // Check if content-type indicates HEIC or file signature matches HEIC
+    const isHEIC = contentType.includes('heic') || 
+                   contentType.includes('heif') || 
+                   thumbnailUrl.toLowerCase().includes('.heic') ||
+                   // Check HEIC file signature (ftyp heic)
+                   (buffer.length > 12 && 
+                    buffer[4] === 0x66 && buffer[5] === 0x74 && buffer[6] === 0x79 && buffer[7] === 0x70 && 
+                    buffer[8] === 0x68 && buffer[9] === 0x65 && buffer[10] === 0x69 && buffer[11] === 0x63);
+    
+    if (isHEIC) {
+      console.log(`🔄 [HEIC] Converting HEIC thumbnail to JPG: ${thumbnailUrl.substring(0, 100)}...`);
+      try {
+        // Convert HEIC to JPG using sharp
+        buffer = await sharp(buffer)
+          .jpeg({ quality: 90 })
+          .toBuffer();
+        contentType = 'image/jpeg';
+        // Update filename to .jpg
+        filename = filename.replace(/\.(heic|heif)$/i, '.jpg');
+        console.log(`✅ [HEIC] Successfully converted to JPG`);
+      } catch (conversionError) {
+        console.error(`❌ [HEIC] Conversion failed:`, conversionError);
+        throw new Error(`HEIC conversion failed: ${conversionError}`);
+      }
+    }
     
     // Upload to Firebase Storage
     const bucketName = process.env.FIREBASE_STORAGE_BUCKET || 'trackview-6a3a5.firebasestorage.app';
@@ -800,7 +854,8 @@ async function downloadAndUploadThumbnail(
         contentType: contentType,
         metadata: {
           uploadedAt: new Date().toISOString(),
-          originalUrl: thumbnailUrl
+          originalUrl: thumbnailUrl,
+          convertedFromHEIC: isHEIC ? 'true' : 'false'
         }
       },
       public: true
@@ -809,6 +864,7 @@ async function downloadAndUploadThumbnail(
     await file.makePublic();
     const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
     
+    console.log(`✅ Uploaded thumbnail to Firebase Storage: ${publicUrl}`);
     return publicUrl;
   } catch (error) {
     console.error(`Failed to download/upload thumbnail:`, error);

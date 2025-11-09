@@ -11,9 +11,25 @@ const AccountsPage: React.FC = () => {
 
   useEffect(() => {
     if (accountId) {
-      // Dispatch event to open account details
+      // Dispatch event to open account details (with delays to ensure accounts are loaded)
+      const dispatchEvent = () => {
       const event = new CustomEvent('openAccount', { detail: { accountId } });
       window.dispatchEvent(event);
+      };
+
+      // Try immediately
+      dispatchEvent();
+      
+      // Also try after delays to handle race conditions
+      const timeout1 = setTimeout(dispatchEvent, 100);
+      const timeout2 = setTimeout(dispatchEvent, 300);
+      const timeout3 = setTimeout(dispatchEvent, 500);
+      
+      return () => {
+        clearTimeout(timeout1);
+        clearTimeout(timeout2);
+        clearTimeout(timeout3);
+      };
     }
   }, [accountId]);
 

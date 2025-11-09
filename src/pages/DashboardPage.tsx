@@ -3222,7 +3222,18 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           if (type === 'video') {
             setIsModalOpen(true);
           } else if (type === 'account') {
+            // ✅ Navigate to accounts tab first, then trigger modal
+            if (activeTab !== 'accounts') {
+              navigate('/accounts');
+              localStorage.setItem('activeTab', 'accounts');
+              // Wait for AccountsPage to mount, then trigger modal
+              setTimeout(() => {
+                accountsPageRef.current?.openAddModal();
+              }, 300);
+            } else {
+              // Already on accounts tab, just open modal
             accountsPageRef.current?.openAddModal();
+            }
           }
           }, 100);
         }}

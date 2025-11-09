@@ -1138,15 +1138,21 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
       if (accountId && accounts.length > 0) {
         const account = accounts.find(a => a.id === accountId);
         if (account) {
+          console.log('🎯 Opening account details from URL:', account.username);
           setSelectedAccount(account);
           setViewMode('details');
+          onViewModeChange('details');
+        } else {
+          console.warn('⚠️ Account not found:', accountId);
         }
+      } else if (accountId && accounts.length === 0) {
+        console.log('⏳ Accounts not loaded yet, waiting...');
       }
     };
     
     window.addEventListener('openAccount', handleOpenAccount);
     return () => window.removeEventListener('openAccount', handleOpenAccount);
-  }, [accounts]);
+  }, [accounts, onViewModeChange]);
 
   // Auto-open account details when filtered to a single account
   useEffect(() => {
@@ -1953,7 +1959,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                         key={account.id}
                         onClick={() => {
                           if (!isAccountSyncing) {
-                            navigate(`/accounts/${account.id}`);
+                            // ✅ Navigate to dashboard with account filter query param
+                            navigate(`/dashboard?accounts=${account.id}`);
                           }
                         }}
                         className={clsx(
