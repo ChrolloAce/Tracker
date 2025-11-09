@@ -6,7 +6,7 @@ interface HeicImageProps {
   src: string;
   alt: string;
   className?: string;
-  onError?: (e: React.SyntheticEvent<HTMLImageElement>) => void;
+  onError?: () => void;
 }
 
 /**

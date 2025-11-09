@@ -13,7 +13,6 @@ import Pagination from './ui/Pagination';
 import ColumnPreferencesService from '../services/ColumnPreferencesService';
 import { OutlierBadge, calculateOutlierStatus } from './ui/OutlierBadge';
 import videoMaterialAnimation from '../../public/lottie/Video Material.json';
-import { ProxiedImage } from './ProxiedImage';
 import { HeicImage } from './HeicImage';
 
 interface VideoSubmissionsTableProps {
