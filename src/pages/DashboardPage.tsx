@@ -1519,6 +1519,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
     let successCount = 0;
     let failureCount = 0;
+    const failedVideos: Array<{ url: string; error: string }> = [];
 
     // Queue videos for background processing (like accounts)
     for (const videoUrl of videoUrls) {
@@ -1548,7 +1549,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
         
         // Trigger immediate processing (like accounts)
-        fetch('/api/process-single-video', {
+        const processingResponse = await fetch('/api/process-single-video', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1556,10 +1557,16 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             orgId: currentOrgId,
             projectId: currentProjectId
           })
-        }).catch(err => {
-          console.error('Failed to trigger immediate processing:', err);
-          // Non-critical - cron will pick it up
         });
+
+        if (!processingResponse.ok) {
+          const errorData = await processingResponse.json().catch(() => ({ error: 'Unknown error' }));
+          console.error(`❌ Video processing failed for ${videoUrl}:`, errorData);
+          throw new Error(errorData.error || `API returned ${processingResponse.status}`);
+        }
+
+        const processingResult = await processingResponse.json();
+        console.log(`✅ Video processing initiated successfully:`, processingResult);
 
         successCount++;
       } catch (error) {
@@ -1567,6 +1574,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         console.error(`❌ Failed to queue video ${videoUrl}:`, errorMessage);
         console.error('Full error:', error);
         failureCount++;
+        failedVideos.push({ url: videoUrl, error: errorMessage });
       }
     }
 
@@ -1579,10 +1587,19 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         setPendingAccounts([]);
         window.location.reload();
       }, 8000); // 8 seconds for Apify API + processing
+      
+      // Show errors if some failed
+      if (failureCount > 0) {
+        setTimeout(() => {
+          const errorList = failedVideos.map(v => `• ${v.url}\n  Error: ${v.error}`).join('\n\n');
+          alert(`⚠️ ${successCount} video(s) processed successfully, but ${failureCount} failed:\n\n${errorList}\n\nCheck console for full details.`);
+        }, 1000);
+      }
     } else if (failureCount > 0) {
       setPendingVideos([]);
       setPendingAccounts([]);
-      alert(`Failed to queue ${failureCount} video(s). Check console for details.`);
+      const errorList = failedVideos.map(v => `• ${v.url}\n  Error: ${v.error}`).join('\n\n');
+      alert(`❌ Failed to process ${failureCount} video(s):\n\n${errorList}\n\nCheck console for full details.`);
     }
   }, [user, currentOrgId, currentProjectId]);
 
