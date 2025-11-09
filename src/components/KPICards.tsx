@@ -3051,9 +3051,6 @@ const KPICard: React.FC<{
                                 src={video.thumbnail} 
                                 alt={video.title || video.caption || 'Video'} 
                                 className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                }}
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
