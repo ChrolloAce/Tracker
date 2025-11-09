@@ -2764,7 +2764,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                               >
                                 <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-sm hover:shadow-md transition-all relative">
                                   {video.thumbnail ? (
-                                    <img 
+                                    <HeicImage 
                                       src={video.thumbnail} 
                                       alt="Thumbnail"
                                       className="w-full h-full object-cover"

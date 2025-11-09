@@ -32,6 +32,7 @@ import { TrackedLinksKPICard } from './TrackedLinksKPICard';
 import { PlatformIcon } from './ui/PlatformIcon';
 import DataAggregationService, { IntervalType, TimeInterval } from '../services/DataAggregationService';
 import { useNavigate } from 'react-router-dom';
+import { HeicImage } from './HeicImage';
 
 interface KPICardsProps {
   submissions: VideoSubmission[]; // Filtered submissions for current period
@@ -3046,7 +3047,7 @@ const KPICard: React.FC<{
                           {/* Thumbnail */}
                           <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-800">
                             {video.thumbnail ? (
-                              <img 
+                              <HeicImage 
                                 src={video.thumbnail} 
                                 alt={video.title || video.caption || 'Video'} 
                                 className="w-full h-full object-cover"

@@ -4,6 +4,7 @@ import { Button } from './ui/Button';
 import { Loader2, Search, Hash } from 'lucide-react';
 import TikTokApiService from '../services/TikTokApiService';
 import { InstagramVideoData } from '../types';
+import { HeicImage } from './HeicImage';
 
 interface TikTokSearchModalProps {
   isOpen: boolean;
@@ -187,7 +188,7 @@ export const TikTokSearchModal: React.FC<TikTokSearchModalProps> = ({
                 <div key={video.id || index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                   <div className="w-12 h-12 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
                     {video.thumbnail_url && (
-                      <img
+                      <HeicImage
                         src={video.thumbnail_url}
                         alt="Video thumbnail"
                         className="w-full h-full object-cover"
