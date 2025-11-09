@@ -559,7 +559,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
                 </div>
               )}
             </div>
-          </div>
+                </div>
                 
           {/* Right: Close Button Only */}
           <div className="flex items-center gap-3">

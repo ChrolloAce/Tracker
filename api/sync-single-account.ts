@@ -512,29 +512,68 @@ export default async function handler(
       console.log(`👤 Fetching Instagram profile + reels for ${account.username} using unified scraper...`);
       
       try {
-        // For manual adds: NO DATE FILTERING - just fetch latest N reels
-        console.log(`📅 No date filtering - fetching latest ${maxVideos} reels`);
+        // Check if we have existing reels to determine date range
+        let mostRecentReelDate: Date | null = null;
+        try {
+          const existingVideosSnapshot = await db
+            .collection('organizations')
+            .doc(orgId)
+            .collection('projects')
+            .doc(projectId)
+            .collection('videos')
+            .where('trackedAccountId', '==', accountId)
+            .where('platform', '==', 'instagram')
+            .orderBy('uploadDate', 'desc') // Get MOST RECENT (not oldest!)
+            .limit(1)
+            .get();
+          
+          if (!existingVideosSnapshot.empty) {
+            const mostRecentVideo = existingVideosSnapshot.docs[0].data();
+            mostRecentReelDate = mostRecentVideo.uploadDate?.toDate() || null;
+            console.log(`📅 Most recent reel date: ${mostRecentReelDate?.toISOString()}`);
+          }
+        } catch (err) {
+          console.warn(`⚠️ Could not fetch most recent reel date:`, err);
+        }
+        
+        // Build input for Instagram scraper
+        const scraperInput: any = {
+          tags: [`https://www.instagram.com/${account.username}/reels/`],
+          target: 'reels_only',
+          reels_count: maxVideos,
+          include_raw_data: true,
+          custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
+          proxy: {
+            useApifyProxy: true,
+            apifyProxyGroups: ['RESIDENTIAL'],
+            apifyProxyCountry: 'US'
+          },
+          maxConcurrency: 1,
+          maxRequestRetries: 3,
+          handlePageTimeoutSecs: 120,
+          debugLog: false
+        };
+        
+        // RULE: If we have existing reels, use date filtering to fetch only NEW reels
+        // beginDate = date of most recent reel we have
+        // endDate = current date (today)
+        // If no existing reels, don't use dates (first-time sync)
+        if (mostRecentReelDate) {
+          const beginDate = mostRecentReelDate.toISOString().split('T')[0]; // YYYY-MM-DD
+          const endDate = new Date().toISOString().split('T')[0]; // Today
+          
+          scraperInput.beginDate = beginDate;
+          scraperInput.endDate = endDate;
+          
+          console.log(`📅 Incremental sync: Fetching reels between ${beginDate} (last known) and ${endDate} (today)`);
+        } else {
+          console.log(`📅 First-time sync: No date filtering - fetching latest ${maxVideos} reels`);
+        }
         
         // Use single scraper for both profile and reels (hpix~ig-reels-scraper)
         const data = await runApifyActor({
           actorId: 'hpix~ig-reels-scraper',
-          input: {
-            tags: [`https://www.instagram.com/${account.username}/reels/`],
-            target: 'reels_only',
-            reels_count: maxVideos, // Use user's preference
-            // NO beginDate or endDate - let scraper get latest reels naturally
-            include_raw_data: true,
-            custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
-            proxy: {
-              useApifyProxy: true,
-              apifyProxyGroups: ['RESIDENTIAL'],
-              apifyProxyCountry: 'US'
-            },
-            maxConcurrency: 1,
-            maxRequestRetries: 3,
-            handlePageTimeoutSecs: 120,
-            debugLog: false
-          }
+          input: scraperInput
         });
 
         const instagramItems = data.items || [];

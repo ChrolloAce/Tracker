@@ -2666,19 +2666,19 @@ const KPICard: React.FC<{
                       </>
                     ) : (
                       <>
-                        <p className="text-xs text-gray-400 font-medium tracking-wider">
-                          {dateStr}
-                        </p>
-                        <div className="flex items-baseline gap-2">
-                          <p className="text-xl font-bold text-white">
-                            {displayValue}
-                          </p>
-                          {ppComparison && (
-                            <span className={`text-xs font-semibold ${ppComparison.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                              {ppComparison.isPositive ? '↑' : '↓'} {Math.abs(ppComparison.percentChange).toFixed(0)}%
-                            </span>
-                          )}
-                        </div>
+                    <p className="text-xs text-gray-400 font-medium tracking-wider">
+                      {dateStr}
+                    </p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-xl font-bold text-white">
+                        {displayValue}
+                      </p>
+                      {ppComparison && (
+                        <span className={`text-xs font-semibold ${ppComparison.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {ppComparison.isPositive ? '↑' : '↓'} {Math.abs(ppComparison.percentChange).toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
                       </>
                     )}
                   </div>
@@ -2689,12 +2689,12 @@ const KPICard: React.FC<{
                       {(data.id === 'revenue' || data.id === 'downloads') ? (
                         <>
                           <div className="flex items-baseline gap-2 flex-1">
-                            <p className="text-xs text-gray-500 font-medium tracking-wider">
-                              {ppDateStr}
-                            </p>
-                            <p className="text-lg font-semibold text-gray-400">
-                              {ppComparison.displayValue}
-                            </p>
+                      <p className="text-xs text-gray-500 font-medium tracking-wider">
+                        {ppDateStr}
+                      </p>
+                      <p className="text-lg font-semibold text-gray-400">
+                        {ppComparison.displayValue}
+                      </p>
                           </div>
                         </>
                       ) : (

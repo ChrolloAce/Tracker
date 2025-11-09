@@ -597,14 +597,17 @@ async function fetchVideosFromPlatform(
   let input: any;
 
   if (platform === 'instagram') {
-    // For cron refreshes: NO DATE FILTERING - just fetch latest N reels
-    // The scraper naturally returns newest videos first, which is what we want
+    // Date range: current date to 1 year ago (will be overridden with actual oldest video date in production)
+    const beginDate = new Date().toISOString().split('T')[0]; // Current date (YYYY-MM-DD)
+    const endDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 1 year ago
+    
     actorId = 'hpix~ig-reels-scraper';
     input = {
       tags: [`https://www.instagram.com/${username}/reels/`],
       target: 'reels_only',
       reels_count: maxVideos,
-      // NO beginDate or endDate - let scraper get latest reels naturally
+      beginDate: beginDate, // Current time
+      endDate: endDate, // 1 year ago (or oldest video if available)
       include_raw_data: true,
       custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
       proxy: {
