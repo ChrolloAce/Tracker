@@ -324,9 +324,12 @@ export default async function handler(
         // Step 1: Get channel info by handle
         const channelHandle = account.username.startsWith('@') ? account.username.substring(1) : account.username;
         console.log(`🔍 Looking up channel by handle: ${channelHandle}`);
+        console.log(`🔑 API Key configured: ${apiKey ? 'YES' : 'NO'} (first 10 chars: ${apiKey?.substring(0, 10)}...)`);
         
         const channelUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&forHandle=${encodeURIComponent(channelHandle)}&key=${apiKey}`;
+        console.log(`📡 Making request to YouTube API...`);
         const channelResponse = await fetch(channelUrl);
+        console.log(`📨 Response received: ${channelResponse.status}`);
         
         if (!channelResponse.ok) {
           const errorText = await channelResponse.text();
@@ -394,7 +397,8 @@ export default async function handler(
           }));
         }
       } catch (youtubeError) {
-        console.error('YouTube fetch error:', youtubeError);
+        console.error('❌ YouTube fetch error:', youtubeError);
+        throw youtubeError; // Propagate error so user sees it
       }
     } else if (account.platform === 'twitter') {
       console.log(`🐦 Fetching tweets for ${account.username}...`);
