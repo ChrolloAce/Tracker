@@ -149,16 +149,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.log(`👤 [YOUTUBE] Uploading channel thumbnail for @${videoData.username}...`);
         if (videoData.profile_pic_url) {
           try {
-            uploadedProfilePic = await downloadAndUploadThumbnail(
+            uploadedProfilePic = await downloadAndUploadImage(
               videoData.profile_pic_url,
               orgId,
-              `youtube_profile_${videoData.username}.jpg`
+              `youtube_profile_${videoData.username}.jpg`,
+              'profile'
             );
             console.log(`✅ [YOUTUBE] Channel thumbnail uploaded to Firebase Storage: ${uploadedProfilePic}`);
           } catch (uploadError) {
             console.error(`❌ [YOUTUBE] Channel thumbnail upload failed:`, uploadError);
             console.warn(`⚠️ [YOUTUBE] Using original URL as fallback`);
             uploadedProfilePic = videoData.profile_pic_url; // Fallback to original URL
+          }
+        }
+        followerCount = videoData.follower_count || 0;
+        displayName = videoData.display_name || videoData.username;
+      } else if (video.platform === 'tiktok') {
+        // For TikTok, upload profile pic from video data (channel.avatar)
+        console.log(`👤 [TIKTOK] Uploading profile pic for @${videoData.username}...`);
+        if (videoData.profile_pic_url) {
+          try {
+            uploadedProfilePic = await downloadAndUploadImage(
+              videoData.profile_pic_url,
+              orgId,
+              `tiktok_profile_${videoData.username}.jpg`,
+              'profile'
+            );
+            console.log(`✅ [TIKTOK] Profile pic uploaded to Firebase Storage: ${uploadedProfilePic}`);
+          } catch (uploadError) {
+            console.error(`❌ [TIKTOK] Profile pic upload failed:`, uploadError);
+            console.warn(`⚠️ [TIKTOK] No fallback - will retry on next sync`);
           }
         }
         followerCount = videoData.follower_count || 0;
@@ -199,10 +219,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 try {
                   console.log(`📸 [INSTAGRAM] Downloading profile pic from PROFILE SCRAPER for @${videoData.username}...`);
                   console.log(`🌐 [INSTAGRAM] Profile pic URL: ${profile.profilePicUrl.substring(0, 100)}...`);
-                  uploadedProfilePic = await downloadAndUploadThumbnail(
+                  uploadedProfilePic = await downloadAndUploadImage(
                     profile.profilePicUrl,
                     orgId,
-                    `instagram_profile_${videoData.username}.jpg`
+                    `instagram_profile_${videoData.username}.jpg`,
+                    'profile'
                   );
                   console.log(`✅ [INSTAGRAM] Profile picture uploaded to Firebase Storage: ${uploadedProfilePic}`);
                 } catch (uploadError) {
@@ -795,6 +816,93 @@ async function downloadAndUploadThumbnail(
     // Instagram, TikTok, YouTube, Twitter URLs all have expiring signatures
     console.warn(`Thumbnail download failed, returning empty (CDN URLs expire - will retry later)`);
     throw error; // Throw error so caller knows upload failed
+  }
+}
+
+/**
+ * Download profile image and upload to Firebase Storage for permanent URL
+ * (Same as sync-single-account.ts - for profile pictures)
+ */
+async function downloadAndUploadImage(
+  imageUrl: string, 
+  orgId: string, 
+  filename: string,
+  folder: string = 'profile'
+): Promise<string> {
+  try {
+    const isInstagram = imageUrl.includes('cdninstagram') || imageUrl.includes('fbcdn');
+    console.log(`📥 Downloading ${isInstagram ? 'Instagram' : 'image'} from: ${imageUrl.substring(0, 150)}...`);
+    
+    const isTikTok = imageUrl.includes('tiktokcdn');
+    
+    const fetchOptions: any = {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'image/heic,image/heif,image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"',
+        'sec-fetch-dest': 'image',
+        'sec-fetch-mode': 'no-cors',
+        'sec-fetch-site': 'cross-site'
+      }
+    };
+    
+    if (isInstagram) {
+      fetchOptions.headers['Referer'] = 'https://www.instagram.com/';
+    }
+    
+    if (isTikTok) {
+      fetchOptions.headers['Referer'] = 'https://www.tiktok.com/';
+    }
+    
+    const response = await fetch(imageUrl, fetchOptions);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to download image: ${response.status} ${response.statusText}`);
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    if (buffer.length < 100) {
+      throw new Error(`Downloaded data too small (${buffer.length} bytes)`);
+    }
+    
+    let contentType = response.headers.get('content-type') || 'image/jpeg';
+    
+    // Upload to Firebase Storage
+    const bucketName = process.env.FIREBASE_STORAGE_BUCKET || 'trackview-6a3a5.firebasestorage.app';
+    const bucket = storage.bucket(bucketName);
+    const storagePath = `organizations/${orgId}/${folder}/${filename}`;
+    const file = bucket.file(storagePath);
+    
+    await file.save(buffer, {
+      metadata: {
+        contentType: contentType,
+        metadata: {
+          uploadedAt: new Date().toISOString(),
+          originalUrl: imageUrl
+        }
+      },
+      public: true
+    });
+    
+    await file.makePublic();
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
+    
+    console.log(`✅ Uploaded profile image to Firebase Storage: ${publicUrl}`);
+    return publicUrl;
+  } catch (error) {
+    console.error('❌ Failed to download/upload profile image:', error);
+    // For Instagram/TikTok, don't return original URL as it expires quickly
+    if (imageUrl.includes('cdninstagram') || imageUrl.includes('tiktokcdn') || imageUrl.includes('fbcdn')) {
+      console.warn(`⚠️ CDN URL expires quickly - not using as fallback`);
+      throw error;
+    }
+    // For other sources, return original URL as fallback
+    return imageUrl;
   }
 }
 
