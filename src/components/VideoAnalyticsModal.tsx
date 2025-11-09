@@ -150,21 +150,29 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
   const chartData = useMemo((): ChartDataPoint[] => {
     if (!video) return [];
     
-    // Helper to create a data point with cumulative stats
-    const createDataPoint = (stats: any, timestamp: Date): ChartDataPoint => {
-      const totalEngagement = stats.likes + stats.comments + (stats.shares || 0);
-      const engagementRate = stats.views > 0 ? (totalEngagement / stats.views) * 100 : 0;
+    // Helper to create a data point with DELTA stats (change from previous snapshot)
+    const createDataPoint = (stats: any, timestamp: Date, previousStats?: any): ChartDataPoint => {
+      // If this is the first snapshot, use absolute values
+      // Otherwise, calculate delta from previous snapshot
+      const views = previousStats ? Math.max(0, stats.views - previousStats.views) : stats.views;
+      const likes = previousStats ? Math.max(0, stats.likes - previousStats.likes) : stats.likes;
+      const comments = previousStats ? Math.max(0, stats.comments - previousStats.comments) : stats.comments;
+      const shares = previousStats ? Math.max(0, (stats.shares || 0) - (previousStats.shares || 0)) : (stats.shares || 0);
+      const saves = previousStats ? Math.max(0, (stats.saves || 0) - (previousStats.saves || 0)) : (stats.saves || 0);
+      
+      const totalEngagement = likes + comments + shares;
+      const engagementRate = views > 0 ? (totalEngagement / views) * 100 : 0;
       
       return {
         date: timestamp.toLocaleDateString('en-US', { 
           month: 'short', 
           day: 'numeric'
         }),
-        views: stats.views,
-        likes: stats.likes,
-        comments: stats.comments,
-        shares: stats.shares || 0,
-        saves: stats.saves || 0,
+        views,
+        likes,
+        comments,
+        shares,
+        saves,
         engagementRate,
         timestamp: timestamp.getTime(),
       };
@@ -205,10 +213,11 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         });
       }
 
-    // Create data points - show absolute values (not deltas)
-    const data: ChartDataPoint[] = allSnapshots.map(snapshot => {
+    // Create data points - show DELTAS (change from previous snapshot)
+    const data: ChartDataPoint[] = allSnapshots.map((snapshot, index) => {
       const timestamp = new Date(snapshot.capturedAt);
-      return createDataPoint(snapshot, timestamp);
+      const previousSnapshot = index > 0 ? allSnapshots[index - 1] : undefined;
+      return createDataPoint(snapshot, timestamp, previousSnapshot);
     });
     
     // If only one data point, duplicate it to create a flat line

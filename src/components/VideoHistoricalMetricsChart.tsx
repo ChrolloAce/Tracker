@@ -112,6 +112,7 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
     if (!active || !payload || !payload.length) return null;
 
     const dataPoint = payload[0].payload;
+    const value = dataPoint[selectedMetric];
     
     return (
       <div 
@@ -119,14 +120,17 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
         style={{ backgroundColor: 'rgba(18, 18, 20, 0.98)' }}
       >
         <div className="text-xs text-gray-400 mb-1.5">{dataPoint.date}</div>
-        <div className="flex items-center gap-2">
-          <div 
-            className="w-2 h-2 rounded-full"
-            style={{ backgroundColor: currentMetric.color }}
-          />
-          <span className="text-sm font-semibold text-white">
-            {currentMetric.formatValue(dataPoint[selectedMetric])}
-          </span>
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <div 
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: '#3b82f6' }}
+            />
+            <span className="text-xs text-gray-400">{currentMetric.label}:</span>
+            <span className="text-sm font-semibold text-white">
+              +{currentMetric.formatValue(value)}
+            </span>
+          </div>
         </div>
       </div>
     );
@@ -162,7 +166,7 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
             <TrendingUp className="w-4 h-4 text-gray-400" />
           </div>
           <h3 className="text-base font-semibold text-white">
-            Historical Metrics
+            Growth per Snapshot
           </h3>
         </div>
 
@@ -243,13 +247,13 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
 
       {/* Chart */}
       <div className="relative z-10 p-6 pt-16" style={{ height: '400px' }}>
-        {/* Total Value Display - Above Chart */}
+        {/* Total Growth Display - Above Chart */}
         <div className="absolute top-6 right-8 z-20 text-right">
           <div className="text-xs text-gray-500 mb-0.5 font-medium tracking-wide uppercase">
-            {currentMetric.label}
+            Latest Growth
           </div>
           <div className="text-4xl font-bold tracking-tight text-white">
-            {formattedTotal}
+            +{formattedTotal}
           </div>
         </div>
 
@@ -260,8 +264,8 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
           >
             <defs>
               <linearGradient id={`gradient-${selectedMetric}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#22c55e" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
               </linearGradient>
             </defs>
             
@@ -297,7 +301,7 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
             
             <Tooltip 
               content={<CustomTooltip />} 
-              cursor={{ stroke: '#22c55e', strokeWidth: 1, strokeDasharray: '5 5' }}
+              cursor={{ stroke: '#3b82f6', strokeWidth: 1, strokeDasharray: '5 5' }}
               animationDuration={200}
               isAnimationActive={true}
             />
@@ -305,10 +309,10 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
             <Line 
               type="monotone"
               dataKey={selectedMetric}
-              stroke={currentMetric.color}
+              stroke="#3b82f6"
               strokeWidth={3}
               dot={{ 
-                fill: currentMetric.color, 
+                fill: '#3b82f6', 
                 strokeWidth: 2, 
                 r: 5,
                 stroke: '#121214',
@@ -316,7 +320,7 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
               }}
               activeDot={{ 
                 r: 7, 
-                fill: currentMetric.color,
+                fill: '#3b82f6',
                 stroke: '#121214',
                 strokeWidth: 2,
                 style: { cursor: 'pointer' }
