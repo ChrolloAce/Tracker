@@ -2112,13 +2112,13 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                             {openDropdownId === account.id && (
                               <>
                                 <div 
-                                  className="fixed inset-0 z-[9998]" 
+                                  className="fixed inset-0 z-[999998]" 
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setOpenDropdownId(null);
                                   }}
                                 />
-                                <div className="absolute right-0 top-8 mt-1 w-48 bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-xl z-[9999] py-1">
+                                <div className="absolute right-0 top-8 mt-1 w-48 bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-xl z-[999999] py-1">
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -2455,7 +2455,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                       </button>
                       
                       {showColumnToggle && (
-                        <div className="absolute right-0 top-full mt-2 w-64 bg-zinc-800 border border-white/10 rounded-lg shadow-xl p-4 z-[9999]">
+                        <div className="absolute right-0 top-full mt-2 w-64 bg-zinc-800 border border-white/10 rounded-lg shadow-xl p-4 z-[999999]">
                           <h3 className="text-sm font-semibold text-white mb-3">Toggle Columns</h3>
                           <div className="space-y-2">
                             {Object.entries({

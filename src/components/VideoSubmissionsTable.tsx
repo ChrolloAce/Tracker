@@ -52,12 +52,12 @@ const DropdownMenu: React.FC<{
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-[99998]"
+            className="fixed inset-0 z-[999998]"
             onClick={() => setIsOpen(false)}
           />
           
           {/* Dropdown */}
-          <div className="absolute right-0 top-8 z-[99999] w-48 bg-white dark:bg-[#1A1A1A] rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 py-1">
+          <div className="absolute right-0 top-8 z-[999999] w-48 bg-white dark:bg-[#1A1A1A] rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 py-1">
             {/* Actions */}
             <button
               onClick={(e) => {
@@ -498,7 +498,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
               </button>
               
               {showColumnToggle && (
-                <div className="absolute right-0 top-full mt-2 w-64 bg-zinc-800 border border-white/10 rounded-lg shadow-xl p-4 z-[9999]">
+                <div className="absolute right-0 top-full mt-2 w-64 bg-zinc-800 border border-white/10 rounded-lg shadow-xl p-4 z-[999999]">
                   <h3 className="text-sm font-semibold text-white mb-3">Toggle Columns</h3>
                   <div className="space-y-2">
                     {Object.entries({
