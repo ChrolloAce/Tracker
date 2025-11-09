@@ -35,6 +35,7 @@ const storage = getStorage();
 
 interface VideoData {
   id: string;
+  url?: string; // ✅ ADD URL for proper post links
   thumbnail_url: string;
   caption: string;
   username: string;
@@ -309,7 +310,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Update video with fetched data
-    await videoRef.update({
+    const updateData: any = {
       videoId: videoData.id,
       title: videoData.caption?.split('\n')[0] || 'Untitled Video',
       caption: videoData.caption || '',
@@ -330,7 +331,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       lastSyncedAt: Timestamp.now(),
       lastRefreshed: Timestamp.now(),
       isRead: false // Mark as unread for notification badge
-    });
+    };
+    
+    // 🔥 Update URL if we have a proper TikTok post URL (not CDN)
+    if (videoData.url && video.platform === 'tiktok') {
+      updateData.url = videoData.url;
+      console.log(`✅ [TIKTOK] Updated video URL to proper post link: ${videoData.url}`);
+    }
+    
+    await videoRef.update(updateData);
 
     // Create initial snapshot for this video
     const snapshotRef = videoRef.collection('snapshots').doc();
@@ -524,8 +533,20 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       thumbnailUrl = rawData.images[0].url || '';
     }
     
+    // 🔥 VIDEO URL: Always use postPage, fallback to reconstruction from video ID
+    const videoId = rawData.id || rawData.post_id || '';
+    let videoUrl = rawData.postPage || rawData.tiktok_url || video.url || rawData.videoUrl || '';
+    
+    // If no valid TikTok post URL (e.g., only have CDN URL) and we have a video ID, reconstruct it
+    if ((!videoUrl || !videoUrl.includes('tiktok.com/@')) && videoId) {
+      const username = channel.username || rawData['channel.username'] || 'user';
+      videoUrl = `https://www.tiktok.com/@${username}/video/${videoId}`;
+      console.log(`🔧 [TIKTOK] Reconstructed URL from ID: ${videoUrl}`);
+    }
+    
     return {
-      id: rawData.id || rawData.post_id || '',
+      id: videoId,
+      url: videoUrl,
       thumbnail_url: thumbnailUrl,
       caption: rawData.title || rawData.subtitle || rawData.caption || '',
       username: channel.username || rawData['channel.username'] || '',
@@ -759,6 +780,28 @@ async function downloadAndUploadThumbnail(
 }
 
 /**
+ * Extract video ID from TikTok CDN URL and validate/reconstruct proper post URL
+ */
+function validateTikTokUrl(url: string): string {
+  // If it's already a proper TikTok post URL, return as-is
+  if (url.includes('tiktok.com/@') && url.includes('/video/')) {
+    return url;
+  }
+  
+  // If it's a CDN URL, try to extract video ID
+  // CDN URLs look like: https://v16m.tiktokcdn-us.com/.../6910857f/video/...
+  const cdnMatch = url.match(/\/(\d{8,})\//);
+  if (cdnMatch && url.includes('tiktokcdn')) {
+    const videoId = cdnMatch[1];
+    console.warn(`⚠️ [TIKTOK] CDN URL detected, cannot reconstruct without username. Video ID: ${videoId}`);
+    console.warn(`⚠️ [TIKTOK] User should submit proper TikTok post URLs: https://www.tiktok.com/@username/video/${videoId}`);
+    throw new Error(`Invalid TikTok URL. Please submit the actual TikTok post URL (https://www.tiktok.com/@username/video/${videoId}), not the CDN video link.`);
+  }
+  
+  return url;
+}
+
+/**
  * Fetch video data from Apify
  */
 async function fetchVideoData(url: string, platform: string): Promise<VideoData | null> {
@@ -772,9 +815,13 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
     let input: any;
 
     if (platform === 'tiktok') {
+      // 🔥 Validate/reconstruct TikTok URL before calling Apify
+      const validatedUrl = validateTikTokUrl(url);
+      console.log(`✅ [TIKTOK] Using validated URL: ${validatedUrl}`);
+      
       actorId = 'apidojo/tiktok-scraper';
       input = {
-        startUrls: [url],
+        startUrls: [validatedUrl],
         maxItems: 1,
         sortType: 'RELEVANCE',
         dateRange: 'DEFAULT',

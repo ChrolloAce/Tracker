@@ -290,10 +290,21 @@ export default async function handler(
             thumbnail = item.images[0].url || '';
           }
           
+          // 🔥 VIDEO URL: Always use postPage, fallback to reconstruction from video ID
+          const videoId = item.id || item.post_id || '';
+          let videoUrl = item.postPage || item.tiktok_url || video.url || item.videoUrl || '';
+          
+          // If no valid TikTok post URL (e.g., only have CDN URL) and we have a video ID, reconstruct it
+          if ((!videoUrl || !videoUrl.includes('tiktok.com/@')) && videoId) {
+            const username = channel.username || item['channel.username'] || account.username || 'user';
+            videoUrl = `https://www.tiktok.com/@${username}/video/${videoId}`;
+            console.log(`🔧 [TIKTOK] Reconstructed URL from ID: ${videoUrl}`);
+          }
+          
           return {
-            videoId: item.id || item.post_id || `tiktok_${Date.now()}_${index}`,
+            videoId: videoId || `tiktok_${Date.now()}_${index}`,
             videoTitle: item.title || item.caption || item.subtitle || 'Untitled TikTok',
-            videoUrl: item.postPage || item.tiktok_url || video.url || item.videoUrl || '', // ✅ USE postPage FIRST!
+            videoUrl: videoUrl,
             platform: 'tiktok',
             thumbnail: thumbnail,
             accountUsername: account.username,

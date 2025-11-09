@@ -1157,12 +1157,23 @@ async function saveVideosToFirestore(
     } else if (platform === 'tiktok') {
       // apidojo/tiktok-scraper format
       const videoObj = video.video || {};
+      const channel = video.channel || {};
       views = video.views || 0;
       likes = video.likes || 0;
       comments = video.comments || 0;
       shares = video.shares || 0;
       saves = video.bookmarks || 0; // Bookmarks (TikTok only)
-      url = video.postPage || video.tiktok_url || videoObj.url || ''; // ✅ USE postPage first!
+      
+      // 🔥 VIDEO URL: Always use postPage, fallback to reconstruction from video ID
+      const videoId = video.id || video.post_id || platformVideoId || '';
+      url = video.postPage || video.tiktok_url || videoObj.url || '';
+      
+      // If no valid TikTok post URL (e.g., only have CDN URL) and we have a video ID, reconstruct it
+      if ((!url || !url.includes('tiktok.com/@')) && videoId) {
+        const username = channel.username || video['channel.username'] || videoData?.uploaderHandle || 'user';
+        url = `https://www.tiktok.com/@${username}/video/${videoId}`;
+        console.log(`    🔧 [TIKTOK] Reconstructed URL from ID: ${url}`);
+      }
       
       // THUMBNAIL EXTRACTION: Check flat keys FIRST (TikTok API returns flat keys like "video.cover")
       let tiktokThumbnail = '';
