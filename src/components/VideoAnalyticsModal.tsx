@@ -236,7 +236,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         previousViews: previousSnapshot?.views,
         chartViews: dataPoint.views,
         isDelta: index > 0,
-        calculation: index > 0 ? `${snapshot.views} - ${previousSnapshot.views} = ${dataPoint.views}` : 'absolute'
+        calculation: index > 0 ? `${snapshot.views} - ${previousSnapshot?.views ?? 0} = ${dataPoint.views}` : 'absolute'
       });
       
       return dataPoint;
