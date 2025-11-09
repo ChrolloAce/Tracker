@@ -597,17 +597,14 @@ async function fetchVideosFromPlatform(
   let input: any;
 
   if (platform === 'instagram') {
-    // Date range: current date to 1 year ago (will be overridden with actual oldest video date in production)
-    const beginDate = new Date().toISOString().split('T')[0]; // Current date (YYYY-MM-DD)
-    const endDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 1 year ago
-    
+    // DO NOT use beginDate/endDate for cron refreshes - just fetch latest reels
+    // Date filtering is only used in sync-single-account.ts for incremental syncs
     actorId = 'hpix~ig-reels-scraper';
     input = {
       tags: [`https://www.instagram.com/${username}/reels/`],
       target: 'reels_only',
       reels_count: maxVideos,
-      beginDate: beginDate, // Current time
-      endDate: endDate, // 1 year ago (or oldest video if available)
+      // NO beginDate or endDate - fetch latest reels
       include_raw_data: true,
       custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
       proxy: {

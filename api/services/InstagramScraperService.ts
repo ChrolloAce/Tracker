@@ -314,18 +314,14 @@ export class InstagramScraperService {
     console.log(`📸 [Instagram Reels] Fetching ${maxReels} reels for @${username}...`);
     
     try {
-      // Use date range to get all reels
-      const beginDate = new Date().toISOString().split('T')[0]; // Current date (YYYY-MM-DD)
-      const endDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 1 year ago
-      
+      // DO NOT use beginDate/endDate - just fetch latest reels
       const result = await runApifyActor({
         actorId: this.SCRAPER,
         input: {
           tags: [`https://www.instagram.com/${username}/reels/`],
           target: 'reels_only',
           reels_count: maxReels,
-          beginDate: beginDate, // Current time
-          endDate: endDate, // 1 year ago
+          // NO beginDate or endDate - fetch latest reels
           include_raw_data: true,
           custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
           proxy: this.DEFAULT_PROXY,
@@ -478,18 +474,14 @@ export class InstagramScraperService {
     console.log(`🎯 [Instagram Full] Fetching profile + reels for @${username}...`);
     
     try {
-      // Use date range to get all reels
-      const beginDate = new Date().toISOString().split('T')[0]; // Current date (YYYY-MM-DD)
-      const endDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 1 year ago
-      
+      // DO NOT use beginDate/endDate - just fetch latest reels
       const result = await runApifyActor({
         actorId: this.SCRAPER,
         input: {
           tags: [`https://www.instagram.com/${username}/reels/`],
           target: 'reels_only',
           reels_count: maxReels,
-          beginDate: beginDate, // Current time
-          endDate: endDate, // 1 year ago
+          // NO beginDate or endDate - fetch latest reels
           include_raw_data: true,
           custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
           proxy: this.DEFAULT_PROXY,
