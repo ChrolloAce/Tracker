@@ -122,20 +122,19 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
     
     return (
       <div 
-        className="rounded-lg border border-white/10 shadow-xl p-3"
+        className="rounded-lg border border-white/10 shadow-xl p-3 min-w-[140px]"
         style={{ backgroundColor: 'rgba(18, 18, 20, 0.98)' }}
       >
-        <div className="text-xs text-gray-400 mb-1.5">{dataPoint.date}</div>
+        <div className="text-xs text-gray-400 mb-2">{dataPoint.date}</div>
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <div 
-              className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: '#3b82f6' }}
-            />
-            <span className="text-xs text-gray-400">{currentMetric.label}:</span>
-            <span className="text-sm font-semibold text-white">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-xs text-gray-500">Growth:</span>
+            <span className="text-base font-bold text-emerald-400">
               +{currentMetric.formatValue(value)}
             </span>
+          </div>
+          <div className="text-[10px] text-gray-600 uppercase tracking-wide">
+            {currentMetric.label} gained
           </div>
         </div>
       </div>
