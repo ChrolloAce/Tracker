@@ -267,47 +267,49 @@ class FirebaseStorageService {
     platformVideoId?: string
   ): Promise<void> {
     try {
-      // Build all possible thumbnail filenames to try
+      // Build ONLY the most likely thumbnail filenames to minimize 404s
       const possibleFilenames: string[] = [];
-      const platforms = platform ? [platform] : ['tiktok', 'tt', 'instagram', 'ig', 'youtube', 'yt', 'twitter', 'x'];
-      const videoIds = platformVideoId ? [platformVideoId, videoId] : [videoId];
       
-      // Generate all possible combinations
-      for (const p of platforms) {
-        for (const vid of videoIds) {
-          possibleFilenames.push(`${p}_${vid}_thumb.jpg`);
-        }
+      // If platform is known, only try that platform
+      if (platform && platformVideoId) {
+        possibleFilenames.push(`${platform}_${platformVideoId}_thumb.jpg`);
+        possibleFilenames.push(`${platform}_${videoId}_thumb.jpg`);
+      } else if (platform) {
+        possibleFilenames.push(`${platform}_${videoId}_thumb.jpg`);
+      } else if (platformVideoId) {
+        // Try all platforms but only with the platformVideoId
+        const platforms = ['tiktok', 'instagram', 'youtube', 'twitter'];
+        platforms.forEach(p => possibleFilenames.push(`${p}_${platformVideoId}_thumb.jpg`));
+      } else {
+        // Last resort: try common patterns with videoId
+        const platforms = ['tiktok', 'instagram', 'youtube', 'twitter'];
+        platforms.forEach(p => possibleFilenames.push(`${p}_${videoId}_thumb.jpg`));
       }
       
-      console.log(`🗑️ [STORAGE] Attempting to delete thumbnails for video ${videoId} (trying ${possibleFilenames.length} patterns)`);
-      
+      // Try to delete each possible thumbnail (silently)
       let deleted = 0;
-      let notFound = 0;
-      
-      // Try to delete each possible thumbnail
       for (const filename of possibleFilenames) {
         try {
           const thumbnailRef = ref(storage, `organizations/${orgId}/thumbnails/${filename}`);
           await deleteObject(thumbnailRef);
           deleted++;
           console.log(`  ✅ [STORAGE] Deleted: ${filename}`);
+          break; // Stop after first successful deletion
         } catch (error: any) {
-          if (error.code === 'storage/object-not-found') {
-            notFound++;
-            // Expected - not all combinations will exist
-          } else {
-            console.error(`  ⚠️ [STORAGE] Error deleting ${filename}:`, error.message);
+          // Silently ignore - 404s are expected
+          if (error.code !== 'storage/object-not-found') {
+            console.error(`  ⚠️ [STORAGE] Unexpected error deleting ${filename}:`, error.message);
           }
         }
       }
       
-      if (deleted > 0) {
-        console.log(`✅ [STORAGE] Deleted ${deleted} thumbnail(s) for video ${videoId}`);
-      } else {
-        console.log(`ℹ️ [STORAGE] No thumbnails found (tried ${notFound} filenames)`);
+      if (deleted === 0) {
+        // This is normal - thumbnails might be CDN URLs that were never uploaded to Storage
+        console.log(`ℹ️ [STORAGE] No Firebase Storage thumbnail found for video ${videoId} (likely using CDN URL)`);
       }
     } catch (error) {
-      console.error(`❌ Failed to delete thumbnail for video ${videoId}:`, error);
+      // Don't let thumbnail deletion errors block the entire video deletion
+      console.warn(`⚠️ Non-critical: Failed to delete thumbnail for video ${videoId}`);
     }
   }
 

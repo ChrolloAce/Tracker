@@ -496,17 +496,24 @@ class FirestoreDataService {
         console.error('⚠️ Failed to delete video snapshots (non-critical):', snapshotError);
       }
       
-      // STEP 2: Delete thumbnail from Firebase Storage
+      // Get video reference once for reuse
+      const videoRef = doc(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId);
+      
+      // STEP 2: Delete thumbnail from Firebase Storage (if it exists)
       try {
         const FirebaseStorageService = (await import('./FirebaseStorageService')).default;
-        await FirebaseStorageService.deleteVideoThumbnail(orgId, videoId);
+        // Get video data to pass platform info for smarter deletion
+        const videoSnap = await getDoc(videoRef);
+        const platform = videoSnap.exists() ? videoSnap.data()?.platform : undefined;
+        const platformVideoId = videoSnap.exists() ? videoSnap.data()?.videoId : undefined;
+        await FirebaseStorageService.deleteVideoThumbnail(orgId, videoId, platform, platformVideoId);
       } catch (storageError) {
-        console.error('⚠️ Failed to delete video thumbnail (non-critical):', storageError);
+        // Non-critical - thumbnails might be CDN URLs that were never uploaded
+        console.log('ℹ️ Thumbnail deletion handled (may not exist in Storage)');
       }
       
       // STEP 3: Delete video document
       const batch = writeBatch(db);
-      const videoRef = doc(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId);
       batch.delete(videoRef);
       
       // Decrement project video count

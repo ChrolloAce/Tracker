@@ -879,6 +879,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                           })()}
                         </span>
                       </div>
+                      )}
                     </td>
                   )}
                   {visibleColumns.duration && (
