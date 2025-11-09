@@ -447,31 +447,34 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       return;
     }
 
-    try {
-      console.log('🗑️ Deleting video:', video.id);
-      
-      // If we have orgId and projectId, this is a tracked account video
-      if (orgId && projectId) {
-        await FirestoreDataService.deleteVideo(orgId, projectId, video.id);
-        console.log('✅ Successfully deleted tracked video');
-      } else {
-        // Fallback to legacy FirebaseService for user-submitted videos
-        await FirebaseService.deleteVideo(video.id);
-        console.log('✅ Successfully deleted user video');
+    const videoId = video.id;
+    const videoTitle = video.title || video.caption || 'Video';
+    console.log(`🗑️ [UI] Starting INSTANT video deletion: ${videoTitle}`);
+
+    // ✅ IMMEDIATELY close modal (optimistic update)
+    onClose();
+    console.log(`✅ [UI] Modal closed instantly`);
+
+    // ✅ Process deletion in background (don't await)
+    (async () => {
+      try {
+        console.log(`🔄 [BACKGROUND] Processing video deletion...`);
+        
+        // If we have orgId and projectId, this is a tracked account video
+        if (orgId && projectId) {
+          await FirestoreDataService.deleteVideo(orgId, projectId, videoId);
+          console.log('✅ [BACKGROUND] Successfully deleted tracked video');
+        } else {
+          // Fallback to legacy FirebaseService for user-submitted videos
+          await FirebaseService.deleteVideo(videoId);
+          console.log('✅ [BACKGROUND] Successfully deleted user video');
+        }
+      } catch (error) {
+        console.error('❌ [BACKGROUND] Failed to delete video:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        alert(`Video was removed from view but background cleanup encountered an error:\n${errorMessage}\n\nThe video will not reappear.`);
       }
-      
-      // Close modal and show success
-      onClose();
-      
-      // Optional: Show a toast notification (if you have a toast service)
-      // toast.success('Video deleted successfully');
-      
-      // Reload the page to update the UI
-      window.location.reload();
-    } catch (error) {
-      console.error('❌ Failed to delete video:', error);
-      alert('Failed to delete video. Please try again.');
-    }
+    })();
   };
 
   const handleGoToVideo = () => {

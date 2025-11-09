@@ -1339,44 +1339,65 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   };
 
   const handleRemoveAccount = useCallback((accountId: string) => {
-    const account = accounts.find(a => a.id === accountId);
+    const account = filteredAccounts.find(a => a.id === accountId);
     if (!account) return;
     
-    setAccountToDelete(account);
+    // Use filtered video count for accurate display
+    const accountWithVideoCount = {
+      ...account,
+      totalVideos: account.filteredTotalVideos || account.totalVideos || 0
+    };
+    
+    setAccountToDelete(accountWithVideoCount);
     setShowDeleteModal(true);
     setDeleteConfirmText('');
-  }, [accounts]);
+  }, [filteredAccounts]);
 
   const confirmDeleteAccount = useCallback(async () => {
     if (!currentOrgId || !currentProjectId || !accountToDelete) return;
     
-    console.log(`🗑️ [UI] Starting account deletion for: @${accountToDelete.username} (ID: ${accountToDelete.id})`);
-    console.log(`🗑️ [UI] Account claims to have ${accountToDelete.totalVideos || 0} videos`);
+    const accountId = accountToDelete.id;
+    const accountUsername = accountToDelete.username;
+    const videoCount = accountToDelete.totalVideos || 0;
+    
+    console.log(`🗑️ [UI] Starting INSTANT deletion for: @${accountUsername} (${videoCount} videos)`);
 
-    try {
-      console.log(`🗑️ [UI] Calling removeAccount service...`);
-      await AccountTrackingServiceFirebase.removeAccount(currentOrgId, currentProjectId, accountToDelete.id);
-      console.log(`✅ [UI] Account deletion completed successfully`);
-      
-      setAccounts(prev => prev.filter(a => a.id !== accountToDelete.id));
-      
-      if (selectedAccount?.id === accountToDelete.id) {
-        navigate('/accounts');
-        setAccountVideos([]);
-        setAccountVideosSnapshots(new Map());
-      }
-      
-      setShowDeleteModal(false);
-      setAccountToDelete(null);
-      setDeleteConfirmText('');
-      
-      console.log(`✅ [UI] UI state updated, account removed from list`);
-    } catch (error) {
-      console.error('❌ [UI] Failed to remove account:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      alert(`Failed to remove account: ${errorMessage}\n\nCheck browser console for details.`);
+    // ✅ STEP 1: IMMEDIATELY remove from UI (optimistic update)
+    setShowDeleteModal(false);
+    setAccountToDelete(null);
+    setDeleteConfirmText('');
+    
+    // Remove from accounts list immediately
+    setAccounts(prev => prev.filter(a => a.id !== accountId));
+    setFilteredAccounts(prev => prev.filter(a => a.id !== accountId));
+    
+    // Clear selected account if it was this one
+    if (selectedAccount?.id === accountId) {
+      navigate('/accounts');
+      setAccountVideos([]);
+      setAccountVideosSnapshots(new Map());
     }
-  }, [accountToDelete, deleteConfirmText, selectedAccount, currentOrgId, currentProjectId]);
+    
+    console.log(`✅ [UI] Account removed from UI instantly`);
+
+    // ✅ STEP 2: Process deletion in background (don't await)
+    (async () => {
+      try {
+        console.log(`🔄 [BACKGROUND] Processing deletion for @${accountUsername}...`);
+        await AccountTrackingServiceFirebase.removeAccount(currentOrgId, currentProjectId, accountId);
+        console.log(`✅ [BACKGROUND] Account @${accountUsername} fully deleted from database`);
+      } catch (error) {
+        console.error('❌ [BACKGROUND] Failed to complete account deletion:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        
+        // Show error notification but DON'T restore the account to UI
+        // (it's likely partially deleted and would cause issues)
+        alert(`Account was removed from view but background cleanup encountered an error:\n${errorMessage}\n\nThe account will not reappear. Check console for details.`);
+      }
+    })();
+    
+    console.log(`✅ [UI] Deletion initiated, UI updated instantly`);
+  }, [accountToDelete, deleteConfirmText, selectedAccount, currentOrgId, currentProjectId, navigate]);
 
   // Fetch creators when attach modal opens
   useEffect(() => {
