@@ -851,66 +851,82 @@ async function refreshTikTokVideosBulk(
 }
 
 /**
- * Instagram: Sequential refresh using unique video endpoint
+ * Instagram: Batch refresh using multiple post_urls in ONE API call
  */
 async function refreshInstagramVideosSequential(
   orgId: string,
   projectId: string,
   videoDocs: any[]
 ): Promise<number> {
-  console.log(`    🔄 [INSTAGRAM] Sequential refresh of ${videoDocs.length} videos...`);
+  console.log(`    🔄 [INSTAGRAM] Batch refresh of ${videoDocs.length} videos in ONE call...`);
   
-  let updatedCount = 0;
-  let failedCount = 0;
-
-  for (let i = 0; i < videoDocs.length; i++) {
-    const videoDoc = videoDocs[i];
+  // Collect all post URLs
+  const postUrls: string[] = [];
+  const videoDocMap = new Map<string, any>(); // Map videoId -> videoDoc
+  
+  for (const videoDoc of videoDocs) {
     const videoData = videoDoc.data();
     const videoUrl = videoData.url || videoData.videoUrl;
-  
-    if (!videoUrl) {
-      console.log(`    ⚠️ [INSTAGRAM] Skipping video ${i + 1}/${videoDocs.length} - no URL`);
+    const videoId = videoData.videoId;
+    
+    if (!videoUrl || !videoId) {
+      console.log(`    ⚠️ [INSTAGRAM] Skipping video - missing URL or ID`);
       continue;
     }
-
-    try {
-      // Add delay between requests to avoid rate limiting (2-4 seconds)
-      if (i > 0) {
-        const delay = 2000 + Math.random() * 2000; // Random delay 2-4s
-        console.log(`    ⏳ [INSTAGRAM] Waiting ${Math.round(delay)}ms before next request...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+    
+    postUrls.push(videoUrl);
+    videoDocMap.set(videoId, videoDoc);
+  }
+  
+  if (postUrls.length === 0) {
+    console.log(`    ℹ️ [INSTAGRAM] No valid videos to refresh`);
+    return 0;
+  }
+  
+  console.log(`    📦 [INSTAGRAM] Fetching metrics for ${postUrls.length} videos in single batch...`);
+  
+  try {
+    // Make ONE API call with ALL post URLs
+    const result = await runApifyActor({
+      actorId: 'hpix~ig-reels-scraper',
+      input: {
+        post_urls: postUrls, // ALL VIDEOS IN ONE CALL!
+        target: 'reels_only',
+        reels_count: postUrls.length,
+        include_raw_data: true,
+        custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
+        proxy: {
+          useApifyProxy: true,
+          apifyProxyGroups: ['RESIDENTIAL'],
+          apifyProxyCountry: 'US'
+        },
+        maxConcurrency: 1,
+        maxRequestRetries: 3,
+        handlePageTimeoutSecs: 120,
+        debugLog: false
       }
+    });
 
-      console.log(`    📥 [INSTAGRAM] Fetching ${i + 1}/${videoDocs.length}: ${videoData.videoId}`);
-
-      const result = await runApifyActor({
-        actorId: 'hpix~ig-reels-scraper',
-        input: {
-          post_urls: [videoUrl],
-          target: 'reels_only',
-          reels_count: 12,
-          include_raw_data: true,
-          custom_functions: '{ shouldSkip: (data) => false, shouldContinue: (data) => true }',
-          proxy: {
-            useApifyProxy: true,
-            apifyProxyGroups: ['RESIDENTIAL'],
-            apifyProxyCountry: 'US'
-          },
-          maxConcurrency: 1,
-          maxRequestRetries: 3,
-          handlePageTimeoutSecs: 120,
-          debugLog: false
-        }
-      });
-
-      const videos = result.items || [];
-      if (videos.length === 0) {
-        console.log(`    ⚠️ [INSTAGRAM] No data returned for ${videoData.videoId}`);
+    const refreshedVideos = result.items || [];
+    console.log(`    📊 [INSTAGRAM] API returned ${refreshedVideos.length} videos, matching to ${videoDocMap.size} DB videos...`);
+    
+    let updatedCount = 0;
+    let failedCount = 0;
+    
+    // Match API results to DB videos and update
+    for (const video of refreshedVideos) {
+      const videoCode = video.code || video.id;
+      if (!videoCode) {
+        console.log(`    ⚠️ [INSTAGRAM] Skipping video - no code/id in API response`);
+        continue;
+      }
+      
+      const videoDoc = videoDocMap.get(videoCode);
+      if (!videoDoc) {
+        console.log(`    ⚠️ [INSTAGRAM] No DB match for video: ${videoCode}`);
         failedCount++;
         continue;
       }
-
-      const video = videos[0];
       
       const now = Timestamp.now();
       const metrics = {
@@ -918,7 +934,7 @@ async function refreshInstagramVideosSequential(
         likes: video.like_count || 0,
         comments: video.comment_count || 0,
         shares: video.share_count || 0,
-        saves: video.save_count || 0, // ✅ BOOKMARKS
+        saves: video.save_count || 0,
         lastRefreshed: now
       };
 
@@ -929,34 +945,32 @@ async function refreshInstagramVideosSequential(
       const snapshotRef = videoDoc.ref.collection('snapshots').doc();
       await snapshotRef.set({
         id: snapshotRef.id,
-        videoId: videoData.videoId,
+        videoId: videoCode,
         views: metrics.views,
         likes: metrics.likes,
         comments: metrics.comments,
         shares: metrics.shares,
         saves: metrics.saves,
         capturedAt: now,
-        timestamp: now, // Backwards compatibility
+        timestamp: now,
         capturedBy: 'scheduled_refresh',
-        isInitialSnapshot: false // This is a refresh snapshot
+        isInitialSnapshot: false
       });
 
       updatedCount++;
-      console.log(`    ✓ [INSTAGRAM] Refreshed ${i + 1}/${videoDocs.length}: ${videoData.videoId} (${metrics.views} views)`);
-    } catch (error: any) {
-      failedCount++;
-      const errorMsg = error.message || String(error);
-      console.error(`    ❌ [INSTAGRAM] Failed ${i + 1}/${videoDocs.length}: ${videoData.videoId} - ${errorMsg.substring(0, 150)}`);
-      
-      // Continue with next video instead of failing entire batch
-      // Instagram errors are often temporary
-      continue;
+      console.log(`    ✓ [INSTAGRAM] Updated ${videoCode}: ${metrics.views} views`);
     }
+    
+    failedCount = videoDocMap.size - updatedCount;
+    const successRate = videoDocMap.size > 0 ? Math.round((updatedCount / videoDocMap.size) * 100) : 0;
+    console.log(`    ✅ [INSTAGRAM] Batch complete: ${updatedCount} updated, ${failedCount} not found (${successRate}% success rate)`);
+    
+    return updatedCount;
+  } catch (error: any) {
+    const errorMsg = error.message || String(error);
+    console.error(`    ❌ [INSTAGRAM] Batch refresh failed: ${errorMsg.substring(0, 150)}`);
+    return 0;
   }
-
-  const successRate = videoDocs.length > 0 ? Math.round((updatedCount / videoDocs.length) * 100) : 0;
-  console.log(`    ✅ [INSTAGRAM] Complete: ${updatedCount} updated, ${failedCount} failed (${successRate}% success rate)`);
-  return updatedCount;
 }
 
 /**
