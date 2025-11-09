@@ -30,6 +30,7 @@ import { VideoSubmissionsTable } from './VideoSubmissionsTable';
 import { AccountTrackingServiceFirebase } from '../services/AccountTrackingServiceFirebase';
 import FirestoreDataService from '../services/FirestoreDataService';
 import { ProxiedImage } from './ProxiedImage';
+import { HeicImage } from './HeicImage';
 import { BlurEmptyState } from './ui/BlurEmptyState';
 import RulesService from '../services/RulesService';
 import CreatorLinksService from '../services/CreatorLinksService';
@@ -2679,7 +2680,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                 <div className="relative">
                                   <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 ring-2 ring-white shadow-sm">
                                     {video.thumbnail ? (
-                                      <img 
+                                      <HeicImage 
                                         src={video.thumbnail} 
                                         alt="Thumbnail"
                                         className="w-full h-full object-cover"

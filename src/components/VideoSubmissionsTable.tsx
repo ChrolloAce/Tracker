@@ -14,6 +14,7 @@ import ColumnPreferencesService from '../services/ColumnPreferencesService';
 import { OutlierBadge, calculateOutlierStatus } from './ui/OutlierBadge';
 import videoMaterialAnimation from '../../public/lottie/Video Material.json';
 import { ProxiedImage } from './ProxiedImage';
+import { HeicImage } from './HeicImage';
 
 interface VideoSubmissionsTableProps {
   submissions: VideoSubmission[];
@@ -107,7 +108,7 @@ const ThumbnailImage: React.FC<{ submission: VideoSubmission }> = ({ submission 
   }
 
   return (
-    <ProxiedImage
+    <HeicImage
       src={thumbnailSrc}
       alt="Video thumbnail"
       className="w-full h-full object-cover"
