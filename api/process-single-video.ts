@@ -631,50 +631,38 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       follower_count: followerCount
     };
   } else if (platform === 'youtube') {
-    // YouTube structure - handle both YouTube API v3 and Apify scraper formats
-    console.log('[YouTube Transform] Raw data keys:', Object.keys(rawData));
-    console.log('[YouTube Transform] Statistics:', rawData.statistics);
-    console.log('[YouTube Transform] Snippet:', rawData.snippet);
+    // YouTube structure - handle Apify streamers~youtube-scraper format
+    console.log('🎥 [YOUTUBE Transform] Raw data keys:', Object.keys(rawData).join(', '));
     
-    // YouTube API v3 format (from /api/youtube-video)
-    if (rawData.snippet || rawData.statistics) {
-      const thumbnails = rawData.snippet?.thumbnails;
-      const thumbnail = thumbnails?.maxres?.url || 
-                       thumbnails?.standard?.url || 
-                       thumbnails?.high?.url || 
-                       thumbnails?.medium?.url || 
-                       thumbnails?.default?.url || '';
-      
-      return {
-        id: rawData.id || '',
-        thumbnail_url: thumbnail,
-        caption: rawData.snippet?.title || rawData.snippet?.description || '',
-        username: rawData.snippet?.channelTitle || '',
-        like_count: parseInt(rawData.statistics?.likeCount || '0', 10),
-        comment_count: parseInt(rawData.statistics?.commentCount || '0', 10),
-        view_count: parseInt(rawData.statistics?.viewCount || '0', 10),
-        share_count: 0,
-        timestamp: rawData.snippet?.publishedAt || new Date().toISOString(),
-        profile_pic_url: rawData.channelThumbnail || '',
-        display_name: rawData.snippet?.channelTitle || '',
-        follower_count: rawData.subscribers || 0
-      };
-    }
+    // streamers~youtube-scraper format
+    // Example structure: { id, title, description, url, date, viewCount, likes, dislikes, numberOfComments, 
+    //                      channelName, channelUrl, subscriberCount, thumbnailUrl, channelThumbnail }
     
-    // Apify scraper format (fallback)
+    const thumbnail = rawData.thumbnailUrl || rawData.thumbnail || '';
+    const channelThumbnail = rawData.channelThumbnail || rawData.channelAvatar || '';
+    
+    console.log('🎥 [YOUTUBE Transform] Video data:', {
+      id: rawData.id,
+      title: rawData.title?.substring(0, 50),
+      channelName: rawData.channelName,
+      views: rawData.viewCount,
+      likes: rawData.likes,
+      hasChannelThumbnail: !!channelThumbnail
+    });
+    
     return {
-      id: rawData.id || '',
-      thumbnail_url: rawData.thumbnail || rawData.thumbnails?.default?.url || '',
-      caption: rawData.description || rawData.title || '',
-      username: rawData.channelName || rawData.author || '',
-      like_count: rawData.likes || 0,
-      comment_count: rawData.comments || 0,
-      view_count: rawData.views || 0,
+      id: rawData.id || rawData.videoId || '',
+      thumbnail_url: thumbnail,
+      caption: rawData.title || rawData.description || '',
+      username: rawData.channelName || rawData.channelTitle || '',
+      like_count: rawData.likes || rawData.likeCount || 0,
+      comment_count: rawData.numberOfComments || rawData.comments || rawData.commentCount || 0,
+      view_count: rawData.viewCount || rawData.views || 0,
       share_count: 0,
-      timestamp: rawData.uploadDate || rawData.publishedAt || new Date().toISOString(),
-      profile_pic_url: rawData.channelThumbnail || '',
-      display_name: rawData.channelName || '',
-      follower_count: rawData.subscribers || 0
+      timestamp: rawData.date || rawData.uploadDate || rawData.publishedAt || new Date().toISOString(),
+      profile_pic_url: channelThumbnail,
+      display_name: rawData.channelName || rawData.channelTitle || '',
+      follower_count: rawData.subscriberCount || rawData.subscribers || 0
     };
   } else if (platform === 'twitter') {
     // Twitter/X structure - apidojo~tweet-scraper format
@@ -856,83 +844,20 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
       };
       console.log('📸 [INSTAGRAM] Input:', JSON.stringify(input, null, 2));
     } else if (platform === 'youtube') {
-      // Use YouTube API directly instead of Apify for better reliability
-      console.log('🎥 [YOUTUBE] Using YouTube Data API v3 for video:', url);
+      // Use Apify YouTube scraper for better profile data
+      console.log('🎥 [YOUTUBE] Using Apify YouTube scraper for video:', url);
+      actorId = 'streamers~youtube-scraper';
       
-      // Extract video ID from URL
-      let videoId = '';
-      try {
-        const urlObj = new URL(url);
-        console.log('🔍 [YOUTUBE] Parsing URL - hostname:', urlObj.hostname, 'pathname:', urlObj.pathname);
-        
-        if (urlObj.hostname.includes('youtube.com')) {
-          if (urlObj.pathname.includes('/shorts/')) {
-            videoId = urlObj.pathname.split('/shorts/')[1]?.split('/')[0] || '';
-            console.log('🔍 [YOUTUBE] Extracted from /shorts/ path:', videoId);
-          } else {
-            videoId = urlObj.searchParams.get('v') || '';
-            console.log('🔍 [YOUTUBE] Extracted from ?v= param:', videoId);
-          }
-        } else if (urlObj.hostname.includes('youtu.be')) {
-          videoId = urlObj.pathname.substring(1).split('/')[0];
-          console.log('🔍 [YOUTUBE] Extracted from youtu.be shortlink:', videoId);
+      input = {
+        startUrls: [url],
+        maxResults: 1,
+        searchKeywords: '',
+        proxyConfiguration: {
+          useApifyProxy: true,
+          apifyProxyGroups: ['RESIDENTIAL']
         }
-      } catch (e) {
-        console.error('❌ [YOUTUBE] Failed to parse URL:', e);
-        throw new Error('Could not parse YouTube video ID from URL');
-      }
-      
-      if (!videoId) {
-        console.error('❌ [YOUTUBE] No video ID extracted from URL:', url);
-        throw new Error('Could not extract video ID from YouTube URL');
-      }
-      
-      console.log('✅ [YOUTUBE] Video ID extracted:', videoId);
-      
-      const youtubeApiKey = process.env.YOUTUBE_API_KEY;
-      if (!youtubeApiKey) {
-        console.error('❌ [YOUTUBE] YOUTUBE_API_KEY not configured in environment variables');
-        throw new Error('YOUTUBE_API_KEY not configured');
-      }
-      
-      console.log('✅ [YOUTUBE] API key found, calling YouTube API...');
-      const ytUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${encodeURIComponent(videoId)}&key=${youtubeApiKey}`;
-      const ytResponse = await fetch(ytUrl);
-      
-      if (!ytResponse.ok) {
-        const errorText = await ytResponse.text();
-        console.error('❌ [YOUTUBE] API error:', ytResponse.status, errorText);
-        throw new Error(`YouTube API error: ${ytResponse.status} - ${errorText}`);
-      }
-      
-      const ytData = await ytResponse.json();
-      console.log('📦 [YOUTUBE] API response:', {
-        itemsCount: ytData.items?.length || 0,
-        pageInfo: ytData.pageInfo
-      });
-      
-      if (!ytData.items || ytData.items.length === 0) {
-        console.error('❌ [YOUTUBE] No items in API response. Video might be private, deleted, or ID is wrong.');
-        throw new Error('Video not found on YouTube');
-      }
-      
-      const rawVideoData = ytData.items[0];
-      console.log('✅ [YOUTUBE] API returned video:', {
-        title: rawVideoData.snippet?.title,
-        channelTitle: rawVideoData.snippet?.channelTitle,
-        views: rawVideoData.statistics?.viewCount,
-        likes: rawVideoData.statistics?.likeCount
-      });
-      
-      const transformedData = transformVideoData(rawVideoData, platform);
-      console.log('🔄 [YOUTUBE] Transformed data:', {
-        id: transformedData.id,
-        username: transformedData.username,
-        view_count: transformedData.view_count,
-        like_count: transformedData.like_count
-      });
-      
-      return transformedData;
+      };
+      console.log('🎥 [YOUTUBE] Input:', JSON.stringify(input, null, 2));
     } else if (platform === 'twitter') {
       // Use startUrls to fetch specific tweets directly
       console.log('🐦 [TWITTER/X] Using apidojo~tweet-scraper with startUrls for tweet:', url);

@@ -113,7 +113,7 @@ export const SUBSCRIPTION_PLANS: Record<PlanTier, SubscriptionPlan> = {
     features: {
       teamSeats: 1,
       flexibleSeats: false,
-      maxAccounts: 1,
+      maxAccounts: -1, // ✅ UNLIMITED ACCOUNTS
       maxVideos: 5,
       dataRefreshHours: 48,
       refreshOnDemand: false,
@@ -139,7 +139,7 @@ export const SUBSCRIPTION_PLANS: Record<PlanTier, SubscriptionPlan> = {
     features: {
       teamSeats: 1,
       flexibleSeats: false,
-      maxAccounts: 3,
+      maxAccounts: -1, // ✅ UNLIMITED ACCOUNTS
       maxVideos: 150,
       dataRefreshHours: 24,
       refreshOnDemand: false,
