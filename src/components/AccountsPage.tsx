@@ -922,8 +922,9 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
 
           // Calculate posting frequency based on date filter
           let postingFrequency = 'N/A';
-          if (dateFiltered.length > 0 && dateFilter.startDate && dateFilter.endDate) {
-            const daysDiff = Math.ceil((dateFilter.endDate.getTime() - dateFilter.startDate.getTime()) / (1000 * 60 * 60 * 24));
+          if (dateFiltered.length > 0 && dateFilter !== 'all') {
+            const dateRange = DateFilterService.getDateRange(dateFilter);
+            const daysDiff = Math.ceil((dateRange.endDate.getTime() - dateRange.startDate.getTime()) / (1000 * 60 * 60 * 24));
             const postCount = dateFiltered.length;
             
             if (daysDiff > 0) {
@@ -1508,27 +1509,25 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">
-                    {dateFilter.value === 'all' 
+                    {dateFilter === 'all' 
                       ? 'Account stats - All Time' 
-                      : dateFilter.value === 'custom'
-                      ? `Account stats - ${new Date(dateFilter.startDate!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${new Date(dateFilter.endDate!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-                      : dateFilter.value === 'today'
+                      : dateFilter === 'today'
                       ? 'Account stats - Today'
-                      : dateFilter.value === 'yesterday'
+                      : dateFilter === 'yesterday'
                       ? 'Account stats - Yesterday'
-                      : dateFilter.value === 'last7days'
+                      : dateFilter === 'last7days'
                       ? 'Account stats - Last 7 days'
-                      : dateFilter.value === 'last14days'
+                      : dateFilter === 'last14days'
                       ? 'Account stats - Last 14 days'
-                      : dateFilter.value === 'last30days'
+                      : dateFilter === 'last30days'
                       ? 'Account stats - Last 30 days'
-                      : dateFilter.value === 'last90days'
+                      : dateFilter === 'last90days'
                       ? 'Account stats - Last 90 days'
-                      : dateFilter.value === 'mtd'
+                      : dateFilter === 'mtd'
                       ? 'Account stats - Month to Date'
-                      : dateFilter.value === 'lastmonth'
+                      : dateFilter === 'lastmonth'
                       ? 'Account stats - Last Month'
-                      : dateFilter.value === 'ytd'
+                      : dateFilter === 'ytd'
                       ? 'Account stats - Year to Date'
                       : 'Account stats'
                     }
