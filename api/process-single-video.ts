@@ -958,22 +958,15 @@ async function fetchVideoData(url: string, platform: string): Promise<VideoData 
     console.log(`🔄 [${platform.toUpperCase()}] Calling Apify actor: ${actorId}`);
     console.log(`📝 [${platform.toUpperCase()}] Input:`, JSON.stringify(input, null, 2));
     
-    const response = await fetch(
-      `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${apifyToken}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(input)
-      }
-    );
+    // ✅ Use runApifyActor helper (same as sync-single-account.ts)
+    // This automatically converts apidojo/tiktok-scraper → apidojo~tiktok-scraper
+    const result = await runApifyActor({
+      actorId: actorId,
+      input: input,
+      token: apifyToken
+    });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ [${platform.toUpperCase()}] Apify API error:`, response.status, errorText);
-      throw new Error(`Apify API error: ${response.status} - ${errorText}`);
-    }
-
-    const items = await response.json();
+    const items = result.items;
     console.log(`📦 [${platform.toUpperCase()}] Apify returned ${items?.length || 0} items`);
     
     if (!items || items.length === 0) {
