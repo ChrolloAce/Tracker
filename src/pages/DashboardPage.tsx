@@ -1534,7 +1534,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           likes: 0,
           comments: 0,
           shares: 0,
-          status: 'active',
+          status: 'processing', // ✅ Set to 'processing' so sidebar shows loading indicator
           isSingular: false,
           // Background processing fields
           syncStatus: 'pending',

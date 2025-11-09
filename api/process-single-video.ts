@@ -367,6 +367,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       shares: videoData.share_count || 0,
       saves: videoData.save_count || 0, // ✅ ADD BOOKMARKS
       trackedAccountId: accountId,
+      status: 'active', // ✅ Change from 'processing' to 'active' to hide loading indicator
       syncStatus: 'completed',
       syncError: null,
       lastSyncedAt: Timestamp.now(),
@@ -515,6 +516,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const video = videoDoc.data();
 
       await videoRef.update({
+        status: 'active', // ✅ Change from 'processing' to 'active' to hide loading indicator
         syncStatus: 'error',
         hasError: true,
         syncError: error instanceof Error ? error.message : String(error),
