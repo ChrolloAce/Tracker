@@ -729,20 +729,20 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                             </>
                           ) : (
                             <>
-                              <div className="flex items-center gap-1 sm:gap-2">
-                                <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate" title={submission.title || submission.caption || ''}>
-                                  {(() => {
-                                    const fullTitle = submission.title || submission.caption || '(No caption)';
-                                    return fullTitle.length > 20 ? fullTitle.substring(0, 20) + '...' : fullTitle;
-                                  })()}
-                                </p>
+                          <div className="flex items-center gap-1 sm:gap-2">
+                            <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate" title={submission.title || submission.caption || ''}>
+                              {(() => {
+                                const fullTitle = submission.title || submission.caption || '(No caption)';
+                                return fullTitle.length > 20 ? fullTitle.substring(0, 20) + '...' : fullTitle;
+                              })()}
+                            </p>
                                 {isSyncing && (
-                                  <Loader className="animate-spin h-3 w-3 text-blue-400 flex-shrink-0" />
-                                )}
-                              </div>
-                              <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1 truncate">
-                                @{submission.uploaderHandle || submission.uploader || 'unknown'}
-                              </p>
+                              <Loader className="animate-spin h-3 w-3 text-blue-400 flex-shrink-0" />
+                            )}
+                          </div>
+                          <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1 truncate">
+                            @{submission.uploaderHandle || submission.uploader || 'unknown'}
+                          </p>
                             </>
                           )}
                         </div>
@@ -754,38 +754,38 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       {isLoading ? (
                         <div className="w-16 h-16 rounded-lg bg-white/10 animate-pulse"></div>
                       ) : (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            
-                            console.log('Opening video player:', {
-                              videoId: submission.id,
-                              url: submission.url,
-                              platform: submission.platform,
-                              hasUrl: !!submission.url
-                            });
-                            
-                            // Validate URL before opening player
-                            if (!submission.url || submission.url.trim() === '') {
-                              console.error('❌ Video URL is empty, cannot open player');
-                              alert('This video has no URL. Please try refreshing the page.');
-                              return;
-                            }
-                            
-                            setSelectedVideoForPlayer(submission);
-                            setVideoPlayerOpen(true);
-                          }}
-                          className="block hover:opacity-80 transition-opacity group cursor-pointer"
-                        >
-                          <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-sm hover:shadow-md transition-all relative">
-                            <ThumbnailImage submission={submission} />
-                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                              <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                              </svg>
-                            </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          
+                          console.log('Opening video player:', {
+                            videoId: submission.id,
+                            url: submission.url,
+                            platform: submission.platform,
+                            hasUrl: !!submission.url
+                          });
+                          
+                          // Validate URL before opening player
+                          if (!submission.url || submission.url.trim() === '') {
+                            console.error('❌ Video URL is empty, cannot open player');
+                            alert('This video has no URL. Please try refreshing the page.');
+                            return;
+                          }
+                          
+                          setSelectedVideoForPlayer(submission);
+                          setVideoPlayerOpen(true);
+                        }}
+                        className="block hover:opacity-80 transition-opacity group cursor-pointer"
+                      >
+                        <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 shadow-sm hover:shadow-md transition-all relative">
+                          <ThumbnailImage submission={submission} />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                            <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                            </svg>
                           </div>
-                        </button>
+                        </div>
+                      </button>
                       )}
                     </td>
                   )}
@@ -802,12 +802,12 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       {isLoading ? (
                         <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse"></div>
                       ) : (
-                        <div className="flex items-center space-x-2">
-                          <Eye className="w-4 h-4 text-gray-900 dark:text-white" />
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">
-                            {formatNumber(submission.views)}
-                          </span>
-                        </div>
+                      <div className="flex items-center space-x-2">
+                        <Eye className="w-4 h-4 text-gray-900 dark:text-white" />
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {formatNumber(submission.views)}
+                        </span>
+                      </div>
                       )}
                     </td>
                   )}
@@ -816,12 +816,12 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       {isLoading ? (
                         <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
                       ) : (
-                        <div className="flex items-center space-x-2">
-                          <Heart className="w-4 h-4 text-gray-900 dark:text-white" />
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">
-                            {formatNumber(submission.likes)}
-                          </span>
-                        </div>
+                      <div className="flex items-center space-x-2">
+                        <Heart className="w-4 h-4 text-gray-900 dark:text-white" />
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {formatNumber(submission.likes)}
+                        </span>
+                      </div>
                       )}
                     </td>
                   )}
@@ -830,12 +830,12 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       {isLoading ? (
                         <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
                       ) : (
-                        <div className="flex items-center space-x-2">
-                          <MessageCircle className="w-4 h-4 text-gray-900 dark:text-white" />
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">
-                            {formatNumber(submission.comments)}
-                          </span>
-                        </div>
+                      <div className="flex items-center space-x-2">
+                        <MessageCircle className="w-4 h-4 text-gray-900 dark:text-white" />
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {formatNumber(submission.comments)}
+                        </span>
+                      </div>
                       )}
                     </td>
                   )}
@@ -844,19 +844,19 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       {isLoading ? (
                         <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
                       ) : (
-                        <div className="flex items-center space-x-2">
-                          <Share2 className="w-4 h-4 text-gray-900 dark:text-white" />
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">
-                            {(() => {
-                              // TikTok and YouTube have shares available
-                              if (submission.platform === 'tiktok' || submission.platform === 'youtube') {
-                                return formatNumber(submission.shares || 0);
-                              }
-                              // Instagram and Twitter don't have shares
-                              return 'N/A';
-                            })()}
-                          </span>
-                        </div>
+                      <div className="flex items-center space-x-2">
+                        <Share2 className="w-4 h-4 text-gray-900 dark:text-white" />
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {(() => {
+                            // TikTok and YouTube have shares available
+                            if (submission.platform === 'tiktok' || submission.platform === 'youtube') {
+                              return formatNumber(submission.shares || 0);
+                            }
+                            // Instagram and Twitter don't have shares
+                            return 'N/A';
+                          })()}
+                        </span>
+                      </div>
                       )}
                     </td>
                   )}
@@ -865,11 +865,11 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       {isLoading ? (
                         <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
                       ) : (
-                        <div className="flex items-center space-x-2">
-                          <Bookmark className="w-4 h-4 text-gray-900 dark:text-white" />
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">
-                            {(() => {
-                              // Twitter and TikTok have bookmarks/saves
+                      <div className="flex items-center space-x-2">
+                        <Bookmark className="w-4 h-4 text-gray-900 dark:text-white" />
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {(() => {
+                            // Twitter and TikTok have bookmarks/saves
                             if (submission.platform === 'twitter' || submission.platform === 'tiktok') {
                               const saves = (submission as any).saves || submission.bookmarks || 0;
                               return formatNumber(saves);
@@ -897,28 +897,28 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       {isLoading ? (
                         <div className="w-20 h-6 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
                       ) : (
-                        <div
-                          className={clsx(
-                            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all',
-                            {
-                              "bg-green-500/15 text-green-400 border-green-500/30": engagementRate >= 5,
-                              "bg-green-500/10 text-green-400 border-green-500/20": engagementRate >= 3 && engagementRate < 5,
-                              "bg-gray-500/10 text-gray-400 border-gray-500/20": engagementRate >= 1 && engagementRate < 3,
-                              "bg-red-500/10 text-red-400 border-red-500/20": engagementRate < 1,
-                            }
-                          )}
-                        >
-                          {engagementRate >= 5 ? (
-                            <TrendingUp className="w-3.5 h-3.5" />
-                          ) : engagementRate >= 3 ? (
-                            <TrendingUp className="w-3.5 h-3.5" />
-                          ) : engagementRate >= 1 ? (
-                            <Minus className="w-3.5 h-3.5" />
-                          ) : (
-                            <TrendingDown className="w-3.5 h-3.5" />
-                          )}
-                          <span>{engagementRate.toFixed(2)}%</span>
-                        </div>
+                      <div
+                        className={clsx(
+                          'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all',
+                          {
+                            "bg-green-500/15 text-green-400 border-green-500/30": engagementRate >= 5,
+                            "bg-green-500/10 text-green-400 border-green-500/20": engagementRate >= 3 && engagementRate < 5,
+                            "bg-gray-500/10 text-gray-400 border-gray-500/20": engagementRate >= 1 && engagementRate < 3,
+                            "bg-red-500/10 text-red-400 border-red-500/20": engagementRate < 1,
+                          }
+                        )}
+                      >
+                        {engagementRate >= 5 ? (
+                          <TrendingUp className="w-3.5 h-3.5" />
+                        ) : engagementRate >= 3 ? (
+                          <TrendingUp className="w-3.5 h-3.5" />
+                        ) : engagementRate >= 1 ? (
+                          <Minus className="w-3.5 h-3.5" />
+                        ) : (
+                          <TrendingDown className="w-3.5 h-3.5" />
+                        )}
+                        <span>{engagementRate.toFixed(2)}%</span>
+                      </div>
                       )}
                     </td>
                   )}
@@ -959,20 +959,20 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       {isLoading ? (
                         <div className="w-24 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.6s' }}></div>
                       ) : (
-                        <div className="text-sm text-zinc-300">
-                          {submission.uploadDate ? 
-                            new Date(submission.uploadDate).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            }) : 
-                            new Date(submission.dateSubmitted).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            })
-                          }
-                        </div>
+                      <div className="text-sm text-zinc-300">
+                        {submission.uploadDate ? 
+                          new Date(submission.uploadDate).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          }) : 
+                          new Date(submission.dateSubmitted).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })
+                        }
+                      </div>
                       )}
                     </td>
                   )}
@@ -981,13 +981,13 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       {isLoading ? (
                         <div className="w-24 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.7s' }}></div>
                       ) : (
-                        <div className="text-sm text-zinc-300">
-                          {new Date(submission.dateSubmitted).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </div>
+                      <div className="text-sm text-zinc-300">
+                        {new Date(submission.dateSubmitted).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </div>
                       )}
                     </td>
                   )}
@@ -996,9 +996,9 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       {isLoading ? (
                         <div className="w-20 h-4 bg-white/10 rounded-full animate-pulse" style={{ animationDelay: '0.8s' }}></div>
                       ) : (
-                        <div className="text-sm text-zinc-400">
-                          {submission.lastRefreshed ? getRelativeTime(new Date(submission.lastRefreshed)) : 'Never'}
-                        </div>
+                      <div className="text-sm text-zinc-400">
+                        {submission.lastRefreshed ? getRelativeTime(new Date(submission.lastRefreshed)) : 'Never'}
+                      </div>
                       )}
                     </td>
                   )}

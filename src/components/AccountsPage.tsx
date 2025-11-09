@@ -1359,7 +1359,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     const accountId = accountToDelete.id;
     const accountUsername = accountToDelete.username;
     const videoCount = accountToDelete.totalVideos || 0;
-    
+
     console.log(`🗑️ [UI] Starting INSTANT deletion for: @${accountUsername} (${videoCount} videos)`);
 
     // ✅ STEP 1: IMMEDIATELY remove from UI (optimistic update)
@@ -1373,11 +1373,11 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
     
     // Clear selected account if it was this one
     if (selectedAccount?.id === accountId) {
-      navigate('/accounts');
-      setAccountVideos([]);
-      setAccountVideosSnapshots(new Map());
-    }
-    
+        navigate('/accounts');
+        setAccountVideos([]);
+        setAccountVideosSnapshots(new Map());
+      }
+      
     console.log(`✅ [UI] Account removed from UI instantly`);
 
     // ✅ STEP 2: Process deletion in background (don't await)
@@ -1386,14 +1386,14 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         console.log(`🔄 [BACKGROUND] Processing deletion for @${accountUsername}...`);
         await AccountTrackingServiceFirebase.removeAccount(currentOrgId, currentProjectId, accountId);
         console.log(`✅ [BACKGROUND] Account @${accountUsername} fully deleted from database`);
-      } catch (error) {
+    } catch (error) {
         console.error('❌ [BACKGROUND] Failed to complete account deletion:', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         
         // Show error notification but DON'T restore the account to UI
         // (it's likely partially deleted and would cause issues)
         alert(`Account was removed from view but background cleanup encountered an error:\n${errorMessage}\n\nThe account will not reappear. Check console for details.`);
-      }
+    }
     })();
     
     console.log(`✅ [UI] Deletion initiated, UI updated instantly`);
