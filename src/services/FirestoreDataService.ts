@@ -586,67 +586,81 @@ class FirestoreDataService {
       
       console.log(`🗑️ [DELETE] Step 1: Deleting snapshots and thumbnails for ${videoCount} videos...`);
       
-      for (let idx = 0; idx < snapshot.docs.length; idx++) {
-        const videoDoc = snapshot.docs[idx];
-        const videoId = videoDoc.id;
-        const videoData = videoDoc.data();
+      // Process videos in smaller groups with delays to avoid overwhelming Firestore
+      const VIDEO_GROUP_SIZE = 10;
+      const DELAY_BETWEEN_GROUPS = 500; // ms
+      
+      for (let groupStart = 0; groupStart < snapshot.docs.length; groupStart += VIDEO_GROUP_SIZE) {
+        const groupEnd = Math.min(groupStart + VIDEO_GROUP_SIZE, snapshot.docs.length);
+        const videoGroup = snapshot.docs.slice(groupStart, groupEnd);
         
-        console.log(`  🗑️ [DELETE] Processing video ${idx + 1}/${videoCount}: ${videoId}`);
+        console.log(`  📦 [DELETE] Processing video group ${Math.floor(groupStart / VIDEO_GROUP_SIZE) + 1}/${Math.ceil(snapshot.docs.length / VIDEO_GROUP_SIZE)} (${videoGroup.length} videos)`);
         
-        // Delete snapshots for this video (in batches of 500)
-        try {
-          const snapshotsRef = collection(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId, 'snapshots');
-          const snapshotsSnapshot = await getDocs(snapshotsRef);
+        // Process videos in this group concurrently
+        await Promise.all(videoGroup.map(async (videoDoc, idx) => {
+          const videoId = videoDoc.id;
+          const videoData = videoDoc.data();
+          const globalIdx = groupStart + idx;
           
-          console.log(`    📸 [DELETE] Found ${snapshotsSnapshot.docs.length} snapshots for video ${videoId}`);
+          console.log(`    🗑️ [DELETE] Video ${globalIdx + 1}/${videoCount}: ${videoId}`);
           
-          if (snapshotsSnapshot.docs.length > 0) {
-            const BATCH_SIZE = 500;
-            for (let i = 0; i < snapshotsSnapshot.docs.length; i += BATCH_SIZE) {
-              const snapshotBatch = writeBatch(db);
-              const batchDocs = snapshotsSnapshot.docs.slice(i, i + BATCH_SIZE);
-              
-              batchDocs.forEach(snapshotDoc => {
-                snapshotBatch.delete(snapshotDoc.ref);
-              });
-              
-              await snapshotBatch.commit();
-              snapshotsDeleted += batchDocs.length;
-              console.log(`    ✅ [DELETE] Deleted snapshot batch ${Math.floor(i / BATCH_SIZE) + 1}`);
+          // Delete snapshots for this video (in batches of 500)
+          try {
+            const snapshotsRef = collection(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId, 'snapshots');
+            const snapshotsSnapshot = await getDocs(snapshotsRef);
+            
+            if (snapshotsSnapshot.docs.length > 0) {
+              console.log(`      📸 [DELETE] Found ${snapshotsSnapshot.docs.length} snapshots`);
+              const BATCH_SIZE = 500;
+              for (let i = 0; i < snapshotsSnapshot.docs.length; i += BATCH_SIZE) {
+                const snapshotBatch = writeBatch(db);
+                const batchDocs = snapshotsSnapshot.docs.slice(i, i + BATCH_SIZE);
+                
+                batchDocs.forEach(snapshotDoc => {
+                  snapshotBatch.delete(snapshotDoc.ref);
+                });
+                
+                await snapshotBatch.commit();
+                snapshotsDeleted += batchDocs.length;
+              }
+            }
+          } catch (snapshotError) {
+            snapshotErrors++;
+            console.error(`      ❌ [DELETE] Failed to delete snapshots for video ${videoId}:`, snapshotError);
+          }
+          
+          // Delete thumbnail for this video (silently handles 404s)
+          try {
+            const platform = videoData.platform || 'unknown';
+            const videoIdFromData = videoData.videoId || videoId;
+            await FirebaseStorageService.deleteVideoThumbnail(orgId, videoId, platform, videoIdFromData);
+            thumbnailsDeleted++;
+          } catch (thumbnailError: any) {
+            thumbnailErrors++;
+            // Silently handle 404s - they're expected if thumbnail doesn't exist
+            if (!thumbnailError.message?.includes('404') && 
+                !thumbnailError.message?.includes('not found') &&
+                !thumbnailError.code?.includes('not-found')) {
+              console.error(`      ⚠️ [DELETE] Unexpected thumbnail error for ${videoId}:`, thumbnailError.message);
             }
           }
-        } catch (snapshotError) {
-          snapshotErrors++;
-          console.error(`    ❌ [DELETE] Failed to delete snapshots for video ${videoId}:`, snapshotError);
-        }
+        }));
         
-        // Delete thumbnail for this video
-        try {
-          const platform = videoData.platform || 'unknown';
-          const videoIdFromData = videoData.videoId || videoId;
-          console.log(`    🖼️ [DELETE] Attempting to delete thumbnail: ${platform}_${videoIdFromData}_thumb.jpg`);
-          await FirebaseStorageService.deleteVideoThumbnail(orgId, videoId, platform, videoIdFromData);
-          thumbnailsDeleted++;
-          console.log(`    ✅ [DELETE] Deleted thumbnail for video ${videoId}`);
-        } catch (thumbnailError: any) {
-          thumbnailErrors++;
-          // Don't log 404 errors as they're expected if thumbnail doesn't exist
-          if (!thumbnailError.message?.includes('404') && !thumbnailError.message?.includes('not found')) {
-            console.error(`    ⚠️ [DELETE] Failed to delete thumbnail for video ${videoId}:`, thumbnailError.message);
-          } else {
-            console.log(`    ℹ️ [DELETE] No thumbnail found for video ${videoId} (expected if never uploaded)`);
-          }
+        // Add delay between groups to avoid overwhelming Firestore
+        if (groupEnd < snapshot.docs.length) {
+          await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_GROUPS));
         }
       }
       
       console.log(`✅ [DELETE] Step 1 complete: ${snapshotsDeleted} snapshots deleted, ${thumbnailsDeleted} thumbnails deleted`);
       if (snapshotErrors > 0) console.warn(`⚠️ [DELETE] ${snapshotErrors} snapshot deletion errors`);
-      if (thumbnailErrors > 0) console.warn(`⚠️ [DELETE] ${thumbnailErrors} thumbnail deletion errors (may be expected)`);
+      if (thumbnailErrors > 0) console.log(`ℹ️ [DELETE] ${thumbnailErrors} videos had no thumbnails (expected)`);
       
-      // STEP 2: Delete video documents in batches
+      // STEP 2: Delete video documents in batches with delays
       console.log(`🗑️ [DELETE] Step 2: Deleting ${videoCount} video documents...`);
       const batchSize = 500;
       let batchesCommitted = 0;
+      const DELAY_BETWEEN_BATCHES = 300; // ms
       
       for (let i = 0; i < snapshot.docs.length; i += batchSize) {
         const batch = writeBatch(db);
@@ -666,9 +680,28 @@ class FirestoreDataService {
           console.log(`  📊 [DELETE] Updating project video count (-${videoCount})`);
         }
         
-        await batch.commit();
-        batchesCommitted++;
-        console.log(`  ✅ [DELETE] Committed batch ${batchesCommitted} (${batchDocs.length} videos)`);
+        try {
+          await batch.commit();
+          batchesCommitted++;
+          console.log(`  ✅ [DELETE] Committed batch ${batchesCommitted} (${batchDocs.length} videos)`);
+          
+          // Add delay between batches if not the last one
+          if (i + batchSize < snapshot.docs.length) {
+            await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
+          }
+        } catch (batchError) {
+          console.error(`  ❌ [DELETE] Batch ${batchesCommitted + 1} failed, retrying once...`, batchError);
+          // Retry once after a longer delay
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          try {
+            await batch.commit();
+            batchesCommitted++;
+            console.log(`  ✅ [DELETE] Retry successful for batch ${batchesCommitted}`);
+          } catch (retryError) {
+            console.error(`  ❌ [DELETE] Batch ${batchesCommitted + 1} failed after retry:`, retryError);
+            throw retryError;
+          }
+        }
       }
       
       // Decrement organization usage counter
