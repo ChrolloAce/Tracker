@@ -201,10 +201,10 @@ const Sidebar: React.FC<SidebarProps> = ({
       });
     }
 
-    // For creators, hide Team Members
+    // For creators, hide Team Members and Revenue
     if (userRole === 'creator') {
       sections.forEach(section => {
-        section.items = section.items.filter(item => item.id !== 'team');
+        section.items = section.items.filter(item => item.id !== 'team' && item.id !== 'revenue');
       });
     }
 
