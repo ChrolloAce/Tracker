@@ -1780,7 +1780,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                         }
                       }}
                     />
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-zinc-900/60 backdrop-blur z-20">
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-zinc-900/60 backdrop-blur z-10">
                       Actions
                     </th>
                   </tr>
@@ -2160,20 +2160,20 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                             {openDropdownId === account.id && (
                               <>
                                 <div 
-                                  className="fixed inset-0 z-40" 
+                                  className="fixed inset-0 z-[9995]" 
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setOpenDropdownId(null);
                                   }}
                                 />
-                                <div className="absolute right-0 top-8 mt-1 w-48 bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-xl z-50 py-1">
+                                <div className="absolute right-0 top-8 mt-1 w-48 bg-black border border-white/20 rounded-lg shadow-2xl z-[9996] py-1" style={{ boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)' }}>
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setOpenDropdownId(null);
                                       handleRemoveAccount(account.id);
                                     }}
-                                    className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2"
+                                    className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-900/20 transition-colors flex items-center gap-2"
                                   >
                                     <Trash2 className="w-4 h-4" />
                                     Remove Account
@@ -2502,7 +2502,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                         <span>Columns</span>
                       </button>
                       
-                      {showColumnToggle && (
+                      {showColumnToggle && createPortal(
                         <>
                           {/* Backdrop */}
                           <div 
@@ -2510,7 +2510,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                             onClick={() => setShowColumnToggle(false)}
                           />
                           {/* Dropdown */}
-                          <div className="fixed right-4 mt-12 w-64 bg-black border border-white/20 rounded-lg shadow-2xl p-4 z-[9999]" style={{ boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)' }}>
+                          <div className="fixed right-4 top-20 w-64 bg-black border border-white/20 rounded-lg shadow-2xl p-4 z-[9999]" style={{ boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)' }}>
                             <h3 className="text-sm font-semibold text-white mb-3">Toggle Columns</h3>
                             <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                               {Object.entries({
@@ -2537,7 +2537,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                               ))}
                             </div>
                           </div>
-                        </>
+                        </>,
+                        document.body
                       )}
                     </div>
                   </div>

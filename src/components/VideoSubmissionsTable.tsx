@@ -52,12 +52,12 @@ const DropdownMenu: React.FC<{
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-40"
+            className="fixed inset-0 z-[9995]"
             onClick={() => setIsOpen(false)}
           />
           
           {/* Dropdown */}
-          <div className="absolute right-0 top-8 z-50 w-48 bg-white dark:bg-[#1A1A1A] rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 py-1">
+          <div className="absolute right-0 top-8 z-[9996] w-48 bg-black border border-white/20 rounded-lg shadow-2xl py-1" style={{ boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)' }}>
             {/* Actions */}
             <button
               onClick={(e) => {
@@ -65,7 +65,7 @@ const DropdownMenu: React.FC<{
                 window.open(submission.url, '_blank');
                 setIsOpen(false);
               }}
-              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center space-x-2"
+              className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-white/10 flex items-center space-x-2 transition-colors"
             >
               <Edit3 className="w-4 h-4" />
               <span>Edit</span>
@@ -76,7 +76,7 @@ const DropdownMenu: React.FC<{
                 e.stopPropagation();
                 handleDelete();
               }}
-              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center space-x-2"
+              className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 flex items-center space-x-2 transition-colors"
             >
               <Trash2 className="w-4 h-4" />
               <span>Delete</span>
@@ -497,7 +497,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                 <span className="hidden sm:inline">Columns</span>
               </button>
               
-              {showColumnToggle && (
+              {showColumnToggle && createPortal(
                 <>
                   {/* Backdrop */}
                   <div 
@@ -505,7 +505,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                     onClick={() => setShowColumnToggle(false)}
                   />
                   {/* Dropdown */}
-                  <div className="fixed right-4 mt-12 w-64 bg-black border border-white/20 rounded-lg shadow-2xl p-4 z-[9999]" style={{ boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)' }}>
+                  <div className="fixed right-4 top-20 w-64 bg-black border border-white/20 rounded-lg shadow-2xl p-4 z-[9999]" style={{ boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)' }}>
                     <h3 className="text-sm font-semibold text-white mb-3">Toggle Columns</h3>
                     <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                       {Object.entries({
@@ -536,7 +536,8 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       ))}
                     </div>
                   </div>
-                </>
+                </>,
+                document.body
               )}
             </div>
           </div>
@@ -668,7 +669,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   Last Refresh
                 </ColumnHeader>
               )}
-              <th className="w-8 sm:w-12 px-2 sm:px-4 md:px-6 py-3 sm:py-4 text-left sticky right-0 z-20" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}></th>
+              <th className="w-8 sm:w-12 px-2 sm:px-4 md:px-6 py-3 sm:py-4 text-left sticky right-0 z-10" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -1010,7 +1011,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                       )}
                     </td>
                   )}
-                  <td className="px-6 py-5 sticky right-0 z-20 group-hover:bg-white/5" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}>
+                  <td className="px-6 py-5 sticky right-0 z-10 group-hover:bg-white/5" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}>
                     <div className="relative">
                       <DropdownMenu submission={submission} onDelete={onDelete} />
                     </div>
