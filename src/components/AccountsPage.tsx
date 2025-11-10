@@ -1582,8 +1582,33 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                   </h2>
                 </div>
                 <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
-                  <div className="text-xs sm:text-sm text-gray-400">
-                    {processedAccounts.length} {processedAccounts.length === 1 ? 'account' : 'accounts'}
+                  {/* Column Visibility Toggle */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowColumnToggle(!showColumnToggle)}
+                      className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 text-sm text-gray-400 hover:text-white border border-white/10 rounded-lg hover:border-white/20 transition-colors"
+                    >
+                      <Filter className="w-4 h-4" />
+                      <span className="hidden sm:inline">Columns</span>
+                    </button>
+                    
+                    {showColumnToggle && createPortal(
+                      <>
+                        {/* Backdrop */}
+                        <div 
+                          className="fixed inset-0 z-[9998]" 
+                          onClick={() => setShowColumnToggle(false)}
+                        />
+                        {/* Dropdown */}
+                        <div className="fixed right-4 top-20 w-64 bg-black border border-white/20 rounded-lg shadow-2xl p-4 z-[9999]" style={{ boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)' }}>
+                          <h3 className="text-sm font-semibold text-white mb-3">Toggle Columns</h3>
+                          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                            <p className="text-xs text-white/50 mb-2">Column visibility is currently fixed for accounts. More customization coming soon!</p>
+                          </div>
+                        </div>
+                      </>,
+                      document.body
+                    )}
                   </div>
                 </div>
               </div>
