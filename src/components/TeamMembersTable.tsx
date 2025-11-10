@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Shield, Clock, MoreVertical } from 'lucide-react';
+import { User, Mail, Shield, Clock, MoreVertical, Trash2, Edit3 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import OrganizationService from '../services/OrganizationService';
 import { OrgMember } from '../types/firestore';
@@ -11,6 +11,8 @@ const TeamMembersTable: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [currentUserRole, setCurrentUserRole] = useState<string>('');
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [showRoleModal, setShowRoleModal] = useState<OrgMember | null>(null);
 
   useEffect(() => {
     loadMembers();
@@ -32,6 +34,39 @@ const TeamMembersTable: React.FC = () => {
       console.error('Failed to load team members:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRemoveMember = async (member: OrgMember) => {
+    if (!currentOrgId) return;
+    
+    const confirmMessage = `Are you sure you want to remove ${member.displayName || member.email} from the team?\n\nThis action cannot be undone.`;
+    if (!window.confirm(confirmMessage)) return;
+    
+    try {
+      await OrganizationService.removeMember(currentOrgId, member.userId);
+      setMembers(prev => prev.filter(m => m.userId !== member.userId));
+      setOpenDropdownId(null);
+      alert(`${member.displayName || member.email} has been removed from the team.`);
+    } catch (error: any) {
+      console.error('Failed to remove member:', error);
+      alert(`Failed to remove member: ${error.message}`);
+    }
+  };
+
+  const handleUpdateRole = async (member: OrgMember, newRole: string) => {
+    if (!currentOrgId) return;
+    
+    try {
+      await OrganizationService.updateMemberRole(currentOrgId, member.userId, newRole);
+      setMembers(prev => prev.map(m => 
+        m.userId === member.userId ? { ...m, role: newRole } : m
+      ));
+      setShowRoleModal(null);
+      alert(`Role updated successfully.`);
+    } catch (error: any) {
+      console.error('Failed to update role:', error);
+      alert(`Failed to update role: ${error.message}`);
     }
   };
 
@@ -172,12 +207,56 @@ const TeamMembersTable: React.FC = () => {
                 {/* Actions */}
                 <td className="px-6 py-4 text-right">
                   {member.userId !== user?.uid && (currentUserRole === 'owner' || currentUserRole === 'admin') && (
-                    <button
-                      className="p-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-                      title="More actions"
-                    >
-                      <MoreVertical className="w-4 h-4" />
-                    </button>
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenDropdownId(openDropdownId === member.userId ? null : member.userId);
+                        }}
+                        className="p-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                        title="More actions"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                      
+                      {/* Dropdown Menu */}
+                      {openDropdownId === member.userId && (
+                        <>
+                          {/* Backdrop */}
+                          <div 
+                            className="fixed inset-0 z-[9995]" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenDropdownId(null);
+                            }}
+                          />
+                          {/* Dropdown */}
+                          <div className="absolute right-0 top-8 mt-1 w-56 bg-black border border-white/20 rounded-lg shadow-2xl z-[9996] py-1" style={{ boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)' }}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenDropdownId(null);
+                                setShowRoleModal(member);
+                              }}
+                              className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-white/10 transition-colors flex items-center gap-2"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                              Change Role
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveMember(member);
+                              }}
+                              className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-900/20 transition-colors flex items-center gap-2"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Remove from Team
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   )}
                 </td>
               </tr>
@@ -195,6 +274,66 @@ const TeamMembersTable: React.FC = () => {
           <span className="text-sm text-white/60">Page 1 of 1</span>
         </div>
       </div>
+
+      {/* Role Change Modal */}
+      {showRoleModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-zinc-900 border border-white/20 rounded-xl shadow-2xl w-full max-w-md">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-white/10">
+              <h2 className="text-lg font-semibold text-white">Change Role</h2>
+              <p className="text-sm text-white/60 mt-1">
+                Update role for {showRoleModal.displayName || showRoleModal.email}
+              </p>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-4 space-y-3">
+              {['admin', 'member', 'creator'].map((role) => (
+                <button
+                  key={role}
+                  onClick={() => handleUpdateRole(showRoleModal, role)}
+                  disabled={showRoleModal.role === role}
+                  className={`w-full px-4 py-3 text-left rounded-lg border transition-all ${
+                    showRoleModal.role === role
+                      ? 'border-white/20 bg-white/10 cursor-not-allowed'
+                      : 'border-white/10 hover:border-white/30 hover:bg-white/5 cursor-pointer'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-white/60" />
+                        <span className="text-sm font-medium text-white">
+                          {role.charAt(0).toUpperCase() + role.slice(1)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-white/50 mt-1">
+                        {role === 'admin' && 'Full access to manage team and settings'}
+                        {role === 'member' && 'Can view and edit projects'}
+                        {role === 'creator' && 'Limited access for content creators'}
+                      </p>
+                    </div>
+                    {showRoleModal.role === role && (
+                      <span className="text-xs text-white/40">(Current)</span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-white/10 flex justify-end">
+              <button
+                onClick={() => setShowRoleModal(null)}
+                className="px-4 py-2 text-sm text-white/70 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
