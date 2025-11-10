@@ -42,35 +42,35 @@ const metrics: MetricConfig[] = [
     label: 'Views',
     icon: Eye,
     color: '#22c55e', // Green for all
-    formatValue: (value) => value >= 1000 ? `${(value / 1000).toFixed(1)}K` : value.toString(),
+    formatValue: (value) => value >= 1000000 ? `${(value / 1000000).toFixed(1)}M` : value >= 1000 ? `${(value / 1000).toFixed(1)}K` : value.toString(),
   },
   {
     key: 'likes',
     label: 'Likes',
     icon: Heart,
     color: '#22c55e', // Green for all
-    formatValue: (value) => value >= 1000 ? `${(value / 1000).toFixed(1)}K` : value.toString(),
+    formatValue: (value) => value >= 1000000 ? `${(value / 1000000).toFixed(1)}M` : value >= 1000 ? `${(value / 1000).toFixed(1)}K` : value.toString(),
   },
   {
     key: 'comments',
     label: 'Comments',
     icon: MessageCircle,
     color: '#22c55e', // Green for all
-    formatValue: (value) => value >= 1000 ? `${(value / 1000).toFixed(1)}K` : value.toString(),
+    formatValue: (value) => value >= 1000000 ? `${(value / 1000000).toFixed(1)}M` : value >= 1000 ? `${(value / 1000).toFixed(1)}K` : value.toString(),
   },
   {
     key: 'shares',
     label: 'Shares',
     icon: Share2,
     color: '#22c55e', // Green for all
-    formatValue: (value) => value >= 1000 ? `${(value / 1000).toFixed(1)}K` : value.toString(),
+    formatValue: (value) => value >= 1000000 ? `${(value / 1000000).toFixed(1)}M` : value >= 1000 ? `${(value / 1000).toFixed(1)}K` : value.toString(),
   },
   {
     key: 'saves',
     label: 'Bookmarks',
     icon: Bookmark,
     color: '#22c55e', // Green for all
-    formatValue: (value) => value >= 1000 ? `${(value / 1000).toFixed(1)}K` : value.toString(),
+    formatValue: (value) => value >= 1000000 ? `${(value / 1000000).toFixed(1)}M` : value >= 1000 ? `${(value / 1000).toFixed(1)}K` : value.toString(),
   },
   {
     key: 'engagementRate',
