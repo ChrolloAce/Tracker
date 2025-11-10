@@ -26,8 +26,9 @@ export default defineConfig({
     },
     minify: 'esbuild',
   },
-  esbuild: {
-    drop: ['console', 'debugger'],
-    pure: ['console.log', 'console.info', 'console.debug'],
-  },
+  // TEMPORARILY ENABLED FOR DEBUGGING - Re-enable console stripping after launch
+  // esbuild: {
+  //   drop: ['console', 'debugger'],
+  //   pure: ['console.log', 'console.info', 'console.debug'],
+  // },
 })

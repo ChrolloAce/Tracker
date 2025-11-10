@@ -593,7 +593,7 @@ service cloud.firestore {
       allow read: if true; // Public read for invitation portal
       allow create: if isSignedIn(); // Created when invitations are sent
       allow update: if isSignedIn(); // Allow updates when invitation is accepted/declined
-      allow delete: if false; // Cannot delete lookups
+      allow delete: if isSignedIn(); // Allow admins to delete cancelled invitations
     }
     
     // ==================== COLLECTION GROUP QUERIES ====================
