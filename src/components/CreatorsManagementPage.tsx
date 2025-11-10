@@ -234,8 +234,16 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
           status: 'invited' as const
         }));
       
-      // Combine both lists
-      const allCreators = [...creatorMembers, ...pendingCreators];
+      // 3. Members with role='creator' but no creator profile (edge case: profile creation failed)
+      const creatorsWithoutProfile = membersData
+        .filter(m => m.role === 'creator' && !creatorProfilesList.some(p => p.id === m.userId))
+        .map(member => ({
+          ...member,
+          role: 'creator' as const
+        }));
+      
+      // Combine all three lists
+      const allCreators = [...creatorMembers, ...pendingCreators, ...creatorsWithoutProfile];
       setCreators(allCreators);
 
       // Store creator profiles
