@@ -1644,6 +1644,11 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                       sortable={false}
                     />
                     <ColumnHeader
+                      label="Type"
+                      tooltip="Account tracking type. Automatic accounts discover new videos on refresh, while Manual accounts only update existing videos."
+                      sortable={false}
+                    />
+                    <ColumnHeader
                       label="Followers"
                       tooltip="Total number of followers this account currently has on the platform. This metric helps gauge account reach and audience size."
                       sortable
@@ -1903,6 +1908,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                         <div className="w-16 h-4 bg-white/10 rounded-full animate-pulse"></div>
                                 )}
                       </td>
+                              {/* Type Column */}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        <div className="w-20 h-6 bg-white/10 rounded-full animate-pulse"></div>
+                      </td>
                               {/* Followers Column */}
                               <td className="px-6 py-4 whitespace-nowrap text-sm">
                                 {matchingAccount && (matchingAccount.followerCount ?? 0) > 0 ? (
@@ -2035,20 +2044,6 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                       className="w-3.5 h-3.5"
                                     />
                                   )}
-                                  {/* Account Type Badge */}
-                                  <span 
-                                    className={clsx(
-                                      "px-1.5 py-0.5 text-[10px] font-medium rounded",
-                                      (account.creatorType || 'automatic') === 'automatic'
-                                        ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                                        : "bg-gray-500/20 text-gray-400 border border-gray-500/30"
-                                    )}
-                                    title={(account.creatorType || 'automatic') === 'automatic' 
-                                      ? 'Automatic: Discovers new videos on refresh' 
-                                      : 'Manual: Only refreshes existing videos'}
-                                  >
-                                    {(account.creatorType || 'automatic') === 'automatic' ? 'Auto' : 'Manual'}
-                                  </span>
                                 </div>
                                 {isAccountSyncing && (
                                   <div className="flex items-center gap-2">
@@ -2102,6 +2097,54 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                               <span className="text-xs text-gray-500 dark:text-gray-600">—</span>
                             );
                           })()}
+                        </td>
+
+                        {/* Type Column */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="group relative inline-block">
+                            <span 
+                              className={clsx(
+                                "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium cursor-help transition-all",
+                                (account.creatorType || 'automatic') === 'automatic'
+                                  ? "bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30"
+                                  : "bg-gray-500/20 text-gray-400 border border-gray-500/30 hover:bg-gray-500/30"
+                              )}
+                            >
+                              {(account.creatorType || 'automatic') === 'automatic' ? 'Automatic' : 'Manual'}
+                            </span>
+                            {/* Tooltip on hover */}
+                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-50 w-64">
+                              <div className="bg-black border border-white/20 rounded-lg p-3 shadow-2xl text-xs">
+                                {(account.creatorType || 'automatic') === 'automatic' ? (
+                                  <div className="space-y-1.5">
+                                    <div className="font-semibold text-green-400">Automatic Mode</div>
+                                    <div className="text-gray-300">
+                                      • <span className="text-white font-medium">Discovers new videos</span> during refresh
+                                    </div>
+                                    <div className="text-gray-300">
+                                      • Updates <span className="text-white font-medium">all existing videos</span>
+                                    </div>
+                                    <div className="text-gray-300">
+                                      • Best for <span className="text-white font-medium">tracking full accounts</span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-1.5">
+                                    <div className="font-semibold text-gray-400">Manual Mode</div>
+                                    <div className="text-gray-300">
+                                      • <span className="text-white font-medium">Only refreshes existing videos</span>
+                                    </div>
+                                    <div className="text-gray-300">
+                                      • Does <span className="text-white font-medium">not discover new content</span>
+                                    </div>
+                                    <div className="text-gray-300">
+                                      • Best for <span className="text-white font-medium">specific video tracking</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
                         </td>
 
                         {/* Followers Column */}
