@@ -2654,7 +2654,7 @@ const KPICard: React.FC<{
             
               // Top items sorted by metric
             
-            // Get the metric label and key for display
+            // Get the metric label for display
             const metricLabel = data.id === 'views' ? 'Views'
               : data.id === 'likes' ? 'Likes'
               : data.id === 'comments' ? 'Comments'
@@ -2666,12 +2666,7 @@ const KPICard: React.FC<{
               : data.id === 'published-videos' ? 'Videos'
               : 'Views';
             
-            const metricKey = data.id === 'views' ? 'views'
-              : data.id === 'likes' ? 'likes'
-              : data.id === 'comments' ? 'comments'
-              : data.id === 'shares' ? 'shares'
-              : data.id === 'bookmarks' ? 'bookmarks'
-              : 'views';
+            // metricKey already declared above for sorting new uploads
             
             // Check if this is published videos KPI (should use old layout)
             const isPublishedVideosKPI = data.id === 'published-videos' || data.id === 'videos';
