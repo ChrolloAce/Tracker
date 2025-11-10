@@ -179,16 +179,18 @@ const CreatorInvitationPage: React.FC = () => {
       setLoading(false);
       console.log('✅ [LOAD INVITATION] Complete! Invitation loaded successfully');
     } catch (err: any) {
-      console.error('❌ Failed to load invitation:', err);
-      console.error('Error details:', err.code, err.message);
+      console.error('❌ [LOAD INVITATION] Failed to load invitation:', err);
+      console.error('❌ [LOAD INVITATION] Error code:', err.code);
+      console.error('❌ [LOAD INVITATION] Error message:', err.message);
+      console.error('❌ [LOAD INVITATION] Full error:', JSON.stringify(err, null, 2));
       
-      // Provide more specific error messages
+      // Provide more specific error messages with debug info
       if (err.code === 'permission-denied') {
-        setError('Permission denied. This invitation may be invalid or you may not have access to view it.');
+        setError(`Permission denied. The invitation may have expired or been deleted. Please ask for a new invitation. (Debug: Invitation ID ${invitationId} - Error code: ${err.code})`);
       } else if (err.code === 'not-found') {
-        setError('Invitation not found. It may have expired or been deleted.');
+        setError(`Invitation not found. It may have expired or been deleted. (Debug: Invitation ID ${invitationId})`);
       } else {
-        setError(`Failed to load invitation: ${err.message || 'Unknown error'}. Please try again or contact support.`);
+        setError(`Failed to load invitation: ${err.message || 'Unknown error'}. (Debug: Code ${err.code}, ID ${invitationId}) Please contact support.`);
       }
       setLoading(false);
     }
