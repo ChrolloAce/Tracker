@@ -796,22 +796,45 @@ const KPICards: React.FC<KPICardsProps> = ({
             const uploadDate = new Date(video.uploadDate || video.dateSubmitted);
             
             // === CURRENT PERIOD (CP) CALCULATION ===
-            // ONLY count videos that were UPLOADED during this interval
-            // (Snapshot growth is shown separately in Top Gainers, not in main sparkline)
-            if (DataAggregationService.isDateInInterval(uploadDate, interval)) {
+            // Check if video was uploaded before this interval started
+            if (uploadDate < interval.startDate) {
+              // Video was uploaded before this interval - calculate growth delta
+              if (video.snapshots && video.snapshots.length > 0) {
+                const snapshotAtEnd = video.snapshots
+                  .filter(s => new Date(s.capturedAt) <= interval.endDate)
+                  .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())[0];
+                
+                // Calculate delta if we have a snapshot at interval end
+                if (snapshotAtEnd) {
+                  // Find the previous snapshot before the interval end for baseline
+                  const allSnapshotsBeforeEnd = video.snapshots
+                    .filter(s => new Date(s.capturedAt) < new Date(snapshotAtEnd.capturedAt))
+                    .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime());
+                  
+                  const previousSnapshot = allSnapshotsBeforeEnd[0];
+                  
+                  if (previousSnapshot) {
+                    // Calculate growth from previous snapshot to current
+                    const delta = Math.max(0, (snapshotAtEnd[metric] || 0) - (previousSnapshot[metric] || 0));
+                    intervalValue += delta;
+                  } else {
+                    // This is the first snapshot ever - count its full value
+                    intervalValue += snapshotAtEnd[metric] || 0;
+                  }
+                }
+              }
+            } else if (DataAggregationService.isDateInInterval(uploadDate, interval)) {
               // Video was uploaded during this interval - count its initial value
               // This represents NEW CONTENT added during this period
               const initialSnapshot = video.snapshots?.find(s => s.isInitialSnapshot);
               if (initialSnapshot) {
                 // Use the initial snapshot value (what the video had when first added)
                 intervalValue += initialSnapshot[metric] || 0;
-                  } else {
+              } else {
                 // No initial snapshot, use current value as fallback
                 intervalValue += video[metric] || 0;
               }
             }
-            // Note: Videos uploaded BEFORE the period are NOT counted in sparkline
-            // Their growth is tracked separately in Top Gainers tooltip
           });
           
           // === PREVIOUS PERIOD (PP) CALCULATION ===
