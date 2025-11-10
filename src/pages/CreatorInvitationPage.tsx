@@ -320,6 +320,14 @@ const CreatorInvitationPage: React.FC = () => {
           <Loader2 className="w-12 h-12 animate-spin text-gray-900 dark:text-white mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Loading Invitation...</h2>
           <p className="text-gray-600 dark:text-gray-400">Please wait while we fetch your invitation details.</p>
+          <div className="mt-4 p-3 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg border border-yellow-300 dark:border-yellow-700">
+            <p className="text-xs font-mono text-yellow-800 dark:text-yellow-300">
+              🔍 DEBUG v2.0 - Loading invitation: {invitationId}
+            </p>
+            <p className="text-xs font-mono text-yellow-800 dark:text-yellow-300 mt-1">
+              User: {user?.email || 'Not logged in'}
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -368,6 +376,11 @@ const CreatorInvitationPage: React.FC = () => {
           >
             Go to Login
           </button>
+          
+          {/* Version indicator */}
+          <div className="mt-4 text-center text-xs text-gray-500">
+            Debug Version 2.0 | {new Date().toISOString()}
+          </div>
         </div>
       </div>
     );
@@ -472,6 +485,11 @@ const CreatorInvitationPage: React.FC = () => {
               </div>
             </>
           )}
+          
+          {/* Version indicator */}
+          <div className="mt-6 text-center text-xs text-gray-500">
+            Debug Version 2.0 | {new Date().toISOString()}
+          </div>
         </div>
       </div>
     </div>
