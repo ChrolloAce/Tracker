@@ -49,6 +49,7 @@ import VideoPlayerModal from './VideoPlayerModal';
 import VideoAnalyticsModal from './VideoAnalyticsModal';
 import { DateFilterType } from './DateRangeFilter';
 import { FloatingDropdown, DropdownItem, DropdownDivider } from './ui/FloatingDropdown';
+import { FloatingTooltip } from './ui/FloatingTooltip';
 import { UrlParserService } from '../services/UrlParserService';
 import Pagination from './ui/Pagination';
 import ColumnPreferencesService from '../services/ColumnPreferencesService';
@@ -252,6 +253,8 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   const [urlValidationError, setUrlValidationError] = useState<string | null>(null);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const dropdownTriggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const [hoveredTypeId, setHoveredTypeId] = useState<string | null>(null);
+  const typeBadgeRefs = useRef<Map<string, HTMLSpanElement>>(new Map());
   const [syncError, setSyncError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingAccountDetail, setLoadingAccountDetail] = useState(false);
@@ -2103,50 +2106,59 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
 
                         {/* Type Column */}
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="group relative inline-block">
-                            <span 
-                              className={clsx(
-                                "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium cursor-help transition-all",
-                                (account.creatorType || 'automatic') === 'automatic'
-                                  ? "bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30"
-                                  : "bg-gray-500/20 text-gray-400 border border-gray-500/30 hover:bg-gray-500/30"
-                              )}
-                            >
-                              {(account.creatorType || 'automatic') === 'automatic' ? 'Automatic' : 'Manual'}
-                            </span>
-                            {/* Tooltip on hover */}
-                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-50 w-64">
-                              <div className="bg-black border border-white/20 rounded-lg p-3 shadow-2xl text-xs">
-                                {(account.creatorType || 'automatic') === 'automatic' ? (
-                                  <div className="space-y-1.5">
-                                    <div className="font-semibold text-green-400">Automatic Mode</div>
-                                    <div className="text-gray-300">
-                                      • <span className="text-white font-medium">Discovers new videos</span> during refresh
-                                    </div>
-                                    <div className="text-gray-300">
-                                      • Updates <span className="text-white font-medium">all existing videos</span>
-                                    </div>
-                                    <div className="text-gray-300">
-                                      • Best for <span className="text-white font-medium">tracking full accounts</span>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="space-y-1.5">
-                                    <div className="font-semibold text-gray-400">Manual Mode</div>
-                                    <div className="text-gray-300">
-                                      • <span className="text-white font-medium">Only refreshes existing videos</span>
-                                    </div>
-                                    <div className="text-gray-300">
-                                      • Does <span className="text-white font-medium">not discover new content</span>
-                                    </div>
-                                    <div className="text-gray-300">
-                                      • Best for <span className="text-white font-medium">specific video tracking</span>
-                                    </div>
-                                  </div>
-                                )}
+                          <span 
+                            ref={(el) => {
+                              if (el) {
+                                typeBadgeRefs.current.set(account.id, el);
+                              } else {
+                                typeBadgeRefs.current.delete(account.id);
+                              }
+                            }}
+                            onMouseEnter={() => setHoveredTypeId(account.id)}
+                            onMouseLeave={() => setHoveredTypeId(null)}
+                            className={clsx(
+                              "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium cursor-help transition-all",
+                              (account.creatorType || 'automatic') === 'automatic'
+                                ? "bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30"
+                                : "bg-gray-500/20 text-gray-400 border border-gray-500/30 hover:bg-gray-500/30"
+                            )}
+                          >
+                            {(account.creatorType || 'automatic') === 'automatic' ? 'Automatic' : 'Manual'}
+                          </span>
+                          
+                          <FloatingTooltip
+                            isVisible={hoveredTypeId === account.id}
+                            triggerRef={{ current: typeBadgeRefs.current.get(account.id) || null }}
+                            position="top"
+                          >
+                            {(account.creatorType || 'automatic') === 'automatic' ? (
+                              <div className="space-y-1.5 w-64">
+                                <div className="font-semibold text-green-400">Automatic Mode</div>
+                                <div className="text-gray-300">
+                                  • <span className="text-white font-medium">Discovers new videos</span> during refresh
+                                </div>
+                                <div className="text-gray-300">
+                                  • Updates <span className="text-white font-medium">all existing videos</span>
+                                </div>
+                                <div className="text-gray-300">
+                                  • Best for <span className="text-white font-medium">tracking full accounts</span>
+                                </div>
                               </div>
-                            </div>
-                          </div>
+                            ) : (
+                              <div className="space-y-1.5 w-64">
+                                <div className="font-semibold text-gray-400">Manual Mode</div>
+                                <div className="text-gray-300">
+                                  • <span className="text-white font-medium">Only refreshes existing videos</span>
+                                </div>
+                                <div className="text-gray-300">
+                                  • Does <span className="text-white font-medium">not discover new content</span>
+                                </div>
+                                <div className="text-gray-300">
+                                  • Best for <span className="text-white font-medium">specific video tracking</span>
+                                </div>
+                              </div>
+                            )}
+                          </FloatingTooltip>
                         </td>
 
                         {/* Followers Column */}
