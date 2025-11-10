@@ -170,10 +170,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Determine account type (default to automatic for backward compatibility)
     const creatorType = account.creatorType || 'automatic';
     
+    console.log(`\n========================================`);
+    console.log(`🔄 Starting Account Refresh`);
+    console.log(`========================================`);
+    console.log(`  Account: @${account.username}`);
+    console.log(`  Platform: ${account.platform}`);
+    console.log(`  Type: ${creatorType.toUpperCase()}`);
+    console.log(`========================================\n`);
+    
     if (creatorType === 'automatic') {
-      console.log(`  🤖 Refreshing AUTOMATIC account @${account.username} (${account.platform}): discovering new videos`);
+      console.log(`ℹ️ [REFRESH] Automatic account detected, running full refresh (discover + update)`);
     } else {
-      console.log(`  📝 Refreshing MANUAL account @${account.username} (${account.platform}): updating existing videos only`);
+      console.log(`ℹ️ [REFRESH] Manual account detected, refreshing existing videos only`);
     }
 
     // Prepare Apify input
@@ -595,7 +603,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-    console.log(`  ✅ @${account.username} (${creatorType}): Updated ${updatedCount}, Added ${addedCount}, Skipped ${skippedCount} (${duration}s)`);
+    
+    console.log(`\n========================================`);
+    console.log(`✅ Refresh Complete: @${account.username}`);
+    console.log(`========================================`);
+    console.log(`  Account Type: ${creatorType.toUpperCase()}`);
+    console.log(`  Videos Updated: ${updatedCount}`);
+    console.log(`  Videos Added: ${addedCount}`);
+    console.log(`  Videos Skipped: ${skippedCount}`);
+    console.log(`  Duration: ${duration}s`);
+    console.log(`========================================\n`);
 
     return res.status(200).json({
       success: true,

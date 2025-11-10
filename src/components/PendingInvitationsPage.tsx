@@ -138,19 +138,19 @@ const PendingInvitationsPage: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-white/10">
-            {invitations.map((invitation) => {
-              const expiresInDays = getExpiresInDays(invitation.expiresAt);
-              const isExpiringSoon = expiresInDays <= 2;
+        {invitations.map((invitation) => {
+          const expiresInDays = getExpiresInDays(invitation.expiresAt);
+          const isExpiringSoon = expiresInDays <= 2;
 
-              return (
+          return (
                 <tr key={invitation.id} className="hover:bg-white/5 transition-colors">
                   {/* Email */}
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center flex-shrink-0">
                         <Mail className="w-5 h-5 text-white/60" />
-                      </div>
-                      <div>
+                    </div>
+                    <div>
                         <div className="text-sm font-medium text-white">
                           {invitation.email}
                         </div>
@@ -164,7 +164,7 @@ const PendingInvitationsPage: React.FC = () => {
                   {/* Role */}
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
-                      {invitation.role.charAt(0).toUpperCase() + invitation.role.slice(1)}
+                    {invitation.role.charAt(0).toUpperCase() + invitation.role.slice(1)}
                     </span>
                   </td>
 
@@ -183,41 +183,41 @@ const PendingInvitationsPage: React.FC = () => {
                         <span className="text-xs font-medium">
                           Expires in {expiresInDays}d
                         </span>
-                      </div>
+                </div>
                     ) : (
                       <div className="flex items-center gap-1.5 text-white/50">
                         <Clock className="w-4 h-4" />
                         <span className="text-xs">
                           {expiresInDays} days left
                         </span>
-                      </div>
+                </div>
                     )}
                   </td>
 
-                  {/* Actions */}
+                {/* Actions */}
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => handleResend(invitation)}
-                        disabled={actionLoading === invitation.id}
+                    disabled={actionLoading === invitation.id}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-colors disabled:opacity-50"
-                      >
+                  >
                         <Send className="w-3.5 h-3.5" />
                         {actionLoading === invitation.id ? 'Sending...' : 'Resend'}
                       </button>
                       <button
                         onClick={() => handleCancel(invitation)}
-                        disabled={actionLoading === invitation.id}
+                    disabled={actionLoading === invitation.id}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg hover:bg-red-500/20 transition-colors disabled:opacity-50"
-                      >
+                  >
                         <X className="w-3.5 h-3.5" />
                         Cancel
                       </button>
-                    </div>
+                </div>
                   </td>
                 </tr>
-              );
-            })}
+          );
+        })}
           </tbody>
         </table>
       </div>

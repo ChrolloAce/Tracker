@@ -961,7 +961,7 @@ class RevenueDataService {
         if (error?.message?.includes('not configured')) {
           console.log(`ℹ️ ${integration.provider} integration not configured, skipping`);
         } else {
-          console.error(`Failed to sync ${integration.provider}:`, error);
+        console.error(`Failed to sync ${integration.provider}:`, error);
         }
       }
     }

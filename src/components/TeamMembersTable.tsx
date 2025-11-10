@@ -224,16 +224,16 @@ const TeamMembersTable: React.FC = () => {
                     (currentUserRole === 'admin' && member.role !== 'owner' && member.role !== 'admin')
                   ) && (
                     <div className="relative">
-                      <button
+                    <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setOpenDropdownId(openDropdownId === member.userId ? null : member.userId);
                         }}
-                        className="p-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-                        title="More actions"
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
+                      className="p-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                      title="More actions"
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
                       
                       {/* Dropdown Menu */}
                       {openDropdownId === member.userId && (

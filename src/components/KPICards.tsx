@@ -830,7 +830,7 @@ const KPICards: React.FC<KPICardsProps> = ({
               if (initialSnapshot) {
                 // Use the initial snapshot value (what the video had when first added)
                 intervalValue += initialSnapshot[metric] || 0;
-              } else {
+                  } else {
                 // No initial snapshot, use current value as fallback
                 intervalValue += video[metric] || 0;
               }

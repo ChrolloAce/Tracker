@@ -2706,32 +2706,32 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                           />
                           {/* Dropdown */}
                           <div className="fixed right-4 top-20 w-64 bg-black border border-white/20 rounded-lg shadow-2xl p-4 z-[9999]" style={{ boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)' }}>
-                            <h3 className="text-sm font-semibold text-white mb-3">Toggle Columns</h3>
+                          <h3 className="text-sm font-semibold text-white mb-3">Toggle Columns</h3>
                             <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-                              {Object.entries({
-                                video: 'Video',
-                                platform: 'Platform',
-                                preview: 'Preview',
-                                trend: 'Trend',
-                                views: 'Views',
-                                likes: 'Likes',
-                                comments: 'Comments',
-                                shares: 'Shares',
-                                engagement: 'Engagement Rate',
-                                uploadDate: 'Upload Date'
-                              }).map(([key, label]) => (
+                            {Object.entries({
+                              video: 'Video',
+                              platform: 'Platform',
+                              preview: 'Preview',
+                              trend: 'Trend',
+                              views: 'Views',
+                              likes: 'Likes',
+                              comments: 'Comments',
+                              shares: 'Shares',
+                              engagement: 'Engagement Rate',
+                              uploadDate: 'Upload Date'
+                            }).map(([key, label]) => (
                                 <label key={key} className="flex items-center space-x-2 cursor-pointer hover:bg-white/10 p-2 rounded transition-colors">
-                                  <input
-                                    type="checkbox"
-                                    checked={visibleColumns[key as keyof typeof visibleColumns]}
-                                    onChange={(e) => setVisibleColumns(prev => ({ ...prev, [key]: e.target.checked }))}
+                                <input
+                                  type="checkbox"
+                                  checked={visibleColumns[key as keyof typeof visibleColumns]}
+                                  onChange={(e) => setVisibleColumns(prev => ({ ...prev, [key]: e.target.checked }))}
                                     className="w-4 h-4 rounded border-white/20 bg-white/5 text-white focus:ring-white/50"
-                                  />
+                                />
                                   <span className="text-sm text-gray-200">{label}</span>
-                                </label>
-                              ))}
-                            </div>
+                              </label>
+                            ))}
                           </div>
+                        </div>
                         </>,
                         document.body
                       )}

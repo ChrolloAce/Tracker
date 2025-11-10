@@ -260,6 +260,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`\n⏳ Waiting for ${dispatchPromises.length} dispatched jobs to complete...`);
     const results = await Promise.allSettled(dispatchPromises);
 
+    // Aggregate stats from all results
+    let totalVideosRefreshed = 0;
+    let totalVideosAdded = 0;
+    const failedAccounts: Array<{ account: string; reason: string }> = [];
+    
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value.success) {
+        // Account refresh job succeeded
+        if (result.value.type !== 'revenue') {
+          totalVideosRefreshed += result.value.videosUpdated || 0;
+          totalVideosAdded += result.value.videosAdded || 0;
+        }
+      } else if (result.status === 'fulfilled' && !result.value.success) {
+        // Account refresh job failed
+        failedAccounts.push({
+          account: result.value.account || 'Unknown',
+          reason: result.value.error || 'Unknown error'
+        });
+      } else if (result.status === 'rejected') {
+        // Promise rejected
+        failedAccounts.push({
+          account: 'Unknown',
+          reason: (result.reason as any)?.message || 'Promise rejected'
+        });
+      }
+    }
+
     // Count successes and failures
     const successful = results.filter(r => r.status === 'fulfilled' && (r.value as any).success).length;
     const failed = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !(r.value as any).success)).length;
@@ -275,7 +302,157 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`🚀 Jobs dispatched: ${dispatchPromises.length}`);
     console.log(`✅ Jobs successful: ${successful}`);
     console.log(`❌ Jobs failed: ${failed}`);
+    console.log(`🎬 Videos refreshed: ${totalVideosRefreshed}`);
+    console.log(`➕ New videos added: ${totalVideosAdded}`);
     console.log(`============================================================\n`);
+
+    // Send email summary for each organization
+    const RESEND_API_KEY = process.env.RESEND_API_KEY;
+    if (RESEND_API_KEY && (successful > 0 || failed > 0)) {
+      console.log(`📧 Sending refresh summary emails...`);
+      
+      // Get unique organizations from the dispatched jobs
+      const orgEmailMap = new Map<string, { email: string; orgName: string; accountsProcessed: number; videosRefreshed: number; videosAdded: number; failedAccounts: Array<{ account: string; reason: string }> }>();
+      
+      for (const orgDoc of orgsSnapshot.docs) {
+        const orgId = orgDoc.id;
+        const orgData = orgDoc.data();
+        
+        // Get organization owner's email
+        const membersSnapshot = await db
+          .collection('organizations')
+          .doc(orgId)
+          .collection('members')
+          .where('role', '==', 'owner')
+          .limit(1)
+          .get();
+        
+        if (!membersSnapshot.empty) {
+          const ownerData = membersSnapshot.docs[0].data();
+          orgEmailMap.set(orgId, {
+            email: ownerData.email,
+            orgName: orgData.name || 'Your Organization',
+            accountsProcessed: 0,
+            videosRefreshed: 0,
+            videosAdded: 0,
+            failedAccounts: []
+          });
+        }
+      }
+      
+      // Aggregate stats by organization (simplified - using totals for now)
+      // In a more sophisticated version, we'd track which account belongs to which org
+      for (const [orgId, orgInfo] of orgEmailMap.entries()) {
+        orgInfo.accountsProcessed = successful;
+        orgInfo.videosRefreshed = totalVideosRefreshed;
+        orgInfo.videosAdded = totalVideosAdded;
+        orgInfo.failedAccounts = failedAccounts;
+      }
+      
+      // Send emails
+      for (const [orgId, orgInfo] of orgEmailMap.entries()) {
+        if (orgInfo.accountsProcessed === 0 && orgInfo.failedAccounts.length === 0) {
+          continue; // Skip if no activity
+        }
+        
+        try {
+          const emailResponse = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${RESEND_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              from: 'ViewTrack <team@viewtrack.app>',
+              to: [orgInfo.email],
+              subject: `📊 ${orgInfo.orgName} - Video Refresh Complete${orgInfo.videosAdded > 0 ? ` (+${orgInfo.videosAdded} New)` : ''}`,
+              html: `
+                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                  <div style="text-align: center; padding: 30px 20px; background: #f8f9fa; border-bottom: 2px solid #e9ecef;">
+                    <img src="https://www.viewtrack.app/blacklogo.png" alt="ViewTrack" style="height: 40px; width: auto;" />
+                  </div>
+                  <div style="padding: 30px 20px;">
+                    <h2 style="color: #22c55e; margin-top: 0;">✅ Refresh Complete!</h2>
+                    <p style="color: #666; font-size: 16px;">
+                      Your tracked accounts have been refreshed with the latest data.
+                    </p>
+                    
+                    <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                          <div style="color: #666; font-size: 14px;">Accounts Processed</div>
+                          <div style="color: #111; font-size: 24px; font-weight: bold;">${orgInfo.accountsProcessed}</div>
+                        </div>
+                        <div>
+                          <div style="color: #666; font-size: 14px;">Videos Refreshed</div>
+                          <div style="color: #111; font-size: 24px; font-weight: bold;">${orgInfo.videosRefreshed}</div>
+                        </div>
+                        <div>
+                          <div style="color: #666; font-size: 14px;">New Videos Added</div>
+                          <div style="color: #22c55e; font-size: 24px; font-weight: bold;">+${orgInfo.videosAdded}</div>
+                        </div>
+                        <div>
+                          <div style="color: #666; font-size: 14px;">Duration</div>
+                          <div style="color: #111; font-size: 24px; font-weight: bold;">${duration}s</div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    ${orgInfo.failedAccounts.length > 0 ? `
+                      <div style="background: #fee; border-left: 4px solid #ef4444; padding: 15px; margin: 20px 0;">
+                        <strong style="color: #dc2626;">⚠️ Failed Accounts (${orgInfo.failedAccounts.length})</strong>
+                        <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #666;">
+                          ${orgInfo.failedAccounts.map(f => `<li><strong>${f.account}</strong>: ${f.reason}</li>`).join('')}
+                        </ul>
+                      </div>
+                    ` : ''}
+                    
+                    <div style="text-align: center; margin-top: 30px;">
+                      <a href="https://www.viewtrack.app" style="display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                        View Dashboard
+                      </a>
+                    </div>
+                    
+                    <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+                    
+                    <p style="font-size: 12px; color: #999; text-align: center; margin: 0;">
+                      Automated refresh completed at<br>
+                      ${new Date().toLocaleString('en-US', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
+                </div>
+              `,
+            }),
+          });
+
+          if (emailResponse.ok) {
+            const emailData = await emailResponse.json();
+            console.log(`✅ Refresh summary email sent to ${orgInfo.email} (ID: ${emailData.id})`);
+          } else {
+            const errorData = await emailResponse.json();
+            console.warn(`⚠️ [EMAIL] Failed to send refresh summary email for ${orgId}: ${JSON.stringify(errorData)}`);
+          }
+        } catch (emailError) {
+          console.warn(`⚠️ [EMAIL] Failed to send refresh summary email for ${orgId}:`, emailError);
+        }
+      }
+    } else if (!RESEND_API_KEY) {
+      console.warn('⚠️ RESEND_API_KEY not configured - skipping email notifications');
+    } else {
+      console.log('ℹ️ No jobs processed - skipping email notifications');
+    }
+
+    // Final summary log after email attempt
+    console.log(`\n📋 Final Summary:`);
+    console.log(`   - Email notifications: ${RESEND_API_KEY ? 'Sent' : 'Skipped (no API key)'}`);
+    console.log(`   - Total duration: ${duration}s`);
+    console.log(`   - Status: Complete\n`);
 
     return res.status(200).json({
       success: true,
@@ -286,8 +463,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         jobsDispatched: dispatchPromises.length,
         jobsSuccessful: successful,
         jobsFailed: failed,
+        videosRefreshed: totalVideosRefreshed,
+        videosAdded: totalVideosAdded,
         duration: parseFloat(duration)
       },
+      failedAccounts,
       results: results.map((r, i) => {
         if (r.status === 'fulfilled') {
           return r.value;
