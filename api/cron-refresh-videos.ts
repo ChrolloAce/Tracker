@@ -113,8 +113,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       // Track org stats for email notifications
       if (!processedOrgs.has(orgId)) {
+        // Get owner email from users collection (same as sync-single-account logic)
+        let ownerEmail = '';
+        if (orgData.ownerId) {
+          try {
+            const ownerDoc = await db.collection('users').doc(orgData.ownerId).get();
+            if (ownerDoc.exists) {
+              const ownerData = ownerDoc.data();
+              ownerEmail = ownerData?.email || '';
+              console.log(`  📧 Owner email found: ${ownerEmail}`);
+            }
+          } catch (err) {
+            console.error(`  ⚠️ Failed to fetch owner email:`, err);
+          }
+        }
+        
         processedOrgs.set(orgId, {
-          email: orgData.ownerEmail || '',
+          email: ownerEmail,
           orgName: orgData.name || 'Your Organization',
           accountsProcessed: 0,
           videosAdded: 0,
@@ -328,14 +343,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Send email notifications to organization owners (for both manual AND automatic cron runs)
     const RESEND_API_KEY = process.env.RESEND_API_KEY;
     if (RESEND_API_KEY) {
-      console.log('📧 Sending refresh summary emails...');
+      console.log('\n📧 Sending refresh summary emails...');
+      let emailsSent = 0;
+      let emailsFailed = 0;
       
       for (const [orgId, stats] of processedOrgs.entries()) {
         // Send email if there was any activity (added, updated, or just refreshed)
-        if (stats.email && (stats.videosAdded > 0 || stats.videosUpdated > 0 || stats.accountsProcessed > 0)) {
-          try {
-            const triggerTypeText = isManualTrigger ? 'Manual' : 'Automated';
-            const emailResponse = await fetch('https://api.resend.com/emails', {
+        if (!stats.email) {
+          console.log(`  ⏭️ Skipping org ${orgId} - no email found`);
+          continue;
+        }
+        
+        if (stats.videosAdded === 0 && stats.videosUpdated === 0 && stats.accountsProcessed === 0) {
+          console.log(`  ⏭️ Skipping ${stats.email} - no activity to report`);
+          continue;
+        }
+        
+        try {
+          console.log(`  📤 Sending to ${stats.email} (${stats.accountsProcessed} accounts, +${stats.videosAdded} new, ~${stats.videosUpdated} updated)...`);
+          const triggerTypeText = isManualTrigger ? 'Manual' : 'Automated';
+          const emailResponse = await fetch('https://api.resend.com/emails', {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${RESEND_API_KEY}`,
@@ -389,16 +416,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
             if (emailResponse.ok) {
               const emailData = await emailResponse.json();
-              console.log(`✅ Refresh summary email sent to ${stats.email} (ID: ${emailData.id})`);
+              console.log(`  ✅ Email sent successfully (ID: ${emailData.id})`);
+              emailsSent++;
             } else {
               const errorData = await emailResponse.json();
-              console.error(`❌ Failed to send email to ${stats.email}:`, errorData);
+              console.error(`  ❌ Failed to send email:`, errorData);
+              emailsFailed++;
             }
           } catch (emailError) {
-            console.error(`❌ Email error for ${stats.email}:`, emailError);
+            console.error(`  ❌ Email error:`, emailError);
+            emailsFailed++;
           }
         }
       }
+      
+      console.log(`\n📧 Email summary: ${emailsSent} sent, ${emailsFailed} failed`);
     } else {
       console.warn('⚠️ RESEND_API_KEY not configured - skipping email notifications');
     }
