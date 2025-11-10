@@ -4,7 +4,7 @@ import { clsx } from 'clsx';
 import { 
   ArrowLeft, ChevronDown, Search, Filter, CheckCircle2, Circle, Plus, Trash2,
   Play, Heart, MessageCircle, Share2, Video, AtSign, Activity, DollarSign, Download, Link as LinkIcon, Edit2, RefreshCw,
-  Users, Clock, TrendingUp, BarChart3, X, Pencil, CheckCircle
+  Users, Clock, TrendingUp, BarChart3, X, Pencil
 } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import { Modal } from '../components/ui/Modal';
