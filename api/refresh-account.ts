@@ -3,6 +3,7 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp, WriteBatch } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { runApifyActor } from './apify-client.js';
+import { progressiveFetchVideos } from './utils/progressive-video-fetch.js';
 
 // Initialize Firebase Admin
 if (!getApps().length) {
@@ -166,7 +167,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       refreshStatus: 'processing'
     });
 
-    console.log(`  📱 Account: @${account.username} (${account.platform})`);
+    // Determine account type (default to automatic for backward compatibility)
+    const creatorType = account.creatorType || 'automatic';
+    
+    if (creatorType === 'automatic') {
+      console.log(`  🤖 Refreshing AUTOMATIC account @${account.username} (${account.platform}): discovering new videos`);
+    } else {
+      console.log(`  📝 Refreshing MANUAL account @${account.username} (${account.platform}): updating existing videos only`);
+    }
 
     // Prepare Apify input
     let apifyInput: any = {};
@@ -199,12 +207,69 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw new Error(`Unsupported platform: ${account.platform}`);
     }
 
-    // Run Apify scraper
-    console.log(`  🔄 Calling Apify actor: ${actorId}`);
-    const results = await runApifyActor(actorId, apifyInput);
+    // For MANUAL accounts, only refresh existing videos (no new video discovery)
+    let results: any[] = [];
+    
+    if (creatorType === 'manual') {
+      // Get existing videos for this account
+      console.log(`  📊 Fetching existing videos from database...`);
+      const existingVideosSnapshot = await db
+        .collection('organizations')
+        .doc(orgId)
+        .collection('projects')
+        .doc(projectId)
+        .collection('videos')
+        .where('trackedAccountId', '==', accountId)
+        .get();
+      
+      console.log(`  📊 Found ${existingVideosSnapshot.size} existing videos to refresh`);
+      
+      if (existingVideosSnapshot.empty) {
+        console.log(`  ⚠️ No existing videos to refresh for manual account`);
+        await accountRef.update({
+          lastRefreshed: Timestamp.now(),
+          refreshStatus: 'completed',
+          lastRefreshError: null
+        });
+        return res.status(200).json({
+          success: true,
+          message: 'No existing videos to refresh',
+          videosUpdated: 0,
+          videosAdded: 0
+        });
+      }
+      
+      // For manual accounts, we need to fetch each video individually
+      // This will be handled in the processing loop below
+      results = existingVideosSnapshot.docs.map(doc => ({ ...doc.data(), _isExistingVideo: true }));
+      
+    } else {
+      // AUTOMATIC account - discover new videos
+      
+      // For platforms without date range, use progressive fetch
+      if (account.platform === 'tiktok' || account.platform === 'twitter') {
+        console.log(`  🔄 Using progressive fetch for @${account.username} (${account.platform})`);
+        
+        const progressiveResult = await progressiveFetchVideos({
+          orgId,
+          projectId,
+          accountId,
+          username: account.username,
+          platform: account.platform
+        });
+        
+        console.log(`  ✅ Progressive fetch complete: ${progressiveResult.newVideos.length} new, ${progressiveResult.duplicateCount} duplicates`);
+        results = progressiveResult.newVideos;
+        
+      } else {
+        // Instagram and YouTube can use normal scraping (Instagram has date range support)
+        console.log(`  🔄 Calling Apify actor: ${actorId}`);
+        results = await runApifyActor(actorId, apifyInput);
+      }
+    }
     
     if (!results || results.length === 0) {
-      console.log(`  ⚠️ No videos returned from Apify`);
+      console.log(`  ⚠️ No videos to process`);
       await accountRef.update({
         lastRefreshed: Timestamp.now(),
         refreshStatus: 'completed',
@@ -212,13 +277,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
       return res.status(200).json({
         success: true,
-        message: 'No new videos found',
+        message: creatorType === 'manual' ? 'No existing videos found' : 'No new videos found',
         videosUpdated: 0,
         videosAdded: 0
       });
     }
 
-    console.log(`  ✅ Apify returned ${results.length} items`);
+    console.log(`  ✅ Processing ${results.length} videos`);
 
     // Get video usage limits
     const billingRef = db.collection('organizations').doc(orgId).collection('billing').doc('usage');
@@ -324,6 +389,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       if (querySnapshot.empty) {
+        // For MANUAL accounts, skip adding new videos
+        if (creatorType === 'manual') {
+          console.log(`  ⏭️  Skipping new video ${platformVideoId} (manual account - only refreshes existing)`);
+          skippedCount++;
+          continue;
+        }
+        
         // Check if we have space to add new videos
         if (currentVideos + addedCount >= videoLimit) {
           console.log(`  ⚠️ Video limit reached. Skipping: ${platformVideoId}`);
@@ -331,7 +403,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           continue;
         }
 
-        // Add new video
+        // Add new video (automatic accounts only)
         const newVideoRef = videosCollectionRef.doc();
         batch.set(newVideoRef, {
           videoId: platformVideoId,
@@ -452,12 +524,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-    console.log(`  ✅ @${account.username}: Updated ${updatedCount}, Added ${addedCount}, Skipped ${skippedCount} (${duration}s)`);
+    console.log(`  ✅ @${account.username} (${creatorType}): Updated ${updatedCount}, Added ${addedCount}, Skipped ${skippedCount} (${duration}s)`);
 
     return res.status(200).json({
       success: true,
       account: account.username,
       platform: account.platform,
+      creatorType: creatorType,
       videosUpdated: updatedCount,
       videosAdded: addedCount,
       videosSkipped: skippedCount,

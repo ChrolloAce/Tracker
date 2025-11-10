@@ -2035,6 +2035,20 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                       className="w-3.5 h-3.5"
                                     />
                                   )}
+                                  {/* Account Type Badge */}
+                                  <span 
+                                    className={clsx(
+                                      "px-1.5 py-0.5 text-[10px] font-medium rounded",
+                                      (account.creatorType || 'automatic') === 'automatic'
+                                        ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                                        : "bg-gray-500/20 text-gray-400 border border-gray-500/30"
+                                    )}
+                                    title={(account.creatorType || 'automatic') === 'automatic' 
+                                      ? 'Automatic: Discovers new videos on refresh' 
+                                      : 'Manual: Only refreshes existing videos'}
+                                  >
+                                    {(account.creatorType || 'automatic') === 'automatic' ? 'Auto' : 'Manual'}
+                                  </span>
                                 </div>
                                 {isAccountSyncing && (
                                   <div className="flex items-center gap-2">
@@ -2255,6 +2269,45 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                   >
                                     <BarChart3 className="w-4 h-4" />
                                     View Stats
+                                  </button>
+                                  
+                                  {/* Toggle Account Type */}
+                                  <button
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      setOpenDropdownId(null);
+                                      
+                                      const currentType = account.creatorType || 'automatic';
+                                      const newType = currentType === 'automatic' ? 'manual' : 'automatic';
+                                      
+                                      try {
+                                        const accountRef = doc(
+                                          db,
+                                          'organizations',
+                                          organizationId,
+                                          'projects',
+                                          projectId,
+                                          'trackedAccounts',
+                                          account.id
+                                        );
+                                        await updateDoc(accountRef, { creatorType: newType });
+                                        
+                                        const typeLabel = newType === 'automatic' ? 'Automatic' : 'Manual';
+                                        alert(`Account converted to ${typeLabel} mode`);
+                                      } catch (error) {
+                                        console.error('Failed to update account type:', error);
+                                        alert('Failed to update account type');
+                                      }
+                                    }}
+                                    className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-white/10 transition-colors flex items-center gap-2"
+                                    title={(account.creatorType || 'automatic') === 'automatic' 
+                                      ? 'Convert to Manual (only refresh existing videos)' 
+                                      : 'Convert to Automatic (discover new videos)'}
+                                  >
+                                    <RefreshCw className="w-4 h-4" />
+                                    {(account.creatorType || 'automatic') === 'automatic' 
+                                      ? 'Convert to Manual' 
+                                      : 'Convert to Automatic'}
                                   </button>
                                   
                                   {/* Divider */}

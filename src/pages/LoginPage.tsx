@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Link2 } from 'lucide-react';
 import viewtrackLogo from '/Viewtrack Logo Black.png';
 import instagramIcon from '/Instagram_icon.png';
@@ -10,10 +10,11 @@ import xLogo from '/twitter-x-logo.png';
 import TeamInvitationService from '../services/TeamInvitationService';
 
 const LoginPage: React.FC = () => {
-  const { user, signInWithGoogle, signInWithEmail } = useAuth();
+  const { user, signInWithGoogle, signInWithEmail, loading: authLoading, currentOrgId, currentProjectId } = useAuth();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
   const [processingInvite, setProcessingInvite] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
   
@@ -25,6 +26,34 @@ const LoginPage: React.FC = () => {
   useEffect(() => {
     (window as any)?.datafast?.("login_page_view");
   }, []);
+
+  // Handle navigation after successful authentication (non-invite flow)
+  useEffect(() => {
+    // Skip if processing invitation or still loading auth
+    if (processingInvite || inviteId) return;
+    
+    // Wait for auth to finish loading
+    if (authLoading) return;
+    
+    // If user is authenticated and auth has finished loading
+    if (user && !authLoading) {
+      console.log('✅ User authenticated, checking org/project status...', {
+        userId: user.uid,
+        email: user.email,
+        currentOrgId,
+        currentProjectId
+      });
+      
+      // Check if user has organization and project
+      if (currentOrgId && currentProjectId) {
+        console.log('✅ User has org and project - navigating to dashboard');
+        navigate('/dashboard', { replace: true });
+      } else {
+        console.log('📝 User has no org - navigating to create organization');
+        navigate('/create-organization', { replace: true });
+      }
+    }
+  }, [user, authLoading, currentOrgId, currentProjectId, processingInvite, inviteId, navigate]);
 
   // Auto-accept invitation when user is authenticated
   useEffect(() => {
@@ -63,14 +92,15 @@ const LoginPage: React.FC = () => {
 
   const handleGoogleSignIn = async () => {
     setError('');
-    setLoading(true);
+    setSigningIn(true);
     try {
       await signInWithGoogle();
-      // Use window.location for hard navigation to prevent React Router from intercepting
-      window.location.href = '/preparing-workspace';
+      // AuthContext will load org/project data automatically
+      // useEffect above will handle navigation once loading is complete
+      console.log('✅ Google sign-in successful, waiting for AuthContext to load...');
     } catch (err: any) {
       setError(err.message || 'Google sign-in failed');
-      setLoading(false);
+      setSigningIn(false);
     }
   };
 
@@ -80,7 +110,9 @@ const LoginPage: React.FC = () => {
     try {
       // Sign in with demo credentials
       await signInWithEmail('demo@viewtrack.app', 'demo123456');
-      window.location.href = '/preparing-workspace';
+      // AuthContext will load org/project data automatically
+      // useEffect above will handle navigation once loading is complete
+      console.log('✅ Demo sign-in successful, waiting for AuthContext to load...');
     } catch (err: any) {
       setError(err.message || 'Demo sign-in failed');
       setDemoLoading(false);
@@ -149,7 +181,7 @@ const LoginPage: React.FC = () => {
           {/* Google Sign-In Button */}
             <button
               onClick={handleGoogleSignIn}
-              disabled={loading || demoLoading}
+              disabled={signingIn || demoLoading || authLoading}
             className="w-full flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-white border-2 border-gray-300 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all disabled:opacity-50 shadow-sm"
             >
             <svg className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" viewBox="0 0 24 24">
@@ -159,7 +191,7 @@ const LoginPage: React.FC = () => {
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
             <span className="text-sm sm:text-base font-semibold text-gray-700">
-              {loading ? 'Signing in...' : 'Continue with Google'}
+              {signingIn || authLoading ? 'Signing in...' : 'Continue with Google'}
             </span>
             </button>
 
@@ -176,7 +208,7 @@ const LoginPage: React.FC = () => {
           {/* Demo Button */}
           <button
             onClick={handleDemoSignIn}
-            disabled={loading || demoLoading}
+            disabled={signingIn || demoLoading || authLoading}
             className="w-full flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-gray-700 to-gray-900 text-white rounded-xl hover:from-gray-800 hover:to-black transition-all disabled:opacity-50 shadow-sm"
           >
             <svg className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -184,7 +216,7 @@ const LoginPage: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
             </svg>
             <span className="text-sm sm:text-base font-semibold">
-              {demoLoading ? 'Loading Demo...' : 'Try Demo Mode'}
+              {demoLoading || authLoading ? 'Loading Demo...' : 'Try Demo Mode'}
             </span>
           </button>
 

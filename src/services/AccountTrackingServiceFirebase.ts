@@ -81,7 +81,8 @@ export class AccountTrackingServiceFirebase {
         accountType,
         displayName: username, // Use username as placeholder
         isActive: true,
-        maxVideos: maxVideos // Store the user's preference for how many videos to scrape
+        maxVideos: maxVideos, // Store the user's preference for how many videos to scrape
+        creatorType: 'automatic' // Full account tracking - discovers new videos on refresh
       };
       
       const accountId = await FirestoreDataService.addTrackedAccount(orgId, projectId, userId, accountData);
@@ -131,7 +132,8 @@ export class AccountTrackingServiceFirebase {
         followingCount: profileData.followingCount,
         bio: profileData.bio,
         isVerified: profileData.isVerified,
-        isActive: true
+        isActive: true,
+        creatorType: 'automatic' // Full account tracking - discovers new videos on refresh
       };
       
       // Only add profilePicture if it exists

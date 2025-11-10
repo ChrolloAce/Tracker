@@ -259,6 +259,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         isActive: true,
         isRead: false,
         accountType: 'my',
+        creatorType: 'manual', // Manual tracking - only refreshes existing videos (created from video URL)
         orgId: orgId,
         dateAdded: Timestamp.now(),
         addedBy: video.addedBy,
