@@ -10,7 +10,7 @@ import FirestoreDataService from '../services/FirestoreDataService';
 import DateFilterService from '../services/DateFilterService';
 import TeamInvitationService from '../services/TeamInvitationService';
 import { DateFilterType } from './DateRangeFilter';
-import { User, TrendingUp, Plus, Mail, Clock, X, FileText, UserPlus, Copy, Trash2 } from 'lucide-react';
+import { User, TrendingUp, Plus, Mail, Clock, X, FileText, UserPlus, Copy, Trash2, MoreVertical, Edit3 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { EmptyState } from './ui/EmptyState';
 import Pagination from './ui/Pagination';
@@ -57,6 +57,7 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
   const [linkingCreator, setLinkingCreator] = useState<OrgMember | null>(null);
   const [editingPaymentCreator, setEditingPaymentCreator] = useState<OrgMember | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -431,8 +432,8 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto -mx-3 sm:-mx-0">
+            <table className="w-full min-w-max">
               <thead>
                 <tr className="border-b border-white/5">
                   <th className="px-6 py-4 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
@@ -518,8 +519,22 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
                           }
                         }}
                       >
-                        <div className="text-sm text-white font-medium">
-                          {profile?.linkedAccountsCount || 0} {profile?.linkedAccountsCount === 1 ? 'account' : 'accounts'}
+                        <div className="flex items-center gap-2">
+                          <div className="text-sm text-white font-medium">
+                            {profile?.linkedAccountsCount || 0} {profile?.linkedAccountsCount === 1 ? 'account' : 'accounts'}
+                          </div>
+                          {profile?.customPaymentTerms && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingPaymentCreator(creator);
+                              }}
+                              className="text-purple-400 hover:text-purple-300 transition-colors"
+                              title="View Contract"
+                            >
+                              <FileText className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                         {profile?.payoutsEnabled && (
                           <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20 mt-1">
@@ -582,20 +597,74 @@ const CreatorsManagementPage = forwardRef<CreatorsManagementPageRef, CreatorsMan
                           {formatDate(creator.joinedAt)}
                         </div>
                       </td>
-                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-6 py-4 relative" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-2">
                           {isAdmin && (
-                            <button
-                              onClick={() => {
-                                if (confirm(`Remove ${creator.displayName || creator.email} from your team?\n\nThis will:\n• Remove them from the organization\n• Delete their creator profile\n• Unlink all their accounts\n• Remove all creator links`)) {
-                                  handleRemoveCreator(creator.userId);
-                                }
-                              }}
-                              className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
-                              title="Remove Creator"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <div className="relative">
+                              <button
+                                onClick={() => setOpenDropdownId(openDropdownId === creator.userId ? null : creator.userId)}
+                                className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                                title="Actions"
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                              </button>
+
+                              {openDropdownId === creator.userId && (
+                                <>
+                                  {/* Backdrop */}
+                                  <div 
+                                    className="fixed inset-0 z-40"
+                                    onClick={() => setOpenDropdownId(null)}
+                                  />
+                                  
+                                  {/* Dropdown Menu */}
+                                  <div className="absolute right-0 mt-2 w-56 bg-zinc-900 border border-white/10 rounded-lg shadow-xl z-50 py-1">
+                                    {/* View Contract */}
+                                    {profile?.customPaymentTerms && (
+                                      <button
+                                        onClick={() => {
+                                          setEditingPaymentCreator(creator);
+                                          setOpenDropdownId(null);
+                                        }}
+                                        className="w-full px-4 py-2 text-left text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-3"
+                                      >
+                                        <FileText className="w-4 h-4 text-purple-400" />
+                                        <span>View Contract</span>
+                                      </button>
+                                    )}
+                                    
+                                    {/* Edit Linked Accounts */}
+                                    <button
+                                      onClick={() => {
+                                        setLinkingCreator(creator);
+                                        setOpenDropdownId(null);
+                                      }}
+                                      className="w-full px-4 py-2 text-left text-sm text-white hover:bg-white/10 transition-colors flex items-center gap-3"
+                                    >
+                                      <Edit3 className="w-4 h-4 text-blue-400" />
+                                      <span>Edit Linked Accounts</span>
+                                    </button>
+
+                                    {/* Divider */}
+                                    <div className="my-1 border-t border-white/10" />
+                                    
+                                    {/* Remove Creator */}
+                                    <button
+                                      onClick={() => {
+                                        setOpenDropdownId(null);
+                                        if (confirm(`Remove ${creator.displayName || creator.email} from your team?\n\nThis will:\n• Remove them from the organization\n• Delete their creator profile\n• Unlink all their accounts\n• Remove all creator links`)) {
+                                          handleRemoveCreator(creator.userId);
+                                        }
+                                      }}
+                                      className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-3"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                      <span>Remove Creator</span>
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
                           )}
                         </div>
                       </td>
