@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import OrganizationService from '../services/OrganizationService';
 import { OrgMember, Role } from '../types/firestore';
 import { formatDistanceToNow } from 'date-fns';
-import { FloatingDropdown, DropdownItem, DropdownDivider } from './ui/FloatingDropdown';
+import { FloatingDropdown, DropdownItem } from './ui/FloatingDropdown';
 
 const TeamMembersTable: React.FC = () => {
   const { currentOrgId, user } = useAuth();
