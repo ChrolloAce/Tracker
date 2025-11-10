@@ -28,11 +28,23 @@ if (!getApps().length) {
 
 const db = getFirestore();
 
+// Subscription plan refresh intervals (in hours)
+const PLAN_REFRESH_INTERVALS: Record<string, number> = {
+  free: 48,
+  basic: 24,
+  pro: 24,
+  ultra: 12,
+  enterprise: 6,
+};
+
 /**
  * Cron Orchestrator
- * Runs every 12 hours (00:00 and 12:00) and refreshes ALL accounts simultaneously
- * 
- * All accounts across all organizations refresh at the same time.
+ * Runs every 12 hours (00:00 and 12:00) 
+ * Refreshes accounts based on their organization's subscription plan:
+ * - Enterprise: every 6 hours
+ * - Ultra: every 12 hours
+ * - Pro/Basic: every 24 hours
+ * - Free: every 48 hours
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Verify cron secret or Vercel Cron header
@@ -63,12 +75,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let totalAccounts = 0;
     let dispatchedJobs = 0;
     let failedDispatches = 0;
+    let skippedAccounts = 0;
     const dispatchPromises: Promise<any>[] = [];
 
     // For each organization
     for (const orgDoc of orgsSnapshot.docs) {
       const orgId = orgDoc.id;
       console.log(`📁 Processing organization: ${orgId}`);
+
+      // Get organization's subscription to determine refresh interval
+      let orgPlanTier = 'free'; // Default to free
+      try {
+        const subscriptionDoc = await db
+          .collection('organizations')
+          .doc(orgId)
+          .collection('billing')
+          .doc('subscription')
+          .get();
+        
+        if (subscriptionDoc.exists()) {
+          const subscriptionData = subscriptionDoc.data();
+          orgPlanTier = subscriptionData?.planTier || 'free';
+        }
+        console.log(`  📋 Organization plan: ${orgPlanTier}`);
+      } catch (error) {
+        console.error(`  ⚠️ Failed to get subscription, defaulting to free plan:`, error);
+      }
+
+      const refreshIntervalHours = PLAN_REFRESH_INTERVALS[orgPlanTier] || 24;
+      const refreshIntervalMs = refreshIntervalHours * 60 * 60 * 1000;
+      console.log(`  ⏱️  Refresh interval: ${refreshIntervalHours} hours`);
 
       // Get all projects in this org
       const projectsSnapshot = await db
@@ -85,8 +121,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const projectData = projectDoc.data();
         console.log(`  📦 Processing project: ${projectData?.name || projectId}`);
 
-        // Refresh ALL accounts every time the cron runs (every 12 hours)
-        console.log(`    🚀 Refreshing ALL accounts in project...`);
+        // Refresh accounts based on plan's refresh interval
+        console.log(`    🚀 Checking accounts for refresh (${refreshIntervalHours}h interval)...`);
 
         // Get all active tracked accounts
         const accountsSnapshot = await db
@@ -101,12 +137,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         totalAccounts += accountsSnapshot.size;
         console.log(`    👥 Found ${accountsSnapshot.size} active account(s)`);
 
-        // Dispatch refresh jobs for ALL accounts simultaneously
+        // Dispatch refresh jobs for accounts that need refreshing
+        const now = Date.now();
         for (const accountDoc of accountsSnapshot.docs) {
           const accountId = accountDoc.id;
           const accountData = accountDoc.data();
 
-          console.log(`      ⚡ Dispatching @${accountData.username} (${accountData.platform})`);
+          // Check if enough time has passed since last refresh
+          const lastRefreshed = accountData.lastRefreshed?.toMillis() || 0;
+          const timeSinceRefresh = now - lastRefreshed;
+          const needsRefresh = timeSinceRefresh >= refreshIntervalMs;
+
+          if (!needsRefresh) {
+            const hoursRemaining = ((refreshIntervalMs - timeSinceRefresh) / (1000 * 60 * 60)).toFixed(1);
+            console.log(`      ⏭️  Skipping @${accountData.username} (refreshed ${(timeSinceRefresh / (1000 * 60 * 60)).toFixed(1)}h ago, ${hoursRemaining}h remaining)`);
+            skippedAccounts++;
+            continue;
+          }
+
+          console.log(`      ⚡ Dispatching @${accountData.username} (${accountData.platform}), last refresh: ${lastRefreshed ? new Date(lastRefreshed).toISOString() : 'never'}`);
 
           // Dispatch async refresh job
           const dispatchPromise = fetch(`${process.env.VERCEL_URL || 'https://www.viewtrack.app'}/api/refresh-account`, {
@@ -222,9 +271,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`============================================================`);
     console.log(`⏱️  Duration: ${duration}s`);
     console.log(`📊 Accounts found: ${totalAccounts}`);
+    console.log(`⏭️  Skipped (not due yet): ${skippedAccounts}`);
+    console.log(`🚀 Jobs dispatched: ${dispatchPromises.length}`);
     console.log(`✅ Jobs successful: ${successful}`);
     console.log(`❌ Jobs failed: ${failed}`);
-    console.log(`⏭️  Jobs skipped: ${totalAccounts - dispatchPromises.length}`);
     console.log(`============================================================\n`);
 
     return res.status(200).json({
@@ -232,10 +282,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       message: 'Orchestrator completed',
       stats: {
         totalAccounts,
+        accountsSkipped: skippedAccounts,
         jobsDispatched: dispatchPromises.length,
         jobsSuccessful: successful,
         jobsFailed: failed,
-        jobsSkipped: totalAccounts - dispatchPromises.length,
         duration: parseFloat(duration)
       },
       results: results.map((r, i) => {
