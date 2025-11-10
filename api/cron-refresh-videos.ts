@@ -3,6 +3,8 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { runApifyActor } from './apify-client.js';
+// @ts-ignore - heic-convert has no types
+import convert from 'heic-convert';
 
 // Initialize Firebase Admin (same pattern as other API files)
 if (!getApps().length) {
@@ -442,10 +444,36 @@ async function downloadAndUploadImage(
     // Determine content type from response or detect from URL
     let contentType = response.headers.get('content-type') || 'image/jpeg';
     
-    // Note: TikTok serves HEIC images which browsers can't display natively
-    // We upload them as-is to Firebase Storage since Sharp can't convert HEIC in Vercel environment
-    if (imageUrl.includes('.heic') || imageUrl.includes('.heif') || contentType.includes('heic') || contentType.includes('heif')) {
-      console.log(`    📸 Detected HEIC/HEIF image (browser compatibility limited)`);
+    // 🔥 HEIC Detection and Conversion using heic-convert (pure JS, works in serverless)
+    // Check if content-type indicates HEIC or file signature matches HEIC
+    const isHEIC = contentType.includes('heic') || 
+                   contentType.includes('heif') || 
+                   imageUrl.toLowerCase().includes('.heic') ||
+                   imageUrl.toLowerCase().includes('.heif') ||
+                   // Check HEIC file signature (ftyp heic)
+                   (buffer.length > 12 && 
+                    buffer[4] === 0x66 && buffer[5] === 0x74 && buffer[6] === 0x79 && buffer[7] === 0x70 && 
+                    buffer[8] === 0x68 && buffer[9] === 0x65 && buffer[10] === 0x69 && buffer[11] === 0x63);
+    
+    if (isHEIC) {
+      console.log(`    🔄 [HEIC] Converting HEIC thumbnail to JPG...`);
+      try {
+        // Convert HEIC to JPG using heic-convert (pure JS, serverless-friendly)
+        const outputBuffer = await convert({
+          buffer: buffer,
+          format: 'JPEG',
+          quality: 0.9
+        });
+        
+        buffer = Buffer.from(outputBuffer);
+        contentType = 'image/jpeg';
+        filename = filename.replace(/\.(heic|heif)$/i, '.jpg');
+        console.log(`    ✅ [HEIC] Successfully converted HEIC to JPG (${buffer.length} bytes)`);
+      } catch (conversionError) {
+        console.error(`    ❌ [HEIC] Conversion failed:`, conversionError);
+        console.warn(`    ⚠️ [HEIC] Will upload as-is - may not display properly in browsers`);
+        // Continue with original buffer if conversion fails
+      }
     }
     
     // Upload to Firebase Storage
@@ -460,7 +488,8 @@ async function downloadAndUploadImage(
         metadata: {
           uploadedAt: new Date().toISOString(),
           originalUrl: imageUrl,
-          fileFormat: contentType.split('/')[1] || 'unknown'
+          fileFormat: contentType.split('/')[1] || 'unknown',
+          convertedFromHEIC: isHEIC ? 'true' : 'false'
         }
       },
       public: true
