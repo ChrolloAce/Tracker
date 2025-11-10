@@ -203,6 +203,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         shouldDownloadVideos: false,
         shouldDownloadCovers: false
       };
+    } else if (account.platform === 'youtube') {
+      // YouTube will be handled via YouTube Data API v3
+      actorId = 'youtube-api-v3';
+      apifyInput = {}; // Not used for YouTube
+    } else if (account.platform === 'twitter') {
+      // Twitter/X will be handled via progressive fetch
+      actorId = 'apidojo~tweet-scraper';
+      apifyInput = {}; // Will be set in progressive fetch
     } else {
       throw new Error(`Unsupported platform: ${account.platform}`);
     }
@@ -239,15 +247,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
       
-      // For manual accounts, we need to fetch each video individually
-      // This will be handled in the processing loop below
-      results = existingVideosSnapshot.docs.map(doc => ({ ...doc.data(), _isExistingVideo: true }));
+      // For manual accounts, we need to fetch each video individually to refresh metrics
+      // Mark them so we know to only update, not add as new
+      results = existingVideosSnapshot.docs.map(doc => ({ 
+        ...doc.data(), 
+        _isExistingVideo: true,
+        _manualAccountRefreshOnly: true 
+      }));
       
     } else {
       // AUTOMATIC account - discover new videos
       
-      // For platforms without date range, use progressive fetch
-      if (account.platform === 'tiktok' || account.platform === 'twitter') {
+      // For platforms without date range APIs, use progressive fetch
+      if (account.platform === 'tiktok' || account.platform === 'twitter' || account.platform === 'youtube') {
         console.log(`  🔄 Using progressive fetch for @${account.username} (${account.platform})`);
         
         const progressiveResult = await progressiveFetchVideos({
@@ -255,14 +267,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           projectId,
           accountId,
           username: account.username,
-          platform: account.platform
+          platform: account.platform as 'tiktok' | 'youtube' | 'twitter'
         });
         
         console.log(`  ✅ Progressive fetch complete: ${progressiveResult.newVideos.length} new, ${progressiveResult.duplicateCount} duplicates`);
         results = progressiveResult.newVideos;
         
       } else {
-        // Instagram and YouTube can use normal scraping (Instagram has date range support)
+        // Instagram has date range support, use Apify directly
         console.log(`  🔄 Calling Apify actor: ${actorId}`);
         results = await runApifyActor(actorId, apifyInput);
       }
@@ -309,6 +321,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         platformVideoId = media.shortCode || media.code || media.id;
       } else if (account.platform === 'tiktok') {
         platformVideoId = media.id || media.video_id;
+      } else if (account.platform === 'youtube') {
+        platformVideoId = media.id;
+      } else if (account.platform === 'twitter') {
+        platformVideoId = media.id || media.id_str;
       }
 
       if (!platformVideoId) {
@@ -386,12 +402,67 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         
         caption = media.text || '';
         uploadDate = media.createTime ? new Date(media.createTime * 1000) : new Date();
+      } else if (account.platform === 'youtube') {
+        views = parseInt(media.statistics?.viewCount || '0', 10);
+        likes = parseInt(media.statistics?.likeCount || '0', 10);
+        comments = parseInt(media.statistics?.commentCount || '0', 10);
+        shares = 0; // YouTube doesn't provide share count
+        url = `https://www.youtube.com/watch?v=${platformVideoId}`;
+        
+        const youtubeThumbnail = media.snippet?.thumbnails?.maxres?.url || 
+                                 media.snippet?.thumbnails?.high?.url || 
+                                 media.snippet?.thumbnails?.medium?.url || 
+                                 '';
+        
+        if (youtubeThumbnail) {
+          console.log(`  📺 YouTube thumbnail URL found: ${youtubeThumbnail.substring(0, 80)}...`);
+          thumbnail = await downloadAndUploadImage(
+            youtubeThumbnail,
+            orgId,
+            `yt_${platformVideoId}_thumb.jpg`,
+            'thumbnails'
+          );
+        }
+        
+        caption = media.snippet?.title || '';
+        uploadDate = media.snippet?.publishedAt ? new Date(media.snippet.publishedAt) : new Date();
+      } else if (account.platform === 'twitter') {
+        views = media.views || media.viewCount || 0;
+        likes = media.likes || media.favorite_count || 0;
+        comments = media.replies || media.reply_count || 0;
+        shares = media.retweets || media.retweet_count || 0;
+        url = media.url || `https://twitter.com/${account.username}/status/${platformVideoId}`;
+        
+        const twitterThumbnail = media.mediaDetails?.[0]?.media_url_https || 
+                                 media.entities?.media?.[0]?.media_url_https || 
+                                 '';
+        
+        if (twitterThumbnail) {
+          console.log(`  🐦 Twitter thumbnail URL found: ${twitterThumbnail.substring(0, 80)}...`);
+          thumbnail = await downloadAndUploadImage(
+            twitterThumbnail,
+            orgId,
+            `tw_${platformVideoId}_thumb.jpg`,
+            'thumbnails'
+          );
+        }
+        
+        caption = media.text || media.full_text || '';
+        uploadDate = media.created_at ? new Date(media.created_at) : new Date();
       }
 
       if (querySnapshot.empty) {
-        // For MANUAL accounts, skip adding new videos
+        // CRITICAL: For MANUAL accounts, NEVER add new videos
+        // Manual accounts should only refresh existing videos, never discover new ones
         if (creatorType === 'manual') {
-          console.log(`  ⏭️  Skipping new video ${platformVideoId} (manual account - only refreshes existing)`);
+          console.log(`  🚫 BLOCKED: Skipping new video ${platformVideoId} (manual account - only refreshes existing)`);
+          skippedCount++;
+          continue;
+        }
+        
+        // Double-check: if this video has the manual refresh flag, skip it
+        if ((media as any)._manualAccountRefreshOnly) {
+          console.log(`  🚫 BLOCKED: Video ${platformVideoId} marked as manual refresh only`);
           skippedCount++;
           continue;
         }

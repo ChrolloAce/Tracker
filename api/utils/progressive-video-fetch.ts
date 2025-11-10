@@ -168,14 +168,63 @@ async function fetchTikTokBatch(username: string, maxItems: number): Promise<any
 }
 
 /**
- * Fetch YouTube videos using Apify
+ * Fetch YouTube videos using YouTube Data API v3
  */
 async function fetchYouTubeBatch(username: string, maxItems: number): Promise<any[]> {
   try {
-    // YouTube API logic would go here
-    // For now, return empty array as placeholder
-    console.warn(`⚠️ YouTube progressive fetch not yet implemented`);
-    return [];
+    const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
+    if (!YOUTUBE_API_KEY) {
+      console.error(`❌ YouTube API key not configured`);
+      return [];
+    }
+    
+    // Step 1: Search for the channel by username/handle
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(username)}&key=${YOUTUBE_API_KEY}&maxResults=1`;
+    const searchResponse = await fetch(searchUrl);
+    const searchData = await searchResponse.json();
+    
+    if (!searchData.items || searchData.items.length === 0) {
+      console.log(`  ⚠️ No YouTube channel found for: ${username}`);
+      return [];
+    }
+    
+    const channelId = searchData.items[0].snippet.channelId || searchData.items[0].id.channelId;
+    console.log(`  ✅ Found YouTube channel ID: ${channelId}`);
+    
+    // Step 2: Get channel's uploads playlist
+    const channelUrl = `https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=${channelId}&key=${YOUTUBE_API_KEY}`;
+    const channelResponse = await fetch(channelUrl);
+    const channelData = await channelResponse.json();
+    
+    if (!channelData.items || channelData.items.length === 0) {
+      console.log(`  ⚠️ No channel data found`);
+      return [];
+    }
+    
+    const uploadsPlaylistId = channelData.items[0].contentDetails.relatedPlaylists.uploads;
+    
+    // Step 3: Get videos from uploads playlist
+    const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${uploadsPlaylistId}&maxResults=${maxItems}&key=${YOUTUBE_API_KEY}`;
+    const playlistResponse = await fetch(playlistUrl);
+    const playlistData = await playlistResponse.json();
+    
+    if (!playlistData.items || playlistData.items.length === 0) {
+      console.log(`  ⚠️ No videos found in uploads playlist`);
+      return [];
+    }
+    
+    // Step 4: Get detailed stats for these videos
+    const videoIds = playlistData.items.map((item: any) => item.contentDetails.videoId).join(',');
+    const videosUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
+    const videosResponse = await fetch(videosUrl);
+    const videosData = await videosResponse.json();
+    
+    if (!videosData.items) {
+      return [];
+    }
+    
+    console.log(`  ✅ Fetched ${videosData.items.length} YouTube videos`);
+    return videosData.items;
   } catch (error) {
     console.error(`❌ Failed to fetch YouTube batch:`, error);
     return [];
