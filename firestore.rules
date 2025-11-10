@@ -166,8 +166,10 @@ service cloud.firestore {
         allow update: if canManageOrg(orgId)
           || (isSignedIn() && request.auth.token.email == resource.data.email && resource.data.status == 'pending');
         
-        // Only admins can delete invitations
-        allow delete: if canManageOrg(orgId);
+        // Admins can delete invitations
+        // Invited users can delete their own invitation after accepting (for cleanup)
+        allow delete: if canManageOrg(orgId)
+          || (isSignedIn() && request.auth.token.email == resource.data.email);
       }
       
       // ==================== ORG SETTINGS ====================
