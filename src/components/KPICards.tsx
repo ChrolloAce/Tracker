@@ -2472,13 +2472,18 @@ const KPICard: React.FC<{
             
             // Note: videosInInterval already calculated above for hasTopGainers check
             
+            // Get the metric key for sorting
+            const metricKey = data.id === 'views' ? 'views' 
+              : data.id === 'likes' ? 'likes'
+              : data.id === 'comments' ? 'comments'
+              : data.id === 'shares' ? 'shares'
+              : 'views'; // default to views
+            
             // New Uploads: Videos actually uploaded in this interval
+            // Sort by metric value (highest to lowest)
+            const totalNewUploads = videosInInterval.length; // Store total count
             const newUploads = [...videosInInterval]
-              .sort((a, b) => {
-                const dateA = a.uploadDate ? new Date(a.uploadDate) : new Date(a.dateSubmitted);
-                const dateB = b.uploadDate ? new Date(b.uploadDate) : new Date(b.dateSubmitted);
-                return dateB.getTime() - dateA.getTime();
-              })
+              .sort((a, b) => ((b as any)[metricKey] || 0) - ((a as any)[metricKey] || 0))
               .slice(0, 5);
             
             // Get ALL videos with snapshot activity during this interval (not just uploads)
@@ -2494,7 +2499,7 @@ const KPICard: React.FC<{
             
             // Top Gainers: Calculate growth based on snapshots in this interval
             // Use videosWithSnapshotsInInterval instead of videosInInterval
-            const topGainers = videosWithSnapshotsInInterval
+            const allTopGainers = videosWithSnapshotsInInterval
               .map((video: VideoSubmission) => {
                 // KEEP initial snapshots as they provide baseline for growth calculations
                 const allSnapshots = (video.snapshots || []);
@@ -2570,8 +2575,14 @@ const KPICard: React.FC<{
                   snapshotCount: allSnapshots.length
                 };
               })
-              .filter(item => item !== null && item.growth > 0)
-              .sort((a: any, b: any) => b.growth - a.growth)
+              .filter(item => item !== null && item.growth > 0);
+            
+            // Store total count before slicing
+            const totalTopGainers = allTopGainers.length;
+            
+            // Sort by absolute gain (highest to lowest) and take top 5
+            const topGainers = [...allTopGainers]
+              .sort((a: any, b: any) => b.absoluteGain - a.absoluteGain)
               .slice(0, 5);
             
             // Sort by the relevant metric
@@ -2806,7 +2817,7 @@ const KPICard: React.FC<{
                   <div className={`flex-1 px-5 py-3 ${hasTopGainers ? 'border-r border-white/10' : ''}`}>
                     <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                       <Upload className="w-3.5 h-3.5" />
-                      New Uploads ({newUploads.length})
+                      New Uploads ({totalNewUploads})
                     </h3>
                     <div className="space-y-2">
                       {newUploads.map((video: VideoSubmission, idx: number) => (
@@ -2867,7 +2878,7 @@ const KPICard: React.FC<{
                   <div className="flex-1 px-5 py-3">
                     <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                       <TrendingUp className="w-3.5 h-3.5" />
-                      Top Gainers ({topGainers.length})
+                      Top Gainers ({totalTopGainers})
                     </h3>
                     {topGainers.length > 0 ? (
                       <div className="space-y-2">
