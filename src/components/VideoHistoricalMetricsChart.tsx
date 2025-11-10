@@ -12,6 +12,7 @@ interface ChartDataPoint {
   saves: number;
   engagementRate: number;
   timestamp: number;
+  snapshotIndex: number;
 }
 
 interface VideoHistoricalMetricsChartProps {
@@ -113,17 +114,38 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
     return totalValue.toLocaleString();
   }, [totalValue, selectedMetric]);
 
-  // Custom tooltip - shows the DELTA (difference) for this snapshot
+  // Custom tooltip - MATCH MiniTrendChart format exactly
   const CustomTooltip = ({ active, payload }: any) => {
     if (!active || !payload || !payload.length) return null;
 
     const dataPoint = payload[0].payload;
-    const deltaValue = dataPoint[selectedMetric]; // This is already the delta from chart data
+    const dataIndex = typeof dataPoint.snapshotIndex === 'number'
+      ? dataPoint.snapshotIndex
+      : data.findIndex(d => d.timestamp === dataPoint.timestamp);
+    const isBaseline = dataIndex === 0;
+    const value = dataPoint[selectedMetric];
     
-    // Handle zero and negative values properly
-    const displayValue = deltaValue === 0 ? '0' : 
-                         deltaValue > 0 ? `+${currentMetric.formatValue(deltaValue)}` :
-                         `-${currentMetric.formatValue(Math.abs(deltaValue))}`;
+    console.log('🎯 Tooltip Data:', {
+      dataIndex,
+      isBaseline,
+      selectedMetric,
+      rawValue: value,
+      dataPoint: { date: dataPoint.date, views: dataPoint.views, likes: dataPoint.likes }
+    });
+    
+    // Format EXACTLY like MiniTrendChart: use toLocaleString() with + prefix for growth
+    let displayValue: string;
+    if (selectedMetric === 'engagementRate') {
+      // Engagement rate shows as percentage
+      displayValue = isBaseline 
+        ? `${value.toFixed(1)}%`
+        : `+${value.toFixed(1)}%`;
+    } else {
+      // Other metrics show as numbers with comma separators
+      displayValue = isBaseline 
+        ? value.toLocaleString()
+        : `+${value.toLocaleString()}`;
+    }
     
     return (
       <div 
@@ -138,7 +160,9 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
                 className="w-2 h-2 rounded-full"
                 style={{ backgroundColor: '#3b82f6' }}
               />
-              <span className="text-xs text-gray-400">Growth:</span>
+              <span className="text-xs text-gray-400">
+                {isBaseline ? 'Baseline:' : 'Growth:'}
+              </span>
             </div>
             <span className="text-sm font-bold text-white">
               {displayValue}

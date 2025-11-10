@@ -44,6 +44,7 @@ import { CampaignStatus } from '../types/campaigns';
 import ExtensionPromoModal from '../components/ExtensionPromoModal';
 import RevenueIntegrationsModal from '../components/RevenueIntegrationsModal';
 import SignOutModal from '../components/SignOutModal';
+import ComingSoonLocked from '../components/ComingSoonLocked';
 import OrganizationService from '../services/OrganizationService';
 import SubscriptionService from '../services/SubscriptionService';
 import DemoOrgService from '../services/DemoOrgService';
@@ -1915,7 +1916,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const topPerformersSubsectionOptions = useMemo(() => [
     { id: 'top-videos', label: 'Top Videos', description: 'Best performing videos', icon: Video },
     { id: 'top-accounts', label: 'Top Accounts', description: 'Best performing accounts', icon: AtSign },
-    { id: 'top-gainers', label: 'Top Gainers', description: 'Videos with highest growth from snapshots', icon: TrendingUp },
+    { id: 'top-gainers', label: 'Refreshed Videos', description: 'Videos with highest growth from snapshots', icon: TrendingUp },
     { id: 'top-creators', label: 'Top Creators', description: 'Best performing team creators', icon: Users },
     { id: 'posting-times', label: 'Best Posting Times', description: 'Engagement by day & hour', icon: Clock },
     { id: 'top-platforms', label: 'Top Platforms', description: 'Platform performance comparison', icon: Activity },
@@ -3053,7 +3054,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                       />
                     </div>
 
-                    {/* Top Gainers */}
+                    {/* Refreshed Videos */}
                     <div className="group relative">
                       <TopPerformersRaceChart
                         submissions={filteredSubmissions}
@@ -3151,11 +3152,11 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           {/* Subscription Tab */}
           {activeTab === 'subscription' && <SubscriptionPage />}
 
-          {/* Extension Tab - Shows promo modal */}
+          {/* Extension Tab - Locked */}
           {activeTab === 'extension' && (
-            <ExtensionPromoModal
-              isOpen={true}
-              onClose={() => navigate('/dashboard')}
+            <ComingSoonLocked 
+              title="Extensions"
+              description="Powerful browser extensions and integrations are on the way. Soon you'll be able to track and manage content directly from social media platforms."
             />
           )}
 
@@ -3179,19 +3180,19 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             />
           )}
 
-          {/* Creators Tab - Show appropriate view based on role */}
+          {/* Creators Tab - Locked */}
           {activeTab === 'creators' && (
-            userRole === 'creator' ? <CreatorPortalPage /> : <CreatorsManagementPage ref={creatorsPageRef} dateFilter={creatorsDateFilter} organizationId={currentOrgId || undefined} projectId={currentProjectId || undefined} />
+            <ComingSoonLocked 
+              title="Creators"
+              description="Manage your creator network, track performance, and handle payouts all in one place. This powerful creator management system is coming soon."
+            />
           )}
 
-          {/* Campaigns Tab */}
+          {/* Campaigns Tab - Locked */}
           {activeTab === 'campaigns' && (
-            <CampaignsManagementPage 
-              selectedStatus={campaignStatusFilter}
-              onStatusChange={setCampaignStatusFilter}
-              onCampaignsLoaded={setCampaignCounts}
-              organizationId={currentOrgId || undefined}
-              projectId={currentProjectId || undefined}
+            <ComingSoonLocked 
+              title="Campaigns"
+              description="Create engaging campaigns, set goals, track submissions, and reward your top performers. Campaign management features are being built for you."
             />
           )}
 
@@ -3202,7 +3203,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           {activeTab === 'revenue' && <RevenueManagementPage />}
 
           {/* Other Tabs - Placeholder */}
-          {!['dashboard', 'accounts', 'videos', 'subscription', 'settings', 'analytics', 'creators', 'campaigns', 'cron', 'team', 'revenue', 'invitations'].includes(activeTab) && (
+          {!['dashboard', 'accounts', 'videos', 'subscription', 'settings', 'analytics', 'creators', 'campaigns', 'cron', 'team', 'revenue', 'invitations', 'extension'].includes(activeTab) && (
             <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-12 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">🚧</span>

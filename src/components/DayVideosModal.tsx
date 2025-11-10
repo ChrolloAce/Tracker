@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { X, Eye, Heart, MessageCircle, Share2, Activity, Video, Users, MousePointerClick, Play, TrendingUp, Upload } from 'lucide-react';
-import { VideoSubmission } from '../types';
+import { VideoSubmission, VideoSnapshot } from '../types';
 import { TimeInterval } from '../services/DataAggregationService';
 import { LinkClick } from '../services/LinkClicksService';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -187,6 +187,13 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
   const cpKPIMetrics = useMemo(() => {
     let videosToUse = videos;
     
+    // Filter out invalid/empty videos (0 views, no caption, no data)
+    videosToUse = videosToUse.filter(v => {
+      const hasStats = (v.views || 0) > 0 || (v.likes || 0) > 0 || (v.comments || 0) > 0;
+      const hasContent = (v.title && v.title !== '(No caption)') || (v.caption && v.caption !== '(No caption)');
+      return hasStats || hasContent; // Keep video if it has either stats OR content
+    });
+    
     // Apply account filter
     if (accountFilter) {
       videosToUse = videosToUse.filter(v => v.uploaderHandle?.toLowerCase() === accountFilter.toLowerCase());
@@ -209,10 +216,105 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
       });
     }
     
-    const totalViews = videosToUse.reduce((sum, v) => sum + (v.views || 0), 0);
-    const totalLikes = videosToUse.reduce((sum, v) => sum + (v.likes || 0), 0);
-    const totalComments = videosToUse.reduce((sum, v) => sum + (v.comments || 0), 0);
-    const totalShares = videosToUse.reduce((sum, v) => sum + (v.shares || 0), 0);
+    // If interval is present, calculate growth from snapshots instead of totals
+    let totalViews = 0;
+    let totalLikes = 0;
+    let totalComments = 0;
+    let totalShares = 0;
+    
+    if (interval) {
+      // Calculate growth for each video based on snapshots in the interval
+      videosToUse.forEach(video => {
+        const uploadDate = video.uploadDate ? new Date(video.uploadDate) : new Date(video.dateSubmitted);
+        const isNewUpload = uploadDate >= interval.startDate && uploadDate <= interval.endDate;
+        
+        // For NEW uploads in this interval, count their full stats (no growth calculation)
+        // This ensures new videos contribute their entire view count, not just growth
+        if (isNewUpload) {
+          totalViews += video.views || 0;
+          totalLikes += video.likes || 0;
+          totalComments += video.comments || 0;
+          totalShares += video.shares || 0;
+          return;
+        }
+        
+        const snapshots = video.snapshots || [];
+        
+        // Include current video metrics if they differ from last snapshot
+        const effectiveSnapshots = [...snapshots];
+        const lastSnapshot = effectiveSnapshots[effectiveSnapshots.length - 1];
+        const metricsDiffer = !lastSnapshot ||
+          (lastSnapshot.views || 0) !== (video.views || 0) ||
+          (lastSnapshot.likes || 0) !== (video.likes || 0) ||
+          (lastSnapshot.comments || 0) !== (video.comments || 0) ||
+          (lastSnapshot.shares || 0) !== (video.shares || 0);
+        
+        if (metricsDiffer && video.lastRefreshed) {
+          const syntheticSnapshot: VideoSnapshot = {
+            id: `${video.id}-current`,
+            videoId: video.id,
+            views: video.views || 0,
+            likes: video.likes || 0,
+            comments: video.comments || 0,
+            shares: video.shares || 0,
+            saves: video.saves || 0,
+            capturedAt: video.lastRefreshed instanceof Date ? video.lastRefreshed : new Date(video.lastRefreshed as any),
+            capturedBy: 'scheduled_refresh',
+            isInitialSnapshot: false
+          };
+          effectiveSnapshots.push(syntheticSnapshot);
+        }
+        
+        if (effectiveSnapshots.length === 0) return;
+        
+        const snapshotsInOrBeforeInterval = effectiveSnapshots.filter(s => {
+          const capturedAt = s.capturedAt instanceof Date ? s.capturedAt : new Date(s.capturedAt);
+          return capturedAt <= interval.endDate;
+        });
+        
+        if (snapshotsInOrBeforeInterval.length === 0) return;
+        
+        const sortedSnapshots = [...snapshotsInOrBeforeInterval].sort((a, b) => {
+          const dateA = a.capturedAt instanceof Date ? a.capturedAt : new Date(a.capturedAt);
+          const dateB = b.capturedAt instanceof Date ? b.capturedAt : new Date(b.capturedAt);
+          return dateA.getTime() - dateB.getTime();
+        });
+        
+        const snapshotAtStart = sortedSnapshots.filter(s => {
+          const capturedAt = s.capturedAt instanceof Date ? s.capturedAt : new Date(s.capturedAt);
+          return capturedAt <= interval.startDate;
+        }).pop();
+        
+        const snapshotAtEnd = sortedSnapshots.filter(s => {
+          const capturedAt = s.capturedAt instanceof Date ? s.capturedAt : new Date(s.capturedAt);
+          return capturedAt <= interval.endDate;
+        }).pop();
+        
+        if (!snapshotAtEnd) return;
+        
+        // Use initial snapshot as baseline if no start snapshot
+        const baselineSnapshot = snapshotAtStart || effectiveSnapshots.find(s => s.isInitialSnapshot) || effectiveSnapshots[0];
+        if (!baselineSnapshot) return;
+        
+        // Calculate growth
+        const viewsGrowth = (snapshotAtEnd.views || 0) - (baselineSnapshot.views || 0);
+        const likesGrowth = (snapshotAtEnd.likes || 0) - (baselineSnapshot.likes || 0);
+        const commentsGrowth = (snapshotAtEnd.comments || 0) - (baselineSnapshot.comments || 0);
+        const sharesGrowth = (snapshotAtEnd.shares || 0) - (baselineSnapshot.shares || 0);
+        
+        totalViews += Math.max(0, viewsGrowth);
+        totalLikes += Math.max(0, likesGrowth);
+        totalComments += Math.max(0, commentsGrowth);
+        totalShares += Math.max(0, sharesGrowth);
+      });
+    } else {
+      // No interval - use current totals
+      totalViews = videosToUse.reduce((sum, v) => sum + (v.views || 0), 0);
+      totalLikes = videosToUse.reduce((sum, v) => sum + (v.likes || 0), 0);
+      totalComments = videosToUse.reduce((sum, v) => sum + (v.comments || 0), 0);
+      totalShares = videosToUse.reduce((sum, v) => sum + (v.shares || 0), 0);
+    }
+    
     const totalEngagement = totalLikes + totalComments + totalShares;
     const engagementRate = totalViews > 0 ? (totalEngagement / totalViews) * 100 : 0;
     const uniqueAccounts = new Set(videosToUse.map(v => v.uploaderHandle)).size;
@@ -228,11 +330,18 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
       accounts: uniqueAccounts,
       clicks: clicksCount
     };
-  }, [videos, accountFilter, linkClicks, dayOfWeek, hourRange]);
+  }, [videos, accountFilter, linkClicks, dayOfWeek, hourRange, interval]);
 
   // Calculate all KPI metrics for previous period
   const ppKPIMetrics = useMemo(() => {
     let videosToUse = ppVideos;
+    
+    // Filter out invalid/empty videos (0 views, no caption, no data)
+    videosToUse = videosToUse.filter(v => {
+      const hasStats = (v.views || 0) > 0 || (v.likes || 0) > 0 || (v.comments || 0) > 0;
+      const hasContent = (v.title && v.title !== '(No caption)') || (v.caption && v.caption !== '(No caption)');
+      return hasStats || hasContent; // Keep video if it has either stats OR content
+    });
     
     // Apply account filter
     if (accountFilter) {
@@ -278,22 +387,108 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
   }, [ppVideos, accountFilter, ppLinkClicks, dayOfWeek, hourRange]);
 
   // Calculate New Uploads (most recent videos in the period)
+  // Use ALL videos (not filteredVideos) to match tooltip behavior
   const newUploads = useMemo(() => {
-    return [...filteredVideos]
+    // Start with all videos in the period
+    let videosToShow = videos;
+    
+    // Filter out invalid/empty videos (0 views, no caption, no data)
+    videosToShow = videosToShow.filter(v => {
+      const hasStats = (v.views || 0) > 0 || (v.likes || 0) > 0 || (v.comments || 0) > 0;
+      const hasContent = (v.title && v.title !== '(No caption)') || (v.caption && v.caption !== '(No caption)');
+      return hasStats || hasContent; // Keep video if it has either stats OR content
+    });
+    
+    // Filter by interval if present (only show videos uploaded in this specific interval)
+    if (interval) {
+      videosToShow = videosToShow.filter(v => {
+        const uploadDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
+        return uploadDate >= interval.startDate && uploadDate <= interval.endDate;
+      });
+    }
+    
+    // Apply account filter if present (to match context)
+    if (accountFilter) {
+      videosToShow = videosToShow.filter(v => 
+        v.uploaderHandle?.toLowerCase() === accountFilter.toLowerCase()
+      );
+    }
+    
+    // Apply day of week filter if present
+    if (dayOfWeek !== undefined) {
+      videosToShow = videosToShow.filter(v => {
+        const videoDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
+        return videoDate.getDay() === dayOfWeek;
+      });
+    }
+    
+    // Apply hour range filter if present
+    if (hourRange) {
+      videosToShow = videosToShow.filter(v => {
+        const videoDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
+        const hour = videoDate.getHours();
+        return hour >= hourRange.start && hour < hourRange.end;
+      });
+    }
+    
+    // Sort by upload date (most recent first) and show ALL videos (no limit)
+    return [...videosToShow]
       .sort((a, b) => {
         const dateA = a.uploadDate ? new Date(a.uploadDate) : new Date(a.dateSubmitted);
         const dateB = b.uploadDate ? new Date(b.uploadDate) : new Date(b.dateSubmitted);
         return dateB.getTime() - dateA.getTime();
-      })
-      .slice(0, 10); // Show top 10 most recent
-  }, [filteredVideos]);
+      });
+  }, [videos, accountFilter, dayOfWeek, hourRange, interval]);
 
-  // Calculate Top Gainers (videos with highest growth from snapshots)
+  // Calculate Refreshed Videos (videos with highest growth from snapshots)
+  // Use ALL videos (not just filteredVideos) to match tooltip behavior
   const topGainers = useMemo(() => {
-    return filteredVideos
+    console.log('📈 [DayVideosModal] Calculating top gainers', {
+      videosCount: videos.length,
+      intervalStart: interval?.startDate?.toISOString?.(),
+      intervalEnd: interval?.endDate?.toISOString?.()
+    });
+
+    let videosToAnalyze = videos;
+    
+    // Filter out invalid/empty videos (0 views, no caption, no data)
+    videosToAnalyze = videosToAnalyze.filter(v => {
+      const hasStats = (v.views || 0) > 0 || (v.likes || 0) > 0 || (v.comments || 0) > 0;
+      const hasContent = (v.title && v.title !== '(No caption)') || (v.caption && v.caption !== '(No caption)');
+      return hasStats || hasContent; // Keep video if it has either stats OR content
+    });
+    
+    // Apply account filter if present (to match the context)
+    if (accountFilter) {
+      videosToAnalyze = videosToAnalyze.filter(v => 
+        v.uploaderHandle?.toLowerCase() === accountFilter.toLowerCase()
+      );
+    }
+    
+    // Apply day of week filter if present
+    if (dayOfWeek !== undefined) {
+      videosToAnalyze = videosToAnalyze.filter(v => {
+        const videoDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
+        return videoDate.getDay() === dayOfWeek;
+      });
+    }
+    
+    // Apply hour range filter if present
+    if (hourRange) {
+      videosToAnalyze = videosToAnalyze.filter(v => {
+        const videoDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
+        const hour = videoDate.getHours();
+        return hour >= hourRange.start && hour < hourRange.end;
+      });
+    }
+    
+    // If no interval, fall back to simple logic
+    if (!interval) {
+      return videosToAnalyze
       .map((video: VideoSubmission) => {
         const snapshots = video.snapshots || [];
-        if (snapshots.length < 2) return null;
+        console.log('   • Video snapshots (no interval):', video.id, snapshots.length);
+          if (snapshots.length < 1) return null;
         
         const sortedSnapshots = [...snapshots].sort((a, b) => 
           new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
@@ -302,7 +497,6 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
         const earliest = sortedSnapshots[0];
         const latest = sortedSnapshots[sortedSnapshots.length - 1];
         
-        // Calculate growth based on views (most common metric)
         const earliestViews = earliest.views || 0;
         const latestViews = latest.views || video.views || 0;
         const growth = earliestViews > 0 ? ((latestViews - earliestViews) / earliestViews) * 100 : 0;
@@ -316,10 +510,187 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
           viewsGained: latestViews - earliestViews
         };
       })
-      .filter(item => item !== null && item.growth > 0)
-      .sort((a: any, b: any) => b.growth - a.growth)
-      .slice(0, 10); // Show top 10 gainers
-  }, [filteredVideos]);
+        .filter(item => item !== null && item.viewsGained > 0)
+        .sort((a: any, b: any) => b.viewsGained - a.viewsGained);
+    }
+
+    // Match KPICards tooltip logic: use interval-aware snapshot filtering
+    // Look at ALL videos with snapshots, not just those uploaded in the interval
+    const result = videosToAnalyze
+      .map((video: VideoSubmission) => {
+        const normalizeSnapshot = (snapshot: VideoSnapshot): VideoSnapshot => {
+          const capturedAtValue = (snapshot as any).capturedAt;
+          let capturedAt = capturedAtValue instanceof Date ? capturedAtValue : new Date(capturedAtValue);
+          if (Number.isNaN(capturedAt.getTime())) {
+            capturedAt = new Date();
+          }
+          return {
+            ...snapshot,
+            capturedAt
+          };
+        };
+
+        const originalSnapshots = (video.snapshots || []).map(normalizeSnapshot);
+        const effectiveSnapshots: VideoSnapshot[] = [...originalSnapshots];
+
+        const latestViews = video.views || 0;
+        const latestLikes = video.likes || 0;
+        const latestComments = video.comments || 0;
+        const latestShares = video.shares || 0;
+        const latestSaves = (video.saves ?? video.bookmarks) || 0;
+
+        const lastSnapshot = effectiveSnapshots[effectiveSnapshots.length - 1];
+        const metricsDiffer = !lastSnapshot ||
+          (lastSnapshot.views || 0) !== latestViews ||
+          (lastSnapshot.likes || 0) !== latestLikes ||
+          (lastSnapshot.comments || 0) !== latestComments ||
+          (lastSnapshot.shares || 0) !== latestShares ||
+          (lastSnapshot.saves || lastSnapshot.bookmarks || 0) !== latestSaves;
+
+        if (metricsDiffer) {
+          let capturedAt = video.lastRefreshed instanceof Date
+            ? video.lastRefreshed
+            : video.lastRefreshed
+              ? new Date(video.lastRefreshed as unknown as string)
+              : new Date();
+
+          if (interval && capturedAt > interval.endDate) {
+            capturedAt = new Date(interval.endDate);
+          }
+
+          if (lastSnapshot && capturedAt < lastSnapshot.capturedAt) {
+            capturedAt = new Date(lastSnapshot.capturedAt.getTime());
+            capturedAt.setSeconds(capturedAt.getSeconds() + 1);
+          }
+
+          const syntheticSnapshot: VideoSnapshot = {
+            id: `${video.id}-current-metrics`,
+            videoId: video.id,
+            views: latestViews,
+            likes: latestLikes,
+            comments: latestComments,
+            shares: latestShares,
+            saves: latestSaves,
+            capturedAt,
+            capturedBy: 'scheduled_refresh',
+            isInitialSnapshot: false
+          };
+
+          effectiveSnapshots.push(syntheticSnapshot);
+          console.log('   • Added synthetic snapshot from latest metrics:', {
+            videoId: video.id,
+            capturedAt,
+            views: latestViews
+          });
+        }
+
+        if (effectiveSnapshots.length === 0) {
+          console.log('   • Skipping video (no snapshots after normalization):', video.id);
+          return null;
+        }
+        
+        // Get snapshots in or before the interval
+        const snapshotsInOrBeforeInterval = effectiveSnapshots.filter(snapshot => {
+          const snapshotDate = new Date(snapshot.capturedAt);
+          return snapshotDate <= interval.endDate;
+        });
+        const latestSnapshotInRange = snapshotsInOrBeforeInterval[snapshotsInOrBeforeInterval.length - 1];
+        if (latestSnapshotInRange) {
+          const cutoff = interval.endDate;
+          if (latestSnapshotInRange.capturedAt > cutoff) {
+            return null;
+          }
+        }
+        
+        if (snapshotsInOrBeforeInterval.length === 0) {
+          console.log('   • Skipping video (no snapshots before interval end):', video.id);
+          return null;
+        }
+        
+        const sortedSnapshots = [...snapshotsInOrBeforeInterval].sort((a, b) => 
+          new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+        );
+        
+        // Get snapshot at/before interval start (baseline)
+        const snapshotAtStart = sortedSnapshots.filter(s => 
+          new Date(s.capturedAt) <= interval.startDate
+        ).pop();
+        
+        // Get latest snapshot at/before interval end
+        const snapshotAtEnd = sortedSnapshots.filter(s => 
+          new Date(s.capturedAt) <= interval.endDate
+        ).pop();
+        
+        // Need end snapshot to calculate growth
+        if (!snapshotAtEnd) return null;
+        
+        // If no start snapshot, use initial snapshot as baseline
+        if (!snapshotAtStart || snapshotAtStart === snapshotAtEnd) {
+          const initialSnapshot = effectiveSnapshots.find(s => s.isInitialSnapshot) || effectiveSnapshots[0];
+          if (!initialSnapshot) {
+            console.log('     • Skipping (no baseline snapshot) for video:', video.id);
+            return null;
+          }
+ 
+          const growthMetricKey = 'views';
+          const startValue = (initialSnapshot as any)[growthMetricKey] || 0;
+          const endValue = (snapshotAtEnd as any)[growthMetricKey] || 0;
+          const absoluteGain = endValue - startValue;
+          const growthPercentage = startValue > 0 ? ((endValue - startValue) / startValue) * 100 : 0;
+          console.log('     • Fallback baseline', { videoId: video.id, startValue, endValue, absoluteGain });
+ 
+          return absoluteGain > 0 ? {
+            video,
+            growth: growthPercentage,
+            growthPercentage,
+            metricValue: endValue,
+            absoluteGain,
+            startValue,
+            snapshotCount: effectiveSnapshots.length,
+            viewsGained: absoluteGain,
+            currentViews: endValue
+          } : null;
+        }
+ 
+        const growthMetricKey = 'views';
+ 
+        const startValue = (snapshotAtStart as any)[growthMetricKey] || 0;
+        const endValue = (snapshotAtEnd as any)[growthMetricKey] || 0;
+        const absoluteGain = endValue - startValue;
+        const growthPercentage = startValue > 0 ? ((endValue - startValue) / startValue) * 100 : 0;
+        console.log('     • Interval growth', { videoId: video.id, metricKey: growthMetricKey, startValue, endValue, absoluteGain });
+ 
+        if (absoluteGain <= 0) {
+          return null;
+        }
+ 
+        return {
+          video,
+          growth: growthPercentage,
+          growthPercentage,
+          metricValue: endValue,
+          absoluteGain,
+          startValue,
+          snapshotCount: effectiveSnapshots.length,
+          viewsGained: absoluteGain,
+          currentViews: endValue
+        };
+      })
+      .filter(item => item !== null);
+
+    return result
+      .sort((a: any, b: any) => b.viewsGained - a.viewsGained);
+  }, [videos, accountFilter, dayOfWeek, hourRange, interval]);
+
+  // Calculate total views from new uploads
+  const totalNewUploadViews = useMemo(() => {
+    return newUploads.reduce((sum, video) => sum + (video.views || 0), 0);
+  }, [newUploads]);
+
+  // Calculate total views gained from refreshed videos
+  const totalRefreshedViewsGained = useMemo(() => {
+    return topGainers.reduce((sum, item: any) => sum + (item.viewsGained || 0), 0);
+  }, [topGainers]);
 
   if (!isOpen) return null;
 
@@ -573,15 +944,22 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             </div>
           </div>
 
-          {/* Secondary Content - New Uploads & Top Gainers */}
+          {/* Secondary Content - New Uploads & Refreshed Videos */}
           <div className="grid grid-cols-2 gap-6">
             {/* New Uploads */}
             <div className="space-y-3">
-              <div className="flex items-center gap-2 px-1">
-                <Upload className="w-3.5 h-3.5 text-gray-500" />
-                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  New Uploads · {newUploads.length}
-                </h3>
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-2">
+                  <Upload className="w-3.5 h-3.5 text-gray-500" />
+                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    New Uploads · {newUploads.length}
+                  </h3>
+                </div>
+                {newUploads.length > 0 && (
+                  <span className="text-xs font-semibold text-gray-400">
+                    {formatNumber(totalNewUploadViews)} views
+                  </span>
+                )}
               </div>
               <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
                 {newUploads.length > 0 ? (
@@ -638,13 +1016,20 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
               </div>
             </div>
 
-            {/* Top Gainers */}
+            {/* Refreshed Videos */}
             <div className="space-y-3">
-              <div className="flex items-center gap-2 px-1">
-                <TrendingUp className="w-3.5 h-3.5 text-gray-500" />
-                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Top Gainers · {topGainers.length}
-                </h3>
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-3.5 h-3.5 text-gray-500" />
+                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Refreshed Videos · {topGainers.length}
+                  </h3>
+                </div>
+                {topGainers.length > 0 && (
+                  <span className="text-xs font-semibold text-emerald-400">
+                    +{formatNumber(totalRefreshedViewsGained)} views
+                  </span>
+                )}
               </div>
               <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
                 {topGainers.length > 0 ? (

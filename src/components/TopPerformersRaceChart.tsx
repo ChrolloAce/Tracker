@@ -348,7 +348,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold text-white">{type === 'gainers' ? 'Top Gainers' : 'Top Videos'}</h2>
+            <h2 className="text-lg font-semibold text-white">{type === 'gainers' ? 'Refreshed Videos' : 'Top Videos'}</h2>
             <div className="relative">
               <button
                 onMouseEnter={() => setShowVideosInfo(true)}
@@ -369,7 +369,7 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({ submiss
                 >
                   <p className="text-xs text-gray-300 leading-relaxed">
                     {type === 'gainers' 
-                      ? 'Shows videos with the highest growth between their first and last snapshot. Great for identifying trending content.'
+                      ? 'Shows refreshed videos with the highest growth between their first and last snapshot. Great for identifying trending content.'
                       : 'Displays your best performing videos ranked by the selected metric. Click any video to see detailed analytics.'
                     }
                   </p>

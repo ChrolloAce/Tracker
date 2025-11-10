@@ -26,6 +26,7 @@ interface ChartDataPoint {
   saves: number;
   engagementRate: number;
   timestamp: number;
+  snapshotIndex: number;
 }
 
 const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose, totalCreatorVideos, orgId, projectId }) => {
@@ -151,7 +152,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     if (!video) return [];
     
     // Helper to create a data point with DELTA stats (change from previous snapshot)
-    const createDataPoint = (stats: any, timestamp: Date, previousStats?: any): ChartDataPoint => {
+    const createDataPoint = (stats: any, timestamp: Date, snapshotIndex: number, previousStats?: any): ChartDataPoint => {
       // If this is the first snapshot, use absolute values
       // Otherwise, calculate delta from previous snapshot
       const views = previousStats ? Math.max(0, stats.views - previousStats.views) : stats.views;
@@ -163,11 +164,15 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       const totalEngagement = likes + comments + shares;
       const engagementRate = views > 0 ? (totalEngagement / views) * 100 : 0;
       
+      const formattedDate = timestamp.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      });
+
       return {
-        date: timestamp.toLocaleDateString('en-US', { 
-          month: 'short', 
-          day: 'numeric'
-        }),
+        date: formattedDate,
         views,
         likes,
         comments,
@@ -175,30 +180,50 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         saves,
         engagementRate,
         timestamp: timestamp.getTime(),
+        snapshotIndex
       };
     };
 
     // If no snapshots, create data point from current video stats only
     if (!video.snapshots || video.snapshots.length === 0) {
-      const dataPoint = createDataPoint(video, new Date(video.timestamp || video.dateSubmitted));
-      // Duplicate the single point to create a flat line
-      return [dataPoint, { ...dataPoint }];
+      const baseTimestamp = new Date(video.timestamp || video.dateSubmitted);
+      const dataPoint = createDataPoint(video, baseTimestamp, 0);
+      // Duplicate the single point to create a flat line with unique index/timestamp
+      const duplicatePoint = {
+        ...dataPoint,
+        snapshotIndex: 1,
+        timestamp: dataPoint.timestamp + 1
+      };
+      return [dataPoint, duplicatePoint];
     }
 
     // Sort all snapshots by date (KEEP initial snapshots as they provide baseline)
     const sortedSnapshots = [...video.snapshots]
       .sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime());
     
-    console.log('📊 Video snapshots:', {
+    console.log('📊 Video snapshots (RAW DATA):', {
       total: video.snapshots.length,
       filtered: sortedSnapshots.length,
-      snapshots: sortedSnapshots.map(s => ({
+      videoCurrentViews: video.views,
+      snapshots: sortedSnapshots.map((s, idx) => ({
+        index: idx,
         date: new Date(s.capturedAt).toLocaleString(),
         views: s.views,
         likes: s.likes,
-        isInitial: s.isInitialSnapshot
+        comments: s.comments,
+        isInitial: s.isInitialSnapshot,
+        capturedBy: s.capturedBy
       }))
     });
+    
+    // Check if all snapshots have identical values (bug indicator)
+    if (sortedSnapshots.length > 1) {
+      const allSameViews = sortedSnapshots.every(s => s.views === sortedSnapshots[0].views);
+      const allSameLikes = sortedSnapshots.every(s => s.likes === sortedSnapshots[0].likes);
+      if (allSameViews || allSameLikes) {
+        console.warn('⚠️ WARNING: All snapshots have identical values! This suggests a data sync issue.');
+      }
+    }
     
     // Append current video stats if different from last snapshot
     const allSnapshots = [...sortedSnapshots];
@@ -223,70 +248,78 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         });
       }
 
-    // Create data points - show DELTAS (change from previous snapshot)
+    // Create data points - MATCH TrendCalculationService logic
+    // First point = BASELINE (absolute value), subsequent points = GROWTH (delta from previous)
     const data: ChartDataPoint[] = allSnapshots.map((snapshot, index) => {
       const timestamp = new Date(snapshot.capturedAt);
-      const previousSnapshot = index > 0 ? allSnapshots[index - 1] : undefined;
       
-      // Calculate deltas manually to ensure correctness
       const currentViews = snapshot.views || 0;
       const currentLikes = snapshot.likes || 0;
       const currentComments = snapshot.comments || 0;
       const currentShares = snapshot.shares || 0;
       const currentSaves = snapshot.saves || 0;
       
-      let deltaViews, deltaLikes, deltaComments, deltaShares, deltaSaves;
+      let displayViews, displayLikes, displayComments, displayShares, displaySaves;
       
-      if (previousSnapshot) {
+      if (index === 0) {
+        // FIRST SNAPSHOT: Show absolute baseline values (where we started)
+        displayViews = currentViews;
+        displayLikes = currentLikes;
+        displayComments = currentComments;
+        displayShares = currentShares;
+        displaySaves = currentSaves;
+        
+        console.log(`📈 Chart Point ${index + 1} (BASELINE):`, {
+          date: timestamp.toLocaleDateString(),
+          views: currentViews.toLocaleString(),
+          note: 'First snapshot - showing baseline values'
+        });
+      } else {
+        // SUBSEQUENT SNAPSHOTS: Show growth delta from previous
+        const previousSnapshot = allSnapshots[index - 1];
         const prevViews = previousSnapshot.views || 0;
         const prevLikes = previousSnapshot.likes || 0;
         const prevComments = previousSnapshot.comments || 0;
         const prevShares = previousSnapshot.shares || 0;
         const prevSaves = previousSnapshot.saves || 0;
         
-        deltaViews = Math.max(0, currentViews - prevViews);
-        deltaLikes = Math.max(0, currentLikes - prevLikes);
-        deltaComments = Math.max(0, currentComments - prevComments);
-        deltaShares = Math.max(0, currentShares - prevShares);
-        deltaSaves = Math.max(0, currentSaves - prevSaves);
+        displayViews = Math.max(0, currentViews - prevViews);
+        displayLikes = Math.max(0, currentLikes - prevLikes);
+        displayComments = Math.max(0, currentComments - prevComments);
+        displayShares = Math.max(0, currentShares - prevShares);
+        displaySaves = Math.max(0, currentSaves - prevSaves);
         
-        console.log(`📈 Chart Point ${index + 1} (DELTA):`, {
+        console.log(`📈 Chart Point ${index + 1} (GROWTH):`, {
           date: timestamp.toLocaleDateString(),
-          currentViews,
-          prevViews,
-          deltaViews,
-          calculation: `${currentViews.toLocaleString()} - ${prevViews.toLocaleString()} = ${deltaViews.toLocaleString()}`
-        });
-      } else {
-        // First snapshot - show absolute values
-        deltaViews = currentViews;
-        deltaLikes = currentLikes;
-        deltaComments = currentComments;
-        deltaShares = currentShares;
-        deltaSaves = currentSaves;
-        
-        console.log(`📈 Chart Point ${index + 1} (FIRST):`, {
-          date: timestamp.toLocaleDateString(),
-          views: currentViews.toLocaleString(),
-          note: 'Using absolute values for first snapshot'
+          currentViews: currentViews.toLocaleString(),
+          prevViews: prevViews.toLocaleString(),
+          growth: displayViews.toLocaleString(),
+          calculation: `${currentViews.toLocaleString()} - ${prevViews.toLocaleString()} = +${displayViews.toLocaleString()}`,
+          WARNING: currentViews === prevViews ? '⚠️ NO GROWTH - Same values!' : '✅ Growth detected'
         });
       }
       
-      const totalEngagement = deltaLikes + deltaComments + deltaShares;
-      const engagementRate = deltaViews > 0 ? (totalEngagement / deltaViews) * 100 : 0;
+      // Calculate engagement rate based on the display values
+      const totalEngagement = displayLikes + displayComments + displayShares;
+      const engagementRate = displayViews > 0 ? (totalEngagement / displayViews) * 100 : 0;
       
+      const formattedDate = timestamp.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      });
+
       return {
-        date: timestamp.toLocaleDateString('en-US', { 
-          month: 'short', 
-          day: 'numeric'
-        }),
-        views: deltaViews,
-        likes: deltaLikes,
-        comments: deltaComments,
-        shares: deltaShares,
-        saves: deltaSaves,
+        date: formattedDate,
+        views: displayViews,
+        likes: displayLikes,
+        comments: displayComments,
+        shares: displayShares,
+        saves: displaySaves,
         engagementRate,
         timestamp: timestamp.getTime(),
+        snapshotIndex: index
       };
     });
     
@@ -298,28 +331,36 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     }
     
     return data;
-  }, [video?.id, video?.views, video?.likes, video?.comments, video?.shares, video?.saves, video?.snapshots?.length]);
+  }, [video?.id, video?.views, video?.likes, video?.comments, video?.shares, video?.saves, video?.snapshots]);
 
-  // Calculate cumulative totals - always showing all data
+  // Calculate cumulative totals - sum all deltas from chart data to match displayed values
   const cumulativeTotals = useMemo(() => {
-    if (!video) return { views: 0, likes: 0, comments: 0, shares: 0, saves: 0, engagementRate: 0 };
+    if (!video || chartData.length === 0) return { views: 0, likes: 0, comments: 0, shares: 0, saves: 0, engagementRate: 0 };
     
-    // Always show current video totals
-      const views = video.views || 0;
-      const likes = video.likes || 0;
-      const comments = video.comments || 0;
-      const shares = video.shares || 0;
-      const saves = video.saves || 0;
-      
-      return {
-        views,
-        likes,
-        comments,
-        shares,
-        saves,
-        engagementRate: views > 0 ? ((likes + comments + shares) / views) * 100 : 0,
-      };
-  }, [video?.views, video?.likes, video?.comments, video?.shares, video?.saves]);
+    // Sum all the delta values from the chart data (this matches what's visually shown in the graph)
+    const views = chartData.reduce((sum, point) => sum + point.views, 0);
+    const likes = chartData.reduce((sum, point) => sum + point.likes, 0);
+    const comments = chartData.reduce((sum, point) => sum + point.comments, 0);
+    const shares = chartData.reduce((sum, point) => sum + point.shares, 0);
+    const saves = chartData.reduce((sum, point) => sum + point.saves, 0);
+    
+    console.log('📊 Cumulative Totals (sum of all deltas):', {
+      views: views.toLocaleString(),
+      likes: likes.toLocaleString(),
+      comments: comments.toLocaleString(),
+      shares: shares.toLocaleString(),
+      note: 'This should match the current video totals'
+    });
+    
+    return {
+      views,
+      likes,
+      comments,
+      shares,
+      saves,
+      engagementRate: views > 0 ? ((likes + comments + shares) / views) * 100 : 0,
+    };
+  }, [chartData]);
 
   // Calculate growth since last snapshot and time elapsed
   const metricGrowthWithTime = useMemo(() => {
@@ -1279,6 +1320,17 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
         }
         
         const value = tooltipData.dataPoint[tooltipData.metricKey];
+        console.log('🧷 Portal Tooltip Value', {
+          metricKey: tooltipData.metricKey,
+          dataIndex: tooltipData.dataIndex,
+          rawValue: value,
+          dataPoint: tooltipData.dataPoint
+        });
+        
+        const isBaseline = tooltipData.dataIndex === 0;
+        const formattedValue = tooltipData.isPercentage
+          ? (isBaseline ? `${value.toFixed(1)}%` : `+${value.toFixed(1)}%`)
+          : (isBaseline ? formatNumber(value) : `+${formatNumber(value)}`);
         
         return createPortal(
           <div 
@@ -1303,10 +1355,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
             {/* Value */}
             <div className="px-5 py-4">
               <p className="text-2xl text-white font-bold">
-                {tooltipData.isPercentage 
-                  ? `${value.toFixed(1)}%` 
-                  : formatNumber(value)
-                }
+                {formattedValue}
               </p>
               <p className="text-sm text-gray-400 mt-1">
                 {tooltipData.metricLabel}

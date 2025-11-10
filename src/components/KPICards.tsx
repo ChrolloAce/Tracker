@@ -204,7 +204,22 @@ const KPICards: React.FC<KPICardsProps> = ({
         // Filter videos for the entire interval (day, week, month, or year!)
         videosForInterval = submissions.filter(video => {
           const uploadDate = video.uploadDate ? new Date(video.uploadDate) : new Date(video.dateSubmitted);
-          return DataAggregationService.isDateInInterval(uploadDate, hoveredInterval);
+          if (DataAggregationService.isDateInInterval(uploadDate, hoveredInterval)) {
+            return true;
+          }
+
+          const snapshots = video.snapshots || [];
+          return snapshots.some(snapshot => {
+            const snapshotDate = new Date(snapshot.capturedAt);
+            return DataAggregationService.isDateInInterval(snapshotDate, hoveredInterval);
+          });
+        });
+        
+        // Filter out invalid/empty videos (0 views, no caption, no data)
+        videosForInterval = videosForInterval.filter(v => {
+          const hasStats = (v.views || 0) > 0 || (v.likes || 0) > 0 || (v.comments || 0) > 0;
+          const hasContent = (v.title && v.title !== '(No caption)') || (v.caption && v.caption !== '(No caption)');
+          return hasStats || hasContent;
         });
         
         // Filter link clicks for this interval
@@ -275,8 +290,23 @@ const KPICards: React.FC<KPICardsProps> = ({
         dayEnd.setHours(23, 59, 59, 999);
         
         videosForInterval = submissions.filter(video => {
-          const videoDate = new Date(video.uploadDate);
-          return videoDate >= dayStart && videoDate <= dayEnd;
+          const primaryDate = video.uploadDate ? new Date(video.uploadDate) : new Date(video.dateSubmitted);
+          if (primaryDate >= dayStart && primaryDate <= dayEnd) {
+            return true;
+          }
+
+          const snapshots = video.snapshots || [];
+          return snapshots.some(snapshot => {
+            const snapshotDate = new Date(snapshot.capturedAt);
+            return snapshotDate >= dayStart && snapshotDate <= dayEnd;
+          });
+        });
+        
+        // Filter out invalid/empty videos (0 views, no caption, no data)
+        videosForInterval = videosForInterval.filter(v => {
+          const hasStats = (v.views || 0) > 0 || (v.likes || 0) > 0 || (v.comments || 0) > 0;
+          const hasContent = (v.title && v.title !== '(No caption)') || (v.caption && v.caption !== '(No caption)');
+          return hasStats || hasContent;
         });
         
         // Filter link clicks for this day
@@ -1877,11 +1907,24 @@ const _KPISparkline: React.FC<{
   };
   
   return (
+    <div 
+      onMouseLeave={() => {
+        // Force clear tooltips on mouse leave
+        const tooltips = document.querySelectorAll('[class*="recharts-tooltip-wrapper"]');
+        tooltips.forEach(tooltip => {
+          if (tooltip instanceof HTMLElement) {
+            tooltip.style.display = 'none';
+          }
+        });
+      }}
+      style={{ width: '100%', height: 56 }}
+    >
     <ResponsiveContainer width="100%" height={56}>
       <AreaChart data={data}>
         <defs>
           <linearGradient id={`gradient-${id}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={gradient[0]} stopOpacity={0.3} />
+            <stop offset="0%" stopColor={gradient[0]} stopOpacity={0.4} />
+            <stop offset="50%" stopColor={gradient[0]} stopOpacity={0.2} />
             <stop offset="100%" stopColor={gradient[1]} stopOpacity={0} />
           </linearGradient>
         </defs>
@@ -1889,9 +1932,12 @@ const _KPISparkline: React.FC<{
           position={{ y: -60 }}
           offset={40}
           allowEscapeViewBox={{ x: false, y: true }}
+          isAnimationActive={false}
+          animationDuration={0}
           wrapperStyle={{ 
             zIndex: 99999,
-            position: 'fixed'
+            position: 'fixed',
+            pointerEvents: 'none'
           }}
           content={({ active, payload }) => {
             if (active && payload && payload.length) {
@@ -1955,14 +2001,24 @@ const _KPISparkline: React.FC<{
           type="monotone"
           dataKey="value"
           stroke={stroke}
-          strokeWidth={2}
+          strokeWidth={2.5}
           fill={`url(#gradient-${id})`}
-          isAnimationActive={false}
+          isAnimationActive={true}
+          animationDuration={800}
+          animationEasing="ease-in-out"
+          connectNulls={true}
           dot={false}
-          activeDot={{ r: 4, fill: stroke, strokeWidth: 2, stroke: '#fff' }}
+          activeDot={{ 
+            r: 5, 
+            fill: stroke, 
+            strokeWidth: 3, 
+            stroke: '#fff',
+            style: { filter: 'drop-shadow(0px 2px 8px rgba(0, 0, 0, 0.5))' }
+          }}
         />
       </AreaChart>
     </ResponsiveContainer>
+    </div>
   );
 };
 
@@ -2004,6 +2060,41 @@ const KPICard: React.FC<{
   const [tooltipData, setTooltipData] = useState<{ x: number; y: number; point: any; lineX: number } | null>(null);
   const cardRef = React.useRef<HTMLDivElement>(null);
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+  
+  // Auto-close tooltip when mouse is outside the card
+  React.useEffect(() => {
+    if (!tooltipData) return;
+    
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (!cardRef.current) return;
+      
+      const rect = cardRef.current.getBoundingClientRect();
+      const isOutside = 
+        e.clientX < rect.left || 
+        e.clientX > rect.right || 
+        e.clientY < rect.top || 
+        e.clientY > rect.bottom;
+      
+      if (isOutside) {
+        setTooltipData(null);
+        if (onIntervalHover) onIntervalHover(null);
+        
+        // Force clear any lingering recharts tooltips
+        const tooltips = document.querySelectorAll('[class*="recharts-tooltip-wrapper"]');
+        tooltips.forEach(tooltip => {
+          if (tooltip instanceof HTMLElement) {
+            tooltip.style.display = 'none';
+          }
+        });
+      }
+    };
+    
+    document.addEventListener('mousemove', handleGlobalMouseMove);
+    
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMouseMove);
+    };
+  }, [tooltipData, onIntervalHover]);
   
   const formatDeltaNumber = (num: number, isRevenue: boolean = false): string => {
     const absNum = Math.abs(num);
@@ -2071,9 +2162,20 @@ const KPICard: React.FC<{
           }
         }
       }}
-      onMouseLeave={() => {
+      onMouseLeave={(e) => {
+        // Clear tooltip state
         setTooltipData(null);
         if (onIntervalHover) onIntervalHover(null);
+        
+        // Force clear any lingering recharts tooltips
+        setTimeout(() => {
+          const tooltips = document.querySelectorAll('[class*="recharts-tooltip-wrapper"]');
+          tooltips.forEach(tooltip => {
+            if (tooltip instanceof HTMLElement) {
+              tooltip.style.display = 'none';
+            }
+          });
+        }, 50);
       }}
       draggable={isEditMode}
       onDragStart={onDragStart}
@@ -2184,6 +2286,15 @@ const KPICard: React.FC<{
             borderBottomLeftRadius: '1rem',
             borderBottomRightRadius: '1rem'
           }}
+          onMouseLeave={() => {
+            // Force clear any lingering tooltips when mouse leaves chart area
+            const tooltips = document.querySelectorAll('[class*="recharts-tooltip-wrapper"]');
+            tooltips.forEach(tooltip => {
+              if (tooltip instanceof HTMLElement) {
+                tooltip.style.display = 'none';
+              }
+            });
+          }}
         >
           {/* Atmospheric Gradient Overlay */}
           <div 
@@ -2247,7 +2358,8 @@ const KPICard: React.FC<{
                      >
                       <defs>
                         <linearGradient id={`bottom-gradient-${data.id}`} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor={colors.stroke} stopOpacity={0.2} />
+                          <stop offset="0%" stopColor={colors.stroke} stopOpacity={0.3} />
+                          <stop offset="50%" stopColor={colors.stroke} stopOpacity={0.15} />
                           <stop offset="100%" stopColor={colors.stroke} stopOpacity={0} />
                         </linearGradient>
                         <linearGradient id={`pp-gradient-${data.id}`} x1="0" y1="0" x2="0" y2="1">
@@ -2280,8 +2392,18 @@ const KPICard: React.FC<{
                         stroke={colors.stroke}
                         strokeWidth={2.5}
                         fill={isSingleDay ? 'none' : `url(#bottom-gradient-${data.id})`}
-                        dot={isSingleDay ? { r: 5, fill: colors.stroke, stroke: '#1a1a1a', strokeWidth: 2 } : false}
-                        isAnimationActive={false}
+                        connectNulls={true}
+                        dot={false}
+                        activeDot={{ 
+                          r: 5, 
+                          fill: colors.stroke, 
+                          strokeWidth: 3, 
+                          stroke: '#fff',
+                          style: { filter: 'drop-shadow(0px 2px 8px rgba(0, 0, 0, 0.5))' }
+                        }}
+                        isAnimationActive={true}
+                        animationDuration={800}
+                        animationEasing="ease-in-out"
                       />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -2351,9 +2473,9 @@ const KPICard: React.FC<{
             // If no end snapshot, can't calculate growth
             if (!snapshotAtEnd) return null;
             
-            // If no start snapshot, use initial snapshot as baseline
+            // If no start snapshot, use initial snapshot or first snapshot as baseline
             if (!snapshotAtStart || snapshotAtStart === snapshotAtEnd) {
-              const initialSnapshot = video.snapshots?.find(s => s.isInitialSnapshot);
+              const initialSnapshot = video.snapshots?.find(s => s.isInitialSnapshot) || sortedSnapshots[0];
               if (!initialSnapshot) return null;
               
               const growthMetricKey = data.id === 'views' ? 'views' 
@@ -2367,7 +2489,7 @@ const KPICard: React.FC<{
               const endValue = (snapshotAtEnd as any)[growthMetricKey] || 0;
               const growth = endValue - startValue;
               
-              return growth > 0 ? { video, growth } : null;
+              return growth > 0 ? { video, growth, absoluteGain: growth } : null;
             }
             
             const growthMetricKey = data.id === 'views' ? 'views' 
@@ -2381,7 +2503,7 @@ const KPICard: React.FC<{
             const endValue = (snapshotAtEnd as any)[growthMetricKey] || 0;
             const absoluteGain = endValue - startValue;
             
-            return absoluteGain > 0 ? { video, growth: absoluteGain } : null;
+            return absoluteGain > 0 ? { video, growth: absoluteGain, absoluteGain } : null;
           })
           .filter(item => item !== null);
         
@@ -2459,7 +2581,8 @@ const KPICard: React.FC<{
             
             // Format value based on metric type
             const isRevenueMetric = data.id === 'revenue' || data.id === 'downloads';
-            const formatDisplayNumber = (num: number): string => {
+            const formatDisplayNumber = (num: number | undefined | null): string => {
+              if (num === undefined || num === null || isNaN(num)) return '0';
               if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
               if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
               // For revenue, format to 2 decimal places
@@ -2509,7 +2632,7 @@ const KPICard: React.FC<{
               return snapshots.length > 0;
             }) : [];
             
-            // Top Gainers: Calculate growth based on snapshots in this interval
+            // Refreshed Videos: Calculate growth based on snapshots in this interval
             // Use videosWithSnapshotsInInterval instead of videosInInterval
             const allTopGainers = videosWithSnapshotsInInterval
               .map((video: VideoSubmission) => {
@@ -2539,12 +2662,12 @@ const KPICard: React.FC<{
                 ).pop();
                 
                 // Need both start and end snapshots to calculate growth
-                // OR if snapshotAtStart is missing, use the initial snapshot as baseline
+                // OR if snapshotAtStart is missing, use the initial snapshot or first snapshot as baseline
                 if (!snapshotAtEnd) return null;
                 
                 if (!snapshotAtStart || snapshotAtStart === snapshotAtEnd) {
-                  // Use initial snapshot as baseline if available
-                  const initialSnapshot = video.snapshots?.find(s => s.isInitialSnapshot);
+                  // Use initial snapshot as baseline if available, otherwise use first snapshot
+                  const initialSnapshot = video.snapshots?.find(s => s.isInitialSnapshot) || sortedSnapshots[0];
                   if (!initialSnapshot) return null;
                   // Use initial snapshot as baseline for comparison
                   const growthMetricKey = data.id === 'views' ? 'views' 
@@ -2561,7 +2684,8 @@ const KPICard: React.FC<{
                   return {
                     video,
                     growth,
-                    growthPercentage
+                    growthPercentage,
+                    absoluteGain: growth
                   };
                 }
                 
@@ -2587,14 +2711,14 @@ const KPICard: React.FC<{
                   snapshotCount: allSnapshots.length
                 };
               })
-              .filter(item => item !== null && item.growth > 0);
+              .filter(item => item !== null && item.growth > 0 && item.absoluteGain !== undefined);
             
             // Store total count before slicing
             const totalTopGainers = allTopGainers.length;
             
             // Sort by absolute gain (highest to lowest) and take top 5
             const topGainers = [...allTopGainers]
-              .sort((a: any, b: any) => b.absoluteGain - a.absoluteGain)
+              .sort((a: any, b: any) => (b.absoluteGain || 0) - (a.absoluteGain || 0))
               .slice(0, 5);
             
             // Sort by the relevant metric

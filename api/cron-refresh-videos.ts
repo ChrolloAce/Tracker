@@ -182,9 +182,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const accountData = accountDoc.data();
             const username = accountData.username;
             const platform = accountData.platform;
+            const creatorType = accountData.creatorType || 'automatic'; // Default to automatic for backward compatibility
 
             try {
-              // Fetch fresh data from platform
+              // Check if this is a manual account (should only refresh existing videos)
+              if (creatorType === 'manual') {
+                console.log(`    🔄 @${username} [MANUAL]: Refreshing existing videos only (no new video discovery)`);
+                
+                // For manual accounts, ONLY refresh existing videos (no new video discovery)
+                const updated = await refreshExistingVideos(orgId, projectId, accountId, platform);
+                
+                if (updated > 0) {
+                  console.log(`    ✅ @${username} [MANUAL]: Updated ${updated} existing videos`);
+                  
+                  // Update account lastSynced timestamp
+                  await accountDoc.ref.update({
+                    lastSynced: new Date()
+                  });
+                  
+                  // Track stats
+                  const orgStats = processedOrgs.get(orgId);
+                  if (orgStats) {
+                    orgStats.accountsProcessed++;
+                    orgStats.videosUpdated += updated;
+                  }
+                  
+                  return { success: true, username, updated: updated, added: 0 };
+                } else {
+                  console.log(`    ℹ️ @${username} [MANUAL]: No existing videos to refresh`);
+                  return { success: true, username, updated: 0, added: 0 };
+                }
+              }
+              
+              // Automatic account - fetch new videos AND refresh existing ones
+              console.log(`    🔄 @${username} [AUTOMATIC]: Discovering new videos + refreshing existing`);
               const result = await refreshAccountVideos(
                 orgId,
                 projectId,
@@ -194,8 +225,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 isManualTrigger
               );
 
-              if (result.fetched > 0) {
-                console.log(`    ✅ @${username}: Updated ${result.updated} videos, Added ${result.added} new videos, Skipped ${result.skipped} invalid videos`);
+              if (result.fetched > 0 || result.updated > 0) {
+                console.log(`    ✅ @${username} [AUTOMATIC]: Updated ${result.updated} videos, Added ${result.added} new videos, Skipped ${result.skipped} invalid videos`);
 
                 // Update account lastSynced timestamp and verified status
                 const updateData: any = {
@@ -545,15 +576,16 @@ async function refreshAccountVideos(
   }
 
   // Extract verified status from first video
+  const platformLower = platform.toLowerCase().trim();
   if (initialBatch.length > 0) {
     const firstVideo = initialBatch[0];
-    if (platform === 'instagram') {
+    if (platformLower === 'instagram') {
       // hpix~ig-reels-scraper: verified status is in raw_data.owner.is_verified
       isVerified = firstVideo.raw_data?.owner?.is_verified || false;
-    } else if (platform === 'tiktok') {
+    } else if (platformLower === 'tiktok') {
       // apidojo/tiktok-scraper: verified status is in channel.verified
       isVerified = firstVideo.channel?.verified || false;
-    } else if (platform === 'twitter') {
+    } else if (platformLower === 'twitter') {
       isVerified = firstVideo.isVerified || false;
       isBlueVerified = firstVideo.isBlueVerified || false;
     }
@@ -633,10 +665,15 @@ async function fetchVideosFromPlatform(
   maxVideos: number,
   skipVideos: number = 0
 ): Promise<any[]> {
+  console.log(`    🔍 [FETCH] Platform: "${platform}", Username: "${username}", MaxVideos: ${maxVideos}`);
+  
   let actorId: string;
   let input: any;
 
-  if (platform === 'instagram') {
+  // Normalize platform to lowercase for comparison
+  const platformLower = platform.toLowerCase().trim();
+
+  if (platformLower === 'instagram') {
     // DO NOT use beginDate/endDate for cron refreshes - just fetch latest reels
     // Date filtering is only used in sync-single-account.ts for incremental syncs
     actorId = 'hpix~ig-reels-scraper';
@@ -657,7 +694,7 @@ async function fetchVideosFromPlatform(
       handlePageTimeoutSecs: 120,
       debugLog: false
     };
-  } else if (platform === 'tiktok') {
+  } else if (platformLower === 'tiktok') {
     actorId = 'apidojo/tiktok-scraper';
     const usernameClean = username.replace('@', '');
     input = {
@@ -673,7 +710,7 @@ async function fetchVideosFromPlatform(
         apifyProxyGroups: ['RESIDENTIAL']
       }
     };
-  } else if (platform === 'twitter') {
+  } else if (platformLower === 'twitter') {
     actorId = 'apidojo/tweet-scraper';
     input = {
       twitterHandles: [username],
@@ -686,7 +723,75 @@ async function fetchVideosFromPlatform(
       onlyTwitterBlue: false,
       includeSearchTerms: false
     };
+  } else if (platformLower === 'youtube') {
+    // YouTube: Use YouTube Data API v3 to fetch channel videos
+    console.log(`    🎥 [YOUTUBE] Fetching latest videos from channel...`);
+    
+    const youtubeApiKey = process.env.YOUTUBE_API_KEY;
+    if (!youtubeApiKey) {
+      console.error(`    ❌ [YOUTUBE] YOUTUBE_API_KEY not configured`);
+      return [];
+    }
+
+    try {
+      // Step 1: Search for the channel by username/handle
+      const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(username)}&key=${youtubeApiKey}&maxResults=1`;
+      const searchResponse = await fetch(searchUrl);
+      const searchData = await searchResponse.json();
+      
+      if (!searchData.items || searchData.items.length === 0) {
+        console.log(`    ⚠️ [YOUTUBE] No channel found for: ${username}`);
+        return [];
+      }
+      
+      const channelId = searchData.items[0].snippet.channelId || searchData.items[0].id.channelId;
+      console.log(`    ✅ [YOUTUBE] Found channel ID: ${channelId}`);
+      
+      // Step 2: Get channel's uploads playlist
+      const channelUrl = `https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=${channelId}&key=${youtubeApiKey}`;
+      const channelResponse = await fetch(channelUrl);
+      const channelData = await channelResponse.json();
+      
+      if (!channelData.items || channelData.items.length === 0) {
+        console.log(`    ⚠️ [YOUTUBE] No channel data found`);
+        return [];
+      }
+      
+      const uploadsPlaylistId = channelData.items[0].contentDetails.relatedPlaylists.uploads;
+      
+      // Step 3: Get videos from uploads playlist
+      const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${uploadsPlaylistId}&maxResults=${maxVideos}&key=${youtubeApiKey}`;
+      const playlistResponse = await fetch(playlistUrl);
+      const playlistData = await playlistResponse.json();
+      
+      if (!playlistData.items || playlistData.items.length === 0) {
+        console.log(`    ⚠️ [YOUTUBE] No videos found in uploads playlist`);
+        return [];
+      }
+
+      // Step 4: Get detailed stats for these videos
+      const videoIds = playlistData.items.map((item: any) => item.contentDetails.videoId).filter(Boolean);
+      
+      if (videoIds.length === 0) {
+        return [];
+      }
+
+      const videoDetailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${videoIds.join(',')}&key=${youtubeApiKey}`;
+      const videoDetailsResponse = await fetch(videoDetailsUrl);
+      const videoDetailsData = await videoDetailsResponse.json();
+      
+      console.log(`    ✅ [YOUTUBE] Fetched ${videoDetailsData.items?.length || 0} videos with full details`);
+      
+      // Skip videos if needed (for pagination)
+      const videos = videoDetailsData.items || [];
+      return skipVideos > 0 ? videos.slice(skipVideos) : videos;
+      
+    } catch (error: any) {
+      console.error(`    ❌ [YOUTUBE] Failed to fetch videos:`, error.message);
+      return [];
+    }
   } else {
+    console.error(`    ❌ [FETCH] Unsupported platform received: "${platform}" (normalized: "${platformLower}")`);
     throw new Error(`Unsupported platform: ${platform}`);
   }
 
@@ -726,10 +831,12 @@ async function videoExistsInDatabase(
  * Extract video ID from platform-specific video object
  */
 function extractVideoId(video: any, platform: string): string | null {
-    if (platform === 'instagram') {
+    const platformLower = platform.toLowerCase().trim();
+    
+    if (platformLower === 'instagram') {
     // hpix~ig-reels-scraper format
     return video.code || video.id || null;
-    } else if (platform === 'tiktok') {
+    } else if (platformLower === 'tiktok') {
     // apidojo/tiktok-scraper format: direct id field or extract from postPage URL
     if (video.id || video.post_id) {
       return video.id || video.post_id;
@@ -745,7 +852,10 @@ function extractVideoId(video: any, platform: string): string | null {
       if (match) return match[1];
     }
     return null;
-    } else if (platform === 'twitter') {
+    } else if (platformLower === 'twitter') {
+    return video.id || null;
+  } else if (platformLower === 'youtube') {
+    // YouTube Data API v3 format
     return video.id || null;
   }
   return null;
@@ -760,6 +870,8 @@ async function refreshExistingVideos(
   accountId: string,
   platform: string
 ): Promise<number> {
+  const platformLower = platform.toLowerCase().trim();
+  
   // Get all existing videos for this account
   const videosRef = db
     .collection('organizations')
@@ -772,23 +884,27 @@ async function refreshExistingVideos(
   const snapshot = await query.get();
   
   if (snapshot.empty) {
-    console.log(`    ℹ️ [${platform.toUpperCase()}] No existing videos to refresh`);
+    console.log(`    ℹ️ [${platformLower.toUpperCase()}] No existing videos to refresh`);
     return 0;
   }
 
-  console.log(`    📊 [${platform.toUpperCase()}] Refreshing ${snapshot.size} existing videos...`);
+  console.log(`    📊 [${platformLower.toUpperCase()}] Refreshing ${snapshot.size} existing videos...`);
 
-  if (platform === 'tiktok') {
+  if (platformLower === 'tiktok') {
     // TikTok: Bulk refresh using unique videos API
     return await refreshTikTokVideosBulk(orgId, projectId, snapshot.docs);
-  } else if (platform === 'instagram') {
+  } else if (platformLower === 'instagram') {
     // Instagram: Sequential refresh using unique video endpoint
     return await refreshInstagramVideosSequential(orgId, projectId, snapshot.docs);
-  } else if (platform === 'twitter') {
+  } else if (platformLower === 'twitter') {
     // Twitter: Batch refresh (can submit multiple URLs)
     return await refreshTwitterVideosBatch(orgId, projectId, snapshot.docs);
+  } else if (platformLower === 'youtube') {
+    // YouTube: Bulk refresh using YouTube Data API v3
+    return await refreshYouTubeVideosBulk(orgId, projectId, snapshot.docs);
   }
 
+  console.warn(`    ⚠️ [REFRESH] Unsupported platform for refresh: "${platform}" (normalized: "${platformLower}")`);
   return 0;
 }
 
@@ -1089,6 +1205,113 @@ async function refreshTwitterVideosBatch(
 }
 
 /**
+ * YouTube: Bulk refresh using YouTube Data API v3
+ */
+async function refreshYouTubeVideosBulk(
+  orgId: string,
+  projectId: string,
+  videoDocs: any[]
+): Promise<number> {
+  console.log(`    🔄 [YOUTUBE] Bulk refreshing ${videoDocs.length} videos using YouTube Data API v3...`);
+  
+  const youtubeApiKey = process.env.YOUTUBE_API_KEY;
+  if (!youtubeApiKey) {
+    console.error(`    ❌ [YOUTUBE] YOUTUBE_API_KEY not configured`);
+    return 0;
+  }
+
+  // YouTube Data API v3 supports up to 50 video IDs per request
+  const videoIds = videoDocs
+    .map(doc => doc.data().videoId)
+    .filter(Boolean);
+  
+  if (videoIds.length === 0) {
+    console.log(`    ℹ️ [YOUTUBE] No valid video IDs to refresh`);
+    return 0;
+  }
+
+  console.log(`    📊 [YOUTUBE] Fetching metrics for ${videoIds.length} videos...`);
+  
+  let updatedCount = 0;
+
+  try {
+    // Process in batches of 50 (YouTube API limit)
+    const BATCH_SIZE = 50;
+    
+    for (let i = 0; i < videoIds.length; i += BATCH_SIZE) {
+      const batchIds = videoIds.slice(i, i + BATCH_SIZE);
+      const idsParam = batchIds.join(',');
+      
+      console.log(`    📦 [YOUTUBE] Processing batch ${Math.floor(i / BATCH_SIZE) + 1} (${batchIds.length} videos)...`);
+      
+      const ytUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${encodeURIComponent(idsParam)}&key=${youtubeApiKey}`;
+      const ytResponse = await fetch(ytUrl);
+      
+      if (!ytResponse.ok) {
+        const errorText = await ytResponse.text();
+        console.error(`    ❌ [YOUTUBE] API error: ${ytResponse.status} - ${errorText}`);
+        continue; // Skip this batch and continue with next one
+      }
+      
+      const ytData = await ytResponse.json();
+      const refreshedVideos = ytData.items || [];
+      
+      console.log(`    📊 [YOUTUBE] API returned ${refreshedVideos.length} videos for this batch`);
+      
+      // Update each video with fresh metrics
+      for (const video of refreshedVideos) {
+        const videoId = video.id;
+        if (!videoId) continue;
+
+        const videoDoc = videoDocs.find(doc => doc.data().videoId === videoId);
+        if (!videoDoc) {
+          console.log(`    ⚠️ [YOUTUBE] No DB match for videoId: ${videoId}`);
+          continue;
+        }
+
+        const now = Timestamp.now();
+        const metrics = {
+          views: video.statistics?.viewCount ? Number(video.statistics.viewCount) : 0,
+          likes: video.statistics?.likeCount ? Number(video.statistics.likeCount) : 0,
+          comments: video.statistics?.commentCount ? Number(video.statistics.commentCount) : 0,
+          shares: 0, // YouTube API doesn't provide share count
+          saves: 0, // YouTube API doesn't provide save count
+          lastRefreshed: now
+        };
+
+        // Update video metrics
+        await videoDoc.ref.update(metrics);
+
+        // Create refresh snapshot
+        const snapshotRef = videoDoc.ref.collection('snapshots').doc();
+        await snapshotRef.set({
+          id: snapshotRef.id,
+          videoId: videoId,
+          views: metrics.views,
+          likes: metrics.likes,
+          comments: metrics.comments,
+          shares: metrics.shares,
+          saves: metrics.saves,
+          capturedAt: now,
+          timestamp: now,
+          capturedBy: 'scheduled_refresh',
+          isInitialSnapshot: false
+        });
+
+        updatedCount++;
+        console.log(`    ✓ [YOUTUBE] Updated ${videoId}: ${metrics.views} views, ${metrics.likes} likes`);
+      }
+    }
+
+    console.log(`    ✅ [YOUTUBE] Bulk refresh complete: ${updatedCount}/${videoIds.length} videos updated`);
+    return updatedCount;
+  } catch (error: any) {
+    console.error(`    ❌ [YOUTUBE] Bulk refresh failed:`, error.message);
+    return updatedCount; // Return partial success
+  }
+}
+
+/**
  * Save videos to Firestore with batched writes
  * Updates existing videos AND adds new ones
  */
@@ -1122,22 +1345,28 @@ async function saveVideosToFirestore(
   
   console.log(`📊 Video limits - Current: ${currentVideos}, Limit: ${videoLimit}, Available: ${availableSpace}`);
 
+  const platformLower = platform.toLowerCase().trim();
+
   for (const video of videos) {
     // Extract video ID and media object based on platform (this is the platform's video ID, not Firestore doc ID)
     let platformVideoId: string;
     let media: any = video; // Default to the video object itself
     
-    if (platform === 'instagram') {
+    if (platformLower === 'instagram') {
       // hpix~ig-reels-scraper format
       media = video;
       
       platformVideoId = video.code || video.id;
-    } else if (platform === 'tiktok') {
+    } else if (platformLower === 'tiktok') {
       // apidojo/tiktok-scraper: direct id field
       platformVideoId = video.id || video.post_id || '';
-    } else if (platform === 'twitter') {
+    } else if (platformLower === 'twitter') {
+      platformVideoId = video.id;
+    } else if (platformLower === 'youtube') {
+      // YouTube Data API v3 format
       platformVideoId = video.id;
     } else {
+      console.warn(`    ⚠️ [SAVE] Skipping video with unsupported platform: "${platform}"`);
       continue;
     }
 
@@ -1168,7 +1397,7 @@ async function saveVideosToFirestore(
     let caption = '';
     let uploadDate: Date = new Date();
 
-    if (platform === 'instagram') {
+    if (platformLower === 'instagram') {
       // hpix~ig-reels-scraper field names
       const owner = video.raw_data?.owner || {};
       views = video.play_count || video.view_count || 0;
@@ -1194,7 +1423,7 @@ async function saveVideosToFirestore(
       }
       caption = video.caption || '';
       uploadDate = video.taken_at ? new Date(video.taken_at * 1000) : new Date();
-    } else if (platform === 'tiktok') {
+    } else if (platformLower === 'tiktok') {
       // apidojo/tiktok-scraper format
       const videoObj = video.video || {};
       const channel = video.channel || {};
@@ -1252,7 +1481,7 @@ async function saveVideosToFirestore(
       uploadDate = video.uploadedAt ? new Date(video.uploadedAt * 1000) : 
                    video.uploaded_at ? new Date(video.uploaded_at * 1000) : 
                    new Date();
-    } else if (platform === 'twitter') {
+    } else if (platformLower === 'twitter') {
       views = video.viewCount || 0;
       likes = video.likeCount || 0;
       comments = video.replyCount || 0;
@@ -1270,6 +1499,37 @@ async function saveVideosToFirestore(
       }
       caption = video.text || '';
       uploadDate = video.created_at ? new Date(video.created_at) : new Date();
+    } else if (platformLower === 'youtube') {
+      // YouTube Data API v3 format
+      views = video.statistics?.viewCount ? Number(video.statistics.viewCount) : 0;
+      likes = video.statistics?.likeCount ? Number(video.statistics.likeCount) : 0;
+      comments = video.statistics?.commentCount ? Number(video.statistics.commentCount) : 0;
+      shares = 0; // YouTube API doesn't provide share count
+      saves = 0; // YouTube API doesn't provide save count
+      url = `https://www.youtube.com/watch?v=${platformVideoId}`;
+      
+      // Get thumbnail from YouTube API (use highest quality available)
+      const youtubeThumbnail = video.snippet?.thumbnails?.maxres?.url ||
+                               video.snippet?.thumbnails?.standard?.url ||
+                               video.snippet?.thumbnails?.high?.url ||
+                               video.snippet?.thumbnails?.medium?.url ||
+                               video.snippet?.thumbnails?.default?.url || '';
+      
+      // Download and upload thumbnail to Firebase Storage
+      if (youtubeThumbnail) {
+        console.log(`    🎥 YouTube thumbnail URL found: ${youtubeThumbnail.substring(0, 80)}...`);
+        thumbnail = await downloadAndUploadImage(
+          youtubeThumbnail,
+          orgId,
+          `yt_${platformVideoId}_thumb.jpg`,
+          'thumbnails'
+        );
+      } else {
+        console.warn(`    ⚠️ YouTube video ${platformVideoId} has no thumbnail in API response`);
+      }
+      
+      caption = video.snippet?.title || '';
+      uploadDate = video.snippet?.publishedAt ? new Date(video.snippet.publishedAt) : new Date();
     }
     
     // Check if video exists
@@ -1301,7 +1561,7 @@ async function saveVideosToFirestore(
         likes,
         comments,
         shares,
-        saves: platform === 'tiktok' ? (saves || 0) : 0, // ✅ ADD BOOKMARKS (TikTok only)
+        saves: platformLower === 'tiktok' ? (saves || 0) : 0, // ✅ ADD BOOKMARKS (TikTok only)
         orgId,
         projectId,
         trackedAccountId: accountId,
@@ -1327,7 +1587,7 @@ async function saveVideosToFirestore(
         likes,
         comments,
         shares,
-        saves: platform === 'tiktok' ? (saves || 0) : 0, // ✅ ADD BOOKMARKS
+        saves: platformLower === 'tiktok' ? (saves || 0) : 0, // ✅ ADD BOOKMARKS
         capturedAt: snapshotTime,
         timestamp: snapshotTime, // Backwards compatibility
         capturedBy: isManualTrigger ? 'manual_refresh_initial' : 'scheduled_refresh_initial'
@@ -1346,7 +1606,7 @@ async function saveVideosToFirestore(
         likes,
         comments,
         shares,
-        saves: platform === 'tiktok' ? (saves || 0) : (existingData.saves || 0), // ✅ ADD BOOKMARKS
+        saves: platformLower === 'tiktok' ? (saves || 0) : (existingData.saves || 0), // ✅ ADD BOOKMARKS
         lastRefreshed: Timestamp.now()
       };
 

@@ -67,15 +67,7 @@
   "crons": [
     {
       "path": "/api/cron-orchestrator",
-      "schedule": "0 */6 * * *"
-    },
-    {
-      "path": "/api/cron-cleanup-invalid",
-      "schedule": "0 */6 * * *"
-    },
-    {
-      "path": "/api/cleanup-stuck-items",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 */12 * * *"
     }
   ],
   "routes": [

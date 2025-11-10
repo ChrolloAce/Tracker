@@ -14,13 +14,11 @@ import {
   X,
   LayoutDashboard,
   UserPlus,
-  DollarSign
+  DollarSign,
+  Lock
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
-import ProjectSwitcher from '../ProjectSwitcher';
-import OrganizationSwitcher from '../OrganizationSwitcher';
-import CreateProjectModal from '../CreateProjectModal';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUnreadCounts } from '../../hooks/useUnreadCounts';
@@ -46,6 +44,7 @@ interface NavItem {
   loading?: boolean;
   isActive?: boolean;
   onClick?: () => void;
+  locked?: boolean;
 }
 
 interface NavSection {
@@ -63,7 +62,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   onMobileToggle
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
-  const [showCreateProject, setShowCreateProject] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['tracking', 'manage', 'integrations'])); // Start with sections expanded
   const { can, loading: permissionsLoading } = usePermissions();
   const { userRole, currentOrgId, currentProjectId } = useAuth();
@@ -136,12 +134,14 @@ const Sidebar: React.FC<SidebarProps> = ({
         label: userRole === 'creator' ? 'Payouts' : 'Creators',
         icon: Video,
         href: `${baseHref}/creators`,
+        locked: true,
       },
       {
         id: 'campaigns',
         label: 'Campaigns',
         icon: Trophy,
         href: `${baseHref}/campaigns`,
+        locked: true,
           },
           {
             id: 'team',
@@ -166,6 +166,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             label: 'Extensions',
         icon: Puzzle,
         href: `${baseHref}/extension`,
+        locked: true,
       },
         ]
       },
@@ -267,11 +268,15 @@ const Sidebar: React.FC<SidebarProps> = ({
         {!isCollapsed && (
           <>
             <span className="ml-3 truncate">{item.label}</span>
-            {(item.badge || item.loading) && (
+            {item.locked ? (
+              <div className="ml-auto flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-blue-400" />
+              </div>
+            ) : (item.badge || item.loading) ? (
               <div className="ml-auto">
                 <Badge count={item.badge} loading={item.loading} />
               </div>
-            )}
+            ) : null}
           </>
         )}
       </NavLink>
@@ -347,17 +352,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
 
-      {/* Project Switcher - Always visible on mobile when sidebar is open */}
-      {(!isCollapsed || isMobileOpen) && (
-        <div className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
-          <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">
-              Project
-            </label>
-            <ProjectSwitcher onCreateProject={() => setShowCreateProject(true)} />
-          </div>
-        </div>
-      )}
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto">
@@ -415,29 +409,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         <RefreshCountdown />
       )}
 
-      {/* Organization Switcher at Bottom - Show on mobile when open */}
-      {(!isCollapsed || isMobileOpen) && (
-        <div className="px-4 py-4">
-          <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">
-              Org
-            </label>
-        <OrganizationSwitcher />
-          </div>
-        </div>
-      )}
 
     </div>
-
-    {/* Create Project Modal */}
-    <CreateProjectModal
-      isOpen={showCreateProject}
-      onClose={() => setShowCreateProject(false)}
-      onSuccess={() => {
-        setShowCreateProject(false);
-        window.location.reload(); // Refresh to load new project
-      }}
-    />
     </>
   );
 };

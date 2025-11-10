@@ -34,15 +34,14 @@ const PLAN_REFRESH_INTERVALS: Record<string, number> = {
   basic: 24,
   pro: 24,
   ultra: 12,
-  enterprise: 6,
+  enterprise: 12,
 };
 
 /**
  * Cron Orchestrator
  * Runs every 12 hours (00:00 and 12:00) 
  * Refreshes accounts based on their organization's subscription plan:
- * - Enterprise: every 6 hours
- * - Ultra: every 12 hours
+ * - Enterprise/Ultra (highest plans): every 12 hours
  * - Pro/Basic: every 24 hours
  * - Free: every 48 hours
  */

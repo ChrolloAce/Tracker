@@ -38,19 +38,23 @@ export class CleanupService {
     // 1. No username or username is 'unknown'
     // 2. No stats (views, likes, etc. all 0)
     // 3. No caption/title
-    // 4. Video is older than 1 hour (to allow time for initial sync)
+    // 4. Video is older than 2 hours (to allow time for initial sync)
     
     const hasUsername = video.username && video.username !== 'unknown' && video.username !== '@unknown';
     const hasStats = (video.views || 0) > 0 || (video.likes || 0) > 0 || (video.comments || 0) > 0;
     const hasCaption = video.caption && video.caption.trim() !== '' && video.caption !== '(No caption)';
     const hasTitle = video.title && video.title.trim() !== '' && video.title !== '(No caption)';
+    const hasVideoTitle = video.videoTitle && video.videoTitle.trim() !== '' && video.videoTitle !== '(No caption)';
     
-    // Check if video is older than 1 hour (grace period for sync)
+    // Check if video is older than 2 hours (grace period for sync)
     const isOldEnough = video.dateAdded && 
-      (Date.now() - video.dateAdded.toMillis()) > (60 * 60 * 1000); // 1 hour in ms
+      (Date.now() - video.dateAdded.toMillis()) > (2 * 60 * 60 * 1000); // 2 hours in ms
     
-    // Video is invalid if it's old enough AND has no username AND no stats AND no caption/title
-    return isOldEnough && !hasUsername && !hasStats && !hasCaption && !hasTitle;
+    // Video is invalid if:
+    // - It's old enough (> 2 hours) AND
+    // - Has no stats (all 0) AND
+    // - (Has no username OR has no caption/title)
+    return isOldEnough && !hasStats && (!hasUsername || (!hasCaption && !hasTitle && !hasVideoTitle));
   }
 
   /**

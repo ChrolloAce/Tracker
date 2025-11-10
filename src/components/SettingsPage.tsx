@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, Users, TrendingUp, RefreshCw, CheckCircle } from 'lucide-react';
+import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, Users, TrendingUp, RefreshCw, CheckCircle, Building2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -8,6 +8,7 @@ import { storage } from '../services/firebase';
 import OrganizationService from '../services/OrganizationService';
 import DeleteOrganizationModal from './DeleteOrganizationModal';
 import TeamManagementPage from './TeamManagementPage';
+import OrganizationSwitcher from './OrganizationSwitcher';
 import SubscriptionService from '../services/SubscriptionService';
 import StripeService from '../services/StripeService';
 import { PlanTier, SUBSCRIPTION_PLANS } from '../types/subscription';
@@ -377,7 +378,7 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     // Use initialTab from URL if provided
-    if (initialTabProp && ['profile', 'billing', 'team', 'notifications'].includes(initialTabProp)) {
+    if (initialTabProp && ['profile', 'organization', 'billing', 'team', 'notifications'].includes(initialTabProp)) {
       return initialTabProp as TabType;
     }
     return 'profile';
@@ -562,6 +563,7 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
           <nav className="flex space-x-8">
             {[
               { id: 'profile', label: 'Profile', icon: UserIcon },
+              { id: 'organization', label: 'Organization', icon: Building2 },
               { id: 'billing', label: 'Billing', icon: CreditCard },
               { id: 'team', label: 'Team', icon: Users },
               { id: 'notifications', label: 'Notifications', icon: Bell },
@@ -764,14 +766,89 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
             </div>
           )}
 
+          {/* Organization Tab */}
+          {activeTab === 'organization' && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Organization</h2>
+                <p className="text-gray-600 dark:text-gray-400">Manage your organization settings and switch between organizations.</p>
+              </div>
 
+              {/* Organization Switcher */}
+              <div className="bg-black/40 rounded-xl border border-white/10 p-6">
+                <h3 className="text-lg font-semibold text-white mb-4">Current Organization</h3>
+                <OrganizationSwitcher />
+              </div>
 
-          {/* Profile Tab (includes Organization) */}
+              {/* Organization Info */}
+              {currentOrganization && (
+                <div className="bg-black/40 rounded-xl border border-white/10 p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Organization Details</h3>
+                
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Organization Name
+                      </label>
+                      <input
+                        type="text"
+                        value={currentOrganization.name}
+                        disabled
+                        className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Created</p>
+                        <p className="font-medium text-gray-900 dark:text-white mt-1">
+                          {currentOrganization.createdAt?.toDate().toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Your Role</p>
+                        <p className="font-medium text-gray-900 dark:text-white mt-1 capitalize">
+                          {isOwner ? 'Owner' : 'Member'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Danger Zone - Delete Organization */}
+              {isOwner && currentOrganization && (
+                <div className="bg-black/40 rounded-xl border border-red-500/30 p-6">
+                  <div className="flex items-start gap-3 mb-4">
+                    <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h3 className="text-lg font-semibold text-red-600 dark:text-red-400">Danger Zone</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        Permanently delete "{currentOrganization.name}" and all its data
+                      </p>
+                      <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                        This action cannot be undone. All projects, videos, and analytics will be lost.
+                      </p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setIsDeleteModalOpen(true)}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium inline-flex items-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete Organization
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Profile Tab */}
           {activeTab === 'profile' && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Profile & Organization</h2>
-                <p className="text-gray-600 dark:text-gray-400">Manage your personal information and organization settings.</p>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Profile</h2>
+                <p className="text-gray-600 dark:text-gray-400">Manage your personal information and account settings.</p>
           </div>
 
             {/* Profile Photo */}
@@ -866,67 +943,6 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                   <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
                   <span>Saving...</span>
                 </div>
-              )}
-
-              {/* Organization Info */}
-              {currentOrganization && (
-                <div className="bg-black/40 rounded-xl border border-white/10 p-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">Organization Details</h3>
-                
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Organization Name
-                      </label>
-                      <input
-                        type="text"
-                        value={currentOrganization.name}
-                        disabled
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white"
-                      />
-              </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Created</p>
-                        <p className="font-medium text-gray-900 dark:text-white mt-1">
-                          {currentOrganization.createdAt?.toDate().toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Your Role</p>
-                        <p className="font-medium text-gray-900 dark:text-white mt-1 capitalize">
-                          {isOwner ? 'Owner' : 'Member'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Danger Zone - Delete Organization */}
-              {isOwner && currentOrganization && (
-                <div className="bg-black/40 rounded-xl border border-red-500/30 p-6">
-                  <div className="flex items-start gap-3 mb-4">
-                    <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <h3 className="text-lg font-semibold text-red-600 dark:text-red-400">Danger Zone</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        Permanently delete "{currentOrganization.name}" and all its data
-                      </p>
-                      <p className="text-xs text-red-600 dark:text-red-400 mt-2">
-                        This action cannot be undone. All projects, videos, and analytics will be lost.
-                      </p>
-                    </div>
-                  </div>
-            <button 
-                    onClick={() => setIsDeleteModalOpen(true)}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium inline-flex items-center gap-2"
-            >
-                    <Trash2 className="w-4 h-4" />
-                    Delete Organization
-            </button>
-        </div>
               )}
 
               {/* App Version */}
