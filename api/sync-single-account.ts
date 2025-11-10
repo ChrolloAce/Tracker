@@ -88,7 +88,7 @@ async function downloadAndUploadImage(
     }
     
     const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    let buffer = Buffer.from(arrayBuffer);
     
     console.log(`📦 Downloaded ${buffer.length} bytes`);
     

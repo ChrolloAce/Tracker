@@ -435,7 +435,7 @@ async function downloadAndUploadImage(
     }
     
     const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    let buffer = Buffer.from(arrayBuffer);
     
     if (buffer.length < 100) {
       throw new Error(`Data too small (${buffer.length} bytes)`);
