@@ -68,8 +68,8 @@ const PreparingWorkspacePage: React.FC = () => {
         console.log('✅ Has organization - navigating to dashboard');
         navigate('/dashboard', { replace: true });
       } else {
-        console.log('📝 No organization - navigating to create org');
-        navigate('/create-organization', { replace: true });
+        console.log('📝 No organization - navigating to home page');
+        navigate('/', { replace: true });
       }
     }, 3000);
 

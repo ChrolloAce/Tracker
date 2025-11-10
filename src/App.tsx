@@ -162,6 +162,8 @@ function App() {
         element={
           !user ? (
             <LandingPage />
+          ) : !currentOrgId || !currentProjectId ? (
+            <LandingPage />
           ) : (
             <Navigate to="/dashboard" replace />
           )
@@ -247,7 +249,7 @@ function App() {
           !user ? (
             <Navigate to="/login" replace />
           ) : !currentOrgId || !currentProjectId ? (
-            <Navigate to="/create-organization" replace />
+            <Navigate to="/" replace />
           ) : (
             <CampaignDetailsPage />
           )
@@ -261,7 +263,7 @@ function App() {
           !user ? (
             <Navigate to="/login" replace />
           ) : !currentOrgId || !currentProjectId ? (
-            <Navigate to="/create-organization" replace />
+            <Navigate to="/" replace />
           ) : (
             <CreateCampaignPage />
           )
@@ -275,7 +277,7 @@ function App() {
           !user ? (
             <Navigate to="/login" replace />
           ) : !currentOrgId || !currentProjectId ? (
-            <Navigate to="/create-organization" replace />
+            <Navigate to="/" replace />
           ) : (
             <EditCampaignPage />
           )
@@ -332,7 +334,7 @@ function App() {
           !user ? (
             <Navigate to="/login" replace />
           ) : !currentOrgId || !currentProjectId ? (
-            <Navigate to="/create-organization" replace />
+            <Navigate to="/" replace />
           ) : (
             <DashboardPage />
           )
@@ -345,7 +347,7 @@ function App() {
           !user ? (
             <Navigate to="/login" replace />
           ) : !currentOrgId || !currentProjectId ? (
-            <Navigate to="/create-organization" replace />
+            <Navigate to="/" replace />
           ) : (
             <AccountsPage />
           )
@@ -358,7 +360,7 @@ function App() {
           !user ? (
             <Navigate to="/login" replace />
           ) : !currentOrgId || !currentProjectId ? (
-            <Navigate to="/create-organization" replace />
+            <Navigate to="/" replace />
           ) : (
             <VideosPage />
           )
@@ -371,7 +373,7 @@ function App() {
           !user ? (
             <Navigate to="/login" replace />
           ) : !currentOrgId || !currentProjectId ? (
-            <Navigate to="/create-organization" replace />
+            <Navigate to="/" replace />
           ) : (
             <LinksPage />
           )
@@ -384,7 +386,7 @@ function App() {
           !user ? (
             <Navigate to="/login" replace />
           ) : !currentOrgId || !currentProjectId ? (
-            <Navigate to="/create-organization" replace />
+            <Navigate to="/" replace />
           ) : (
             <CreatorsPage />
           )
@@ -397,7 +399,7 @@ function App() {
           !user ? (
             <Navigate to="/login" replace />
           ) : !currentOrgId || !currentProjectId ? (
-            <Navigate to="/create-organization" replace />
+            <Navigate to="/" replace />
           ) : (
             <CampaignsPage />
           )
@@ -410,7 +412,7 @@ function App() {
           !user ? (
             <Navigate to="/login" replace />
           ) : !currentOrgId || !currentProjectId ? (
-            <Navigate to="/create-organization" replace />
+            <Navigate to="/" replace />
           ) : (
             <ExtensionPage />
           )
@@ -498,7 +500,7 @@ function App() {
           !user ? (
             <Navigate to="/login" replace />
           ) : !currentOrgId || !currentProjectId ? (
-            <Navigate to="/create-organization" replace />
+            <Navigate to="/" replace />
           ) : (
             <VideosPage />
           )
@@ -512,7 +514,7 @@ function App() {
           !user ? (
             <Navigate to="/login" replace />
           ) : !currentOrgId || !currentProjectId ? (
-            <Navigate to="/create-organization" replace />
+            <Navigate to="/" replace />
           ) : (
             <LinksPage />
           )
