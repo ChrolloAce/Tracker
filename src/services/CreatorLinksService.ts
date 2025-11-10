@@ -49,7 +49,7 @@ class CreatorLinksService {
           projectId,
           displayName: memberData.displayName || 'Unknown',
           email: memberData.email || '',
-          photoURL: memberData.photoURL,
+          ...(memberData.photoURL && { photoURL: memberData.photoURL }), // Only include if defined
           linkedAccountsCount: accountIds.length,
           totalEarnings: 0,
           payoutsEnabled: true,

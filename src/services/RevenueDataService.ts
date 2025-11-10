@@ -861,7 +861,9 @@ class RevenueDataService {
     const integration = await this.getIntegration(orgId, projectId, 'apple');
     
     if (!integration || !integration.credentials.apiKey || !integration.credentials.keyId || !integration.credentials.issuerId || !integration.credentials.appId) {
-      throw new Error('Apple App Store integration not configured');
+      // Return empty data instead of throwing - integration not configured yet
+      console.log('ℹ️ Apple App Store integration not configured, skipping sync');
+      return { transactionCount: 0, revenue: 0 };
     }
 
     console.log('📱 Syncing Apple App Store data...');
@@ -954,8 +956,13 @@ class RevenueDataService {
             revenue: result.revenue,
           });
         }
-      } catch (error) {
-        console.error(`Failed to sync ${integration.provider}:`, error);
+      } catch (error: any) {
+        // Only log as error if it's not a configuration issue
+        if (error?.message?.includes('not configured')) {
+          console.log(`ℹ️ ${integration.provider} integration not configured, skipping`);
+        } else {
+          console.error(`Failed to sync ${integration.provider}:`, error);
+        }
       }
     }
 
