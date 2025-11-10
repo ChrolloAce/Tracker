@@ -49,6 +49,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(user);
       
       if (user) {
+        // ✅ Check if we're on an invitation page - if so, skip org/project loading
+        // The invitation page will handle org membership after acceptance
+        const isInvitationPage = window.location.pathname.startsWith('/invitations/');
+        if (isInvitationPage) {
+          console.log('🎯 On invitation page - skipping org/project loading');
+          setCurrentOrgId(null);
+          setCurrentProjectId(null);
+          setUserRole(null);
+          setLoading(false);
+          return;
+        }
+        
         // Check custom email verification (skip for demo account and Google sign-ins)
         if (user.email !== 'demo@viewtrack.app' && user.providerData[0]?.providerId === 'password') {
           // Check if user has verified their email via our custom code system

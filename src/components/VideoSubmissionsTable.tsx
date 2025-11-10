@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, Edit3, ChevronUp, ChevronDown, Filter, TrendingUp, TrendingDown, Minus, Bookmark, Clock, Loader, RefreshCw, ExternalLink, Copy, User, BarChart3 } from 'lucide-react';
+import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, ChevronUp, ChevronDown, Filter, TrendingUp, TrendingDown, Minus, Bookmark, Clock, Loader, RefreshCw, ExternalLink, Copy, User, BarChart3 } from 'lucide-react';
 import Lottie from 'lottie-react';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -26,7 +26,8 @@ interface VideoSubmissionsTableProps {
 const DropdownMenu: React.FC<{
   submission: VideoSubmission;
   onDelete?: (id: string) => void;
-}> = ({ submission, onDelete }) => {
+  onVideoClick?: (video: VideoSubmission) => void;
+}> = ({ submission, onDelete, onVideoClick }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleDelete = () => {
@@ -1062,7 +1063,7 @@ export const VideoSubmissionsTable: React.FC<VideoSubmissionsTableProps> = ({
                   )}
                   <td className="px-6 py-5 sticky right-0 z-10 group-hover:bg-white/5" style={{ backgroundColor: 'rgba(18, 18, 20, 0.95)' }}>
                     <div className="relative">
-                      <DropdownMenu submission={submission} onDelete={onDelete} />
+                      <DropdownMenu submission={submission} onDelete={onDelete} onVideoClick={onVideoClick} />
                     </div>
                   </td>
                 </tr>

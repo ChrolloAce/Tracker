@@ -60,7 +60,10 @@ const PendingInvitationsPage: React.FC = () => {
         currentOrgId,
         invitation.email,
         invitation.role,
-        invitation.invitedBy || ''
+        invitation.invitedBy || '',
+        invitation.invitedByName || '',
+        invitation.invitedByEmail || '',
+        invitation.organizationName || ''
       );
       alert(`Invitation resent to ${invitation.email}`);
       await loadInvitations();
@@ -72,18 +75,6 @@ const PendingInvitationsPage: React.FC = () => {
     }
   };
 
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case 'owner':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'admin':
-        return 'bg-blue-100 text-blue-800';
-      case 'member':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
 
   const formatDate = (timestamp: any) => {
     if (!timestamp) return 'N/A';
