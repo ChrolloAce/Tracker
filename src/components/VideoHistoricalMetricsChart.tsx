@@ -120,6 +120,11 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
     const dataPoint = payload[0].payload;
     const deltaValue = dataPoint[selectedMetric]; // This is already the delta from chart data
     
+    // Handle zero and negative values properly
+    const displayValue = deltaValue === 0 ? '0' : 
+                         deltaValue > 0 ? `+${currentMetric.formatValue(deltaValue)}` :
+                         `-${currentMetric.formatValue(Math.abs(deltaValue))}`;
+    
     return (
       <div 
         className="rounded-lg border border-white/10 shadow-xl p-3 min-w-[160px]"
@@ -136,7 +141,7 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
               <span className="text-xs text-gray-400">Growth:</span>
             </div>
             <span className="text-sm font-bold text-white">
-              +{currentMetric.formatValue(deltaValue)}
+              {displayValue}
             </span>
           </div>
         </div>

@@ -227,18 +227,67 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
     const data: ChartDataPoint[] = allSnapshots.map((snapshot, index) => {
       const timestamp = new Date(snapshot.capturedAt);
       const previousSnapshot = index > 0 ? allSnapshots[index - 1] : undefined;
-      const dataPoint = createDataPoint(snapshot, timestamp, previousSnapshot);
       
-      console.log(`📈 Chart Point ${index + 1}:`, {
-        date: dataPoint.date,
-        currentViews: snapshot.views,
-        previousViews: previousSnapshot?.views,
-        chartViews: dataPoint.views,
-        isDelta: index > 0,
-        calculation: index > 0 ? `${snapshot.views} - ${previousSnapshot?.views ?? 0} = ${dataPoint.views}` : 'absolute'
-      });
+      // Calculate deltas manually to ensure correctness
+      const currentViews = snapshot.views || 0;
+      const currentLikes = snapshot.likes || 0;
+      const currentComments = snapshot.comments || 0;
+      const currentShares = snapshot.shares || 0;
+      const currentSaves = snapshot.saves || 0;
       
-      return dataPoint;
+      let deltaViews, deltaLikes, deltaComments, deltaShares, deltaSaves;
+      
+      if (previousSnapshot) {
+        const prevViews = previousSnapshot.views || 0;
+        const prevLikes = previousSnapshot.likes || 0;
+        const prevComments = previousSnapshot.comments || 0;
+        const prevShares = previousSnapshot.shares || 0;
+        const prevSaves = previousSnapshot.saves || 0;
+        
+        deltaViews = Math.max(0, currentViews - prevViews);
+        deltaLikes = Math.max(0, currentLikes - prevLikes);
+        deltaComments = Math.max(0, currentComments - prevComments);
+        deltaShares = Math.max(0, currentShares - prevShares);
+        deltaSaves = Math.max(0, currentSaves - prevSaves);
+        
+        console.log(`📈 Chart Point ${index + 1} (DELTA):`, {
+          date: timestamp.toLocaleDateString(),
+          currentViews,
+          prevViews,
+          deltaViews,
+          calculation: `${currentViews.toLocaleString()} - ${prevViews.toLocaleString()} = ${deltaViews.toLocaleString()}`
+        });
+      } else {
+        // First snapshot - show absolute values
+        deltaViews = currentViews;
+        deltaLikes = currentLikes;
+        deltaComments = currentComments;
+        deltaShares = currentShares;
+        deltaSaves = currentSaves;
+        
+        console.log(`📈 Chart Point ${index + 1} (FIRST):`, {
+          date: timestamp.toLocaleDateString(),
+          views: currentViews.toLocaleString(),
+          note: 'Using absolute values for first snapshot'
+        });
+      }
+      
+      const totalEngagement = deltaLikes + deltaComments + deltaShares;
+      const engagementRate = deltaViews > 0 ? (totalEngagement / deltaViews) * 100 : 0;
+      
+      return {
+        date: timestamp.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric'
+        }),
+        views: deltaViews,
+        likes: deltaLikes,
+        comments: deltaComments,
+        shares: deltaShares,
+        saves: deltaSaves,
+        engagementRate,
+        timestamp: timestamp.getTime(),
+      };
     });
     
     console.log('📊 Final chart data:', data.map(d => ({ date: d.date, views: d.views, likes: d.likes })));
