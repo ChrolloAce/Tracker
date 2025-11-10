@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, Edit3, ChevronUp, ChevronDown, Filter, TrendingUp, TrendingDown, Minus, Bookmark, Clock, Loader, RefreshCw } from 'lucide-react';
+import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, Edit3, ChevronUp, ChevronDown, Filter, TrendingUp, TrendingDown, Minus, Bookmark, Clock, Loader, RefreshCw, ExternalLink, Copy, User, BarChart3 } from 'lucide-react';
 import Lottie from 'lottie-react';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
@@ -57,8 +57,8 @@ const DropdownMenu: React.FC<{
           />
           
           {/* Dropdown */}
-          <div className="absolute right-0 top-8 z-[9996] w-48 bg-black border border-white/20 rounded-lg shadow-2xl py-1" style={{ boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)' }}>
-            {/* Actions */}
+          <div className="absolute right-0 top-8 z-[9996] w-56 bg-black border border-white/20 rounded-lg shadow-2xl py-1" style={{ boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)' }}>
+            {/* Go to Video */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -67,10 +67,59 @@ const DropdownMenu: React.FC<{
               }}
               className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-white/10 flex items-center space-x-2 transition-colors"
             >
-              <Edit3 className="w-4 h-4" />
-              <span>Edit</span>
+              <ExternalLink className="w-4 h-4" />
+              <span>Go to Video</span>
             </button>
             
+            {/* Copy Link */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(submission.url);
+                alert('Video link copied!');
+                setIsOpen(false);
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-white/10 flex items-center space-x-2 transition-colors"
+            >
+              <Copy className="w-4 h-4" />
+              <span>Copy Link</span>
+            </button>
+            
+            {/* Copy Username */}
+            {submission.uploaderHandle && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigator.clipboard.writeText(submission.uploaderHandle);
+                  alert('Username copied!');
+                  setIsOpen(false);
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-white/10 flex items-center space-x-2 transition-colors"
+              >
+                <User className="w-4 h-4" />
+                <span>Copy Username</span>
+              </button>
+            )}
+            
+            {/* View Stats */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onVideoClick) {
+                  onVideoClick(submission);
+                }
+                setIsOpen(false);
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-white/10 flex items-center space-x-2 transition-colors"
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span>View Stats</span>
+            </button>
+            
+            {/* Divider */}
+            <div className="my-1 border-t border-white/10" />
+            
+            {/* Delete */}
             <button
               onClick={(e) => {
                 e.stopPropagation();

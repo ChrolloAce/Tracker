@@ -21,7 +21,10 @@ import {
   X,
   ChevronDown,
   MoreVertical,
-  TrendingUp
+  TrendingUp,
+  Copy,
+  User,
+  BarChart3
   } from 'lucide-react';
 import profileAnimation from '../../public/lottie/Target Audience.json';
 import { AccountVideo } from '../types/accounts';
@@ -2191,7 +2194,73 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                     setOpenDropdownId(null);
                                   }}
                                 />
-                                <div className="absolute right-0 top-8 mt-1 w-48 bg-black border border-white/20 rounded-lg shadow-2xl z-[9996] py-1" style={{ boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)' }}>
+                                <div className="absolute right-0 top-8 mt-1 w-56 bg-black border border-white/20 rounded-lg shadow-2xl z-[9996] py-1" style={{ boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)' }}>
+                                  {/* Go to Account */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const platformUrl = account.platform === 'tiktok' ? `https://www.tiktok.com/@${account.username}`
+                                        : account.platform === 'instagram' ? `https://www.instagram.com/${account.username.replace('@', '')}`
+                                        : account.platform === 'youtube' ? `https://www.youtube.com/@${account.username.replace('@', '')}`
+                                        : `https://twitter.com/${account.username.replace('@', '')}`;
+                                      window.open(platformUrl, '_blank');
+                                      setOpenDropdownId(null);
+                                    }}
+                                    className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-white/10 transition-colors flex items-center gap-2"
+                                  >
+                                    <ExternalLink className="w-4 h-4" />
+                                    Go to Account
+                                  </button>
+                                  
+                                  {/* Copy Account Link */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const platformUrl = account.platform === 'tiktok' ? `https://www.tiktok.com/@${account.username}`
+                                        : account.platform === 'instagram' ? `https://www.instagram.com/${account.username.replace('@', '')}`
+                                        : account.platform === 'youtube' ? `https://www.youtube.com/@${account.username.replace('@', '')}`
+                                        : `https://twitter.com/${account.username.replace('@', '')}`;
+                                      navigator.clipboard.writeText(platformUrl);
+                                      alert('Account link copied!');
+                                      setOpenDropdownId(null);
+                                    }}
+                                    className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-white/10 transition-colors flex items-center gap-2"
+                                  >
+                                    <Copy className="w-4 h-4" />
+                                    Copy Account Link
+                                  </button>
+                                  
+                                  {/* Copy Username */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigator.clipboard.writeText(account.username);
+                                      alert('Username copied!');
+                                      setOpenDropdownId(null);
+                                    }}
+                                    className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-white/10 transition-colors flex items-center gap-2"
+                                  >
+                                    <User className="w-4 h-4" />
+                                    Copy Username
+                                  </button>
+                                  
+                                  {/* View Stats */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenDropdownId(null);
+                                      navigate(`/dashboard?accounts=${account.id}`);
+                                    }}
+                                    className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-white/10 transition-colors flex items-center gap-2"
+                                  >
+                                    <BarChart3 className="w-4 h-4" />
+                                    View Stats
+                                  </button>
+                                  
+                                  {/* Divider */}
+                                  <div className="my-1 border-t border-white/10" />
+                                  
+                                  {/* Remove Account */}
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
