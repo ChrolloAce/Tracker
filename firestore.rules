@@ -137,9 +137,12 @@ service cloud.firestore {
         allow create: if canManageOrg(orgId) 
           || (isSignedIn() && isOwner(userId));
         
-        // Admins can update members, OR user can update their own lastActiveProjectId
+        // Admins can update members
+        // Users can update their own member doc if they're active members
+        // Users can also reactivate their own removed membership (for invitation acceptance)
         allow update: if canManageOrg(orgId) 
-          || (isOwner(userId) && isOrgMember(orgId));
+          || (isOwner(userId) && isOrgMember(orgId))
+          || (isOwner(userId) && isSignedIn());
         
         // Owner can delete members, members can remove themselves
         allow delete: if hasOrgRole(orgId, 'owner') || isOwner(userId);
