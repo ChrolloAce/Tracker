@@ -27,6 +27,13 @@ const CreatorInvitationPage: React.FC = () => {
   const [authLoading, setAuthLoading] = useState(false);
   const [processingInvite, setProcessingInvite] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
+  
+  // Helper to log to both console and debug panel
+  const addDebugLog = (message: string) => {
+    console.log(message);
+    setDebugInfo(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`]);
+  };
   
   // Helper to get role icon and display name
   const getRoleInfo = (role: string) => {
@@ -74,10 +81,10 @@ const CreatorInvitationPage: React.FC = () => {
   }, [user, invitation]);
 
   const loadInvitation = async () => {
-    console.log('📥 [LOAD INVITATION] Starting...');
+    addDebugLog('📥 Starting invitation load');
     
     if (!invitationId) {
-      console.error('❌ [LOAD INVITATION] No invitation ID provided');
+      addDebugLog('❌ No invitation ID provided');
       setError('Invalid invitation link');
       setLoading(false);
       return;
@@ -87,15 +94,15 @@ const CreatorInvitationPage: React.FC = () => {
       setLoading(true);
       setError('');
 
-      console.log('🔍 [LOAD INVITATION] Fetching invitation:', invitationId);
+      addDebugLog(`🔍 Fetching invitation: ${invitationId}`);
 
       // Get the public lookup document (no authentication required!)
       const lookupRef = doc(db, 'invitationsLookup', invitationId);
       const lookupSnapshot = await getDoc(lookupRef);
       
       if (!lookupSnapshot.exists()) {
-        console.error('❌ [LOAD INVITATION] Lookup document not found for ID:', invitationId);
-        console.error('❌ [LOAD INVITATION] This means the invitation was never created or was deleted');
+        addDebugLog('❌ Lookup document not found');
+        addDebugLog('❌ Invitation was never created or was deleted');
         setError('Invitation not found. It may have expired or been deleted.');
         setLoading(false);
         return;
@@ -103,15 +110,11 @@ const CreatorInvitationPage: React.FC = () => {
 
       // The lookup now contains ALL invitation details (no need to query protected collection)
       const inviteData = lookupSnapshot.data() as TeamInvitation;
-      console.log('✅ [LOAD INVITATION] Loaded public invitation data');
-      console.log('📊 [LOAD INVITATION] Full invitation data:', JSON.stringify(inviteData, null, 2));
-      console.log('📋 [LOAD INVITATION] Key fields:');
-      console.log('  - email:', inviteData.email);
-      console.log('  - organizationName:', inviteData.organizationName);
-      console.log('  - role:', inviteData.role);
-      console.log('  - status:', inviteData.status);
-      console.log('  - id:', inviteData.id);
-      console.log('  - orgId:', inviteData.orgId);
+      addDebugLog('✅ Loaded invitation data');
+      addDebugLog(`📋 Email: ${inviteData.email}`);
+      addDebugLog(`📋 Organization: ${inviteData.organizationName}`);
+      addDebugLog(`📋 Role: ${inviteData.role}`);
+      addDebugLog(`📋 Status: ${inviteData.status}`);
 
       // Validate that we have required fields
       if (!inviteData.email || !inviteData.organizationName || !inviteData.role) {
@@ -179,18 +182,20 @@ const CreatorInvitationPage: React.FC = () => {
       setLoading(false);
       console.log('✅ [LOAD INVITATION] Complete! Invitation loaded successfully');
     } catch (err: any) {
-      console.error('❌ [LOAD INVITATION] Failed to load invitation:', err);
-      console.error('❌ [LOAD INVITATION] Error code:', err.code);
-      console.error('❌ [LOAD INVITATION] Error message:', err.message);
-      console.error('❌ [LOAD INVITATION] Full error:', JSON.stringify(err, null, 2));
+      addDebugLog(`❌ Failed to load invitation`);
+      addDebugLog(`❌ Error code: ${err.code}`);
+      addDebugLog(`❌ Error message: ${err.message}`);
       
       // Provide more specific error messages with debug info
       if (err.code === 'permission-denied') {
-        setError(`Permission denied. The invitation may have expired or been deleted. Please ask for a new invitation. (Debug: Invitation ID ${invitationId} - Error code: ${err.code})`);
+        addDebugLog('❌ This usually means the invitation document does not exist');
+        setError(`Permission denied. The invitation may have expired or been deleted. Please ask for a new invitation.`);
       } else if (err.code === 'not-found') {
-        setError(`Invitation not found. It may have expired or been deleted. (Debug: Invitation ID ${invitationId})`);
+        addDebugLog('❌ Document not found in Firestore');
+        setError(`Invitation not found. It may have expired or been deleted.`);
       } else {
-        setError(`Failed to load invitation: ${err.message || 'Unknown error'}. (Debug: Code ${err.code}, ID ${invitationId}) Please contact support.`);
+        addDebugLog(`❌ Unknown error type: ${err.code || 'no code'}`);
+        setError(`Failed to load invitation: ${err.message || 'Unknown error'}. Please contact support.`);
       }
       setLoading(false);
     }
@@ -324,12 +329,39 @@ const CreatorInvitationPage: React.FC = () => {
   if (error && !invitation) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A] flex items-center justify-center p-6">
-        <div className="bg-white dark:bg-[#161616] rounded-3xl shadow-2xl border border-gray-200 dark:border-white/10 p-8 max-w-md w-full text-center">
-          <div className="bg-red-100 dark:bg-red-500/10 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-            <XCircle className="w-10 h-10 text-red-600 dark:text-red-400" />
+        <div className="bg-white dark:bg-[#161616] rounded-3xl shadow-2xl border border-gray-200 dark:border-white/10 p-8 max-w-2xl w-full">
+          <div className="text-center mb-6">
+            <div className="bg-red-100 dark:bg-red-500/10 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+              <XCircle className="w-10 h-10 text-red-600 dark:text-red-400" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Invitation Error</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">{error}</p>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Invitation Error</h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">{error}</p>
+          
+          {/* Debug Panel */}
+          {debugInfo.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Debug Log:</h3>
+              <div className="bg-black dark:bg-white/5 rounded-lg p-4 max-h-60 overflow-y-auto border border-white/10">
+                {debugInfo.map((log, idx) => (
+                  <div key={idx} className="text-xs font-mono text-green-400 dark:text-green-300 mb-1">
+                    {log}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* Additional Debug Info */}
+          <div className="bg-gray-100 dark:bg-white/5 rounded-lg p-4 mb-6">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Debug Info:</h3>
+            <div className="text-xs font-mono text-gray-600 dark:text-gray-400 space-y-1">
+              <div>Invitation ID: {invitationId || 'None'}</div>
+              <div>User: {user ? user.email : 'Not logged in'}</div>
+              <div>Timestamp: {new Date().toISOString()}</div>
+            </div>
+          </div>
+          
           <button
             onClick={() => navigate('/login')}
             className="w-full bg-black dark:bg-white text-white dark:text-black py-3 rounded-xl font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
