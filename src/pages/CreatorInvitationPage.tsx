@@ -42,18 +42,42 @@ const CreatorInvitationPage: React.FC = () => {
 
   // Load invitation details
   useEffect(() => {
+    console.log('═══════════════════════════════════════════════');
+    console.log('🚀 [INVITATION PAGE] Component mounted');
+    console.log('📋 Invitation ID:', invitationId);
+    console.log('👤 Current user:', user ? {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName
+    } : 'Not logged in');
+    console.log('═══════════════════════════════════════════════');
     loadInvitation();
   }, [invitationId]);
 
   // Auto-accept if user is already logged in
   useEffect(() => {
+    console.log('🔄 [AUTO-ACCEPT CHECK]', {
+      hasUser: !!user,
+      hasInvitation: !!invitation,
+      isProcessing: processingInvite,
+      hasSuccess: !!successMessage,
+      userEmail: user?.email,
+      invitationEmail: invitation?.email
+    });
+    
     if (user && invitation && !processingInvite && !successMessage) {
+      console.log('✅ [AUTO-ACCEPT] Conditions met, triggering auto-accept');
       handleAutoAccept();
+    } else {
+      console.log('⏸️ [AUTO-ACCEPT] Waiting for conditions...');
     }
   }, [user, invitation]);
 
   const loadInvitation = async () => {
+    console.log('📥 [LOAD INVITATION] Starting...');
+    
     if (!invitationId) {
+      console.error('❌ [LOAD INVITATION] No invitation ID provided');
       setError('Invalid invitation link');
       setLoading(false);
       return;
@@ -63,14 +87,15 @@ const CreatorInvitationPage: React.FC = () => {
       setLoading(true);
       setError('');
 
-      console.log('🔍 Loading invitation:', invitationId);
+      console.log('🔍 [LOAD INVITATION] Fetching invitation:', invitationId);
 
       // Get the public lookup document (no authentication required!)
       const lookupRef = doc(db, 'invitationsLookup', invitationId);
       const lookupSnapshot = await getDoc(lookupRef);
       
       if (!lookupSnapshot.exists()) {
-        console.error('❌ Invitation lookup not found for ID:', invitationId);
+        console.error('❌ [LOAD INVITATION] Lookup document not found for ID:', invitationId);
+        console.error('❌ [LOAD INVITATION] This means the invitation was never created or was deleted');
         setError('Invitation not found. It may have expired or been deleted.');
         setLoading(false);
         return;
@@ -78,8 +103,9 @@ const CreatorInvitationPage: React.FC = () => {
 
       // The lookup now contains ALL invitation details (no need to query protected collection)
       const inviteData = lookupSnapshot.data() as TeamInvitation;
-      console.log('✅ Loaded public invitation data:', inviteData);
-      console.log('📊 Invitation fields check:');
+      console.log('✅ [LOAD INVITATION] Loaded public invitation data');
+      console.log('📊 [LOAD INVITATION] Full invitation data:', JSON.stringify(inviteData, null, 2));
+      console.log('📋 [LOAD INVITATION] Key fields:');
       console.log('  - email:', inviteData.email);
       console.log('  - organizationName:', inviteData.organizationName);
       console.log('  - role:', inviteData.role);
@@ -89,7 +115,11 @@ const CreatorInvitationPage: React.FC = () => {
 
       // Validate that we have required fields
       if (!inviteData.email || !inviteData.organizationName || !inviteData.role) {
-        console.error('❌ Invitation data is incomplete:', inviteData);
+        console.error('❌ [LOAD INVITATION] Missing required fields:', {
+          hasEmail: !!inviteData.email,
+          hasOrgName: !!inviteData.organizationName,
+          hasRole: !!inviteData.role
+        });
         setError('This invitation link is invalid or was created with an older system. Please ask the sender to create a new invitation.');
         setLoading(false);
         return;
@@ -97,6 +127,7 @@ const CreatorInvitationPage: React.FC = () => {
 
       // Check if invitation is still valid
       if (inviteData.status && inviteData.status !== 'pending') {
+        console.warn('⚠️ [LOAD INVITATION] Invitation status is not pending:', inviteData.status);
         const statusText = inviteData.status === 'accepted' ? 'accepted' :
                           inviteData.status === 'declined' ? 'declined' :
                           inviteData.status === 'expired' ? 'expired or cancelled' :
@@ -119,23 +150,34 @@ const CreatorInvitationPage: React.FC = () => {
             expiryDate = new Date(inviteData.expiresAt);
           } else {
             // If we can't parse it, skip expiration check
-            console.warn('Could not parse expiresAt:', inviteData.expiresAt);
+            console.warn('⚠️ [LOAD INVITATION] Could not parse expiresAt:', inviteData.expiresAt);
             expiryDate = new Date(Date.now() + 86400000); // Default to tomorrow
           }
           
+          console.log('⏰ [LOAD INVITATION] Expiration check:', {
+            now: now.toISOString(),
+            expiresAt: expiryDate.toISOString(),
+            isExpired: expiryDate < now
+          });
+          
           if (expiryDate < now) {
+        console.error('❌ [LOAD INVITATION] Invitation has expired');
         setError('This invitation has expired. Please request a new invitation.');
         setLoading(false);
         return;
           }
         } catch (err) {
-          console.error('Error checking expiration:', err);
+          console.error('⚠️ [LOAD INVITATION] Error checking expiration:', err);
           // Continue anyway if we can't check expiration
         }
+      } else {
+        console.log('ℹ️ [LOAD INVITATION] No expiration date set');
       }
 
+      console.log('✅ [LOAD INVITATION] Invitation is valid! Setting state...');
       setInvitation(inviteData);
       setLoading(false);
+      console.log('✅ [LOAD INVITATION] Complete! Invitation loaded successfully');
     } catch (err: any) {
       console.error('❌ Failed to load invitation:', err);
       console.error('Error details:', err.code, err.message);
@@ -153,26 +195,54 @@ const CreatorInvitationPage: React.FC = () => {
   };
 
   const handleAutoAccept = async () => {
-    if (!user || !invitation || processingInvite) return;
+    console.log('🎯 [AUTO-ACCEPT] Starting auto-accept process...');
+    console.log('🎯 [AUTO-ACCEPT] Preconditions:', {
+      hasUser: !!user,
+      hasInvitation: !!invitation,
+      isProcessing: processingInvite,
+      userEmail: user?.email,
+      invitationEmail: invitation?.email
+    });
+    
+    if (!user || !invitation || processingInvite) {
+      console.log('⏸️ [AUTO-ACCEPT] Preconditions not met, aborting');
+      return;
+    }
 
     // Check if user's email matches invitation email
+    console.log('🔍 [AUTO-ACCEPT] Checking email match...');
     if (user.email?.toLowerCase() !== invitation.email.toLowerCase()) {
+      console.error('❌ [AUTO-ACCEPT] Email mismatch!', {
+        userEmail: user.email?.toLowerCase(),
+        invitationEmail: invitation.email.toLowerCase()
+      });
       setError(
         `This invitation is for ${invitation.email}, but you were signed in as ${user.email}. ` +
         `Please sign in with the correct email.`
       );
       // Auto-logout the user so they can sign in with correct account
       try {
+        console.log('🚪 [AUTO-ACCEPT] Logging out user to sign in with correct email...');
         await logout();
       } catch (err) {
-        console.error('Failed to logout:', err);
+        console.error('❌ [AUTO-ACCEPT] Failed to logout:', err);
       }
       return;
     }
 
+    console.log('✅ [AUTO-ACCEPT] Email matches! Proceeding with acceptance...');
+
     try {
       setProcessingInvite(true);
       setError('');
+
+      console.log('📝 [AUTO-ACCEPT] Calling TeamInvitationService.acceptInvitation with:', {
+        invitationId: invitation.id,
+        orgId: invitation.orgId,
+        userId: user.uid,
+        userEmail: user.email,
+        userName: user.displayName || 'No display name'
+      });
 
       await TeamInvitationService.acceptInvitation(
         invitation.id,
@@ -182,32 +252,54 @@ const CreatorInvitationPage: React.FC = () => {
         user.displayName || undefined
       );
 
+      console.log('✅ [AUTO-ACCEPT] Invitation accepted successfully!');
       setSuccessMessage(`Welcome to ${invitation.organizationName}!`);
 
       // Wait longer for Firebase to propagate org membership changes
+      console.log('⏳ [AUTO-ACCEPT] Waiting 3 seconds for Firebase to propagate changes...');
       await new Promise(resolve => setTimeout(resolve, 3000));
 
       // Use hard redirect to ensure AuthContext reloads with new org data
+      console.log('🚀 [AUTO-ACCEPT] Redirecting to dashboard...');
       window.location.href = '/dashboard';
     } catch (err: any) {
-      console.error('Failed to accept invitation:', err);
+      console.error('❌ [AUTO-ACCEPT] Failed to accept invitation:', err);
+      console.error('❌ [AUTO-ACCEPT] Error details:', {
+        message: err.message,
+        code: err.code,
+        stack: err.stack
+      });
       setError(err.message || 'Failed to accept invitation. Please try again.');
       setProcessingInvite(false);
     }
   };
 
   const handleGoogleSignIn = async () => {
-    if (!invitation) return;
+    console.log('🔐 [GOOGLE SIGN-IN] User clicked Google sign-in button');
+    
+    if (!invitation) {
+      console.error('❌ [GOOGLE SIGN-IN] No invitation loaded!');
+      return;
+    }
 
+    console.log('🔐 [GOOGLE SIGN-IN] Invitation email expected:', invitation.email);
     setAuthLoading(true);
     setError('');
 
     try {
+      console.log('🔐 [GOOGLE SIGN-IN] Calling signInWithGoogle...');
       await signInWithGoogle();
+      console.log('✅ [GOOGLE SIGN-IN] Google authentication successful!');
+      console.log('ℹ️ [GOOGLE SIGN-IN] The useEffect will now handle auto-acceptance');
       // User will be auto-logged in, and the useEffect will handle acceptance
       // Note: Google email must match invitation email
     } catch (err: any) {
-      console.error('Google authentication error:', err);
+      console.error('❌ [GOOGLE SIGN-IN] Google authentication error:', err);
+      console.error('❌ [GOOGLE SIGN-IN] Error details:', {
+        message: err.message,
+        code: err.code,
+        stack: err.stack
+      });
       setError(err.message || 'Google authentication failed. Please try again.');
       setAuthLoading(false);
     }
