@@ -302,7 +302,13 @@ export const VideoHistoricalMetricsChart: React.FC<VideoHistoricalMetricsChartPr
                 if (selectedMetric === 'engagementRate') {
                   return `${value.toFixed(0)}%`;
                 }
-                return value >= 1000 ? `${(value / 1000).toFixed(0)}K` : value.toString();
+                if (value >= 1000000) {
+                  return `${(value / 1000000).toFixed(1)}M`;
+                }
+                if (value >= 1000) {
+                  return `${(value / 1000).toFixed(0)}K`;
+                }
+                return value.toString();
               }}
               domain={[0, Math.ceil(maxValue * 1.1)]}
             />
