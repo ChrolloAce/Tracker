@@ -15,7 +15,8 @@ import {
   Download,
   Bookmark,
   Upload,
-  TrendingUp
+  TrendingUp,
+  RefreshCw
 } from 'lucide-react';
 import { VideoSubmission } from '../types';
 import { LinkClick } from '../services/LinkClicksService';
@@ -2317,16 +2318,14 @@ const KPICard: React.FC<{
           return DataAggregationService.isDateInInterval(uploadDate, interval);
         }) : [];
         
-        // Get ALL videos with snapshot activity during this interval
+        // Get ALL videos with snapshot activity (including those with initial snapshots for baseline)
         const videosWithSnapshotsInIntervalCheck = interval ? submissions.filter((video: VideoSubmission) => {
           const snapshots = video.snapshots || [];
-          return snapshots.some(snapshot => {
-            const snapshotDate = new Date(snapshot.capturedAt);
-            return DataAggregationService.isDateInInterval(snapshotDate, interval);
-          });
+          // Include videos that have ANY snapshots (for baseline) OR snapshots in this interval
+          return snapshots.length > 0;
         }) : [];
         
-        // Calculate top gainers to see if we have any (need actual growth, not just snapshots)
+        // Calculate refreshed videos (videos with growth) to see if we have any
         const topGainersCheck = videosWithSnapshotsInIntervalCheck
           .map((video: VideoSubmission) => {
             const allSnapshots = video.snapshots || [];
@@ -2350,8 +2349,26 @@ const KPICard: React.FC<{
               new Date(s.capturedAt) <= interval.endDate
             ).pop();
             
-            if (!snapshotAtStart || !snapshotAtEnd || snapshotAtStart === snapshotAtEnd) {
-              return null;
+            // If no end snapshot, can't calculate growth
+            if (!snapshotAtEnd) return null;
+            
+            // If no start snapshot, use initial snapshot as baseline
+            if (!snapshotAtStart || snapshotAtStart === snapshotAtEnd) {
+              const initialSnapshot = video.snapshots?.find(s => s.isInitialSnapshot);
+              if (!initialSnapshot) return null;
+              
+              const growthMetricKey = data.id === 'views' ? 'views' 
+                : data.id === 'likes' ? 'likes'
+                : data.id === 'comments' ? 'comments'
+                : data.id === 'shares' ? 'shares'
+                : data.id === 'bookmarks' ? 'bookmarks'
+                : 'views';
+              
+              const startValue = (initialSnapshot as any)[growthMetricKey] || 0;
+              const endValue = (snapshotAtEnd as any)[growthMetricKey] || 0;
+              const growth = endValue - startValue;
+              
+              return growth > 0 ? { video, growth } : null;
             }
             
             const growthMetricKey = data.id === 'views' ? 'views' 
@@ -2363,9 +2380,9 @@ const KPICard: React.FC<{
             
             const startValue = (snapshotAtStart as any)[growthMetricKey] || 0;
             const endValue = (snapshotAtEnd as any)[growthMetricKey] || 0;
-            const growth = startValue > 0 ? ((endValue - startValue) / startValue) * 100 : 0;
+            const absoluteGain = endValue - startValue;
             
-            return growth > 0 ? { video, growth } : null;
+            return absoluteGain > 0 ? { video, growth: absoluteGain } : null;
           })
           .filter(item => item !== null);
         
@@ -2486,15 +2503,11 @@ const KPICard: React.FC<{
               .sort((a, b) => ((b as any)[metricKey] || 0) - ((a as any)[metricKey] || 0))
               .slice(0, 5);
             
-            // Get ALL videos with snapshot activity during this interval (not just uploads)
+            // Get ALL videos with snapshots (we'll filter for growth in the calculation below)
             const videosWithSnapshotsInInterval = interval ? submissions.filter((video: VideoSubmission) => {
               const snapshots = video.snapshots || [];
-              return snapshots.some(snapshot => {
-                // Exclude initial snapshots from interval filtering
-                if (snapshot.isInitialSnapshot) return false;
-                const snapshotDate = new Date(snapshot.capturedAt);
-                return DataAggregationService.isDateInInterval(snapshotDate, interval);
-              });
+              // Include all videos with snapshots - growth calculation will determine if they show
+              return snapshots.length > 0;
             }) : [];
             
             // Top Gainers: Calculate growth based on snapshots in this interval
@@ -2868,12 +2881,12 @@ const KPICard: React.FC<{
                   </div>
                   )}
                   
-                  {/* Column 2: Top Gainers - Only show if there are gainers */}
+                  {/* Column 2: Refreshed Videos - Only show if there are gainers */}
                   {hasTopGainers && (
                   <div className="flex-1 px-5 py-3">
                     <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                      <TrendingUp className="w-3.5 h-3.5" />
-                      Top Gainers ({totalTopGainers})
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      Refreshed Videos ({totalTopGainers})
                     </h3>
                     {topGainers.length > 0 ? (
                       <div className="space-y-2">
@@ -2912,19 +2925,17 @@ const KPICard: React.FC<{
                                   <PlatformIcon platform={item.video.platform} size="sm" />
                                 </div>
                                 <span className="text-[10px] text-gray-400">
-                                  {item.snapshotCount} snapshots
+                                  {item.video.uploaderHandle || item.video.platform}
                                 </span>
                               </div>
                             </div>
                             
-                            {/* Growth */}
+                            {/* Gain Amount */}
                             <div className="flex-shrink-0 text-right">
-                              <p className="text-xs font-bold text-emerald-400">
-                                +{item.growth.toFixed(0)}%
+                              <p className="text-xs font-bold text-white">
+                                +{formatDisplayNumber(item.absoluteGain)}
                               </p>
-                              <p className="text-[10px] text-gray-500">
-                                +{formatDisplayNumber(item.absoluteGain)} {metricLabel.toLowerCase()}
-                              </p>
+                              <p className="text-[10px] text-gray-500">{metricLabel.toLowerCase()}</p>
                             </div>
                           </div>
                         ))}
