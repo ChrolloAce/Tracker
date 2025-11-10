@@ -84,12 +84,24 @@ class TeamInvitationService {
     
     // Create lookup document with FULL invitation details for public access
     // This allows unauthenticated users to view invitation details before signing in
-    const lookupRef = doc(db, 'invitationsLookup', inviteRef.id);
-    await setDoc(lookupRef, {
-      ...inviteData, // Include all invitation data
-      invitationId: inviteRef.id
-    });
-    console.log(`✅ Created public invitation lookup for ${email}`);
+    try {
+      const lookupRef = doc(db, 'invitationsLookup', inviteRef.id);
+      console.log(`📝 Creating lookup document at: invitationsLookup/${inviteRef.id}`);
+      console.log(`📝 Lookup data:`, { ...inviteData, invitationId: inviteRef.id });
+      
+      await setDoc(lookupRef, {
+        ...inviteData, // Include all invitation data
+        invitationId: inviteRef.id
+      });
+      
+      console.log(`✅ Created public invitation lookup for ${email}`);
+      console.log(`✅ Lookup document path: invitationsLookup/${inviteRef.id}`);
+    } catch (lookupError) {
+      console.error(`❌ FAILED to create lookup document:`, lookupError);
+      console.error(`❌ Error code:`, (lookupError as any).code);
+      console.error(`❌ Error message:`, (lookupError as any).message);
+      throw new Error(`Failed to create invitation lookup: ${(lookupError as any).message}`);
+    }
     
     // Send email notification
     try {
