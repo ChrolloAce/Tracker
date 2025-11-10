@@ -2277,6 +2277,11 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                       e.stopPropagation();
                                       setOpenDropdownId(null);
                                       
+                                      if (!organizationId || !projectId) {
+                                        alert('Missing organization or project ID');
+                                        return;
+                                      }
+                                      
                                       const currentType = account.creatorType || 'automatic';
                                       const newType = currentType === 'automatic' ? 'manual' : 'automatic';
                                       
