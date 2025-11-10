@@ -10,6 +10,7 @@ import {
   Timestamp,
   writeBatch,
   updateDoc,
+  deleteDoc,
   collectionGroup
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -452,60 +453,52 @@ class TeamInvitationService {
    * Decline an invitation
    */
   static async declineInvitation(invitationId: string, orgId: string): Promise<void> {
-    console.log(`❌ Declining invitation ${invitationId} in org ${orgId}...`);
+    console.log(`🗑️ Deleting declined invitation ${invitationId} in org ${orgId}...`);
     
+    // Delete main invitation document
     const inviteRef = doc(db, 'organizations', orgId, 'invitations', invitationId);
-    await updateDoc(inviteRef, {
-      status: 'declined',
-      declinedAt: Timestamp.now()
-    });
+    await deleteDoc(inviteRef);
+    console.log(`✅ Main invitation document deleted`);
     
-    // Try to update the public lookup (don't fail if it doesn't exist)
+    // Delete the public lookup (don't fail if it doesn't exist)
     try {
       const lookupRef = doc(db, 'invitationsLookup', invitationId);
-      await updateDoc(lookupRef, {
-        status: 'declined',
-        declinedAt: Timestamp.now()
-      });
-      console.log(`✅ Public lookup updated to declined`);
+      await deleteDoc(lookupRef);
+      console.log(`✅ Public lookup document deleted`);
     } catch (err: any) {
-      console.warn(`⚠️ Could not update public lookup:`, err.message);
+      console.warn(`⚠️ Could not delete public lookup:`, err.message);
     }
     
-    console.log(`✅ Invitation ${invitationId} declined`);
+    console.log(`✅ Invitation ${invitationId} completely deleted from database`);
   }
   
   /**
    * Cancel/revoke an invitation
    */
   static async cancelInvitation(invitationId: string, orgId: string): Promise<void> {
-    console.log(`🗑️ Cancelling invitation ${invitationId} in org ${orgId}...`);
+    console.log(`🗑️ Deleting cancelled invitation ${invitationId} in org ${orgId}...`);
     
     try {
-      // Update main invitation
-    const inviteRef = doc(db, 'organizations', orgId, 'invitations', invitationId);
-    await updateDoc(inviteRef, {
-      status: 'expired'
-    });
-      console.log(`✅ Main invitation updated to expired`);
+      // Delete main invitation document
+      const inviteRef = doc(db, 'organizations', orgId, 'invitations', invitationId);
+      await deleteDoc(inviteRef);
+      console.log(`✅ Main invitation document deleted`);
     } catch (err) {
-      console.error(`❌ Failed to update main invitation:`, err);
+      console.error(`❌ Failed to delete main invitation:`, err);
       throw err; // Re-throw since this is critical
     }
     
-    // Try to update the public lookup (don't fail if it doesn't exist - could be old invitation)
+    // Delete the public lookup (don't fail if it doesn't exist - could be old invitation)
     try {
       const lookupRef = doc(db, 'invitationsLookup', invitationId);
-      await updateDoc(lookupRef, {
-        status: 'expired'
-      });
-      console.log(`✅ Public lookup updated to expired`);
+      await deleteDoc(lookupRef);
+      console.log(`✅ Public lookup document deleted`);
     } catch (err: any) {
       // Don't fail the whole operation if lookup doesn't exist (old invitations)
-      console.warn(`⚠️ Could not update public lookup (might be old invitation):`, err.message);
+      console.warn(`⚠️ Could not delete public lookup (might be old invitation):`, err.message);
     }
     
-    console.log(`✅ Invitation ${invitationId} cancelled successfully`);
+    console.log(`✅ Invitation ${invitationId} completely deleted from database`);
   }
 }
 
