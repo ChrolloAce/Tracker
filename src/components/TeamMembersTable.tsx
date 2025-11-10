@@ -86,15 +86,15 @@ const TeamMembersTable: React.FC = () => {
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case 'owner':
-        return 'bg-purple-500/20 text-purple-300 border border-purple-500/30';
+        return 'bg-white/20 text-white border border-white/30';
       case 'admin':
-        return 'bg-blue-500/20 text-blue-300 border border-blue-500/30';
+        return 'bg-white/15 text-white/90 border border-white/25';
       case 'member':
-        return 'bg-gray-500/20 text-gray-300 border border-gray-500/30';
+        return 'bg-white/10 text-white/80 border border-white/20';
       case 'creator':
-        return 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+        return 'bg-white/10 text-white/80 border border-white/20';
       default:
-        return 'bg-gray-500/20 text-gray-300 border border-gray-500/30';
+        return 'bg-white/10 text-white/80 border border-white/20';
     }
   };
 
@@ -174,7 +174,7 @@ const TeamMembersTable: React.FC = () => {
                       />
                         </>
                     ) : (
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm ring-2 ring-white/10">
+                        <div className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white font-bold text-sm">
                           {(member.displayName || member.email || 'U').charAt(0).toUpperCase()}
                       </div>
                     )}

@@ -3,7 +3,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { TeamInvitation } from '../types/firestore';
 import TeamInvitationService from '../services/TeamInvitationService';
 import { Mail, X, Clock, AlertCircle, Send } from 'lucide-react';
-import { Button } from './ui/Button';
 import { PageLoadingSkeleton } from './ui/LoadingSkeleton';
 
 const PendingInvitationsPage: React.FC = () => {
@@ -100,117 +99,137 @@ const PendingInvitationsPage: React.FC = () => {
 
   if (invitations.length === 0) {
     return (
-      <div className="p-6">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white/5 rounded-lg border border-white/10 p-12 text-center">
-            <Mail className="w-16 h-16 text-white/40 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-2">
-              No Pending Invitations
-            </h3>
-            <p className="text-white/60">
-              You haven't sent any team invitations yet. Invite team members to collaborate!
-            </p>
+      <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+        <div className="flex flex-col items-center justify-center py-16 px-6">
+          <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mb-4">
+            <Mail className="w-8 h-8 text-white/40" />
           </div>
+          <h3 className="text-lg font-semibold text-white mb-2">No Pending Invitations</h3>
+          <p className="text-white/60 text-center max-w-md">
+            You haven't sent any team invitations yet. Invite team members to collaborate!
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Mail className="w-8 h-8 text-white" />
-        <div>
-          <h1 className="text-3xl font-bold text-white">Sent Invitations</h1>
-          <p className="text-white/60 mt-1">
-            {invitations.length} pending {invitations.length === 1 ? 'invitation' : 'invitations'}
-          </p>
-        </div>
-      </div>
+    <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-white/5 border-b border-white/10">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
+                Email
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
+                Role
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
+                Sent
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            {invitations.map((invitation) => {
+              const expiresInDays = getExpiresInDays(invitation.expiresAt);
+              const isExpiringSoon = expiresInDays <= 2;
 
-      {/* Invitations List */}
-      <div className="space-y-4 max-w-4xl">
-        {invitations.map((invitation) => {
-          const expiresInDays = getExpiresInDays(invitation.expiresAt);
-          const isExpiringSoon = expiresInDays <= 2;
-
-          return (
-            <div 
-              key={invitation.id}
-              className="bg-white/5 rounded-lg border border-white/10 overflow-hidden hover:border-white/20 transition-colors"
-            >
-              <div className="p-6">
-                {/* Invitation Header */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center flex-shrink-0">
-                      <Mail className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-1">
-                        {invitation.email}
-                      </h3>
-                      <div className="flex items-center gap-2 text-sm text-white/60">
-                        <span>Pending acceptance</span>
+              return (
+                <tr key={invitation.id} className="hover:bg-white/5 transition-colors">
+                  {/* Email */}
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center flex-shrink-0">
+                        <Mail className="w-5 h-5 text-white/60" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-white">
+                          {invitation.email}
+                        </div>
+                        <div className="text-xs text-white/50">
+                          Pending acceptance
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className={`px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20`}>
-                    {invitation.role.charAt(0).toUpperCase() + invitation.role.slice(1)}
-                  </div>
-                </div>
+                  </td>
 
-                {/* Invitation Details */}
-                <div className="flex items-center gap-6 text-sm mb-4">
-                  <div className="flex items-center gap-2 text-white/60">
-                    <Clock className="w-4 h-4" />
-                    <span>Sent {formatDate(invitation.createdAt)}</span>
-                  </div>
-                  {isExpiringSoon && (
-                    <div className="flex items-center gap-2 text-orange-400">
-                      <AlertCircle className="w-4 h-4" />
-                      <span>Expires in {expiresInDays} {expiresInDays === 1 ? 'day' : 'days'}</span>
+                  {/* Role */}
+                  <td className="px-6 py-4">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
+                      {invitation.role.charAt(0).toUpperCase() + invitation.role.slice(1)}
+                    </span>
+                  </td>
+
+                  {/* Sent Date */}
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-white/70">
+                      {formatDate(invitation.createdAt)}
                     </div>
-                  )}
-                </div>
+                  </td>
 
-                {/* Role Description */}
-                <div className="bg-white/5 rounded-lg p-3 mb-4">
-                  <p className="text-sm text-white/70">
-                    {invitation.role === 'admin' 
-                      ? 'This person will have full access to manage content, team members, and organization settings.'
-                      : invitation.role === 'member'
-                      ? 'This person will be able to view and edit projects.'
-                      : 'This person will have limited access for content creation.'
-                    }
-                  </p>
-                </div>
+                  {/* Status */}
+                  <td className="px-6 py-4">
+                    {isExpiringSoon ? (
+                      <div className="flex items-center gap-1.5 text-orange-400">
+                        <AlertCircle className="w-4 h-4" />
+                        <span className="text-xs font-medium">
+                          Expires in {expiresInDays}d
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-white/50">
+                        <Clock className="w-4 h-4" />
+                        <span className="text-xs">
+                          {expiresInDays} days left
+                        </span>
+                      </div>
+                    )}
+                  </td>
 
-                {/* Actions */}
-                <div className="flex gap-3">
-                  <Button
-                    onClick={() => handleResend(invitation)}
-                    disabled={actionLoading === invitation.id}
-                    className="flex-1 flex items-center justify-center gap-2 bg-white hover:bg-gray-100 text-black"
-                  >
-                    <Send className="w-4 h-4" />
-                    {actionLoading === invitation.id ? 'Resending...' : 'Resend Invitation'}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={() => handleCancel(invitation)}
-                    disabled={actionLoading === invitation.id}
-                    className="flex items-center gap-2 border-red-500/30 text-red-400 hover:bg-red-900/20"
-                  >
-                    <X className="w-4 h-4" />
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+                  {/* Actions */}
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => handleResend(invitation)}
+                        disabled={actionLoading === invitation.id}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-colors disabled:opacity-50"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        {actionLoading === invitation.id ? 'Sending...' : 'Resend'}
+                      </button>
+                      <button
+                        onClick={() => handleCancel(invitation)}
+                        disabled={actionLoading === invitation.id}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        Cancel
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Footer */}
+      <div className="bg-white/5 border-t border-white/10 px-6 py-3 flex items-center justify-between">
+        <div className="text-sm text-white/60">
+          {invitations.length} {invitations.length === 1 ? 'invitation' : 'invitations'}
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-white/60">Page 1 of 1</span>
+        </div>
       </div>
     </div>
   );
