@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Mail, Shield, Clock, MoreVertical, Trash2, Edit3 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import OrganizationService from '../services/OrganizationService';
-import { OrgMember } from '../types/firestore';
+import { OrgMember, Role } from '../types/firestore';
 import { formatDistanceToNow } from 'date-fns';
 
 const TeamMembersTable: React.FC = () => {
@@ -54,7 +54,7 @@ const TeamMembersTable: React.FC = () => {
     }
   };
 
-  const handleUpdateRole = async (member: OrgMember, newRole: string) => {
+  const handleUpdateRole = async (member: OrgMember, newRole: Role) => {
     if (!currentOrgId) return;
     
     try {
@@ -289,7 +289,7 @@ const TeamMembersTable: React.FC = () => {
 
             {/* Body */}
             <div className="px-6 py-4 space-y-3">
-              {['admin', 'member', 'creator'].map((role) => (
+              {(['admin', 'member', 'creator'] as Role[]).map((role) => (
                 <button
                   key={role}
                   onClick={() => handleUpdateRole(showRoleModal, role)}
