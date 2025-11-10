@@ -93,7 +93,13 @@ class UsageTrackingService {
       
       // Cache is stale or missing - count in background and update cache
       // But return approximate data immediately to avoid blocking
-      this.updateUsageCache(orgId).catch(err => console.error('Background cache update failed:', err));
+      this.updateUsageCache(orgId).catch(err => {
+        // Silently fail if user doesn't have permission (e.g., creators)
+        // Only log in development or if it's not a permission error
+        if (err.code !== 'permission-denied') {
+          console.error('Background cache update failed:', err);
+        }
+      });
       
       // Return current cached data or zeros while background update runs
       if (usageDoc.exists()) {
