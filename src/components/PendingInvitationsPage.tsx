@@ -120,7 +120,7 @@ const PendingInvitationsPage: React.FC = () => {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Mail className="w-8 h-8 text-purple-500" />
+        <Mail className="w-8 h-8 text-white" />
         <div>
           <h1 className="text-3xl font-bold text-white">Sent Invitations</h1>
           <p className="text-white/60 mt-1">
@@ -144,7 +144,7 @@ const PendingInvitationsPage: React.FC = () => {
                 {/* Invitation Header */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                    <div className="w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center flex-shrink-0">
                       <Mail className="w-6 h-6 text-white" />
                     </div>
                     <div>
@@ -156,7 +156,7 @@ const PendingInvitationsPage: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  <div className={`px-3 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-300 border border-purple-500/30`}>
+                  <div className={`px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20`}>
                     {invitation.role.charAt(0).toUpperCase() + invitation.role.slice(1)}
                   </div>
                 </div>
@@ -192,7 +192,7 @@ const PendingInvitationsPage: React.FC = () => {
                   <Button
                     onClick={() => handleResend(invitation)}
                     disabled={actionLoading === invitation.id}
-                    className="flex-1 flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700"
+                    className="flex-1 flex items-center justify-center gap-2 bg-white hover:bg-gray-100 text-black"
                   >
                     <Send className="w-4 h-4" />
                     {actionLoading === invitation.id ? 'Resending...' : 'Resend Invitation'}

@@ -40,6 +40,12 @@ const TeamMembersTable: React.FC = () => {
   const handleRemoveMember = async (member: OrgMember) => {
     if (!currentOrgId) return;
     
+    // Prevent admins from removing other admins or the owner
+    if (currentUserRole === 'admin' && (member.role === 'admin' || member.role === 'owner')) {
+      alert('Only the organization owner can remove admins or other owners.');
+      return;
+    }
+    
     const confirmMessage = `Are you sure you want to remove ${member.displayName || member.email} from the team?\n\nThis action cannot be undone.`;
     if (!window.confirm(confirmMessage)) return;
     
@@ -56,6 +62,13 @@ const TeamMembersTable: React.FC = () => {
 
   const handleUpdateRole = async (member: OrgMember, newRole: Role) => {
     if (!currentOrgId) return;
+    
+    // Prevent admins from changing roles of other admins or the owner
+    if (currentUserRole === 'admin' && (member.role === 'admin' || member.role === 'owner')) {
+      alert('Only the organization owner can change admin or owner roles.');
+      setShowRoleModal(null);
+      return;
+    }
     
     try {
       await OrganizationService.updateMemberRole(currentOrgId, member.userId, newRole);
@@ -206,7 +219,10 @@ const TeamMembersTable: React.FC = () => {
 
                 {/* Actions */}
                 <td className="px-6 py-4 text-right">
-                  {member.userId !== user?.uid && (currentUserRole === 'owner' || currentUserRole === 'admin') && (
+                  {member.userId !== user?.uid && (
+                    currentUserRole === 'owner' || 
+                    (currentUserRole === 'admin' && member.role !== 'owner' && member.role !== 'admin')
+                  ) && (
                     <div className="relative">
                       <button
                         onClick={(e) => {
