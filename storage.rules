@@ -51,6 +51,23 @@ service firebase.storage {
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
     
+    // ==================== USER PROFILE PHOTOS ====================
+    
+    // User profile photos: profile-photos/{userId}/{imageName}
+    match /profile-photos/{userId}/{imageName} {
+      // Owner can upload their profile photos
+      allow write: if request.auth != null 
+        && request.auth.uid == userId
+        && isImage() 
+        && isReasonableSize();
+      
+      // Public read for profile photos
+      allow read: if true;
+      
+      // Owner can delete their profile photos
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+    
     match /organizations/{orgId}/{allPaths=**} {
       
       // ==================== THUMBNAILS ====================

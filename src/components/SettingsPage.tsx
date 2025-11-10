@@ -373,7 +373,7 @@ const BillingTabContent: React.FC = () => {
  * Features: Billing, Notifications, Organization, Profile management
  */
 const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTabProp }) => {
-  const { user, currentOrgId } = useAuth();
+  const { user, currentOrgId, userRole } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     // Use initialTab from URL if provided
@@ -565,7 +565,15 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
               { id: 'billing', label: 'Billing', icon: CreditCard },
               { id: 'team', label: 'Team', icon: Users },
               { id: 'notifications', label: 'Notifications', icon: Bell },
-            ].map(tab => {
+            ]
+            .filter(tab => {
+              // Hide billing and team tabs for creators
+              if (userRole === 'creator' && (tab.id === 'billing' || tab.id === 'team')) {
+                return false;
+              }
+              return true;
+            })
+            .map(tab => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (

@@ -201,6 +201,13 @@ const Sidebar: React.FC<SidebarProps> = ({
       });
     }
 
+    // For creators, hide Team Members
+    if (userRole === 'creator') {
+      sections.forEach(section => {
+        section.items = section.items.filter(item => item.id !== 'team');
+      });
+    }
+
     // Remove empty sections
     return sections.filter(section => section.items.length > 0);
   }, [can, permissionsLoading, userRole, isDemoMode, unreadCounts, loadingCounts]);

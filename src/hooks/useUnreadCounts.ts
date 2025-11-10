@@ -139,8 +139,8 @@ export function useUnreadCounts(orgId: string | null, projectId: string | null) 
         const syncingCount = snapshot.docs.filter(doc => {
           const data = doc.data();
           const isSyncing = data.syncStatus === 'pending' || 
-                           data.syncStatus === 'syncing' ||
-                           (data.syncProgress && data.syncProgress.current < data.syncProgress.total);
+                 data.syncStatus === 'syncing' ||
+                 (data.syncProgress && data.syncProgress.current < data.syncProgress.total);
           
           if (!isSyncing) return false;
           
