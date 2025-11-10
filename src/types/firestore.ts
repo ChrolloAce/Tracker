@@ -274,7 +274,7 @@ export interface VideoDoc extends VideoMetrics, VideoDeltas {
   
   // Metadata
   addedBy: string; // userId
-  status: 'active' | 'archived';
+  status: 'active' | 'archived' | 'processing'; // processing = still being fetched from API
   isSingular: boolean; // Not tied to tracked account
   
   // Background processing (like accounts)

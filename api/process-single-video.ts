@@ -5,7 +5,6 @@ import { getStorage } from 'firebase-admin/storage';
 import { runApifyActor } from './apify-client.js';
 import { ErrorNotificationService } from './services/ErrorNotificationService.js';
 import { CleanupService } from './services/CleanupService.js';
-import sharp from 'sharp';
 
 // Initialize Firebase Admin (same as sync-single-account)
 if (!getApps().length) {
@@ -818,7 +817,7 @@ async function downloadAndUploadThumbnail(
     
     let contentType = response.headers.get('content-type') || 'image/jpeg';
     
-    // 🔥 HEIC Detection and Conversion
+    // 🔥 HEIC Detection - Skip HEIC thumbnails (not supported in serverless environment)
     // Check if content-type indicates HEIC or file signature matches HEIC
     const isHEIC = contentType.includes('heic') || 
                    contentType.includes('heif') || 
@@ -829,20 +828,9 @@ async function downloadAndUploadThumbnail(
                     buffer[8] === 0x68 && buffer[9] === 0x65 && buffer[10] === 0x69 && buffer[11] === 0x63);
     
     if (isHEIC) {
-      console.log(`🔄 [HEIC] Converting HEIC thumbnail to JPG: ${thumbnailUrl.substring(0, 100)}...`);
-      try {
-        // Convert HEIC to JPG using sharp
-        buffer = await sharp(buffer)
-          .jpeg({ quality: 90 })
-          .toBuffer();
-        contentType = 'image/jpeg';
-        // Update filename to .jpg
-        filename = filename.replace(/\.(heic|heif)$/i, '.jpg');
-        console.log(`✅ [HEIC] Successfully converted to JPG`);
-      } catch (conversionError) {
-        console.error(`❌ [HEIC] Conversion failed:`, conversionError);
-        throw new Error(`HEIC conversion failed: ${conversionError}`);
-      }
+      console.warn(`⚠️ [HEIC] HEIC thumbnail detected - skipping (not supported in serverless): ${thumbnailUrl.substring(0, 100)}`);
+      console.warn(`⚠️ [HEIC] Video will have no thumbnail - TikTok should provide JPG on next refresh`);
+      throw new Error('HEIC format not supported - thumbnail skipped');
     }
     
     // Upload to Firebase Storage
