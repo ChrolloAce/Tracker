@@ -2503,33 +2503,41 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                       </button>
                       
                       {showColumnToggle && (
-                        <div className="absolute right-0 top-full mt-2 w-64 bg-zinc-800 border border-white/10 rounded-lg shadow-xl p-4 z-[999999]">
-                          <h3 className="text-sm font-semibold text-white mb-3">Toggle Columns</h3>
-                          <div className="space-y-2">
-                            {Object.entries({
-                              video: 'Video',
-                              platform: 'Platform',
-                              preview: 'Preview',
-                              trend: 'Trend',
-                              views: 'Views',
-                              likes: 'Likes',
-                              comments: 'Comments',
-                              shares: 'Shares',
-                              engagement: 'Engagement Rate',
-                              uploadDate: 'Upload Date'
-                            }).map(([key, label]) => (
-                              <label key={key} className="flex items-center space-x-2 cursor-pointer hover:bg-white/5 p-2 rounded">
-                                <input
-                                  type="checkbox"
-                                  checked={visibleColumns[key as keyof typeof visibleColumns]}
-                                  onChange={(e) => setVisibleColumns(prev => ({ ...prev, [key]: e.target.checked }))}
-                                  className="w-4 h-4 rounded border-gray-600 text-gray-900 dark:text-white focus:ring-gray-900 dark:focus:ring-white"
-                                />
-                                <span className="text-sm text-gray-300">{label}</span>
-                              </label>
-                            ))}
+                        <>
+                          {/* Backdrop */}
+                          <div 
+                            className="fixed inset-0 z-[9998]" 
+                            onClick={() => setShowColumnToggle(false)}
+                          />
+                          {/* Dropdown */}
+                          <div className="fixed right-4 mt-12 w-64 bg-black border border-white/20 rounded-lg shadow-2xl p-4 z-[9999]" style={{ boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)' }}>
+                            <h3 className="text-sm font-semibold text-white mb-3">Toggle Columns</h3>
+                            <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                              {Object.entries({
+                                video: 'Video',
+                                platform: 'Platform',
+                                preview: 'Preview',
+                                trend: 'Trend',
+                                views: 'Views',
+                                likes: 'Likes',
+                                comments: 'Comments',
+                                shares: 'Shares',
+                                engagement: 'Engagement Rate',
+                                uploadDate: 'Upload Date'
+                              }).map(([key, label]) => (
+                                <label key={key} className="flex items-center space-x-2 cursor-pointer hover:bg-white/10 p-2 rounded transition-colors">
+                                  <input
+                                    type="checkbox"
+                                    checked={visibleColumns[key as keyof typeof visibleColumns]}
+                                    onChange={(e) => setVisibleColumns(prev => ({ ...prev, [key]: e.target.checked }))}
+                                    className="w-4 h-4 rounded border-white/20 bg-white/5 text-white focus:ring-white/50"
+                                  />
+                                  <span className="text-sm text-gray-200">{label}</span>
+                                </label>
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        </>
                       )}
                     </div>
                   </div>
