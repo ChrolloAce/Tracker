@@ -387,7 +387,10 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
     console.log('📈 [DayVideosModal] Calculating top gainers', {
       videosCount: videos.length,
       intervalStart: interval?.startDate?.toISOString?.(),
-      intervalEnd: interval?.endDate?.toISOString?.()
+      intervalEnd: interval?.endDate?.toISOString?.(),
+      accountFilter,
+      dayOfWeek,
+      hourRange
     });
 
     let videosToAnalyze = videos;
@@ -552,6 +555,12 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
           new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
         );
         
+        console.log('   • Video sorted snapshots:', video.id, sortedSnapshots.map(s => ({
+          capturedAt: new Date(s.capturedAt).toISOString(),
+          views: s.views,
+          isInitial: s.isInitialSnapshot
+        })));
+        
         // Get snapshot at/before interval start (baseline)
         const snapshotAtStart = sortedSnapshots.filter(s => 
           new Date(s.capturedAt) <= interval.startDate
@@ -562,10 +571,25 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
           new Date(s.capturedAt) <= interval.endDate
         ).pop();
         
-        // Need end snapshot to calculate growth
-        if (!snapshotAtEnd) return null;
+        console.log('   • Baseline & End snapshots:', {
+          videoId: video.id,
+          snapshotAtStart: snapshotAtStart ? {
+            capturedAt: new Date(snapshotAtStart.capturedAt).toISOString(),
+            views: snapshotAtStart.views
+          } : null,
+          snapshotAtEnd: snapshotAtEnd ? {
+            capturedAt: new Date(snapshotAtEnd.capturedAt).toISOString(),
+            views: snapshotAtEnd.views
+          } : null
+        });
         
-        // If no start snapshot, use initial snapshot as baseline
+        // Need end snapshot to calculate growth
+        if (!snapshotAtEnd) {
+          console.log('   • Skipping video (no end snapshot):', video.id);
+          return null;
+        }
+        
+        // If no start snapshot, use initial snapshot or first available snapshot as baseline
         if (!snapshotAtStart || snapshotAtStart === snapshotAtEnd) {
           const initialSnapshot = effectiveSnapshots.find(s => s.isInitialSnapshot) || effectiveSnapshots[0];
           if (!initialSnapshot) {
@@ -619,8 +643,21 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
       })
       .filter(item => item !== null);
 
-    return result
-      .sort((a: any, b: any) => b.viewsGained - a.viewsGained);
+    const sortedResult = result.sort((a: any, b: any) => b.viewsGained - a.viewsGained);
+    
+    console.log('📈 [DayVideosModal] Top gainers result:', {
+      totalVideos: videos.length,
+      validVideos: videosToAnalyze.length,
+      videosWithGrowth: sortedResult.length,
+      topGainers: sortedResult.slice(0, 5).map((g: any) => ({
+        id: g.video.id,
+        title: g.video.title?.substring(0, 50),
+        viewsGained: g.viewsGained,
+        growth: g.growth.toFixed(1) + '%'
+      }))
+    });
+    
+    return sortedResult;
   }, [videos, accountFilter, dayOfWeek, hourRange, interval]);
 
   // Calculate total views from new uploads
@@ -902,17 +939,31 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                   </span>
                 )}
               </div>
-              <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
+              <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                 {newUploads.length > 0 ? (
                   newUploads.map((video, idx) => (
                     <div 
                       key={`new-${video.id}-${idx}`}
                       onClick={() => onVideoClick?.(video)}
-                      className="bg-white/[0.02] rounded-lg p-3 border border-white/[0.04] hover:bg-white/[0.04] cursor-pointer transition-colors group"
+                      className="bg-white/[0.02] rounded-xl p-4 border border-white/[0.04] hover:bg-white/[0.06] hover:border-white/[0.08] cursor-pointer transition-all group"
                     >
-                      <div className="flex gap-3">
+                      {/* Header with Platform and Views */}
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4">
+                            <PlatformIcon platform={video.platform} size="sm" />
+                          </div>
+                          <span className="text-xs font-medium text-gray-400">{video.uploaderHandle || video.platform}</span>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-bold text-white">{formatNumber(video.views || 0)}</div>
+                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">views</div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-4">
                         {/* Thumbnail */}
-                        <div className="flex-shrink-0 w-16 h-16 rounded overflow-hidden bg-white/[0.02]">
+                        <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-white/[0.02] border border-white/[0.03]">
                           {video.thumbnail ? (
                             <img 
                               src={video.thumbnail} 
@@ -924,23 +975,29 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
-                              <Play className="w-5 h-5 text-gray-700" />
+                              <Play className="w-6 h-6 text-gray-700" />
                             </div>
                           )}
                         </div>
                         
                         {/* Content */}
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-white font-medium mb-1 line-clamp-2 group-hover:text-gray-200 transition-colors">
+                          <p className="text-base text-white font-semibold mb-2 line-clamp-3 leading-snug group-hover:text-gray-100 transition-colors">
                             {video.title || video.caption || '(No caption)'}
                           </p>
-                          <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <div className="w-3 h-3">
-                              <PlatformIcon platform={video.platform} size="sm" />
-                            </div>
-                            <span>{video.uploaderHandle || video.platform}</span>
-                            <span>·</span>
-                            <span>{formatNumber(video.views || 0)} views</span>
+                          <div className="flex items-center gap-3 text-xs text-gray-500">
+                            {video.likes !== undefined && video.likes > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Heart className="w-3 h-3" />
+                                {formatNumber(video.likes)}
+                              </span>
+                            )}
+                            {video.comments !== undefined && video.comments > 0 && (
+                              <span className="flex items-center gap-1">
+                                <MessageCircle className="w-3 h-3" />
+                                {formatNumber(video.comments)}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -972,17 +1029,36 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                   </span>
                 )}
               </div>
-              <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
+              <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                 {topGainers.length > 0 ? (
                   topGainers.map((item: any, idx: number) => (
                     <div 
                       key={`gainer-${item.video.id}-${idx}`}
                       onClick={() => onVideoClick?.(item.video)}
-                      className="bg-white/[0.02] rounded-lg p-3 border border-white/[0.04] hover:bg-white/[0.04] cursor-pointer transition-colors group"
+                      className="bg-white/[0.02] rounded-xl p-4 border border-white/[0.04] hover:bg-white/[0.06] hover:border-emerald-500/[0.15] cursor-pointer transition-all group"
                     >
-                      <div className="flex gap-3">
-                        {/* Thumbnail with Badge */}
-                        <div className="flex-shrink-0 w-16 h-16 rounded overflow-hidden bg-white/[0.02] relative">
+                      {/* Header with Platform, Growth Badge and Total Views */}
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4">
+                            <PlatformIcon platform={item.video.platform} size="sm" />
+                          </div>
+                          <span className="text-xs font-medium text-gray-400">{item.video.uploaderHandle || item.video.platform}</span>
+                          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-md px-2 py-0.5">
+                            <span className="text-[10px] font-bold text-emerald-400">
+                              +{item.growth.toFixed(0)}%
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-bold text-white">{formatNumber(item.currentViews)}</div>
+                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">total views</div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-4">
+                        {/* Thumbnail */}
+                        <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-white/[0.02] border border-white/[0.03]">
                           {item.video.thumbnail ? (
                             <img 
                               src={item.video.thumbnail} 
@@ -994,32 +1070,23 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
-                              <Play className="w-5 h-5 text-gray-700" />
+                              <Play className="w-6 h-6 text-gray-700" />
                             </div>
                           )}
-                          {/* Growth Badge */}
-                          <div className="absolute top-1 right-1 bg-white/90 backdrop-blur-sm rounded px-1.5 py-0.5">
-                            <span className="text-[9px] font-bold text-black">
-                              +{item.growth.toFixed(0)}%
-                            </span>
-                          </div>
                         </div>
                         
                         {/* Content */}
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-white font-medium mb-1 line-clamp-2 group-hover:text-gray-200 transition-colors">
+                          <p className="text-base text-white font-semibold mb-2 line-clamp-3 leading-snug group-hover:text-gray-100 transition-colors">
                             {item.video.title || item.video.caption || '(No caption)'}
                           </p>
-                          <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
-                            <div className="w-3 h-3">
-                              <PlatformIcon platform={item.video.platform} size="sm" />
+                          <div className="flex items-center gap-3 text-xs">
+                            <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+                              <TrendingUp className="w-3.5 h-3.5" />
+                              <span>+{formatNumber(item.viewsGained)}</span>
                             </div>
-                            <span>{item.snapshotCount} snapshots</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-xs">
-                            <span className="text-gray-400 font-medium">+{formatNumber(item.viewsGained)}</span>
-                            <span className="text-gray-600">→</span>
-                            <span className="text-gray-400">{formatNumber(item.currentViews)}</span>
+                            <span className="text-gray-600">•</span>
+                            <span className="text-gray-500">{item.snapshotCount} snapshots</span>
                           </div>
                         </div>
                       </div>
