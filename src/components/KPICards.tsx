@@ -2421,8 +2421,8 @@ const KPICard: React.FC<{
             // Format value based on metric type
             const isRevenueMetric = data.id === 'revenue' || data.id === 'downloads';
             const formatDisplayNumber = (num: number): string => {
-              if (num >= 1000000) return `${(num / 1000000).toFixed(1)} M`;
-              if (num >= 1000) return `${(num / 1000).toFixed(1)} k`;
+              if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+              if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
               // For revenue, format to 2 decimal places
               if (isRevenueMetric) return num.toFixed(2);
               return num.toLocaleString();
@@ -2473,11 +2473,11 @@ const KPICard: React.FC<{
             // Use videosWithSnapshotsInInterval instead of videosInInterval
             const topGainers = videosWithSnapshotsInInterval
               .map((video: VideoSubmission) => {
-                // Exclude initial snapshots from growth calculations
-                const nonInitialSnapshots = (video.snapshots || []).filter(s => !s.isInitialSnapshot);
+                // KEEP initial snapshots as they provide baseline for growth calculations
+                const allSnapshots = (video.snapshots || []);
                 
                 // Filter to snapshots within the interval OR just before it (for baseline)
-                const snapshotsInOrBeforeInterval = nonInitialSnapshots.filter(snapshot => {
+                const snapshotsInOrBeforeInterval = allSnapshots.filter(snapshot => {
                   const snapshotDate = new Date(snapshot.capturedAt);
                   return snapshotDate <= interval.endDate;
                 });
@@ -2544,7 +2544,7 @@ const KPICard: React.FC<{
                   metricValue: endValue,
                   absoluteGain,
                   startValue,
-                  snapshotCount: nonInitialSnapshots.length
+                  snapshotCount: allSnapshots.length
                 };
               })
               .filter(item => item !== null && item.growth > 0)
@@ -2894,7 +2894,7 @@ const KPICard: React.FC<{
                                 +{item.growth.toFixed(0)}%
                               </p>
                               <p className="text-[10px] text-gray-500">
-                                {formatDisplayNumber(item.metricValue)} {metricLabel.toLowerCase()}
+                                +{formatDisplayNumber(item.absoluteGain)} {metricLabel.toLowerCase()}
                               </p>
                             </div>
                           </div>

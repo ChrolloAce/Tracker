@@ -185,9 +185,8 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       return [dataPoint, { ...dataPoint }];
     }
 
-    // Sort all snapshots by date and filter out initial snapshots (they're duplicates of video creation)
+    // Sort all snapshots by date (KEEP initial snapshots as they provide baseline)
     const sortedSnapshots = [...video.snapshots]
-      .filter(snapshot => !snapshot.isInitialSnapshot) // Skip initial snapshots
       .sort((a, b) => new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime());
     
     console.log('📊 Video snapshots:', {
