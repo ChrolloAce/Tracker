@@ -5,6 +5,8 @@ import { getStorage } from 'firebase-admin/storage';
 import { runApifyActor } from './apify-client.js';
 import { ErrorNotificationService } from './services/ErrorNotificationService.js';
 import { CleanupService } from './services/CleanupService.js';
+// @ts-ignore - heic-convert has no types
+import convert from 'heic-convert';
 
 // Initialize Firebase Admin (same as sync-single-account)
 if (!getApps().length) {
@@ -567,33 +569,27 @@ function transformVideoData(rawData: any, platform: string): VideoData {
     });
     
     // ROBUST THUMBNAIL EXTRACTION (strongest → weakest fallback)
-    // Skip HEIC thumbnails as they can't be converted in serverless environment
-    const isHEIC = (url: string) => url && (url.toLowerCase().includes('.heic') || url.toLowerCase().includes('.heif'));
-    
+    // Now we can handle HEIC thumbnails with heic-convert!
     let thumbnailUrl = '';
-    const candidates = [
-      video.cover,
-      video.thumbnail,
-      rawData['video.cover'],
-      rawData['video.thumbnail'],
-      rawData.cover,
-      rawData.thumbnail,
-      rawData.images && Array.isArray(rawData.images) && rawData.images.length > 0 ? rawData.images[0].url : null
-    ];
-    
-    // Find first non-HEIC thumbnail
-    for (const candidate of candidates) {
-      if (candidate && !isHEIC(candidate)) {
-        thumbnailUrl = candidate;
-        console.log(`✅ [TIKTOK] Selected non-HEIC thumbnail: ${thumbnailUrl.substring(0, 100)}...`);
-        break;
-      } else if (candidate && isHEIC(candidate)) {
-        console.log(`⚠️ [TIKTOK] Skipping HEIC thumbnail: ${candidate.substring(0, 100)}...`);
-      }
+    if (video.cover) {
+      thumbnailUrl = video.cover;
+    } else if (video.thumbnail) {
+      thumbnailUrl = video.thumbnail;
+    } else if (rawData['video.cover']) {
+      thumbnailUrl = rawData['video.cover'];
+    } else if (rawData['video.thumbnail']) {
+      thumbnailUrl = rawData['video.thumbnail'];
+    } else if (rawData.cover) {
+      thumbnailUrl = rawData.cover;
+    } else if (rawData.thumbnail) {
+      thumbnailUrl = rawData.thumbnail;
+    } else if (rawData.images && Array.isArray(rawData.images) && rawData.images.length > 0) {
+      thumbnailUrl = rawData.images[0].url || '';
     }
     
-    if (!thumbnailUrl && candidates.some(c => c && isHEIC(c))) {
-      console.warn(`⚠️ [TIKTOK] All thumbnails are HEIC format - video will have no thumbnail`);
+    if (thumbnailUrl) {
+      const isHEIC = thumbnailUrl.toLowerCase().includes('.heic') || thumbnailUrl.toLowerCase().includes('.heif');
+      console.log(`📸 [TIKTOK] Thumbnail URL: ${thumbnailUrl.substring(0, 100)}... ${isHEIC ? '(HEIC - will convert)' : '(JPG/PNG)'}`);
     }
     
     // 🔥 VIDEO URL: Always use postPage, fallback to reconstruction from video ID
@@ -607,16 +603,19 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       console.log(`🔧 [TIKTOK] Reconstructed URL from ID: ${videoUrl}`);
     }
     
-    // 🔥 FOLLOWER COUNT: Try multiple possible field names
-    const followerCount = channel.followers || 
-                         channel.followerCount || 
-                         channel.fans || 
-                         rawData.followers || 
-                         rawData.followerCount || 
-                         rawData['channel.followers'] ||
+    // 🔥 FOLLOWER COUNT: Try multiple possible field names (handle null explicitly)
+    const followerCount = (typeof channel.followers === 'number' ? channel.followers : null) ||
+                         (typeof channel.followerCount === 'number' ? channel.followerCount : null) ||
+                         (typeof channel.fans === 'number' ? channel.fans : null) ||
+                         (typeof rawData.followers === 'number' ? rawData.followers : null) ||
+                         (typeof rawData.followerCount === 'number' ? rawData.followerCount : null) ||
+                         (typeof rawData['channel.followers'] === 'number' ? rawData['channel.followers'] : null) ||
                          0;
     
     console.log(`📊 [TIKTOK Transform] Final follower count: ${followerCount}`);
+    if (followerCount === 0) {
+      console.warn(`⚠️ [TIKTOK] No follower data available from TikTok API - this is normal for some accounts`);
+    }
     
     return {
       id: videoId,
@@ -828,7 +827,7 @@ async function downloadAndUploadThumbnail(
     
     let contentType = response.headers.get('content-type') || 'image/jpeg';
     
-    // 🔥 HEIC Detection - Skip HEIC thumbnails (not supported in serverless environment)
+    // 🔥 HEIC Detection and Conversion using heic-convert (pure JS, works in serverless)
     // Check if content-type indicates HEIC or file signature matches HEIC
     const isHEIC = contentType.includes('heic') || 
                    contentType.includes('heif') || 
@@ -839,9 +838,24 @@ async function downloadAndUploadThumbnail(
                     buffer[8] === 0x68 && buffer[9] === 0x65 && buffer[10] === 0x69 && buffer[11] === 0x63);
     
     if (isHEIC) {
-      console.warn(`⚠️ [HEIC] HEIC thumbnail detected - skipping (not supported in serverless): ${thumbnailUrl.substring(0, 100)}`);
-      console.warn(`⚠️ [HEIC] Video will have no thumbnail - TikTok should provide JPG on next refresh`);
-      throw new Error('HEIC format not supported - thumbnail skipped');
+      console.log(`🔄 [HEIC] Converting HEIC thumbnail to JPG: ${thumbnailUrl.substring(0, 100)}...`);
+      try {
+        // Convert HEIC to JPG using heic-convert (pure JS, serverless-friendly)
+        const outputBuffer = await convert({
+          buffer: buffer,
+          format: 'JPEG',
+          quality: 0.9
+        });
+        
+        buffer = Buffer.from(outputBuffer);
+        contentType = 'image/jpeg';
+        filename = filename.replace(/\.(heic|heif)$/i, '.jpg');
+        console.log(`✅ [HEIC] Successfully converted HEIC to JPG (${buffer.length} bytes)`);
+      } catch (conversionError) {
+        console.error(`❌ [HEIC] Conversion failed:`, conversionError);
+        console.warn(`⚠️ [HEIC] Skipping thumbnail - will retry on next sync`);
+        throw new Error(`HEIC conversion failed: ${conversionError}`);
+      }
     }
     
     // Upload to Firebase Storage

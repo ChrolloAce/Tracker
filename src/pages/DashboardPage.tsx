@@ -2065,10 +2065,14 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                         <Users className="w-5 h-5 md:w-6 md:h-6 text-white/60" />
                       </div>
                     )}
-                    {/* Verified Badge - Blue like Instagram */}
+                    {/* Verified Badge - Twitter Blue Checkmark */}
                     {filteredAccount.isVerified && (
-                      <div className="absolute -bottom-0.5 -right-0.5 bg-blue-500 rounded-full p-0.5 flex items-center justify-center">
-                        <CheckCircle className="w-3 h-3 md:w-3.5 md:h-3.5 text-white fill-white stroke-blue-500 stroke-2" style={{ strokeWidth: 2.5 }} />
+                      <div className="absolute -bottom-0.5 -right-0.5">
+                        <img 
+                          src="/verified-badge.png" 
+                          alt="Verified" 
+                          className="w-4 h-4 md:w-5 md:h-5"
+                        />
                       </div>
                     )}
                   </div>

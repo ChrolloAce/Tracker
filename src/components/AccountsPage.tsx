@@ -1844,7 +1844,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                       {matchingAccount?.displayName || `@${procAccount.username}`}
                               {matchingAccount?.isVerified && (
                                 <img 
-                                  src="/LANDINGPAGE-PHOOTS/Twitter_Verified_Badge.svg.png" 
+                                  src="/verified-badge.png" 
                                   alt="Verified" 
                                   className="w-3.5 h-3.5"
                                 />
@@ -2002,7 +2002,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                   {/* Verified Badge next to username */}
                                   {account.isVerified && (
                                     <img 
-                                      src="/LANDINGPAGE-PHOOTS/Twitter_Verified_Badge.svg.png" 
+                                      src="/verified-badge.png" 
                                       alt="Verified" 
                                       className="w-3.5 h-3.5"
                                     />
