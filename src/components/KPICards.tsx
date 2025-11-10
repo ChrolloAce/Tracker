@@ -15,7 +15,6 @@ import {
   Download,
   Bookmark,
   Upload,
-  TrendingUp,
   RefreshCw
 } from 'lucide-react';
 import { VideoSubmission } from '../types';
