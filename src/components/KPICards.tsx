@@ -2162,7 +2162,7 @@ const KPICard: React.FC<{
           }
         }
       }}
-      onMouseLeave={(e) => {
+      onMouseLeave={() => {
         // Clear tooltip state
         setTooltipData(null);
         if (onIntervalHover) onIntervalHover(null);

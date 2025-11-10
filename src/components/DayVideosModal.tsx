@@ -113,65 +113,6 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
     return `${formatHour(start)} - ${formatHour(end)}`;
   };
 
-  // Filter by account, day of week, and hour if specified
-  const filteredVideos = useMemo(() => {
-    let videosToFilter = showPreviousPeriod ? ppVideos : videos;
-    
-    // Debug logging
-    if (dayOfWeek !== undefined || hourRange) {
-      console.log('🔍 DayVideosModal Filtering:', {
-        dayOfWeek,
-        hourRange,
-        totalVideos: videosToFilter.length,
-        sampleVideo: videosToFilter[0] ? {
-          uploadDate: videosToFilter[0].uploadDate,
-          dateSubmitted: videosToFilter[0].dateSubmitted,
-          parsedDay: (videosToFilter[0].uploadDate ? new Date(videosToFilter[0].uploadDate) : new Date(videosToFilter[0].dateSubmitted)).getDay(),
-          parsedHour: (videosToFilter[0].uploadDate ? new Date(videosToFilter[0].uploadDate) : new Date(videosToFilter[0].dateSubmitted)).getHours()
-        } : null
-      });
-    }
-    
-    // Filter by account
-    if (accountFilter) {
-      videosToFilter = videosToFilter.filter(v => 
-        v.uploaderHandle?.toLowerCase() === accountFilter.toLowerCase()
-      );
-    }
-    
-    // Filter by day of week (0 = Sunday, 6 = Saturday)
-    if (dayOfWeek !== undefined) {
-      videosToFilter = videosToFilter.filter(v => {
-        const dateStr = v.uploadDate || v.dateSubmitted;
-        if (!dateStr) return false;
-        
-        const videoDate = new Date(dateStr);
-        const videoDayOfWeek = videoDate.getDay();
-        const matches = videoDayOfWeek === dayOfWeek;
-        
-        return matches;
-      });
-      console.log(`✅ After day filter (${dayOfWeek}):`, videosToFilter.length, 'videos');
-    }
-    
-    // Filter by hour range
-    if (hourRange) {
-      videosToFilter = videosToFilter.filter(v => {
-        const dateStr = v.uploadDate || v.dateSubmitted;
-        if (!dateStr) return false;
-        
-        const videoDate = new Date(dateStr);
-        const hour = videoDate.getHours();
-        const matches = hour >= hourRange.start && hour < hourRange.end;
-        
-        return matches;
-      });
-      console.log(`✅ After hour filter (${hourRange.start}-${hourRange.end}):`, videosToFilter.length, 'videos');
-    }
-    
-    return videosToFilter;
-  }, [videos, ppVideos, accountFilter, dayOfWeek, hourRange, showPreviousPeriod]);
-
   const calculateComparison = (cpValue: number, ppValue: number) => {
     if (ppValue === 0) return { percentChange: 0, isPositive: true };
     const percentChange = ((cpValue - ppValue) / ppValue) * 100;

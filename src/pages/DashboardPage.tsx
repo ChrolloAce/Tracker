@@ -32,16 +32,11 @@ import SettingsPage from '../components/SettingsPage';
 import SubscriptionPage from '../components/SubscriptionPage';
 import CronManagementPage from '../components/CronManagementPage';
 import TrackedLinksPage, { TrackedLinksPageRef } from '../components/TrackedLinksPage';
-import CreatorPortalPage from '../components/CreatorPortalPage';
-import CreatorsManagementPage, { CreatorsManagementPageRef } from '../components/CreatorsManagementPage';
-import CampaignsManagementPage from '../components/CampaignsManagementPage';
 import TeamManagementPage from '../components/TeamManagementPage';
 import RevenueManagementPage from '../components/RevenueManagementPage';
 import SelectCreatorModal from '../components/SelectCreatorModal';
 import PaywallOverlay from '../components/PaywallOverlay';
 import DemoBanner from '../components/DemoBanner';
-import { CampaignStatus } from '../types/campaigns';
-import ExtensionPromoModal from '../components/ExtensionPromoModal';
 import RevenueIntegrationsModal from '../components/RevenueIntegrationsModal';
 import SignOutModal from '../components/SignOutModal';
 import ComingSoonLocked from '../components/ComingSoonLocked';
@@ -180,8 +175,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
   const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
   const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false);
-  const [campaignStatusFilter, setCampaignStatusFilter] = useState<'all' | CampaignStatus>('all');
-  const [campaignCounts, setCampaignCounts] = useState({ active: 0, draft: 0, completed: 0, cancelled: 0 });
   
   // Loading/pending state for immediate UI feedback
   const [loadingDashboard, setLoadingDashboard] = useState(true);
@@ -452,7 +445,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [accountsSearchQuery, setAccountsSearchQuery] = useState('');
   const accountsPageRef = useRef<AccountsPageRef | null>(null);
   const trackedLinksPageRef = useRef<TrackedLinksPageRef | null>(null);
-  const creatorsPageRef = useRef<CreatorsManagementPageRef | null>(null);
   const [linkFilter, setLinkFilter] = useState<string>('all'); // 'all' or link ID
   const [allLinks, setAllLinks] = useState<any[]>([]); // Store all links for dropdown
 
@@ -675,8 +667,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         trackedLinksPageRef.current?.refreshData?.();
         break;
       case 'creators':
-        // CreatorsManagementPage will refresh via its own mechanisms
-        creatorsPageRef.current?.refreshData?.();
+        // Creators tab now shows ComingSoonLocked - no refresh needed
         break;
       case 'dashboard':
         // Dashboard data is already handled by real-time listeners above
