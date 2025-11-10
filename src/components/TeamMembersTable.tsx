@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User, Mail, Shield, Clock, MoreVertical, Trash2, Edit3 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import OrganizationService from '../services/OrganizationService';
 import { OrgMember, Role } from '../types/firestore';
 import { formatDistanceToNow } from 'date-fns';
+import { FloatingDropdown, DropdownItem, DropdownDivider } from './ui/FloatingDropdown';
 
 const TeamMembersTable: React.FC = () => {
   const { currentOrgId, user } = useAuth();
@@ -12,6 +13,7 @@ const TeamMembersTable: React.FC = () => {
   const [currentUserRole, setCurrentUserRole] = useState<string>('');
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const dropdownTriggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const [showRoleModal, setShowRoleModal] = useState<OrgMember | null>(null);
 
   useEffect(() => {
@@ -223,56 +225,51 @@ const TeamMembersTable: React.FC = () => {
                     currentUserRole === 'owner' || 
                     (currentUserRole === 'admin' && member.role !== 'owner' && member.role !== 'admin')
                   ) && (
-                    <div className="relative">
-                    <button
+                    <>
+                      <button
+                        ref={(el) => {
+                          if (el) {
+                            dropdownTriggerRefs.current.set(member.userId, el);
+                          } else {
+                            dropdownTriggerRefs.current.delete(member.userId);
+                          }
+                        }}
                         onClick={(e) => {
                           e.stopPropagation();
                           setOpenDropdownId(openDropdownId === member.userId ? null : member.userId);
                         }}
-                      className="p-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-                      title="More actions"
-                    >
-                      <MoreVertical className="w-4 h-4" />
-                    </button>
+                        className="p-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                        title="More actions"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
                       
-                      {/* Dropdown Menu */}
-                      {openDropdownId === member.userId && (
-                        <>
-                          {/* Backdrop */}
-                          <div 
-                            className="fixed inset-0 z-[9995]" 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenDropdownId(null);
-                            }}
-                          />
-                          {/* Dropdown */}
-                          <div className="absolute right-0 top-8 mt-1 w-56 bg-black border border-white/20 rounded-lg shadow-2xl z-[9996] py-1" style={{ boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)' }}>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setOpenDropdownId(null);
-                                setShowRoleModal(member);
-                              }}
-                              className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-white/10 transition-colors flex items-center gap-2"
-                            >
-                              <Edit3 className="w-4 h-4" />
-                              Change Role
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRemoveMember(member);
-                              }}
-                              className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-900/20 transition-colors flex items-center gap-2"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Remove from Team
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
+                      <FloatingDropdown
+                        isOpen={openDropdownId === member.userId}
+                        onClose={() => setOpenDropdownId(null)}
+                        triggerRef={{ current: dropdownTriggerRefs.current.get(member.userId) || null }}
+                        align="right"
+                      >
+                        <DropdownItem
+                          icon={<Edit3 className="w-4 h-4" />}
+                          label="Change Role"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenDropdownId(null);
+                            setShowRoleModal(member);
+                          }}
+                        />
+                        <DropdownItem
+                          icon={<Trash2 className="w-4 h-4" />}
+                          label="Remove from Team"
+                          variant="danger"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveMember(member);
+                          }}
+                        />
+                      </FloatingDropdown>
+                    </>
                   )}
                 </td>
               </tr>

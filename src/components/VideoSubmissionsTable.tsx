@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { MoreVertical, Eye, Heart, MessageCircle, Share2, Trash2, ChevronUp, ChevronDown, Filter, TrendingUp, TrendingDown, Minus, Bookmark, Clock, Loader, RefreshCw, ExternalLink, Copy, User, BarChart3 } from 'lucide-react';
 import Lottie from 'lottie-react';
@@ -14,6 +14,7 @@ import ColumnPreferencesService from '../services/ColumnPreferencesService';
 import { OutlierBadge, calculateOutlierStatus } from './ui/OutlierBadge';
 import videoMaterialAnimation from '../../public/lottie/Video Material.json';
 import { HeicImage } from './HeicImage';
+import { FloatingDropdown, DropdownItem, DropdownDivider } from './ui/FloatingDropdown';
 
 interface VideoSubmissionsTableProps {
   submissions: VideoSubmission[];
@@ -29,6 +30,7 @@ const DropdownMenu: React.FC<{
   onVideoClick?: (video: VideoSubmission) => void;
 }> = ({ submission, onDelete, onVideoClick }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const handleDelete = () => {
     if (onDelete && window.confirm('Are you sure you want to delete this video submission?')) {
@@ -38,103 +40,83 @@ const DropdownMenu: React.FC<{
   };
 
   return (
-    <div className="relative">
+    <>
       <button
+        ref={triggerRef}
         onClick={(e) => {
           e.stopPropagation(); // Prevent row click
           setIsOpen(!isOpen);
         }}
-        className="p-1 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100 transition-colors"
+        className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
       >
         <MoreVertical className="w-4 h-4" />
       </button>
 
-      {isOpen && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-[9995]"
-            onClick={() => setIsOpen(false)}
+      <FloatingDropdown
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        triggerRef={triggerRef}
+        align="right"
+      >
+        <DropdownItem
+          icon={<ExternalLink className="w-4 h-4" />}
+          label="Go to Video"
+          onClick={(e) => {
+            e.stopPropagation();
+            window.open(submission.url, '_blank');
+            setIsOpen(false);
+          }}
+        />
+        
+        <DropdownItem
+          icon={<Copy className="w-4 h-4" />}
+          label="Copy Link"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigator.clipboard.writeText(submission.url);
+            alert('Video link copied!');
+            setIsOpen(false);
+          }}
+        />
+        
+        {submission.uploaderHandle && (
+          <DropdownItem
+            icon={<User className="w-4 h-4" />}
+            label="Copy Username"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigator.clipboard.writeText(submission.uploaderHandle);
+              alert('Username copied!');
+              setIsOpen(false);
+            }}
           />
-          
-          {/* Dropdown */}
-          <div className="absolute right-0 top-8 z-[9996] w-56 bg-black border border-white/20 rounded-lg shadow-2xl py-1" style={{ boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)' }}>
-            {/* Go to Video */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                window.open(submission.url, '_blank');
-                setIsOpen(false);
-              }}
-              className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-white/10 flex items-center space-x-2 transition-colors"
-            >
-              <ExternalLink className="w-4 h-4" />
-              <span>Go to Video</span>
-            </button>
-            
-            {/* Copy Link */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                navigator.clipboard.writeText(submission.url);
-                alert('Video link copied!');
-                setIsOpen(false);
-              }}
-              className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-white/10 flex items-center space-x-2 transition-colors"
-            >
-              <Copy className="w-4 h-4" />
-              <span>Copy Link</span>
-            </button>
-            
-            {/* Copy Username */}
-            {submission.uploaderHandle && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigator.clipboard.writeText(submission.uploaderHandle);
-                  alert('Username copied!');
-                  setIsOpen(false);
-                }}
-                className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-white/10 flex items-center space-x-2 transition-colors"
-              >
-                <User className="w-4 h-4" />
-                <span>Copy Username</span>
-              </button>
-            )}
-            
-            {/* View Stats */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onVideoClick) {
-                  onVideoClick(submission);
-                }
-                setIsOpen(false);
-              }}
-              className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-white/10 flex items-center space-x-2 transition-colors"
-            >
-              <BarChart3 className="w-4 h-4" />
-              <span>View Stats</span>
-            </button>
-            
-            {/* Divider */}
-            <div className="my-1 border-t border-white/10" />
-            
-            {/* Delete */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDelete();
-              }}
-              className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 flex items-center space-x-2 transition-colors"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span>Delete</span>
-            </button>
-          </div>
-        </>
-      )}
-    </div>
+        )}
+        
+        <DropdownItem
+          icon={<BarChart3 className="w-4 h-4" />}
+          label="View Stats"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onVideoClick) {
+              onVideoClick(submission);
+            }
+            setIsOpen(false);
+          }}
+        />
+        
+        <DropdownDivider />
+        
+        <DropdownItem
+          icon={<Trash2 className="w-4 h-4" />}
+          label="Delete"
+          variant="danger"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDelete();
+          }}
+        />
+      </FloatingDropdown>
+    </>
   );
 };
 

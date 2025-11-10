@@ -48,6 +48,7 @@ import { VideoSubmission, VideoSnapshot } from '../types';
 import VideoPlayerModal from './VideoPlayerModal';
 import VideoAnalyticsModal from './VideoAnalyticsModal';
 import { DateFilterType } from './DateRangeFilter';
+import { FloatingDropdown, DropdownItem, DropdownDivider } from './ui/FloatingDropdown';
 import { UrlParserService } from '../services/UrlParserService';
 import Pagination from './ui/Pagination';
 import ColumnPreferencesService from '../services/ColumnPreferencesService';
@@ -250,6 +251,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
   const [detectedPlatform, setDetectedPlatform] = useState<'instagram' | 'tiktok' | 'youtube' | 'twitter' | null>(null);
   const [urlValidationError, setUrlValidationError] = useState<string | null>(null);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const dropdownTriggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const [syncError, setSyncError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingAccountDetail, setLoadingAccountDetail] = useState(false);
@@ -2230,6 +2232,13 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium sticky right-0 bg-zinc-900/60 backdrop-blur z-20 group-hover:bg-white/5">
                           <div className="flex items-center justify-end space-x-2 relative">
                             <button
+                              ref={(el) => {
+                                if (el) {
+                                  dropdownTriggerRefs.current.set(account.id, el);
+                                } else {
+                                  dropdownTriggerRefs.current.delete(account.id);
+                                }
+                              }}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setOpenDropdownId(openDropdownId === account.id ? null : account.id);
@@ -2242,140 +2251,113 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                             </button>
                             
                             {/* Dropdown Menu */}
-                            {openDropdownId === account.id && (
-                              <>
-                                <div 
-                                  className="fixed inset-0 z-[9995]" 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setOpenDropdownId(null);
-                                  }}
-                                />
-                                <div className="absolute right-0 top-8 mt-1 w-56 bg-black border border-white/20 rounded-lg shadow-2xl z-[9996] py-1" style={{ boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)' }}>
-                                  {/* Go to Account */}
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const platformUrl = account.platform === 'tiktok' ? `https://www.tiktok.com/@${account.username}`
-                                        : account.platform === 'instagram' ? `https://www.instagram.com/${account.username.replace('@', '')}`
-                                        : account.platform === 'youtube' ? `https://www.youtube.com/@${account.username.replace('@', '')}`
-                                        : `https://twitter.com/${account.username.replace('@', '')}`;
-                                      window.open(platformUrl, '_blank');
-                                      setOpenDropdownId(null);
-                                    }}
-                                    className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-white/10 transition-colors flex items-center gap-2"
-                                  >
-                                    <ExternalLink className="w-4 h-4" />
-                                    Go to Account
-                                  </button>
+                            <FloatingDropdown
+                              isOpen={openDropdownId === account.id}
+                              onClose={() => setOpenDropdownId(null)}
+                              triggerRef={{ current: dropdownTriggerRefs.current.get(account.id) || null }}
+                              align="right"
+                            >
+                              <DropdownItem
+                                icon={<ExternalLink className="w-4 h-4" />}
+                                label="Go to Account"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const platformUrl = account.platform === 'tiktok' ? `https://www.tiktok.com/@${account.username}`
+                                    : account.platform === 'instagram' ? `https://www.instagram.com/${account.username.replace('@', '')}`
+                                    : account.platform === 'youtube' ? `https://www.youtube.com/@${account.username.replace('@', '')}`
+                                    : `https://twitter.com/${account.username.replace('@', '')}`;
+                                  window.open(platformUrl, '_blank');
+                                  setOpenDropdownId(null);
+                                }}
+                              />
+                              
+                              <DropdownItem
+                                icon={<Copy className="w-4 h-4" />}
+                                label="Copy Account Link"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const platformUrl = account.platform === 'tiktok' ? `https://www.tiktok.com/@${account.username}`
+                                    : account.platform === 'instagram' ? `https://www.instagram.com/${account.username.replace('@', '')}`
+                                    : account.platform === 'youtube' ? `https://www.youtube.com/@${account.username.replace('@', '')}`
+                                    : `https://twitter.com/${account.username.replace('@', '')}`;
+                                  navigator.clipboard.writeText(platformUrl);
+                                  alert('Account link copied!');
+                                  setOpenDropdownId(null);
+                                }}
+                              />
+                              
+                              <DropdownItem
+                                icon={<User className="w-4 h-4" />}
+                                label="Copy Username"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(account.username);
+                                  alert('Username copied!');
+                                  setOpenDropdownId(null);
+                                }}
+                              />
+                              
+                              <DropdownItem
+                                icon={<BarChart3 className="w-4 h-4" />}
+                                label="View Stats"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenDropdownId(null);
+                                  navigate(`/dashboard?accounts=${account.id}`);
+                                }}
+                              />
+                              
+                              <DropdownItem
+                                icon={<RefreshCw className="w-4 h-4" />}
+                                label={(account.creatorType || 'automatic') === 'automatic' 
+                                  ? 'Convert to Manual' 
+                                  : 'Convert to Automatic'}
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  setOpenDropdownId(null);
                                   
-                                  {/* Copy Account Link */}
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const platformUrl = account.platform === 'tiktok' ? `https://www.tiktok.com/@${account.username}`
-                                        : account.platform === 'instagram' ? `https://www.instagram.com/${account.username.replace('@', '')}`
-                                        : account.platform === 'youtube' ? `https://www.youtube.com/@${account.username.replace('@', '')}`
-                                        : `https://twitter.com/${account.username.replace('@', '')}`;
-                                      navigator.clipboard.writeText(platformUrl);
-                                      alert('Account link copied!');
-                                      setOpenDropdownId(null);
-                                    }}
-                                    className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-white/10 transition-colors flex items-center gap-2"
-                                  >
-                                    <Copy className="w-4 h-4" />
-                                    Copy Account Link
-                                  </button>
+                                  if (!organizationId || !projectId) {
+                                    alert('Missing organization or project ID');
+                                    return;
+                                  }
                                   
-                                  {/* Copy Username */}
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      navigator.clipboard.writeText(account.username);
-                                      alert('Username copied!');
-                                      setOpenDropdownId(null);
-                                    }}
-                                    className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-white/10 transition-colors flex items-center gap-2"
-                                  >
-                                    <User className="w-4 h-4" />
-                                    Copy Username
-                                  </button>
+                                  const currentType = account.creatorType || 'automatic';
+                                  const newType = currentType === 'automatic' ? 'manual' : 'automatic';
                                   
-                                  {/* View Stats */}
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setOpenDropdownId(null);
-                                      navigate(`/dashboard?accounts=${account.id}`);
-                                    }}
-                                    className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-white/10 transition-colors flex items-center gap-2"
-                                  >
-                                    <BarChart3 className="w-4 h-4" />
-                                    View Stats
-                                  </button>
-                                  
-                                  {/* Toggle Account Type */}
-                                  <button
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      setOpenDropdownId(null);
-                                      
-                                      if (!organizationId || !projectId) {
-                                        alert('Missing organization or project ID');
-                                        return;
-                                      }
-                                      
-                                      const currentType = account.creatorType || 'automatic';
-                                      const newType = currentType === 'automatic' ? 'manual' : 'automatic';
-                                      
-                                      try {
-                                        const accountRef = doc(
-                                          db,
-                                          'organizations',
-                                          organizationId,
-                                          'projects',
-                                          projectId,
-                                          'trackedAccounts',
-                                          account.id
-                                        );
-                                        await updateDoc(accountRef, { creatorType: newType });
-                                        
-                                        const typeLabel = newType === 'automatic' ? 'Automatic' : 'Manual';
-                                        alert(`Account converted to ${typeLabel} mode`);
-                                      } catch (error) {
-                                        console.error('Failed to update account type:', error);
-                                        alert('Failed to update account type');
-                                      }
-                                    }}
-                                    className="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-white/10 transition-colors flex items-center gap-2"
-                                    title={(account.creatorType || 'automatic') === 'automatic' 
-                                      ? 'Convert to Manual (only refresh existing videos)' 
-                                      : 'Convert to Automatic (discover new videos)'}
-                                  >
-                                    <RefreshCw className="w-4 h-4" />
-                                    {(account.creatorType || 'automatic') === 'automatic' 
-                                      ? 'Convert to Manual' 
-                                      : 'Convert to Automatic'}
-                                  </button>
-                                  
-                                  {/* Divider */}
-                                  <div className="my-1 border-t border-white/10" />
-                                  
-                                  {/* Remove Account */}
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setOpenDropdownId(null);
-                                      handleRemoveAccount(account.id);
-                                    }}
-                                    className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-900/20 transition-colors flex items-center gap-2"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                    Remove Account
-                                  </button>
-                                </div>
-                              </>
-                            )}
+                                  try {
+                                    const accountRef = doc(
+                                      db,
+                                      'organizations',
+                                      organizationId,
+                                      'projects',
+                                      projectId,
+                                      'trackedAccounts',
+                                      account.id
+                                    );
+                                    await updateDoc(accountRef, { creatorType: newType });
+                                    
+                                    const typeLabel = newType === 'automatic' ? 'Automatic' : 'Manual';
+                                    alert(`Account converted to ${typeLabel} mode`);
+                                  } catch (error) {
+                                    console.error('Failed to update account type:', error);
+                                    alert('Failed to update account type');
+                                  }
+                                }}
+                              />
+                              
+                              <DropdownDivider />
+                              
+                              <DropdownItem
+                                icon={<Trash2 className="w-4 h-4" />}
+                                label="Remove Account"
+                                variant="danger"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenDropdownId(null);
+                                  handleRemoveAccount(account.id);
+                                }}
+                              />
+                            </FloatingDropdown>
                           </div>
                         </td>
                       </tr>
