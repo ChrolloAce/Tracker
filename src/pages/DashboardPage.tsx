@@ -2687,28 +2687,6 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               </button>
             </div>
           )}
-          {activeTab === 'campaigns' && (
-            <div className="flex items-center gap-2">
-              {(['all', 'active', 'draft', 'completed', 'cancelled'] as const).map((status) => (
-                <button
-                  key={status}
-                  onClick={() => setCampaignStatusFilter(status)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                    campaignStatusFilter === status
-                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                      : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-white/5'
-                  }`}
-                >
-                  {status.charAt(0).toUpperCase() + status.slice(1)}
-                  {status !== 'all' && (
-                    <span className="ml-1.5 text-xs opacity-60">
-                      ({campaignCounts[status as keyof typeof campaignCounts] || 0})
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
           {activeTab === 'analytics' && (
             <div className="flex items-center space-x-4">
               {/* Link Filter Dropdown */}
