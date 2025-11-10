@@ -567,22 +567,33 @@ function transformVideoData(rawData: any, platform: string): VideoData {
     });
     
     // ROBUST THUMBNAIL EXTRACTION (strongest → weakest fallback)
+    // Skip HEIC thumbnails as they can't be converted in serverless environment
+    const isHEIC = (url: string) => url && (url.toLowerCase().includes('.heic') || url.toLowerCase().includes('.heif'));
+    
     let thumbnailUrl = '';
-    if (video.cover) {
-      thumbnailUrl = video.cover;
-    } else if (video.thumbnail) {
-      thumbnailUrl = video.thumbnail;
-    } else if (rawData['video.cover']) { // Flat key: "video.cover"
-      thumbnailUrl = rawData['video.cover'];
-    } else if (rawData['video.thumbnail']) { // Flat key: "video.thumbnail"
-      thumbnailUrl = rawData['video.thumbnail'];
-    } else if (rawData.cover) {
-      thumbnailUrl = rawData.cover;
-    } else if (rawData.thumbnail) {
-      thumbnailUrl = rawData.thumbnail;
-    } else if (rawData.images && Array.isArray(rawData.images) && rawData.images.length > 0) {
-      // Photo Mode post - use first image
-      thumbnailUrl = rawData.images[0].url || '';
+    const candidates = [
+      video.cover,
+      video.thumbnail,
+      rawData['video.cover'],
+      rawData['video.thumbnail'],
+      rawData.cover,
+      rawData.thumbnail,
+      rawData.images && Array.isArray(rawData.images) && rawData.images.length > 0 ? rawData.images[0].url : null
+    ];
+    
+    // Find first non-HEIC thumbnail
+    for (const candidate of candidates) {
+      if (candidate && !isHEIC(candidate)) {
+        thumbnailUrl = candidate;
+        console.log(`✅ [TIKTOK] Selected non-HEIC thumbnail: ${thumbnailUrl.substring(0, 100)}...`);
+        break;
+      } else if (candidate && isHEIC(candidate)) {
+        console.log(`⚠️ [TIKTOK] Skipping HEIC thumbnail: ${candidate.substring(0, 100)}...`);
+      }
+    }
+    
+    if (!thumbnailUrl && candidates.some(c => c && isHEIC(c))) {
+      console.warn(`⚠️ [TIKTOK] All thumbnails are HEIC format - video will have no thumbnail`);
     }
     
     // 🔥 VIDEO URL: Always use postPage, fallback to reconstruction from video ID
