@@ -24,6 +24,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useUnreadCounts } from '../../hooks/useUnreadCounts';
 import { Badge } from '../ui/Badge';
 import RefreshCountdown from '../RefreshCountdown';
+import ProjectSwitcher from '../ProjectSwitcher';
 import newLogo from '/vtlogo.png';
 
 interface SidebarProps {
@@ -352,6 +353,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
 
+      {/* Project Switcher */}
+      {!isDemoMode && <ProjectSwitcher isCollapsed={isCollapsed} />}
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto">

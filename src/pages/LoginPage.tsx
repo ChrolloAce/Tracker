@@ -31,17 +31,22 @@ const LoginPage: React.FC = () => {
   useEffect(() => {
     const justRedirected = sessionStorage.getItem('justCompletedGoogleRedirect');
     
-    // If we just completed a Google redirect, show loading screen
-    if (justRedirected === 'true') {
+    // If we just completed a Google redirect AND have a user, show loading screen
+    if (justRedirected === 'true' && user) {
       console.log('🔄 Just returned from Google - showing loading screen');
       setIsProcessingAuth(true);
       
       // If user exists and auth is done loading, we're about to navigate
-      if (user && !authLoading) {
+      if (!authLoading) {
         console.log('🔄 Auth complete, processing navigation...');
         // Keep showing loading screen until we navigate
         // The navigation will clear the flag
       }
+    } else if (justRedirected === 'true' && !user && !authLoading) {
+      // Flag is set but no user - clear the stale flag
+      console.log('⚠️ Stale redirect flag detected, clearing...');
+      sessionStorage.removeItem('justCompletedGoogleRedirect');
+      setIsProcessingAuth(false);
     } else if (user && authLoading) {
       // Normal case: user exists but still loading
       console.log('🔄 Processing authentication...');
@@ -82,15 +87,10 @@ const LoginPage: React.FC = () => {
         console.log('✅ User has org and project - navigating to dashboard');
         sessionStorage.removeItem('justCompletedGoogleRedirect');
         navigate('/dashboard', { replace: true });
-      } else if (currentOrgId && !currentProjectId) {
-        console.log('📝 User has org but no project - navigating to create project');
-        sessionStorage.removeItem('justCompletedGoogleRedirect');
-        navigate('/create-project', { replace: true });
       } else {
-        console.log('📝 User has no org - navigating to create organization');
-        console.log('🚀 Navigating to /create-organization now...');
+        console.log('📝 User needs onboarding - navigating to smooth setup flow');
         sessionStorage.removeItem('justCompletedGoogleRedirect');
-        navigate('/create-organization', { replace: true });
+        navigate('/onboarding', { replace: true });
       }
     } else if (!user && !authLoading) {
       console.log('ℹ️ No user on login page - this is normal');
@@ -153,25 +153,11 @@ const LoginPage: React.FC = () => {
   };
 
 
-  // Show loading state if processing invitation
+  // Show loading state if processing invitation - just spinning circle
   if (processingInvite) {
-    console.log('🔄 Showing loading screen:', { processingInvite });
     return (
-      <div className="min-h-screen bg-[#FAFAFB] flex items-center justify-center p-4 sm:p-6 lg:p-8">
-        <div className="max-w-md w-full bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-6 sm:p-8 lg:p-12 text-center">
-          <div className="mb-4 sm:mb-6">
-            <img src={viewtrackLogo} alt="ViewTrack" className="h-8 sm:h-10 w-auto mx-auto" />
-          </div>
-          <div className="flex items-center justify-center mb-4 sm:mb-6">
-            <div className="animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-b-2 border-[#2282FF]"></div>
-          </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
-            Setting up your account...
-          </h2>
-          <p className="text-sm sm:text-base text-gray-500">
-            We're creating your creator profile. This will only take a moment!
-          </p>
-        </div>
+      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-white/10 border-t-white rounded-full animate-spin" />
       </div>
     );
   }
@@ -291,29 +277,10 @@ const LoginPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Authentication Processing Overlay */}
+      {/* Authentication Processing Overlay - Just spinning circle */}
       {(isProcessingAuth || signingIn) && (
         <div className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-sm flex items-center justify-center">
-          <div className="flex flex-col items-center gap-6">
-            {/* Logo */}
-            <img src={viewtrackLogo} alt="ViewTrack" className="h-12 w-auto animate-pulse" />
-            
-            {/* Spinner */}
-            <div className="relative w-16 h-16">
-              <div className="absolute inset-0 border-4 border-gray-800 rounded-full"></div>
-              <div className="absolute inset-0 border-4 border-t-white border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"></div>
-            </div>
-            
-            {/* Loading Text */}
-            <div className="text-center">
-              <p className="text-white text-lg font-semibold mb-1">
-                {signingIn ? 'Signing you in...' : 'Setting up your account...'}
-              </p>
-              <p className="text-gray-400 text-sm">
-                This will only take a moment
-              </p>
-            </div>
-          </div>
+          <div className="w-16 h-16 border-4 border-white/10 border-t-white rounded-full animate-spin" />
         </div>
       )}
     </div>

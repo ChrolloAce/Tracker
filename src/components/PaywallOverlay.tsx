@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, Sparkles } from 'lucide-react';
+import { Check, Eye } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import StripeService from '../services/StripeService';
@@ -32,13 +32,36 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
   return (
       <div className="relative z-10 max-w-6xl w-full mx-auto">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#2282FF]/10 border border-[#2282FF]/20 rounded-full mb-4">
-            <Sparkles className="w-4 h-4 text-[#2282FF]" />
-            <span className="text-sm font-medium text-[#2282FF]">Upgrade Required</span>
+          {/* Demo Button - Minimalistic with subtle pulse */}
+          <div className="mb-8">
+            <button
+              onClick={() => navigate('/demo/dashboard')}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white/70 hover:text-white font-medium rounded-lg transition-all animate-pulse-subtle"
+            >
+              <Eye className="w-4 h-4" />
+              <span>View Demo Organization</span>
+            </button>
           </div>
+          
           <h2 className="text-4xl font-bold text-white mb-2">Choose Your Plan</h2>
           <p className="text-gray-400 text-lg">Unlock full access to ViewTrack</p>
         </div>
+        
+        <style>{`
+          @keyframes pulse-subtle {
+            0%, 100% {
+              opacity: 0.7;
+              box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.05);
+            }
+            50% {
+              opacity: 1;
+              box-shadow: 0 0 20px 0 rgba(255, 255, 255, 0.1);
+            }
+          }
+          .animate-pulse-subtle {
+            animation: pulse-subtle 3s ease-in-out infinite;
+          }
+        `}</style>
 
         <div className="grid md:grid-cols-3 gap-6">
           {/* Basic Plan */}
@@ -177,8 +200,8 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
           </div>
         </div>
 
-        {/* Dismiss Button - Go to Settings */}
-        <div className="text-center mt-6">
+        {/* Settings Link */}
+        <div className="text-center mt-8">
           <button
             onClick={() => navigate('/settings/billing')}
             className="text-gray-400 hover:text-white transition-colors text-sm"

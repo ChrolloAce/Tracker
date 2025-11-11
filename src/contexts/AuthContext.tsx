@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   User,
   signInWithRedirect,
+  signInWithPopup,
   signOut,
   onAuthStateChanged,
   GoogleAuthProvider,
@@ -45,16 +46,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
 
-  // Handle redirect result from Google sign-in
   useEffect(() => {
-    const handleRedirectResult = async () => {
+    // First check for redirect result, then set up auth state listener
+    const initAuth = async () => {
+      // Protect against React StrictMode double-call consuming the redirect result
+      const redirectCheckKey = 'firebase_redirect_check_in_progress';
+      if (sessionStorage.getItem(redirectCheckKey)) {
+        console.log('⏭️ Redirect check already in progress, skipping duplicate call');
+        return;
+      }
+      
+      sessionStorage.setItem(redirectCheckKey, 'true');
+      
       try {
         console.log('🔍 Checking for Google redirect result...');
+        console.log('📍 Current URL:', window.location.href);
+        console.log('📍 Current pathname:', window.location.pathname);
+        console.log('📍 Current search:', window.location.search);
+        console.log('🌐 Auth domain configured:', auth.app.options.authDomain);
+        console.log('🔐 Current auth state before redirect check:', auth.currentUser?.email || 'No user');
+        
+        // Check for Firebase auth persistence data in localStorage
+        const firebaseKeys = Object.keys(localStorage).filter(key => key.startsWith('firebase:'));
+        console.log('🔑 Firebase localStorage keys:', firebaseKeys.length > 0 ? firebaseKeys : 'NONE FOUND');
+        if (firebaseKeys.length > 0) {
+          firebaseKeys.forEach(key => {
+            const value = localStorage.getItem(key);
+            if (value) {
+              try {
+                const parsed = JSON.parse(value);
+                console.log(`  - ${key}:`, parsed.uid ? `User ${parsed.uid}` : 'Other data');
+              } catch {
+                console.log(`  - ${key}:`, value.substring(0, 50) + '...');
+              }
+            }
+          });
+        }
+        
         const result = await getRedirectResult(auth);
+        
+        console.log('📦 getRedirectResult returned:', result ? 'USER OBJECT' : 'NULL');
+        
         if (result) {
           console.log('✅ Google sign-in redirect successful:', result.user.email);
           console.log('👤 User ID:', result.user.uid);
           console.log('🔑 Provider:', result.providerId);
+          console.log('📧 Email verified:', result.user.emailVerified);
+          console.log('🎫 Access token available:', !!result.user.getIdToken);
           
           // Store in sessionStorage that we just completed a redirect
           sessionStorage.setItem('justCompletedGoogleRedirect', 'true');
@@ -89,13 +127,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           alert(`Sign-in failed: ${error.message}. Please try again.`);
         }
+      } finally {
+        // Clear the lock after a short delay
+        setTimeout(() => {
+          sessionStorage.removeItem(redirectCheckKey);
+        }, 1000);
       }
     };
 
-    handleRedirectResult();
-  }, []);
+    initAuth();
 
-  useEffect(() => {
+    // Set up auth state listener
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       
@@ -260,17 +302,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     throw lastError;
   };
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (usePopup: boolean = false) => {
     try {
       const provider = new GoogleAuthProvider();
       // Force account selection every time
       provider.setCustomParameters({
         prompt: 'select_account'
       });
-      console.log('🔄 Redirecting to Google sign-in...');
-      console.log('🌐 Auth domain:', auth.app.options.authDomain);
-      await signInWithRedirect(auth, provider);
-      // User will be redirected, so no need to handle result here
+      
+      // Default to popup mode - more reliable and no React StrictMode issues
+      // Can be switched to redirect mode by setting sessionStorage flag
+      const shouldUsePopup = sessionStorage.getItem('use_redirect_auth') !== 'true';
+      
+      if (shouldUsePopup) {
+        console.log('🪟 Using popup mode for Google sign-in...');
+        console.log('🌐 Auth domain:', auth.app.options.authDomain);
+        
+        const result = await signInWithPopup(auth, provider);
+        
+        console.log('✅ Google sign-in popup successful:', result.user.email);
+        console.log('👤 User ID:', result.user.uid);
+        
+        // Create user account immediately
+        try {
+          await OrganizationService.createUserAccount(
+            result.user.uid,
+            result.user.email!,
+            result.user.displayName || undefined,
+            result.user.photoURL || undefined
+          );
+          console.log('✅ User account created/verified in Firestore');
+        } catch (err) {
+          console.error('❌ Error creating user account:', err);
+        }
+        
+        // Store that we just completed auth
+        sessionStorage.setItem('justCompletedGoogleRedirect', 'true');
+        
+      } else {
+        console.log('🔄 Using redirect mode for Google sign-in...');
+        console.log('🌐 Auth domain:', auth.app.options.authDomain);
+        await signInWithRedirect(auth, provider);
+        // User will be redirected, so no need to handle result here
+      }
     } catch (error: any) {
       console.error('❌ Failed to initiate Google sign-in:', error);
       console.error('Error code:', error.code);
@@ -281,6 +355,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         alert('Error: This domain is not authorized for Google sign-in. Please contact support.');
       } else if (error.code === 'auth/operation-not-allowed') {
         alert('Google sign-in is not enabled. Please contact support.');
+      } else if (error.code === 'auth/popup-blocked') {
+        alert('Popup was blocked by your browser. Please allow popups and try again, or we\'ll use redirect mode.');
+        // Don't set popup mode flag - let user try again
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        console.log('User closed the popup');
+        // Don't show error - user intentionally closed it
       } else {
         alert(`Sign-in failed: ${error.message}. Please try again.`);
       }
@@ -313,6 +393,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await signOut(auth);
       setCurrentOrgId(null);
       setCurrentProjectId(null);
+      
+      // Clear any auth-related session flags
+      sessionStorage.removeItem('justCompletedGoogleRedirect');
+      sessionStorage.removeItem('use_popup_auth');
+      
+      console.log('✅ Signed out and cleared session flags');
     } catch (error) {
       console.error('Failed to sign out:', error);
       throw error;

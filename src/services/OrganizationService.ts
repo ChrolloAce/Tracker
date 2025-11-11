@@ -139,8 +139,8 @@ class OrganizationService {
       role: 'owner',
       joinedAt: Timestamp.now(),
       status: 'active',
-      email: data.email,
-      displayName: data.displayName
+      ...(data.email && { email: data.email }),
+      ...(data.displayName && { displayName: data.displayName })
     };
     
     batch.set(memberRef, memberData);

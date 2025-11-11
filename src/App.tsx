@@ -8,6 +8,7 @@ import DemoPage from './pages/DemoPage';
 import OnboardingPage from './pages/OnboardingPage';
 import CreateOrganizationPage from './pages/CreateOrganizationPage';
 import CreateProjectPage from './pages/CreateProjectPage';
+import OnboardingOrchestrator from './pages/OnboardingOrchestrator';
 import DashboardPage from './pages/DashboardPage';
 import AccountsPage from './pages/AccountsPage';
 import VideosPage from './pages/VideosPage';
@@ -164,10 +165,8 @@ function App() {
             <LandingPage />
           ) : currentOrgId && currentProjectId ? (
             <Navigate to="/dashboard" replace />
-          ) : currentOrgId && !currentProjectId ? (
-            <Navigate to="/create-project" replace />
           ) : (
-            <Navigate to="/create-organization" replace />
+            <Navigate to="/onboarding" replace />
           )
         } 
       />
@@ -181,10 +180,8 @@ function App() {
             <LoginPage />
           ) : currentOrgId && currentProjectId ? (
             <Navigate to="/dashboard" replace />
-          ) : currentOrgId && !currentProjectId ? (
-            <Navigate to="/create-project" replace />
           ) : (
-            <LoginPage />
+            <Navigate to="/onboarding" replace />
           )
         } 
       />
@@ -295,10 +292,8 @@ function App() {
         element={
           !user ? (
             <Navigate to="/login" replace />
-          ) : currentOrgId ? (
-            <Navigate to="/dashboard" replace />
           ) : (
-            <OnboardingPage />
+            <OnboardingOrchestrator />
           )
         } 
       />

@@ -1,56 +1,43 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, FolderOpen, Plus, Check, Lock } from 'lucide-react';
+import { ChevronDown, Check, Folder, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import ProjectService from '../services/ProjectService';
-import CreatorLinksService from '../services/CreatorLinksService';
-import { ProjectWithStats } from '../types/projects';
+import { Project } from '../types/projects';
 import { clsx } from 'clsx';
-import EditProjectModal from './EditProjectModal';
-import { useDemoContext } from '../pages/DemoPage';
 
 interface ProjectSwitcherProps {
-  onCreateProject?: () => void;
+  isCollapsed?: boolean;
 }
 
-const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) => {
-  const { currentOrgId, currentProjectId, switchProject, user, userRole } = useAuth();
-  const [projects, setProjects] = useState<ProjectWithStats[]>([]);
-  const [loading, setLoading] = useState(true);
+const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }) => {
+  const { currentOrgId, currentProjectId, switchProject } = useAuth();
+  const navigate = useNavigate();
+  const [projects, setProjects] = useState<Project[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [editingProject, setEditingProject] = useState<ProjectWithStats | null>(null);
+  const [loading, setLoading] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const hasLoadedRef = useRef<string | null>(null); // Track which org we've loaded
-  
-  // Check if in demo mode
-  let demoContext;
-  try {
-    demoContext = useDemoContext();
-  } catch {
-    demoContext = { isDemoMode: false, demoOrgId: '', demoProjectId: '' };
-  }
-  const isDemoMode = demoContext.isDemoMode;
 
-  // ONLY load projects once per org, not on every render!
+  // Load projects
   useEffect(() => {
-    console.log('🔍 ProjectSwitcher useEffect:', { 
-      currentOrgId, 
-      hasLoaded: hasLoadedRef.current, 
-      projectsLength: projects.length,
-      willLoad: hasLoadedRef.current !== currentOrgId && !!currentOrgId
-    });
-    
-    if (hasLoadedRef.current === currentOrgId) {
-      console.log('✅ Projects already loaded for this org, skipping');
-      return; // Already loaded for this org
-    }
-    
-    if (currentOrgId) {
-      console.log('🔄 Loading projects for org:', currentOrgId);
-      loadProjects();
-      hasLoadedRef.current = currentOrgId;
-    }
-  }, [currentOrgId]); // Only when org changes!
+    const loadProjects = async () => {
+      if (!currentOrgId) return;
+      
+      try {
+        setLoading(true);
+        const projectsList = await ProjectService.getProjects(currentOrgId, false);
+        setProjects(projectsList);
+      } catch (error) {
+        console.error('Failed to load projects:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    loadProjects();
+  }, [currentOrgId]);
+
+  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -58,184 +45,110 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ onCreateProject }) =>
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const loadProjects = async () => {
-    if (!currentOrgId || !user) return;
-
-    try {
-      // Only show loading on true initial load
-      if (projects.length === 0) {
-        setLoading(true);
-      }
-      
-      const projectsData = await ProjectService.getProjectsWithStats(currentOrgId, false);
-      
-      // If user is a creator, filter to only projects they're assigned to
-      if (userRole === 'creator') {
-        const creatorProjectIds = await CreatorLinksService.getCreatorProjects(currentOrgId, user.uid);
-        const filteredProjects = projectsData.filter(p => creatorProjectIds.includes(p.id));
-        setProjects(filteredProjects);
-      } else {
-        setProjects(projectsData);
-      }
-      
-      // Only set loading to false after we have data
-      if (loading) {
-        setLoading(false);
-      }
-    } catch (error) {
-      console.error('Failed to load projects:', error);
-      setLoading(false);
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  };
+  }, [isOpen]);
+
+  const currentProject = projects.find(p => p.id === currentProjectId);
 
   const handleProjectSelect = async (projectId: string) => {
     try {
       await switchProject(projectId);
       setIsOpen(false);
-      // Reload the page to refresh all data
-      window.location.reload();
     } catch (error) {
       console.error('Failed to switch project:', error);
-      alert('Failed to switch project. Please try again.');
     }
   };
 
-  // Always prefer to show current project if we have it, even during background refresh
-  const currentProject = projects.find(p => p.id === currentProjectId);
-
-  // Demo mode - show locked demo project
-  if (isDemoMode) {
+  if (loading || !currentProject) {
     return (
-      <div className="relative w-full">
+      <div className="px-3 py-2">
         <div className={clsx(
-          'w-full flex items-center space-x-2 px-3 py-2 rounded-lg',
-          'bg-white/5 border border-white/10 cursor-not-allowed opacity-75'
-        )}>
-          <FolderOpen className="w-4 h-4 text-white/50" />
-          <span className="text-sm font-medium text-white/70">
-            Demo Project
-          </span>
-          <Lock className="w-3 h-3 text-white/40 ml-auto" />
-        </div>
+          "h-10 bg-white/5 rounded-lg animate-pulse",
+          { "w-10": isCollapsed, "w-full": !isCollapsed }
+        )} />
       </div>
     );
   }
 
-  // If we have a current project, ALWAYS show it (never show loading skeleton)
-  if (currentProject) {
+  if (isCollapsed) {
     return (
-      <div className="relative w-full" ref={dropdownRef}>
+      <div className="px-3 py-2">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className={clsx(
-            'w-full flex items-center space-x-2 px-3 py-2 rounded-lg transition-all',
-            'hover:bg-white/5 bg-white/5 border border-white/10 hover:border-white/20 backdrop-blur-sm',
-            isOpen && 'bg-white/10'
-          )}
+          className="w-full flex items-center justify-center p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+          title={currentProject.name}
         >
-          {currentProject.imageUrl ? (
-            <img
-              src={currentProject.imageUrl}
-              alt={currentProject.name}
-              className="w-6 h-6 rounded object-contain bg-white/5"
-            />
-          ) : (
-            <span className="text-base">{currentProject.icon || '📁'}</span>
-          )}
-          <span className="text-sm font-medium text-white/90">
+          <Folder className="w-5 h-5 text-white/80" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-3 py-2 relative" ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors group"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <Folder className="w-4 h-4 text-white/60 flex-shrink-0" />
+          <span className="text-sm font-medium text-white truncate">
             {currentProject.name}
           </span>
-          <ChevronDown className={clsx(
-            'w-4 h-4 text-white/50 transition-transform',
-            isOpen && 'rotate-180'
-          )} />
-        </button>
+        </div>
+        <ChevronDown className={clsx(
+          "w-4 h-4 text-white/60 flex-shrink-0 transition-transform",
+          { "rotate-180": isOpen }
+        )} />
+      </button>
 
-        {isOpen && (
-          <div className="absolute left-0 right-0 mt-2 bg-[#1a1a1a] rounded-lg shadow-xl border border-gray-700/50 py-1 z-50 max-h-[300px] overflow-y-auto">
-            {projects.map((project) => (
-              <button
-                key={project.id}
-                onClick={() => handleProjectSelect(project.id)}
-                className={clsx(
-                  'w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-800/50 transition-colors text-left',
-                  project.id === currentProjectId && 'bg-gray-800/70'
-                )}
-              >
-                <div className="flex items-center space-x-2 flex-1 min-w-0">
-                  {project.imageUrl ? (
-                    <img
-                      src={project.imageUrl}
-                      alt={project.name}
-                      className="w-6 h-6 rounded object-contain bg-gray-800 flex-shrink-0"
-                    />
-                  ) : (
-                    <span className="text-base flex-shrink-0">{project.icon || '📁'}</span>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-200 truncate">
-                      {project.name}
-                    </p>
-                  </div>
-                </div>
-                {project.id === currentProjectId && (
-                  <Check className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" />
-                )}
-              </button>
-            ))}
-
-            {onCreateProject && (
-              <>
-                <div className="border-t border-gray-700/50 my-1" />
-                <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    onCreateProject();
-                  }}
-                  className="w-full flex items-center space-x-2 px-4 py-2.5 hover:bg-gray-800/50 transition-colors text-gray-300"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span className="text-sm font-medium">Create New Project</span>
-                </button>
-              </>
-            )}
-          </div>
-        )}
-
-        {editingProject && (
-          <EditProjectModal
-            project={editingProject}
-            isOpen={!!editingProject}
-            onClose={() => setEditingProject(null)}
-            onSuccess={() => {
-              setEditingProject(null);
-              loadProjects();
+      {/* Dropdown */}
+      {isOpen && (
+        <div className="absolute top-full left-3 right-3 mt-1 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
+          {/* Project List */}
+          {projects.map((project) => (
+            <button
+              key={project.id}
+              onClick={() => handleProjectSelect(project.id)}
+              className={clsx(
+                "w-full flex items-center justify-between px-3 py-2.5 text-sm transition-colors",
+                {
+                  "bg-white/10 text-white": project.id === currentProjectId,
+                  "text-white/70 hover:bg-white/5 hover:text-white": project.id !== currentProjectId,
+                }
+              )}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <Folder className="w-4 h-4 flex-shrink-0" />
+                <span className="truncate">{project.name}</span>
+              </div>
+              {project.id === currentProjectId && (
+                <Check className="w-4 h-4 flex-shrink-0 text-green-500" />
+              )}
+            </button>
+          ))}
+          
+          {/* Divider */}
+          {projects.length > 0 && (
+            <div className="border-t border-white/10 my-1" />
+          )}
+          
+          {/* Create New Project Button */}
+          <button
+            onClick={() => {
+              setIsOpen(false);
+              navigate('/create-project');
             }}
-          />
-        )}
-      </div>
-    );
-  }
-
-  // Only show loading skeleton if we truly have no data
-  if (loading) {
-    return (
-      <div className="flex items-center space-x-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse">
-        <FolderOpen className="w-4 h-4 text-gray-400" />
-        <div className="w-24 h-4 bg-gray-200 dark:bg-gray-700 rounded" />
-      </div>
-    );
-  }
-
-  // No project found and not loading
-  return (
-    <div className="flex items-center space-x-2 px-3 py-2 bg-white/5 border border-white/10 rounded-lg">
-      <FolderOpen className="w-4 h-4 text-white/50" />
-      <span className="text-sm font-medium text-white/70">No Project</span>
+            className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-blue-400 hover:bg-white/5 transition-colors"
+          >
+            <Plus className="w-4 h-4 flex-shrink-0" />
+            <span>Create New Project</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };

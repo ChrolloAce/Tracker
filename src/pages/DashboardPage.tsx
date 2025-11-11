@@ -135,6 +135,14 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const currentOrgId = isDemoMode ? demoContext.demoOrgId : authOrgId;
   const currentProjectId = isDemoMode ? demoContext.demoProjectId : authProjectId;
   
+  // Guard: Redirect if no org/project (not in demo mode)
+  useEffect(() => {
+    if (!isDemoMode && (!currentOrgId || !currentProjectId)) {
+      console.log('⚠️ Dashboard loaded without org/project - redirecting to onboarding');
+      navigate('/onboarding', { replace: true });
+    }
+  }, [isDemoMode, currentOrgId, currentProjectId, navigate]);
+  
   // Force override check
   if (isDemoMode) {
     console.log('🎭 DEMO MODE ACTIVE - Using hardcoded demo IDs');
