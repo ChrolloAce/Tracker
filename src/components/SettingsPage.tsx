@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, Users, TrendingUp, RefreshCw, CheckCircle, Building2 } from 'lucide-react';
+import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, Users, TrendingUp, RefreshCw, CheckCircle, Building2, Video } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -14,8 +14,9 @@ import StripeService from '../services/StripeService';
 import { PlanTier, SUBSCRIPTION_PLANS } from '../types/subscription';
 import { ProxiedImage } from './ProxiedImage';
 import NotificationPreferencesService, { NotificationPreferences, DEFAULT_NOTIFICATION_PREFERENCES, NOTIFICATION_TYPES_INFO } from '../services/NotificationPreferencesService';
+import DeletedVideosManager from './DeletedVideosManager';
 
-type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'team' | 'revenue';
+type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'team' | 'revenue' | 'videos';
 
 /**
  * BillingTabContent Component
@@ -566,6 +567,7 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
               { id: 'organization', label: 'Organization', icon: Building2 },
               { id: 'billing', label: 'Billing', icon: CreditCard },
               { id: 'team', label: 'Team', icon: Users },
+              { id: 'videos', label: 'Videos', icon: Video },
               { id: 'notifications', label: 'Notifications', icon: Bell },
             ]
             .filter(tab => {
@@ -954,6 +956,13 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
               © 2025 All rights reserved
             </p>
           </div>
+            </div>
+          )}
+
+          {/* Videos Tab */}
+          {activeTab === 'videos' && (
+            <div className="space-y-6">
+              <DeletedVideosManager />
             </div>
           )}
 
