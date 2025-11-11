@@ -512,6 +512,7 @@ class FirestoreDataService {
       // STEP 3: Add to deleted videos blacklist (prevents cron from re-adding)
       if (platformVideoId) {
         try {
+          const videoData = videoSnap.data();
           const deletedVideoRef = doc(
             db, 
             'organizations', orgId, 
@@ -522,9 +523,17 @@ class FirestoreDataService {
             platformVideoId: platformVideoId,
             platform: platform || 'unknown',
             deletedAt: Timestamp.now(),
-            originalVideoId: videoId
+            originalVideoId: videoId,
+            // Store metadata for UI display
+            title: videoData?.title || videoData?.caption || videoData?.description || 'Untitled Video',
+            thumbnail: videoData?.thumbnail || '',
+            views: videoData?.views || 0,
+            likes: videoData?.likes || 0,
+            comments: videoData?.comments || 0,
+            shares: videoData?.shares || 0,
+            url: videoData?.url || '',
           });
-          console.log(`✅ Added video ${platformVideoId} to deletion blacklist`);
+          console.log(`✅ Added video ${platformVideoId} to deletion blacklist with metadata`);
         } catch (blacklistError) {
           console.error('⚠️ Failed to add to deletion blacklist (non-critical):', blacklistError);
         }

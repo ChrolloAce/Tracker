@@ -15,7 +15,8 @@ import {
   LayoutDashboard,
   UserPlus,
   DollarSign,
-  Lock
+  Lock,
+  MessageCircle
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
@@ -25,6 +26,7 @@ import { useUnreadCounts } from '../../hooks/useUnreadCounts';
 import { Badge } from '../ui/Badge';
 import RefreshCountdown from '../RefreshCountdown';
 import ProjectSwitcher from '../ProjectSwitcher';
+import SupportModal from '../SupportModal';
 import newLogo from '/vtlogo.png';
 
 interface SidebarProps {
@@ -64,6 +66,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['tracking', 'manage', 'integrations'])); // Start with sections expanded
+  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
   const { can, loading: permissionsLoading } = usePermissions();
   const { userRole, currentOrgId, currentProjectId } = useAuth();
   const location = useLocation();
@@ -227,6 +230,14 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
     return null;
   }, [can, permissionsLoading, isDemoMode]);
+
+  // Support item (standalone at bottom)
+  const supportItem: NavItem = useMemo(() => ({
+    id: 'support',
+    label: 'Support',
+    icon: MessageCircle,
+    onClick: () => setIsSupportModalOpen(true),
+  }), []);
 
   const toggleSection = (sectionId: string) => {
     setExpandedSections(prev => {
@@ -405,15 +416,22 @@ const Sidebar: React.FC<SidebarProps> = ({
             <NavItemComponent item={settingsItem} />
           </>
         )}
+
+        {/* Support - Standalone at bottom */}
+        <NavItemComponent item={supportItem} />
       </nav>
 
       {/* Refresh Countdown */}
       {(!isCollapsed || isMobileOpen) && !isDemoMode && (
         <RefreshCountdown />
       )}
-
-
     </div>
+
+    {/* Support Modal */}
+    <SupportModal
+      isOpen={isSupportModalOpen}
+      onClose={() => setIsSupportModalOpen(false)}
+    />
     </>
   );
 };
