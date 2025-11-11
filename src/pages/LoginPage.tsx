@@ -10,13 +10,12 @@ import xLogo from '/twitter-x-logo.png';
 import TeamInvitationService from '../services/TeamInvitationService';
 
 const LoginPage: React.FC = () => {
-  const { user, signInWithGoogle, signInWithEmail, loading: authLoading, currentOrgId, currentProjectId } = useAuth();
+  const { user, signInWithGoogle, loading: authLoading, currentOrgId, currentProjectId } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [signingIn, setSigningIn] = useState(false);
   const [processingInvite, setProcessingInvite] = useState(false);
-  const [demoLoading, setDemoLoading] = useState(false);
   
   // Get invite parameters from URL
   const inviteId = searchParams.get('invite');
@@ -104,20 +103,6 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  const handleDemoSignIn = async () => {
-    setError('');
-    setDemoLoading(true);
-    try {
-      // Sign in with demo credentials
-      await signInWithEmail('demo@viewtrack.app', 'demo123456');
-      // AuthContext will load org/project data automatically
-      // useEffect above will handle navigation once loading is complete
-      console.log('✅ Demo sign-in successful, waiting for AuthContext to load...');
-    } catch (err: any) {
-      setError(err.message || 'Demo sign-in failed');
-      setDemoLoading(false);
-    }
-  };
 
   // Show loading state if processing invitation
   if (processingInvite) {
@@ -181,7 +166,7 @@ const LoginPage: React.FC = () => {
           {/* Google Sign-In Button */}
             <button
               onClick={handleGoogleSignIn}
-              disabled={signingIn || demoLoading || authLoading}
+              disabled={signingIn || authLoading}
             className="w-full flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-white border-2 border-gray-300 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all disabled:opacity-50 shadow-sm"
             >
             <svg className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" viewBox="0 0 24 24">
@@ -194,35 +179,6 @@ const LoginPage: React.FC = () => {
               {signingIn || authLoading ? 'Signing in...' : 'Continue with Google'}
             </span>
             </button>
-
-          {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-500">or</span>
-            </div>
-          </div>
-
-          {/* Demo Button */}
-          <button
-            onClick={handleDemoSignIn}
-            disabled={signingIn || demoLoading || authLoading}
-            className="w-full flex items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-gray-700 to-gray-900 text-white rounded-xl hover:from-gray-800 hover:to-black transition-all disabled:opacity-50 shadow-sm"
-          >
-            <svg className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-            <span className="text-sm sm:text-base font-semibold">
-              {demoLoading || authLoading ? 'Loading Demo...' : 'Try Demo Mode'}
-            </span>
-          </button>
-
-          <p className="mt-4 text-xs text-center text-gray-500">
-            Demo mode has limited functionality. Sign up for full access!
-          </p>
         </div>
 
         {/* Right Column - Feature/Illustration Section - Hidden on Mobile */}

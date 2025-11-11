@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, Sparkles, Eye } from 'lucide-react';
+import { Check, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import StripeService from '../services/StripeService';
@@ -14,11 +14,6 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
   const [loading, setLoading] = useState(false);
 
   if (!isActive) return null;
-
-  const handleSwitchToDemo = async () => {
-    // Just navigate to the public demo page
-    navigate('/demo');
-  };
 
   const handleUpgrade = async (plan: 'basic' | 'pro' | 'ultra') => {
     if (!currentOrgId) return;
@@ -42,16 +37,7 @@ const PaywallOverlay: React.FC<PaywallOverlayProps> = ({ isActive }) => {
             <span className="text-sm font-medium text-[#2282FF]">Upgrade Required</span>
           </div>
           <h2 className="text-4xl font-bold text-white mb-2">Choose Your Plan</h2>
-          <p className="text-gray-400 text-lg mb-4">Unlock full access to ViewTrack</p>
-          
-          {/* Try Demo Button */}
-          <button
-            onClick={handleSwitchToDemo}
-            className="inline-flex items-center gap-2 px-6 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-full transition-colors font-medium text-sm"
-          >
-            <Eye className="w-4 h-4" />
-            <span>Try Free Demo</span>
-          </button>
+          <p className="text-gray-400 text-lg">Unlock full access to ViewTrack</p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-6">

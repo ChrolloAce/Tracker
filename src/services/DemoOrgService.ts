@@ -5,8 +5,8 @@
 
 // Demo org configuration
 export const DEMO_CONFIG = {
-  email: 'demo@viewtrack.app',
-  password: 'demo123456',
+  email: '001ernestolopez@gmail.com',
+  password: '', // No password needed for direct login
   // Add your demo org ID here after creating it manually in Firebase
   // or it will be auto-detected by the email
   demoOrgSlug: 'demo-viewtrack'

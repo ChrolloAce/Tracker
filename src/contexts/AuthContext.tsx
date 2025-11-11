@@ -62,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         // Check custom email verification (skip for demo account and Google sign-ins)
-        if (user.email !== 'demo@viewtrack.app' && user.providerData[0]?.providerId === 'password') {
+        if (user.email !== '001ernestolopez@gmail.com' && user.providerData[0]?.providerId === 'password') {
           // Check if user has verified their email via our custom code system
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           const isVerified = userDoc.exists() && userDoc.data()?.emailVerified === true;
