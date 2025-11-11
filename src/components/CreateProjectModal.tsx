@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, FolderPlus, Upload, Image as ImageIcon, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ProjectService from '../services/ProjectService';
@@ -118,7 +119,7 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
       <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-200 dark:border-white/10 w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col">
         {/* Header */}
@@ -258,7 +259,8 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

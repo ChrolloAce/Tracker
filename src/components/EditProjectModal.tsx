@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Edit3, Upload } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ProjectService from '../services/ProjectService';
@@ -114,7 +115,7 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ isOpen, onClose, pr
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
       <div className="bg-white dark:bg-[#0A0A0A] rounded-2xl border border-gray-200 dark:border-white/10 shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
@@ -229,7 +230,8 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ isOpen, onClose, pr
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
