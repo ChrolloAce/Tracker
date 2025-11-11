@@ -25,6 +25,7 @@ import { useUnreadCounts } from '../../hooks/useUnreadCounts';
 import { Badge } from '../ui/Badge';
 import RefreshCountdown from '../RefreshCountdown';
 import ProjectSwitcher from '../ProjectSwitcher';
+import OrganizationSwitcher from '../OrganizationSwitcher';
 import newLogo from '/vtlogo.png';
 
 interface SidebarProps {
@@ -412,6 +413,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         <RefreshCountdown />
       )}
 
+      {/* Organization Switcher - At the very bottom */}
+      {!isDemoMode && <OrganizationSwitcher />}
 
     </div>
     </>
