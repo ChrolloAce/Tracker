@@ -162,10 +162,12 @@ function App() {
         element={
           !user ? (
             <LandingPage />
-          ) : !currentOrgId || !currentProjectId ? (
-            <LandingPage />
-          ) : (
+          ) : currentOrgId && currentProjectId ? (
             <Navigate to="/dashboard" replace />
+          ) : currentOrgId && !currentProjectId ? (
+            <Navigate to="/create-project" replace />
+          ) : (
+            <Navigate to="/create-organization" replace />
           )
         } 
       />
@@ -177,8 +179,12 @@ function App() {
             <LoadingSkeleton />
           ) : !user ? (
             <LoginPage />
-          ) : (
+          ) : currentOrgId && currentProjectId ? (
             <Navigate to="/dashboard" replace />
+          ) : currentOrgId && !currentProjectId ? (
+            <Navigate to="/create-project" replace />
+          ) : (
+            <LoginPage />
           )
         } 
       />

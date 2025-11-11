@@ -29,19 +29,13 @@ export const PreLaunchCover: React.FC<PreLaunchCoverProps> = ({ children }) => {
   const isPublicPage = publicPages.some(page => location.pathname.startsWith(page));
 
   useEffect(() => {
-    console.log('🚀 PreLaunchCover mounted');
-    console.log('🔒 FORCE_LOCK is:', FORCE_LOCK);
-    
     // If FORCE_LOCK is true, ONLY check PIN bypass (ignore date completely)
     if (FORCE_LOCK) {
       const bypassed = localStorage.getItem(BYPASS_KEY);
-      console.log('🔍 Bypass status in localStorage:', bypassed);
       
       if (bypassed === 'true') {
-        console.log('✅ PIN bypass found - showing app');
         setIsBypassed(true);
       } else {
-        console.log('🔒 Cover locked - PIN required to access');
         setIsBypassed(false);
       }
       return;
@@ -111,18 +105,15 @@ export const PreLaunchCover: React.FC<PreLaunchCoverProps> = ({ children }) => {
 
   // Don't cover public pages (privacy, terms, support, link redirects)
   if (isPublicPage) {
-    console.log('📄 Public page - no cover');
     return <>{children}</>;
   }
 
   // Show app if bypassed with PIN
   if (isBypassed) {
-    console.log('✅ Rendering app (bypassed)');
     return <>{children}</>;
   }
 
   // Show the pre-launch cover (locked!)
-  console.log('🔒 Rendering pre-launch cover');
   return (
     <div className="fixed inset-0 z-[9999] bg-gradient-to-br from-[#0A0A0B] via-[#111113] to-[#0A0A0B] flex items-center justify-center overflow-hidden">
       {/* Animated background gradient */}
