@@ -249,6 +249,10 @@ class FirestoreDataService {
       limitCount?: number;
     }
   ): Promise<VideoDoc[]> {
+    // STEP 1: Load deleted videos blacklist FIRST (parallel with video query for speed)
+    const deletedVideosPromise = this.getDeletedVideoIds(orgId, projectId);
+    
+    // STEP 2: Build and execute video query
     let q = query(
       collection(db, 'organizations', orgId, 'projects', projectId, 'videos'),
       orderBy('lastRefreshed', 'desc'),
@@ -264,8 +268,58 @@ class FirestoreDataService {
       );
     }
     
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as VideoDoc));
+    // Execute both in parallel
+    const [snapshot, deletedVideoIds] = await Promise.all([
+      getDocs(q),
+      deletedVideosPromise
+    ]);
+    
+    // STEP 3: Filter out deleted videos BEFORE returning
+    const allVideos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as VideoDoc));
+    
+    if (deletedVideoIds.size === 0) {
+      // Fast path: no deleted videos to filter
+      return allVideos;
+    }
+    
+    // Filter out videos that are in the blacklist
+    const filteredVideos = allVideos.filter(video => {
+      const platformVideoId = video.videoId || video.id;
+      return !deletedVideoIds.has(platformVideoId);
+    });
+    
+    console.log(`🗑️ Filtered out ${allVideos.length - filteredVideos.length} deleted videos`);
+    return filteredVideos;
+  }
+
+  /**
+   * Get set of deleted video IDs (platformVideoIds) from blacklist
+   * Used internally to filter out deleted videos from queries
+   */
+  private static async getDeletedVideoIds(orgId: string, projectId: string): Promise<Set<string>> {
+    try {
+      const deletedRef = collection(
+        db,
+        'organizations',
+        orgId,
+        'projects',
+        projectId,
+        'deletedVideos'
+      );
+      
+      const snapshot = await getDocs(deletedRef);
+      const deletedIds = new Set<string>();
+      
+      snapshot.docs.forEach(doc => {
+        // Doc ID is the platformVideoId
+        deletedIds.add(doc.id);
+      });
+      
+      return deletedIds;
+    } catch (error) {
+      console.warn('⚠️ Failed to load deleted videos blacklist (non-critical):', error);
+      return new Set(); // Return empty set on error - show all videos
+    }
   }
 
   /**
@@ -452,6 +506,9 @@ class FirestoreDataService {
    */
   static async getAccountVideos(orgId: string, projectId: string, accountId: string, limitCount: number = 100): Promise<VideoDoc[]> {
     try {
+      // Load deleted videos blacklist in parallel with video query
+      const deletedVideosPromise = this.getDeletedVideoIds(orgId, projectId);
+      
       const q = query(
         collection(db, 'organizations', orgId, 'projects', projectId, 'videos'),
         where('trackedAccountId', '==', accountId),
@@ -459,11 +516,21 @@ class FirestoreDataService {
         limit(limitCount)
       );
       
-      const snapshot = await getDocs(q);
-      const videos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as VideoDoc));
+      const [snapshot, deletedVideoIds] = await Promise.all([
+        getDocs(q),
+        deletedVideosPromise
+      ]);
       
-      console.log(`✅ Loaded ${videos.length} videos for account ${accountId}`);
-      return videos;
+      const allVideos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as VideoDoc));
+      
+      // Filter out deleted videos
+      const filteredVideos = allVideos.filter(video => {
+        const platformVideoId = video.videoId || video.id;
+        return !deletedVideoIds.has(platformVideoId);
+      });
+      
+      console.log(`✅ Loaded ${filteredVideos.length} videos for account ${accountId} (${allVideos.length - filteredVideos.length} filtered as deleted)`);
+      return filteredVideos;
     } catch (error) {
       console.error('❌ Failed to load account videos:', error);
       return [];
