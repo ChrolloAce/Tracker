@@ -302,7 +302,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     throw lastError;
   };
 
-  const signInWithGoogle = async (usePopup: boolean = false) => {
+  const signInWithGoogle = async () => {
     try {
       const provider = new GoogleAuthProvider();
       // Force account selection every time

@@ -5,7 +5,6 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import PreparingWorkspacePage from './pages/PreparingWorkspacePage';
 import DemoPage from './pages/DemoPage';
-import OnboardingPage from './pages/OnboardingPage';
 import CreateOrganizationPage from './pages/CreateOrganizationPage';
 import CreateProjectPage from './pages/CreateProjectPage';
 import OnboardingOrchestrator from './pages/OnboardingOrchestrator';
