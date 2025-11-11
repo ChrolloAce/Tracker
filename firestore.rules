@@ -466,6 +466,16 @@ service cloud.firestore {
           allow create, update, delete: if canManageOrg(orgId);
         }
         
+        // ==================== PROJECT PAYOUT STRUCTURES ====================
+        
+        match /payoutStructures/{structureId} {
+          // All org members can read payout structures
+          allow read: if canReadOrg(orgId);
+          
+          // Only admins can create/update/delete payout structures
+          allow write: if canManageOrg(orgId);
+        }
+        
         // ==================== PROJECT CREATOR PROFILES ====================
         
         match /creators/{creatorId} {
