@@ -114,11 +114,9 @@ class FirestoreDataService {
    */
   private static async triggerImmediateSync(orgId: string, projectId: string, accountId: string): Promise<void> {
     try {
-      await fetch('/api/sync-single-account', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountId, orgId, projectId })
-      });
+      // Dynamic import to avoid circular dependencies
+      const { default: AuthenticatedApiService } = await import('./AuthenticatedApiService');
+      await AuthenticatedApiService.syncAccount(accountId, orgId, projectId);
       console.log(`🚀 Immediate sync triggered for account ${accountId}`);
     } catch (error) {
       console.error('Failed to trigger immediate sync:', error);

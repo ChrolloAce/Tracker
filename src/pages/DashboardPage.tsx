@@ -1536,18 +1536,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         });
 
         
-        // Trigger immediate processing (like accounts)
-        fetch('/api/process-single-video', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            videoId,
-            orgId: currentOrgId,
-            projectId: currentProjectId
-          })
-        }).catch(err => {
-          console.error('Failed to trigger immediate processing:', err);
-          // Non-critical - cron will pick it up
+        // Trigger immediate processing (like accounts) with authentication
+        import('./services/AuthenticatedApiService').then(module => {
+          module.default.processVideo(videoId, currentOrgId, currentProjectId).catch(err => {
+            console.error('Failed to trigger immediate processing:', err);
+            // Non-critical - cron will pick it up
+          });
         });
 
         successCount++;

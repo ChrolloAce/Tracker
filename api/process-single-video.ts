@@ -5,6 +5,7 @@ import { getStorage } from 'firebase-admin/storage';
 import { runApifyActor } from './apify-client.js';
 import { ErrorNotificationService } from './services/ErrorNotificationService.js';
 import { CleanupService } from './services/CleanupService.js';
+import { authenticateAndVerifyOrg, setCorsHeaders, handleCorsPreFlight, validateRequiredFields } from './middleware/auth.js';
 // @ts-ignore - heic-convert has no types
 import convert from 'heic-convert';
 
@@ -57,15 +58,38 @@ interface VideoData {
  * Triggered right after video is queued for instant feedback
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Set CORS headers
+  setCorsHeaders(res);
+  
+  // Handle preflight requests
+  if (handleCorsPreFlight(req, res)) {
+    return;
+  }
+  
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const { videoId, orgId, projectId } = req.body;
 
-  if (!videoId || !orgId || !projectId) {
+  // Validate required fields
+  const validation = validateRequiredFields(req.body, ['videoId', 'orgId', 'projectId']);
+  if (!validation.valid) {
     return res.status(400).json({ 
-      error: 'Missing required fields: videoId, orgId, projectId' 
+      error: 'Missing required fields', 
+      missing: validation.missing 
+    });
+  }
+
+  // 🔒 Authenticate user and verify organization access
+  try {
+    const { user } = await authenticateAndVerifyOrg(req, orgId);
+    console.log(`🔒 Authenticated user ${user.userId} for video processing`);
+  } catch (authError: any) {
+    console.error('❌ Authentication failed:', authError.message);
+    return res.status(401).json({ 
+      error: 'Unauthorized', 
+      message: authError.message 
     });
   }
 
