@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { X, Eye, Heart, MessageCircle, Share2, Activity, Video, Users, MousePointerClick, Play, TrendingUp, Upload } from 'lucide-react';
+import { X, Eye, Heart, MessageCircle, Share2, Activity, Video, Users, MousePointerClick, Play, TrendingUp, Upload, Bookmark } from 'lucide-react';
 import { VideoSubmission, VideoSnapshot } from '../types';
 import { TimeInterval } from '../services/DataAggregationService';
 import { LinkClick } from '../services/LinkClicksService';
@@ -97,6 +97,32 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
       return `${(num / 1_000).toFixed(1)}K`;
     }
     return num.toString();
+  };
+
+  const formatPercentage = (percent: number): string => {
+    const absPercent = Math.abs(percent);
+    if (absPercent >= 1_000_000) {
+      return `${(percent / 1_000_000).toFixed(1)}M`;
+    } else if (absPercent >= 1_000) {
+      return `${(percent / 1_000).toFixed(1)}K`;
+    }
+    return percent.toFixed(0);
+  };
+
+  const getPercentageColor = (percent: number): string => {
+    return percent >= 0 ? 'text-emerald-400' : 'text-red-400';
+  };
+
+  const getPercentageBgColor = (percent: number): string => {
+    return percent >= 0 
+      ? 'bg-emerald-500/10 border-emerald-500/20' 
+      : 'bg-red-500/10 border-red-500/20';
+  };
+
+  const calculateEngagementRate = (video: VideoSubmission): number => {
+    if (!video.views || video.views === 0) return 0;
+    const engagements = (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
+    return (engagements / video.views) * 100;
   };
 
   const getDayName = (dayIndex: 0 | 1 | 2 | 3 | 4 | 5 | 6): string => {
@@ -947,12 +973,24 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                       onClick={() => onVideoClick?.(video)}
                       className="bg-white/[0.02] rounded-xl p-4 border border-white/[0.04] hover:bg-white/[0.06] hover:border-white/[0.08] cursor-pointer transition-all group"
                     >
-                      {/* Header with Platform and Views */}
+                      {/* Header with Profile and Views */}
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-4 h-4">
-                            <PlatformIcon platform={video.platform} size="sm" />
-                          </div>
+                          {/* Profile Picture */}
+                          {video.uploaderProfilePicture ? (
+                            <img 
+                              src={video.uploaderProfilePicture} 
+                              alt={video.uploaderHandle}
+                              className="w-6 h-6 rounded-full object-cover border border-white/[0.1]"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-white/[0.05] border border-white/[0.1] flex items-center justify-center">
+                              <Users className="w-3 h-3 text-gray-600" />
+                            </div>
+                          )}
                           <span className="text-xs font-medium text-gray-400">{video.uploaderHandle || video.platform}</span>
                         </div>
                         <div className="text-right">
@@ -962,8 +1000,8 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                       </div>
                       
                       <div className="flex gap-4">
-                        {/* Thumbnail */}
-                        <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-white/[0.02] border border-white/[0.03]">
+                        {/* Thumbnail with Platform Icon */}
+                        <div className="flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden bg-white/[0.02] border border-white/[0.03] relative">
                           {video.thumbnail ? (
                             <img 
                               src={video.thumbnail} 
@@ -978,14 +1016,20 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                               <Play className="w-6 h-6 text-gray-700" />
                             </div>
                           )}
+                          {/* Platform Icon Overlay */}
+                          <div className="absolute top-1.5 left-1.5 w-5 h-5 bg-black/60 backdrop-blur-sm rounded-md flex items-center justify-center border border-white/[0.1]">
+                            <PlatformIcon platform={video.platform} size="xs" />
+                          </div>
                         </div>
                         
                         {/* Content */}
                         <div className="flex-1 min-w-0">
-                          <p className="text-base text-white font-semibold mb-2 line-clamp-3 leading-snug group-hover:text-gray-100 transition-colors">
+                          <p className="text-base text-white font-semibold mb-2 line-clamp-2 leading-snug group-hover:text-gray-100 transition-colors">
                             {video.title || video.caption || '(No caption)'}
                           </p>
-                          <div className="flex items-center gap-3 text-xs text-gray-500">
+
+                          {/* Metrics */}
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
                             {video.likes !== undefined && video.likes > 0 && (
                               <span className="flex items-center gap-1">
                                 <Heart className="w-3 h-3" />
@@ -998,6 +1042,28 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                                 {formatNumber(video.comments)}
                               </span>
                             )}
+                            {video.shares !== undefined && video.shares > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Share2 className="w-3 h-3" />
+                                {formatNumber(video.shares)}
+                              </span>
+                            )}
+                            {(video.saves !== undefined && video.saves > 0) || 
+                             (video.bookmarks !== undefined && video.bookmarks > 0) && (
+                              <span className="flex items-center gap-1">
+                                <Bookmark className="w-3 h-3" />
+                                {formatNumber(video.saves || video.bookmarks || 0)}
+                              </span>
+                            )}
+                            {(() => {
+                              const engagementRate = calculateEngagementRate(video);
+                              return engagementRate > 0 && (
+                                <span className="flex items-center gap-1">
+                                  <Activity className="w-3 h-3" />
+                                  {engagementRate.toFixed(1)}%
+                                </span>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -1037,16 +1103,28 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                       onClick={() => onVideoClick?.(item.video)}
                       className="bg-white/[0.02] rounded-xl p-4 border border-white/[0.04] hover:bg-white/[0.06] hover:border-emerald-500/[0.15] cursor-pointer transition-all group"
                     >
-                      {/* Header with Platform, Growth Badge and Total Views */}
+                      {/* Header with Profile, Growth Badge and Total Views */}
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-4 h-4">
-                            <PlatformIcon platform={item.video.platform} size="sm" />
-                          </div>
+                          {/* Profile Picture */}
+                          {item.video.uploaderProfilePicture ? (
+                            <img 
+                              src={item.video.uploaderProfilePicture} 
+                              alt={item.video.uploaderHandle}
+                              className="w-6 h-6 rounded-full object-cover border border-white/[0.1]"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-white/[0.05] border border-white/[0.1] flex items-center justify-center">
+                              <Users className="w-3 h-3 text-gray-600" />
+                            </div>
+                          )}
                           <span className="text-xs font-medium text-gray-400">{item.video.uploaderHandle || item.video.platform}</span>
-                          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-md px-2 py-0.5">
-                            <span className="text-[10px] font-bold text-emerald-400">
-                              +{item.growth.toFixed(0)}%
+                          <div className={`${getPercentageBgColor(item.growth)} border rounded-md px-2 py-0.5`}>
+                            <span className={`text-[10px] font-bold ${getPercentageColor(item.growth)}`}>
+                              {item.growth >= 0 ? '+' : ''}{formatPercentage(item.growth)}%
                             </span>
                           </div>
                         </div>
@@ -1057,8 +1135,8 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                       </div>
                       
                       <div className="flex gap-4">
-                        {/* Thumbnail */}
-                        <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-white/[0.02] border border-white/[0.03]">
+                        {/* Thumbnail with Platform Icon */}
+                        <div className="flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden bg-white/[0.02] border border-white/[0.03] relative">
                           {item.video.thumbnail ? (
                             <img 
                               src={item.video.thumbnail} 
@@ -1073,13 +1151,57 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                               <Play className="w-6 h-6 text-gray-700" />
                             </div>
                           )}
+                          {/* Platform Icon Overlay */}
+                          <div className="absolute top-1.5 left-1.5 w-5 h-5 bg-black/60 backdrop-blur-sm rounded-md flex items-center justify-center border border-white/[0.1]">
+                            <PlatformIcon platform={item.video.platform} size="xs" />
+                          </div>
                         </div>
                         
                         {/* Content */}
                         <div className="flex-1 min-w-0">
-                          <p className="text-base text-white font-semibold mb-2 line-clamp-3 leading-snug group-hover:text-gray-100 transition-colors">
+                          <p className="text-base text-white font-semibold mb-2 line-clamp-2 leading-snug group-hover:text-gray-100 transition-colors">
                             {item.video.title || item.video.caption || '(No caption)'}
                           </p>
+                          
+                          {/* Metrics */}
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mb-2">
+                            {item.video.likes !== undefined && item.video.likes > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Heart className="w-3 h-3" />
+                                {formatNumber(item.video.likes)}
+                              </span>
+                            )}
+                            {item.video.comments !== undefined && item.video.comments > 0 && (
+                              <span className="flex items-center gap-1">
+                                <MessageCircle className="w-3 h-3" />
+                                {formatNumber(item.video.comments)}
+                              </span>
+                            )}
+                            {item.video.shares !== undefined && item.video.shares > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Share2 className="w-3 h-3" />
+                                {formatNumber(item.video.shares)}
+                              </span>
+                            )}
+                            {(item.video.saves !== undefined && item.video.saves > 0) || 
+                             (item.video.bookmarks !== undefined && item.video.bookmarks > 0) && (
+                              <span className="flex items-center gap-1">
+                                <Bookmark className="w-3 h-3" />
+                                {formatNumber(item.video.saves || item.video.bookmarks || 0)}
+                              </span>
+                            )}
+                            {(() => {
+                              const engagementRate = calculateEngagementRate(item.video);
+                              return engagementRate > 0 && (
+                                <span className="flex items-center gap-1">
+                                  <Activity className="w-3 h-3" />
+                                  {engagementRate.toFixed(1)}%
+                                </span>
+                              );
+                            })()}
+                          </div>
+
+                          {/* Growth Info */}
                           <div className="flex items-center gap-3 text-xs">
                             <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
                               <TrendingUp className="w-3.5 h-3.5" />
