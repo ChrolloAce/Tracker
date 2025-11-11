@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Search, Plus, Settings, User, Hash, RefreshCw } from 'lucide-react';
 import { Button } from '../ui/Button';
 import ProjectSwitcher from '../ProjectSwitcher';
+import CreateProjectModal from '../CreateProjectModal';
 
 interface TopNavigationProps {
   onAddVideo: () => void;
@@ -11,6 +12,8 @@ interface TopNavigationProps {
 }
 
 export const TopNavigation: React.FC<TopNavigationProps> = ({ onAddVideo, onTikTokSearch, onRefreshAll, isRefreshing = false }) => {
+  const [showCreateProject, setShowCreateProject] = useState(false);
+
   return (
     <>
       <header className="bg-white dark:bg-[#161616] border-b border-gray-200 dark:border-gray-800 px-6 py-4">
@@ -81,6 +84,12 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({ onAddVideo, onTikT
           </div>
         </div>
       </header>
+
+      {/* Create Project Modal */}
+      <CreateProjectModal
+        isOpen={showCreateProject}
+        onClose={() => setShowCreateProject(false)}
+      />
     </>
   );
 };

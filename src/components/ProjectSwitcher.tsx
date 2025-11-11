@@ -34,7 +34,7 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
       }
     };
 
-    loadProjects();
+      loadProjects();
   }, [currentOrgId]);
 
   // Close dropdown when clicking outside
@@ -46,8 +46,8 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
     };
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [isOpen]);
 
@@ -99,21 +99,21 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
             {currentProject.name}
           </span>
         </div>
-        <ChevronDown className={clsx(
+          <ChevronDown className={clsx(
           "w-4 h-4 text-white/60 flex-shrink-0 transition-transform",
           { "rotate-180": isOpen }
-        )} />
-      </button>
+          )} />
+        </button>
 
       {/* Dropdown */}
-      {isOpen && (
+        {isOpen && (
         <div className="absolute top-full left-3 right-3 mt-1 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
           {/* Project List */}
-          {projects.map((project) => (
-            <button
-              key={project.id}
-              onClick={() => handleProjectSelect(project.id)}
-              className={clsx(
+            {projects.map((project) => (
+              <button
+                key={project.id}
+                onClick={() => handleProjectSelect(project.id)}
+                className={clsx(
                 "w-full flex items-center justify-between px-3 py-2.5 text-sm transition-colors",
                 {
                   "bg-white/10 text-white": project.id === currentProjectId,
@@ -124,31 +124,31 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
               <div className="flex items-center gap-2 min-w-0">
                 <Folder className="w-4 h-4 flex-shrink-0" />
                 <span className="truncate">{project.name}</span>
-              </div>
-              {project.id === currentProjectId && (
+                </div>
+                {project.id === currentProjectId && (
                 <Check className="w-4 h-4 flex-shrink-0 text-green-500" />
-              )}
-            </button>
-          ))}
-          
+                )}
+              </button>
+            ))}
+
           {/* Divider */}
           {projects.length > 0 && (
             <div className="border-t border-white/10 my-1" />
           )}
           
           {/* Create New Project Button */}
-          <button
-            onClick={() => {
-              setIsOpen(false);
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
               navigate('/create-project');
-            }}
+                  }}
             className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-blue-400 hover:bg-white/5 transition-colors"
-          >
+                >
             <Plus className="w-4 h-4 flex-shrink-0" />
             <span>Create New Project</span>
-          </button>
-        </div>
-      )}
+                </button>
+          </div>
+        )}
     </div>
   );
 };

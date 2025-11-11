@@ -341,9 +341,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
       } else {
         console.log('🔄 Using redirect mode for Google sign-in...');
-        console.log('🌐 Auth domain:', auth.app.options.authDomain);
-        await signInWithRedirect(auth, provider);
-        // User will be redirected, so no need to handle result here
+      console.log('🌐 Auth domain:', auth.app.options.authDomain);
+      await signInWithRedirect(auth, provider);
+      // User will be redirected, so no need to handle result here
       }
     } catch (error: any) {
       console.error('❌ Failed to initiate Google sign-in:', error);

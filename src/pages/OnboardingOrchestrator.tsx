@@ -25,28 +25,53 @@ const OnboardingOrchestrator: React.FC = () => {
       try {
         let orgId = currentOrgId;
         
-        // Create organization if needed
+        // Check if user already has organizations in the database
         if (!orgId) {
-          const userName = user.displayName || user.email?.split('@')[0] || 'User';
-          const orgName = `${userName}'s Workspace`;
+          console.log('🔍 Checking for existing organizations...');
+          const userOrgs = await OrganizationService.getUserOrganizations(user.uid);
           
-          // Create org data object with proper structure
-          const orgData = {
-            name: orgName,
-            email: user.email!,
-            displayName: user.displayName || user.email?.split('@')[0] || 'User'
-          };
-          
-          orgId = await OrganizationService.createOrganization(user.uid, orgData);
-          
-          await OrganizationService.setDefaultOrg(user.uid, orgId);
+          if (userOrgs.length > 0) {
+            // User has existing orgs - use the first one
+            orgId = userOrgs[0].id;
+            console.log('✅ Found existing organization:', orgId);
+            await OrganizationService.setDefaultOrg(user.uid, orgId);
+          } else {
+            // No existing orgs - create a new one
+            console.log('📝 Creating new organization...');
+            const userName = user.displayName || user.email?.split('@')[0] || 'User';
+            const orgName = `${userName}'s Workspace`;
+            
+            // Create org data object with proper structure
+            const orgData = {
+              name: orgName,
+              email: user.email!,
+              displayName: user.displayName || user.email?.split('@')[0] || 'User'
+            };
+            
+            orgId = await OrganizationService.createOrganization(user.uid, orgData);
+            await OrganizationService.setDefaultOrg(user.uid, orgId);
+            console.log('✅ Created new organization:', orgId);
+          }
         }
         
-        // Create project if needed
+        // Check for existing projects
         let projectId = currentProjectId;
-        if (!projectId) {
-          projectId = await ProjectService.createDefaultProject(orgId, user.uid);
-          await ProjectService.setActiveProject(orgId, user.uid, projectId);
+        if (!projectId && orgId) {
+          console.log('🔍 Checking for existing projects...');
+          const projects = await ProjectService.getProjects(orgId, false);
+          
+          if (projects.length > 0) {
+            // User has existing projects - use the first one
+            projectId = projects[0].id;
+            console.log('✅ Found existing project:', projectId);
+            await ProjectService.setActiveProject(orgId, user.uid, projectId);
+          } else {
+            // No existing projects - create a new one
+            console.log('📝 Creating new project...');
+            projectId = await ProjectService.createDefaultProject(orgId, user.uid);
+            await ProjectService.setActiveProject(orgId, user.uid, projectId);
+            console.log('✅ Created new project:', projectId);
+          }
         }
 
         console.log('✅ Onboarding complete - org:', orgId, 'project:', projectId);
