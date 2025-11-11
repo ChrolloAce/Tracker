@@ -9,9 +9,10 @@ interface TopNavigationProps {
   onTikTokSearch: () => void;
   onRefreshAll?: () => void;
   isRefreshing?: boolean;
+  isDemoMode?: boolean;
 }
 
-export const TopNavigation: React.FC<TopNavigationProps> = ({ onAddVideo, onTikTokSearch, onRefreshAll, isRefreshing = false }) => {
+export const TopNavigation: React.FC<TopNavigationProps> = ({ onAddVideo, onTikTokSearch, onRefreshAll, isRefreshing = false, isDemoMode = false }) => {
   const [showCreateProject, setShowCreateProject] = useState(false);
 
   return (
@@ -65,10 +66,22 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({ onAddVideo, onTikT
               <span>Search TikTok</span>
             </Button>
             
-            <Button onClick={onAddVideo} className="flex items-center space-x-2">
-              <Plus className="w-4 h-4" />
-              <span>Add Video</span>
-            </Button>
+            <div className="relative group">
+              <Button 
+                onClick={isDemoMode ? undefined : onAddVideo} 
+                className="flex items-center space-x-2"
+                disabled={isDemoMode}
+                title={isDemoMode ? "You can't add videos in demo mode - this is not your organization" : "Add Video"}
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Video</span>
+              </Button>
+              {isDemoMode && (
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                  Can't add videos - not your organization
+                </div>
+              )}
+            </div>
             
             <div className="flex items-center space-x-2">
               <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">

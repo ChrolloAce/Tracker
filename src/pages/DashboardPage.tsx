@@ -2919,6 +2919,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                             dashboardRules={allRules}
                             accountFilterId={accountFilterId}
                             creatorFilterId={creatorFilterId}
+                            organizationId={currentOrgId || undefined}
+                            projectId={currentProjectId || undefined}
+                            isDemoMode={isDemoMode}
                           />
                         );
                       case 'videos-table':
@@ -3074,6 +3077,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               projectId={currentProjectId || undefined}
               accountFilterId={accountFilterId}
               creatorFilterId={creatorFilterId}
+              isDemoMode={isDemoMode}
             />
           )}
 
@@ -3753,7 +3757,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       {/* Context-Aware Floating Action Button */}
       {activeTab !== 'settings' && activeTab !== 'subscription' && activeTab !== 'cron' && activeTab !== 'invitations' && activeTab !== 'creators' && (
         <button
-          onClick={() => {
+          onClick={isDemoMode ? undefined : () => {
             // ✅ Show AddTypeSelector on dashboard, accounts, and videos tabs
             if (activeTab === 'dashboard' || activeTab === 'accounts' || activeTab === 'videos') {
               setIsTypeSelectorOpen(true);
@@ -3766,7 +3770,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               window.dispatchEvent(event);
             }
           }}
-          className="fixed bottom-4 right-4 md:bottom-8 md:right-8 z-50 flex items-center justify-center p-3 md:p-4 rounded-full transition-all transform hover:scale-105 active:scale-95 bg-white/10 hover:bg-white/15 text-white border border-white/20 hover:border-white/30 shadow-2xl group"
+          disabled={isDemoMode}
+          className={`fixed bottom-4 right-4 md:bottom-8 md:right-8 z-50 flex items-center justify-center p-3 md:p-4 rounded-full transition-all shadow-2xl group ${
+            isDemoMode 
+              ? 'bg-gray-600 text-gray-400 border border-gray-700 cursor-not-allowed opacity-60' 
+              : 'transform hover:scale-105 active:scale-95 bg-white/10 hover:bg-white/15 text-white border border-white/20 hover:border-white/30'
+          }`}
           aria-label={
             (activeTab === 'dashboard' || activeTab === 'accounts' || activeTab === 'videos') ? 'Track Content' :
             activeTab === 'analytics' ? 'Create Link' :
@@ -3789,10 +3798,14 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             />
           </svg>
           <span className="absolute -top-12 right-0 bg-gray-900 text-white text-sm px-3 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-            {(activeTab === 'dashboard' || activeTab === 'accounts' || activeTab === 'videos') && 'Track Content'}
-            {activeTab === 'analytics' && 'Create Link'}
-            {activeTab === 'campaigns' && 'Create Campaign'}
-            {activeTab === 'team' && 'Invite Team Member'}
+            {isDemoMode ? "Can't add - not your organization" : (
+              <>
+                {(activeTab === 'dashboard' || activeTab === 'accounts' || activeTab === 'videos') && 'Track Content'}
+                {activeTab === 'analytics' && 'Create Link'}
+                {activeTab === 'campaigns' && 'Create Campaign'}
+                {activeTab === 'team' && 'Invite Team Member'}
+              </>
+            )}
           </span>
         </button>
       )}

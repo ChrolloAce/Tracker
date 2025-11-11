@@ -120,6 +120,7 @@ export interface AccountsPageProps {
   dashboardRules?: TrackingRule[];
   accountFilterId?: string | null; // Filter by specific account ID
   creatorFilterId?: string | null; // Filter by creator's linked accounts
+  isDemoMode?: boolean;
 }
 
 export interface AccountsPageRef {
@@ -211,7 +212,7 @@ const ColumnHeader: React.FC<{
 };
 
 const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
-  ({ dateFilter, platformFilter, searchQuery = '', onViewModeChange, pendingAccounts = [], selectedRuleIds = [], dashboardRules = [], organizationId, projectId, accountFilterId, creatorFilterId }, ref) => {
+  ({ dateFilter, platformFilter, searchQuery = '', onViewModeChange, pendingAccounts = [], selectedRuleIds = [], dashboardRules = [], organizationId, projectId, accountFilterId, creatorFilterId, isDemoMode = false }, ref) => {
   const { user, currentOrgId: authOrgId, currentProjectId: authProjectId } = useAuth();
   
   // Use props if provided (for demo mode), otherwise use auth
@@ -1562,10 +1563,15 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
               tooltipText="Track Instagram, TikTok, YouTube, and X accounts to monitor followers, engagement rates, content performance, and audience growth over time."
               actions={[
                 {
-                  label: 'Add Account',
-                  onClick: () => setIsAddModalOpen(true),
+                  label: isDemoMode ? "Can't Add - Not Your Org" : 'Add Account',
+                  onClick: () => {
+                    if (!isDemoMode) {
+                      setIsAddModalOpen(true);
+                    }
+                  },
                   icon: Plus,
-                  primary: true
+                  primary: true,
+                  disabled: isDemoMode
                 }
               ]}
             />
