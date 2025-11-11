@@ -2106,7 +2106,7 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
 
                         {/* Type Column */}
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span 
+                            <span 
                             ref={(el) => {
                               if (el) {
                                 typeBadgeRefs.current.set(account.id, el);
@@ -2116,48 +2116,48 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                             }}
                             onMouseEnter={() => setHoveredTypeId(account.id)}
                             onMouseLeave={() => setHoveredTypeId(null)}
-                            className={clsx(
-                              "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium cursor-help transition-all",
-                              (account.creatorType || 'automatic') === 'automatic'
-                                ? "bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30"
-                                : "bg-gray-500/20 text-gray-400 border border-gray-500/30 hover:bg-gray-500/30"
-                            )}
-                          >
-                            {(account.creatorType || 'automatic') === 'automatic' ? 'Automatic' : 'Manual'}
-                          </span>
+                              className={clsx(
+                                "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium cursor-help transition-all",
+                                (account.creatorType || 'automatic') === 'automatic'
+                                  ? "bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30"
+                                  : "bg-gray-500/20 text-gray-400 border border-gray-500/30 hover:bg-gray-500/30"
+                              )}
+                            >
+                              {(account.creatorType || 'automatic') === 'automatic' ? 'Automatic' : 'Manual'}
+                            </span>
                           
                           <FloatingTooltip
                             isVisible={hoveredTypeId === account.id}
                             triggerRef={{ current: typeBadgeRefs.current.get(account.id) || null }}
                             position="top"
                           >
-                            {(account.creatorType || 'automatic') === 'automatic' ? (
+                                {(account.creatorType || 'automatic') === 'automatic' ? (
                               <div className="space-y-1.5 w-64">
-                                <div className="font-semibold text-green-400">Automatic Mode</div>
-                                <div className="text-gray-300">
-                                  • <span className="text-white font-medium">Discovers new videos</span> during refresh
-                                </div>
-                                <div className="text-gray-300">
-                                  • Updates <span className="text-white font-medium">all existing videos</span>
-                                </div>
-                                <div className="text-gray-300">
-                                  • Best for <span className="text-white font-medium">tracking full accounts</span>
-                                </div>
-                              </div>
-                            ) : (
+                                    <div className="font-semibold text-green-400">Automatic Mode</div>
+                                    <div className="text-gray-300">
+                                      • <span className="text-white font-medium">Discovers new videos</span> during refresh
+                                    </div>
+                                    <div className="text-gray-300">
+                                      • Updates <span className="text-white font-medium">all existing videos</span>
+                                    </div>
+                                    <div className="text-gray-300">
+                                      • Best for <span className="text-white font-medium">tracking full accounts</span>
+                                    </div>
+                                  </div>
+                                ) : (
                               <div className="space-y-1.5 w-64">
-                                <div className="font-semibold text-gray-400">Manual Mode</div>
-                                <div className="text-gray-300">
-                                  • <span className="text-white font-medium">Only refreshes existing videos</span>
-                                </div>
-                                <div className="text-gray-300">
-                                  • Does <span className="text-white font-medium">not discover new content</span>
-                                </div>
-                                <div className="text-gray-300">
-                                  • Best for <span className="text-white font-medium">specific video tracking</span>
-                                </div>
-                              </div>
-                            )}
+                                    <div className="font-semibold text-gray-400">Manual Mode</div>
+                                    <div className="text-gray-300">
+                                      • <span className="text-white font-medium">Only refreshes existing videos</span>
+                                    </div>
+                                    <div className="text-gray-300">
+                                      • Does <span className="text-white font-medium">not discover new content</span>
+                                    </div>
+                                    <div className="text-gray-300">
+                                      • Best for <span className="text-white font-medium">specific video tracking</span>
+                                    </div>
+                                  </div>
+                                )}
                           </FloatingTooltip>
                         </td>
 
@@ -2272,51 +2272,51 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                               <DropdownItem
                                 icon={<ExternalLink className="w-4 h-4" />}
                                 label="Go to Account"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const platformUrl = account.platform === 'tiktok' ? `https://www.tiktok.com/@${account.username}`
-                                    : account.platform === 'instagram' ? `https://www.instagram.com/${account.username.replace('@', '')}`
-                                    : account.platform === 'youtube' ? `https://www.youtube.com/@${account.username.replace('@', '')}`
-                                    : `https://twitter.com/${account.username.replace('@', '')}`;
-                                  window.open(platformUrl, '_blank');
-                                  setOpenDropdownId(null);
-                                }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const platformUrl = account.platform === 'tiktok' ? `https://www.tiktok.com/@${account.username}`
+                                        : account.platform === 'instagram' ? `https://www.instagram.com/${account.username.replace('@', '')}`
+                                        : account.platform === 'youtube' ? `https://www.youtube.com/@${account.username.replace('@', '')}`
+                                        : `https://twitter.com/${account.username.replace('@', '')}`;
+                                      window.open(platformUrl, '_blank');
+                                      setOpenDropdownId(null);
+                                    }}
                               />
                               
                               <DropdownItem
                                 icon={<Copy className="w-4 h-4" />}
                                 label="Copy Account Link"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const platformUrl = account.platform === 'tiktok' ? `https://www.tiktok.com/@${account.username}`
-                                    : account.platform === 'instagram' ? `https://www.instagram.com/${account.username.replace('@', '')}`
-                                    : account.platform === 'youtube' ? `https://www.youtube.com/@${account.username.replace('@', '')}`
-                                    : `https://twitter.com/${account.username.replace('@', '')}`;
-                                  navigator.clipboard.writeText(platformUrl);
-                                  alert('Account link copied!');
-                                  setOpenDropdownId(null);
-                                }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const platformUrl = account.platform === 'tiktok' ? `https://www.tiktok.com/@${account.username}`
+                                        : account.platform === 'instagram' ? `https://www.instagram.com/${account.username.replace('@', '')}`
+                                        : account.platform === 'youtube' ? `https://www.youtube.com/@${account.username.replace('@', '')}`
+                                        : `https://twitter.com/${account.username.replace('@', '')}`;
+                                      navigator.clipboard.writeText(platformUrl);
+                                      alert('Account link copied!');
+                                      setOpenDropdownId(null);
+                                    }}
                               />
                               
                               <DropdownItem
                                 icon={<User className="w-4 h-4" />}
                                 label="Copy Username"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigator.clipboard.writeText(account.username);
-                                  alert('Username copied!');
-                                  setOpenDropdownId(null);
-                                }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigator.clipboard.writeText(account.username);
+                                      alert('Username copied!');
+                                      setOpenDropdownId(null);
+                                    }}
                               />
                               
                               <DropdownItem
                                 icon={<BarChart3 className="w-4 h-4" />}
                                 label="View Stats"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpenDropdownId(null);
-                                  navigate(`/dashboard?accounts=${account.id}`);
-                                }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenDropdownId(null);
+                                      navigate(`/dashboard?accounts=${account.id}`);
+                                    }}
                               />
                               
                               <DropdownItem
@@ -2324,37 +2324,37 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                 label={(account.creatorType || 'automatic') === 'automatic' 
                                   ? 'Convert to Manual' 
                                   : 'Convert to Automatic'}
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  setOpenDropdownId(null);
-                                  
-                                  if (!organizationId || !projectId) {
-                                    alert('Missing organization or project ID');
-                                    return;
-                                  }
-                                  
-                                  const currentType = account.creatorType || 'automatic';
-                                  const newType = currentType === 'automatic' ? 'manual' : 'automatic';
-                                  
-                                  try {
-                                    const accountRef = doc(
-                                      db,
-                                      'organizations',
-                                      organizationId,
-                                      'projects',
-                                      projectId,
-                                      'trackedAccounts',
-                                      account.id
-                                    );
-                                    await updateDoc(accountRef, { creatorType: newType });
-                                    
-                                    const typeLabel = newType === 'automatic' ? 'Automatic' : 'Manual';
-                                    alert(`Account converted to ${typeLabel} mode`);
-                                  } catch (error) {
-                                    console.error('Failed to update account type:', error);
-                                    alert('Failed to update account type');
-                                  }
-                                }}
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      setOpenDropdownId(null);
+                                      
+                                      if (!organizationId || !projectId) {
+                                        alert('Missing organization or project ID');
+                                        return;
+                                      }
+                                      
+                                      const currentType = account.creatorType || 'automatic';
+                                      const newType = currentType === 'automatic' ? 'manual' : 'automatic';
+                                      
+                                      try {
+                                        const accountRef = doc(
+                                          db,
+                                          'organizations',
+                                          organizationId,
+                                          'projects',
+                                          projectId,
+                                          'trackedAccounts',
+                                          account.id
+                                        );
+                                        await updateDoc(accountRef, { creatorType: newType });
+                                        
+                                        const typeLabel = newType === 'automatic' ? 'Automatic' : 'Manual';
+                                        alert(`Account converted to ${typeLabel} mode`);
+                                      } catch (error) {
+                                        console.error('Failed to update account type:', error);
+                                        alert('Failed to update account type');
+                                      }
+                                    }}
                               />
                               
                               <DropdownDivider />
@@ -2363,11 +2363,11 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
                                 icon={<Trash2 className="w-4 h-4" />}
                                 label="Remove Account"
                                 variant="danger"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpenDropdownId(null);
-                                  handleRemoveAccount(account.id);
-                                }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenDropdownId(null);
+                                      handleRemoveAccount(account.id);
+                                    }}
                               />
                             </FloatingDropdown>
                           </div>

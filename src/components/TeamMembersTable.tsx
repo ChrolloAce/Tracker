@@ -226,7 +226,7 @@ const TeamMembersTable: React.FC = () => {
                     (currentUserRole === 'admin' && member.role !== 'owner' && member.role !== 'admin')
                   ) && (
                     <>
-                      <button
+                    <button
                         ref={(el) => {
                           if (el) {
                             dropdownTriggerRefs.current.set(member.userId, el);
@@ -238,11 +238,11 @@ const TeamMembersTable: React.FC = () => {
                           e.stopPropagation();
                           setOpenDropdownId(openDropdownId === member.userId ? null : member.userId);
                         }}
-                        className="p-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-                        title="More actions"
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
+                      className="p-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                      title="More actions"
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
                       
                       <FloatingDropdown
                         isOpen={openDropdownId === member.userId}
@@ -253,20 +253,20 @@ const TeamMembersTable: React.FC = () => {
                         <DropdownItem
                           icon={<Edit3 className="w-4 h-4" />}
                           label="Change Role"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenDropdownId(null);
-                            setShowRoleModal(member);
-                          }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenDropdownId(null);
+                                setShowRoleModal(member);
+                              }}
                         />
                         <DropdownItem
                           icon={<Trash2 className="w-4 h-4" />}
                           label="Remove from Team"
                           variant="danger"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveMember(member);
-                          }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveMember(member);
+                              }}
                         />
                       </FloatingDropdown>
                     </>

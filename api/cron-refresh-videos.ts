@@ -361,8 +361,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         
         try {
           console.log(`  📤 Sending to ${stats.email} (${stats.accountsProcessed} accounts, +${stats.videosAdded} new, ~${stats.videosUpdated} updated)...`);
-          const triggerTypeText = isManualTrigger ? 'Manual' : 'Automated';
-          const emailResponse = await fetch('https://api.resend.com/emails', {
+            const triggerTypeText = isManualTrigger ? 'Manual' : 'Automated';
+            const emailResponse = await fetch('https://api.resend.com/emails', {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${RESEND_API_KEY}`,

@@ -165,7 +165,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       const engagementRate = views > 0 ? (totalEngagement / views) * 100 : 0;
       
       const formattedDate = timestamp.toLocaleString('en-US', {
-        month: 'short',
+          month: 'short', 
         day: 'numeric',
         hour: 'numeric',
         minute: '2-digit'
@@ -304,7 +304,7 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
       const engagementRate = displayViews > 0 ? (totalEngagement / displayViews) * 100 : 0;
       
       const formattedDate = timestamp.toLocaleString('en-US', {
-        month: 'short',
+          month: 'short', 
         day: 'numeric',
         hour: 'numeric',
         minute: '2-digit'

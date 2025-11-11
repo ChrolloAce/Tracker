@@ -61,47 +61,47 @@ const DropdownMenu: React.FC<{
         <DropdownItem
           icon={<ExternalLink className="w-4 h-4" />}
           label="Go to Video"
-          onClick={(e) => {
-            e.stopPropagation();
-            window.open(submission.url, '_blank');
-            setIsOpen(false);
-          }}
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open(submission.url, '_blank');
+                setIsOpen(false);
+              }}
         />
         
         <DropdownItem
           icon={<Copy className="w-4 h-4" />}
           label="Copy Link"
-          onClick={(e) => {
-            e.stopPropagation();
-            navigator.clipboard.writeText(submission.url);
-            alert('Video link copied!');
-            setIsOpen(false);
-          }}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(submission.url);
+                alert('Video link copied!');
+                setIsOpen(false);
+              }}
         />
         
-        {submission.uploaderHandle && (
+            {submission.uploaderHandle && (
           <DropdownItem
             icon={<User className="w-4 h-4" />}
             label="Copy Username"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigator.clipboard.writeText(submission.uploaderHandle);
-              alert('Username copied!');
-              setIsOpen(false);
-            }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigator.clipboard.writeText(submission.uploaderHandle);
+                  alert('Username copied!');
+                  setIsOpen(false);
+                }}
           />
         )}
         
         <DropdownItem
           icon={<BarChart3 className="w-4 h-4" />}
           label="View Stats"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (onVideoClick) {
-              onVideoClick(submission);
-            }
-            setIsOpen(false);
-          }}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onVideoClick) {
+                  onVideoClick(submission);
+                }
+                setIsOpen(false);
+              }}
         />
         
         <DropdownDivider />
@@ -110,10 +110,10 @@ const DropdownMenu: React.FC<{
           icon={<Trash2 className="w-4 h-4" />}
           label="Delete"
           variant="danger"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleDelete();
-          }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete();
+              }}
         />
       </FloatingDropdown>
     </>

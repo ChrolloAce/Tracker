@@ -629,7 +629,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
           const absoluteGain = endValue - startValue;
           const growthPercentage = startValue > 0 ? ((endValue - startValue) / startValue) * 100 : 0;
           console.log('     • Fallback baseline', { videoId: video.id, startValue, endValue, absoluteGain });
- 
+          
           return absoluteGain > 0 ? {
             video,
             growth: growthPercentage,
@@ -642,7 +642,7 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             currentViews: endValue
           } : null;
         }
- 
+        
         const growthMetricKey = 'views';
  
         const startValue = (snapshotAtStart as any)[growthMetricKey] || 0;
@@ -954,11 +954,11 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             <div className="space-y-3">
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
-                  <Upload className="w-3.5 h-3.5 text-gray-500" />
-                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    New Uploads · {newUploads.length}
-                  </h3>
-                </div>
+                <Upload className="w-3.5 h-3.5 text-gray-500" />
+                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  New Uploads · {newUploads.length}
+                </h3>
+              </div>
                 {newUploads.length > 0 && (
                   <span className="text-xs font-semibold text-gray-400">
                     {formatNumber(totalNewUploadViews)} views
@@ -1084,11 +1084,11 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
             <div className="space-y-3">
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="w-3.5 h-3.5 text-gray-500" />
-                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Refreshed Videos · {topGainers.length}
-                  </h3>
-                </div>
+                <TrendingUp className="w-3.5 h-3.5 text-gray-500" />
+                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Refreshed Videos · {topGainers.length}
+                </h3>
+              </div>
                 {topGainers.length > 0 && (
                   <span className="text-xs font-semibold text-emerald-400">
                     +{formatNumber(totalRefreshedViewsGained)} views
@@ -1199,14 +1199,14 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                                 </span>
                               );
                             })()}
-                          </div>
+                            </div>
 
                           {/* Growth Info */}
                           <div className="flex items-center gap-3 text-xs">
                             <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
                               <TrendingUp className="w-3.5 h-3.5" />
                               <span>+{formatNumber(item.viewsGained)}</span>
-                            </div>
+                          </div>
                             <span className="text-gray-600">•</span>
                             <span className="text-gray-500">{item.snapshotCount} snapshots</span>
                           </div>

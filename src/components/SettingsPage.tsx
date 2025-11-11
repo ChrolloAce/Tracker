@@ -942,7 +942,7 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
                 <div className="flex items-center justify-end gap-2 text-sm text-gray-500 dark:text-gray-400">
                   <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
                   <span>Saving...</span>
-                </div>
+        </div>
               )}
 
               {/* App Version */}
