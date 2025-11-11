@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Play, 
@@ -33,6 +33,53 @@ import { PlatformIcon } from './ui/PlatformIcon';
 import DataAggregationService, { IntervalType, TimeInterval } from '../services/DataAggregationService';
 import { useNavigate } from 'react-router-dom';
 import { HeicImage } from './HeicImage';
+
+// Smooth number animation component
+const AnimatedNumber: React.FC<{ value: string | number; className?: string }> = ({ value, className }) => {
+  const [displayValue, setDisplayValue] = useState(value);
+  const prevValueRef = useRef(value);
+
+  useEffect(() => {
+    // If value is a string with special characters (like $, %, K, M), just show it
+    if (typeof value === 'string' && !/^\d+$/.test(value)) {
+      setDisplayValue(value);
+      return;
+    }
+
+    // Parse numeric value
+    const numericValue = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^0-9.-]/g, ''));
+    const prevNumeric = typeof prevValueRef.current === 'number' ? prevValueRef.current : parseFloat(String(prevValueRef.current).replace(/[^0-9.-]/g, ''));
+
+    if (isNaN(numericValue) || isNaN(prevNumeric) || numericValue === prevNumeric) {
+      setDisplayValue(value);
+      prevValueRef.current = value;
+      return;
+    }
+
+    // Animate the number change
+    const duration = 400; // ms
+    const steps = 20;
+    const stepValue = (numericValue - prevNumeric) / steps;
+    const stepDuration = duration / steps;
+    let currentStep = 0;
+
+    const timer = setInterval(() => {
+      currentStep++;
+      if (currentStep >= steps) {
+        setDisplayValue(value);
+        clearInterval(timer);
+        prevValueRef.current = value;
+      } else {
+        const currentValue = prevNumeric + (stepValue * currentStep);
+        setDisplayValue(typeof value === 'string' ? String(Math.round(currentValue)) : Math.round(currentValue));
+      }
+    }, stepDuration);
+
+    return () => clearInterval(timer);
+  }, [value]);
+
+  return <span className={className}>{displayValue}</span>;
+};
 
 interface KPICardsProps {
   submissions: VideoSubmission[]; // Filtered submissions for current period
@@ -2184,12 +2231,13 @@ const KPICard: React.FC<{
       onDragLeave={onDragLeave}
       onDrop={onDrop}
       className={`
-        group relative rounded-2xl bg-zinc-900/60 backdrop-blur border shadow-lg transition-all duration-300 overflow-hidden
+        group relative rounded-2xl bg-zinc-900/60 backdrop-blur border shadow-lg transition-all duration-200 overflow-hidden
+        will-change-transform
         ${isEditMode ? 'cursor-move' : 'cursor-pointer'}
         ${isDragging ? 'opacity-50 scale-95' : ''}
         ${isDragOver ? 'ring-2 ring-emerald-500 border-emerald-500/50' : 'border-white/5 hover:shadow-xl hover:ring-1 hover:ring-white/10'}
       `}
-      style={{ minHeight: '180px' }}
+      style={{ transform: 'translateZ(0)', minHeight: '180px' }}
     >
       {/* Depth Gradient Overlay */}
       <div 
@@ -2241,9 +2289,10 @@ const KPICard: React.FC<{
 
           {/* Value Row - Number + Delta Badge aligned horizontally */}
           <div className="flex items-baseline gap-2 sm:gap-3 -mt-1">
-            <span className={`text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight ${data.isEmpty ? 'text-zinc-600' : 'text-white'}`}>
-              {data.value}
-            </span>
+            <AnimatedNumber 
+              value={data.value} 
+              className={`text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight ${data.isEmpty ? 'text-zinc-600' : 'text-white'}`}
+            />
             
             {/* Delta Badge (if exists) - Aligned with number baseline */}
             {data.delta && data.delta.absoluteValue !== undefined && (
@@ -2382,7 +2431,10 @@ const KPICard: React.FC<{
                           strokeOpacity={0.15}
                           fill="none"
                           dot={isSingleDay ? { r: 4, fill: 'rgb(156, 163, 175)', fillOpacity: 0.6 } : false}
-                          isAnimationActive={false}
+                          isAnimationActive={true}
+                          animationDuration={500}
+                          animationEasing="ease-out"
+                          animationBegin={0}
                         />
                       )}
                       {/* Main Current Period Graph */}
@@ -2402,8 +2454,9 @@ const KPICard: React.FC<{
                           style: { filter: 'drop-shadow(0px 2px 8px rgba(0, 0, 0, 0.5))' }
                         }}
                         isAnimationActive={true}
-                        animationDuration={800}
-                        animationEasing="ease-in-out"
+                        animationDuration={500}
+                        animationEasing="ease-out"
+                        animationBegin={0}
                       />
                     </AreaChart>
                   </ResponsiveContainer>
