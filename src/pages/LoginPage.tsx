@@ -16,6 +16,7 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState('');
   const [signingIn, setSigningIn] = useState(false);
   const [processingInvite, setProcessingInvite] = useState(false);
+  const [isProcessingAuth, setIsProcessingAuth] = useState(false);
   
   // Get invite parameters from URL
   const inviteId = searchParams.get('invite');
@@ -25,6 +26,21 @@ const LoginPage: React.FC = () => {
   useEffect(() => {
     (window as any)?.datafast?.("login_page_view");
   }, []);
+
+  // Check if we just came back from Google redirect
+  useEffect(() => {
+    // If user exists and we're still loading auth state, show processing screen
+    if (user && authLoading) {
+      console.log('🔄 Processing authentication...');
+      setIsProcessingAuth(true);
+    } else if (user && !authLoading && (currentOrgId !== null || currentOrgId === null)) {
+      // Auth is done loading, about to navigate
+      setIsProcessingAuth(true);
+      // Keep it showing until navigation happens
+    } else {
+      setIsProcessingAuth(false);
+    }
+  }, [user, authLoading, currentOrgId]);
 
   // Handle navigation after successful authentication (non-invite flow)
   useEffect(() => {
@@ -106,17 +122,20 @@ const LoginPage: React.FC = () => {
   const handleGoogleSignIn = async () => {
     setError('');
     setSigningIn(true);
+    setIsProcessingAuth(true);
     try {
       console.log('🔵 Initiating Google sign-in...');
       await signInWithGoogle();
       // User will be redirected to Google, then back to the app
       // AuthContext will handle the redirect result
       console.log('✅ Google sign-in redirect initiated...');
+      // Keep loading state - don't set to false as user is being redirected
     } catch (err: any) {
       console.error('❌ Google sign-in error:', err);
       const errorMessage = err.message || 'Google sign-in failed';
       setError(errorMessage);
       setSigningIn(false);
+      setIsProcessingAuth(false);
     }
   };
 
@@ -258,6 +277,32 @@ const LoginPage: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {/* Authentication Processing Overlay */}
+      {(isProcessingAuth || signingIn) && (
+        <div className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-sm flex items-center justify-center">
+          <div className="flex flex-col items-center gap-6">
+            {/* Logo */}
+            <img src={viewtrackLogo} alt="ViewTrack" className="h-12 w-auto animate-pulse" />
+            
+            {/* Spinner */}
+            <div className="relative w-16 h-16">
+              <div className="absolute inset-0 border-4 border-gray-800 rounded-full"></div>
+              <div className="absolute inset-0 border-4 border-t-white border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"></div>
+            </div>
+            
+            {/* Loading Text */}
+            <div className="text-center">
+              <p className="text-white text-lg font-semibold mb-1">
+                {signingIn ? 'Signing you in...' : 'Setting up your account...'}
+              </p>
+              <p className="text-gray-400 text-sm">
+                This will only take a moment
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
