@@ -49,19 +49,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const handleRedirectResult = async () => {
       try {
+        console.log('🔍 Checking for Google redirect result...');
         const result = await getRedirectResult(auth);
         if (result) {
           console.log('✅ Google sign-in redirect successful:', result.user.email);
+          console.log('👤 User ID:', result.user.uid);
+          console.log('🔑 Provider:', result.providerId);
+          
+          // Create user account immediately after successful sign-in
+          try {
+            await OrganizationService.createUserAccount(
+              result.user.uid,
+              result.user.email!,
+              result.user.displayName || undefined,
+              result.user.photoURL || undefined
+            );
+            console.log('✅ User account created/verified in Firestore');
+          } catch (err) {
+            console.error('❌ Error creating user account:', err);
+          }
+        } else {
+          console.log('ℹ️ No redirect result (normal page load)');
         }
       } catch (error: any) {
         console.error('❌ Google sign-in redirect failed:', error);
-        // Show error to user
+        console.error('Error code:', error.code);
+        console.error('Error message:', error.message);
+        
+        // Show user-friendly error
         if (error.code === 'auth/popup-blocked') {
           alert('Popup was blocked. Please allow popups for this site.');
         } else if (error.code === 'auth/unauthorized-domain') {
           alert('This domain is not authorized for Google sign-in. Please contact support.');
+        } else if (error.code === 'auth/cancelled-popup-request') {
+          console.log('User cancelled the sign-in');
         } else {
-          console.error('Sign-in error:', error.message);
+          alert(`Sign-in failed: ${error.message}. Please try again.`);
         }
       }
     };

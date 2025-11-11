@@ -29,28 +29,42 @@ const LoginPage: React.FC = () => {
   // Handle navigation after successful authentication (non-invite flow)
   useEffect(() => {
     // Skip if processing invitation or still loading auth
-    if (processingInvite || inviteId) return;
+    if (processingInvite || inviteId) {
+      console.log('⏳ Skipping navigation - processing invite or invite flow');
+      return;
+    }
     
     // Wait for auth to finish loading
-    if (authLoading) return;
+    if (authLoading) {
+      console.log('⏳ Auth still loading...');
+      return;
+    }
     
     // If user is authenticated and auth has finished loading
     if (user && !authLoading) {
-      console.log('✅ User authenticated, checking org/project status...', {
+      console.log('✅ User authenticated on login page, checking org/project status...', {
         userId: user.uid,
         email: user.email,
         currentOrgId,
-        currentProjectId
+        currentProjectId,
+        hasOrg: !!currentOrgId,
+        hasProject: !!currentProjectId
       });
       
       // Check if user has organization and project
       if (currentOrgId && currentProjectId) {
         console.log('✅ User has org and project - navigating to dashboard');
         navigate('/dashboard', { replace: true });
+      } else if (currentOrgId && !currentProjectId) {
+        console.log('📝 User has org but no project - navigating to create project');
+        navigate('/create-project', { replace: true });
       } else {
         console.log('📝 User has no org - navigating to create organization');
+        console.log('🚀 Navigating to /create-organization now...');
         navigate('/create-organization', { replace: true });
       }
+    } else if (!user && !authLoading) {
+      console.log('ℹ️ No user on login page - this is normal');
     }
   }, [user, authLoading, currentOrgId, currentProjectId, processingInvite, inviteId, navigate]);
 
