@@ -246,9 +246,8 @@ class ProjectService {
       'campaigns',
       'trackingRules',
       'payoutStructures',
-      'creators',
-      'payouts',
       'stats',
+      'creators', // Delete creators last (contains nested payouts subcollection)
     ];
 
     console.log(`🗑️ Deleting ${subcollections.length} subcollections for project ${projectId}`);
@@ -256,6 +255,10 @@ class ProjectService {
     for (const subcollection of subcollections) {
       await this.deleteCollection(orgId, projectId, subcollection);
     }
+    
+    // Note: Payouts are nested under creators/{creatorId}/payouts
+    // They are automatically inaccessible once creators are deleted
+    // Firestore will eventually garbage collect orphaned subcollections
   }
 
   /**

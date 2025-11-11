@@ -477,11 +477,6 @@ class FirestoreDataService {
     try {
       console.log(`🗑️ Deleting video ${videoId}`);
       
-      // Get video reference and data FIRST (before deletion)
-      const videoRef = doc(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId);
-      const videoSnap = await getDoc(videoRef);
-      const videoData = videoSnap.exists() ? videoSnap.data() : null;
-      
       // STEP 1: Delete all snapshots for this video
       try {
         const snapshotsRef = collection(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId, 'snapshots');
@@ -499,28 +494,23 @@ class FirestoreDataService {
         console.error('⚠️ Failed to delete video snapshots (non-critical):', snapshotError);
       }
       
+      // Get video reference once for reuse
+      const videoRef = doc(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId);
+      
       // STEP 2: Delete thumbnail from Firebase Storage (if it exists)
       try {
         const FirebaseStorageService = (await import('./FirebaseStorageService')).default;
-        const platform = videoData?.platform;
-        const platformVideoId = videoData?.videoId;
+        // Get video data to pass platform info for smarter deletion
+        const videoSnap = await getDoc(videoRef);
+        const platform = videoSnap.exists() ? videoSnap.data()?.platform : undefined;
+        const platformVideoId = videoSnap.exists() ? videoSnap.data()?.videoId : undefined;
         await FirebaseStorageService.deleteVideoThumbnail(orgId, videoId, platform, platformVideoId);
       } catch (storageError) {
         // Non-critical - thumbnails might be CDN URLs that were never uploaded
         console.log('ℹ️ Thumbnail deletion handled (may not exist in Storage)');
       }
       
-      // STEP 3: Check if project stats exist (before batch operations)
-      const statsRef = doc(db, 'organizations', orgId, 'projects', projectId, 'stats', 'current');
-      let statsExist = false;
-      try {
-        const statsSnap = await getDoc(statsRef);
-        statsExist = statsSnap.exists();
-      } catch (e) {
-        console.log('ℹ️ Could not check stats existence');
-      }
-      
-      // STEP 4: Delete video document and update project stats in batch
+      // STEP 3: Delete video document
       const batch = writeBatch(db);
       batch.delete(videoRef);
       
@@ -530,25 +520,6 @@ class FirestoreDataService {
         videoCount: increment(-1),
         updatedAt: Timestamp.now()
       });
-      
-      // Update project stats to remove this video's metrics
-      if (videoData && statsExist) {
-        const views = videoData.views || 0;
-        const likes = videoData.likes || 0;
-        const comments = videoData.comments || 0;
-        const shares = videoData.shares || 0;
-        
-        batch.update(statsRef, {
-          totalViews: increment(-views),
-          totalLikes: increment(-likes),
-          totalComments: increment(-comments),
-          totalShares: increment(-shares),
-          videoCount: increment(-1),
-          lastUpdated: Timestamp.now()
-        });
-        
-        console.log(`📊 Decrementing project stats: -${views} views, -${likes} likes, -${comments} comments, -${shares} shares`);
-      }
       
       await batch.commit();
       

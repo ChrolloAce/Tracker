@@ -94,8 +94,8 @@ export const BlurEmptyState: React.FC<BlurEmptyStateProps> = ({
                       ${action.disabled 
                         ? 'bg-gray-700/50 text-gray-400 border border-gray-700 cursor-not-allowed opacity-60' 
                         : `transform hover:scale-105 active:scale-95 ${action.primary 
-                          ? 'bg-white/10 hover:bg-white/15 text-white border border-white/20 hover:border-white/30' 
-                          : 'bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 hover:border-white/20'
+                        ? 'bg-white/10 hover:bg-white/15 text-white border border-white/20 hover:border-white/30' 
+                        : 'bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 hover:border-white/20'
                         }`
                       }
                     `}

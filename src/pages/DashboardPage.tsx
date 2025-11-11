@@ -3800,10 +3800,10 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           <span className="absolute -top-12 right-0 bg-gray-900 text-white text-sm px-3 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
             {isDemoMode ? "Can't add - not your organization" : (
               <>
-                {(activeTab === 'dashboard' || activeTab === 'accounts' || activeTab === 'videos') && 'Track Content'}
-                {activeTab === 'analytics' && 'Create Link'}
-                {activeTab === 'campaigns' && 'Create Campaign'}
-                {activeTab === 'team' && 'Invite Team Member'}
+            {(activeTab === 'dashboard' || activeTab === 'accounts' || activeTab === 'videos') && 'Track Content'}
+            {activeTab === 'analytics' && 'Create Link'}
+            {activeTab === 'campaigns' && 'Create Campaign'}
+            {activeTab === 'team' && 'Invite Team Member'}
               </>
             )}
           </span>

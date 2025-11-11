@@ -327,21 +327,21 @@ class OrganizationService {
   }
 
   /**
-   * Remove member from organization (permanently deletes the member document)
+   * Remove member from organization
    */
   static async removeMember(orgId: string, userId: string): Promise<void> {
     const batch = writeBatch(db);
     
-    // Delete member document (not just mark as removed)
+    // Update member status
     const memberRef = doc(db, 'organizations', orgId, 'members', userId);
-    batch.delete(memberRef);
+    batch.update(memberRef, { status: 'removed' });
     
     // Decrement member count
     const orgRef = doc(db, 'organizations', orgId);
     batch.update(orgRef, { memberCount: increment(-1) });
     
     await batch.commit();
-    console.log(`✅ Permanently deleted member ${userId} from organization ${orgId}`);
+    console.log(`✅ Removed member ${userId} from organization ${orgId}`);
   }
 
   /**
