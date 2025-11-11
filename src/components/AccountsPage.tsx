@@ -1400,6 +1400,12 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         console.log(`🔄 [BACKGROUND] Processing deletion for @${accountUsername}...`);
         await AccountTrackingServiceFirebase.removeAccount(currentOrgId, currentProjectId, accountId);
         console.log(`✅ [BACKGROUND] Account @${accountUsername} fully deleted from database`);
+        
+        // ✅ STEP 3: Reload page data to ensure everything is in sync
+        console.log('🔄 [BACKGROUND] Reloading page to refresh all data...');
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000); // Brief delay to ensure deletion is complete
     } catch (error) {
         console.error('❌ [BACKGROUND] Failed to complete account deletion:', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -1407,6 +1413,11 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         // Show error notification but DON'T restore the account to UI
         // (it's likely partially deleted and would cause issues)
         alert(`Account was removed from view but background cleanup encountered an error:\n${errorMessage}\n\nThe account will not reappear. Check console for details.`);
+        
+        // Still reload to ensure UI is in sync
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
     }
     })();
     
@@ -3396,6 +3407,10 @@ const AccountsPage = forwardRef<AccountsPageRef, AccountsPageProps>(
         onClose={() => {
           setIsVideoAnalyticsModalOpen(false);
           setSelectedVideoForAnalytics(null);
+        }}
+        onDelete={() => {
+          console.log('🔄 Video deleted - reloading page data...');
+          window.location.reload();
         }}
         totalCreatorVideos={
           selectedVideoForAnalytics

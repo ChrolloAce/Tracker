@@ -12,6 +12,7 @@ interface VideoAnalyticsModalProps {
   video: VideoSubmission | null;
   isOpen: boolean;
   onClose: () => void;
+  onDelete?: () => void; // Callback to refresh parent data after deletion
   totalCreatorVideos?: number; // Total number of videos from this creator
   orgId?: string | null; // Organization ID for deleting tracked videos
   projectId?: string | null; // Project ID for deleting tracked videos
@@ -29,7 +30,7 @@ interface ChartDataPoint {
   snapshotIndex: number;
 }
 
-const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose, totalCreatorVideos, orgId, projectId }) => {
+const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen, onClose, onDelete, totalCreatorVideos, orgId, projectId }) => {
   // Tooltip state for smooth custom tooltips
   const [tooltipData, setTooltipData] = useState<{ 
     x: number; 
@@ -558,10 +559,20 @@ const VideoAnalyticsModal: React.FC<VideoAnalyticsModalProps> = ({ video, isOpen
           await FirebaseService.deleteVideo(videoId);
           console.log('✅ [BACKGROUND] Successfully deleted user video');
         }
+        
+        // ✅ Call parent refresh callback to reload data
+        if (onDelete) {
+          console.log('🔄 [BACKGROUND] Triggering parent data refresh...');
+          onDelete();
+        }
       } catch (error) {
         console.error('❌ [BACKGROUND] Failed to delete video:', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         alert(`Video was removed from view but background cleanup encountered an error:\n${errorMessage}\n\nThe video will not reappear.`);
+        // Still trigger refresh even on error (video might be partially deleted)
+        if (onDelete) {
+          onDelete();
+        }
       }
     })();
   };

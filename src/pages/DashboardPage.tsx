@@ -1416,6 +1416,12 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     setSelectedVideoForAnalytics(null);
   }, []);
 
+  const handleVideoDeleted = useCallback(() => {
+    console.log('🔄 Video deleted - reloading page data...');
+    // Reload the entire page to refresh all data
+    window.location.reload();
+  }, []);
+
   // Trigger manual video refresh
   const handleManualRefresh = useCallback(async () => {
     if (!currentOrgId || !currentProjectId || isRefreshing) return;
@@ -3233,6 +3239,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           video={selectedVideoForAnalytics}
           isOpen={isAnalyticsModalOpen}
           onClose={handleCloseAnalyticsModal}
+          onDelete={handleVideoDeleted}
           totalCreatorVideos={totalCreatorVideos}
           orgId={currentOrgId}
           projectId={currentProjectId}
