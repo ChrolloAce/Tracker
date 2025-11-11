@@ -477,6 +477,12 @@ class FirestoreDataService {
     try {
       console.log(`🗑️ Deleting video ${videoId}`);
       
+      // Get video data before deletion (needed for tracking deleted video ID)
+      const videoRef = doc(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId);
+      const videoSnap = await getDoc(videoRef);
+      const platform = videoSnap.exists() ? videoSnap.data()?.platform : undefined;
+      const platformVideoId = videoSnap.exists() ? videoSnap.data()?.videoId : undefined;
+      
       // STEP 1: Delete all snapshots for this video
       try {
         const snapshotsRef = collection(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId, 'snapshots');
@@ -494,23 +500,37 @@ class FirestoreDataService {
         console.error('⚠️ Failed to delete video snapshots (non-critical):', snapshotError);
       }
       
-      // Get video reference once for reuse
-      const videoRef = doc(db, 'organizations', orgId, 'projects', projectId, 'videos', videoId);
-      
       // STEP 2: Delete thumbnail from Firebase Storage (if it exists)
       try {
         const FirebaseStorageService = (await import('./FirebaseStorageService')).default;
-        // Get video data to pass platform info for smarter deletion
-        const videoSnap = await getDoc(videoRef);
-        const platform = videoSnap.exists() ? videoSnap.data()?.platform : undefined;
-        const platformVideoId = videoSnap.exists() ? videoSnap.data()?.videoId : undefined;
         await FirebaseStorageService.deleteVideoThumbnail(orgId, videoId, platform, platformVideoId);
       } catch (storageError) {
         // Non-critical - thumbnails might be CDN URLs that were never uploaded
         console.log('ℹ️ Thumbnail deletion handled (may not exist in Storage)');
       }
       
-      // STEP 3: Delete video document
+      // STEP 3: Add to deleted videos blacklist (prevents cron from re-adding)
+      if (platformVideoId) {
+        try {
+          const deletedVideoRef = doc(
+            db, 
+            'organizations', orgId, 
+            'projects', projectId, 
+            'deletedVideos', platformVideoId
+          );
+          await setDoc(deletedVideoRef, {
+            platformVideoId: platformVideoId,
+            platform: platform || 'unknown',
+            deletedAt: Timestamp.now(),
+            originalVideoId: videoId
+          });
+          console.log(`✅ Added video ${platformVideoId} to deletion blacklist`);
+        } catch (blacklistError) {
+          console.error('⚠️ Failed to add to deletion blacklist (non-critical):', blacklistError);
+        }
+      }
+      
+      // STEP 4: Delete video document
       const batch = writeBatch(db);
       batch.delete(videoRef);
       
@@ -532,7 +552,7 @@ class FirestoreDataService {
         console.error('⚠️ Failed to decrement video usage counter (non-critical):', error);
       }
       
-      console.log(`✅ Deleted video ${videoId}`);
+      console.log(`✅ Deleted video ${videoId} and added to blacklist`);
     } catch (error) {
       console.error('❌ Failed to delete video:', error);
       throw error;

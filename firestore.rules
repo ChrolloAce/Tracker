@@ -476,6 +476,18 @@ service cloud.firestore {
           allow write: if canManageOrg(orgId);
         }
         
+        // ==================== DELETED VIDEOS BLACKLIST ====================
+        
+        match /deletedVideos/{platformVideoId} {
+          // All org members can read blacklist (for UI checks)
+          allow read: if canReadOrg(orgId);
+          
+          // Admins can write to blacklist (when deleting videos)
+          // Also allow system/cron to check blacklist
+          allow create: if canManageOrg(orgId);
+          allow delete: if canManageOrg(orgId);
+        }
+        
         // ==================== PROJECT CREATOR PROFILES ====================
         
         match /creators/{creatorId} {

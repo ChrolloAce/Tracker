@@ -1404,6 +1404,28 @@ async function saveVideosToFirestore(
 
     if (!platformVideoId) continue;
 
+    // ⚫ NEW: Check if video is blacklisted (user deleted it)
+    try {
+      const deletedVideoRef = db
+        .collection('organizations')
+        .doc(orgId)
+        .collection('projects')
+        .doc(projectId)
+        .collection('deletedVideos')
+        .doc(platformVideoId);
+      
+      const deletedVideoSnap = await deletedVideoRef.get();
+      
+      if (deletedVideoSnap.exists()) {
+        console.log(`    🚫 Skipping blacklisted video ${platformVideoId} (user deleted it)`);
+        skippedCount++;
+        continue;
+      }
+    } catch (blacklistError) {
+      // Non-critical - proceed if blacklist check fails
+      console.warn(`    ⚠️ Failed to check deletion blacklist for ${platformVideoId}:`, blacklistError);
+    }
+
     // Query for the video by its videoId field (not document ID)
     const videosCollectionRef = db
       .collection('organizations')
