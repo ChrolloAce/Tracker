@@ -6,7 +6,7 @@ import vtLogo from '/vtlogo.png';
 const LAUNCH_DATE = new Date('2025-11-03T17:00:00').getTime(); // Nov 3, 2025 at 5:00 PM (EST)
 const BYPASS_PIN = '9434'; // Change this to your secure PIN
 const BYPASS_KEY = 'prelaunch_bypass_v2'; // Changed key to force reset
-const FORCE_LOCK = true; // ALWAYS show cover, ignore date completely
+const FORCE_LOCK = false; // ALWAYS show cover, ignore date completely
 
 interface PreLaunchCoverProps {
   children: React.ReactNode;

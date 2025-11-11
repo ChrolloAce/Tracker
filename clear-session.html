@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Session</title>
+</head>
+<body>
+    <h1>Clearing session...</h1>
+    <script>
+        // Clear all localStorage
+        localStorage.clear();
+        // Clear all sessionStorage
+        sessionStorage.clear();
+        // Clear all cookies
+        document.cookie.split(";").forEach(function(c) { 
+            document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+        });
+        
+        setTimeout(() => {
+            document.body.innerHTML = '<h1 style="color: green;">✅ Session cleared!</h1><p>You can close this tab now and refresh localhost:3000</p>';
+        }, 1000);
+    </script>
+</body>
+</html>
