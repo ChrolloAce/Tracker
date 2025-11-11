@@ -93,12 +93,15 @@ const LoginPage: React.FC = () => {
     setError('');
     setSigningIn(true);
     try {
+      console.log('🔵 Initiating Google sign-in...');
       await signInWithGoogle();
-      // AuthContext will load org/project data automatically
-      // useEffect above will handle navigation once loading is complete
-      console.log('✅ Google sign-in successful, waiting for AuthContext to load...');
+      // User will be redirected to Google, then back to the app
+      // AuthContext will handle the redirect result
+      console.log('✅ Google sign-in redirect initiated...');
     } catch (err: any) {
-      setError(err.message || 'Google sign-in failed');
+      console.error('❌ Google sign-in error:', err);
+      const errorMessage = err.message || 'Google sign-in failed';
+      setError(errorMessage);
       setSigningIn(false);
     }
   };

@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   User,
-  signInWithPopup,
+  signInWithRedirect,
   signOut,
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword
+  createUserWithEmailAndPassword,
+  getRedirectResult
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
@@ -43,6 +44,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+
+  // Handle redirect result from Google sign-in
+  useEffect(() => {
+    const handleRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          console.log('✅ Google sign-in redirect successful:', result.user.email);
+        }
+      } catch (error: any) {
+        console.error('❌ Google sign-in redirect failed:', error);
+        // Show error to user
+        if (error.code === 'auth/popup-blocked') {
+          alert('Popup was blocked. Please allow popups for this site.');
+        } else if (error.code === 'auth/unauthorized-domain') {
+          alert('This domain is not authorized for Google sign-in. Please contact support.');
+        } else {
+          console.error('Sign-in error:', error.message);
+        }
+      }
+    };
+
+    handleRedirectResult();
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -212,9 +237,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signInWithGoogle = async () => {
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error('Failed to sign in with Google:', error);
+      console.log('🔄 Redirecting to Google sign-in...');
+      await signInWithRedirect(auth, provider);
+      // User will be redirected, so no need to handle result here
+    } catch (error: any) {
+      console.error('Failed to initiate Google sign-in:', error);
+      // Show user-friendly error
+      if (error.code === 'auth/unauthorized-domain') {
+        alert('Error: This domain is not authorized. Please contact support.');
+      } else {
+        alert(`Sign-in failed: ${error.message}`);
+      }
       throw error;
     }
   };
