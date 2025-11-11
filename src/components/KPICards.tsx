@@ -40,26 +40,60 @@ const AnimatedNumber: React.FC<{ value: string | number; className?: string }> =
   const prevValueRef = useRef(value);
 
   useEffect(() => {
-    // If value is a string with special characters (like $, %, K, M), just show it
-    if (typeof value === 'string' && !/^\d+$/.test(value)) {
-      setDisplayValue(value);
-      return;
-    }
+    const parseFormattedNumber = (val: string | number): { numeric: number; suffix: string; prefix: string } => {
+      if (typeof val === 'number') return { numeric: val, suffix: '', prefix: '' };
+      
+      const str = String(val).trim();
+      
+      // Handle percentage
+      if (str.includes('%')) {
+        const num = parseFloat(str.replace(/[^0-9.-]/g, ''));
+        return { numeric: isNaN(num) ? 0 : num, suffix: '%', prefix: '' };
+      }
+      
+      // Handle currency
+      if (str.startsWith('$')) {
+        const cleaned = str.substring(1);
+        if (cleaned.endsWith('K')) {
+          const num = parseFloat(cleaned.replace('K', ''));
+          return { numeric: isNaN(num) ? 0 : num, suffix: 'K', prefix: '$' };
+        }
+        if (cleaned.endsWith('M')) {
+          const num = parseFloat(cleaned.replace('M', ''));
+          return { numeric: isNaN(num) ? 0 : num, suffix: 'M', prefix: '$' };
+        }
+        const num = parseFloat(cleaned);
+        return { numeric: isNaN(num) ? 0 : num, suffix: '', prefix: '$' };
+      }
+      
+      // Handle K/M suffixes
+      if (str.endsWith('K')) {
+        const num = parseFloat(str.replace('K', ''));
+        return { numeric: isNaN(num) ? 0 : num, suffix: 'K', prefix: '' };
+      }
+      if (str.endsWith('M')) {
+        const num = parseFloat(str.replace('M', ''));
+        return { numeric: isNaN(num) ? 0 : num, suffix: 'M', prefix: '' };
+      }
+      
+      // Plain number
+      const num = parseFloat(str.replace(/[^0-9.-]/g, ''));
+      return { numeric: isNaN(num) ? 0 : num, suffix: '', prefix: '' };
+    };
 
-    // Parse numeric value
-    const numericValue = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^0-9.-]/g, ''));
-    const prevNumeric = typeof prevValueRef.current === 'number' ? prevValueRef.current : parseFloat(String(prevValueRef.current).replace(/[^0-9.-]/g, ''));
+    const current = parseFormattedNumber(value);
+    const previous = parseFormattedNumber(prevValueRef.current);
 
-    if (isNaN(numericValue) || isNaN(prevNumeric) || numericValue === prevNumeric) {
+    // If same value, no animation needed
+    if (current.numeric === previous.numeric && current.suffix === previous.suffix && current.prefix === previous.prefix) {
       setDisplayValue(value);
-      prevValueRef.current = value;
       return;
     }
 
     // Animate the number change
-    const duration = 400; // ms
-    const steps = 20;
-    const stepValue = (numericValue - prevNumeric) / steps;
+    const duration = 300; // ms - faster animation
+    const steps = 15; // fewer steps for snappier feel
+    const stepValue = (current.numeric - previous.numeric) / steps;
     const stepDuration = duration / steps;
     let currentStep = 0;
 
@@ -70,8 +104,9 @@ const AnimatedNumber: React.FC<{ value: string | number; className?: string }> =
         clearInterval(timer);
         prevValueRef.current = value;
       } else {
-        const currentValue = prevNumeric + (stepValue * currentStep);
-        setDisplayValue(typeof value === 'string' ? String(Math.round(currentValue)) : Math.round(currentValue));
+        const interpolated = previous.numeric + (stepValue * currentStep);
+        const rounded = current.suffix ? interpolated.toFixed(1) : Math.round(interpolated);
+        setDisplayValue(`${current.prefix}${rounded}${current.suffix}`);
       }
     }, stepDuration);
 

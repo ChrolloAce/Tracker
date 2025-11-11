@@ -60,7 +60,7 @@ import { RevenueMetrics, RevenueIntegration } from '../types/revenue';
 import { cssVariables } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { useDemoContext } from './DemoPage';
-import { Timestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit, doc, getDoc, setDoc } from 'firebase/firestore';
+import { Timestamp, collection, getDocs, onSnapshot, query, where, orderBy, doc, getDoc, setDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { db, auth } from '../services/firebase';
 import { fixVideoPlatforms } from '../services/FixVideoPlatform';
@@ -816,19 +816,15 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       
     try {
       // PHASE 1: Load ALL top-level collections in parallel
-      const [accountsSnapshot, videosSnapshot, rulesSnapshot, allLinks, allClicks, allIntegrations, userPrefsDoc] = await Promise.all([
+      const [accountsSnapshot, videoDocs, rulesSnapshot, allLinks, allClicks, allIntegrations, userPrefsDoc] = await Promise.all([
         // 1. Accounts
         getDocs(query(
           collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackedAccounts'),
           orderBy('dateAdded', 'desc')
         )),
         
-        // 2. Videos  
-        getDocs(query(
-          collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'videos'),
-          orderBy('dateAdded', 'desc'),
-          limit(1000)
-        )),
+        // 2. Videos (with blacklist filtering - returns VideoDoc[] directly)
+        FirestoreDataService.getVideos(currentOrgId, currentProjectId, { limitCount: 1000 }),
         
         // 3. Rules
         getDocs(collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'trackingRules')),
@@ -856,16 +852,16 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       
       
       // PHASE 2: Load video snapshots (depends on videoIds from phase 1)
-      const videoIds = videosSnapshot.docs.map(doc => doc.id);
+      const videoIds = videoDocs.map(v => v.id);
       const snapshotsMap = await FirestoreDataService.getVideoSnapshotsBatch(
         currentOrgId, 
         currentProjectId, 
         videoIds
       );
       
-      // Process videos
-      const allSubmissions: VideoSubmission[] = videosSnapshot.docs.map(doc => {
-        const video = { id: doc.id, ...doc.data() } as any;
+      // Process videos (videoDocs already filtered for deleted videos)
+      const allSubmissions: VideoSubmission[] = videoDocs.map(videoDoc => {
+        const video = videoDoc as any;
         const account = video.trackedAccountId ? accountsMap.get(video.trackedAccountId) : null;
         const snapshots = snapshotsMap.get(video.id) || [];
         
@@ -1036,20 +1032,18 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
       // If syncing count decreased (someone finished), reload videos
       if (previousSyncingCount > 0 && currentSyncingCount < previousSyncingCount) {
         
-        // Reload videos
+        // Reload videos (with blacklist filtering)
         try {
-          const videosRef = collection(db, 'organizations', currentOrgId, 'projects', currentProjectId, 'videos');
-          const videosQuery = query(videosRef, orderBy('dateAdded', 'desc'), limit(1000));
-          const videosSnapshot = await getDocs(videosQuery);
+          const videoDocs = await FirestoreDataService.getVideos(currentOrgId, currentProjectId, { limitCount: 1000 });
           
           const accounts = await FirestoreDataService.getTrackedAccounts(currentOrgId, currentProjectId);
           const accountsMap = new Map(accounts.map(acc => [acc.id, acc]));
           
-          const videoIds = videosSnapshot.docs.map(doc => doc.id);
+          const videoIds = videoDocs.map(v => v.id);
           const snapshotsMap = await FirestoreDataService.getVideoSnapshotsBatch(currentOrgId, currentProjectId, videoIds);
           
-          const allSubmissions: VideoSubmission[] = videosSnapshot.docs.map(doc => {
-            const video = { id: doc.id, ...doc.data() } as any;
+          const allSubmissions: VideoSubmission[] = videoDocs.map(videoDoc => {
+            const video = videoDoc as any;
             const account = video.trackedAccountId ? accountsMap.get(video.trackedAccountId) : null;
             const snapshots = snapshotsMap.get(video.id) || [];
             
