@@ -33,18 +33,9 @@ const LoginPage: React.FC = () => {
     
     // If we just completed a Google redirect, show loading screen
     if (justRedirected === 'true') {
-      console.log('🔄 Just returned from Google - showing loading screen');
       setIsProcessingAuth(true);
-      
-      // If user exists and auth is done loading, we're about to navigate
-      if (user && !authLoading) {
-        console.log('🔄 Auth complete, processing navigation...');
-        // Keep showing loading screen until we navigate
-        // The navigation will clear the flag
-      }
     } else if (user && authLoading) {
       // Normal case: user exists but still loading
-      console.log('🔄 Processing authentication...');
       setIsProcessingAuth(true);
     } else if (!user && !authLoading) {
       // No user and not loading - hide processing screen
@@ -55,45 +46,25 @@ const LoginPage: React.FC = () => {
   // Handle navigation after successful authentication (non-invite flow)
   useEffect(() => {
     // Skip if processing invitation or still loading auth
-    if (processingInvite || inviteId) {
-      console.log('⏳ Skipping navigation - processing invite or invite flow');
-      return;
-    }
+    if (processingInvite || inviteId) return;
     
     // Wait for auth to finish loading
-    if (authLoading) {
-      console.log('⏳ Auth still loading...');
-      return;
-    }
+    if (authLoading) return;
     
     // If user is authenticated and auth has finished loading
     if (user && !authLoading) {
-      console.log('✅ User authenticated on login page, checking org/project status...', {
-        userId: user.uid,
-        email: user.email,
-        currentOrgId,
-        currentProjectId,
-        hasOrg: !!currentOrgId,
-        hasProject: !!currentProjectId
-      });
       
       // Check if user has organization and project
       if (currentOrgId && currentProjectId) {
-        console.log('✅ User has org and project - navigating to dashboard');
         sessionStorage.removeItem('justCompletedGoogleRedirect');
         navigate('/dashboard', { replace: true });
       } else if (currentOrgId && !currentProjectId) {
-        console.log('📝 User has org but no project - navigating to create project');
         sessionStorage.removeItem('justCompletedGoogleRedirect');
         navigate('/create-project', { replace: true });
       } else {
-        console.log('📝 User has no org - navigating to create organization');
-        console.log('🚀 Navigating to /create-organization now...');
         sessionStorage.removeItem('justCompletedGoogleRedirect');
         navigate('/create-organization', { replace: true });
       }
-    } else if (!user && !authLoading) {
-      console.log('ℹ️ No user on login page - this is normal');
     }
   }, [user, authLoading, currentOrgId, currentProjectId, processingInvite, inviteId, navigate]);
 
@@ -137,14 +108,11 @@ const LoginPage: React.FC = () => {
     setSigningIn(true);
     setIsProcessingAuth(true);
     try {
-      console.log('🔵 Initiating Google sign-in...');
       await signInWithGoogle();
       // User will be redirected to Google, then back to the app
       // AuthContext will handle the redirect result
-      console.log('✅ Google sign-in redirect initiated...');
       // Keep loading state - don't set to false as user is being redirected
     } catch (err: any) {
-      console.error('❌ Google sign-in error:', err);
       const errorMessage = err.message || 'Google sign-in failed';
       setError(errorMessage);
       setSigningIn(false);
@@ -155,7 +123,6 @@ const LoginPage: React.FC = () => {
 
   // Show loading state if processing invitation
   if (processingInvite) {
-    console.log('🔄 Showing loading screen:', { processingInvite });
     return (
       <div className="min-h-screen bg-[#FAFAFB] flex items-center justify-center p-4 sm:p-6 lg:p-8">
         <div className="max-w-md w-full bg-white rounded-2xl sm:rounded-3xl shadow-2xl p-6 sm:p-8 lg:p-12 text-center">
