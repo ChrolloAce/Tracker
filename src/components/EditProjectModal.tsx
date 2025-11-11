@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Edit3, Upload } from 'lucide-react';
+import { X, Edit3, Upload, Trash2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import ProjectService from '../services/ProjectService';
 import FirebaseStorageService from '../services/FirebaseStorageService';
 import { Project } from '../types/projects';
@@ -14,13 +15,17 @@ interface EditProjectModalProps {
 }
 
 const EditProjectModal: React.FC<EditProjectModalProps> = ({ isOpen, onClose, project, onSuccess }) => {
-  const { currentOrgId } = useAuth();
+  const { currentOrgId, user } = useAuth();
+  const navigate = useNavigate();
   const [name, setName] = useState(project.name);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(project.imageUrl || null);
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -110,6 +115,42 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ isOpen, onClose, pr
       setError(error.message || 'Failed to update project');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!currentOrgId || !user) {
+      setError('Not authenticated');
+      return;
+    }
+
+    if (deleteConfirmText !== project.name) {
+      setError('Project name does not match');
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      setError(null);
+
+      console.log(`🗑️ Deleting project "${project.name}"...`);
+      
+      await ProjectService.deleteProject(currentOrgId, project.id, user.uid);
+      
+      console.log('✅ Project deleted successfully');
+      
+      // Close modal
+      onClose();
+      
+      // Navigate to dashboard and reload
+      navigate('/dashboard');
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    } catch (error: any) {
+      console.error('Failed to delete project:', error);
+      setError(error.message || 'Failed to delete project');
+      setDeleting(false);
     }
   };
 
@@ -210,19 +251,79 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({ isOpen, onClose, pr
             )}
           </div>
 
+          {/* Danger Zone - Delete Project */}
+          <div className="border-t border-red-200 dark:border-red-900/30 pt-6 mt-6">
+            <div className="flex items-start space-x-3 mb-4">
+              <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-semibold text-red-600 dark:text-red-400">Danger Zone</h3>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  Deleting this project will permanently remove all data including tracked accounts, videos, links, and campaigns.
+                </p>
+              </div>
+            </div>
+
+            {!showDeleteConfirm ? (
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-lg transition-colors"
+                disabled={loading || deleting}
+              >
+                <Trash2 className="w-4 h-4 inline-block mr-2" />
+                Delete Project
+              </button>
+            ) : (
+              <div className="space-y-3 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded-lg">
+                <p className="text-sm font-medium text-red-800 dark:text-red-300">
+                  Type "{project.name}" to confirm deletion:
+                </p>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder={project.name}
+                  className="w-full px-3 py-2 text-sm border border-red-300 dark:border-red-800 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  disabled={deleting}
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDeleteConfirm(false);
+                      setDeleteConfirmText('');
+                    }}
+                    className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                    disabled={deleting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    disabled={deleteConfirmText !== project.name || deleting}
+                    className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-lg transition-colors"
+                  >
+                    {deleting ? 'Deleting...' : 'Permanently Delete'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Actions */}
-          <div className="flex items-center justify-end space-x-3 pt-4">
+          <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-800 mt-4">
             <button
               type="button"
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-              disabled={loading}
+              disabled={loading || deleting}
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={loading || uploadingImage || !name.trim()}
+              disabled={loading || uploadingImage || deleting || !name.trim()}
               className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-lg transition-colors"
             >
               {uploadingImage ? 'Uploading...' : loading ? 'Saving...' : 'Save Changes'}

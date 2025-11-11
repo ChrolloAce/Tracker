@@ -191,11 +191,11 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
         )}
 
       {/* Edit Project Modal */}
-      {editingProject && (
-        <EditProjectModal
+        {editingProject && (
+          <EditProjectModal
           isOpen={true}
           onClose={() => setEditingProject(null)}
-          project={editingProject}
+            project={editingProject}
           onSuccess={handleEditSuccess}
         />
       )}

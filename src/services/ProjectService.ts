@@ -6,6 +6,7 @@ import {
   getDocs,
   setDoc,
   updateDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -204,17 +205,98 @@ class ProjectService {
   }
 
   /**
-   * Delete a project permanently (use with caution!)
+   * Delete a project permanently with all its data (use with caution!)
    */
-  static async deleteProject(orgId: string, projectId: string): Promise<void> {
-    // This should cascade delete all subcollections
-    // In production, use a Cloud Function for this
+  static async deleteProject(orgId: string, projectId: string, _userId: string): Promise<void> {
+    console.log(`🗑️ Starting deletion of project ${projectId}`);
     
-    // TODO: Implement cascading delete via Cloud Function
-    // For now, just archive it
-    await this.archiveProject(orgId, projectId, 'system');
+    try {
+      // Get current org data to update project count
+      const orgRef = doc(db, 'organizations', orgId);
+      const orgDoc = await getDoc(orgRef);
+      const currentProjectCount = orgDoc.data()?.projectCount || 0;
+      
+      // 1. Delete all subcollections
+      await this.deleteProjectSubcollections(orgId, projectId);
+      
+      // 2. Delete the project document itself
+      const projectRef = doc(db, 'organizations', orgId, 'projects', projectId);
+      await deleteDoc(projectRef);
+      
+      // 3. Update org project count
+      await updateDoc(orgRef, {
+        projectCount: Math.max(0, currentProjectCount - 1),
+      });
+      
+      console.log(`✅ Successfully deleted project ${projectId} and all its data`);
+    } catch (error) {
+      console.error(`❌ Failed to delete project ${projectId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete all subcollections within a project
+   */
+  private static async deleteProjectSubcollections(orgId: string, projectId: string): Promise<void> {
+    const subcollections = [
+      'trackedAccounts',
+      'videos',
+      'links',
+      'campaigns',
+      'trackingRules',
+      'payoutStructures',
+      'creators',
+      'payouts',
+      'stats',
+    ];
+
+    console.log(`🗑️ Deleting ${subcollections.length} subcollections for project ${projectId}`);
+
+    for (const subcollection of subcollections) {
+      await this.deleteCollection(orgId, projectId, subcollection);
+    }
+  }
+
+  /**
+   * Delete an entire collection
+   */
+  private static async deleteCollection(orgId: string, projectId: string, collectionName: string): Promise<void> {
+    const collectionRef = collection(db, 'organizations', orgId, 'projects', projectId, collectionName);
+    const snapshot = await getDocs(collectionRef);
     
-    console.warn(`⚠️ Project ${projectId} archived (not permanently deleted)`);
+    if (snapshot.empty) {
+      console.log(`✓ ${collectionName}: empty, skipping`);
+      return;
+    }
+
+    console.log(`🗑️ Deleting ${snapshot.size} documents from ${collectionName}`);
+
+    // Batch delete documents (Firestore limit: 500 per batch)
+    const batchSize = 500;
+    let batch = writeBatch(db);
+    let operationCount = 0;
+
+    for (const docSnapshot of snapshot.docs) {
+      batch.delete(docSnapshot.ref);
+      operationCount++;
+
+      // Commit batch every 500 operations
+      if (operationCount >= batchSize) {
+        await batch.commit();
+        batch = writeBatch(db);
+        operationCount = 0;
+        console.log(`  ✓ Committed batch of ${batchSize} deletions`);
+      }
+    }
+
+    // Commit remaining operations
+    if (operationCount > 0) {
+      await batch.commit();
+      console.log(`  ✓ Committed final batch of ${operationCount} deletions`);
+    }
+
+    console.log(`✅ Deleted ${snapshot.size} documents from ${collectionName}`);
   }
 
   /**
