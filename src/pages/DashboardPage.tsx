@@ -1537,8 +1537,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
         
         // Trigger immediate processing (like accounts) with authentication
-        import('./services/AuthenticatedApiService').then(module => {
-          module.default.processVideo(videoId, currentOrgId, currentProjectId).catch(err => {
+        import('../services/AuthenticatedApiService').then(module => {
+          module.default.processVideo(videoId, currentOrgId, currentProjectId).catch((err: any) => {
             console.error('Failed to trigger immediate processing:', err);
             // Non-critical - cron will pick it up
           });
