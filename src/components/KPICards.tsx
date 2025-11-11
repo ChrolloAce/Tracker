@@ -34,10 +34,12 @@ import DataAggregationService, { IntervalType, TimeInterval } from '../services/
 import { useNavigate } from 'react-router-dom';
 import { HeicImage } from './HeicImage';
 
-// Smooth number animation component
-const AnimatedNumber: React.FC<{ value: string | number; className?: string }> = ({ value, className }) => {
+// Smooth number animation component with debouncing
+const AnimatedNumber: React.FC<{ value: string | number; className?: string }> = React.memo(({ value, className }) => {
   const [displayValue, setDisplayValue] = useState(value);
   const prevValueRef = useRef(value);
+  const animationRef = useRef<NodeJS.Timeout | null>(null);
+  const isAnimatingRef = useRef(false);
 
   useEffect(() => {
     const parseFormattedNumber = (val: string | number): { numeric: number; suffix: string; prefix: string } => {
@@ -90,19 +92,39 @@ const AnimatedNumber: React.FC<{ value: string | number; className?: string }> =
       return;
     }
 
-    // Animate the number change
+    // Cancel any ongoing animation
+    if (animationRef.current) {
+      clearInterval(animationRef.current);
+      animationRef.current = null;
+    }
+
+    // If we're changing the value WHILE animating, skip to final value immediately
+    // This prevents the "pause" effect when data updates rapidly
+    if (isAnimatingRef.current) {
+      setDisplayValue(value);
+      prevValueRef.current = value;
+      isAnimatingRef.current = false;
+      return;
+    }
+
+    // Start new animation
+    isAnimatingRef.current = true;
     const duration = 300; // ms - faster animation
     const steps = 15; // fewer steps for snappier feel
     const stepValue = (current.numeric - previous.numeric) / steps;
     const stepDuration = duration / steps;
     let currentStep = 0;
 
-    const timer = setInterval(() => {
+    animationRef.current = setInterval(() => {
       currentStep++;
       if (currentStep >= steps) {
         setDisplayValue(value);
-        clearInterval(timer);
+        if (animationRef.current) {
+          clearInterval(animationRef.current);
+          animationRef.current = null;
+        }
         prevValueRef.current = value;
+        isAnimatingRef.current = false;
       } else {
         const interpolated = previous.numeric + (stepValue * currentStep);
         const rounded = current.suffix ? interpolated.toFixed(1) : Math.round(interpolated);
@@ -110,11 +132,17 @@ const AnimatedNumber: React.FC<{ value: string | number; className?: string }> =
       }
     }, stepDuration);
 
-    return () => clearInterval(timer);
+    return () => {
+      if (animationRef.current) {
+        clearInterval(animationRef.current);
+        animationRef.current = null;
+      }
+      isAnimatingRef.current = false;
+    };
   }, [value]);
 
   return <span className={className}>{displayValue}</span>;
-};
+});
 
 interface KPICardsProps {
   submissions: VideoSubmission[]; // Filtered submissions for current period

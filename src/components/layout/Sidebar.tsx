@@ -255,6 +255,26 @@ const Sidebar: React.FC<SidebarProps> = ({
     const Icon = item.icon;
     const isActive = location.pathname === item.href || location.pathname.startsWith((item.href || '') + '/');
     
+    // Handle items with onClick (like Support button)
+    if (item.onClick) {
+      return (
+        <button
+          onClick={item.onClick}
+          className={clsx(
+            'w-full flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group',
+            'text-white/60 hover:bg-white/5 hover:text-white/80'
+          )}
+        >
+          <Icon 
+            className="flex-shrink-0 w-5 h-5 text-white/60 group-hover:text-white/80 transition-colors duration-200"
+          />
+          {!isCollapsed && (
+            <span className="ml-3 truncate">{item.label}</span>
+          )}
+        </button>
+      );
+    }
+    
     if (!item.href) return null;
     
     return (
