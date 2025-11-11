@@ -29,15 +29,25 @@ const LoginPage: React.FC = () => {
 
   // Check if we just came back from Google redirect
   useEffect(() => {
-    // If user exists and we're still loading auth state, show processing screen
-    if (user && authLoading) {
+    const justRedirected = sessionStorage.getItem('justCompletedGoogleRedirect');
+    
+    // If we just completed a Google redirect, show loading screen
+    if (justRedirected === 'true') {
+      console.log('🔄 Just returned from Google - showing loading screen');
+      setIsProcessingAuth(true);
+      
+      // If user exists and auth is done loading, we're about to navigate
+      if (user && !authLoading) {
+        console.log('🔄 Auth complete, processing navigation...');
+        // Keep showing loading screen until we navigate
+        // The navigation will clear the flag
+      }
+    } else if (user && authLoading) {
+      // Normal case: user exists but still loading
       console.log('🔄 Processing authentication...');
       setIsProcessingAuth(true);
-    } else if (user && !authLoading && (currentOrgId !== null || currentOrgId === null)) {
-      // Auth is done loading, about to navigate
-      setIsProcessingAuth(true);
-      // Keep it showing until navigation happens
-    } else {
+    } else if (!user && !authLoading) {
+      // No user and not loading - hide processing screen
       setIsProcessingAuth(false);
     }
   }, [user, authLoading, currentOrgId]);
@@ -70,13 +80,16 @@ const LoginPage: React.FC = () => {
       // Check if user has organization and project
       if (currentOrgId && currentProjectId) {
         console.log('✅ User has org and project - navigating to dashboard');
+        sessionStorage.removeItem('justCompletedGoogleRedirect');
         navigate('/dashboard', { replace: true });
       } else if (currentOrgId && !currentProjectId) {
         console.log('📝 User has org but no project - navigating to create project');
+        sessionStorage.removeItem('justCompletedGoogleRedirect');
         navigate('/create-project', { replace: true });
       } else {
         console.log('📝 User has no org - navigating to create organization');
         console.log('🚀 Navigating to /create-organization now...');
+        sessionStorage.removeItem('justCompletedGoogleRedirect');
         navigate('/create-organization', { replace: true });
       }
     } else if (!user && !authLoading) {

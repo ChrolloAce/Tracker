@@ -56,6 +56,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('👤 User ID:', result.user.uid);
           console.log('🔑 Provider:', result.providerId);
           
+          // Store in sessionStorage that we just completed a redirect
+          sessionStorage.setItem('justCompletedGoogleRedirect', 'true');
+          
           // Create user account immediately after successful sign-in
           try {
             await OrganizationService.createUserAccount(
