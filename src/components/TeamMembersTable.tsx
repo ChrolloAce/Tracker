@@ -302,7 +302,7 @@ const TeamMembersTable: React.FC = () => {
 
             {/* Body */}
             <div className="px-6 py-4 space-y-3">
-              {(['admin', 'member', 'creator'] as Role[]).map((role) => (
+              {(['admin', 'member'] as Role[]).map((role) => (
                 <button
                   key={role}
                   onClick={() => handleUpdateRole(showRoleModal, role)}
@@ -324,7 +324,6 @@ const TeamMembersTable: React.FC = () => {
                       <p className="text-xs text-white/50 mt-1">
                         {role === 'admin' && 'Full access to manage team and settings'}
                         {role === 'member' && 'Can view and edit projects'}
-                        {role === 'creator' && 'Limited access for content creators'}
                       </p>
                     </div>
                     {showRoleModal.role === role && (
