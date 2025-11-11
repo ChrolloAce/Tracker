@@ -409,16 +409,12 @@ const Sidebar: React.FC<SidebarProps> = ({
           );
         })}
 
-        {/* Settings - Standalone at bottom with separator */}
-        {settingsItem && (
-          <>
-            <div className="my-4 border-t border-gray-200 dark:border-gray-700" />
-            <NavItemComponent item={settingsItem} />
-          </>
-        )}
-
-        {/* Support - Standalone at bottom */}
-        <NavItemComponent item={supportItem} />
+        {/* Support & Settings - Standalone at bottom with separator */}
+        <>
+          <div className="my-4 border-t border-gray-200 dark:border-gray-700" />
+          <NavItemComponent item={supportItem} />
+          {settingsItem && <NavItemComponent item={settingsItem} />}
+        </>
       </nav>
 
       {/* Refresh Countdown */}

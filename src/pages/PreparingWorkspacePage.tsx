@@ -101,27 +101,11 @@ const PreparingWorkspacePage: React.FC = () => {
         {/* Loading Text */}
         <div className="space-y-3">
           <h2 className="text-2xl font-bold text-gray-900">
-            Preparing your workspace...
+            We are launching Nov 12 at 2am
           </h2>
           <p className="text-gray-500 text-sm">
-            We're setting up everything for you. This will only take a moment.
+            Please check back then. Thank you for your patience!
           </p>
-        </div>
-
-        {/* Progress Indicators */}
-        <div className="mt-8 space-y-2">
-          <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
-            <div className="w-2 h-2 bg-[#2282FF] rounded-full animate-pulse"></div>
-            <span>Verifying account</span>
-          </div>
-          <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
-            <div className="w-2 h-2 bg-[#2282FF] rounded-full animate-pulse delay-150"></div>
-            <span>Loading workspace</span>
-          </div>
-          <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
-            <div className="w-2 h-2 bg-[#2282FF] rounded-full animate-pulse delay-300"></div>
-            <span>Preparing dashboard</span>
-          </div>
         </div>
       </div>
     </div>

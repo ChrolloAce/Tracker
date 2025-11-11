@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, Users, TrendingUp, RefreshCw, CheckCircle, Building2, Video, MessageCircle } from 'lucide-react';
+import { Camera, Mail, Trash2, AlertTriangle, CreditCard, Bell, User as UserIcon, X, Users, TrendingUp, RefreshCw, CheckCircle, Building2, Video } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -15,7 +15,6 @@ import { PlanTier, SUBSCRIPTION_PLANS } from '../types/subscription';
 import { ProxiedImage } from './ProxiedImage';
 import NotificationPreferencesService, { NotificationPreferences, DEFAULT_NOTIFICATION_PREFERENCES, NOTIFICATION_TYPES_INFO } from '../services/NotificationPreferencesService';
 import DeletedVideosManager from './DeletedVideosManager';
-import SupportModal from './SupportModal';
 
 type TabType = 'billing' | 'notifications' | 'organization' | 'profile' | 'team' | 'revenue' | 'videos';
 
@@ -400,9 +399,6 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
   const [loadingPreferences, setLoadingPreferences] = useState(true);
   const [savingPreferences, setSavingPreferences] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  
-  // Support modal
-  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
 
   // Load current organization and members
   useEffect(() => {
@@ -563,19 +559,9 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
     <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0A]">
       {/* Header */}
       <div className="max-w-6xl mx-auto px-6 pt-8">
-        {/* Title and Support Button */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Settings</h1>
-            <p className="text-gray-600 dark:text-gray-400">Manage your account and preferences</p>
-          </div>
-          <button
-            onClick={() => setIsSupportModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/15 border border-white/20 hover:border-white/30 text-white rounded-lg transition-all hover:scale-105"
-          >
-            <MessageCircle className="w-4 h-4" />
-            <span className="font-medium">Support</span>
-          </button>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Settings</h1>
+          <p className="text-gray-600 dark:text-gray-400">Manage your account and preferences</p>
         </div>
 
         {/* Tabs Navigation */}
@@ -1022,12 +1008,6 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
           onConfirmDelete={handleDeleteOrganization}
         />
       )}
-
-      {/* Support Modal */}
-      <SupportModal
-        isOpen={isSupportModalOpen}
-        onClose={() => setIsSupportModalOpen(false)}
-      />
     </div>
   );
 };
