@@ -432,7 +432,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
               // Calculate time since last refresh
               const now = Date.now();
-              const refreshIntervalHours = (PLAN_REFRESH_INTERVALS[plan] || 12);
+              const refreshIntervalHours = (PLAN_REFRESH_INTERVALS[orgPlanTier] || 12);
               const timeSinceRefresh = refreshIntervalHours;
 
               // Helper function to format numbers
