@@ -11,6 +11,7 @@ import Sidebar from '../components/layout/Sidebar';
 import { Modal } from '../components/ui/Modal';
 import { VideoSubmissionsTable } from '../components/VideoSubmissionsTable';
 import { AddVideoModal } from '../components/AddVideoModal';
+import { AddAccountModal } from '../components/AddAccountModal';
 import { AddTypeSelector } from '../components/AddTypeSelector';
 import { TikTokSearchModal } from '../components/TikTokSearchModal';
 import KPICards from '../components/KPICards';
@@ -57,6 +58,7 @@ import FirestoreDataService from '../services/FirestoreDataService';
 import LinkClicksService, { LinkClick } from '../services/LinkClicksService';
 import RulesService from '../services/RulesService';
 import RevenueDataService from '../services/RevenueDataService';
+import UsageTrackingService from '../services/UsageTrackingService';
 import { RevenueMetrics, RevenueIntegration } from '../types/revenue';
 import { cssVariables } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
@@ -181,9 +183,21 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   ]);
   const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState(false);
   const [isTikTokSearchOpen, setIsTikTokSearchOpen] = useState(false);
   const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
   const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false);
+  const [usageLimits, setUsageLimits] = useState<{
+    accountsLeft: number;
+    videosLeft: number;
+    isAtAccountLimit: boolean;
+    isAtVideoLimit: boolean;
+  }>({
+    accountsLeft: 0,
+    videosLeft: 0,
+    isAtAccountLimit: false,
+    isAtVideoLimit: false,
+  });
   
   // Loading/pending state for immediate UI feedback
   const [loadingDashboard, setLoadingDashboard] = useState(true);
@@ -598,6 +612,34 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   useEffect(() => {
     localStorage.setItem('dashboardPlatformFilter', dashboardPlatformFilter);
   }, [dashboardPlatformFilter]);
+
+  // Load usage limits for account tracking
+  useEffect(() => {
+    const loadUsageLimits = async () => {
+      if (!currentOrgId) return;
+      
+      try {
+        const [usage, limits] = await Promise.all([
+          UsageTrackingService.getUsage(currentOrgId),
+          UsageTrackingService.getLimits(currentOrgId)
+        ]);
+        
+        const accountsLeft = limits.maxAccounts === -1 ? 999999 : Math.max(0, limits.maxAccounts - usage.trackedAccounts);
+        const videosLeft = limits.maxVideos === -1 ? 999999 : Math.max(0, limits.maxVideos - usage.trackedVideos);
+        
+        setUsageLimits({
+          accountsLeft,
+          videosLeft,
+          isAtAccountLimit: accountsLeft === 0,
+          isAtVideoLimit: videosLeft === 0
+        });
+      } catch (error) {
+        console.error('Failed to load usage limits:', error);
+      }
+    };
+    
+    loadUsageLimits();
+  }, [currentOrgId, pendingAccounts.length]); // Reload when accounts change
 
   useEffect(() => {
     // Use project-scoped key to prevent account IDs from contaminating other projects
@@ -3242,18 +3284,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           if (type === 'video') {
             setIsModalOpen(true);
           } else if (type === 'account') {
-            // ✅ Navigate to accounts tab first, then trigger modal
-            if (activeTab !== 'accounts') {
-              navigate('/accounts');
-              localStorage.setItem('activeTab', 'accounts');
-              // Wait for AccountsPage to mount, then trigger modal
-              setTimeout(() => {
-                accountsPageRef.current?.openAddModal();
-              }, 300);
-            } else {
-              // Already on accounts tab, just open modal
-            accountsPageRef.current?.openAddModal();
-            }
+            // ✅ Open account modal right here (no navigation needed)
+            setIsAddAccountModalOpen(true);
           }
           }, 100);
         }}
@@ -3263,6 +3295,19 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAddVideo={handleAddVideosWithAccounts}
+      />
+
+      <AddAccountModal
+        isOpen={isAddAccountModalOpen}
+        onClose={() => setIsAddAccountModalOpen(false)}
+        onSuccess={() => {
+          // Reload pending accounts or refresh data
+          window.location.reload();
+        }}
+        orgId={currentOrgId || ''}
+        projectId={currentProjectId || ''}
+        user={user}
+        usageLimits={usageLimits}
       />
 
       <TikTokSearchModal
