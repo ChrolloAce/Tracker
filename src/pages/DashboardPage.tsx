@@ -3183,21 +3183,21 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 </div>
               </div>
             ) : (
-              <AccountsPage 
-                ref={accountsPageRef}
-                dateFilter={dateFilter}
-                platformFilter={dashboardPlatformFilter}
-                searchQuery={accountsSearchQuery}
-                onViewModeChange={setAccountsViewMode}
-                pendingAccounts={pendingAccounts}
-                selectedRuleIds={selectedRuleIds}
-                dashboardRules={allRules}
-                organizationId={currentOrgId || undefined}
-                projectId={currentProjectId || undefined}
-                accountFilterId={accountFilterId}
-                creatorFilterId={creatorFilterId}
-                isDemoMode={isDemoMode}
-              />
+            <AccountsPage 
+              ref={accountsPageRef}
+              dateFilter={dateFilter}
+              platformFilter={dashboardPlatformFilter}
+              searchQuery={accountsSearchQuery}
+              onViewModeChange={setAccountsViewMode}
+              pendingAccounts={pendingAccounts}
+              selectedRuleIds={selectedRuleIds}
+              dashboardRules={allRules}
+              organizationId={currentOrgId || undefined}
+              projectId={currentProjectId || undefined}
+              accountFilterId={accountFilterId}
+              creatorFilterId={creatorFilterId}
+              isDemoMode={isDemoMode}
+            />
             )
           )}
 

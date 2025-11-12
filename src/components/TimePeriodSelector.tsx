@@ -15,7 +15,6 @@ const TimePeriodSelector: React.FC<TimePeriodSelectorProps> = ({
   const [isOpen, setIsOpen] = useState(false);
 
   const periodOptions = [
-    { value: 'hours', label: 'Hourly', description: 'Show data by hour' },
     { value: 'days', label: 'Daily', description: 'Show data by day' },
     { value: 'weeks', label: 'Weekly', description: 'Show data by week' },
     { value: 'months', label: 'Monthly', description: 'Show data by month' },

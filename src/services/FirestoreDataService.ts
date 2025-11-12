@@ -594,7 +594,7 @@ class FirestoreDataService {
         return;
       }
       
-      const videoData = videoSnap.data();
+          const videoData = videoSnap.data();
       const platform = videoData?.platform;
       const platformVideoId = videoData?.videoId;
       const trackedAccountId = videoData?.trackedAccountId;
@@ -651,7 +651,7 @@ class FirestoreDataService {
       
       console.log(`✅ Account ${accountId} queued for deletion (videos, snapshots, and thumbnails will be cleaned up by cron within 2 minutes)`);
       
-    } catch (error) {
+      } catch (error) {
       console.error('❌ Failed to queue account deletion:', error);
       throw error;
     }

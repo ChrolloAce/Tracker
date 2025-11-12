@@ -3167,22 +3167,22 @@ const KPICard: React.FC<{
                 
                 {/* Two-Column Mega Tooltip Layout - Only for non-published-videos KPIs */}
                 {!isPublishedVideosKPI && data.id !== 'accounts' && data.id !== 'active-accounts' && data.id !== 'link-clicks' && data.id !== 'revenue' && data.id !== 'downloads' && (
-                <div className="flex">
-                  {/* Column 1: New Uploads */}
+                <div className="flex flex-col gap-6">
+                  {/* New Uploads Section */}
                   {hasNewUploads && (
-                  <div className={`flex-1 px-5 py-3 ${hasTopGainers ? 'border-r border-white/10' : ''}`}>
+                  <div className="px-5 py-3">
                     <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                       <Upload className="w-3.5 h-3.5" />
-                      New Uploads ({totalNewUploads})
+                      New Uploads · {totalNewUploads}
                     </h3>
-                    <div className="space-y-2">
-                      {newUploads.map((video: VideoSubmission, idx: number) => (
+                    <div className="grid grid-cols-2 gap-3">
+                      {newUploads.slice(0, 2).map((video: VideoSubmission, idx: number) => (
                         <div 
                           key={`new-${video.id}-${idx}`}
-                          className="flex items-center gap-2 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                          className="bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors"
                         >
                           {/* Thumbnail */}
-                          <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-gray-800">
+                          <div className="w-full aspect-video rounded-lg overflow-hidden bg-gray-800 mb-2">
                             {video.thumbnail ? (
                               <img 
                                 src={video.thumbnail} 
@@ -3194,34 +3194,48 @@ const KPICard: React.FC<{
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
-                                <Play className="w-4 h-4 text-gray-600" />
+                                <Play className="w-6 h-6 text-gray-600" />
                               </div>
                             )}
                           </div>
                           
-                          {/* Metadata */}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs text-white font-medium leading-tight">
-                              {((video.title || video.caption || '(No caption)').length > 13 
-                                ? (video.title || video.caption || '(No caption)').substring(0, 13) + '...'
-                                : (video.title || video.caption || '(No caption)'))}
-                            </p>
-                            <div className="flex items-center gap-1 mt-0.5">
+                          {/* Account */}
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <div className="w-4 h-4 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
                               <div className="w-3 h-3">
                                 <PlatformIcon platform={video.platform} size="sm" />
                               </div>
-                              <span className="text-[10px] text-gray-400">
-                                {video.uploaderHandle || video.platform}
-                              </span>
                             </div>
+                            <span className="text-[10px] text-gray-400 truncate">
+                              {video.uploaderHandle || video.uploader}
+                            </span>
                           </div>
                           
-                          {/* Metric */}
-                          <div className="flex-shrink-0 text-right">
-                            <p className="text-xs font-bold text-white">
-                              {formatDisplayNumber((video as any)[metricKey] || 0)}
-                            </p>
-                            <p className="text-[10px] text-gray-500">{metricLabel.toLowerCase()}</p>
+                          {/* Caption */}
+                          <p className="text-xs text-white font-medium leading-tight mb-2 line-clamp-2">
+                            {video.title || video.caption || '(No caption)'}
+                          </p>
+                          
+                          {/* Platform Badge */}
+                          <div className="flex items-center gap-1 mb-2">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-gray-400 capitalize">
+                              {video.platform}
+                            </span>
+                          </div>
+                          
+                          {/* Stats */}
+                          <div className="flex items-center justify-between text-[10px]">
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-1">
+                                <span className="text-gray-400">{formatDisplayNumber(video.views)}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-gray-400">{formatDisplayNumber(video.likes)}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-gray-400">{((video.likes / video.views) * 100 || 0).toFixed(1)}%</span>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -3229,22 +3243,22 @@ const KPICard: React.FC<{
                   </div>
                   )}
                   
-                  {/* Column 2: Refreshed Videos - Only show if there are gainers */}
+                  {/* Refreshed Videos Section */}
                   {hasTopGainers && (
-                  <div className="flex-1 px-5 py-3">
+                  <div className="px-5 py-3">
                     <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                       <RefreshCw className="w-3.5 h-3.5" />
-                      Refreshed Videos ({totalTopGainers})
+                      Refreshed Videos · {totalTopGainers}
                     </h3>
                     {topGainers.length > 0 ? (
-                      <div className="space-y-2">
-                        {topGainers.map((item: any, idx: number) => (
+                      <div className="grid grid-cols-2 gap-3">
+                        {topGainers.slice(0, 2).map((item: any, idx: number) => (
                           <div 
                             key={`gainer-${item.video.id}-${idx}`}
-                            className="flex items-center gap-2 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                            className="bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors"
                           >
                             {/* Thumbnail */}
-                            <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-gray-800">
+                            <div className="w-full aspect-video rounded-lg overflow-hidden bg-gray-800 mb-2">
                               {item.video.thumbnail ? (
                                 <img 
                                   src={item.video.thumbnail} 
@@ -3256,34 +3270,45 @@ const KPICard: React.FC<{
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">
-                                  <Play className="w-4 h-4 text-gray-600" />
+                                  <Play className="w-6 h-6 text-gray-600" />
                                 </div>
                               )}
                             </div>
                             
-                            {/* Metadata */}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs text-white font-medium leading-tight">
-                                {((item.video.title || item.video.caption || '(No caption)').length > 13 
-                                  ? (item.video.title || item.video.caption || '(No caption)').substring(0, 13) + '...'
-                                  : (item.video.title || item.video.caption || '(No caption)'))}
-                              </p>
-                              <div className="flex items-center gap-1 mt-0.5">
+                            {/* Account */}
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <div className="w-4 h-4 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
                                 <div className="w-3 h-3">
                                   <PlatformIcon platform={item.video.platform} size="sm" />
                                 </div>
-                                <span className="text-[10px] text-gray-400">
-                                  {item.video.uploaderHandle || item.video.platform}
-                                </span>
                               </div>
+                              <span className="text-[10px] text-gray-400 truncate">
+                                {item.video.uploaderHandle || item.video.uploader}
+                              </span>
                             </div>
                             
-                            {/* Gain Amount */}
-                            <div className="flex-shrink-0 text-right">
-                              <p className="text-xs font-bold text-white">
-                                +{formatDisplayNumber(item.absoluteGain)}
-                              </p>
-                              <p className="text-[10px] text-gray-500">{metricLabel.toLowerCase()}</p>
+                            {/* Caption */}
+                            <p className="text-xs text-white font-medium leading-tight mb-2 line-clamp-2">
+                              {item.video.title || item.video.caption || '(No caption)'}
+                            </p>
+                            
+                            {/* Platform Badge */}
+                            <div className="flex items-center gap-1 mb-2">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-gray-400 capitalize">
+                                {item.video.platform}
+                              </span>
+                            </div>
+                            
+                            {/* Stats with Growth */}
+                            <div className="flex items-center justify-between text-[10px]">
+                              <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-emerald-400 font-semibold">+{formatDisplayNumber(item.absoluteGain)}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-gray-400">{((item.growth || 0) > 0 ? '+' : '')}{(item.growth || 0).toFixed(1)}%</span>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         ))}

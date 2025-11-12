@@ -70,7 +70,7 @@
   "crons": [
     {
       "path": "/api/cron-orchestrator",
-      "schedule": "*/25 * * * *"
+      "schedule": "0 */6 * * *"
     },
     {
       "path": "/api/cron-process-deletions",
