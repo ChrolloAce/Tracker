@@ -3,31 +3,34 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 
-// Initialize Firebase Admin
-if (!getApps().length) {
-  try {
-    let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
-    if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
-      privateKey = privateKey.slice(1, -1);
+// Initialize Firebase Admin (with better error handling)
+function initializeFirebase() {
+  if (!getApps().length) {
+    try {
+      let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
+      if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+        privateKey = privateKey.slice(1, -1);
+      }
+      privateKey = privateKey.replace(/\\n/g, '\n');
+
+      const serviceAccount = {
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: privateKey,
+      };
+
+      initializeApp({ 
+        credential: cert(serviceAccount as any),
+        storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'trackview-6a3a5.firebasestorage.app'
+      });
+      console.log('✅ Firebase Admin initialized');
+    } catch (error) {
+      console.error('❌ Failed to initialize Firebase Admin:', error);
+      throw new Error('Firebase initialization failed');
     }
-    privateKey = privateKey.replace(/\\n/g, '\n');
-
-    const serviceAccount = {
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: privateKey,
-    };
-
-    initializeApp({ 
-      credential: cert(serviceAccount as any),
-      storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'trackview-6a3a5.firebasestorage.app'
-    });
-  } catch (error) {
-    console.error('Failed to initialize Firebase Admin:', error);
   }
+  return getFirestore();
 }
-
-const db = getFirestore();
 
 // Subscription plan refresh intervals (in hours)
 const PLAN_REFRESH_INTERVALS: Record<string, number> = {
@@ -44,60 +47,63 @@ const PLAN_REFRESH_INTERVALS: Record<string, number> = {
  * Processes all organizations directly (no HTTP calls)
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Verify authorization: Vercel Cron, Cron Secret, or Firebase User Token
-  let authHeader = req.headers.authorization;
-  const cronSecret = process.env.CRON_SECRET;
-  const isVercelCron = req.headers['x-vercel-cron'] === '1';
-  
-  let isAuthorized = false;
-  let authMethod = '';
-  
-  // Check 1: Vercel Cron header
-  if (isVercelCron) {
-    isAuthorized = true;
-    authMethod = 'Vercel Cron';
-  }
-  
-  // Check 2: Cron Secret (strip "Bearer " prefix if present)
-  if (!isAuthorized && authHeader) {
-    let tokenToCheck = authHeader;
-    if (authHeader.startsWith('Bearer ')) {
-      tokenToCheck = authHeader.substring(7);
+  try {
+    // Initialize Firebase and get db instance
+    const db = initializeFirebase();
+    
+    // Verify authorization: Vercel Cron, Cron Secret, or Firebase User Token
+    let authHeader = req.headers.authorization;
+    const cronSecret = process.env.CRON_SECRET;
+    const isVercelCron = req.headers['x-vercel-cron'] === '1';
+    
+    let isAuthorized = false;
+    let authMethod = '';
+    
+    // Check 1: Vercel Cron header
+    if (isVercelCron) {
+      isAuthorized = true;
+      authMethod = 'Vercel Cron';
     }
     
-    if (tokenToCheck === cronSecret) {
-      isAuthorized = true;
-      authMethod = 'Cron Secret';
+    // Check 2: Cron Secret (strip "Bearer " prefix if present)
+    if (!isAuthorized && authHeader) {
+      let tokenToCheck = authHeader;
+      if (authHeader.startsWith('Bearer ')) {
+        tokenToCheck = authHeader.substring(7);
+      }
+      
+      if (tokenToCheck === cronSecret) {
+        isAuthorized = true;
+        authMethod = 'Cron Secret';
+      }
     }
-  }
-  
-  // Check 3: Firebase User Token (for manual testing via UI)
-  if (!isAuthorized && authHeader && authHeader.startsWith('Bearer ')) {
-    try {
-      const token = authHeader.substring(7);
-      const decodedToken = await getAuth().verifyIdToken(token);
-      console.log(`🔒 Authenticated as Firebase user: ${decodedToken.uid}`);
-      isAuthorized = true;
-      authMethod = 'Firebase User';
-    } catch (error: any) {
-      console.error('❌ Firebase token verification failed:', error.message);
+    
+    // Check 3: Firebase User Token (for manual testing via UI)
+    if (!isAuthorized && authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.substring(7);
+        const decodedToken = await getAuth().verifyIdToken(token);
+        console.log(`🔒 Authenticated as Firebase user: ${decodedToken.uid}`);
+        isAuthorized = true;
+        authMethod = 'Firebase User';
+      } catch (error: any) {
+        console.error('❌ Firebase token verification failed:', error.message);
+      }
     }
-  }
-  
-  if (!isAuthorized) {
-    console.log('❌ Unauthorized orchestrator request');
-    return res.status(401).json({ 
-      error: 'Unauthorized',
-      message: 'This endpoint requires Vercel Cron, CRON_SECRET, or valid Firebase user token'
-    });
-  }
+    
+    if (!isAuthorized) {
+      console.log('❌ Unauthorized orchestrator request');
+      return res.status(401).json({ 
+        error: 'Unauthorized',
+        message: 'This endpoint requires Vercel Cron, CRON_SECRET, or valid Firebase user token'
+      });
+    }
 
-  console.log(`✅ Authorized: ${authMethod}`);
+    console.log(`✅ Authorized: ${authMethod}`);
 
-  const startTime = Date.now();
-  console.log(`🚀 Cron Orchestrator started at ${new Date().toISOString()}`);
+    const startTime = Date.now();
+    console.log(`🚀 Cron Orchestrator started at ${new Date().toISOString()}`);
 
-  try {
     // Get all organizations
     const orgsSnapshot = await db.collection('organizations').get();
     console.log(`📊 Found ${orgsSnapshot.size} organization(s)\n`);
@@ -607,7 +613,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error(`❌ Orchestrator error:`, error);
     return res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message || 'Unknown error occurred',
+      errorType: error.name || 'Error',
+      timestamp: new Date().toISOString()
     });
   }
 }

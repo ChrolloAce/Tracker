@@ -1438,7 +1438,18 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         },
       });
 
-      const result = await response.json();
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      let result: any = null;
+      
+      if (contentType && contentType.includes('application/json')) {
+        result = await response.json();
+      } else {
+        // Non-JSON response (likely an error page)
+        const text = await response.text();
+        console.error('❌ Non-JSON response:', text.substring(0, 200));
+        throw new Error(`Server error: ${response.status} ${response.statusText}`);
+      }
       
       if (response.ok && result.success) {
         console.log('✅ Scheduled refresh completed:', result);
@@ -1456,9 +1467,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         console.error('❌ Scheduled refresh failed:', result);
         alert(`❌ Refresh failed: ${result.error || 'Unknown error'}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Failed to trigger refresh:', error);
-      alert('❌ Failed to trigger refresh. Please check console for details.');
+      alert(`❌ Failed to trigger refresh: ${error.message || 'Please check console for details'}`);
     } finally {
       setIsRefreshing(false);
     }
