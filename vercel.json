@@ -62,12 +62,19 @@
     },
     "api/cleanup-stuck-items.ts": {
       "maxDuration": 60
+    },
+    "api/cron-process-deletions.ts": {
+      "maxDuration": 120
     }
   },
   "crons": [
     {
       "path": "/api/cron-orchestrator",
       "schedule": "*/25 * * * *"
+    },
+    {
+      "path": "/api/cron-process-deletions",
+      "schedule": "*/2 * * * *"
     }
   ],
   "routes": [

@@ -297,6 +297,16 @@ service cloud.firestore {
           }
         }
         
+        // ==================== PENDING DELETIONS (Background Processing) ====================
+        
+        match /pendingDeletions/{deletionId} {
+          // Only admins can create deletion requests
+          allow create: if canManageOrg(orgId);
+          
+          // Server-side cron jobs read/process/delete (via Admin SDK, bypasses rules)
+          allow read, update, delete: if false; // Only server via Admin SDK
+        }
+        
         // ==================== PROJECT TRACKING RULES ====================
         
         match /trackingRules/{ruleId} {
