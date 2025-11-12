@@ -751,7 +751,8 @@ function transformVideoData(rawData: any, platform: string): VideoData {
         like_count: parseInt(rawData.statistics?.likeCount || '0', 10),
         comment_count: parseInt(rawData.statistics?.commentCount || '0', 10),
         view_count: parseInt(rawData.statistics?.viewCount || '0', 10),
-        share_count: 0,
+        share_count: 0, // YouTube doesn't provide shares
+        save_count: parseInt(rawData.statistics?.favoriteCount || '0', 10), // ✅ YouTube favoriteCount = saves/bookmarks
         timestamp: rawData.snippet?.publishedAt || new Date().toISOString(),
         profile_pic_url: rawData.channelThumbnail || '',
         display_name: rawData.snippet?.channelTitle || '',
@@ -768,7 +769,8 @@ function transformVideoData(rawData: any, platform: string): VideoData {
       like_count: rawData.likes || 0,
       comment_count: rawData.comments || 0,
       view_count: rawData.views || 0,
-      share_count: 0,
+      share_count: 0, // YouTube doesn't provide shares
+      save_count: rawData.favoriteCount || rawData.favorites || 0, // ✅ YouTube favoriteCount = saves/bookmarks
       timestamp: rawData.uploadDate || rawData.publishedAt || new Date().toISOString(),
       profile_pic_url: rawData.channelThumbnail || '',
       display_name: rawData.channelName || '',

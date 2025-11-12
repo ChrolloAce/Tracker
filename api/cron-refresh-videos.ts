@@ -1307,7 +1307,7 @@ async function refreshYouTubeVideosBulk(
           likes: video.statistics?.likeCount ? Number(video.statistics.likeCount) : 0,
           comments: video.statistics?.commentCount ? Number(video.statistics.commentCount) : 0,
           shares: 0, // YouTube API doesn't provide share count
-          saves: 0, // YouTube API doesn't provide save count
+          saves: video.statistics?.favoriteCount ? Number(video.statistics.favoriteCount) : 0, // ✅ YouTube favoriteCount = saves/bookmarks
           lastRefreshed: now
         };
 
@@ -1559,7 +1559,7 @@ async function saveVideosToFirestore(
       likes = video.statistics?.likeCount ? Number(video.statistics.likeCount) : 0;
       comments = video.statistics?.commentCount ? Number(video.statistics.commentCount) : 0;
       shares = 0; // YouTube API doesn't provide share count
-      saves = 0; // YouTube API doesn't provide save count
+      saves = video.statistics?.favoriteCount ? Number(video.statistics.favoriteCount) : 0; // ✅ YouTube favoriteCount = saves/bookmarks
       url = `https://www.youtube.com/watch?v=${platformVideoId}`;
       
       // Get thumbnail from YouTube API (use highest quality available)

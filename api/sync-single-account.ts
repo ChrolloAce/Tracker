@@ -506,6 +506,7 @@ export default async function handler(
             likes: video.likes || 0,
             comments: video.commentsCount || 0,
             shares: 0, // YouTube doesn't expose share count via API
+            saves: video.favoriteCount || video.favorites || 0, // ✅ YouTube favoriteCount = saves/bookmarks
             caption: video.text || '',
             duration: durationSeconds
           };
