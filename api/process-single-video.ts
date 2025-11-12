@@ -474,9 +474,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 subject: `🎬 Video processed successfully`,
                 html: `
                   <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="text-align: center; padding: 30px 20px; background: #f8f9fa; border-bottom: 2px solid #e9ecef;">
-                      <img src="https://www.viewtrack.app/blacklogo.png" alt="ViewTrack" style="height: 40px; width: auto;" />
-                    </div>
                     <div style="padding: 30px 20px;">
                     <h2 style="color: #f5576c; margin-top: 0;">Video Processed!</h2>
                     <p>Your video has been successfully processed and added to your dashboard!</p>

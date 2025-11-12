@@ -476,10 +476,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                   subject: `📊 Your ViewTrack Report for ${orgName} (${timeSinceRefresh}h refresh)`,
               html: `
                     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; background: #fff;">
-                      <div style="text-align: center; padding: 30px 20px; background: #f8f9fa;">
-                        <img src="https://www.viewtrack.app/blacklogo.png" alt="ViewTrack" style="height: 35px; width: auto;" />
-                  </div>
-                      
                   <div style="padding: 30px 20px;">
                         <h1 style="font-size: 20px; color: #111; margin: 0 0 10px 0; font-weight: 600;">Your ViewTrack Report for ${orgName}</h1>
                         <p style="color: #666; font-size: 14px; margin: 0 0 30px 0;">(Refreshed ${timeSinceRefresh}h ago)</p>
