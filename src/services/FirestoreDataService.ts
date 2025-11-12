@@ -198,6 +198,18 @@ class FirestoreDataService {
     userId: string,
     videoData: Omit<VideoDoc, 'id' | 'orgId' | 'dateAdded' | 'addedBy'>
   ): Promise<string> {
+    // ✅ CHECK VIDEO LIMITS BEFORE ADDING
+    const usageDoc = await getDoc(doc(db, 'organizations', orgId, 'billing', 'usage'));
+    const usage = usageDoc.data();
+    const currentVideos = usage?.trackedVideos || 0;
+    const videoLimit = usage?.videoLimit || usage?.limits?.trackedVideos || 100;
+    
+    if (currentVideos >= videoLimit) {
+      throw new Error(`Video limit reached (${videoLimit}). Please upgrade your plan to add more videos.`);
+    }
+    
+    console.log(`📊 Video limits - Current: ${currentVideos}, Limit: ${videoLimit}, Available: ${videoLimit - currentVideos}`);
+    
     const batch = writeBatch(db);
     
     // Create video in project
@@ -423,13 +435,34 @@ class FirestoreDataService {
     try {
       console.log(`💾 Syncing ${videos.length} videos to project ${projectId} for account ${accountId}`);
       
+      // ✅ CHECK VIDEO LIMITS
+      const usageDoc = await getDoc(doc(db, 'organizations', orgId, 'billing', 'usage'));
+      const usage = usageDoc.data();
+      const currentVideos = usage?.trackedVideos || 0;
+      const videoLimit = usage?.videoLimit || usage?.limits?.trackedVideos || 100;
+      const availableSpace = videoLimit - currentVideos;
+      
+      console.log(`📊 Video limits - Current: ${currentVideos}, Limit: ${videoLimit}, Available: ${availableSpace}`);
+      
+      if (availableSpace <= 0) {
+        throw new Error(`Video limit reached (${videoLimit}). Please upgrade your plan to add more videos.`);
+      }
+      
       // Process in batches of 500 (Firestore limit)
       const batchSize = 500;
+      let newVideosAdded = 0;
+      
       for (let i = 0; i < videos.length; i += batchSize) {
         const batch = writeBatch(db);
         const batchVideos = videos.slice(i, i + batchSize);
         
         for (const video of batchVideos) {
+          // ✅ Stop if we've reached the limit
+          if (newVideosAdded >= availableSpace) {
+            console.warn(`⚠️ Video limit reached. Stopping at ${newVideosAdded} new videos (${videos.length - i} videos not synced)`);
+            break;
+          }
+          
           // Use videoId as document ID for easy updates
           const videoRef = doc(db, 'organizations', orgId, 'projects', projectId, 'videos', video.videoId);
           
@@ -437,7 +470,7 @@ class FirestoreDataService {
           const existingDoc = await getDoc(videoRef);
           
           if (existingDoc.exists()) {
-            // Update existing video metrics
+            // Update existing video metrics (doesn't count against limit)
             batch.update(videoRef, {
               views: video.views,
               likes: video.likes,
@@ -447,6 +480,11 @@ class FirestoreDataService {
               lastRefreshed: Timestamp.now()
             });
           } else {
+            // Check if we have space for this new video
+            if (newVideosAdded >= availableSpace) {
+              console.warn(`⚠️ Skipping video ${video.videoId} - limit reached`);
+              continue;
+            }
             // Debug: Log first video being saved
             if (batchVideos.indexOf(video) === 0 && video.caption) {
               console.log('🔍 Saving first video to Firestore:', {
@@ -487,14 +525,15 @@ class FirestoreDataService {
             };
             
             batch.set(videoRef, videoData);
+            newVideosAdded++; // ✅ Track new videos added
           }
         }
         
         await batch.commit();
-        console.log(`✅ Synced batch ${i / batchSize + 1} of ${Math.ceil(videos.length / batchSize)}`);
+        console.log(`✅ Synced batch ${i / batchSize + 1} of ${Math.ceil(videos.length / batchSize)} (${newVideosAdded} new videos)`);
       }
       
-      console.log(`✅ Successfully synced all ${videos.length} videos to project`);
+      console.log(`✅ Successfully synced videos - ${newVideosAdded} new, ${videos.length - newVideosAdded} updated (total: ${videos.length})`);
     } catch (error) {
       console.error('❌ Failed to sync videos to Firestore:', error);
       throw error;
