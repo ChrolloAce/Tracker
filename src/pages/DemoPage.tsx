@@ -26,8 +26,9 @@ const DemoPage: React.FC = () => {
   const location = useLocation();
   
   // Demo org/project IDs - publicly accessible
-  const DEMO_ORG_ID = 'zcoz9Yc6BpjxsFogAIqr';
-  const DEMO_PROJECT_ID = 'r2JV9idlIMO8dXbhpcR0';
+  // Luke L's Workspace - Demo.org project
+  const DEMO_ORG_ID = 'Vx2UpxGCV3uD8Xj2ioX4';
+  const DEMO_PROJECT_ID = 'ayGJEIQc23rJlamuOqp3';
 
   // Determine which tab to show based on URL
   const getInitialTab = () => {

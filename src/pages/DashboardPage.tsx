@@ -318,72 +318,37 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     }
   }, [location.search]);
 
-  // Mark items as read when entering tabs & reload videos to prevent stale data
+  // Track which tab's data is ready to prevent showing stale data
+  const [tabDataReady, setTabDataReady] = useState<Record<string, boolean>>({
+    dashboard: false,
+    videos: false,
+    accounts: false,
+    analytics: false,
+  });
+
+  // Mark tab data as ready when it finishes loading
+  useEffect(() => {
+    if (dataLoadedFromFirebase && !loadingDashboard) {
+      setTabDataReady(prev => ({
+        ...prev,
+        dashboard: true,
+        videos: true,
+        accounts: true,
+        analytics: true,
+      }));
+    }
+  }, [dataLoadedFromFirebase, loadingDashboard]);
+
+  // Mark items as read when entering tabs
   useEffect(() => {
     if (!currentOrgId || !currentProjectId || isDemoMode) return;
 
     if (activeTab === 'videos') {
-      // Force reload videos when entering videos tab to prevent stale data
-      setLoadingDashboard(true);
-      
-      // Reload videos
-      (async () => {
-        try {
-          const videoDocs = await FirestoreDataService.getVideos(currentOrgId, currentProjectId, { limitCount: 1000 });
-          const videoIds = videoDocs.map(v => v.id);
-          const snapshotsMap = await FirestoreDataService.getVideoSnapshotsBatch(currentOrgId, currentProjectId, videoIds);
-          
-          const allSubmissions: VideoSubmission[] = videoDocs.map(videoDoc => {
-            const video = videoDoc as any;
-            const account = trackedAccounts.find(acc => acc.id === video.trackedAccountId);
-            const snapshots = snapshotsMap.get(video.id) || [];
-            
-            const caption = video.caption || video.videoTitle || '';
-            const title = video.videoTitle || video.caption || '';
-            
-            return {
-              id: video.id,
-              url: video.videoUrl || video.url || '',
-              platform: video.platform as 'instagram' | 'tiktok' | 'youtube',
-              thumbnail: video.thumbnail || '',
-              title: title,
-              caption: caption,
-              uploader: account?.displayName || account?.username || '',
-              uploaderHandle: account?.username || '',
-              uploaderProfilePicture: account?.profilePicture,
-              followerCount: account?.followerCount,
-              status: video.status === 'archived' ? 'rejected' : 'approved',
-              views: video.views || 0,
-              likes: video.likes || 0,
-              comments: video.comments || 0,
-              shares: video.shares || 0,
-              duration: video.duration || 0,
-              dateSubmitted: video.dateAdded?.toDate?.() || new Date(),
-              uploadDate: video.uploadDate?.toDate?.() || new Date(),
-              lastRefreshed: video.lastRefreshed?.toDate?.(),
-              isOutlier: video.isOutlier || false,
-              trackedAccountId: video.trackedAccountId,
-              platformVideoId: video.platformVideoId,
-              snapshots: snapshots,
-              isRead: video.isRead || false,
-              orgId: currentOrgId,
-              projectId: currentProjectId
-            };
-          });
-          
-          setSubmissions(allSubmissions);
-        } catch (error) {
-          console.error('Failed to reload videos:', error);
-        } finally {
-          setLoadingDashboard(false);
-        }
-      })();
-      
       MarkAsReadService.markVideosAsRead(currentOrgId, currentProjectId);
     } else if (activeTab === 'accounts') {
       MarkAsReadService.markAccountsAsRead(currentOrgId, currentProjectId);
     }
-  }, [activeTab, currentOrgId, currentProjectId, isDemoMode, trackedAccounts]);
+  }, [activeTab, currentOrgId, currentProjectId, isDemoMode]);
 
   const [isCardEditorOpen, setIsCardEditorOpen] = useState(false);
   const [draggedSection, setDraggedSection] = useState<string | null>(null);
@@ -2965,7 +2930,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   
                   const renderSectionContent = () => {
                     // Show skeleton while data is loading
-                    if (isInitialLoading) {
+                    if (!tabDataReady.dashboard || isInitialLoading) {
                       return <DashboardSkeleton height={sectionId === 'kpi-cards' ? 'h-48' : 'h-96'} />;
                     }
                     
@@ -3196,26 +3161,49 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
           {/* Accounts Tab */}
           {activeTab === 'accounts' && (
-            <AccountsPage 
-              ref={accountsPageRef}
-              dateFilter={dateFilter}
-              platformFilter={dashboardPlatformFilter}
-              searchQuery={accountsSearchQuery}
-              onViewModeChange={setAccountsViewMode}
-              pendingAccounts={pendingAccounts}
-              selectedRuleIds={selectedRuleIds}
-              dashboardRules={allRules}
-              organizationId={currentOrgId || undefined}
-              projectId={currentProjectId || undefined}
-              accountFilterId={accountFilterId}
-              creatorFilterId={creatorFilterId}
-              isDemoMode={isDemoMode}
-            />
+            (!tabDataReady.accounts || isInitialLoading) ? (
+              <div className="space-y-4">
+                {/* Loading skeleton for accounts */}
+                <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+                  <div className="p-6 space-y-4">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="flex items-center gap-4 animate-pulse">
+                        <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
+                          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+                        </div>
+                        <div className="flex gap-4">
+                          <div className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                          <div className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <AccountsPage 
+                ref={accountsPageRef}
+                dateFilter={dateFilter}
+                platformFilter={dashboardPlatformFilter}
+                searchQuery={accountsSearchQuery}
+                onViewModeChange={setAccountsViewMode}
+                pendingAccounts={pendingAccounts}
+                selectedRuleIds={selectedRuleIds}
+                dashboardRules={allRules}
+                organizationId={currentOrgId || undefined}
+                projectId={currentProjectId || undefined}
+                accountFilterId={accountFilterId}
+                creatorFilterId={creatorFilterId}
+                isDemoMode={isDemoMode}
+              />
+            )
           )}
 
           {/* Videos Tab */}
           {activeTab === 'videos' && (
-            (isInitialLoading || loadingDashboard) ? (
+            (!tabDataReady.videos || isInitialLoading) ? (
               <div className="space-y-4">
                 {/* Loading skeleton for videos */}
                 <div className="bg-white dark:bg-[#161616] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
