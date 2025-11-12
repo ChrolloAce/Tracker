@@ -497,6 +497,9 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
   };
 
   const kpiData = useMemo(() => {
+    const startTime = performance.now();
+    console.log('🔄 KPI Data calculation started');
+    
     // Determine the date range based on date filter
     let dateRangeStart: Date | null = null;
     let dateRangeEnd: Date = new Date();
@@ -1764,8 +1767,13 @@ const KPICardsComponent: React.FC<KPICardsProps> = ({
       })()
     ];
 
+    const endTime = performance.now();
+    const duration = (endTime - startTime).toFixed(2);
+    console.log(`✅ KPI Data calculation completed in ${duration}ms`);
+    
     return cards;
-  }, [submissions, allSubmissions, linkClicks, dateFilter, customRange, timePeriod, granularity, revenueMetrics, revenueIntegrations, onOpenRevenueSettings]);
+  }, [submissions, allSubmissions, linkClicks, dateFilter, customRange, timePeriod, granularity, revenueMetrics, revenueIntegrations]);
+  // Note: onOpenRevenueSettings removed from deps - it's just a callback, doesn't affect calculated data
 
   // Memoize sorted and filtered cards to prevent recalculation
   const sortedCards = useMemo(() => {
