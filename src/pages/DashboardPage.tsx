@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
 import { 
@@ -205,6 +206,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   });
   const [selectedVideoForAnalytics, setSelectedVideoForAnalytics] = useState<VideoSubmission | null>(null);
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
+  const [showDeleteVideoModal, setShowDeleteVideoModal] = useState(false);
+  const [videoToDelete, setVideoToDelete] = useState<VideoSubmission | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
@@ -1577,27 +1580,44 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     }
   }, [user, currentOrgId, currentProjectId]);
 
-  const handleDelete = useCallback(async (id: string) => {
+  const handleDelete = useCallback((id: string) => {
     if (!user || !currentOrgId || !currentProjectId) return;
     
-    const confirmed = window.confirm('Are you sure you want to delete this video? This action cannot be undone.');
-    if (!confirmed) return;
+    // Find the video to delete and open confirmation modal
+    const video = submissions.find(s => s.id === id);
+    if (video) {
+      setVideoToDelete(video);
+      setShowDeleteVideoModal(true);
+    }
+  }, [user, currentOrgId, currentProjectId, submissions]);
+
+  const confirmDeleteVideo = useCallback(async () => {
+    if (!user || !currentOrgId || !currentProjectId || !videoToDelete) return;
+    
+    const videoId = videoToDelete.id;
+    const videoTitle = videoToDelete.title || videoToDelete.caption || 'Video';
+    
+    console.log(`🗑️ [UI] Starting video deletion: ${videoTitle}`);
+    
+    // Close modal immediately (optimistic update)
+    setShowDeleteVideoModal(false);
+    setVideoToDelete(null);
     
     try {
-      console.log('🗑️ Deleting video:', id);
+      console.log('🗑️ Deleting video:', videoId);
       
       // Delete from Firestore
-      await FirestoreDataService.deleteVideo(currentOrgId, currentProjectId, id);
+      await FirestoreDataService.deleteVideo(currentOrgId, currentProjectId, videoId);
       
       // Update state
-      setSubmissions(prev => prev.filter(submission => submission.id !== id));
+      setSubmissions(prev => prev.filter(submission => submission.id !== videoId));
       
       console.log('✅ Video deleted successfully');
     } catch (error) {
       console.error('❌ Failed to delete video:', error);
       alert('Failed to delete video. Please try again.');
     }
-  }, [user, currentOrgId, currentProjectId]);
+  }, [user, currentOrgId, currentProjectId, videoToDelete]);
 
   const handleTikTokVideosFound = useCallback((videos: InstagramVideoData[]) => {
     
@@ -3243,6 +3263,69 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
           orgId={currentOrgId}
           projectId={currentProjectId}
         />
+      )}
+
+      {/* Delete Video Confirmation Modal */}
+      {showDeleteVideoModal && videoToDelete && createPortal(
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+          <div className="bg-[#0A0A0A] rounded-2xl w-full max-w-md border border-white/10 shadow-2xl">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-white/10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center">
+                    <Trash2 className="w-5 h-5 text-red-400" />
+                  </div>
+                  <h2 className="text-xl font-bold text-white">Delete Video</h2>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowDeleteVideoModal(false);
+                    setVideoToDelete(null);
+                  }}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-6">
+              <p className="text-gray-400 text-sm mb-3">
+                Are you sure you want to delete this video?
+              </p>
+              <p className="text-gray-500 text-xs mb-4">
+                <span className="text-white font-medium">
+                  {videoToDelete.title || videoToDelete.caption || 'Untitled video'}
+                </span>
+              </p>
+              <p className="text-gray-500 text-xs">
+                This action cannot be undone. The video will be permanently removed from your account.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="px-6 py-4 border-t border-white/10 flex items-center justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteVideoModal(false);
+                  setVideoToDelete(null);
+                }}
+                className="px-6 py-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-full transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteVideo}
+                className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors font-medium"
+              >
+                Delete Video
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* KPI Card Editor Modal */}
