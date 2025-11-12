@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import React, { useState } from 'react';
+import { Eye, EyeOff, ChevronRight } from 'lucide-react';
 import { VideoSubmission } from '../../types';
 import { LinkClick } from '../../services/LinkClicksService';
 import { AreaChart, Area, ResponsiveContainer, YAxis } from 'recharts';

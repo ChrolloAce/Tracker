@@ -3,8 +3,6 @@ import { createPortal } from 'react-dom';
 import {
   Play,
   Activity,
-  AtSign,
-  ChevronRight,
   Link as LinkIcon,
   Upload,
   RefreshCw

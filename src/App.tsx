@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import EmailVerificationScreen from './components/EmailVerificationScreen';
 import LandingPage from './pages/LandingPage';

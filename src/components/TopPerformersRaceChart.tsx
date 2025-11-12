@@ -553,8 +553,8 @@ const TopPerformersRaceChart: React.FC<TopPerformersRaceChartProps> = ({
     };
   };
 
-  // Calculate stats for refreshed videos (snapshot delta only during date range)
-  const getRefreshedVideoStats = (video: VideoSubmission) => {
+  // Calculate stats for refreshed videos (snapshot delta only during date range) - kept for potential future use
+  const _getRefreshedVideoStats = (video: VideoSubmission) => {
     if (!dateRange || !video.snapshots || video.snapshots.length < 2) {
       return {
         views: 0,

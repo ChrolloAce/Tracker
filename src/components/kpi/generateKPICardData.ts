@@ -13,7 +13,7 @@ export interface GenerateKPICardDataParams {
   submissions: VideoSubmission[];
   allSubmissions: VideoSubmission[] | undefined;
   linkClicks: LinkClick[];
-  links: TrackedLink[];
+  links: TrackedLink[]; // Kept for future use
   dateFilter: DateFilterType;
   customRange?: { startDate: Date; endDate: Date };
   granularity: 'day' | 'week' | 'month' | 'year';
@@ -653,24 +653,27 @@ export function generateKPICardData(params: GenerateKPICardDataParams): {
 
   // Add revenue cards if available
   if (revenueMetrics) {
+    // Calculate total downloads from daily metrics if available
+    const totalDownloads = revenueMetrics.dailyMetrics?.reduce((sum, day) => sum + (day.downloads || 0), 0) || 0;
+    
     cards.push(
       {
         id: 'revenue',
         label: 'Revenue',
-        value: `$${formatNumber((revenueMetrics.revenue || 0) / 100, true)}`,
+        value: `$${formatNumber((revenueMetrics.totalRevenue || 0) / 100, true)}`,
         icon: DollarSign,
         accent: 'emerald',
         sparklineData: [],
-        isEmpty: (revenueMetrics.revenue || 0) === 0
+        isEmpty: (revenueMetrics.totalRevenue || 0) === 0
       },
       {
         id: 'downloads',
         label: 'Downloads',
-        value: formatNumber(revenueMetrics.downloads || 0),
+        value: formatNumber(totalDownloads),
         icon: Download,
         accent: 'blue',
         sparklineData: [],
-        isEmpty: (revenueMetrics.downloads || 0) === 0
+        isEmpty: totalDownloads === 0
       }
     );
   } else if (onOpenRevenueSettings) {

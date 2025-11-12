@@ -101,7 +101,9 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
     return num.toString();
   };
 
-  const formatPercentage = (percent: number): string => {
+  // Unused helper functions - kept for potential future use
+  // @ts-ignore - Keeping for reference
+  const _formatPercentage = (percent: number): string => {
     const absPercent = Math.abs(percent);
     if (absPercent >= 1_000_000) {
       return `${(percent / 1_000_000).toFixed(1)}M`;
@@ -111,17 +113,20 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
     return percent.toFixed(0);
   };
 
-  const getPercentageColor = (percent: number): string => {
+  // @ts-ignore - Keeping for reference
+  const _getPercentageColor = (percent: number): string => {
     return percent >= 0 ? 'text-emerald-400' : 'text-red-400';
   };
 
-  const getPercentageBgColor = (percent: number): string => {
+  // @ts-ignore - Keeping for reference
+  const _getPercentageBgColor = (percent: number): string => {
     return percent >= 0 
       ? 'bg-emerald-500/10 border-emerald-500/20' 
       : 'bg-red-500/10 border-red-500/20';
   };
 
-  const calculateEngagementRate = (video: VideoSubmission): number => {
+  // @ts-ignore - Keeping for reference
+  const _calculateEngagementRate = (video: VideoSubmission): number => {
     if (!video.views || video.views === 0) return 0;
     const engagements = (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
     return (engagements / video.views) * 100;
@@ -810,14 +815,18 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
           latestSnapshotDate < ppInterval.endDate.getTime()
         ) {
           effectiveSnapshots.push({
+            id: `synthetic-${video.id}-${ppInterval.endDate.getTime()}`,
+            videoId: video.id || '',
             capturedAt: ppInterval.endDate,
+            capturedBy: 'system',
             views: latestViews,
             likes: latestLikes,
             comments: latestComments,
             shares: latestShares,
             saves: video.saves || video.bookmarks || 0,
-            bookmarks: video.saves || video.bookmarks || 0
-          });
+            bookmarks: video.saves || video.bookmarks || 0,
+            isInitialSnapshot: false
+          } as VideoSnapshot);
         }
 
         const snapshotsInInterval = effectiveSnapshots.filter((s: VideoSnapshot) =>
@@ -859,8 +868,8 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
     return result.sort((a: any, b: any) => b.viewsGained - a.viewsGained);
   }, [ppVideos, ppInterval, accountFilter, dayOfWeek, hourRange]);
 
-  // Calculate total views from new uploads
-  const totalNewUploadViews = useMemo(() => {
+  // Calculate total views from new uploads (kept for potential future use)
+  const _totalNewUploadViews = useMemo(() => {
     return newUploads.reduce((sum, video) => sum + (video.views || 0), 0);
   }, [newUploads]);
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { BarChart3, ChevronDown } from 'lucide-react';
 
-export type TimePeriodType = 'days' | 'weeks' | 'months' | 'quarters' | 'years';
+export type TimePeriodType = 'hours' | 'days' | 'weeks' | 'months' | 'quarters' | 'years';
 
 interface TimePeriodSelectorProps {
   selectedPeriod: TimePeriodType;

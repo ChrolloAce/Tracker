@@ -24,7 +24,7 @@ export class DataAggregationService {
   /**
    * Determine the appropriate interval type based on the date range duration
    */
-  static determineIntervalType(dateRange: DateRange): IntervalType {
+  static determineIntervalType(_dateRange: DateRange): IntervalType {
     // Always use daily intervals - even for single day views (today/yesterday)
     // This ensures singular days show just 1 data point instead of multiple hourly points
     return 'day';
