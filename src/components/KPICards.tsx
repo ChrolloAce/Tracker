@@ -2153,11 +2153,11 @@ const _KPISparkline: React.FC<{
           connectNulls={true}
           dot={false}
           activeDot={{ 
-            r: 5, 
+            r: 3, 
             fill: stroke, 
-            strokeWidth: 3, 
-            stroke: '#fff',
-            style: { filter: 'drop-shadow(0px 2px 8px rgba(0, 0, 0, 0.5))' }
+            strokeWidth: 1.5, 
+            stroke: 'rgba(255, 255, 255, 0.3)',
+            style: { cursor: 'pointer' }
           }}
         />
       </AreaChart>
@@ -2328,21 +2328,24 @@ const KPICard: React.FC<{
       onDragLeave={onDragLeave}
       onDrop={onDrop}
       className={`
-        group relative rounded-2xl bg-zinc-900/60 backdrop-blur border shadow-lg transition-all duration-200 overflow-hidden
+        group relative rounded-2xl bg-zinc-900/60 backdrop-blur border shadow-lg transition-all duration-200
         will-change-transform
         ${isEditMode ? 'cursor-move' : 'cursor-pointer'}
         ${isDragging ? 'opacity-50 scale-95' : ''}
         ${isDragOver ? 'ring-2 ring-emerald-500 border-emerald-500/50' : 'border-white/5 hover:shadow-xl hover:ring-1 hover:ring-white/10'}
       `}
-      style={{ transform: 'translateZ(0)', minHeight: '180px' }}
+      style={{ transform: 'translateZ(0)', minHeight: '180px', overflow: 'visible' }}
     >
-      {/* Depth Gradient Overlay */}
-      <div 
-        className="absolute inset-0 pointer-events-none z-0"
-        style={{
-          background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
-        }}
-      />
+      {/* Background layers container with overflow clipping */}
+      <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none z-0">
+        {/* Depth Gradient Overlay */}
+        <div 
+          className="absolute inset-0"
+          style={{
+            background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
+          }}
+        />
+      </div>
       
       {/* Full-height vertical cursor line */}
       {tooltipData && (
@@ -2544,11 +2547,11 @@ const KPICard: React.FC<{
                         connectNulls={true}
                         dot={false}
                         activeDot={{ 
-                          r: 5, 
+                          r: 3, 
                           fill: colors.stroke, 
-                          strokeWidth: 3, 
-                          stroke: '#fff',
-                          style: { filter: 'drop-shadow(0px 2px 8px rgba(0, 0, 0, 0.5))' }
+                          strokeWidth: 1.5, 
+                          stroke: 'rgba(255, 255, 255, 0.3)',
+                          style: { cursor: 'pointer' }
                         }}
                         isAnimationActive={true}
                         animationDuration={400}
@@ -3015,8 +3018,16 @@ const KPICard: React.FC<{
                   {/* Comparison Line - Third Line */}
                   {ppComparison && ppDateStr && (
                     <div className="pt-2 border-t border-white/5">
-                      <p className={`text-xs font-medium ${ppComparison.isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {ppComparison.isPositive ? '↑' : '↓'} {Math.abs(ppComparison.percentChange).toFixed(1)}% {ppComparison.isPositive ? 'increase' : 'decrease'} on CP ({dateStr}) compared to PP ({ppDateStr})
+                      <p className="text-xs font-medium text-gray-400">
+                        <span className={ppComparison.isPositive ? 'text-emerald-400' : 'text-red-400'}>
+                          {ppComparison.isPositive ? '↑' : '↓'} {(() => {
+                            const percent = Math.abs(ppComparison.percentChange);
+                            if (percent >= 1000000) return `${(percent / 1000000).toFixed(1)}M`;
+                            if (percent >= 1000) return `${(percent / 1000).toFixed(1)}K`;
+                            return percent.toFixed(1);
+                          })()}%
+                        </span>
+                        {' '}{ppComparison.isPositive ? 'increase' : 'decrease'} on CP ({dateStr}) compared to PP ({ppDateStr})
                       </p>
                     </div>
                   )}
