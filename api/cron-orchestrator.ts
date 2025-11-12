@@ -34,11 +34,11 @@ function initializeFirebase() {
 
 // Subscription plan refresh intervals (in hours)
 const PLAN_REFRESH_INTERVALS: Record<string, number> = {
-  free: 0.4167,     // 25 minutes (normally 48 hours)
-  basic: 0.4167,    // 25 minutes (normally 24 hours)
-  pro: 0.4167,      // 25 minutes (normally 24 hours)
-  ultra: 0.4167,    // 25 minutes (normally 12 hours)
-  enterprise: 0.4167, // 25 minutes (normally 12 hours)
+  free: 48,         // 48 hours (2 days)
+  basic: 24,        // 24 hours (1 day)
+  pro: 24,          // 24 hours (1 day)
+  ultra: 12,        // 12 hours
+  enterprise: 12,   // 12 hours
 };
 
 /**
