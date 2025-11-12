@@ -81,7 +81,7 @@ Top Performers:
 ## 🗂️ Cron Jobs Architecture
 
 ### 1. `cron-orchestrator.ts`
-**Schedule:** Every 25 minutes  
+**Schedule:** Every 12 hours (midnight & noon UTC)  
 **Purpose:** Process all organizations  
 **What it does:**
 - Finds accounts that need refreshing (based on plan interval)

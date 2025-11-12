@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Check, Folder, Plus, Pencil } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import ProjectService from '../services/ProjectService';
 import { Project } from '../types/projects';
 import { clsx } from 'clsx';
 import EditProjectModal from './EditProjectModal';
+import CreateProjectModal from './CreateProjectModal';
 
 interface ProjectSwitcherProps {
   isCollapsed?: boolean;
@@ -13,11 +13,11 @@ interface ProjectSwitcherProps {
 
 const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }) => {
   const { currentOrgId, currentProjectId, switchProject } = useAuth();
-  const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Load projects
@@ -81,6 +81,19 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
       }
     }
     setEditingProject(null);
+  };
+
+  const handleCreateSuccess = async () => {
+    // Reload projects after successful creation
+    if (currentOrgId) {
+      try {
+        const projectsList = await ProjectService.getProjects(currentOrgId, false);
+        setProjects(projectsList);
+      } catch (error) {
+        console.error('Failed to reload projects:', error);
+      }
+    }
+    setShowCreateModal(false);
   };
 
   if (loading || !currentProject) {
@@ -180,7 +193,7 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
                 <button
                   onClick={() => {
                     setIsOpen(false);
-              navigate('/create-project');
+                    setShowCreateModal(true);
                   }}
             className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-blue-400 hover:bg-white/5 transition-colors"
                 >
@@ -199,6 +212,13 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ isCollapsed = false }
           onSuccess={handleEditSuccess}
         />
       )}
+
+      {/* Create Project Modal */}
+      <CreateProjectModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={handleCreateSuccess}
+      />
     </div>
   );
 };

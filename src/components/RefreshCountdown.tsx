@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 /**
  * RefreshCountdown Component
  * Shows unified orchestrator timer - ONE progress bar for all accounts
- * Orchestrator runs every 5 minutes for testing (normally 12 hours)
+ * Orchestrator runs every 12 hours
  */
 const RefreshCountdown: React.FC = () => {
   const { currentOrgId, currentProjectId } = useAuth();
@@ -52,30 +52,20 @@ const RefreshCountdown: React.FC = () => {
   }, [currentOrgId, currentProjectId]);
 
   const getNextCronRun = (): Date => {
-    // Cron runs every 25 minutes (*/25 * * * *)
+    // Cron runs every 12 hours (0 */12 * * *)
     const now = new Date(currentTime);
-    const currentMinute = now.getMinutes();
-    const currentSecond = now.getSeconds();
+    const currentHour = now.getHours();
     
-    // Calculate next 25-minute mark (0, 25, 50)
-    const nextMinuteMark = Math.ceil(currentMinute / 25) * 25;
-    
+    // Next run is at hour 0 or 12 (midnight or noon)
     const nextRun = new Date(now);
-    nextRun.setSeconds(0, 0); // Reset seconds and milliseconds
+    nextRun.setMinutes(0, 0, 0); // Reset to top of hour
     
-    if (nextMinuteMark >= 60) {
-      // Roll over to next hour
-      nextRun.setHours(now.getHours() + 1);
-      nextRun.setMinutes(nextMinuteMark - 60);
-    } else if (nextMinuteMark === currentMinute && currentSecond === 0) {
-      // If we're exactly at a 25-minute mark, move to next one
-      nextRun.setMinutes(nextMinuteMark + 25);
-      if (nextRun.getMinutes() >= 60) {
-        nextRun.setHours(nextRun.getHours() + 1);
-        nextRun.setMinutes(nextRun.getMinutes() - 60);
-      }
+    if (currentHour < 12) {
+      // Next run is at noon today
+      nextRun.setHours(12);
     } else {
-      nextRun.setMinutes(nextMinuteMark);
+      // Next run is at midnight tomorrow
+      nextRun.setHours(24); // This automatically rolls over to next day at 00:00
     }
     
     return nextRun;
@@ -99,19 +89,19 @@ const RefreshCountdown: React.FC = () => {
   };
 
   const getProgressPercent = (): number => {
-    // Calculate progress through the current 25-minute period
+    // Calculate progress through the current 12-hour period
     const now = new Date(currentTime);
-    const currentMinute = now.getMinutes();
+    const currentHour = now.getHours();
     
-    // Determine last 25-minute mark (0, 25, 50)
-    const lastRunMinute = Math.floor(currentMinute / 25) * 25;
+    // Determine last 12-hour mark (0 or 12)
+    const lastRunHour = currentHour < 12 ? 0 : 12;
     const lastRun = new Date(now);
-    lastRun.setMinutes(lastRunMinute, 0, 0);
+    lastRun.setHours(lastRunHour, 0, 0, 0);
     
     // Calculate elapsed time since last run
     const elapsed = currentTime - lastRun.getTime();
-    const twentyFiveMinutesInMs = 25 * 60 * 1000;
-    const progress = (elapsed / twentyFiveMinutesInMs) * 100;
+    const twelveHoursInMs = 12 * 60 * 60 * 1000;
+    const progress = (elapsed / twelveHoursInMs) * 100;
     
     return Math.min(progress, 100);
   };

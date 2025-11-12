@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { X, Eye, Heart, MessageCircle, Share2, Activity, Video, Users, MousePointerClick, Play, TrendingUp, Upload, Bookmark } from 'lucide-react';
+import { X, Eye, Heart, MessageCircle, Share2, Activity, Video, Users, MousePointerClick } from 'lucide-react';
 import { VideoSubmission, VideoSnapshot } from '../types';
 import { TimeInterval } from '../services/DataAggregationService';
 import { LinkClick } from '../services/LinkClicksService';
-import { PlatformIcon } from './ui/PlatformIcon';
+import { VideoSubmissionsTable } from './VideoSubmissionsTable';
 
 interface DayVideosModalProps {
   isOpen: boolean;
@@ -21,6 +21,7 @@ interface DayVideosModalProps {
   ppLinkClicks?: LinkClick[]; // Previous period link clicks
   dayOfWeek?: 0 | 1 | 2 | 3 | 4 | 5 | 6; // Optional: filter by specific day of week (0 = Sunday, 6 = Saturday)
   hourRange?: { start: number; end: number }; // Optional: filter by hour range (e.g., {start: 13, end: 14})
+  selectedPeriodRange?: { startDate: Date; endDate: Date }; // CRITICAL: The overall selected date range (e.g., "Last 30 Days" boundaries)
 }
 
 const DayVideosModal: React.FC<DayVideosModalProps> = ({
@@ -38,7 +39,8 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
   linkClicks = [],
   ppLinkClicks = [],
   dayOfWeek,
-  hourRange
+  hourRange,
+  selectedPeriodRange
 }) => {
   const [showPreviousPeriod, setShowPreviousPeriod] = useState(false);
 
@@ -193,7 +195,14 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
       // Calculate growth for each video based on snapshots in the interval
       videosToUse.forEach(video => {
         const uploadDate = video.uploadDate ? new Date(video.uploadDate) : new Date(video.dateSubmitted);
-        const isNewUpload = uploadDate >= interval.startDate && uploadDate <= interval.endDate;
+        
+        // CRITICAL: Check if video was uploaded within the interval AND within the selected period
+        // This prevents videos from outside the selected period appearing in partial intervals at edges
+        let isNewUpload = uploadDate >= interval.startDate && uploadDate <= interval.endDate;
+        if (selectedPeriodRange && isNewUpload) {
+          // Additional check: video must also be uploaded within the overall selected period
+          isNewUpload = uploadDate >= selectedPeriodRange.startDate && uploadDate <= selectedPeriodRange.endDate;
+        }
         
         // For NEW uploads in this interval, count their full stats (no growth calculation)
         // This ensures new videos contribute their entire view count, not just growth
@@ -686,15 +695,191 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
     return sortedResult;
   }, [videos, accountFilter, dayOfWeek, hourRange, interval]);
 
+  // Calculate PP New Uploads (using ppVideos and ppInterval)
+  const ppNewUploads = useMemo(() => {
+    if (!ppVideos || !ppInterval) return [];
+    
+    let videosToShow = ppVideos;
+    
+    // Filter out invalid/empty videos
+    videosToShow = videosToShow.filter(v => {
+      const hasStats = (v.views || 0) > 0 || (v.likes || 0) > 0 || (v.comments || 0) > 0;
+      const hasContent = (v.title && v.title !== '(No caption)') || (v.caption && v.caption !== '(No caption)');
+      return hasStats || hasContent;
+    });
+    
+    // Filter by interval
+    videosToShow = videosToShow.filter(v => {
+      const uploadDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
+      return uploadDate >= ppInterval.startDate && uploadDate <= ppInterval.endDate;
+    });
+    
+    // Apply filters
+    if (accountFilter) {
+      videosToShow = videosToShow.filter(v => 
+        v.uploaderHandle?.toLowerCase() === accountFilter.toLowerCase()
+      );
+    }
+    
+    if (dayOfWeek !== undefined) {
+      videosToShow = videosToShow.filter(v => {
+        const videoDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
+        return videoDate.getDay() === dayOfWeek;
+      });
+    }
+    
+    if (hourRange) {
+      videosToShow = videosToShow.filter(v => {
+        const videoDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
+        const hour = videoDate.getHours();
+        return hour >= hourRange.start && hour < hourRange.end;
+      });
+    }
+    
+    return [...videosToShow]
+      .sort((a, b) => {
+        const dateA = a.uploadDate ? new Date(a.uploadDate) : new Date(a.dateSubmitted);
+        const dateB = b.uploadDate ? new Date(b.uploadDate) : new Date(b.dateSubmitted);
+        return dateB.getTime() - dateA.getTime();
+      });
+  }, [ppVideos, ppInterval, accountFilter, dayOfWeek, hourRange]);
+
+  // Calculate PP Top Gainers
+  const ppTopGainers = useMemo(() => {
+    if (!ppVideos || !ppInterval) return [];
+    
+    let videosToAnalyze = ppVideos;
+    
+    // Filter out invalid/empty videos
+    videosToAnalyze = videosToAnalyze.filter(v => {
+      const hasStats = (v.views || 0) > 0 || (v.likes || 0) > 0 || (v.comments || 0) > 0;
+      const hasContent = (v.title && v.title !== '(No caption)') || (v.caption && v.caption !== '(No caption)');
+      return hasStats || hasContent;
+    });
+    
+    // Apply filters
+    if (accountFilter) {
+      videosToAnalyze = videosToAnalyze.filter(v => 
+        v.uploaderHandle?.toLowerCase() === accountFilter.toLowerCase()
+      );
+    }
+    
+    if (dayOfWeek !== undefined) {
+      videosToAnalyze = videosToAnalyze.filter(v => {
+        const videoDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
+        return videoDate.getDay() === dayOfWeek;
+      });
+    }
+    
+    if (hourRange) {
+      videosToAnalyze = videosToAnalyze.filter(v => {
+        const videoDate = v.uploadDate ? new Date(v.uploadDate) : new Date(v.dateSubmitted);
+        const hour = videoDate.getHours();
+        return hour >= hourRange.start && hour < hourRange.end;
+      });
+    }
+    
+    const result = videosToAnalyze
+      .map((video: VideoSubmission) => {
+        const normalizeSnapshot = (snapshot: VideoSnapshot): VideoSnapshot => {
+          const capturedAtValue = (snapshot as any).capturedAt;
+          let capturedAt = capturedAtValue instanceof Date ? capturedAtValue : new Date(capturedAtValue);
+          if (Number.isNaN(capturedAt.getTime())) {
+            capturedAt = new Date();
+          }
+          return {
+            ...snapshot,
+            capturedAt
+          };
+        };
+
+        const originalSnapshots = (video.snapshots || []).map(normalizeSnapshot);
+        const effectiveSnapshots: VideoSnapshot[] = [...originalSnapshots];
+
+        const latestViews = video.views || 0;
+        const latestLikes = video.likes || 0;
+        const latestComments = video.comments || 0;
+        const latestShares = video.shares || 0;
+
+        const latestSnapshotDate = originalSnapshots.length > 0
+          ? Math.max(...originalSnapshots.map(s => s.capturedAt.getTime()))
+          : null;
+
+        if (
+          latestSnapshotDate !== null &&
+          latestSnapshotDate < ppInterval.endDate.getTime()
+        ) {
+          effectiveSnapshots.push({
+            capturedAt: ppInterval.endDate,
+            views: latestViews,
+            likes: latestLikes,
+            comments: latestComments,
+            shares: latestShares,
+            saves: video.saves || video.bookmarks || 0,
+            bookmarks: video.saves || video.bookmarks || 0
+          });
+        }
+
+        const snapshotsInInterval = effectiveSnapshots.filter((s: VideoSnapshot) =>
+          s.capturedAt >= ppInterval.startDate && s.capturedAt <= ppInterval.endDate
+        );
+
+        if (snapshotsInInterval.length < 2) {
+          return null;
+        }
+
+        snapshotsInInterval.sort((a, b) => a.capturedAt.getTime() - b.capturedAt.getTime());
+
+        const firstSnapshot = snapshotsInInterval[0];
+        const lastSnapshot = snapshotsInInterval[snapshotsInInterval.length - 1];
+
+        const startValue = firstSnapshot.views || 0;
+        const endValue = lastSnapshot.views || 0;
+        const absoluteGain = endValue - startValue;
+        const growthPercentage = startValue > 0 ? (absoluteGain / startValue) * 100 : 0;
+
+        if (absoluteGain <= 0) {
+          return null;
+        }
+
+        return {
+          video,
+          growth: growthPercentage,
+          growthPercentage,
+          metricValue: endValue,
+          absoluteGain,
+          startValue,
+          snapshotCount: effectiveSnapshots.length,
+          viewsGained: absoluteGain,
+          currentViews: endValue
+        };
+      })
+      .filter(item => item !== null);
+
+    return result.sort((a: any, b: any) => b.viewsGained - a.viewsGained);
+  }, [ppVideos, ppInterval, accountFilter, dayOfWeek, hourRange]);
+
   // Calculate total views from new uploads
   const totalNewUploadViews = useMemo(() => {
     return newUploads.reduce((sum, video) => sum + (video.views || 0), 0);
   }, [newUploads]);
 
-  // Calculate total views gained from refreshed videos
+  // Filter out refreshed videos that are also in new uploads
+  const filteredTopGainers = useMemo(() => {
+    const newUploadIds = new Set(newUploads.map(v => v.id));
+    return topGainers.filter((item: any) => !newUploadIds.has(item.video.id));
+  }, [topGainers, newUploads]);
+
+  // PP filtered top gainers
+  const ppFilteredTopGainers = useMemo(() => {
+    const ppNewUploadIds = new Set(ppNewUploads.map(v => v.id));
+    return ppTopGainers.filter((item: any) => !ppNewUploadIds.has(item.video.id));
+  }, [ppTopGainers, ppNewUploads]);
+
+  // Calculate total views gained from refreshed videos (excluding new uploads)
   const totalRefreshedViewsGained = useMemo(() => {
-    return topGainers.reduce((sum, item: any) => sum + (item.viewsGained || 0), 0);
-  }, [topGainers]);
+    return filteredTopGainers.reduce((sum, item: any) => sum + (item.viewsGained || 0), 0);
+  }, [filteredTopGainers]);
 
   if (!isOpen) return null;
 
@@ -732,23 +917,60 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                 return dateRangeLabel || formatDate(date);
               })()}
             </h2>
-            <span className={`text-xs px-2 py-0.5 rounded-full ${showPreviousPeriod ? 'bg-white/5 text-gray-400' : 'bg-white/5 text-gray-400'}`}>
-              {showPreviousPeriod ? 'Previous Period' : 'Current Period'}
-            </span>
           </div>
           <div className="flex items-center gap-2">
-            {/* Previous Period Toggle */}
+            {/* Period Toggle Tabs */}
             {hasPPData && (
+              <div className="flex items-center bg-white/[0.02] rounded-lg p-0.5 border border-white/[0.04]">
               <button
-                onClick={() => setShowPreviousPeriod(!showPreviousPeriod)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all bg-white/5 text-gray-300 hover:bg-white/10 border border-white/[0.06]"
-              >
-                {showPreviousPeriod ? (
-                  <>Previous Period</>
-                ) : (
-                  <>Compare Period</>
-                )}
+                  onClick={() => setShowPreviousPeriod(false)}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                    !showPreviousPeriod 
+                      ? 'bg-white/10 text-white' 
+                      : 'text-gray-400 hover:text-gray-300'
+                  }`}
+                  title={`View data for ${interval ? (() => {
+                    const formatDateRange = (startDate: Date, endDate: Date) => {
+                      const startMonth = startDate.toLocaleDateString('en-US', { month: 'short' });
+                      const startDay = startDate.getDate();
+                      const endDay = endDate.getDate();
+                      const startMonthNum = startDate.getMonth();
+                      const endMonthNum = endDate.getMonth();
+                      if (startMonthNum === endMonthNum && startDay === endDay) return `${startMonth} ${startDay}`;
+                      if (startMonthNum === endMonthNum) return `${startMonth} ${startDay} - ${endDay}`;
+                      const endMonth = endDate.toLocaleDateString('en-US', { month: 'short' });
+                      return `${startMonth} ${startDay} - ${endMonth} ${endDay}`;
+                    };
+                    return formatDateRange(interval.startDate, interval.endDate);
+                  })() : 'current period'}`}
+                >
+                  Current Period
               </button>
+                <button
+                  onClick={() => setShowPreviousPeriod(true)}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                    showPreviousPeriod 
+                      ? 'bg-white/10 text-white' 
+                      : 'text-gray-400 hover:text-gray-300'
+                  }`}
+                  title={`View data for ${ppInterval ? (() => {
+                    const formatDateRange = (startDate: Date, endDate: Date) => {
+                      const startMonth = startDate.toLocaleDateString('en-US', { month: 'short' });
+                      const startDay = startDate.getDate();
+                      const endDay = endDate.getDate();
+                      const startMonthNum = startDate.getMonth();
+                      const endMonthNum = endDate.getMonth();
+                      if (startMonthNum === endMonthNum && startDay === endDay) return `${startMonth} ${startDay}`;
+                      if (startMonthNum === endMonthNum) return `${startMonth} ${startDay} - ${endDay}`;
+                      const endMonth = endDate.toLocaleDateString('en-US', { month: 'short' });
+                      return `${startMonth} ${startDay} - ${endMonth} ${endDay}`;
+                    };
+                    return formatDateRange(ppInterval.startDate, ppInterval.endDate);
+                  })() : 'previous period'}`}
+                >
+                  Previous Period
+                </button>
+              </div>
             )}
             <button
               onClick={onClose}
@@ -760,11 +982,192 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
         </div>
 
         {/* Main Content - Reorganized Layout */}
-        <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 65px)' }}>
-          {/* Metrics Grid - Primary Focus */}
-          <div className="grid grid-cols-4 gap-3 mb-6">
+        <div className="p-6 overflow-y-auto overflow-x-hidden" style={{ maxHeight: 'calc(90vh - 65px)' }}>
+          {/* Two-Column Layout: Left (Videos) | Right (KPIs) */}
+          <div className="flex gap-4">
+            {/* LEFT SIDE - Video Tables (Compact) */}
+            <div className="flex-1 space-y-2 min-w-0">
+              {/* New Videos Table - Compact */}
+              {(() => {
+                const videosToShow = showPreviousPeriod ? ppNewUploads : newUploads;
+                return (
+                  <div className="overflow-x-auto">
+                    <div style={{ transform: 'scale(0.85)', transformOrigin: 'top left', width: '117.65%' }}>
+                      <VideoSubmissionsTable
+                        submissions={videosToShow}
+                        onVideoClick={onVideoClick}
+                        headerTitle={`New Videos (${videosToShow.length})`}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Refreshed Videos Table - Compact */}
+              {(() => {
+                const gainersToShow = showPreviousPeriod ? ppFilteredTopGainers : filteredTopGainers;
+                return (
+                  <div className="overflow-x-auto">
+                    <div style={{ transform: 'scale(0.85)', transformOrigin: 'top left', width: '117.65%' }}>
+                      <VideoSubmissionsTable
+                        submissions={gainersToShow.map((item: any) => {
+                          // Calculate growth for all metrics from snapshots
+                          const video = item.video;
+                          const snapshots = video.snapshots || [];
+                          
+                          // Get earliest and latest snapshots
+                          const sortedSnapshots = [...snapshots].sort((a: any, b: any) => 
+                            new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+                          );
+                          
+                          const earliest = sortedSnapshots[0];
+                          const latest = sortedSnapshots[sortedSnapshots.length - 1] || video;
+                          
+                          // Calculate deltas for each metric
+                          const viewsGained = (latest.views || video.views || 0) - (earliest?.views || 0);
+                          const likesGained = (latest.likes || video.likes || 0) - (earliest?.likes || 0);
+                          const commentsGained = (latest.comments || video.comments || 0) - (earliest?.comments || 0);
+                          const sharesGained = (latest.shares || video.shares || 0) - (earliest?.shares || 0);
+                          const bookmarksGained = ((latest.saves || latest.bookmarks) || (video.saves || video.bookmarks) || 0) - ((earliest?.saves || earliest?.bookmarks) || 0);
+                          
+                          return {
+                            ...video,
+                            // Override stats to show only growth (delta) instead of totals
+                            views: viewsGained,
+                            likes: likesGained,
+                            comments: commentsGained,
+                            shares: sharesGained,
+                            bookmarks: bookmarksGained,
+                            saves: bookmarksGained
+                          };
+                        })}
+                        onVideoClick={onVideoClick}
+                        headerTitle={`Refreshed Videos (${gainersToShow.length})`}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* RIGHT SIDE - Summary Card + KPI Metrics (Sticky) */}
+            <div className="w-72 flex-shrink-0 sticky top-0 self-start space-y-4">
+              {/* Performance Summary Card */}
+              {(() => {
+                const currentViews = cpKPIMetrics.views;
+                const previousViews = ppKPIMetrics.views;
+                let percentChange: number;
+                
+                if (previousViews === 0) {
+                  // Previous period was 0
+                  if (currentViews === 0) {
+                    percentChange = 0; // Both 0, no change
+                  } else {
+                    percentChange = Infinity; // New data, show as "NEW"
+                  }
+                } else {
+                  percentChange = ((currentViews - previousViews) / previousViews) * 100;
+                }
+                
+                const isPositive = percentChange >= 0;
+                
+                // Calculate views from new vs refreshed
+                const newUploadViews = newUploads.reduce((sum, v) => sum + (v.views || 0), 0);
+                const refreshedViews = totalRefreshedViewsGained;
+                const totalTrackedViews = newUploadViews + refreshedViews;
+                const newUploadPercent = totalTrackedViews > 0 ? (newUploadViews / totalTrackedViews) * 100 : 0;
+                const refreshedPercent = totalTrackedViews > 0 ? (refreshedViews / totalTrackedViews) * 100 : 0;
+                
+                // Format period as date range (e.g., "Nov 9 - 12" or "Nov 10" for single day)
+                const formatDateRange = (startDate: Date, endDate: Date) => {
+                  const startMonth = startDate.toLocaleDateString('en-US', { month: 'short' });
+                  const startDay = startDate.getDate();
+                  const endDay = endDate.getDate();
+                  const startMonthNum = startDate.getMonth();
+                  const endMonthNum = endDate.getMonth();
+                  
+                  // If same day and same month, show just "Nov 10"
+                  if (startMonthNum === endMonthNum && startDay === endDay) {
+                    return `${startMonth} ${startDay}`;
+                  }
+                  
+                  // If same month but different days, show "Nov 9 - 12"
+                  if (startMonthNum === endMonthNum) {
+                    return `${startMonth} ${startDay} - ${endDay}`;
+                  }
+                  
+                  // If different months, show "Nov 30 - Dec 3"
+                  const endMonth = endDate.toLocaleDateString('en-US', { month: 'short' });
+                  return `${startMonth} ${startDay} - ${endMonth} ${endDay}`;
+                };
+                
+                const periodName = interval 
+                  ? formatDateRange(interval.startDate, interval.endDate)
+                  : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                
+                // Format previous period date range
+                const ppPeriodName = ppInterval
+                  ? formatDateRange(ppInterval.startDate, ppInterval.endDate)
+                  : '';
+                
+                return (
+                  <div className="bg-white/[0.02] rounded-lg p-3 border border-white/[0.04]">
+                    <p className="text-xs leading-relaxed text-gray-400">
+                      {hasPPData && percentChange !== Infinity && percentChange !== 0 && (
+                        <>
+                          In {periodName}, you did{' '}
+                          <span className={`font-semibold ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {isPositive ? '+' : ''}{Math.abs(percentChange).toFixed(1)}%
+                          </span>
+                          {' '}{isPositive ? 'better' : 'worse'} than {ppPeriodName}.{' '}
+                        </>
+                      )}
+                      <span className="font-semibold text-white">{newUploadPercent.toFixed(0)}%</span> of your views came from new uploads, while{' '}
+                      <span className="font-semibold text-white">{refreshedPercent.toFixed(0)}%</span> came from refreshed videos.
+                    </p>
+                  </div>
+                );
+              })()}
+              
+              {/* KPI Grid */}
+              {(() => {
+                // Calculate breakdowns for each metric - use correct period data
+                const uploadsToUse = showPreviousPeriod ? ppNewUploads : newUploads;
+                const gainersToUse = showPreviousPeriod ? ppFilteredTopGainers : filteredTopGainers;
+                
+                const newUploadMetrics = uploadsToUse.reduce((acc, v) => ({
+                  views: acc.views + (v.views || 0),
+                  likes: acc.likes + (v.likes || 0),
+                  comments: acc.comments + (v.comments || 0),
+                  shares: acc.shares + (v.shares || 0),
+                  bookmarks: acc.bookmarks + ((v.saves || v.bookmarks) || 0)
+                }), { views: 0, likes: 0, comments: 0, shares: 0, bookmarks: 0 });
+                
+                const refreshedMetrics = gainersToUse.reduce((acc, item: any) => {
+                  const video = item.video;
+                  const snapshots = video.snapshots || [];
+                  const sortedSnapshots = [...snapshots].sort((a: any, b: any) => 
+                    new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+                  );
+                  const earliest = sortedSnapshots[0];
+                  const latest = sortedSnapshots[sortedSnapshots.length - 1] || video;
+                  
+                  return {
+                    views: acc.views + ((latest.views || video.views || 0) - (earliest?.views || 0)),
+                    likes: acc.likes + ((latest.likes || video.likes || 0) - (earliest?.likes || 0)),
+                    comments: acc.comments + ((latest.comments || video.comments || 0) - (earliest?.comments || 0)),
+                    shares: acc.shares + ((latest.shares || video.shares || 0) - (earliest?.shares || 0)),
+                    bookmarks: acc.bookmarks + (((latest.saves || latest.bookmarks) || (video.saves || video.bookmarks) || 0) - ((earliest?.saves || earliest?.bookmarks) || 0))
+                  };
+                }, { views: 0, likes: 0, comments: 0, shares: 0, bookmarks: 0 });
+                
+                return (
+                  <div className="grid grid-cols-2 gap-3">
             {/* Views */}
-            <div className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors">
+            <div 
+              className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
+              title={`New: ${formatNumber(newUploadMetrics.views)} • Refreshed: ${formatNumber(refreshedMetrics.views)}`}
+            >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs text-gray-500 font-medium">Views</span>
                 <Eye className="w-3.5 h-3.5 text-gray-600" />
@@ -784,10 +1187,26 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                   ) : null;
                 })()}
               </div>
+              {/* Breakdown Tooltip */}
+              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                <div className="bg-[#1a1a1a] border border-white/[0.1] rounded-lg p-2 shadow-xl min-w-[140px]">
+                  <div className="flex items-center justify-between text-[10px] mb-1">
+                    <span className="text-gray-400">New</span>
+                    <span className="text-gray-300 font-medium">{formatNumber(newUploadMetrics.views)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="text-gray-400">Refreshed</span>
+                    <span className="text-gray-300 font-medium">{formatNumber(refreshedMetrics.views)}</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Likes */}
-            <div className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors">
+            <div 
+              className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
+              title={`New: ${formatNumber(newUploadMetrics.likes)} • Refreshed: ${formatNumber(refreshedMetrics.likes)}`}
+            >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs text-gray-500 font-medium">Likes</span>
                 <Heart className="w-3.5 h-3.5 text-gray-600" />
@@ -807,10 +1226,26 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                   ) : null;
                 })()}
               </div>
+              {/* Breakdown Tooltip */}
+              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                <div className="bg-[#1a1a1a] border border-white/[0.1] rounded-lg p-2 shadow-xl min-w-[140px]">
+                  <div className="flex items-center justify-between text-[10px] mb-1">
+                    <span className="text-gray-400">New</span>
+                    <span className="text-gray-300 font-medium">{formatNumber(newUploadMetrics.likes)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="text-gray-400">Refreshed</span>
+                    <span className="text-gray-300 font-medium">{formatNumber(refreshedMetrics.likes)}</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Comments */}
-            <div className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors">
+            <div 
+              className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
+              title={`New: ${formatNumber(newUploadMetrics.comments)} • Refreshed: ${formatNumber(refreshedMetrics.comments)}`}
+            >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs text-gray-500 font-medium">Comments</span>
                 <MessageCircle className="w-3.5 h-3.5 text-gray-600" />
@@ -830,10 +1265,26 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                   ) : null;
                 })()}
               </div>
+              {/* Breakdown Tooltip */}
+              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                <div className="bg-[#1a1a1a] border border-white/[0.1] rounded-lg p-2 shadow-xl min-w-[140px]">
+                  <div className="flex items-center justify-between text-[10px] mb-1">
+                    <span className="text-gray-400">New</span>
+                    <span className="text-gray-300 font-medium">{formatNumber(newUploadMetrics.comments)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="text-gray-400">Refreshed</span>
+                    <span className="text-gray-300 font-medium">{formatNumber(refreshedMetrics.comments)}</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Shares */}
-            <div className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors">
+            <div 
+              className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
+              title={`New: ${formatNumber(newUploadMetrics.shares)} • Refreshed: ${formatNumber(refreshedMetrics.shares)}`}
+            >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs text-gray-500 font-medium">Shares</span>
                 <Share2 className="w-3.5 h-3.5 text-gray-600" />
@@ -853,10 +1304,26 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                   ) : null;
                 })()}
               </div>
+              {/* Breakdown Tooltip */}
+              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                <div className="bg-[#1a1a1a] border border-white/[0.1] rounded-lg p-2 shadow-xl min-w-[140px]">
+                  <div className="flex items-center justify-between text-[10px] mb-1">
+                    <span className="text-gray-400">New</span>
+                    <span className="text-gray-300 font-medium">{formatNumber(newUploadMetrics.shares)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="text-gray-400">Refreshed</span>
+                    <span className="text-gray-300 font-medium">{formatNumber(refreshedMetrics.shares)}</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Engagement Rate */}
-            <div className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors">
+            <div 
+              className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
+              title={`New: ${newUploadMetrics.views ? ((newUploadMetrics.likes + newUploadMetrics.comments + newUploadMetrics.shares) / newUploadMetrics.views * 100).toFixed(1) : 0}% • Refreshed: ${refreshedMetrics.views ? ((refreshedMetrics.likes + refreshedMetrics.comments + refreshedMetrics.shares) / refreshedMetrics.views * 100).toFixed(1) : 0}%`}
+            >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs text-gray-500 font-medium">Engagement</span>
                 <Activity className="w-3.5 h-3.5 text-gray-600" />
@@ -876,10 +1343,30 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                   ) : null;
                 })()}
               </div>
+              {/* Breakdown Tooltip */}
+              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                <div className="bg-[#1a1a1a] border border-white/[0.1] rounded-lg p-2 shadow-xl min-w-[140px]">
+                  <div className="flex items-center justify-between text-[10px] mb-1">
+                    <span className="text-gray-400">New</span>
+                    <span className="text-gray-300 font-medium">
+                      {newUploadMetrics.views ? ((newUploadMetrics.likes + newUploadMetrics.comments + newUploadMetrics.shares) / newUploadMetrics.views * 100).toFixed(1) : 0}%
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="text-gray-400">Refreshed</span>
+                    <span className="text-gray-300 font-medium">
+                      {refreshedMetrics.views ? ((refreshedMetrics.likes + refreshedMetrics.comments + refreshedMetrics.shares) / refreshedMetrics.views * 100).toFixed(1) : 0}%
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Videos */}
-            <div className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors">
+            <div 
+              className="bg-white/[0.02] rounded-lg p-4 border border-white/[0.04] hover:bg-white/[0.03] transition-colors relative group"
+              title={`New: ${uploadsToUse.length} • Refreshed: ${gainersToUse.length}`}
+            >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs text-gray-500 font-medium">Videos</span>
                 <Video className="w-3.5 h-3.5 text-gray-600" />
@@ -898,6 +1385,19 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
                     </span>
                   ) : null;
                 })()}
+              </div>
+              {/* Breakdown Tooltip */}
+              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                <div className="bg-[#1a1a1a] border border-white/[0.1] rounded-lg p-2 shadow-xl min-w-[140px]">
+                  <div className="flex items-center justify-between text-[10px] mb-1">
+                    <span className="text-gray-400">New</span>
+                    <span className="text-gray-300 font-medium">{uploadsToUse.length}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="text-gray-400">Refreshed</span>
+                    <span className="text-gray-300 font-medium">{gainersToUse.length}</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -947,287 +1447,12 @@ const DayVideosModal: React.FC<DayVideosModalProps> = ({
               </div>
             </div>
           </div>
-
-          {/* Secondary Content - New Uploads & Refreshed Videos */}
-          <div className="grid grid-cols-2 gap-6">
-            {/* New Uploads */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                <Upload className="w-3.5 h-3.5 text-gray-500" />
-                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  New Uploads · {newUploads.length}
-                </h3>
-              </div>
-                {newUploads.length > 0 && (
-                  <span className="text-xs font-semibold text-gray-400">
-                    {formatNumber(totalNewUploadViews)} views
-                  </span>
-                )}
-              </div>
-              <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                {newUploads.length > 0 ? (
-                  newUploads.map((video, idx) => (
-                    <div 
-                      key={`new-${video.id}-${idx}`}
-                      onClick={() => onVideoClick?.(video)}
-                      className="bg-white/[0.02] rounded-xl p-4 border border-white/[0.04] hover:bg-white/[0.06] hover:border-white/[0.08] cursor-pointer transition-all group"
-                    >
-                      {/* Header with Profile and Views */}
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          {/* Profile Picture */}
-                          {video.uploaderProfilePicture ? (
-                            <img 
-                              src={video.uploaderProfilePicture} 
-                              alt={video.uploaderHandle}
-                              className="w-6 h-6 rounded-full object-cover border border-white/[0.1]"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                              }}
-                            />
-                          ) : (
-                            <div className="w-6 h-6 rounded-full bg-white/[0.05] border border-white/[0.1] flex items-center justify-center">
-                              <Users className="w-3 h-3 text-gray-600" />
-                            </div>
-                          )}
-                          <span className="text-xs font-medium text-gray-400">{video.uploaderHandle || video.platform}</span>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm font-bold text-white">{formatNumber(video.views || 0)}</div>
-                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">views</div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex gap-4">
-                        {/* Thumbnail with Platform Icon */}
-                        <div className="flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden bg-white/[0.02] border border-white/[0.03] relative">
-                          {video.thumbnail ? (
-                            <img 
-                              src={video.thumbnail} 
-                              alt={video.title || video.caption || 'Video'} 
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                              }}
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Play className="w-6 h-6 text-gray-700" />
-                            </div>
-                          )}
-                          {/* Platform Icon Overlay */}
-                          <div className="absolute top-1.5 left-1.5 w-5 h-5 bg-black/60 backdrop-blur-sm rounded-md flex items-center justify-center border border-white/[0.1]">
-                            <PlatformIcon platform={video.platform} size="xs" />
-                          </div>
-                        </div>
-                        
-                        {/* Content */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-base text-white font-semibold mb-2 line-clamp-2 leading-snug group-hover:text-gray-100 transition-colors">
-                            {video.title || video.caption || '(No caption)'}
-                          </p>
-
-                          {/* Metrics */}
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
-                            {video.likes !== undefined && video.likes > 0 && (
-                              <span className="flex items-center gap-1">
-                                <Heart className="w-3 h-3" />
-                                {formatNumber(video.likes)}
-                              </span>
-                            )}
-                            {video.comments !== undefined && video.comments > 0 && (
-                              <span className="flex items-center gap-1">
-                                <MessageCircle className="w-3 h-3" />
-                                {formatNumber(video.comments)}
-                              </span>
-                            )}
-                            {video.shares !== undefined && video.shares > 0 && (
-                              <span className="flex items-center gap-1">
-                                <Share2 className="w-3 h-3" />
-                                {formatNumber(video.shares)}
-                              </span>
-                            )}
-                            {(video.saves !== undefined && video.saves > 0) || 
-                             (video.bookmarks !== undefined && video.bookmarks > 0) && (
-                              <span className="flex items-center gap-1">
-                                <Bookmark className="w-3 h-3" />
-                                {formatNumber(video.saves || video.bookmarks || 0)}
-                              </span>
-                            )}
-                            {(() => {
-                              const engagementRate = calculateEngagementRate(video);
-                              return engagementRate > 0 && (
-                                <span className="flex items-center gap-1">
-                                  <Activity className="w-3 h-3" />
-                                  {engagementRate.toFixed(1)}%
-                                </span>
                               );
                             })()}
                           </div>
                         </div>
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <div className="w-12 h-12 rounded-full bg-white/[0.02] flex items-center justify-center mb-3">
-                      <Upload className="w-5 h-5 text-gray-600" />
-                    </div>
-                    <p className="text-sm text-gray-500">No new uploads</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Refreshed Videos */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                <TrendingUp className="w-3.5 h-3.5 text-gray-500" />
-                <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Refreshed Videos · {topGainers.length}
-                </h3>
-              </div>
-                {topGainers.length > 0 && (
-                  <span className="text-xs font-semibold text-emerald-400">
-                    +{formatNumber(totalRefreshedViewsGained)} views
-                  </span>
-                )}
-              </div>
-              <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                {topGainers.length > 0 ? (
-                  topGainers.map((item: any, idx: number) => (
-                    <div 
-                      key={`gainer-${item.video.id}-${idx}`}
-                      onClick={() => onVideoClick?.(item.video)}
-                      className="bg-white/[0.02] rounded-xl p-4 border border-white/[0.04] hover:bg-white/[0.06] hover:border-emerald-500/[0.15] cursor-pointer transition-all group"
-                    >
-                      {/* Header with Profile, Growth Badge and Total Views */}
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          {/* Profile Picture */}
-                          {item.video.uploaderProfilePicture ? (
-                            <img 
-                              src={item.video.uploaderProfilePicture} 
-                              alt={item.video.uploaderHandle}
-                              className="w-6 h-6 rounded-full object-cover border border-white/[0.1]"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                              }}
-                            />
-                          ) : (
-                            <div className="w-6 h-6 rounded-full bg-white/[0.05] border border-white/[0.1] flex items-center justify-center">
-                              <Users className="w-3 h-3 text-gray-600" />
-                            </div>
-                          )}
-                          <span className="text-xs font-medium text-gray-400">{item.video.uploaderHandle || item.video.platform}</span>
-                          <div className={`${getPercentageBgColor(item.growth)} border rounded-md px-2 py-0.5`}>
-                            <span className={`text-[10px] font-bold ${getPercentageColor(item.growth)}`}>
-                              {item.growth >= 0 ? '+' : ''}{formatPercentage(item.growth)}%
-                            </span>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm font-bold text-white">{formatNumber(item.currentViews)}</div>
-                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">total views</div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex gap-4">
-                        {/* Thumbnail with Platform Icon */}
-                        <div className="flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden bg-white/[0.02] border border-white/[0.03] relative">
-                          {item.video.thumbnail ? (
-                            <img 
-                              src={item.video.thumbnail} 
-                              alt={item.video.title || item.video.caption || 'Video'} 
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                              }}
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Play className="w-6 h-6 text-gray-700" />
-                            </div>
-                          )}
-                          {/* Platform Icon Overlay */}
-                          <div className="absolute top-1.5 left-1.5 w-5 h-5 bg-black/60 backdrop-blur-sm rounded-md flex items-center justify-center border border-white/[0.1]">
-                            <PlatformIcon platform={item.video.platform} size="xs" />
-                          </div>
-                        </div>
-                        
-                        {/* Content */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-base text-white font-semibold mb-2 line-clamp-2 leading-snug group-hover:text-gray-100 transition-colors">
-                            {item.video.title || item.video.caption || '(No caption)'}
-                          </p>
-                          
-                          {/* Metrics */}
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mb-2">
-                            {item.video.likes !== undefined && item.video.likes > 0 && (
-                              <span className="flex items-center gap-1">
-                                <Heart className="w-3 h-3" />
-                                {formatNumber(item.video.likes)}
-                              </span>
-                            )}
-                            {item.video.comments !== undefined && item.video.comments > 0 && (
-                              <span className="flex items-center gap-1">
-                                <MessageCircle className="w-3 h-3" />
-                                {formatNumber(item.video.comments)}
-                              </span>
-                            )}
-                            {item.video.shares !== undefined && item.video.shares > 0 && (
-                              <span className="flex items-center gap-1">
-                                <Share2 className="w-3 h-3" />
-                                {formatNumber(item.video.shares)}
-                              </span>
-                            )}
-                            {(item.video.saves !== undefined && item.video.saves > 0) || 
-                             (item.video.bookmarks !== undefined && item.video.bookmarks > 0) && (
-                              <span className="flex items-center gap-1">
-                                <Bookmark className="w-3 h-3" />
-                                {formatNumber(item.video.saves || item.video.bookmarks || 0)}
-                              </span>
-                            )}
-                            {(() => {
-                              const engagementRate = calculateEngagementRate(item.video);
-                              return engagementRate > 0 && (
-                                <span className="flex items-center gap-1">
-                                  <Activity className="w-3 h-3" />
-                                  {engagementRate.toFixed(1)}%
-                                </span>
-                              );
-                            })()}
-                            </div>
-
-                          {/* Growth Info */}
-                          <div className="flex items-center gap-3 text-xs">
-                            <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-                              <TrendingUp className="w-3.5 h-3.5" />
-                              <span>+{formatNumber(item.viewsGained)}</span>
-                          </div>
-                            <span className="text-gray-600">•</span>
-                            <span className="text-gray-500">{item.snapshotCount} snapshots</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <div className="w-12 h-12 rounded-full bg-white/[0.02] flex items-center justify-center mb-3">
-                      <TrendingUp className="w-5 h-5 text-gray-600" />
-                    </div>
-                    <p className="text-sm text-gray-500">No growth data</p>
-                    <p className="text-xs text-gray-600 mt-1">Videos need snapshots</p>
-                  </div>
-                )}
-            </div>
-          </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

@@ -52,7 +52,8 @@ class DashboardPreferencesService {
       // No preferences found - inherit from admin
       return await this.inheritAdminLayout(orgId, userId);
     } catch (error) {
-      console.error('Failed to load user preferences:', error);
+      // Silently fail - user just doesn't have preferences yet
+      console.log('No custom dashboard preferences found, using defaults');
       return null;
     }
   }

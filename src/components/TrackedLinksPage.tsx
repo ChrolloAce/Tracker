@@ -261,51 +261,39 @@ const TrackedLinksPage = forwardRef<TrackedLinksPageRef, TrackedLinksPageProps>(
     const getGraphData = () => {
       const now = new Date();
       
-      // For Today - show hourly
+      // For Today - show single data point for the day
       if (dateFilter === 'today') {
-        return Array.from({ length: 24 }, (_, hour) => {
-          const hourClicks = filteredLinkClicks.filter(click => {
+        const todayClicks = filteredLinkClicks.filter(click => {
             if (!click.timestamp) return false;
             const clickDate = (click.timestamp as any).toDate 
               ? (click.timestamp as any).toDate() 
               : new Date(click.timestamp as any);
             
-            const isToday = clickDate.toDateString() === now.toDateString();
-            return isToday && clickDate.getHours() === hour;
+          return clickDate.toDateString() === now.toDateString();
           }).length;
           
-          const period = hour < 12 ? 'am' : 'pm';
-          const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-          
-          return {
-            label: `${displayHour}${period}`,
-            clicks: hourClicks
-          };
-        });
+        return [{
+          label: 'Today',
+          clicks: todayClicks
+        }];
       }
       
-      // For Yesterday - show hourly
+      // For Yesterday - show single data point for the day
       if (dateFilter === 'yesterday') {
         const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        return Array.from({ length: 24 }, (_, hour) => {
-          const hourClicks = filteredLinkClicks.filter(click => {
+        const yesterdayClicks = filteredLinkClicks.filter(click => {
             if (!click.timestamp) return false;
             const clickDate = (click.timestamp as any).toDate 
               ? (click.timestamp as any).toDate() 
               : new Date(click.timestamp as any);
             
-            const isYesterday = clickDate.toDateString() === yesterday.toDateString();
-            return isYesterday && clickDate.getHours() === hour;
+          return clickDate.toDateString() === yesterday.toDateString();
           }).length;
           
-          const period = hour < 12 ? 'am' : 'pm';
-          const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-          
-          return {
-            label: `${displayHour}${period}`,
-            clicks: hourClicks
-          };
-        });
+        return [{
+          label: 'Yesterday',
+          clicks: yesterdayClicks
+        }];
       }
       
       // For Last 7 Days - show daily

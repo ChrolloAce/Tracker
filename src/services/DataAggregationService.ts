@@ -5,7 +5,7 @@
  * Ensures consistent date comparisons and proper grouping across different time ranges.
  */
 
-export type IntervalType = 'hour' | 'day' | 'week' | 'month' | 'year';
+export type IntervalType = 'day' | 'week' | 'month' | 'year';
 
 export interface TimeInterval {
   startDate: Date;
@@ -25,15 +25,8 @@ export class DataAggregationService {
    * Determine the appropriate interval type based on the date range duration
    */
   static determineIntervalType(dateRange: DateRange): IntervalType {
-    const durationMs = dateRange.endDate.getTime() - dateRange.startDate.getTime();
-    const durationDays = durationMs / (24 * 60 * 60 * 1000);
-    
-    // Use hourly for single day views (today/yesterday)
-    if (durationDays <= 1) {
-      return 'hour';
-    }
-    
-    // Use daily for everything else (including year-long or multi-year periods)
+    // Always use daily intervals - even for single day views (today/yesterday)
+    // This ensures singular days show just 1 data point instead of multiple hourly points
     return 'day';
   }
 
@@ -42,8 +35,6 @@ export class DataAggregationService {
    */
   static getIntervalDurationMs(intervalType: IntervalType): number {
     switch (intervalType) {
-      case 'hour':
-        return 60 * 60 * 1000;
       case 'day':
         return 24 * 60 * 60 * 1000;
       case 'week':
@@ -63,19 +54,11 @@ export class DataAggregationService {
    */
   static generateIntervals(dateRange: DateRange, intervalType: IntervalType): TimeInterval[] {
     const intervals: TimeInterval[] = [];
+    
+    // CRITICAL: Use EXACT start date from the range - DO NOT shift to calendar boundaries
+    // This ensures intervals stay strictly within the selected period (e.g., "Last 30 Days")
     const startDate = new Date(dateRange.startDate);
     startDate.setHours(0, 0, 0, 0); // Normalize to start of day
-    
-    // Normalize start date based on interval type
-    if (intervalType === 'year') {
-      startDate.setMonth(0, 1); // January 1st of the year
-    } else if (intervalType === 'month') {
-      startDate.setDate(1); // 1st day of the month
-    } else if (intervalType === 'week') {
-      const day = startDate.getDay();
-      const diff = startDate.getDate() - day; // Adjust to Sunday
-      startDate.setDate(diff);
-    }
     
     const endDate = new Date(dateRange.endDate);
     endDate.setHours(23, 59, 59, 999); // Normalize to end of day
@@ -89,14 +72,17 @@ export class DataAggregationService {
       // Don't create intervals that extend beyond the end date
       if (intervalStart > endDate) break;
       
+      // CRITICAL: Trim the interval to stay within the date range boundaries
+      // This ensures edge intervals (first/last) are trimmed instead of extending outside
+      const actualStart = intervalStart < startDate ? startDate : intervalStart;
       const actualEnd = intervalEnd > endDate ? endDate : intervalEnd;
       
       intervals.push({
-        startDate: intervalStart,
+        startDate: actualStart,
         endDate: actualEnd,
         intervalType,
-        label: this.formatIntervalLabel(intervalStart, intervalType),
-        timestamp: intervalStart.getTime()
+        label: this.formatIntervalLabel(actualStart, intervalType),
+        timestamp: actualStart.getTime()
       });
       
       // Move to next interval
@@ -113,10 +99,6 @@ export class DataAggregationService {
     const end = new Date(startDate);
     
     switch (intervalType) {
-      case 'hour':
-        end.setHours(end.getHours() + 1);
-        end.setMilliseconds(end.getMilliseconds() - 1);
-        break;
       case 'day':
         end.setDate(end.getDate() + 1);
         end.setMilliseconds(end.getMilliseconds() - 1);
@@ -145,9 +127,6 @@ export class DataAggregationService {
     const next = new Date(date);
     
     switch (intervalType) {
-      case 'hour':
-        next.setHours(next.getHours() + 1);
-        break;
       case 'day':
         next.setDate(next.getDate() + 1);
         break;
@@ -173,12 +152,6 @@ export class DataAggregationService {
     const fullMonthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     
     switch (intervalType) {
-      case 'hour':
-        const hour = date.getHours();
-        const period = hour >= 12 ? 'PM' : 'AM';
-        const displayHour = hour % 12 || 12;
-        return `${monthNames[date.getMonth()]} ${date.getDate()}, ${displayHour}:00 ${period}`;
-        
       case 'day':
         return `${monthNames[date.getMonth()]} ${date.getDate()}`;
         
@@ -205,15 +178,6 @@ export class DataAggregationService {
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     
     switch (intervalType) {
-      case 'hour':
-        const hour = date.getHours();
-        const nextHour = (hour + 1) % 24;
-        const period = hour >= 12 ? 'PM' : 'AM';
-        const nextPeriod = nextHour >= 12 ? 'PM' : 'AM';
-        const displayHour = hour % 12 || 12;
-        const displayNextHour = nextHour % 12 || 12;
-        return `${monthNames[date.getMonth()]} ${this.getOrdinalSuffix(date.getDate())}, ${date.getFullYear()} • ${displayHour}:00 ${period} - ${displayNextHour}:00 ${nextPeriod}`;
-        
       case 'day':
         return `${monthNames[date.getMonth()]} ${this.getOrdinalSuffix(date.getDate())}, ${date.getFullYear()}`;
         
@@ -277,9 +241,6 @@ export class DataAggregationService {
     const normalized = new Date(date);
     
     switch (intervalType) {
-      case 'hour':
-        normalized.setMinutes(0, 0, 0);
-        break;
       case 'day':
         normalized.setHours(0, 0, 0, 0);
         break;

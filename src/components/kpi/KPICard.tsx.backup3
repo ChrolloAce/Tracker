@@ -1,0 +1,1345 @@
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  Play,
+  Activity,
+  AtSign,
+  ChevronRight,
+  Link as LinkIcon,
+  Upload,
+  RefreshCw,
+  Eye,
+  EyeOff
+} from 'lucide-react';
+import { VideoSubmission } from '../../types';
+import { LinkClick } from '../../services/LinkClicksService';
+import { AreaChart, Area, ResponsiveContainer, YAxis } from 'recharts';
+import { DateFilterType } from '../DateRangeFilter';
+import { TimePeriodType } from '../TimePeriodSelector';
+import { PlatformIcon } from '../ui/PlatformIcon';
+import DataAggregationService, { TimeInterval } from '../../services/DataAggregationService';
+import { HeicImage } from '../HeicImage';
+import { AnimatedNumber } from './AnimatedNumber';
+import { KPICardData } from './kpiTypes';
+
+export interface KPICardProps {
+  data: KPICardData;
+  onClick?: () => void;
+  onIntervalHover?: (interval: TimeInterval | null) => void;
+  timePeriod?: TimePeriodType;
+  submissions?: VideoSubmission[];
+  linkClicks?: LinkClick[];
+  dateFilter?: DateFilterType;
+  customRange?: { startDate: Date; endDate: Date };
+  isEditMode?: boolean;
+  isDragging?: boolean;
+  isDragOver?: boolean;
+  isCensored?: boolean;
+  onToggleCensor?: () => void;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDragLeave?: () => void;
+  onDrop?: () => void;
+}
+
+/**
+ * KPICard Component
+ * Individual KPI card with sparkline and interactive tooltip
+ */
+
+const KPICard: React.FC<{ 
+  data: KPICardData; 
+  onClick?: () => void;
+  onIntervalHover?: (interval: TimeInterval | null) => void;
+  timePeriod?: TimePeriodType;
+  submissions?: VideoSubmission[];
+  linkClicks?: LinkClick[];
+  dateFilter?: DateFilterType;
+  customRange?: { startDate: Date; endDate: Date };
+  isEditMode?: boolean;
+  isDragging?: boolean;
+  isDragOver?: boolean;
+  isCensored?: boolean;
+  onToggleCensor?: () => void;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDragLeave?: () => void;
+  onDrop?: () => void;
+}> = ({ 
+  data, 
+  onClick, 
+  onIntervalHover, 
+  submissions = [], 
+  linkClicks = [],
+  dateFilter = 'all',
+  customRange,
+  isEditMode = false,
+  isDragging = false,
+  isDragOver = false,
+  isCensored = false,
+  onToggleCensor,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDragLeave,
+  onDrop
+}) => {
+  // Tooltip state for Portal rendering
+  const [tooltipData, setTooltipData] = useState<{ x: number; y: number; point: any; lineX: number } | null>(null);
+  const cardRef = React.useRef<HTMLDivElement>(null);
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+  const [isHovered, setIsHovered] = useState(false);
+  
+  // Auto-close tooltip when mouse is outside the card
+  React.useEffect(() => {
+    if (!tooltipData) return;
+    
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (!cardRef.current) return;
+      
+      const rect = cardRef.current.getBoundingClientRect();
+      const isOutside = 
+        e.clientX < rect.left || 
+        e.clientX > rect.right || 
+        e.clientY < rect.top || 
+        e.clientY > rect.bottom;
+      
+      if (isOutside) {
+        setTooltipData(null);
+        if (onIntervalHover) onIntervalHover(null);
+        
+        // Force clear any lingering recharts tooltips
+        const tooltips = document.querySelectorAll('[class*="recharts-tooltip-wrapper"]');
+        tooltips.forEach(tooltip => {
+          if (tooltip instanceof HTMLElement) {
+            tooltip.style.display = 'none';
+          }
+        });
+      }
+    };
+    
+    document.addEventListener('mousemove', handleGlobalMouseMove);
+    
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMouseMove);
+    };
+  }, [tooltipData, onIntervalHover]);
+  
+  const formatDeltaNumber = (num: number, isRevenue: boolean = false): string => {
+    const absNum = Math.abs(num);
+    if (absNum >= 1000000) return `${(absNum / 1000000).toFixed(1)}M`;
+    if (absNum >= 1000) return `${(absNum / 1000).toFixed(1)}K`;
+    // For revenue, format to 2 decimal places; for counts, use whole number
+    if (isRevenue) return `$${absNum.toFixed(2)}`;
+    return Math.round(absNum).toString();
+  };
+
+  // Determine colors based on trend (green for increase, red for decrease)
+  const isIncreasing = data.isIncreasing !== undefined ? data.isIncreasing : true;
+  const colors = {
+    icon: 'bg-white/5',
+    iconColor: 'text-white',
+    gradient: isIncreasing ? ['#22c55e', '#22c55e00'] : ['#ef4444', '#ef444400'], // green-500 : red-500
+    stroke: isIncreasing ? '#22c55e' : '#ef4444',
+    deltaBg: 'bg-white/10 text-white'
+  };
+
+  const Icon = data.icon;
+
+  return (
+    <div 
+      ref={cardRef}
+      onClick={onClick}
+      onMouseMove={(e) => {
+        // Disable tooltips in edit mode or when censored
+        if (isEditMode || isCensored) return;
+        
+        if (!data.sparklineData || data.sparklineData.length === 0 || !cardRef.current) return;
+        
+        const cardRect = cardRef.current.getBoundingClientRect();
+        
+        // Calculate X position within the card
+        const x = e.clientX - cardRect.left;
+        const percentage = x / cardRect.width;
+        
+        // Clamp percentage between 0 and 1
+        const clampedPercentage = Math.max(0, Math.min(1, percentage));
+        
+        // Get nearest data point
+        const dataIndex = Math.max(0, Math.min(
+          data.sparklineData.length - 1,
+          Math.round(clampedPercentage * (data.sparklineData.length - 1))
+        ));
+        
+        const point = data.sparklineData[dataIndex];
+        
+        if (point) {
+          // Calculate the SNAPPED X position based on the actual data point index
+          const snappedPercentage = dataIndex / (data.sparklineData.length - 1);
+          const snappedLineX = snappedPercentage * cardRect.width;
+          
+          setTooltipData({
+            x: e.clientX,
+            y: e.clientY,
+            point: point,
+            lineX: snappedLineX // Snapped to data point, not mouse position
+          });
+          
+          // Store the hovered interval so handleCardClick knows the full timeframe
+          if (point.interval && onIntervalHover) {
+            onIntervalHover(point.interval);
+          }
+        }
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        // Clear tooltip state
+        setTooltipData(null);
+        if (onIntervalHover) onIntervalHover(null);
+        
+        // Force clear any lingering recharts tooltips
+        setTimeout(() => {
+          const tooltips = document.querySelectorAll('[class*="recharts-tooltip-wrapper"]');
+          tooltips.forEach(tooltip => {
+            if (tooltip instanceof HTMLElement) {
+              tooltip.style.display = 'none';
+            }
+          });
+        }, 50);
+      }}
+      draggable={isEditMode}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      className={`
+        group relative rounded-2xl bg-zinc-900/60 backdrop-blur border shadow-lg transition-all duration-200
+        will-change-transform
+        ${isEditMode ? 'cursor-move' : 'cursor-pointer'}
+        ${isDragging ? 'opacity-50 scale-95' : ''}
+        ${isDragOver ? 'ring-2 ring-emerald-500 border-emerald-500/50' : 'border-white/5 hover:shadow-xl hover:ring-1 hover:ring-white/10'}
+      `}
+      style={{ transform: 'translateZ(0)', minHeight: '180px', overflow: 'visible' }}
+    >
+      {/* Background layers container with overflow clipping */}
+      <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none z-0">
+        {/* Depth Gradient Overlay */}
+        <div 
+          className="absolute inset-0"
+          style={{
+            background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
+          }}
+        />
+      </div>
+      
+      {/* Full-height vertical cursor line */}
+      {tooltipData && (
+        <div
+          style={{
+            position: 'absolute',
+            left: `${tooltipData.lineX - 1}px`, // Offset by 1px (half of line width) to center on dot
+            top: 0,
+            bottom: 0,
+            width: '2px',
+            background: `linear-gradient(to bottom, ${colors.stroke}00 0%, ${colors.stroke}80 15%, ${colors.stroke}60 50%, ${colors.stroke}40 85%, ${colors.stroke}00 100%)`,
+            pointerEvents: 'none',
+            zIndex: 50
+          }}
+        />
+      )}
+
+      {/* Drag Handle (edit mode only) - Centered at top, shows on hover */}
+      {isEditMode && (
+        <div className="absolute -top-1 left-1/2 -translate-x-1/2 text-emerald-400 opacity-0 group-hover:opacity-60 transition-opacity duration-200 z-20">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+          </svg>
+        </div>
+      )}
+
+      {/* Privacy Toggle - Eye icon (shows on hover, next to main icon) */}
+      {isHovered && !isEditMode && onToggleCensor && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleCensor();
+          }}
+          className="absolute top-3 sm:top-4 right-10 sm:right-12 p-1 hover:bg-white/10 rounded-lg transition-all duration-200 z-50"
+          title={isCensored ? "Show data" : "Hide data"}
+        >
+          {isCensored ? (
+            <EyeOff className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 hover:text-white" />
+          ) : (
+            <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 hover:text-white" />
+          )}
+        </button>
+      )}
+
+      {/* Censoring Overlay - Completely blurs card when active */}
+      {isCensored && (
+        <div className="absolute inset-0 rounded-2xl bg-black/95 backdrop-blur-[100px] flex items-center justify-center z-40 border border-white/10" style={{ backdropFilter: 'blur(100px)' }}>
+          <div className="flex flex-col items-center gap-3">
+            <EyeOff className="w-10 h-10 text-gray-400" />
+            <p className="text-gray-400 text-sm font-medium">{data.label} Hidden</p>
+          </div>
+        </div>
+      )}
+
+      {/* Upper Solid Portion - 60% (reduced to give more space to graph) */}
+      <div className="relative px-3 sm:px-4 md:px-5 pt-3 sm:pt-4 pb-2 z-10" style={{ height: '60%' }}>
+        {/* Icon (top-right) */}
+        <div className="absolute top-3 sm:top-4 right-3 sm:right-4">
+          <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 opacity-60" />
+        </div>
+
+        {/* Metric Content - Pushed Higher */}
+        <div className="flex flex-col h-full justify-start pt-1">
+          {/* Label - Smaller */}
+          <div className="text-[10px] sm:text-xs font-medium text-zinc-400 tracking-wide mb-1.5 sm:mb-2">
+            {data.label}
+          </div>
+
+          {/* Value Row - Number + Delta Badge aligned horizontally */}
+          <div className="flex items-baseline gap-2 sm:gap-3 -mt-1">
+            <AnimatedNumber 
+              value={data.value} 
+              className={`text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight ${data.isEmpty ? 'text-zinc-600' : 'text-white'}`}
+            />
+            
+            {/* Delta Badge (if exists) - Aligned with number baseline */}
+            {data.delta && data.delta.absoluteValue !== undefined && (
+              <span className={`inline-flex items-baseline text-[10px] sm:text-xs font-semibold ${
+                data.delta.isPositive ? 'text-green-400' : 'text-red-400'
+              }`} style={{ letterSpacing: '-0.02em' }}>
+                <span className="mr-0">{data.delta.isPositive ? '+' : '−'}</span>
+            {data.delta.isPercentage 
+                  ? `${Math.abs(data.delta.absoluteValue).toFixed(1)}%`
+              : formatDeltaNumber(data.delta.absoluteValue, data.id === 'revenue')}
+          </span>
+            )}
+        </div>
+
+          {/* Period/Subtitle */}
+          {data.period && (
+            <span className="text-[10px] sm:text-xs text-zinc-500 mt-1 sm:mt-1.5 flex items-center gap-1">
+              <span className="inline-block w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full bg-zinc-700"></span>
+              {data.period}
+            </span>
+          )}
+        </div>
+
+        {/* CTA Button (if exists) */}
+      {!data.delta && data.ctaText && (
+          <button className="absolute bottom-2 sm:bottom-3 right-3 sm:right-5 inline-flex items-center gap-0.5 rounded-full px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs text-zinc-400 bg-white/5 hover:bg-white/10 transition-colors">
+          {data.ctaText}
+          <ChevronRight className="w-2.5 sm:w-3 h-2.5 sm:h-3" />
+        </button>
+      )}
+      </div>
+
+      {/* Bottom Graph Layer - 40% (expanded for better visibility) */}
+      {data.sparklineData && data.sparklineData.length > 0 && (
+        <div 
+          className="relative w-full overflow-hidden z-10"
+          style={{ 
+            height: '40%',
+            background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 100%)',
+            borderBottomLeftRadius: '1rem',
+            borderBottomRightRadius: '1rem'
+          }}
+          onMouseLeave={() => {
+            // Force clear any lingering tooltips when mouse leaves chart area
+            const tooltips = document.querySelectorAll('[class*="recharts-tooltip-wrapper"]');
+            tooltips.forEach(tooltip => {
+              if (tooltip instanceof HTMLElement) {
+                tooltip.style.display = 'none';
+              }
+            });
+          }}
+        >
+          {/* Atmospheric Gradient Overlay */}
+          <div 
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: `linear-gradient(to top, ${colors.stroke}15 0%, transparent 80%)`,
+              mixBlendMode: 'soft-light'
+            }}
+          />
+          
+          {/* Line Chart - More vertical space for amplitude */}
+          <div className="absolute inset-0" style={{ padding: '0' }}>
+              <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                {(() => {
+                 // Note: Single data points are already padded by generateSparklineData
+                 // so data.sparklineData.length should never be 1 for today view
+                 // All sparklines render as lines for consistent aesthetic
+                 
+                 let chartData = data.sparklineData;
+                 let yMax = 1;
+                 
+                 {
+                   // Calculate intelligent Y-axis domain with outlier capping
+                   const values = data.sparklineData.map(d => d.value).filter((v): v is number => typeof v === 'number');
+                   const ppValues = data.sparklineData.map(d => d.ppValue).filter((v): v is number => typeof v === 'number' && v > 0);
+                   const allValues: number[] = [...values, ...ppValues];
+                   
+                   if (allValues.length === 0) {
+                     return null;
+                   }
+                   
+                   // Sort to find statistics
+                   const sortedValues = [...allValues].sort((a, b) => a - b);
+                   const max = sortedValues[sortedValues.length - 1] || 1;
+                   const q3 = sortedValues[Math.floor(sortedValues.length * 0.75)] || 1;
+                   
+                   // Cap outliers: if max is more than 5x the Q3, cap at 2x Q3
+                   yMax = max;
+                   if (max > q3 * 5 && q3 > 0) {
+                     yMax = q3 * 2;
+                   }
+                 }
+                 
+                 // Check if PP data exists
+                 const hasPPData = chartData.some(d => typeof d.ppValue === 'number' && d.ppValue !== undefined);
+                 
+                 return (
+                   <ResponsiveContainer width="100%" height="100%">
+                     <AreaChart 
+                       data={chartData}
+                       margin={{ top: 4, right: 0, bottom: 4, left: 0 }}
+                     >
+                      <defs>
+                        <linearGradient id={`bottom-gradient-${data.id}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={colors.stroke} stopOpacity={0.3} />
+                          <stop offset="50%" stopColor={colors.stroke} stopOpacity={0.15} />
+                          <stop offset="100%" stopColor={colors.stroke} stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id={`pp-gradient-${data.id}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={colors.stroke} stopOpacity={0.08} />
+                          <stop offset="100%" stopColor={colors.stroke} stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      {/* Y-axis with intelligent domain */}
+                      <YAxis 
+                        domain={[0, yMax]} 
+                        hide={true}
+                      />
+                      {/* PP (Previous Period) Ghost Graph - rendered first so it's behind */}
+                      {hasPPData && (
+                        <Area
+                          type="monotoneX"
+                          dataKey="ppValue"
+                          stroke="rgb(156, 163, 175)"
+                          strokeWidth={1.5}
+                          strokeOpacity={0.15}
+                          fill="none"
+                          dot={false}
+                          isAnimationActive={true}
+                          animationDuration={400}
+                          animationEasing="ease-out"
+                          animationBegin={0}
+                        />
+                      )}
+                      {/* Main Current Period Graph */}
+                      <Area
+                        type="monotoneX"
+                        dataKey="value"
+                        stroke={colors.stroke}
+                        strokeWidth={2.5}
+                        fill={`url(#bottom-gradient-${data.id})`}
+                        connectNulls={true}
+                        dot={false}
+                        activeDot={{ 
+                          r: 3, 
+                          fill: colors.stroke, 
+                          strokeWidth: 1.5, 
+                          stroke: 'rgba(255, 255, 255, 0.3)',
+                          style: { cursor: 'pointer' }
+                        }}
+                        isAnimationActive={true}
+                        animationDuration={400}
+                        animationEasing="ease-out"
+                        animationBegin={0}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fallback if no sparkline data */}
+      {(!data.sparklineData || data.sparklineData.length === 0) && (
+        <div 
+          className="relative w-full overflow-hidden"
+          style={{ 
+            height: '40%',
+            background: 'linear-gradient(to top, rgba(0,0,0,0.2) 0%, transparent 100%)',
+            borderBottomLeftRadius: '1rem',
+            borderBottomRightRadius: '1rem'
+          }}
+        />
+      )}
+
+      {/* Portal Tooltip - Rendered at document.body level */}
+      {tooltipData && (() => {
+        // Get counts first to determine layout
+        const point = tooltipData.point;
+        const interval = point.interval;
+        
+        // Calculate new uploads and top gainers counts
+        const videosInInterval = interval ? submissions.filter((video: VideoSubmission) => {
+          const uploadDate = video.uploadDate ? new Date(video.uploadDate) : new Date(video.dateSubmitted);
+          return DataAggregationService.isDateInInterval(uploadDate, interval);
+        }) : [];
+        
+        // Get ALL videos with snapshot activity (including those with initial snapshots for baseline)
+        const videosWithSnapshotsInIntervalCheck = interval ? submissions.filter((video: VideoSubmission) => {
+          const snapshots = video.snapshots || [];
+          // Include videos that have ANY snapshots (for baseline) OR snapshots in this interval
+          return snapshots.length > 0;
+        }) : [];
+        
+        // Calculate refreshed videos (videos with growth) to see if we have any
+        const topGainersCheck = videosWithSnapshotsInIntervalCheck
+          .map((video: VideoSubmission) => {
+            const allSnapshots = video.snapshots || [];
+            
+            const snapshotsInOrBeforeInterval = allSnapshots.filter(snapshot => {
+              const snapshotDate = new Date(snapshot.capturedAt);
+              return snapshotDate <= interval.endDate;
+            });
+            
+            if (snapshotsInOrBeforeInterval.length === 0) return null;
+            
+            const sortedSnapshots = [...snapshotsInOrBeforeInterval].sort((a, b) => 
+              new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+            );
+            
+            const snapshotAtStart = sortedSnapshots.filter(s => 
+              new Date(s.capturedAt) <= interval.startDate
+            ).pop();
+            
+            const snapshotAtEnd = sortedSnapshots.filter(s => 
+              new Date(s.capturedAt) <= interval.endDate
+            ).pop();
+            
+            // If no end snapshot, can't calculate growth
+            if (!snapshotAtEnd) return null;
+            
+            // If no start snapshot, use initial snapshot or first snapshot as baseline
+            if (!snapshotAtStart || snapshotAtStart === snapshotAtEnd) {
+              const initialSnapshot = video.snapshots?.find(s => s.isInitialSnapshot) || sortedSnapshots[0];
+              if (!initialSnapshot) return null;
+              
+              const growthMetricKey = data.id === 'views' ? 'views' 
+                : data.id === 'likes' ? 'likes'
+                : data.id === 'comments' ? 'comments'
+                : data.id === 'shares' ? 'shares'
+                : data.id === 'bookmarks' ? 'bookmarks'
+                : 'views';
+              
+              const startValue = (initialSnapshot as any)[growthMetricKey] || 0;
+              const endValue = (snapshotAtEnd as any)[growthMetricKey] || 0;
+              const growth = endValue - startValue;
+              
+              return growth > 0 ? { video, growth, absoluteGain: growth } : null;
+            }
+            
+            const growthMetricKey = data.id === 'views' ? 'views' 
+              : data.id === 'likes' ? 'likes'
+              : data.id === 'comments' ? 'comments'
+              : data.id === 'shares' ? 'shares'
+              : data.id === 'bookmarks' ? 'bookmarks'
+              : 'views';
+            
+            const startValue = (snapshotAtStart as any)[growthMetricKey] || 0;
+            const endValue = (snapshotAtEnd as any)[growthMetricKey] || 0;
+            const absoluteGain = endValue - startValue;
+            
+            return absoluteGain > 0 ? { video, growth: absoluteGain, absoluteGain } : null;
+          })
+          .filter(item => item !== null);
+        
+        const hasTopGainers = topGainersCheck.length > 0;
+        const hasNewUploads = videosInInterval.length > 0;
+        
+        // Dynamic width based on how many columns we show
+        // 1 column: 350px, 2 columns: 650px
+        let tooltipWidth = 350;
+        const columnsToShow = (hasNewUploads ? 1 : 0) + (hasTopGainers ? 1 : 0);
+        if (columnsToShow === 2) tooltipWidth = 650;
+        const verticalOffset = 20; // spacing below cursor
+        const horizontalPadding = 20; // minimum distance from screen edges
+        const windowWidth = window.innerWidth;
+        
+        // Calculate horizontal position to keep tooltip on screen
+        let leftPosition = tooltipData.x;
+        let transformX = '-50%'; // default: centered under cursor
+        
+        // Check if tooltip would go off left edge
+        if (tooltipData.x - (tooltipWidth / 2) < horizontalPadding) {
+          leftPosition = horizontalPadding;
+          transformX = '0'; // align left edge to position
+        }
+        // Check if tooltip would go off right edge
+        else if (tooltipData.x + (tooltipWidth / 2) > windowWidth - horizontalPadding) {
+          leftPosition = windowWidth - horizontalPadding;
+          transformX = '-100%'; // align right edge to position
+        }
+        
+        return createPortal(
+          <div 
+            className="bg-[#1a1a1a] backdrop-blur-xl text-white rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10" 
+            style={{ 
+              position: 'fixed',
+              left: `${leftPosition}px`,
+              top: `${tooltipData.y + verticalOffset}px`,
+              transform: `translateX(${transformX})`,
+              zIndex: 999999999,
+              width: `${tooltipWidth}px`,
+              maxHeight: '500px',
+              pointerEvents: 'none'
+            }}
+          >
+            {(() => {
+            const value = point.value;
+            
+            // Get the interval from the data point
+            const interval = point.interval;
+            
+            // Format date based on interval type
+            const dateStr = interval 
+              ? DataAggregationService.formatIntervalLabelFull(new Date(interval.startDate), interval.intervalType)
+              : '';
+            
+            // Calculate PP interval date
+            let ppDateStr = '';
+            if (interval && dateFilter !== 'all') {
+              let daysBack = 1;
+              if (dateFilter === 'last7days') daysBack = 7;
+              else if (dateFilter === 'last14days') daysBack = 14;
+              else if (dateFilter === 'last30days') daysBack = 30;
+              else if (dateFilter === 'last90days') daysBack = 90;
+              else if (customRange) {
+                const rangeLength = Math.ceil((customRange.endDate.getTime() - customRange.startDate.getTime()) / (1000 * 60 * 60 * 24));
+                daysBack = rangeLength;
+              }
+              
+              const intervalLength = interval.endDate.getTime() - interval.startDate.getTime();
+              const ppEndDate = new Date(interval.endDate.getTime() - (daysBack * 24 * 60 * 60 * 1000));
+              const ppStartDate = new Date(ppEndDate.getTime() - intervalLength);
+              
+              ppDateStr = DataAggregationService.formatIntervalLabelFull(ppStartDate, interval.intervalType);
+            }
+            
+            // Format value based on metric type
+            const isRevenueMetric = data.id === 'revenue' || data.id === 'downloads';
+            const formatDisplayNumber = (num: number | undefined | null): string => {
+              if (num === undefined || num === null || isNaN(num)) return '0';
+              if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+              if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+              // For revenue, format to 2 decimal places
+              if (isRevenueMetric) return num.toFixed(2);
+              return num.toLocaleString();
+            };
+            
+            const displayValue = typeof value === 'number' ? (data.id === 'revenue' ? `$${formatDisplayNumber(value)}` : formatDisplayNumber(value)) : value;
+            const ppValue = point.ppValue;
+            const ppDisplayValue = typeof ppValue === 'number' ? (data.id === 'revenue' ? `$${formatDisplayNumber(ppValue)}` : formatDisplayNumber(ppValue)) : null;
+            
+            // Calculate PP comparison
+            const ppComparison = (typeof ppValue === 'number' && ppValue > 0 && typeof value === 'number') ? (() => {
+              const diff = value - ppValue;
+              const percentChange = ppValue > 0 ? ((diff / ppValue) * 100) : 0;
+              const isPositive = diff >= 0;
+              const formattedDiff = isRevenueMetric ? `$${Math.abs(diff).toFixed(2)}` : Math.abs(diff).toLocaleString();
+              return {
+                diff,
+                percentChange,
+                isPositive,
+                displayValue: ppDisplayValue,
+                formattedDiff
+              };
+            })() : null;
+            
+            // Note: videosInInterval already calculated above for hasTopGainers check
+            
+            // Get the metric key for sorting
+            const metricKey = data.id === 'views' ? 'views' 
+              : data.id === 'likes' ? 'likes'
+              : data.id === 'comments' ? 'comments'
+              : data.id === 'shares' ? 'shares'
+              : 'views'; // default to views
+            
+            // New Uploads: Videos actually uploaded in this interval
+            // Sort by metric value (highest to lowest)
+            const totalNewUploads = videosInInterval.length; // Store total count
+            const newUploads = [...videosInInterval]
+              .sort((a, b) => ((b as any)[metricKey] || 0) - ((a as any)[metricKey] || 0))
+              .slice(0, 5);
+            
+            // Get ALL videos with snapshots (we'll filter for growth in the calculation below)
+            const videosWithSnapshotsInInterval = interval ? submissions.filter((video: VideoSubmission) => {
+              const snapshots = video.snapshots || [];
+              // Include all videos with snapshots - growth calculation will determine if they show
+              return snapshots.length > 0;
+            }) : [];
+            
+            // Refreshed Videos: Calculate growth based on snapshots in this interval
+            // Use videosWithSnapshotsInInterval instead of videosInInterval
+            const allTopGainers = videosWithSnapshotsInInterval
+              .map((video: VideoSubmission) => {
+                // KEEP initial snapshots as they provide baseline for growth calculations
+                const allSnapshots = (video.snapshots || []);
+                
+                // Filter to snapshots within the interval OR just before it (for baseline)
+                const snapshotsInOrBeforeInterval = allSnapshots.filter(snapshot => {
+                  const snapshotDate = new Date(snapshot.capturedAt);
+                  return snapshotDate <= interval.endDate;
+                });
+                
+                if (snapshotsInOrBeforeInterval.length === 0) return null;
+                
+                const sortedSnapshots = [...snapshotsInOrBeforeInterval].sort((a, b) => 
+                  new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+                );
+                
+                // Get snapshot at/before interval start (baseline)
+                const snapshotAtStart = sortedSnapshots.filter(s => 
+                  new Date(s.capturedAt) <= interval.startDate
+                ).pop();
+                
+                // Get latest snapshot at/before interval end
+                const snapshotAtEnd = sortedSnapshots.filter(s => 
+                  new Date(s.capturedAt) <= interval.endDate
+                ).pop();
+                
+                // Need both start and end snapshots to calculate growth
+                // OR if snapshotAtStart is missing, use the initial snapshot or first snapshot as baseline
+                if (!snapshotAtEnd) return null;
+                
+                if (!snapshotAtStart || snapshotAtStart === snapshotAtEnd) {
+                  // Use initial snapshot as baseline if available, otherwise use first snapshot
+                  const initialSnapshot = video.snapshots?.find(s => s.isInitialSnapshot) || sortedSnapshots[0];
+                  if (!initialSnapshot) return null;
+                  // Use initial snapshot as baseline for comparison
+                  const growthMetricKey = data.id === 'views' ? 'views' 
+                    : data.id === 'likes' ? 'likes'
+                    : data.id === 'comments' ? 'comments'
+                    : data.id === 'shares' ? 'shares'
+                    : data.id === 'bookmarks' ? 'bookmarks'
+                    : 'views';
+                  const startValue = (initialSnapshot as any)[growthMetricKey] || 0;
+                  const endValue = (snapshotAtEnd as any)[growthMetricKey] || 0;
+                  const growth = endValue - startValue;
+                  const growthPercentage = startValue > 0 ? ((endValue - startValue) / startValue) * 100 : 0;
+                  
+                  return {
+                    video,
+                    growth,
+                    growthPercentage,
+                    absoluteGain: growth
+                  };
+                }
+                
+                // Calculate growth percentage based on KPI metric
+                const growthMetricKey = data.id === 'views' ? 'views' 
+                  : data.id === 'likes' ? 'likes'
+                  : data.id === 'comments' ? 'comments'
+                  : data.id === 'shares' ? 'shares'
+                  : data.id === 'bookmarks' ? 'bookmarks'
+                  : 'views';
+                
+                const startValue = (snapshotAtStart as any)[growthMetricKey] || 0;
+                const endValue = (snapshotAtEnd as any)[growthMetricKey] || 0;
+                const growth = startValue > 0 ? ((endValue - startValue) / startValue) * 100 : 0;
+                const absoluteGain = endValue - startValue;
+                
+                return {
+                  video,
+                  growth,
+                  metricValue: endValue,
+                  absoluteGain,
+                  startValue,
+                  snapshotCount: allSnapshots.length
+                };
+              })
+              .filter(item => item !== null && item.growth > 0 && item.absoluteGain !== undefined);
+            
+            // Store total count before slicing
+            const totalTopGainers = allTopGainers.length;
+            
+            // Sort by absolute gain (highest to lowest) and take top 5
+            const topGainers = [...allTopGainers]
+              .sort((a: any, b: any) => (b.absoluteGain || 0) - (a.absoluteGain || 0))
+              .slice(0, 5);
+            
+            // Sort by the relevant metric
+            let sortedItems: any[] = [];
+            if (data.id === 'accounts' || data.id === 'active-accounts') {
+              // For accounts: group by uploaderHandle and sum total views
+              const accountsMap = new Map<string, { handle: string; platform: string; totalViews: number; videoCount: number; profilePicture?: string }>();
+              videosInInterval.forEach(video => {
+                const handle = video.uploaderHandle || 'Unknown';
+                if (accountsMap.has(handle)) {
+                  const existing = accountsMap.get(handle)!;
+                  existing.totalViews += video.views || 0;
+                  existing.videoCount += 1;
+                } else {
+                  accountsMap.set(handle, {
+                    handle,
+                    platform: video.platform,
+                    totalViews: video.views || 0,
+                    videoCount: 1,
+                    profilePicture: video.uploaderProfilePicture || undefined
+                  });
+                }
+              });
+              sortedItems = Array.from(accountsMap.values())
+                .sort((a, b) => b.totalViews - a.totalViews)
+                .slice(0, 5);
+            } else if (data.id === 'link-clicks') {
+              // For link clicks: show links clicked in this interval
+              const clicksInInterval = interval ? linkClicks.filter((click: LinkClick) => {
+                const clickDate = new Date(click.timestamp);
+                return DataAggregationService.isDateInInterval(clickDate, interval);
+              }) : [];
+              
+              // Group by linkId and count clicks
+              const linksMap = new Map<string, { linkId: string; title: string; url: string; shortCode: string; clicks: number; accountHandle?: string; accountProfilePicture?: string; accountPlatform?: string }>();
+              clicksInInterval.forEach((click: LinkClick) => {
+                if (linksMap.has(click.linkId)) {
+                  const existing = linksMap.get(click.linkId)!;
+                  existing.clicks += 1;
+                } else {
+                  linksMap.set(click.linkId, {
+                    linkId: click.linkId,
+                    title: click.linkTitle || click.shortCode || 'Untitled Link',
+                    url: click.linkUrl || '',
+                    shortCode: click.shortCode || '',
+                    clicks: 1,
+                    accountHandle: click.accountHandle,
+                    accountProfilePicture: click.accountProfilePicture,
+                    accountPlatform: click.accountPlatform
+                  });
+                }
+              });
+              
+              sortedItems = Array.from(linksMap.values())
+                .sort((a, b) => b.clicks - a.clicks)
+                .slice(0, 5);
+            } else {
+              // For other metrics: sort videos by the relevant metric
+              const metricKey = data.id === 'views' ? 'views' 
+                : data.id === 'likes' ? 'likes'
+                : data.id === 'comments' ? 'comments'
+                : data.id === 'shares' ? 'shares'
+                : 'views'; // default to views
+              
+              sortedItems = videosInInterval
+                .sort((a: VideoSubmission, b: VideoSubmission) => ((b as any)[metricKey] || 0) - ((a as any)[metricKey] || 0))
+                .slice(0, 5);
+            }
+            
+              // Top items sorted by metric
+            
+            // Get the metric label for display
+            const metricLabel = data.id === 'views' ? 'Views'
+              : data.id === 'likes' ? 'Likes'
+              : data.id === 'comments' ? 'Comments'
+              : data.id === 'shares' ? 'Shares'
+              : data.id === 'bookmarks' ? 'Bookmarks'
+              : data.id === 'accounts' ? 'Total Views'
+              : data.id === 'active-accounts' ? 'Total Views'
+              : data.id === 'link-clicks' ? 'Clicks'
+              : data.id === 'published-videos' ? 'Videos'
+              : 'Views';
+            
+            // metricKey already declared above for sorting new uploads
+            
+            // Check if this is published videos KPI (should use old layout)
+            const isPublishedVideosKPI = data.id === 'published-videos' || data.id === 'videos';
+            
+            return (
+              <>
+                {/* Header with both periods as line items */}
+                <div className="px-5 pt-4 pb-3 space-y-2.5">
+                  {/* Current Period Line */}
+                  <div className="flex items-center justify-between">
+                    {/* For revenue and downloads, show compact format: "Aug 5 - $400" */}
+                    {(data.id === 'revenue' || data.id === 'downloads') ? (
+                      <div className="flex items-baseline gap-2 flex-1">
+                        <p className="text-xs text-gray-400 font-medium tracking-wider">
+                          {dateStr}
+                        </p>
+                        <p className="text-xl font-bold text-white">
+                          {displayValue}
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                    <p className="text-xs text-gray-400 font-medium tracking-wider">
+                      {dateStr}
+                    </p>
+                    <p className="text-xl font-bold text-white">
+                      {displayValue}
+                    </p>
+                      </>
+                    )}
+                  </div>
+                  
+                  {/* Previous Period Line */}
+                  {ppComparison && ppComparison.displayValue && ppDateStr && (
+                    <div className="flex items-center justify-between">
+                      {(data.id === 'revenue' || data.id === 'downloads') ? (
+                        <>
+                          <div className="flex items-baseline gap-2 flex-1">
+                      <p className="text-xs text-gray-500 font-medium tracking-wider">
+                        {ppDateStr}
+                      </p>
+                      <p className="text-lg font-semibold text-gray-400">
+                        {ppComparison.displayValue}
+                      </p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-xs text-gray-500 font-medium tracking-wider">
+                            {ppDateStr}
+                          </p>
+                          <p className="text-lg font-semibold text-gray-400">
+                            {ppComparison.displayValue}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Comparison Line - Third Line */}
+                  {ppComparison && ppDateStr && (
+                    <div className="pt-2 border-t border-white/5">
+                      <p className="text-xs font-medium text-gray-400">
+                        <span className={ppComparison.isPositive ? 'text-emerald-400' : 'text-red-400'}>
+                          {ppComparison.isPositive ? '↑' : '↓'} {(() => {
+                            const percent = Math.abs(ppComparison.percentChange);
+                            if (percent >= 1000000) return `${(percent / 1000000).toFixed(1)}M`;
+                            if (percent >= 1000) return `${(percent / 1000).toFixed(1)}K`;
+                            return percent.toFixed(1);
+                          })()}%
+                        </span>
+                        {' '}{ppComparison.isPositive ? 'increase' : 'decrease'} on CP ({dateStr}) compared to PP ({ppDateStr})
+                      </p>
+                    </div>
+                  )}
+            </div>
+                
+                {/* Revenue/Downloads App Breakdown */}
+                {(data.id === 'revenue' || data.id === 'downloads') && point.revenue !== undefined && point.downloads !== undefined && (() => {
+                  // Get app breakdown from the interval data if available
+                  const revenueByApp = (point as any).revenueByApp || [];
+                  
+                  return (
+                    <>
+                      {revenueByApp.length > 0 && (
+                        <div className="px-5 py-3 border-t border-white/10 space-y-2">
+                          {revenueByApp.map((app: any, idx: number) => (
+                            <div 
+                              key={`${app.appBundleId}-${idx}`}
+                              className="flex items-center gap-3 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                            >
+                              {/* App Icon */}
+                              <div className="flex-shrink-0 w-10 h-10 rounded-xl overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                                {app.appIcon ? (
+                                  <img 
+                                    src={app.appIcon} 
+                                    alt={app.appName} 
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <span className="text-white font-bold text-sm">
+                                    {(app.appName || 'App').charAt(0).toUpperCase()}
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {/* App Info */}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-white font-medium truncate">
+                                  {app.appName || 'Unknown App'}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {app.downloads.toLocaleString()} downloads
+                                </p>
+                              </div>
+                              
+                              {/* Revenue */}
+                              <div className="flex-shrink-0 text-right">
+                                <p className="text-sm font-bold text-emerald-400">
+                                  ${(app.revenue / 100).toFixed(2)}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      <div className="px-5 py-3 border-t border-white/10">
+                        <button className="w-full flex items-center justify-center gap-2 py-2 text-xs text-gray-400 hover:text-white transition-colors">
+                          <span>Click to view details</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </>
+                  );
+                })()}
+                
+                {/* Divider for other metrics */}
+                {data.id !== 'revenue' && data.id !== 'downloads' && <div className="border-t border-white/10 mx-5"></div>}
+                
+                {/* Two-Column Mega Tooltip Layout - Only for non-published-videos KPIs */}
+                {!isPublishedVideosKPI && data.id !== 'accounts' && data.id !== 'active-accounts' && data.id !== 'link-clicks' && data.id !== 'revenue' && data.id !== 'downloads' && (
+                <div className="flex">
+                  {/* Column 1: New Uploads */}
+                  {hasNewUploads && (
+                  <div className={`flex-1 px-5 py-3 ${hasTopGainers ? 'border-r border-white/10' : ''}`}>
+                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <Upload className="w-3.5 h-3.5" />
+                      New Uploads ({totalNewUploads})
+                    </h3>
+                    <div className="space-y-2">
+                      {newUploads.map((video: VideoSubmission, idx: number) => (
+                        <div 
+                          key={`new-${video.id}-${idx}`}
+                          className="flex items-center gap-2 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                        >
+                          {/* Thumbnail */}
+                          <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-gray-800">
+                            {video.thumbnail ? (
+                              <img 
+                                src={video.thumbnail} 
+                                alt={video.title || video.caption || 'Video'} 
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Play className="w-4 h-4 text-gray-600" />
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Metadata */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-white font-medium leading-tight">
+                              {((video.title || video.caption || '(No caption)').length > 13 
+                                ? (video.title || video.caption || '(No caption)').substring(0, 13) + '...'
+                                : (video.title || video.caption || '(No caption)'))}
+                            </p>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <div className="w-3 h-3">
+                                <PlatformIcon platform={video.platform} size="sm" />
+                              </div>
+                              <span className="text-[10px] text-gray-400">
+                                {video.uploaderHandle || video.platform}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {/* Metric */}
+                          <div className="flex-shrink-0 text-right">
+                            <p className="text-xs font-bold text-white">
+                              {formatDisplayNumber((video as any)[metricKey] || 0)}
+                            </p>
+                            <p className="text-[10px] text-gray-500">{metricLabel.toLowerCase()}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  )}
+                  
+                  {/* Column 2: Refreshed Videos - Only show if there are gainers */}
+                  {hasTopGainers && (
+                  <div className="flex-1 px-5 py-3">
+                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      Refreshed Videos ({totalTopGainers})
+                    </h3>
+                    {topGainers.length > 0 ? (
+                      <div className="space-y-2">
+                        {topGainers.map((item: any, idx: number) => (
+                          <div 
+                            key={`gainer-${item.video.id}-${idx}`}
+                            className="flex items-center gap-2 py-2 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                          >
+                            {/* Thumbnail */}
+                            <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-gray-800">
+                              {item.video.thumbnail ? (
+                                <img 
+                                  src={item.video.thumbnail} 
+                                  alt={item.video.title || item.video.caption || 'Video'} 
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Play className="w-4 h-4 text-gray-600" />
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Metadata */}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-white font-medium leading-tight">
+                                {((item.video.title || item.video.caption || '(No caption)').length > 13 
+                                  ? (item.video.title || item.video.caption || '(No caption)').substring(0, 13) + '...'
+                                  : (item.video.title || item.video.caption || '(No caption)'))}
+                              </p>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <div className="w-3 h-3">
+                                  <PlatformIcon platform={item.video.platform} size="sm" />
+                                </div>
+                                <span className="text-[10px] text-gray-400">
+                                  {item.video.uploaderHandle || item.video.platform}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {/* Gain Amount */}
+                            <div className="flex-shrink-0 text-right">
+                              <p className="text-xs font-bold text-white">
+                                +{formatDisplayNumber(item.absoluteGain)}
+                              </p>
+                              <p className="text-[10px] text-gray-500">{metricLabel.toLowerCase()}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <Activity className="w-6 h-6 text-gray-600 mx-auto mb-1" />
+                        <p className="text-xs text-gray-500">No growth data</p>
+                      </div>
+                    )}
+                  </div>
+                  )}
+                </div>
+                )}
+                
+                {/* Old single column content (fallback for accounts/links/published-videos) */}
+                {(data.id === 'accounts' || data.id === 'active-accounts' || data.id === 'link-clicks' || isPublishedVideosKPI) && sortedItems.length > 0 ? (
+                  <div className="px-5 py-3 border-t border-white/10">
+                    {(data.id === 'accounts' || data.id === 'active-accounts') ? (
+                      // Render Accounts with Profile Pictures
+                      sortedItems.map((account: any, idx: number) => (
+                        <div 
+                          key={`${account.handle}-${idx}`}
+                          className="flex items-center gap-3 py-2.5 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                        >
+                          {/* Profile Picture with Platform Icon */}
+                          <div className="flex-shrink-0 w-12 h-12 relative">
+                            <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-800">
+                              {account.profilePicture && !imageErrors.has(account.handle) ? (
+                                <img 
+                                  src={account.profilePicture} 
+                                  alt={account.handle} 
+                                  className="w-full h-full object-cover"
+                                  onError={() => {
+                                    setImageErrors(prev => new Set(prev).add(account.handle));
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                                  {(account.handle || 'A').charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                            </div>
+                            {/* Platform Icon Badge */}
+                            <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-[#1a1a1a] border-2 border-[#1a1a1a] flex items-center justify-center">
+                              <div className="w-3.5 h-3.5">
+                                <PlatformIcon platform={account.platform} size="sm" />
+                              </div>
+          </div>
+        </div>
+
+                          {/* Metadata */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-white font-medium truncate leading-tight mb-1">
+                              {account.handle}
+                            </p>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs text-gray-400">
+                                {account.videoCount} {account.videoCount === 1 ? 'video' : 'videos'}
+              </span>
+            </div>
+          </div>
+                          
+                          {/* Total Views */}
+                          <div className="flex-shrink-0 text-right">
+                            <p className="text-sm font-bold text-white">
+                              {formatDisplayNumber(account.totalViews)}
+                            </p>
+                            <p className="text-xs text-gray-500">{metricLabel}</p>
+        </div>
+                        </div>
+                      ))
+                    ) : data.id === 'link-clicks' ? (
+                      // Render Link Clicks with Account Profile Pictures
+                      sortedItems.map((link: any, idx: number) => (
+                        <div 
+                          key={`${link.linkId}-${idx}`}
+                          className="flex items-center gap-3 py-2.5 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                        >
+                          {/* Account Profile Picture (if attached) */}
+                          {link.accountHandle ? (
+                            <div className="flex-shrink-0 w-12 h-12 relative">
+                              <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-800">
+                                {link.accountProfilePicture ? (
+                                  <img 
+                                    src={link.accountProfilePicture} 
+                                    alt={link.accountHandle} 
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <AtSign className="w-6 h-6 text-gray-600" />
+                                  </div>
+                                )}
+                              </div>
+                              {/* Platform Icon Badge */}
+                              {link.accountPlatform && (
+                                <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-[#1a1a1a] border-2 border-[#1a1a1a] flex items-center justify-center">
+                                  <div className="w-3.5 h-3.5">
+                                    <PlatformIcon platform={link.accountPlatform} size="sm" />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-800 flex items-center justify-center">
+                              <LinkIcon className="w-6 h-6 text-gray-600" />
+                            </div>
+                          )}
+                          
+                          {/* Link Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-white font-medium truncate leading-tight mb-1">
+                              {link.title}
+                            </p>
+                            <div className="flex items-center gap-1.5">
+                              {link.accountHandle && (
+                                <span className="text-xs text-gray-400">
+                                  {link.accountHandle}
+                                </span>
+                              )}
+                              {link.shortCode && (
+                                <span className="text-xs text-gray-500">
+                                  • {link.shortCode}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Click Count */}
+                          <div className="flex-shrink-0 text-right">
+                            <p className="text-sm font-bold text-white">
+                              {formatDisplayNumber(link.clicks)}
+                            </p>
+                            <p className="text-xs text-gray-500">{link.clicks === 1 ? 'click' : 'clicks'}</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      // Render Videos
+                      sortedItems.map((video: VideoSubmission, idx: number) => (
+                        <div 
+                          key={`${video.id}-${idx}`}
+                          className="flex items-center gap-3 py-2.5 hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors"
+                        >
+                          {/* Thumbnail */}
+                          <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-800">
+                            {video.thumbnail ? (
+                              <HeicImage 
+                                src={video.thumbnail} 
+                                alt={video.title || video.caption || 'Video'} 
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Play className="w-5 h-5 text-gray-600" />
+          </div>
+        )}
+      </div>
+                          
+                          {/* Metadata */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-white font-medium truncate leading-tight mb-1">
+                              {video.title || video.caption || '(No caption)'}
+                            </p>
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-4 h-4">
+                                <PlatformIcon platform={video.platform} size="sm" />
+                              </div>
+                              <span className="text-xs text-gray-400 lowercase">
+                                {video.uploaderHandle || video.platform}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {/* Metric Value */}
+                          <div className="flex-shrink-0 text-right">
+                            <p className="text-sm font-bold text-white">
+                              {formatDisplayNumber((video as any)[metricKey] || 0)}
+                            </p>
+                            <p className="text-xs text-gray-500">{metricLabel}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                    
+                    {/* Click to Expand */}
+                    <div className="mt-2 pt-3 border-t border-white/10">
+                      <button className="w-full flex items-center justify-center gap-2 py-2 text-xs text-gray-400 hover:text-white transition-colors">
+                        <span>Click to view details</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+                
+                {/* Click to Expand - For video tooltips (excluding published videos KPI, accounts, revenue, downloads) */}
+                {!isPublishedVideosKPI && data.id !== 'accounts' && data.id !== 'link-clicks' && data.id !== 'revenue' && data.id !== 'downloads' && (
+                  <div className="px-5 py-3 border-t border-white/10">
+                    <button className="w-full flex items-center justify-center gap-2 py-2 text-xs text-gray-400 hover:text-white transition-colors">
+                      <span>Click to view details</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+                
+              </>
+            );
+          })()}
+          </div>,
+          document.body
+        );
+      })()}
+    </div>
+  );
+};
+
+export default KPICard;

@@ -7,6 +7,7 @@ import HeatmapByHour from './HeatmapByHour';
 import TopTeamCreatorsList from './TopTeamCreatorsList';
 import TopPlatformsRaceChart from './TopPlatformsRaceChart';
 import ComparisonGraph from './ComparisonGraph';
+import { DateFilterType } from './DateRangeFilter';
 
 interface TopPerformersSectionProps {
   submissions: VideoSubmission[];
@@ -22,6 +23,8 @@ interface TopPerformersSectionProps {
   onToggleSubsection?: (id: string) => void;
   granularity?: 'hour' | 'day' | 'week' | 'month' | 'year';
   dateRange?: { startDate: Date; endDate: Date }; // Date range from filter
+  dateFilter?: DateFilterType; // Date filter type
+  customRange?: { startDate: Date; endDate: Date }; // Custom date range
 }
 
 type SubSectionId = 'top-videos' | 'top-accounts' | 'top-gainers' | 'posting-times' | 'top-creators' | 'top-platforms' | 'comparison';
@@ -35,11 +38,14 @@ const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({
   isEditMode = false,
   onToggleSubsection,
   granularity = 'week',
-  dateRange
+  dateRange,
+  dateFilter = 'all',
+  customRange
 }) => {
   console.log('🎯 TopPerformersSection rendering', { 
     subsectionVisibility,
-    isEditMode 
+    isEditMode,
+    dateFilter 
   });
   
   // Load subsection order from localStorage
@@ -171,6 +177,8 @@ const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({
               onVideoClick={onVideoClick}
               onAccountClick={onAccountClick}
               type="videos"
+              dateFilter={dateFilter}
+              customRange={customRange}
             />
           </div>
         );
@@ -186,6 +194,8 @@ const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({
               onVideoClick={onVideoClick}
               onAccountClick={onAccountClick}
               type="accounts"
+              dateFilter={dateFilter}
+              customRange={customRange}
             />
           </div>
         );
@@ -201,6 +211,8 @@ const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({
               onVideoClick={onVideoClick}
               onAccountClick={onAccountClick}
               type="gainers"
+              dateFilter={dateFilter}
+              customRange={customRange}
             />
           </div>
         );
@@ -302,6 +314,8 @@ const TopPerformersSection: React.FC<TopPerformersSectionProps> = ({
             <div className="relative z-10">
               <TopPlatformsRaceChart
                 submissions={submissions}
+                dateFilter={dateFilter}
+                customRange={customRange}
               />
             </div>
           </div>

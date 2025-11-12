@@ -134,7 +134,7 @@ const LinkAnalyticsModalEnhanced: React.FC<LinkAnalyticsModalEnhancedProps> = ({
                   
                   switch (newTimeframe) {
                     case 'today':
-                      newGranularity = 'hourly';
+                      newGranularity = 'daily'; // Use daily granularity for single day (1 data point)
                       break;
                     case 'last7days':
                       newGranularity = 'daily';

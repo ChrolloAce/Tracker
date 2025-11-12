@@ -24,6 +24,15 @@ interface TrackedLinksKPICardProps {
   onToggleCensor?: () => void;
   onClick?: (date: Date, clicks: LinkClick[]) => void; // Click on card/graph point
   onLinkClick?: (shortCode: string, date: Date, clicks: LinkClick[]) => void; // Click on specific link in tooltip
+  // Added props to match KPICard
+  isEditMode?: boolean;
+  isDragging?: boolean;
+  isDragOver?: boolean;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDragLeave?: () => void;
+  onDrop?: () => void;
 }
 
 export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
@@ -38,7 +47,15 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
   isCensored = false,
   onToggleCensor,
   onClick,
-  onLinkClick
+  onLinkClick,
+  isEditMode = false,
+  isDragging = false,
+  isDragOver = false,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDragLeave,
+  onDrop
 }) => {
   const [tooltipData, setTooltipData] = useState<{ x: number; y: number; point: SparklineDataPoint; lineX: number } | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -87,8 +104,8 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
       ref={cardRef}
       onClick={handleCardClick}
       onMouseMove={(e) => {
-        // Disable tooltips when censored
-        if (isCensored) return;
+        // Disable tooltips when censored or in edit mode
+        if (isCensored || isEditMode) return;
         
         if (!sparklineData || sparklineData.length === 0 || !cardRef.current) return;
         
@@ -121,31 +138,71 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
         setIsHovered(false);
         setTooltipData(null);
       }}
-      className="group relative rounded-2xl border border-white/5 shadow-lg hover:shadow-xl hover:ring-1 hover:ring-white/10 transition-all duration-300 overflow-hidden cursor-pointer"
-      style={{ minHeight: '180px', backgroundColor: '#121214' }}
+      draggable={isEditMode}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      className={`
+        group relative rounded-2xl bg-zinc-900/60 backdrop-blur border shadow-lg transition-all duration-200
+        will-change-transform
+        ${isEditMode ? 'cursor-move' : 'cursor-pointer'}
+        ${isDragging ? 'opacity-50 scale-95' : ''}
+        ${isDragOver ? 'ring-2 ring-emerald-500 border-emerald-500/50' : 'border-white/5 hover:shadow-xl hover:ring-1 hover:ring-white/10'}
+      `}
+      style={{ transform: 'translateZ(0)', minHeight: '180px', overflow: 'visible' }}
     >
+      {/* Background layers container with overflow clipping */}
+      <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none z-0">
       {/* Depth Gradient Overlay */}
       <div 
-        className="absolute inset-0 pointer-events-none z-0"
+          className="absolute inset-0"
         style={{
           background: 'linear-gradient(to bottom, rgba(255,255,255,0.02) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.2) 100%)',
         }}
       />
+      </div>
+
+      {/* Full-height vertical cursor line */}
+      {tooltipData && (
+        <div
+          style={{
+            position: 'absolute',
+            left: `${tooltipData.lineX - 1}px`, // Offset by 1px (half of line width) to center on dot
+            top: 0,
+            bottom: 0,
+            width: '2px',
+            background: `linear-gradient(to bottom, ${strokeColor}00 0%, ${strokeColor}80 15%, ${strokeColor}60 50%, ${strokeColor}40 85%, ${strokeColor}00 100%)`,
+            pointerEvents: 'none',
+            zIndex: 50
+          }}
+        />
+      )}
+
+      {/* Drag Handle (edit mode only) - Centered at top, shows on hover */}
+      {isEditMode && (
+        <div className="absolute -top-1 left-1/2 -translate-x-1/2 text-emerald-400 opacity-0 group-hover:opacity-60 transition-opacity duration-200 z-20">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+          </svg>
+        </div>
+      )}
 
       {/* Privacy Toggle - Eye icon (shows on hover, next to main icon) */}
-      {isHovered && onToggleCensor && (
+      {isHovered && !isEditMode && onToggleCensor && (
         <button
           onClick={(e) => {
             e.stopPropagation();
             onToggleCensor();
           }}
-          className="absolute top-4 right-12 p-1 hover:bg-white/10 rounded-lg transition-all duration-200 z-50"
+          className="absolute top-3 sm:top-4 right-10 sm:right-12 p-1 hover:bg-white/10 rounded-lg transition-all duration-200 z-50"
           title={isCensored ? "Show data" : "Hide data"}
         >
           {isCensored ? (
-            <EyeOff className="w-5 h-5 text-gray-400 hover:text-white" />
+            <EyeOff className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 hover:text-white" />
           ) : (
-            <Eye className="w-5 h-5 text-gray-400 hover:text-white" />
+            <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 hover:text-white" />
           )}
         </button>
       )}
@@ -160,45 +217,29 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
         </div>
       )}
 
-      {/* Full-height vertical cursor line */}
-      {tooltipData && (
-        <div
-          style={{
-            position: 'absolute',
-            left: `${tooltipData.lineX}px`,
-            top: 0,
-            bottom: 0,
-            width: '2px',
-            background: `linear-gradient(to bottom, ${strokeColor}00 0%, ${strokeColor}80 15%, ${strokeColor}60 50%, ${strokeColor}40 85%, ${strokeColor}00 100%)`,
-            pointerEvents: 'none',
-            zIndex: 50
-          }}
-        />
-      )}
-      
-      {/* Upper Solid Portion - 75% */}
-      <div className="relative px-5 pt-5 pb-2 z-10" style={{ height: '75%' }}>
+      {/* Upper Solid Portion - 60% (reduced to give more space to graph) */}
+      <div className="relative px-3 sm:px-4 md:px-5 pt-3 sm:pt-4 pb-2 z-10" style={{ height: '60%' }}>
         {/* Icon (top-right) */}
-        <div className="absolute top-4 right-4">
-          <Icon className="w-5 h-5 text-gray-400 opacity-60" />
+        <div className="absolute top-3 sm:top-4 right-3 sm:right-4">
+          <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 opacity-60" />
         </div>
 
-        {/* Metric Content */}
+        {/* Metric Content - Pushed Higher */}
         <div className="flex flex-col h-full justify-start pt-1">
-          {/* Label */}
-          <div className="text-xs font-medium text-zinc-400 tracking-wide mb-2">
+          {/* Label - Smaller */}
+          <div className="text-[10px] sm:text-xs font-medium text-zinc-400 tracking-wide mb-1.5 sm:mb-2">
             {label}
           </div>
 
-          {/* Value + Delta */}
-          <div className="flex items-baseline gap-3 -mt-1">
-            <span className="text-3xl lg:text-4xl font-bold tracking-tight text-white">
+          {/* Value Row - Number + Delta Badge aligned horizontally */}
+          <div className="flex items-baseline gap-2 sm:gap-3 -mt-1">
+            <span className={`text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-white`}>
               {value}
             </span>
             
-            {/* Delta Badge */}
+            {/* Delta Badge (if exists) - Aligned with number baseline */}
             {growth !== undefined && (
-              <span className={`inline-flex items-baseline text-xs font-semibold ${
+              <span className={`inline-flex items-baseline text-[10px] sm:text-xs font-semibold ${
                 isIncreasing ? 'text-green-400' : 'text-red-400'
               }`} style={{ letterSpacing: '-0.02em' }}>
                 <span className="mr-0">{isIncreasing ? '+' : '−'}</span>
@@ -209,12 +250,12 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
         </div>
       </div>
 
-      {/* Bottom Graph Layer - 25% */}
+      {/* Bottom Graph Layer - 40% (expanded for better visibility) */}
       {sparklineData && sparklineData.length > 0 && (
         <div 
           className="relative w-full overflow-hidden z-10"
           style={{ 
-            height: '25%',
+            height: '40%',
             background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 100%)',
             borderBottomLeftRadius: '1rem',
             borderBottomRightRadius: '1rem'
@@ -229,29 +270,46 @@ export const TrackedLinksKPICard: React.FC<TrackedLinksKPICardProps> = ({
             }}
           />
 
-          {/* Line Chart */}
+          {/* Line Chart - More vertical space for amplitude */}
           <div className="absolute inset-0" style={{ padding: '0' }}>
             <div style={{ width: '100%', height: '100%', position: 'relative' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart 
                   data={sparklineData}
-                  margin={{ top: 2, right: 0, bottom: 2, left: 0 }}
+                  margin={{ top: 4, right: 0, bottom: 4, left: 0 }}
                 >
                   <defs>
-                    <linearGradient id={`gradient-${label}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={strokeColor} stopOpacity={0.2} />
+                    <linearGradient id={`bottom-gradient-${label}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={strokeColor} stopOpacity={0.3} />
+                      <stop offset="50%" stopColor={strokeColor} stopOpacity={0.15} />
                       <stop offset="100%" stopColor={strokeColor} stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <YAxis domain={[0, 'auto']} hide={true} />
+                  {/* Y-axis with intelligent domain */}
+                  <YAxis 
+                    domain={[0, 'auto']} 
+                    hide={true}
+                  />
+                  {/* Main Current Period Graph */}
                   <Area
                     type="monotoneX"
                     dataKey="value"
                     stroke={strokeColor}
-                    strokeWidth={2}
-                    fill={`url(#gradient-${label})`}
-                    isAnimationActive={false}
+                    strokeWidth={2.5}
+                    fill={`url(#bottom-gradient-${label})`}
+                    connectNulls={true}
                     dot={false}
+                    activeDot={{ 
+                      r: 3, 
+                      fill: strokeColor, 
+                      strokeWidth: 1.5, 
+                      stroke: 'rgba(255, 255, 255, 0.3)',
+                      style: { cursor: 'pointer' }
+                    }}
+                    isAnimationActive={true}
+                    animationDuration={400}
+                    animationEasing="ease-out"
+                    animationBegin={0}
                   />
                 </AreaChart>
               </ResponsiveContainer>

@@ -43,7 +43,7 @@ const PLAN_REFRESH_INTERVALS: Record<string, number> = {
 
 /**
  * Cron Orchestrator
- * Runs every 25 minutes (every 25 minutes cron expression)
+ * Runs every 12 hours (0 */12 * * *)
  * Processes all organizations directly (no HTTP calls)
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {

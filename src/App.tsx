@@ -6,7 +6,6 @@ import LoginPage from './pages/LoginPage';
 import PreparingWorkspacePage from './pages/PreparingWorkspacePage';
 import DemoPage from './pages/DemoPage';
 import CreateOrganizationPage from './pages/CreateOrganizationPage';
-import CreateProjectPage from './pages/CreateProjectPage';
 import OnboardingOrchestrator from './pages/OnboardingOrchestrator';
 import DashboardPage from './pages/DashboardPage';
 import AccountsPage from './pages/AccountsPage';
@@ -36,18 +35,6 @@ import SupportPage from './pages/SupportPage';
 import CreatorInvitationPage from './pages/CreatorInvitationPage';
 import { useEffect, useState } from 'react';
 import NotFoundPage from './pages/NotFoundPage';
-
-// Wrapper component to handle navigation for CreateProjectPage
-function CreateProjectPageWrapper() {
-  const navigate = useNavigate();
-  
-  return (
-    <CreateProjectPage
-      onClose={() => navigate('/dashboard')}
-      onSuccess={() => navigate('/dashboard')}
-    />
-  );
-}
 
 // Loading skeleton component with timeout
 function LoadingSkeleton() {
@@ -308,21 +295,6 @@ function App() {
             <Navigate to="/dashboard" replace />
           ) : (
             <CreateOrganizationPage />
-          )
-        } 
-      />
-
-      <Route 
-        path="/create-project" 
-        element={
-          !user ? (
-            <Navigate to="/login" replace />
-          ) : !currentOrgId ? (
-            <LoadingSkeleton />
-          ) : currentProjectId ? (
-            <Navigate to="/dashboard" replace />
-          ) : (
-            <CreateProjectPageWrapper />
           )
         } 
       />

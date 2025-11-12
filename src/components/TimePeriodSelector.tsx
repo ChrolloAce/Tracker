@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { BarChart3, ChevronDown } from 'lucide-react';
 
-export type TimePeriodType = 'hours' | 'days' | 'weeks' | 'months' | 'quarters' | 'years';
+export type TimePeriodType = 'days' | 'weeks' | 'months' | 'quarters' | 'years';
 
 interface TimePeriodSelectorProps {
   selectedPeriod: TimePeriodType;
@@ -15,7 +15,6 @@ const TimePeriodSelector: React.FC<TimePeriodSelectorProps> = ({
   const [isOpen, setIsOpen] = useState(false);
 
   const periodOptions = [
-    { value: 'hours', label: 'Hourly', description: 'Show data by hour' },
     { value: 'days', label: 'Daily', description: 'Show data by day' },
     { value: 'weeks', label: 'Weekly', description: 'Show data by week' },
     { value: 'months', label: 'Monthly', description: 'Show data by month' },
@@ -25,7 +24,7 @@ const TimePeriodSelector: React.FC<TimePeriodSelectorProps> = ({
 
   const getSelectedLabel = () => {
     const option = periodOptions.find(opt => opt.value === selectedPeriod);
-    return option?.label || 'Weekly';
+    return option?.label || 'Daily';
   };
 
   const handlePeriodSelect = (period: TimePeriodType) => {

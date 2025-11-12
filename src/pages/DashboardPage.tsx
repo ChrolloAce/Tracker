@@ -225,20 +225,20 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
-  const [manualGranularity, setManualGranularity] = useState<'hour' | 'day' | 'week' | 'month' | 'year' | null>(null);
+  const [manualGranularity, setManualGranularity] = useState<'day' | 'week' | 'month' | 'year' | null>(null);
   
   // Auto-calculate granularity based on date filter (updates in same render!)
-  const granularity = useMemo<'hour' | 'day' | 'week' | 'month' | 'year'>(() => {
+  const granularity = useMemo<'day' | 'week' | 'month' | 'year'>(() => {
     // If user manually set granularity, use that
     if (manualGranularity) return manualGranularity;
     
     // Otherwise, auto-calculate based on date filter
-    let autoGranularity: 'hour' | 'day' | 'week' | 'month' | 'year' = 'day';
+    let autoGranularity: 'day' | 'week' | 'month' | 'year' = 'day';
     
     switch (dateFilter) {
       case 'today':
       case 'yesterday':
-        // Single day = daily granularity (hourly removed)
+        // Single day = daily granularity (1 data point per day)
         autoGranularity = 'day';
         break;
       case 'last7days':
@@ -260,7 +260,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             (customDateRange.endDate.getTime() - customDateRange.startDate.getTime()) / (1000 * 60 * 60 * 24)
           );
           
-          // Single day or less = daily (hourly removed)
+          // Single day = daily granularity (1 data point)
           if (daysDiff <= 1) {
             autoGranularity = 'day';
           } else if (daysDiff <= 14) {
@@ -2009,9 +2009,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
 
   // Define Top Performers subsection options
   const topPerformersSubsectionOptions = useMemo(() => [
-    { id: 'top-videos', label: 'Top Videos', description: 'Best performing videos', icon: Video },
+    { id: 'top-videos', label: 'Top New Videos', description: 'Videos uploaded during the selected period', icon: Video },
     { id: 'top-accounts', label: 'Top Accounts', description: 'Best performing accounts', icon: AtSign },
-    { id: 'top-gainers', label: 'Refreshed Videos', description: 'Videos with highest growth from snapshots', icon: TrendingUp },
+    { id: 'top-gainers', label: 'Top Refreshed Videos', description: 'Old videos with highest growth during the period', icon: TrendingUp },
     { id: 'top-creators', label: 'Top Creators', description: 'Best performing team creators', icon: Users },
     { id: 'posting-times', label: 'Best Posting Times', description: 'Engagement by day & hour', icon: Clock },
     { id: 'top-platforms', label: 'Top Platforms', description: 'Platform performance comparison', icon: Activity },
@@ -2440,10 +2440,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   <div className="relative hidden md:block">
                     <select
                       value={granularity}
-                      onChange={(e) => setManualGranularity(e.target.value as 'hour' | 'day' | 'week' | 'month' | 'year')}
+                      onChange={(e) => setManualGranularity(e.target.value as 'day' | 'week' | 'month' | 'year')}
                       className="appearance-none pl-3 pr-8 py-2 bg-white/5 dark:bg-white/5 text-white/90 rounded-lg text-sm font-medium border border-white/10 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all cursor-pointer backdrop-blur-sm"
                     >
-                      <option value="hour" className="bg-gray-900">Hourly</option>
                       <option value="day" className="bg-gray-900">Daily</option>
                       <option value="week" className="bg-gray-900">Weekly</option>
                       <option value="month" className="bg-gray-900">Monthly</option>
@@ -2993,6 +2992,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                               onToggleSubsection={handleToggleCard}
                               granularity={granularity}
                               dateRange={topPerformersDateRange}
+                              dateFilter={dateFilter}
+                              customRange={customDateRange}
                             />
                           );
                         }
@@ -3128,6 +3129,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                           console.log('Account clicked:', username);
                         }}
                         type="videos"
+                        dateFilter={dateFilter}
+                        customRange={customDateRange}
                       />
                     </div>
 
@@ -3140,6 +3143,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                           console.log('Account clicked:', username);
                         }}
                         type="gainers"
+                        dateFilter={dateFilter}
+                        customRange={customDateRange}
                       />
                     </div>
                   </div>
@@ -3495,6 +3500,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                     onToggleSubsection={handleToggleCard}
                     granularity={granularity}
                     dateRange={topPerformersDateRangePreview}
+                    dateFilter={dateFilter}
+                    customRange={customDateRange}
                   />
                 );
               }
@@ -3577,6 +3584,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   onVideoClick={handleVideoClick}
                   onAccountClick={handleAccountClick}
                   type="videos"
+                  dateFilter={dateFilter}
+                  customRange={customDateRange}
                 />
               );
             
@@ -3587,6 +3596,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   onVideoClick={handleVideoClick}
                   onAccountClick={handleAccountClick}
                   type="accounts"
+                  dateFilter={dateFilter}
+                  customRange={customDateRange}
                 />
               );
             
@@ -3597,6 +3608,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                   onVideoClick={handleVideoClick}
                   onAccountClick={handleAccountClick}
                   type="gainers"
+                  dateFilter={dateFilter}
+                  customRange={customDateRange}
                 />
               );
             
@@ -3637,6 +3650,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
                 <div className="rounded-2xl bg-zinc-900/60 backdrop-blur border border-white/5 p-6">
                   <TopPlatformsRaceChart
                     submissions={filteredSubmissions}
+                    dateFilter={dateFilter}
+                    customRange={customDateRange}
                   />
                 </div>
               );
@@ -3676,6 +3691,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
         dayOfWeek={(window as any).__heatmapDayOfWeek}
         hourRange={(window as any).__heatmapHourRange}
         onVideoClick={handleVideoClick}
+        selectedPeriodRange={dateFilter !== 'all' && customDateRange ? customDateRange : undefined}
       />
 
       {/* Rule Filter Modal */}
@@ -4143,17 +4159,7 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
               {activeTab === 'dashboard' && (
                 <div>
                   <label className="block text-sm font-medium text-white/70 mb-2">Granularity</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      onClick={() => setManualGranularity('hour')}
-                      className={`px-3 py-3 rounded-lg text-sm font-medium transition-all ${
-                        granularity === 'hour' 
-                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
-                          : 'bg-white/5 text-white/90 border border-white/10 hover:border-white/20'
-                      }`}
-                    >
-                      Hourly
-                    </button>
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => setManualGranularity('day')}
                       className={`px-3 py-3 rounded-lg text-sm font-medium transition-all ${

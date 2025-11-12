@@ -3,14 +3,22 @@ import { createPortal } from 'react-dom';
 import { VideoSubmission } from '../types';
 import { PlatformIcon } from './ui/PlatformIcon';
 import { ChevronDown, Play, Info } from 'lucide-react';
+import { DateFilterType } from './DateRangeFilter';
+import DateFilterService from '../services/DateFilterService';
 
 interface TopPlatformsRaceChartProps {
   submissions: VideoSubmission[];
+  dateFilter?: DateFilterType;
+  customRange?: { startDate: Date; endDate: Date };
 }
 
 type MetricType = 'views' | 'likes' | 'comments' | 'shares' | 'engagement' | 'videos';
 
-const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({ submissions }) => {
+const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({ 
+  submissions,
+  dateFilter = 'all',
+  customRange
+}) => {
   const [topCount, setTopCount] = useState(5);
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('views');
   
@@ -21,6 +29,100 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({ submissio
     y: number 
   } | null>(null);
   const [showInfo, setShowInfo] = useState(false);
+  
+  // Get date range for filtering
+  const dateRange = useMemo(() => {
+    if (dateFilter === 'all') return null;
+    return DateFilterService.getDateRange(dateFilter, customRange);
+  }, [dateFilter, customRange]);
+
+  // Calculate metric value within the date range
+  const getMetricValueInDateRange = (video: VideoSubmission, metric: MetricType): number => {
+    // If no date range, use full video metrics
+    if (!dateRange) {
+      return getVideoMetric(video, metric);
+    }
+
+    const uploadDate = video.uploadDate
+      ? new Date(video.uploadDate)
+      : video.timestamp
+      ? new Date(video.timestamp)
+      : video.dateSubmitted
+      ? new Date(video.dateSubmitted)
+      : new Date();
+
+    // If video was uploaded within the date range, use its full metrics
+    if (uploadDate >= dateRange.startDate && uploadDate <= dateRange.endDate) {
+      return getVideoMetric(video, metric);
+    }
+
+    // Video was uploaded BEFORE the date range - calculate delta from snapshots
+    if (!video.snapshots || video.snapshots.length === 0) {
+      return 0; // No snapshot data, can't calculate what happened in period
+    }
+
+    const sortedSnapshots = [...video.snapshots].sort((a, b) => 
+      new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime()
+    );
+
+    const startSnapshot = sortedSnapshots
+      .filter(s => new Date(s.capturedAt) <= dateRange.startDate)
+      .pop();
+
+    const endSnapshot = sortedSnapshots
+      .filter(s => new Date(s.capturedAt) <= dateRange.endDate)
+      .pop();
+
+    if (!startSnapshot || !endSnapshot || startSnapshot === endSnapshot) {
+      return 0;
+    }
+
+    const getSnapshotMetric = (snapshot: any, metric: MetricType): number => {
+      switch (metric) {
+        case 'views':
+          return snapshot.views || 0;
+        case 'likes':
+          return snapshot.likes || 0;
+        case 'comments':
+          return snapshot.comments || 0;
+        case 'shares':
+          return snapshot.shares || 0;
+        case 'engagement':
+          const totalEng = (snapshot.likes || 0) + (snapshot.comments || 0) + (snapshot.shares || 0);
+          return snapshot.views > 0 ? (totalEng / snapshot.views) * 100 : 0;
+        case 'videos':
+          return 0; // Can't calculate video count from snapshots
+        default:
+          return 0;
+      }
+    };
+
+    const startValue = getSnapshotMetric(startSnapshot, metric);
+    const endValue = getSnapshotMetric(endSnapshot, metric);
+    
+    return Math.max(0, endValue - startValue);
+  };
+
+  // Helper to get video metric
+  const getVideoMetric = (video: VideoSubmission, metric: MetricType): number => {
+    switch (metric) {
+      case 'views':
+        return video.views || 0;
+      case 'likes':
+        return video.likes || 0;
+      case 'comments':
+        return video.comments || 0;
+      case 'shares':
+        return video.shares || 0;
+      case 'engagement':
+        const totalEngagement = (video.likes || 0) + (video.comments || 0) + (video.shares || 0);
+        return video.views > 0 ? (totalEngagement / video.views) * 100 : 0;
+      case 'videos':
+        return 1; // Each video counts as 1
+      default:
+        return 0;
+    }
+  };
 
   // Get platform data
   const platformData = useMemo(() => {
@@ -59,16 +161,17 @@ const TopPlatformsRaceChart: React.FC<TopPlatformsRaceChartProps> = ({ submissio
       }
 
       const platformStats = platformMap.get(platform)!;
-      platformStats.totalViews += video.views || 0;
-      platformStats.totalLikes += video.likes || 0;
-      platformStats.totalComments += video.comments || 0;
-      platformStats.totalShares += video.shares || 0;
+      // Use date-range-aware metrics for each video
+      platformStats.totalViews += getMetricValueInDateRange(video, 'views');
+      platformStats.totalLikes += getMetricValueInDateRange(video, 'likes');
+      platformStats.totalComments += getMetricValueInDateRange(video, 'comments');
+      platformStats.totalShares += getMetricValueInDateRange(video, 'shares');
       platformStats.videoCount += 1;
       platformStats.videos.push(video);
     });
 
     return Array.from(platformMap.values());
-  }, [submissions]);
+  }, [submissions, dateRange]);
 
   // Calculate metric value for a platform
   const getMetricValue = (platform: typeof platformData[0], metric: MetricType): number => {
