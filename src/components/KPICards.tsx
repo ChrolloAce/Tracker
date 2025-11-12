@@ -3143,7 +3143,7 @@ const KPICard: React.FC<{
                       
                       <div className="px-5 py-3 border-t border-white/10">
                         <button className="w-full flex items-center justify-center gap-2 py-2 text-xs text-gray-400 hover:text-white transition-colors">
-                          <span>Click to view detailed breakdown</span>
+                          <span>Click to view details</span>
                           <ChevronRight className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -3465,8 +3465,8 @@ const KPICard: React.FC<{
                     {/* Click to Expand */}
                     <div className="mt-2 pt-3 border-t border-white/10">
                       <button className="w-full flex items-center justify-center gap-2 py-2 text-xs text-gray-400 hover:text-white transition-colors">
-                        <span>Click to expand data</span>
-                        <ChevronDown className="w-3.5 h-3.5" />
+                        <span>Click to view details</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
@@ -3476,7 +3476,7 @@ const KPICard: React.FC<{
                 {!isPublishedVideosKPI && data.id !== 'accounts' && data.id !== 'link-clicks' && (
                   <div className="px-5 py-3 border-t border-white/10">
                     <button className="w-full flex items-center justify-center gap-2 py-2 text-xs text-gray-400 hover:text-white transition-colors">
-                      <span>Click card to see all data</span>
+                      <span>Click to view details</span>
                       <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                   </div>

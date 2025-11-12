@@ -188,7 +188,7 @@ const ComparisonGraph: React.FC<ComparisonGraphProps> = ({ submissions, granular
           {/* Click to expand hint */}
           <div className="mt-3 pt-3 border-t border-white/10 text-center">
             <span className="text-[10px] text-gray-500 uppercase tracking-wider">
-              Click to see videos
+              Click to view details
             </span>
           </div>
         </div>
