@@ -274,6 +274,115 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`     - Success: ${successful}, Failed: ${failed}`);
     console.log(`     - Videos: ${totalVideosRefreshed} refreshed, ${totalVideosAdded} new`);
 
+    // Send email notification to organization owner
+    const RESEND_API_KEY = process.env.RESEND_API_KEY;
+    if (RESEND_API_KEY && (successful > 0 || failed > 0)) {
+      try {
+        // Get organization data and owner email
+        const orgData = orgDoc.data();
+        const membersSnapshot = await db
+          .collection('organizations')
+          .doc(organizationId)
+          .collection('members')
+          .where('role', '==', 'owner')
+          .limit(1)
+          .get();
+        
+        if (!membersSnapshot.empty) {
+          const ownerData = membersSnapshot.docs[0].data();
+          const ownerEmail = ownerData.email;
+          const orgName = orgData.name || 'Your Organization';
+
+          console.log(`  📧 Sending refresh summary email to ${ownerEmail}...`);
+
+          const emailResponse = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${RESEND_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              from: 'ViewTrack <team@viewtrack.app>',
+              to: [ownerEmail],
+              subject: `📊 ${orgName} - Video Refresh Complete${totalVideosAdded > 0 ? ` (+${totalVideosAdded} New)` : ''}`,
+              html: `
+                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                  <div style="text-align: center; padding: 30px 20px; background: #f8f9fa; border-bottom: 2px solid #e9ecef;">
+                    <img src="https://www.viewtrack.app/blacklogo.png" alt="ViewTrack" style="height: 40px; width: auto;" />
+                  </div>
+                  <div style="padding: 30px 20px;">
+                    <h2 style="color: #22c55e; margin-top: 0;">✅ Refresh Complete!</h2>
+                    <p style="color: #666; font-size: 16px;">
+                      Your tracked accounts have been refreshed with the latest data.
+                    </p>
+                    
+                    <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                          <div style="color: #666; font-size: 14px;">Accounts Processed</div>
+                          <div style="color: #111; font-size: 24px; font-weight: bold;">${successful}</div>
+                        </div>
+                        <div>
+                          <div style="color: #666; font-size: 14px;">Videos Refreshed</div>
+                          <div style="color: #111; font-size: 24px; font-weight: bold;">${totalVideosRefreshed}</div>
+                        </div>
+                        <div>
+                          <div style="color: #666; font-size: 14px;">New Videos Added</div>
+                          <div style="color: #22c55e; font-size: 24px; font-weight: bold;">+${totalVideosAdded}</div>
+                        </div>
+                        <div>
+                          <div style="color: #666; font-size: 14px;">Duration</div>
+                          <div style="color: #111; font-size: 24px; font-weight: bold;">${duration}s</div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    ${failed > 0 ? `
+                      <div style="background: #fee; border-left: 4px solid #ef4444; padding: 15px; margin: 20px 0;">
+                        <strong style="color: #dc2626;">⚠️ ${failed} Account(s) Failed</strong>
+                        <p style="margin: 10px 0 0 0; color: #666; font-size: 14px;">
+                          Some accounts could not be refreshed. Please check your dashboard for details.
+                        </p>
+                      </div>
+                    ` : ''}
+                    
+                    <div style="text-align: center; margin-top: 30px;">
+                      <a href="https://www.viewtrack.app" style="display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                        View Dashboard
+                      </a>
+                    </div>
+                    
+                    <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+                    
+                    <p style="font-size: 12px; color: #999; text-align: center; margin: 0;">
+                      Automated refresh completed at<br>
+                      ${new Date().toLocaleString('en-US', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
+                </div>
+              `,
+            }),
+          });
+
+          if (emailResponse.ok) {
+            const emailData = await emailResponse.json();
+            console.log(`  ✅ Email sent to ${ownerEmail} (ID: ${emailData.id})`);
+          } else {
+            const errorData = await emailResponse.json();
+            console.warn(`  ⚠️ Failed to send email: ${JSON.stringify(errorData)}`);
+          }
+        }
+      } catch (emailError: any) {
+        console.warn(`  ⚠️ Email error: ${emailError.message}`);
+      }
+    }
+
     return res.status(200).json({
       success: true,
       organizationId,
