@@ -3167,22 +3167,22 @@ const KPICard: React.FC<{
                 
                 {/* Two-Column Mega Tooltip Layout - Only for non-published-videos KPIs */}
                 {!isPublishedVideosKPI && data.id !== 'accounts' && data.id !== 'active-accounts' && data.id !== 'link-clicks' && data.id !== 'revenue' && data.id !== 'downloads' && (
-                <div className="flex flex-col gap-6">
-                  {/* New Uploads Section */}
+                <div>
+                  {/* New Uploads - Horizontal Scrollable */}
                   {hasNewUploads && (
-                  <div className="px-5 py-3">
+                  <div className="px-5 py-3 border-t border-white/10">
                     <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                       <Upload className="w-3.5 h-3.5" />
                       New Uploads · {totalNewUploads}
                     </h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      {newUploads.slice(0, 2).map((video: VideoSubmission, idx: number) => (
+                    <div className="flex gap-3 overflow-x-auto pb-2 -mx-2 px-2 scrollbar-thin">
+                      {newUploads.map((video: VideoSubmission, idx: number) => (
                         <div 
                           key={`new-${video.id}-${idx}`}
-                          className="bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors"
+                          className="flex-shrink-0 w-32 hover:bg-white/5 rounded-lg p-2 transition-colors cursor-pointer"
                         >
                           {/* Thumbnail */}
-                          <div className="w-full aspect-video rounded-lg overflow-hidden bg-gray-800 mb-2">
+                          <div className="w-full aspect-[9/16] rounded-lg overflow-hidden bg-gray-800 mb-2">
                             {video.thumbnail ? (
                               <img 
                                 src={video.thumbnail} 
@@ -3199,43 +3199,39 @@ const KPICard: React.FC<{
                             )}
                           </div>
                           
-                          {/* Account */}
-                          <div className="flex items-center gap-1.5 mb-2">
-                            <div className="w-4 h-4 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
-                              <div className="w-3 h-3">
-                                <PlatformIcon platform={video.platform} size="sm" />
-                              </div>
+                          {/* Account Info */}
+                          <div className="flex items-center gap-1.5 mb-1.5">
+                            <div className="w-4 h-4">
+                              <PlatformIcon platform={video.platform} size="sm" />
                             </div>
-                            <span className="text-[10px] text-gray-400 truncate">
-                              {video.uploaderHandle || video.uploader}
+                            <span className="text-[10px] text-gray-400 truncate font-medium">
+                              {video.uploaderHandle || video.platform}
                             </span>
                           </div>
                           
                           {/* Caption */}
-                          <p className="text-xs text-white font-medium leading-tight mb-2 line-clamp-2">
+                          <p className="text-[11px] text-white/80 leading-tight mb-2 line-clamp-2">
                             {video.title || video.caption || '(No caption)'}
                           </p>
                           
-                          {/* Platform Badge */}
-                          <div className="flex items-center gap-1 mb-2">
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-gray-400 capitalize">
-                              {video.platform}
+                          {/* Stats */}
+                          <div className="flex items-center justify-between text-[10px]">
+                            <span className="text-gray-500">{metricLabel}</span>
+                            <span className="text-white font-bold">
+                              {formatDisplayNumber((video as any)[metricKey] || 0)}
                             </span>
                           </div>
                           
-                          {/* Stats */}
-                          <div className="flex items-center justify-between text-[10px]">
-                            <div className="flex items-center gap-3">
-                              <div className="flex items-center gap-1">
-                                <span className="text-gray-400">{formatDisplayNumber(video.views)}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <span className="text-gray-400">{formatDisplayNumber(video.likes)}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <span className="text-gray-400">{((video.likes / video.views) * 100 || 0).toFixed(1)}%</span>
-                              </div>
-                            </div>
+                          {/* Engagement Rate */}
+                          <div className="flex items-center justify-between text-[10px] mt-1">
+                            <span className="text-gray-500">Eng Rate</span>
+                            <span className="text-emerald-400 font-medium">
+                              {(() => {
+                                const views = video.views || 0;
+                                const engagement = (video.likes || 0) + (video.comments || 0);
+                                return views > 0 ? `${((engagement / views) * 100).toFixed(1)}%` : '0%';
+                              })()}
+                            </span>
                           </div>
                         </div>
                       ))}
@@ -3243,22 +3239,22 @@ const KPICard: React.FC<{
                   </div>
                   )}
                   
-                  {/* Refreshed Videos Section */}
+                  {/* Refreshed Videos - Horizontal Scrollable */}
                   {hasTopGainers && (
-                  <div className="px-5 py-3">
+                  <div className="px-5 py-3 border-t border-white/10">
                     <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                       <RefreshCw className="w-3.5 h-3.5" />
                       Refreshed Videos · {totalTopGainers}
                     </h3>
                     {topGainers.length > 0 ? (
-                      <div className="grid grid-cols-2 gap-3">
-                        {topGainers.slice(0, 2).map((item: any, idx: number) => (
+                      <div className="flex gap-3 overflow-x-auto pb-2 -mx-2 px-2 scrollbar-thin">
+                        {topGainers.map((item: any, idx: number) => (
                           <div 
                             key={`gainer-${item.video.id}-${idx}`}
-                            className="bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors"
+                            className="flex-shrink-0 w-32 hover:bg-white/5 rounded-lg p-2 transition-colors cursor-pointer"
                           >
                             {/* Thumbnail */}
-                            <div className="w-full aspect-video rounded-lg overflow-hidden bg-gray-800 mb-2">
+                            <div className="w-full aspect-[9/16] rounded-lg overflow-hidden bg-gray-800 mb-2 relative">
                               {item.video.thumbnail ? (
                                 <img 
                                   src={item.video.thumbnail} 
@@ -3273,42 +3269,41 @@ const KPICard: React.FC<{
                                   <Play className="w-6 h-6 text-gray-600" />
                                 </div>
                               )}
+                              {/* Growth Badge */}
+                              <div className="absolute top-1.5 right-1.5 bg-emerald-500/90 backdrop-blur-sm px-1.5 py-0.5 rounded text-[10px] font-bold text-white">
+                                +{item.growth.toFixed(0)}%
+                              </div>
                             </div>
                             
-                            {/* Account */}
-                            <div className="flex items-center gap-1.5 mb-2">
-                              <div className="w-4 h-4 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
-                                <div className="w-3 h-3">
-                                  <PlatformIcon platform={item.video.platform} size="sm" />
-                                </div>
+                            {/* Account Info */}
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <div className="w-4 h-4">
+                                <PlatformIcon platform={item.video.platform} size="sm" />
                               </div>
-                              <span className="text-[10px] text-gray-400 truncate">
-                                {item.video.uploaderHandle || item.video.uploader}
+                              <span className="text-[10px] text-gray-400 truncate font-medium">
+                                {item.video.uploaderHandle || item.video.platform}
                               </span>
                             </div>
                             
                             {/* Caption */}
-                            <p className="text-xs text-white font-medium leading-tight mb-2 line-clamp-2">
+                            <p className="text-[11px] text-white/80 leading-tight mb-2 line-clamp-2">
                               {item.video.title || item.video.caption || '(No caption)'}
                             </p>
                             
-                            {/* Platform Badge */}
-                            <div className="flex items-center gap-1 mb-2">
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-gray-400 capitalize">
-                                {item.video.platform}
+                            {/* Growth Stats */}
+                            <div className="flex items-center justify-between text-[10px]">
+                              <span className="text-gray-500">Gained</span>
+                              <span className="text-emerald-400 font-bold">
+                                +{formatDisplayNumber(item.absoluteGain)}
                               </span>
                             </div>
                             
-                            {/* Stats with Growth */}
-                            <div className="flex items-center justify-between text-[10px]">
-                              <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-1">
-                                  <span className="text-emerald-400 font-semibold">+{formatDisplayNumber(item.absoluteGain)}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <span className="text-gray-400">{((item.growth || 0) > 0 ? '+' : '')}{(item.growth || 0).toFixed(1)}%</span>
-                                </div>
-                              </div>
+                            {/* Total Stats */}
+                            <div className="flex items-center justify-between text-[10px] mt-1">
+                              <span className="text-gray-500">Total</span>
+                              <span className="text-white font-medium">
+                                {formatDisplayNumber(item.metricValue || 0)}
+                              </span>
                             </div>
                           </div>
                         ))}

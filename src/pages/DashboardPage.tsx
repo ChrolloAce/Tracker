@@ -238,8 +238,8 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
     switch (dateFilter) {
       case 'today':
       case 'yesterday':
-        // Single day = hourly granularity (24 data points)
-        autoGranularity = 'hour';
+        // Single day = daily granularity (hourly removed)
+        autoGranularity = 'day';
         break;
       case 'last7days':
       case 'last14days':
@@ -260,9 +260,9 @@ function DashboardPage({ initialTab, initialSettingsTab }: { initialTab?: string
             (customDateRange.endDate.getTime() - customDateRange.startDate.getTime()) / (1000 * 60 * 60 * 24)
           );
           
-          // Single day or less = hourly (24 points)
+          // Single day or less = daily (hourly removed)
           if (daysDiff <= 1) {
-            autoGranularity = 'hour';
+            autoGranularity = 'day';
           } else if (daysDiff <= 14) {
             autoGranularity = 'day';
           } else if (daysDiff <= 60) {
