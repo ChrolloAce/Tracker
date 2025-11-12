@@ -178,7 +178,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 'Authorization': cronSecret || ''
               },
               body: JSON.stringify({
-                organizationId: orgId,
+                orgId: orgId,
                 projectId,
                 accountId: accountDoc.id,
                 platform: accountData.platform,
