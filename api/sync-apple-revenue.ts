@@ -6,31 +6,31 @@ import { gunzipSync } from 'zlib';
 
 // Initialize Firebase Admin (same pattern as other working endpoints)
 function initializeFirebase() {
-  if (getApps().length === 0) {
-    try {
-      let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
-      // Handle quoted private keys
-      if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
-        privateKey = privateKey.slice(1, -1);
-      }
-      // Replace escaped newlines with actual newlines
-      privateKey = privateKey.replace(/\\n/g, '\n');
-
-      const serviceAccount = {
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: privateKey,
-      };
-
-      initializeApp({ 
-        credential: cert(serviceAccount as any) 
-      });
-      console.log('✅ Firebase Admin initialized for Apple sync');
-    } catch (error) {
-      console.error('❌ Failed to initialize Firebase Admin:', error);
-      throw error;
+if (getApps().length === 0) {
+  try {
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
+    // Handle quoted private keys
+    if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+      privateKey = privateKey.slice(1, -1);
     }
+    // Replace escaped newlines with actual newlines
+    privateKey = privateKey.replace(/\\n/g, '\n');
+
+    const serviceAccount = {
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: privateKey,
+    };
+
+    initializeApp({ 
+      credential: cert(serviceAccount as any) 
+    });
+    console.log('✅ Firebase Admin initialized for Apple sync');
+  } catch (error) {
+    console.error('❌ Failed to initialize Firebase Admin:', error);
+    throw error;
   }
+}
   return getFirestore();
 }
 

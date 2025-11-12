@@ -966,7 +966,7 @@ const SettingsPage: React.FC<{ initialTab?: string }> = ({ initialTab: initialTa
           {activeTab === 'videos' && (
             <div className="space-y-6">
               <DeletedVideosManager />
-            </div>
+                </div>
           )}
 
         </div>

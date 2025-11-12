@@ -215,16 +215,25 @@ export default async function handler(
     });
   }
 
-  // 🔒 Authenticate user and verify organization access
-  try {
-    const { user } = await authenticateAndVerifyOrg(req, orgId);
-    console.log(`🔒 Authenticated user ${user.userId} for sync request`);
-  } catch (authError: any) {
-    console.error('❌ Authentication failed:', authError.message);
-    return res.status(401).json({ 
-      error: 'Unauthorized', 
-      message: authError.message 
-    });
+  // 🔒 Authenticate - either user (manual) or cron secret (automated)
+  const authHeader = req.headers.authorization;
+  const cronSecret = process.env.CRON_SECRET;
+  const isCronRequest = authHeader === cronSecret;
+  
+  if (isCronRequest) {
+    console.log(`🔒 Authenticated as CRON job for sync request`);
+  } else {
+    // Regular user authentication
+    try {
+      const { user } = await authenticateAndVerifyOrg(req, orgId);
+      console.log(`🔒 Authenticated user ${user.userId} for sync request`);
+    } catch (authError: any) {
+      console.error('❌ Authentication failed:', authError.message);
+      return res.status(401).json({ 
+        error: 'Unauthorized', 
+        message: authError.message 
+      });
+    }
   }
 
   console.log(`⚡ Immediate sync started for account: ${accountId}`);
