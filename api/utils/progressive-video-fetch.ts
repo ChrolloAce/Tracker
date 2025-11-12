@@ -241,8 +241,8 @@ async function fetchTwitterBatch(username: string, maxItems: number): Promise<an
       onlyVideos: true
     };
     
-    const items = await runApifyActor('apidojo~tweet-scraper', input, false);
-    return items || [];
+    const response = await runApifyActor({ actorId: 'apidojo~tweet-scraper', input });
+    return response.items || [];
   } catch (error) {
     console.error(`❌ Failed to fetch Twitter batch:`, error);
     return [];

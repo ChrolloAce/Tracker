@@ -201,7 +201,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       actorId = 'scraper-engine~instagram-reels-scraper';
       apifyInput = {
         urls: [`https://www.instagram.com/${account.username}/`],
-        sortOrder: 'most-recent',
+        sortOrder: 'newest',
         maxComments: 0,
         maxReels: 50,
         proxyConfiguration: {
@@ -348,7 +348,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         actorId = 'scraper-engine~instagram-reels-scraper';
         apifyInput = {
           urls: [`https://www.instagram.com/${account.username}/`],
-          sortOrder: 'most-recent',
+          sortOrder: 'newest',
           maxComments: 0,
           maxReels: 100,
           proxyConfiguration: {

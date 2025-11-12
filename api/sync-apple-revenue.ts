@@ -230,6 +230,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('🔓 Decrypting private key...');
     const privateKey = decryptPrivateKey(encryptedKey);
     
+    // Validate credentials
+    if (!integration.credentials.keyId || typeof integration.credentials.keyId !== 'string') {
+      throw new Error('Invalid or missing keyId in integration credentials');
+    }
+    if (!integration.credentials.issuerId || typeof integration.credentials.issuerId !== 'string') {
+      throw new Error('Invalid or missing issuerId in integration credentials');
+    }
+    
     // Generate JWT token
     console.log('🎟️  Generating JWT token...');
     const token = generateAppleJWT(
